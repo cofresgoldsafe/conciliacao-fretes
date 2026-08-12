@@ -1,0 +1,129 @@
+[
+  {
+    "id": "HIST-1786563210269",
+    "dataIntegracao": "12/08/2026, 16:33:30",
+    "faturaNumero": "13851138-26",
+    "transportadora": "RODONAVES TRANSPORTES E ENCOMENDAS LTDA",
+    "dataVencimento": "31/07/2026",
+    "totalFretes": 5,
+    "valorTotal": 527.31,
+    "logs": [
+      {
+        "numFrete": "61770253-1",
+        "docOriginario": "546",
+        "pedVenda": "000630",
+        "freteCobradoProtheus": 137.14,
+        "freteEmbutidoProtheus": 0,
+        "valorCobrado": 87.22,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-617702531",
+        "mensagem": "CT-e 61770253-1 amarrado à NF 546 (Pedido 000630) gravado com sucesso."
+      },
+      {
+        "numFrete": "61828691-1",
+        "docOriginario": "551",
+        "pedVenda": "000635",
+        "freteCobradoProtheus": 0,
+        "freteEmbutidoProtheus": 100,
+        "valorCobrado": 89.93,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-618286911",
+        "mensagem": "CT-e 61828691-1 amarrado à NF 551 (Pedido 000635) gravado com sucesso."
+      },
+      {
+        "numFrete": "61891166-1",
+        "docOriginario": "563",
+        "pedVenda": "000645",
+        "freteCobradoProtheus": 137.14,
+        "freteEmbutidoProtheus": 0,
+        "valorCobrado": 87.22,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-618911661",
+        "mensagem": "CT-e 61891166-1 amarrado à NF 563 (Pedido 000645) gravado com sucesso."
+      },
+      {
+        "numFrete": "61891204-1",
+        "docOriginario": "561",
+        "pedVenda": "000598",
+        "freteCobradoProtheus": 158.48,
+        "freteEmbutidoProtheus": 0,
+        "valorCobrado": 142.02,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-618912041",
+        "mensagem": "CT-e 61891204-1 amarrado à NF 561 (Pedido 000598) gravado com sucesso."
+      },
+      {
+        "numFrete": "61921283-1",
+        "docOriginario": "566",
+        "pedVenda": "000648",
+        "freteCobradoProtheus": 87.86,
+        "freteEmbutidoProtheus": 0,
+        "valorCobrado": 120.92,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-619212831",
+        "mensagem": "CT-e 61921283-1 amarrado à NF 566 (Pedido 000648) gravado com sucesso."
+      }
+    ]
+  },
+  {
+    "id": "HIST-1786559514344",
+    "dataIntegracao": "12/08/2026, 15:31:54",
+    "faturaNumero": "13851138-26",
+    "transportadora": "RODONAVES TRANSPORTES E ENCOMENDAS LTDA",
+    "dataVencimento": "31/07/2026",
+    "totalFretes": 5,
+    "valorTotal": 527.31,
+    "logs": [
+      {
+        "numFrete": "61770253-1",
+        "docOriginario": "546",
+        "valorCobrado": 87.22,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-617702531",
+        "mensagem": "CT-e 61770253-1 lançado no Protheus amarrado ao Pedido/NF 546 com vencimento 31/07/2026."
+      },
+      {
+        "numFrete": "61828691-1",
+        "docOriginario": "551",
+        "valorCobrado": 89.93,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-618286911",
+        "mensagem": "CT-e 61828691-1 lançado no Protheus amarrado ao Pedido/NF 551 com vencimento 31/07/2026."
+      },
+      {
+        "numFrete": "61891166-1",
+        "docOriginario": "563",
+        "valorCobrado": 87.22,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-618911661",
+        "mensagem": "CT-e 61891166-1 lançado no Protheus amarrado ao Pedido/NF 563 com vencimento 31/07/2026."
+      },
+      {
+        "numFrete": "61891204-1",
+        "docOriginario": "561",
+        "valorCobrado": 142.02,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-618912041",
+        "mensagem": "CT-e 61891204-1 lançado no Protheus amarrado ao Pedido/NF 561 com vencimento 31/07/2026."
+      },
+      {
+        "numFrete": "61921283-1",
+        "docOriginario": "566",
+        "valorCobrado": 120.92,
+        "dataVencimento": "31/07/2026",
+        "status": "Sucesso",
+        "protheusDoc": "FRE-619212831",
+        "mensagem": "CT-e 61921283-1 lançado no Protheus amarrado ao Pedido/NF 566 com vencimento 31/07/2026."
+      }
+    ]
+  }
+]

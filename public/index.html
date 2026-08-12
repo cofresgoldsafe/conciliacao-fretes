@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal de Conciliação de Fretes & Integração Protheus</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </div>
+        <div class="brand-text">
+          <h1>Conciliação de Fretes</h1>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14)</span>
+        </div>
+      </div>
+      <div class="header-right-tools">
+        <button id="btnOpenHistory" class="btn btn-outline btn-sm">
+          📜 Histórico de Integrações
+        </button>
+        <div class="user-profile">
+          <span class="status-indicator"></span>
+          <span id="userInfo">Equipe Autorizada</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Transportadora Selection & Upload Zone -->
+    <section class="card upload-section">
+      <div class="section-title-row">
+        <div>
+          <h2>1. Upload da Fatura da Transportadora</h2>
+          <p class="desc">Selecione a transportadora/tipo de fatura e envie o arquivo (PDF, CSV ou TXT) para extração e consulta no Protheus.</p>
+        </div>
+        <div class="transp-select-group">
+          <label for="transportadoraSelect">Tipo de Fatura:</label>
+          <select id="transportadoraSelect" class="form-select">
+            <option value="RODONAVES" selected>Rodonaves Transportes (Tipo 1 - PDF)</option>
+            <option value="VIPP_TIPO2">VIPP Visualset / Correios (Tipo 2 - CSV/TXT)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        </div>
+        <h3>Arraste e solte o arquivo da fatura aqui</h3>
+        <p>Formato aceito: PDF (Rodonaves) ou CSV/TXT (VIPP/Correios)</p>
+        <input type="file" id="fileInput" accept=".pdf,.csv,.txt,.xls,.xlsx" class="file-input">
+        
+        <div class="demo-divider">OU CARREGAR EXEMPLO DE TESTE</div>
+        <div class="demo-buttons-row">
+          <button id="btnLoadSample" class="btn btn-secondary">
+            ⚡ Exemplo Rodonaves (Exemplo_FAT_OACO.pdf)
+          </button>
+          <button id="btnLoadSampleTipo2" class="btn btn-secondary">
+            ⚡ Exemplo Tipo 2 (VIPP Visualset)
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="loading-state hidden">
+        <div class="spinner"></div>
+        <p id="loadingMessage">Extraindo CT-es e consultando SD2/SC5 no Protheus...</p>
+      </div>
+    </section>
+
+    <!-- Fatura Header Summary -->
+    <section id="faturaSummary" class="fatura-summary hidden">
+      <div class="summary-cards-grid">
+        <div class="summary-card">
+          <span class="card-label">Transportadora</span>
+          <strong id="sumTransp">RODONAVES TRANSPORTES</strong>
+          <small id="sumCnpj">CNPJ: 44.914.992/0001-38</small>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">Nº Fatura</span>
+          <strong id="sumFaturaNum">13851138-26</strong>
+          <small id="sumDatas">Emissão: 15/07/2026 | Venc: 31/07/2026</small>
+        </div>
+        <div class="summary-card">
+          <span class="card-label">Qtd. CT-es Lidos</span>
+          <strong id="sumQtdFretes">5 fretes</strong>
+          <small>Consulta Protheus OK</small>
+        </div>
+        <div class="summary-card highlight-card">
+          <span class="card-label">Valor Total Fatura</span>
+          <strong id="sumValorTotal">R$ 527,31</strong>
+          <div id="batimentoBadge" class="batimento-badge status-ok">
+            ✓ Batimento R$ 527,31 (100%)
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Table & Edit Area -->
+    <section id="tableSection" class="card table-section hidden">
+      <div class="table-header-row">
+        <div>
+          <h2>2. Conferência dos CT-es e Dados de Vendas no Protheus</h2>
+          <p class="desc">A coluna <strong>Cobrado Cli.</strong> reflete a soma dos fretes da empresa no Protheus (<code>C5_FRETE + C5_VLR_FRT</code>).</p>
+        </div>
+        <div class="table-actions-top">
+          <input type="text" id="tableSearch" placeholder="🔍 Filtrar por CT-e, Pedido, NF ou Cliente..." class="table-search-input" />
+          <button id="btnExportCsv" class="btn btn-outline btn-sm">
+            📊 Exportar CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>DOC</th>
+              <th>Num Frete</th>
+              <th class="editable-col-header">Doc (NF) ✏️</th>
+              <th class="protheus-col-header">Ped Venda</th>
+              <th class="protheus-col-header">Cobrado Cli.</th>
+              <th>Data Vencimento 📅</th>
+              <th>Valor Orçado</th>
+              <th>Valor Cobrado</th>
+              <th>Cliente</th>
+              <th>Status Protheus</th>
+            </tr>
+          </thead>
+          <tbody id="ctesTableBody">
+            <!-- Rows injected dynamically by JS -->
+          </tbody>
+          <tfoot>
+            <tr class="table-foot-row">
+              <td colspan="6" class="text-right"><strong>TOTAIS CONCILIADOS:</strong></td>
+              <td id="footTotalOrcado"><strong>R$ 0,00</strong></td>
+              <td id="footTotalCobrado"><strong>R$ 0,00</strong></td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Action Footer Bar -->
+      <div class="action-bar">
+        <div class="bar-left">
+          <button id="btnRecalcular" class="btn btn-outline">
+            🔄 Recalcular Totais
+          </button>
+        </div>
+        <div class="bar-right">
+          <button id="btnLancarProtheus" class="btn btn-primary btn-large btn-disabled" disabled title="Gravação no Protheus desabilitada temporariamente até a conclusão do módulo de gravação no banco de dados.">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            Lançar Fretes no Protheus (Desabilitado)
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Result Log -->
+  <div id="resultModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Resultado da Gravação no Protheus</h3>
+        <button id="btnCloseModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button id="btnConfirmModal" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal History -->
+  <div id="historyModal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>📜 Histórico de Integrações de Frete</h3>
+        <button id="btnCloseHistoryModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="historyModalBody"></div>
+      <div class="modal-footer">
+        <button id="btnConfirmHistoryModal" class="btn btn-outline">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
