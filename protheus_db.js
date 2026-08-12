@@ -46,6 +46,7 @@ function executeRailwayQuery(sql) {
       headers: {
         'Content-Type': 'application/json',
         'X-API-Key': RAILWAY_API_KEY,
+        'User-Agent': 'NodeJS-ConciliacaoFretes/1.0',
         'Content-Length': Buffer.byteLength(postData)
       },
       timeout: 10000
@@ -59,7 +60,7 @@ function executeRailwayQuery(sql) {
           try {
             resolve(JSON.parse(data));
           } catch (e) {
-            reject(new Error('Resposta inválida do Railway API'));
+            reject(new Error('Resposta inválida do Railway API: ' + data));
           }
         } else {
           reject(new Error(`Railway API retornou status ${res.statusCode}: ${data}`));
@@ -80,7 +81,7 @@ function executeRailwayQuery(sql) {
 
 /**
  * Consulta no banco de dados real do Protheus (Empresa OACO SD2160 JOIN SC5160)
- * Soma C5_FRETE + C5_VLR_FRT para a coluna unificada "Frete Cobrado (Protheus)"
+ * Soma C5_FRETE + C5_VLR_FRT para a coluna unificada "Cobrado Cli."
  */
 async function consultarProtheusNF(numNF, empresaKey = "OACO") {
   const cleanNF = String(numNF || '').trim();
