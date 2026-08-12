@@ -52,9 +52,23 @@ const upload = multer({ storage: storage });
 function runPythonParser(scriptName, filePath) {
   return new Promise((resolve, reject) => {
     const pythonScript = path.join(__dirname, scriptName);
-    execFile('python', [pythonScript, filePath], (error, stdout, stderr) => {
+    // Suporte multiplataforma (Windows: python | Linux/Docker: python3)
+    const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+
+    execFile(pythonBin, [pythonScript, filePath], (error, stdout, stderr) => {
       if (error) {
-        console.error('Python Exec Error:', error, stderr);
+        console.error(`Exec Error with ${pythonBin}:`, error, stderr);
+        // Tenta fallback para 'python' se python3 falhar
+        if (pythonBin === 'python3') {
+          return execFile('python', [pythonScript, filePath], (err2, out2, errOut2) => {
+            if (err2) return reject(err2);
+            try {
+              resolve(JSON.parse(out2));
+            } catch (e) {
+              reject(new Error('Falha ao ler saída: ' + out2));
+            }
+          });
+        }
         return reject(error);
       }
       try {
