@@ -17,8 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const transportadoraSelect = document.getElementById('transportadoraSelect');
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
-  const btnLoadSample = document.getElementById('btnLoadSample');
-  const btnLoadSampleTipo2 = document.getElementById('btnLoadSampleTipo2');
   const loadingState = document.getElementById('loadingState');
   const loadingMessage = document.getElementById('loadingMessage');
 
@@ -185,44 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- TAB 1 LOGIC (UPLOAD & CONCILIAÇÃO) ---
-  btnLoadSample.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    showLoading(true, 'Lendo fatura Exemplo_FAT_OACO.pdf e consultando SD2/SC5 no Protheus...');
-    try {
-      const response = await fetch('/api/sample-rodonaves');
-      const data = await response.json();
-      if (data.success) {
-        renderFaturaData(data);
-      } else {
-        alert('Erro ao carregar exemplo Rodonaves: ' + data.message);
-      }
-    } catch (err) {
-      alert('Erro ao carregar exemplo.');
-      console.error(err);
-    } finally {
-      showLoading(false);
-    }
-  });
-
-  btnLoadSampleTipo2.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    showLoading(true, 'Lendo fatura VIPP Visualset e consultando SD2/SC5 no Protheus...');
-    try {
-      const response = await fetch('/api/sample-tipo2');
-      const data = await response.json();
-      if (data.success) {
-        renderFaturaData(data);
-      } else {
-        alert('Erro ao carregar exemplo Tipo 2: ' + data.message);
-      }
-    } catch (err) {
-      alert('Erro ao carregar exemplo Tipo 2.');
-      console.error(err);
-    } finally {
-      showLoading(false);
-    }
-  });
-
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropzone.classList.add('dragover');
