@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
-const { consultarProtheusNF } = require('./protheus_db');
+const { consultarProtheusNF, buscarProtheusMultiEmpresa } = require('./protheus_db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -116,6 +116,23 @@ app.get('/api/protheus/consulta/:nf', async (req, res) => {
     const empresaKey = req.query.empresa || 'OACO';
     const data = await consultarProtheusNF(req.params.nf, empresaKey);
     res.json({ success: true, nf: req.params.nf, empresa: empresaKey, data });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: Consulta Multi-Empresa Avançada por Pedido de Venda ou NFe
+app.get('/api/protheus/consulta-avancada', async (req, res) => {
+  try {
+    const tipo = req.query.tipo || 'pedVenda'; // 'pedVenda' ou 'nfe'
+    const termo = req.query.termo || '';
+
+    if (!termo) {
+      return res.status(400).json({ success: false, message: 'Parâmetro de busca "termo" é obrigatório.' });
+    }
+
+    const rows = await buscarProtheusMultiEmpresa(tipo, termo);
+    res.json({ success: true, tipo, termo, count: rows.length, rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

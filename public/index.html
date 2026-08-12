@@ -34,137 +34,311 @@
     </div>
   </header>
 
+  <!-- Main Container -->
   <main class="main-container">
-    <!-- Transportadora Selection & Upload Zone -->
-    <section class="card upload-section">
-      <div class="section-title-row">
-        <div>
-          <h2>1. Upload da Fatura da Transportadora</h2>
-          <p class="desc">Selecione a transportadora/tipo de fatura e envie o arquivo (PDF, CSV ou TXT) para extração e consulta no Protheus.</p>
-        </div>
-        <div class="transp-select-group">
-          <label for="transportadoraSelect">Tipo de Fatura:</label>
-          <select id="transportadoraSelect" class="form-select">
-            <option value="RODONAVES" selected>Rodonaves Transportes (Tipo 1 - PDF)</option>
-            <option value="VIPP_TIPO2">VIPP Visualset / Correios (Tipo 2 - CSV/TXT)</option>
-          </select>
-        </div>
-      </div>
 
-      <div class="dropzone" id="dropzone">
-        <div class="dropzone-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        </div>
-        <h3>Arraste e solte o arquivo da fatura aqui</h3>
-        <p>Formato aceito: PDF (Rodonaves) ou CSV/TXT (VIPP/Correios)</p>
-        <input type="file" id="fileInput" accept=".pdf,.csv,.txt,.xls,.xlsx" class="file-input">
-        
-        <div class="demo-divider">OU CARREGAR EXEMPLO DE TESTE</div>
-        <div class="demo-buttons-row">
-          <button id="btnLoadSample" class="btn btn-secondary">
-            ⚡ Exemplo Rodonaves (Exemplo_FAT_OACO.pdf)
-          </button>
-          <button id="btnLoadSampleTipo2" class="btn btn-secondary">
-            ⚡ Exemplo Tipo 2 (VIPP Visualset)
-          </button>
-        </div>
-      </div>
+    <!-- Tab Bar Navigation -->
+    <nav class="nav-tabs-container">
+      <button class="nav-tab-btn active" data-tab="tab-upload">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <span>Upload Fatura Transp.</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="tab-correios">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11"></path><rect x="13" y="11" width="9" height="9" rx="1"></rect><polyline points="22 6 12 13 2 6"></polyline></svg>
+        <span>Fatura Correios</span>
+        <span class="tab-badge-construction">Em Construção 🚧</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="tab-consulta">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Consulta NFe ou Pedido</span>
+      </button>
+    </nav>
 
-      <!-- Loading State -->
-      <div id="loadingState" class="loading-state hidden">
-        <div class="spinner"></div>
-        <p id="loadingMessage">Extraindo CT-es e consultando SD2/SC5 no Protheus...</p>
-      </div>
-    </section>
-
-    <!-- Fatura Header Summary -->
-    <section id="faturaSummary" class="fatura-summary hidden">
-      <div class="summary-cards-grid">
-        <div class="summary-card">
-          <span class="card-label">Transportadora</span>
-          <strong id="sumTransp">RODONAVES TRANSPORTES</strong>
-          <small id="sumCnpj">CNPJ: 44.914.992/0001-38</small>
-        </div>
-        <div class="summary-card">
-          <span class="card-label">Nº Fatura</span>
-          <strong id="sumFaturaNum">13851138-26</strong>
-          <small id="sumDatas">Emissão: 15/07/2026 | Venc: 31/07/2026</small>
-        </div>
-        <div class="summary-card">
-          <span class="card-label">Qtd. CT-es Lidos</span>
-          <strong id="sumQtdFretes">5 fretes</strong>
-          <small>Consulta Protheus OK</small>
-        </div>
-        <div class="summary-card highlight-card">
-          <span class="card-label">Valor Total Fatura</span>
-          <strong id="sumValorTotal">R$ 527,31</strong>
-          <div id="batimentoBadge" class="batimento-badge status-ok">
-            ✓ Batimento R$ 527,31 (100%)
+    <!-- ABA 1: Upload Fatura Transp. -->
+    <div id="tab-upload" class="tab-pane active">
+      <!-- Transportadora Selection & Upload Zone -->
+      <section class="card upload-section">
+        <div class="section-title-row">
+          <div>
+            <h2>1. Upload da Fatura da Transportadora</h2>
+            <p class="desc">Selecione a transportadora/tipo de fatura e envie o arquivo (PDF, CSV ou TXT) para extração e consulta no Protheus.</p>
+          </div>
+          <div class="transp-select-group">
+            <label for="transportadoraSelect">Tipo de Fatura:</label>
+            <select id="transportadoraSelect" class="form-select">
+              <option value="RODONAVES" selected>Rodonaves Transportes (Tipo 1 - PDF)</option>
+              <option value="VIPP_TIPO2">VIPP Visualset / Correios (Tipo 2 - CSV/TXT)</option>
+            </select>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- Data Table & Edit Area -->
-    <section id="tableSection" class="card table-section hidden">
-      <div class="table-header-row">
-        <div>
-          <h2>2. Conferência dos CT-es e Dados de Vendas no Protheus</h2>
-          <p class="desc">A coluna <strong>Cobrado Cli.</strong> reflete a soma dos fretes da empresa no Protheus (<code>C5_FRETE + C5_VLR_FRT</code>).</p>
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          </div>
+          <h3>Arraste e solte o arquivo da fatura aqui</h3>
+          <p>Formato aceito: PDF (Rodonaves) ou CSV/TXT (VIPP/Correios)</p>
+          <input type="file" id="fileInput" accept=".pdf,.csv,.txt,.xls,.xlsx" class="file-input">
+          
+          <div class="demo-divider">OU CARREGAR EXEMPLO DE TESTE</div>
+          <div class="demo-buttons-row">
+            <button id="btnLoadSample" class="btn btn-secondary">
+              ⚡ Exemplo Rodonaves (Exemplo_FAT_OACO.pdf)
+            </button>
+            <button id="btnLoadSampleTipo2" class="btn btn-secondary">
+              ⚡ Exemplo Tipo 2 (VIPP Visualset)
+            </button>
+          </div>
         </div>
-        <div class="table-actions-top">
-          <input type="text" id="tableSearch" placeholder="🔍 Filtrar por CT-e, Pedido, NF ou Cliente..." class="table-search-input" />
-          <button id="btnExportCsv" class="btn btn-outline btn-sm">
-            📊 Exportar CSV
-          </button>
-        </div>
-      </div>
 
-      <div class="table-responsive">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>DOC</th>
-              <th>Num Frete</th>
-              <th class="editable-col-header">Doc (NF) ✏️</th>
-              <th class="protheus-col-header">Ped Venda</th>
-              <th class="protheus-col-header">Cobrado Cli.</th>
-              <th>Data Vencimento 📅</th>
-              <th>Valor Orçado</th>
-              <th>Valor Cobrado</th>
-              <th>Cliente</th>
-              <th>Status Protheus</th>
-            </tr>
-          </thead>
-          <tbody id="ctesTableBody">
-            <!-- Rows injected dynamically by JS -->
-          </tbody>
-          <tfoot>
-            <tr class="table-foot-row">
-              <td colspan="6" class="text-right"><strong>TOTAIS CONCILIADOS:</strong></td>
-              <td id="footTotalOrcado"><strong>R$ 0,00</strong></td>
-              <td id="footTotalCobrado"><strong>R$ 0,00</strong></td>
-              <td colspan="2"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+        <!-- Loading State -->
+        <div id="loadingState" class="loading-state hidden">
+          <div class="spinner"></div>
+          <p id="loadingMessage">Extraindo CT-es e consultando SD2/SC5 no Protheus...</p>
+        </div>
+      </section>
 
-      <!-- Action Footer Bar -->
-      <div class="action-bar">
-        <div class="bar-left">
-          <button id="btnRecalcular" class="btn btn-outline">
-            🔄 Recalcular Totais
-          </button>
+      <!-- Fatura Header Summary -->
+      <section id="faturaSummary" class="fatura-summary hidden">
+        <div class="summary-cards-grid">
+          <div class="summary-card">
+            <span class="card-label">Transportadora</span>
+            <strong id="sumTransp">RODONAVES TRANSPORTES</strong>
+            <small id="sumCnpj">CNPJ: 44.914.992/0001-38</small>
+          </div>
+          <div class="summary-card">
+            <span class="card-label">Nº Fatura</span>
+            <strong id="sumFaturaNum">13851138-26</strong>
+            <small id="sumDatas">Emissão: 15/07/2026 | Venc: 31/07/2026</small>
+          </div>
+          <div class="summary-card">
+            <span class="card-label">Qtd. CT-es Lidos</span>
+            <strong id="sumQtdFretes">5 fretes</strong>
+            <small>Consulta Protheus OK</small>
+          </div>
+          <div class="summary-card highlight-card">
+            <span class="card-label">Valor Total Fatura</span>
+            <strong id="sumValorTotal">R$ 527,31</strong>
+            <div id="batimentoBadge" class="batimento-badge status-ok">
+              ✓ Batimento R$ 527,31 (100%)
+            </div>
+          </div>
         </div>
-        <div class="bar-right">
-          <button id="btnLancarProtheus" class="btn btn-primary btn-large btn-disabled" disabled title="Gravação no Protheus desabilitada temporariamente até a conclusão do módulo de gravação no banco de dados.">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-            Lançar Fretes no Protheus (Desabilitado)
-          </button>
+      </section>
+
+      <!-- Data Table & Edit Area -->
+      <section id="tableSection" class="card table-section hidden">
+        <div class="table-header-row">
+          <div>
+            <h2>2. Conferência dos CT-es e Dados de Vendas no Protheus</h2>
+            <p class="desc">A coluna <strong>Cobrado Cli.</strong> reflete a soma dos fretes da empresa no Protheus (<code>C5_FRETE + C5_VLR_FRT</code>).</p>
+          </div>
+          <div class="table-actions-top">
+            <input type="text" id="tableSearch" placeholder="🔍 Filtrar por CT-e, Pedido, NF ou Cliente..." class="table-search-input" />
+            <button id="btnExportCsv" class="btn btn-outline btn-sm">
+              📊 Exportar CSV
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>DOC</th>
+                <th>Num Frete</th>
+                <th class="editable-col-header">Doc (NF) ✏️</th>
+                <th class="protheus-col-header">Ped Venda</th>
+                <th class="protheus-col-header">Cobrado Cli.</th>
+                <th>Data Vencimento 📅</th>
+                <th>Valor Orçado</th>
+                <th>Valor Cobrado</th>
+                <th>Cliente</th>
+                <th>Status Protheus</th>
+              </tr>
+            </thead>
+            <tbody id="ctesTableBody">
+              <!-- Rows injected dynamically by JS -->
+            </tbody>
+            <tfoot>
+              <tr class="table-foot-row">
+                <td colspan="6" class="text-right"><strong>TOTAIS CONCILIADOS:</strong></td>
+                <td id="footTotalOrcado"><strong>R$ 0,00</strong></td>
+                <td id="footTotalCobrado"><strong>R$ 0,00</strong></td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Action Footer Bar -->
+        <div class="action-bar">
+          <div class="bar-left">
+            <button id="btnRecalcular" class="btn btn-outline">
+              🔄 Recalcular Totais
+            </button>
+          </div>
+          <div class="bar-right">
+            <button id="btnLancarProtheus" class="btn btn-primary btn-large btn-disabled" disabled title="Gravação no Protheus desabilitada temporariamente até a conclusão do módulo de gravação no banco de dados.">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+              Lançar Fretes no Protheus (Desabilitado)
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA 2: Fatura Correios (Em Construção) -->
+    <div id="tab-correios" class="tab-pane hidden">
+      <section class="card construction-card">
+        <div class="construction-content">
+          <div class="construction-badge-hero">
+            <span class="pulse-dot"></span>
+            <span>Módulo em Homologação</span>
+          </div>
+          
+          <div class="construction-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11"></path><rect x="13" y="11" width="9" height="9" rx="1"></rect><polyline points="22 6 12 13 2 6"></polyline></svg>
+          </div>
+
+          <h2>Fatura Correios & VIPP Visualset 🚧</h2>
+          <p class="construction-desc">
+            Esta funcionalidade está sendo expandida para permitir o processamento automático em lote de arquivos de faturas de frete dos <strong>Correios (VIPP / Visualset / CWT)</strong> com validação direta nas tabelas SD2/SC5 do Protheus.
+          </p>
+
+          <div class="construction-grid">
+            <div class="feature-item">
+              <div class="feature-icon">📁</div>
+              <div>
+                <h4>Importação CSV & VIPP</h4>
+                <p>Leitura de relatórios sintéticos e analíticos de postagem do SIGEP / VIPP Visualset.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">🔍</div>
+              <div>
+                <h4>Batimento de AR & Rastreio</h4>
+                <p>Cruzamento automático do código de rastreamento com a NF e o Pedido de Venda no ERP.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">⚡</div>
+              <div>
+                <h4>Multi-Empresas (14, 15, 16)</h4>
+                <p>Identificação do CNPJ pagador para roteamento entre OACO, GSI e Metal Pleno.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="construction-footer-note">
+            ℹ️ <em>Nota: Para testar a importação de faturas VIPP tipo 2 já disponível no motor, utilize a 1ª aba (Upload Fatura Transp.) com o seletor "VIPP Visualset / Correios".</em>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA 3: Consulta NFe ou Pedido -->
+    <div id="tab-consulta" class="tab-pane hidden">
+      <section class="card consulta-card">
+        <div class="section-title-row">
+          <div>
+            <h2>3. Consulta NFe ou Pedido de Venda</h2>
+            <p class="desc">Consulte o status de vendas e fretes nas Empresas Protheus (<strong>Empresa 16 - OACO, Empresa 15 - GSI, Empresa 14 - Metal Pleno</strong>).</p>
+          </div>
+        </div>
+
+        <!-- Search Form Container -->
+        <div class="search-form-box">
+          <div class="search-fields-grid">
+            <div class="search-field-group" id="groupPedVenda">
+              <label for="searchPedVenda">
+                <span>📦 Número do Pedido de Venda</span>
+              </label>
+              <div class="input-with-icon">
+                <input type="text" id="searchPedVenda" class="form-input" placeholder="Ex: 000630 ou 630" />
+                <span class="field-status-tag" id="tagPedVenda">Ativo</span>
+              </div>
+              <small class="field-hint">O mesmo número de pedido pode existir em mais de uma empresa.</small>
+            </div>
+
+            <div class="search-divider-or">
+              <span>OU</span>
+            </div>
+
+            <div class="search-field-group" id="groupNFe">
+              <label for="searchNFe">
+                <span>📄 Número da NFe (Doc)</span>
+              </label>
+              <div class="input-with-icon">
+                <input type="text" id="searchNFe" class="form-input" placeholder="Ex: 546 ou 000000546" />
+                <span class="field-status-tag" id="tagNFe">Ativo</span>
+              </div>
+              <small class="field-hint">Busca direta pela Nota Fiscal de saída no Protheus.</small>
+            </div>
+          </div>
+
+          <!-- Helper notice when mutually exclusive -->
+          <div id="mutuallyExclusiveNotice" class="search-notice-bar">
+            💡 Preencha um dos campos acima. Ao digitar no Pedido ou na NFe, o outro campo será bloqueado automaticamente.
+          </div>
+
+          <div class="search-actions-row">
+            <button id="btnLimparConsulta" class="btn btn-outline">
+              🧹 Limpar Filtros
+            </button>
+            <button id="btnBuscarConsulta" class="btn btn-primary btn-large">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              Buscar no Protheus
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading State Consulta -->
+        <div id="consultaLoading" class="loading-state hidden">
+          <div class="spinner"></div>
+          <p id="consultaLoadingMsg">Consultando tabelas SD2/SC5 nas Empresas Protheus (16, 15 e 14)...</p>
+        </div>
+
+        <!-- Search Results Section -->
+        <div id="consultaResultsSection" class="results-section hidden">
+          <div class="results-header-bar">
+            <div class="results-title">
+              <h3>Resultado da Consulta Multi-Empresa</h3>
+              <span id="resultsCountBadge" class="results-count-badge">0 registros encontrados</span>
+            </div>
+            <div id="searchParamInfo" class="search-param-info">
+              <!-- Text injected by JS -->
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 22%;">Empresa</th>
+                  <th style="width: 18%;">Ped Venda</th>
+                  <th style="width: 18%;">NF</th>
+                  <th style="width: 18%;">Valor Cobrado</th>
+                  <th style="width: 24%;">Nome Cli</th>
+                </tr>
+              </thead>
+              <tbody id="consultaTableBody">
+                <!-- Rows injected dynamically by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty state when no search performed or no results -->
+        <div id="consultaEmptyState" class="empty-results-box">
+          <div class="empty-icon">🔍</div>
+          <h4>Nenhuma busca realizada ainda</h4>
+          <p>Preencha o <strong>Número do Pedido de Venda</strong> ou o <strong>Número da NFe</strong> acima e clique em <strong>Buscar</strong> para visualizar os resultados multi-empresa.</p>
+        </div>
+
+      </section>
+    </div>
+
   </main>
 
   <!-- Modal Result Log -->

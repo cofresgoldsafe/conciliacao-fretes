@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
+  // DOM Elements - Tab Navigation
+  const navTabBtns = document.querySelectorAll('.nav-tab-btn');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  // DOM Elements - Tab 1 (Upload)
   const transportadoraSelect = document.getElementById('transportadoraSelect');
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
@@ -27,6 +31,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnRecalcular = document.getElementById('btnRecalcular');
   const btnLancarProtheus = document.getElementById('btnLancarProtheus');
 
+  // DOM Elements - Tab 3 (Consulta NFe ou Pedido)
+  const searchPedVenda = document.getElementById('searchPedVenda');
+  const searchNFe = document.getElementById('searchNFe');
+  const tagPedVenda = document.getElementById('tagPedVenda');
+  const tagNFe = document.getElementById('tagNFe');
+  const btnBuscarConsulta = document.getElementById('btnBuscarConsulta');
+  const btnLimparConsulta = document.getElementById('btnLimparConsulta');
+  const consultaLoading = document.getElementById('consultaLoading');
+  const consultaResultsSection = document.getElementById('consultaResultsSection');
+  const consultaEmptyState = document.getElementById('consultaEmptyState');
+  const consultaTableBody = document.getElementById('consultaTableBody');
+  const resultsCountBadge = document.getElementById('resultsCountBadge');
+  const searchParamInfo = document.getElementById('searchParamInfo');
+
+  // DOM Elements - Modals
   const resultModal = document.getElementById('resultModal');
   const modalBody = document.getElementById('modalBody');
   const btnCloseModal = document.getElementById('btnCloseModal');
@@ -47,7 +66,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
   }
 
-  // Load Rodonaves sample (Exemplo_FAT_OACO.pdf)
+  // --- TAB NAVIGATION SYSTEM ---
+  navTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      navTabBtns.forEach(b => b.classList.remove('active'));
+      tabPanes.forEach(pane => pane.classList.add('hidden'));
+
+      btn.classList.add('active');
+      const targetPane = document.getElementById(targetTab);
+      if (targetPane) targetPane.classList.remove('hidden');
+    });
+  });
+
+  // --- TAB 1 LOGIC (UPLOAD & CONCILIAÇÃO) ---
   btnLoadSample.addEventListener('click', async (e) => {
     e.stopPropagation();
     showLoading(true, 'Lendo fatura Exemplo_FAT_OACO.pdf e consultando SD2/SC5 no Protheus...');
@@ -67,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Load Tipo 2 sample (VIPP)
   btnLoadSampleTipo2.addEventListener('click', async (e) => {
     e.stopPropagation();
     showLoading(true, 'Lendo fatura VIPP Visualset e consultando SD2/SC5 no Protheus...');
@@ -87,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Drag and drop handlers
   dropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropzone.classList.add('dragover');
@@ -168,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tableSection.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // Filter Table Search
   tableSearch.addEventListener('input', (e) => {
     filterText = e.target.value.toLowerCase().trim();
     renderTableRows();
@@ -226,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctesTableBody.appendChild(tr);
     });
 
-    // Re-consult Protheus when NF input changes
     document.querySelectorAll('.editable-input').forEach(input => {
       input.addEventListener('change', async (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'), 10);
@@ -270,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTableRows();
   });
 
-  // Export CSV
   btnExportCsv.addEventListener('click', () => {
     if (!currentItems || currentItems.length === 0) return;
     let csv = 'DOC;Num Frete;Doc (NF);Ped Venda;Cobrado Cli.;Data Vencimento;Valor Orcado;Valor Cobrado;Cliente;Status\n';
@@ -287,14 +314,135 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(link);
   });
 
-  // Launch into Protheus - Botão Mantido Desabilitado Conforme Instrução
   btnLancarProtheus.disabled = true;
   btnLancarProtheus.addEventListener('click', (e) => {
     e.preventDefault();
     alert('A gravação automática de fretes no Protheus está desabilitada por enquanto (módulo em homologação). Utilize a consulta e a exportação em CSV para conferência.');
   });
 
-  // History Modal Handler
+  // --- TAB 3 LOGIC (CONSULTA NFE OU PEDIDO) ---
+  function updateSearchInputsState() {
+    const pedValue = searchPedVenda.value.trim();
+    const nfeValue = searchNFe.value.trim();
+
+    if (pedValue !== '') {
+      searchNFe.disabled = true;
+      searchNFe.placeholder = 'Bloqueado (Pedido preenchido)';
+      tagNFe.textContent = 'Bloqueado';
+      tagNFe.classList.add('blocked');
+    } else {
+      searchNFe.disabled = false;
+      searchNFe.placeholder = 'Ex: 546 ou 000000546';
+      tagNFe.textContent = 'Ativo';
+      tagNFe.classList.remove('blocked');
+    }
+
+    if (nfeValue !== '') {
+      searchPedVenda.disabled = true;
+      searchPedVenda.placeholder = 'Bloqueado (NFe preenchida)';
+      tagPedVenda.textContent = 'Bloqueado';
+      tagPedVenda.classList.add('blocked');
+    } else {
+      searchPedVenda.disabled = false;
+      searchPedVenda.placeholder = 'Ex: 000630 ou 630';
+      tagPedVenda.textContent = 'Ativo';
+      tagPedVenda.classList.remove('blocked');
+    }
+  }
+
+  if (searchPedVenda && searchNFe) {
+    searchPedVenda.addEventListener('input', updateSearchInputsState);
+    searchNFe.addEventListener('input', updateSearchInputsState);
+  }
+
+  if (btnLimparConsulta) {
+    btnLimparConsulta.addEventListener('click', () => {
+      searchPedVenda.value = '';
+      searchNFe.value = '';
+      updateSearchInputsState();
+      consultaResultsSection.classList.add('hidden');
+      consultaEmptyState.innerHTML = `
+        <div class="empty-icon">🔍</div>
+        <h4>Nenhuma busca realizada ainda</h4>
+        <p>Preencha o <strong>Número do Pedido de Venda</strong> ou o <strong>Número da NFe</strong> acima e clique em <strong>Buscar</strong> para visualizar os resultados multi-empresa.</p>
+      `;
+      consultaEmptyState.classList.remove('hidden');
+      consultaTableBody.innerHTML = '';
+    });
+  }
+
+  if (btnBuscarConsulta) {
+    btnBuscarConsulta.addEventListener('click', async () => {
+      const pedValue = searchPedVenda.value.trim();
+      const nfeValue = searchNFe.value.trim();
+
+      if (!pedValue && !nfeValue) {
+        alert('Por favor, preencha o Número do Pedido de Venda OU o Número da NFe para buscar.');
+        return;
+      }
+
+      const tipo = pedValue ? 'pedVenda' : 'nfe';
+      const termo = pedValue || nfeValue;
+
+      consultaEmptyState.classList.add('hidden');
+      consultaResultsSection.classList.add('hidden');
+      consultaLoading.classList.remove('hidden');
+
+      try {
+        const response = await fetch(`/api/protheus/consulta-avancada?tipo=${tipo}&termo=${encodeURIComponent(termo)}`);
+        const data = await response.json();
+
+        if (data.success && data.rows && data.rows.length > 0) {
+          renderConsultaResults(data.rows, tipo, termo);
+        } else {
+          renderConsultaEmptyResults(tipo, termo);
+        }
+      } catch (err) {
+        alert('Erro ao realizar consulta no Protheus: ' + err.message);
+        console.error(err);
+      } finally {
+        consultaLoading.classList.add('hidden');
+      }
+    });
+  }
+
+  function renderConsultaResults(rows, tipo, termo) {
+    consultaTableBody.innerHTML = '';
+    
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge-doc">${row.empresa}</span></td>
+        <td><span class="ped-venda-badge">${row.pedVenda}</span></td>
+        <td class="mono-text"><strong>${row.nf}</strong></td>
+        <td class="mono-text"><strong>${formatCurrency(row.valorCobrado)}</strong></td>
+        <td><strong>${row.nomeCli}</strong></td>
+      `;
+      consultaTableBody.appendChild(tr);
+    });
+
+    resultsCountBadge.textContent = `${rows.length} ${rows.length === 1 ? 'registro encontrado' : 'registros encontrados'}`;
+    searchParamInfo.innerHTML = `Busca realizada por: <strong>${tipo === 'pedVenda' ? 'Pedido de Venda' : 'Número da NFe'} (${termo})</strong>`;
+
+    consultaEmptyState.classList.add('hidden');
+    consultaResultsSection.classList.remove('hidden');
+  }
+
+  function renderConsultaEmptyResults(tipo, termo) {
+    consultaTableBody.innerHTML = '';
+    resultsCountBadge.textContent = '0 registros encontrados';
+    searchParamInfo.innerHTML = `Busca por <strong>${tipo === 'pedVenda' ? 'Pedido' : 'NFe'} (${termo})</strong>`;
+    
+    consultaEmptyState.innerHTML = `
+      <div class="empty-icon">⚠️</div>
+      <h4>Nenhum registro encontrado</h4>
+      <p>Não foram encontrados dados no Protheus para o ${tipo === 'pedVenda' ? 'Pedido de Venda' : 'Número de NFe'} "<strong>${termo}</strong>". Tente outro número.</p>
+    `;
+    consultaEmptyState.classList.remove('hidden');
+    consultaResultsSection.classList.add('hidden');
+  }
+
+  // --- MODALS HANDLER ---
   btnOpenHistory.addEventListener('click', async () => {
     historyModalBody.innerHTML = '<p>Carregando histórico de integrações...</p>';
     historyModal.classList.remove('hidden');
@@ -325,7 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Close modals
   btnCloseModal.addEventListener('click', () => resultModal.classList.add('hidden'));
   btnConfirmModal.addEventListener('click', () => resultModal.classList.add('hidden'));
   btnCloseHistoryModal.addEventListener('click', () => historyModal.classList.add('hidden'));
