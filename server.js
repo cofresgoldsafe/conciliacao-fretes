@@ -98,16 +98,33 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
   return items;
 }
 
-// API: Auth Check
+// API: Auth Check (Alexandre, Érica, Wallerson - Validade de 7 dias)
 app.post('/api/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  if (username === 'equipe' && password === 'oaco2026') {
-    return res.json({ success: true, token: 'user-auth-token-oaco-2026', user: { name: 'Equipe Logística / Financeiro', role: 'Operador' } });
+  const { username, password } = req.body || {};
+  const cleanUser = String(username || '').trim().toLowerCase();
+  const cleanPass = String(password || '').trim();
+
+  const validUsers = {
+    'alexandre': { pass: '102030', name: 'Alexandre' },
+    'erica': { pass: '1020304050', name: 'Érica' },
+    'wallerson': { pass: '10203040', name: 'Wallerson' }
+  };
+
+  const userFound = validUsers[cleanUser];
+  if (userFound && userFound.pass === cleanPass) {
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const expiresAt = Date.now() + ONE_WEEK_MS;
+
+    return res.json({
+      success: true,
+      token: `auth-token-${cleanUser}-${Date.now()}`,
+      user: { username: cleanUser, name: userFound.name },
+      expiresAt: expiresAt,
+      message: 'Login realizado com sucesso.'
+    });
   }
-  if (username && password) {
-    return res.json({ success: true, token: 'demo-auth-token', user: { name: username, role: 'Autorizado' } });
-  }
-  return res.status(401).json({ success: false, message: 'Credenciais inválidas.' });
+
+  return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos.' });
 });
 
 // API: Consulta Protheus individual por NF e Empresa

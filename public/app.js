@@ -1,4 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // DOM Elements - Auth & Login
+  const loginOverlay = document.getElementById('loginOverlay');
+  const loginForm = document.getElementById('loginForm');
+  const loginUsername = document.getElementById('loginUsername');
+  const loginPassword = document.getElementById('loginPassword');
+  const loginErrorMsg = document.getElementById('loginErrorMsg');
+  const btnLoginSubmit = document.getElementById('btnLoginSubmit');
+  const userInfo = document.getElementById('userInfo');
+  const btnLogout = document.getElementById('btnLogout');
+
   // DOM Elements - Tab Navigation
   const navTabBtns = document.querySelectorAll('.nav-tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
@@ -65,6 +75,101 @@ document.addEventListener('DOMContentLoaded', () => {
   function formatCurrency(val) {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
   }
+
+  // --- AUTHENTICATION & 7-DAY SESSION SYSTEM ---
+  function checkAuthSession() {
+    const rawSession = localStorage.getItem('conciliacao_fretes_session');
+    if (rawSession) {
+      try {
+        const session = JSON.parse(rawSession);
+        if (session && session.expiresAt && session.expiresAt > Date.now()) {
+          showAuthenticatedUser(session.user);
+          return true;
+        }
+      } catch (e) {
+        localStorage.removeItem('conciliacao_fretes_session');
+      }
+    }
+    showLoginOverlay(true);
+    return false;
+  }
+
+  function showAuthenticatedUser(user) {
+    if (loginOverlay) loginOverlay.classList.add('hidden');
+    if (userInfo) userInfo.textContent = user.name || user.username;
+  }
+
+  function showLoginOverlay(show) {
+    if (!loginOverlay) return;
+    if (show) {
+      loginOverlay.classList.remove('hidden');
+      if (loginUsername) loginUsername.value = '';
+      if (loginPassword) loginPassword.value = '';
+      if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
+    } else {
+      loginOverlay.classList.add('hidden');
+    }
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
+      if (btnLoginSubmit) {
+        btnLoginSubmit.disabled = true;
+        btnLoginSubmit.textContent = 'Verificando...';
+      }
+
+      const username = loginUsername.value.trim();
+      const password = loginPassword.value.trim();
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+
+        if (data.success && data.user) {
+          const session = {
+            token: data.token,
+            user: data.user,
+            expiresAt: data.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)
+          };
+          localStorage.setItem('conciliacao_fretes_session', JSON.stringify(session));
+          showAuthenticatedUser(data.user);
+        } else {
+          if (loginErrorMsg) {
+            loginErrorMsg.textContent = `⚠️ ${data.message || 'Usuário ou senha incorretos.'}`;
+            loginErrorMsg.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        if (loginErrorMsg) {
+          loginErrorMsg.textContent = '⚠️ Erro ao conectar com o servidor. Tente novamente.';
+          loginErrorMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (btnLoginSubmit) {
+          btnLoginSubmit.disabled = false;
+          btnLoginSubmit.textContent = '🔐 Entrar no Sistema';
+        }
+      }
+    });
+  }
+
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      if (confirm('Deseja realmente encerrar sua sessão?')) {
+        localStorage.removeItem('conciliacao_fretes_session');
+        showLoginOverlay(true);
+      }
+    });
+  }
+
+  // Check auth session on application start
+  checkAuthSession();
 
   // --- TAB NAVIGATION SYSTEM ---
   navTabBtns.forEach(btn => {
