@@ -326,9 +326,9 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
 
   const paddedPed6 = cleanNumPed ? cleanNumPed.padStart(6, '0') : '';
   const empresas = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sa1: "SA1160" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sa1: "SA1150" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sa1: "SA1140" }
+    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160" },
+    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150" },
+    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140" }
   ];
 
   const results = [];
@@ -343,14 +343,14 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
         conditions.push(`(RTRIM(C5.C5_NUM) = '${paddedPed6}' OR RTRIM(C5.C5_NUM) = '${cleanNumPed}' OR C5.C5_NUM LIKE '%${cleanNumPed}%')`);
       }
       if (cleanNomeCli) {
-        conditions.push(`(C5.C5_NOMECLI LIKE '%${cleanNomeCli}%' OR A1.A1_NOME LIKE '%${cleanNomeCli}%')`);
+        conditions.push(`(C5.C5_NOMECLI LIKE '%${cleanNomeCli}%')`);
       }
 
       const sql = `
         SELECT TOP 30
             RTRIM(C5.C5_NUM) AS C5_NUM,
             RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
-            RTRIM(ISNULL(C5.C5_NOMECLI, ISNULL(A1.A1_NOME, ''))) AS C5_NOMECLI,
+            RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI,
             RTRIM(ISNULL(C5.C5_CLIENTE, '')) AS C5_CLIENTE,
             RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS C5_LOJACLI,
             RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS C5_EMISSAO,
@@ -358,11 +358,6 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
             RTRIM(ISNULL(C5.C5_TRANSP, '')) AS C5_TRANSP,
             RTRIM(ISNULL(C5.C5_CONDPAG, '')) AS C5_CONDPAG
         FROM ${emp.sc5} C5
-        LEFT JOIN ${emp.sa1} A1 
-          ON A1.A1_FILIAL = C5.C5_FILIAL 
-         AND A1.A1_COD = C5.C5_CLIENTE 
-         AND A1.A1_LOJA = C5.C5_LOJACLI 
-         AND A1.D_E_L_E_T_ = ' '
         WHERE ${conditions.join(' AND ')}
         ORDER BY C5.C5_EMISSAO DESC
       `;
@@ -419,9 +414,9 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
   const cleanPed = String(numPedido || '').trim();
   const paddedPed6 = cleanPed.padStart(6, '0');
   const empMap = {
-    "OACO": { codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160", sa1: "SA1160" },
-    "GSI": { codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150", sa1: "SA1150" },
-    "METAL_PLENO": { codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140", sa1: "SA1140" }
+    "OACO": { codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160" },
+    "GSI": { codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150" },
+    "METAL_PLENO": { codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140" }
   };
   const emp = empMap[empresaKey] || empMap["OACO"];
 
@@ -433,15 +428,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS EMISSAO,
         RTRIM(ISNULL(C5.C5_CLIENTE, '')) AS COD_CLI,
         RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS LOJA_CLI,
-        RTRIM(ISNULL(C5.C5_NOMECLI, ISNULL(A1.A1_NOME, ''))) AS NOME_CLI,
-        RTRIM(ISNULL(A1.A1_CGC, '')) AS CGC_CLI,
-        RTRIM(ISNULL(A1.A1_END, '')) AS END_CLI,
-        RTRIM(ISNULL(A1.A1_BAIRRO, '')) AS BAIRRO_CLI,
-        RTRIM(ISNULL(A1.A1_MUN, '')) AS CIDADE_CLI,
-        RTRIM(ISNULL(A1.A1_EST, '')) AS UF_CLI,
-        RTRIM(ISNULL(A1.A1_CEP, '')) AS CEP_CLI,
-        RTRIM(ISNULL(A1.A1_TEL, '')) AS TEL_CLI,
-        RTRIM(ISNULL(A1.A1_EMAIL, '')) AS EMAIL_CLI,
+        RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS NOME_CLI,
         RTRIM(ISNULL(C5.C5_TRANSP, '')) AS TRANSP,
         RTRIM(ISNULL(C5.C5_CONDPAG, '')) AS CONDPAG,
         RTRIM(ISNULL(C5.C5_VEND1, '')) AS VEND1,
@@ -450,17 +437,57 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         ISNULL(C5.C5_DESCONT, 0) AS DESCONTO,
         RTRIM(ISNULL(C5.C5_MENNOTA, '')) AS OBS
       FROM ${emp.sc5} C5
-      LEFT JOIN ${emp.sa1} A1
-        ON A1.A1_FILIAL = C5.C5_FILIAL
-       AND A1.A1_COD = C5.C5_CLIENTE
-       AND A1.A1_LOJA = C5.C5_LOJACLI
-       AND A1.D_E_L_E_T_ = ' '
       WHERE (C5.C5_NUM = '${paddedPed6}' OR C5.C5_NUM = '${cleanPed}')
         AND C5.D_E_L_E_T_ = ' '
     `;
 
     const resC5 = await executeRailwayQuery(sqlC5);
     const head = (resC5 && resC5.rows && resC5.rows.length > 0) ? resC5.rows[0] : null;
+
+    let cliInfo = {
+      codigo: head ? head.COD_CLI : '',
+      loja: head ? head.LOJA_CLI : '',
+      nome: head ? head.NOME_CLI : '',
+      cnpj: '',
+      endereco: '',
+      bairro: '',
+      cidade: '',
+      uf: '',
+      cep: '',
+      telefone: '',
+      email: ''
+    };
+
+    if (head && head.COD_CLI) {
+      try {
+        const sa1Table = (empresaKey === 'OACO') ? 'SA1160' : 'SA1010';
+        const sqlSA1 = `
+          SELECT TOP 1
+            RTRIM(ISNULL(A1_CGC, '')) AS CGC_CLI,
+            RTRIM(ISNULL(A1_END, '')) AS END_CLI,
+            RTRIM(ISNULL(A1_BAIRRO, '')) AS BAIRRO_CLI,
+            RTRIM(ISNULL(A1_MUN, '')) AS CIDADE_CLI,
+            RTRIM(ISNULL(A1_EST, '')) AS UF_CLI,
+            RTRIM(ISNULL(A1_CEP, '')) AS CEP_CLI,
+            RTRIM(ISNULL(A1_TEL, '')) AS TEL_CLI,
+            RTRIM(ISNULL(A1_EMAIL, '')) AS EMAIL_CLI
+          FROM ${sa1Table}
+          WHERE A1_COD = '${head.COD_CLI}' AND D_E_L_E_T_ = ' '
+        `;
+        const resSA1 = await executeRailwayQuery(sqlSA1);
+        if (resSA1 && resSA1.rows && resSA1.rows.length > 0) {
+          const a1 = resSA1.rows[0];
+          cliInfo.cnpj = a1.CGC_CLI || '';
+          cliInfo.endereco = a1.END_CLI || '';
+          cliInfo.bairro = a1.BAIRRO_CLI || '';
+          cliInfo.cidade = a1.CIDADE_CLI || '';
+          cliInfo.uf = a1.UF_CLI || '';
+          cliInfo.cep = a1.CEP_CLI || '';
+          cliInfo.telefone = a1.TEL_CLI || '';
+          cliInfo.email = a1.EMAIL_CLI || '';
+        }
+      } catch (errSA1) {}
+    }
 
     const sqlC6 = `
       SELECT
@@ -493,19 +520,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         numPedido: head.NUM_PEDIDO || paddedPed6,
         codWeb: head.COD_WEB || '-',
         emissao: head.EMISSAO,
-        cliente: {
-          codigo: head.COD_CLI,
-          loja: head.LOJA_CLI,
-          nome: head.NOME_CLI,
-          cnpj: head.CGC_CLI,
-          endereco: head.END_CLI,
-          bairro: head.BAIRRO_CLI,
-          cidade: head.CIDADE_CLI,
-          uf: head.UF_CLI,
-          cep: head.CEP_CLI,
-          telefone: head.TEL_CLI,
-          email: head.EMAIL_CLI
-        },
+        cliente: cliInfo,
         comercial: {
           transportadora: head.TRANSP || 'Transportadora Padrão',
           condPagto: head.CONDPAG || 'À Vista / Boleto',
@@ -577,7 +592,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
 
 /**
  * Consulta Relatório de Comissões por Período
- * Tabelas SE3016 (OACO), SE3015 (GSI), SE3014 (Metal Pleno) / SE31X0
+ * Tabelas SE3160 (OACO), SE3150 (GSI), SE3140 (Metal Pleno)
  */
 async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
@@ -585,9 +600,9 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   const cleanCodVend = codVend ? String(codVend).trim() : '';
 
   const empresas = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160", se3Alt: "SE3016", sa1: "SA1160" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", se3: "SE3150", se3Alt: "SE3015", sa1: "SA1150" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", se3: "SE3140", se3Alt: "SE3014", sa1: "SA1140" }
+    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160" },
+    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", se3: "SE3150" },
+    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", se3: "SE3140" }
   ];
 
   const results = [];
@@ -604,15 +619,10 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
           RTRIM(E3.E3_EMISSAO) AS E3_EMISSAO,
           RTRIM(E3.E3_PEDIDO) AS E3_PEDIDO,
           RTRIM(E3.E3_CODCLI) AS E3_CODCLI,
-          RTRIM(ISNULL(A1.A1_NOME, '')) AS A1_NOME,
           ISNULL(E3.E3_BASE, 0) AS E3_BASE,
           ISNULL(E3.E3_COMIS, 0) AS E3_COMIS,
           ISNULL(E3.E3_VALOR, 0) AS E3_VALOR
         FROM ${emp.se3} E3
-        LEFT JOIN ${emp.sa1} A1
-          ON A1.A1_FILIAL = E3.E3_FILIAL
-         AND A1.A1_COD = E3.E3_CODCLI
-         AND A1.D_E_L_E_T_ = ' '
         WHERE E3.E3_EMISSAO >= '${cleanDataIni}' 
           AND E3.E3_EMISSAO <= '${cleanDataFim}'
           ${vendFilter}
@@ -634,7 +644,7 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
             nomeVendedor: getNomeVendedor(row.E3_VEND),
             emissao: row.E3_EMISSAO,
             pedido: row.E3_PEDIDO || '-',
-            cliente: (row.A1_NOME && row.A1_NOME.trim()) ? `${row.E3_CODCLI} - ${row.A1_NOME.trim()}` : (row.E3_CODCLI || '-'),
+            cliente: row.E3_CODCLI || '-',
             valorBase: roundVal(valorBase),
             percComis: roundVal(percComis),
             valorComis: roundVal(valorComis)
