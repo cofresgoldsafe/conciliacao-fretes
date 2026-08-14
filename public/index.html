@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portal de Conciliação de Fretes & Integração Protheus</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Plataforma de Apoio GSI Multi-Empresas</title>
+  <link rel="stylesheet" href="style.css?v=4.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         </div>
         <div class="brand-text">
-          <h1>Conciliação de Fretes</h1>
+          <h1>Plataforma de Apoio GSI</h1>
           <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14)</span>
         </div>
       </div>
@@ -30,6 +30,9 @@
           <span class="status-indicator"></span>
           <span id="userInfo">Usuário</span>
         </div>
+        <button id="btnChangeMyPass" class="btn btn-outline btn-sm" title="Alterar minha senha">
+          🔑 Alterar Senha
+        </button>
         <button id="btnLogout" class="btn btn-outline btn-sm" title="Encerrar sessão e sair">
           🚪 Sair
         </button>
@@ -40,21 +43,48 @@
   <!-- Main Container -->
   <main class="main-container">
 
-    <!-- Tab Bar Navigation -->
-    <nav class="nav-tabs-container">
-      <button class="nav-tab-btn active" data-tab="tab-upload">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        <span>Upload Fatura Transp.</span>
+    <!-- 1ª CAMADA DE NAVEGAÇÃO: ABAS PRINCIPAIS -->
+    <nav class="main-tabs-header">
+      <button class="main-tab-btn active" data-main-tab="logistica" id="mainTabLogistica">
+        <span>📦 LOGÍSTICA</span>
       </button>
-      <button class="nav-tab-btn" data-tab="tab-correios">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11"></path><rect x="13" y="11" width="9" height="9" rx="1"></rect><polyline points="22 6 12 13 2 6"></polyline></svg>
-        <span>Fatura Correios</span>
-        <span class="tab-badge-construction">Em Construção 🚧</span>
+      <button class="main-tab-btn" data-main-tab="consulta" id="mainTabConsulta">
+        <span>🔍 CONSULTA PED/NF</span>
       </button>
-      <button class="nav-tab-btn" data-tab="tab-consulta">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <span>Consulta NFe ou Pedido</span>
+      <button class="main-tab-btn" data-main-tab="configuracoes" id="mainTabConfig">
+        <span>⚙️ CONFIGURAÇÕES</span>
       </button>
+    </nav>
+
+    <!-- 2ª CAMADA DE NAVEGAÇÃO: SUB-ABAS (SUB-NÍVEL) -->
+    <nav class="sub-tabs-container" id="subTabsContainer">
+      <!-- Sub-abas de Logística -->
+      <div class="sub-tabs-group" id="subGroupLogistica">
+        <button class="nav-tab-btn active" data-tab="tab-upload">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span>Upload Fatura Transp.</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-correios">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11"></path><rect x="13" y="11" width="9" height="9" rx="1"></rect><polyline points="22 6 12 13 2 6"></polyline></svg>
+          <span>Fatura Correios & ViPP</span>
+        </button>
+      </div>
+
+      <!-- Sub-abas de Consulta -->
+      <div class="sub-tabs-group hidden" id="subGroupConsulta">
+        <button class="nav-tab-btn active" data-tab="tab-consulta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span>Consulta NFe ou Pedido</span>
+        </button>
+      </div>
+
+      <!-- Sub-abas de Configurações -->
+      <div class="sub-tabs-group hidden" id="subGroupConfiguracoes">
+        <button class="nav-tab-btn active" data-tab="tab-configuracoes">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Gerenciamento de Usuários & Permissões</span>
+        </button>
+      </div>
     </nav>
 
     <!-- ABA 1: Upload Fatura Transp. -->
@@ -121,16 +151,46 @@
 
       <!-- Data Table & Edit Area -->
       <section id="tableSection" class="card table-section hidden">
+        <!-- Divergence Summary Bar -->
+        <div class="divergence-summary-bar" id="divergenceSummaryBar">
+          <div class="div-card danger">
+            <span class="div-card-title">Divergente (Prejuízo)</span>
+            <span class="div-card-val" id="cntDivergDanger">0</span>
+          </div>
+          <div class="div-card warning">
+            <span class="div-card-title">NF Não Encontrada</span>
+            <span class="div-card-val" id="cntDivergWarning">0</span>
+          </div>
+          <div class="div-card success">
+            <span class="div-card-title">Frete OK (100% Bateu)</span>
+            <span class="div-card-val" id="cntDivergSuccess">0</span>
+          </div>
+        </div>
+
         <div class="table-header-row">
           <div>
-            <h2>2. Conferência dos CT-es e Dados de Vendas no Protheus</h2>
-            <p class="desc">A coluna <strong>Cobrado Cli.</strong> reflete a soma dos fretes da empresa no Protheus (<code>C5_FRETE + C5_VLR_FRT</code>).</p>
+            <h2>2. Conferência dos CT-es e Batimento de Frete Protheus</h2>
+            <p class="desc">A coluna <strong>Cobrado Cli.</strong> reflete a soma dos fretes no Protheus (<code>C5_FRETE + C5_VLR_FRT</code>). Notas divergentes aparecem no topo.</p>
           </div>
           <div class="table-actions-top">
             <input type="text" id="tableSearch" placeholder="🔍 Filtrar por CT-e, Pedido, NF ou Cliente..." class="table-search-input" />
             <button id="btnExportCsv" class="btn btn-outline btn-sm">
               📊 Exportar CSV
             </button>
+          </div>
+        </div>
+
+        <!-- Filter Chips & Tolerancy Input -->
+        <div class="filter-btn-group" style="margin: 12px 0;">
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Filtrar por Status:</span>
+          <button class="filter-chip active" data-filter="all">Todos os CT-es</button>
+          <button class="filter-chip chip-danger" data-filter="danger">🔴 Divergentes (Prejuízo)</button>
+          <button class="filter-chip chip-warning" data-filter="warning">🟡 Não Encontradas</button>
+          <button class="filter-chip chip-success" data-filter="success">🟢 Apenas OK</button>
+
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted);">
+            <label for="tolerancyInput" style="font-weight: 600;">Tolerância (R$):</label>
+            <input type="number" id="tolerancyInput" value="0.00" step="0.50" min="0.00" style="width: 75px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--panel-border); background-color: var(--bg-dark); color: var(--text-main); font-weight: 600; font-family: var(--font-mono);" />
           </div>
         </div>
 
@@ -143,11 +203,11 @@
                 <th class="editable-col-header">Doc (NF) ✏️</th>
                 <th class="protheus-col-header">Ped Venda</th>
                 <th class="protheus-col-header">Cobrado Cli.</th>
-                <th>Data Vencimento 📅</th>
-                <th>Valor Orçado</th>
-                <th>Valor Cobrado</th>
+                <th>Valor Cobrado Transp.</th>
+                <th>Divergência / Validação</th>
+                <th>Data Venc. 📅</th>
                 <th>Cliente</th>
-                <th>Status Protheus</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody id="ctesTableBody">
@@ -155,10 +215,9 @@
             </tbody>
             <tfoot>
               <tr class="table-foot-row">
-                <td colspan="6" class="text-right"><strong>TOTAIS CONCILIADOS:</strong></td>
-                <td id="footTotalOrcado"><strong>R$ 0,00</strong></td>
+                <td colspan="5" class="text-right"><strong>TOTAIS CONCILIADOS:</strong></td>
                 <td id="footTotalCobrado"><strong>R$ 0,00</strong></td>
-                <td colspan="2"></td>
+                <td colspan="4"></td>
               </tr>
             </tfoot>
           </table>
@@ -181,51 +240,68 @@
       </section>
     </div>
 
-    <!-- ABA 2: Fatura Correios (Em Construção) -->
+    <!-- ABA 2: Fatura Correios & ViPP Visualset -->
     <div id="tab-correios" class="tab-pane hidden">
-      <section class="card construction-card">
-        <div class="construction-content">
-          <div class="construction-badge-hero">
-            <span class="pulse-dot"></span>
-            <span>Módulo em Homologação</span>
+      <section class="card upload-card">
+        <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <h2>2. Fatura Correios SFE & Automação ViPP Visualset 📬</h2>
+            <p class="desc">Processamento de extratos analíticos de faturas dos Correios (SFE PDF) e cruzamento de etiquetas com as NFs do ERP Protheus via ViPP.</p>
           </div>
-          
-          <div class="construction-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11"></path><rect x="13" y="11" width="9" height="9" rx="1"></rect><polyline points="22 6 12 13 2 6"></polyline></svg>
+          <button type="button" id="btnOpenVippModal" class="btn btn-outline btn-sm">
+            ⚙️ Configurar Token API ViPP
+          </button>
+        </div>
+
+        <!-- Card de Status do Token ViPP -->
+        <div id="vippTokenStatusBox" class="alert-info-box" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span id="vippStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background-color: #f59e0b; display: inline-block;"></span>
+            <span id="vippStatusText">Status API ViPP: <strong>Aguardando Token da API WebService</strong> (Modo Leitura SFE PDF Ativo)</span>
           </div>
+          <button type="button" id="btnQuickConfigVipp" class="btn btn-secondary btn-sm">Informar Token</button>
+        </div>
 
-          <h2>Fatura Correios & VIPP Visualset 🚧</h2>
-          <p class="construction-desc">
-            Esta funcionalidade está sendo expandida para permitir o processamento automático em lote de arquivos de faturas de frete dos <strong>Correios (VIPP / Visualset / CWT)</strong> com validação direta nas tabelas SD2/SC5 do Protheus.
-          </p>
+        <form id="uploadFormCorreios" class="upload-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="tipoCorreios">Origem dos Dados / Modelo:</label>
+              <select id="tipoCorreios" name="tipoTransportadora" class="input-select">
+                <option value="CORREIOS_SFE" selected>Correios SFE (PDF Extrato Analítico - Fatura Mensal)</option>
+                <option value="VIPP_TIPO2">VIPP Visualset (CSV / Relatório CheckList)</option>
+              </select>
+            </div>
 
-          <div class="construction-grid">
-            <div class="feature-item">
-              <div class="feature-icon">📁</div>
-              <div>
-                <h4>Importação CSV & VIPP</h4>
-                <p>Leitura de relatórios sintéticos e analíticos de postagem do SIGEP / VIPP Visualset.</p>
-              </div>
-            </div>
-            <div class="feature-item">
-              <div class="feature-icon">🔍</div>
-              <div>
-                <h4>Batimento de AR & Rastreio</h4>
-                <p>Cruzamento automático do código de rastreamento com a NF e o Pedido de Venda no ERP.</p>
-              </div>
-            </div>
-            <div class="feature-item">
-              <div class="feature-icon">⚡</div>
-              <div>
-                <h4>Multi-Empresas (14, 15, 16)</h4>
-                <p>Identificação do CNPJ pagador para roteamento entre OACO, GSI e Metal Pleno.</p>
-              </div>
+            <div class="form-group flex-end">
+              <button type="button" id="btnSampleCorreios" class="btn btn-secondary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                ⚡ Carregar Exemplo Correios (OACO)
+              </button>
             </div>
           </div>
 
-          <div class="construction-footer-note">
-            ℹ️ <em>Nota: Para testar a importação de faturas VIPP tipo 2 já disponível no motor, utilize a 1ª aba (Upload Fatura Transp.) com o seletor "VIPP Visualset / Correios".</em>
+          <div class="dropzone" id="dropzoneCorreios">
+            <input type="file" id="faturaFileCorreios" name="faturaFile" accept=".pdf,.csv,.txt" class="file-input" />
+            <div class="dropzone-content">
+              <div class="dropzone-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              </div>
+              <p class="dropzone-text">Arraste o arquivo <strong>PDF da Fatura dos Correios</strong> ou <strong>CSV do ViPP</strong> aqui</p>
+              <span class="btn btn-outline btn-sm">Selecionar Arquivo</span>
+              <p class="file-name-display" id="fileNameCorreios"></p>
+            </div>
           </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="btnUploadCorreios">
+              <span>Processar Fatura Correios & Consultar Protheus</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </div>
+        </form>
+
+        <div class="construction-footer-note" style="margin-top: 1.5rem; text-align: left;">
+          ℹ️ <strong>Como funciona a Automação:</strong> O extrato do Correio traz as etiquetas (ex: <code>AD578039135BR</code>) e os valores cobrados. O Portal extrai as 50+ postagens e efetua o batimento inteligente com as NFs da <strong>Empresa 16 (OACO)</strong>, <strong>15 (GSI)</strong> e <strong>14 (Metal Pleno)</strong> no Protheus.
         </div>
       </section>
     </div>
@@ -332,6 +408,39 @@
       </section>
     </div>
 
+    <!-- ABA 3 PRINCIPAL: CONFIGURAÇÕES & USUÁRIOS -->
+    <div id="tab-configuracoes" class="tab-pane hidden">
+      <section class="card config-card">
+        <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2>⚙️ Gerenciamento de Usuários & Controle de Acesso</h2>
+            <p class="desc">Gerencie quem pode acessar o sistema, reset de senhas e quais Abas Principais cada usuário tem acesso.</p>
+          </div>
+          <button id="btnNewUser" class="btn btn-primary">
+            ➕ Novo Usuário
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Usuário (Login)</th>
+                <th style="width: 20%;">Nome Completo</th>
+                <th style="width: 15%;">Perfil</th>
+                <th style="width: 30%;">Abas Permitidas</th>
+                <th style="width: 10%;">Status</th>
+                <th style="width: 10%; text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <!-- Dynamically populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
   </main>
 
   <!-- Modal Result Log -->
@@ -344,6 +453,52 @@
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-footer">
         <button id="btnConfirmModal" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configuração Token ViPP -->
+  <div id="vippConfigModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔑 Configuração da API WebService ViPP Visualset</h3>
+        <button id="btnCloseVippModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="desc" style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+          Insira as credenciais de acesso da API WebService ViPP fornecidas pela VisualSet Tecnologia para ativar a busca automática de NFs e Pedidos por etiqueta.
+        </p>
+
+        <form id="vippConfigForm" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label for="vippUser">Usuário ViPP WebService</label>
+            <input type="text" id="vippUser" class="input-text" placeholder="ex: financeiro@oaco.com.br" value="financeiro@oaco.com.br" required />
+          </div>
+
+          <div class="form-group">
+            <label for="vippToken">Token / Senha da API WebService</label>
+            <input type="password" id="vippToken" class="input-text" placeholder="Insira o Token WebService..." required />
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label for="vippIdPerfil">ID do Perfil</label>
+              <input type="text" id="vippIdPerfil" class="input-text" value="179551" placeholder="179551" />
+            </div>
+
+            <div class="form-group">
+              <label for="vippContrato">Contrato Correios</label>
+              <input type="text" id="vippContrato" class="input-text" value="9912742673" placeholder="9912742673" />
+            </div>
+          </div>
+
+          <div id="vippConfigMsg" class="alert-info-box hidden" style="padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem;"></div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="btnCancelVippModal" class="btn btn-outline">Cancelar</button>
+            <button type="submit" id="btnSaveVippConfig" class="btn btn-primary">💾 Salvar Credenciais ViPP</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -362,6 +517,97 @@
     </div>
   </div>
 
+  <!-- Modal Criar / Editar Usuário -->
+  <div id="userModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="userModalTitle">👤 Cadastrar / Editar Usuário</h3>
+        <button id="btnCloseUserModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="userForm" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label for="editUsername">Usuário (Login)</label>
+            <input type="text" id="editUsername" class="input-text" placeholder="ex: joao" required />
+          </div>
+
+          <div class="form-group">
+            <label for="editName">Nome Completo</label>
+            <input type="text" id="editName" class="input-text" placeholder="ex: João Silva" required />
+          </div>
+
+          <div class="form-group">
+            <label for="editPassword">Senha (deixe em branco para manter a atual)</label>
+            <input type="password" id="editPassword" class="input-text" placeholder="Digite a senha..." />
+          </div>
+
+          <div class="form-group">
+            <label for="editRole">Perfil de Acesso</label>
+            <select id="editRole" class="input-select">
+              <option value="user">Operador (Usuário Comum)</option>
+              <option value="admin">Administrador (Acesso Geral)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Permissões de Acesso às Abas Principais:</label>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; background: rgba(15, 23, 42, 0.4); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="permLogistica" value="logistica" checked />
+                <span>📦 1ª Aba Principal: <strong>LOGÍSTICA</strong> (Upload Faturas & Correios)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="permConsulta" value="consulta" checked />
+                <span>🔍 2ª Aba Principal: <strong>CONSULTA PED/NF</strong> (Consultas Multi-Empresa)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="permConfiguracoes" value="configuracoes" />
+                <span>⚙️ 3ª Aba Principal: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="userModalMsg" class="alert-info-box hidden" style="padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem;"></div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="btnCancelUserModal" class="btn btn-outline">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Salvar Usuário</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Alterar Minha Senha -->
+  <div id="myPasswordModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔑 Alterar Minha Senha</h3>
+        <button id="btnCloseMyPassModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="myPassForm" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label for="newMyPassword">Nova Senha</label>
+            <input type="password" id="newMyPassword" class="input-text" placeholder="Digite sua nova senha..." required />
+          </div>
+
+          <div class="form-group">
+            <label for="confirmMyPassword">Confirmar Nova Senha</label>
+            <input type="password" id="confirmMyPassword" class="input-text" placeholder="Digite novamente a nova senha..." required />
+          </div>
+
+          <div id="myPassMsg" class="alert-info-box hidden" style="padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem;"></div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+            <button type="button" id="btnCancelMyPassModal" class="btn btn-outline">Cancelar</button>
+            <button type="submit" class="btn btn-primary">💾 Atualizar Senha</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Login Overlay (Exibido se não estiver autenticado ou se a sessão de 7 dias expirar) -->
   <div id="loginOverlay" class="login-overlay">
     <div class="login-card">
@@ -369,7 +615,7 @@
         <div class="login-logo">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         </div>
-        <h2>Portal Conciliação de Fretes</h2>
+        <h2>Plataforma de Apoio GSI</h2>
         <p>Acesso Restrito — Multi-Empresas Protheus</p>
       </div>
 
@@ -399,6 +645,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=4.0"></script>
 </body>
 </html>

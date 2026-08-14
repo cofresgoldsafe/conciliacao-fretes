@@ -1,0 +1,36 @@
+[
+  {
+    "username": "alexandre",
+    "name": "Alexandre",
+    "pass": "102030",
+    "role": "admin",
+    "permissions": [
+      "logistica",
+      "consulta",
+      "configuracoes"
+    ],
+    "active": true
+  },
+  {
+    "username": "erica",
+    "name": "Érica",
+    "pass": "1020304050",
+    "role": "user",
+    "permissions": [
+      "logistica",
+      "consulta"
+    ],
+    "active": true
+  },
+  {
+    "username": "wallerson",
+    "name": "Wallerson",
+    "pass": "10203040",
+    "role": "user",
+    "permissions": [
+      "logistica",
+      "consulta"
+    ],
+    "active": true
+  }
+]

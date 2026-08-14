@@ -11,16 +11,90 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  maxAge: 0
+}));
 
 // Configure uploads and data directories
 const uploadsDir = path.join(__dirname, 'uploads');
 const dataDir = path.join(__dirname, 'data');
 const historyFile = path.join(dataDir, 'history.json');
+const vippConfigFile = path.join(dataDir, 'vipp_config.json');
+const usersFile = path.join(dataDir, 'users.json');
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 if (!fs.existsSync(historyFile)) fs.writeFileSync(historyFile, JSON.stringify([]));
+
+function getUsers() {
+  try {
+    if (fs.existsSync(usersFile)) {
+      return JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    }
+  } catch {}
+
+  const defaultUsers = [
+    {
+      username: 'alexandre',
+      name: 'Alexandre',
+      pass: '102030',
+      role: 'admin',
+      permissions: ['logistica', 'consulta', 'configuracoes'],
+      active: true
+    },
+    {
+      username: 'erica',
+      name: 'Érica',
+      pass: '1020304050',
+      role: 'user',
+      permissions: ['logistica', 'consulta'],
+      active: true
+    },
+    {
+      username: 'wallerson',
+      name: 'Wallerson',
+      pass: '10203040',
+      role: 'user',
+      permissions: ['logistica', 'consulta'],
+      active: true
+    }
+  ];
+  fs.writeFileSync(usersFile, JSON.stringify(defaultUsers, null, 2));
+  return defaultUsers;
+}
+
+function saveUsers(usersList) {
+  fs.writeFileSync(usersFile, JSON.stringify(usersList, null, 2));
+}
+
+function getVippConfig() {
+  try {
+    if (fs.existsSync(vippConfigFile)) {
+      return JSON.parse(fs.readFileSync(vippConfigFile, 'utf-8'));
+    }
+  } catch {}
+  return {
+    usuario: process.env.VIPP_USUARIO || 'financeiro@oaco.com.br',
+    token: process.env.VIPP_TOKEN || '',
+    idPerfil: process.env.VIPP_ID_PERFIL || '179551',
+    contrato: process.env.VIPP_CONTRATO || '9912742673',
+    ativo: !!process.env.VIPP_TOKEN
+  };
+}
+
+function saveVippConfig(cfg) {
+  fs.writeFileSync(vippConfigFile, JSON.stringify(cfg, null, 2));
+}
 
 function getHistory() {
   try {
@@ -85,46 +159,167 @@ function runPythonParser(scriptName, filePath) {
 async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
   if (!items || !Array.isArray(items)) return items;
 
+  const empCodigo = empresaKey === 'METAL_PLENO' ? '14' : empresaKey === 'GSI' ? '15' : '16';
+
   for (const item of items) {
-    const protheusData = await consultarProtheusNF(item.docOriginario, empresaKey);
-    item.pedVenda = protheusData.pedVenda || 'N/A';
-    item.freteCobradoProtheus = protheusData.freteCobrado || 0.00;
-    item.freteEmbutidoProtheus = protheusData.freteEmbutido || 0.00;
-    item.freteProtheusTotal = protheusData.freteProtheusTotal || (item.freteCobradoProtheus + item.freteEmbutidoProtheus);
-    item.protheusEncontrado = protheusData.encontrado;
-    item.empresaKey = protheusData.empresa;
-    item.tabela = protheusData.tabela;
+    if (!item.docOriginario || String(item.docOriginario).trim() === '') {
+      item.pedVenda = 'Pendente (Vínculo ViPP)';
+      item.freteCobradoProtheus = 0.00;
+      item.freteEmbutidoProtheus = 0.00;
+      item.freteProtheusTotal = 0.00;
+      item.protheusEncontrado = false;
+      item.empresaKey = empresaKey;
+      item.tabela = `SD2${empCodigo}0`;
+      continue;
+    }
+
+    try {
+      const protheusData = await consultarProtheusNF(item.docOriginario, empresaKey);
+      item.pedVenda = protheusData.pedVenda || 'N/A';
+      item.freteCobradoProtheus = protheusData.freteCobrado || 0.00;
+      item.freteEmbutidoProtheus = protheusData.freteEmbutido || 0.00;
+      item.freteProtheusTotal = protheusData.freteProtheusTotal || (item.freteCobradoProtheus + item.freteEmbutidoProtheus);
+      item.protheusEncontrado = protheusData.encontrado;
+      item.empresaKey = protheusData.empresa;
+      item.tabela = protheusData.tabela;
+    } catch (err) {
+      console.error(`Erro ao consultar Protheus para NF ${item.docOriginario}:`, err.message);
+      item.pedVenda = 'Erro Consulta';
+      item.freteCobradoProtheus = 0.00;
+      item.freteEmbutidoProtheus = 0.00;
+      item.freteProtheusTotal = 0.00;
+      item.protheusEncontrado = false;
+      item.empresaKey = empresaKey;
+      item.tabela = `SD2${empCodigo}0`;
+    }
   }
   return items;
 }
 
-// API: Auth Check (Alexandre, Érica, Wallerson - Validade de 7 dias)
+// API: Auth Login com Permissões por Usuário
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body || {};
   const cleanUser = String(username || '').trim().toLowerCase();
   const cleanPass = String(password || '').trim();
 
-  const validUsers = {
-    'alexandre': { pass: '102030', name: 'Alexandre' },
-    'erica': { pass: '1020304050', name: 'Érica' },
-    'wallerson': { pass: '10203040', name: 'Wallerson' }
-  };
+  console.log('API Login Attempt for user:', cleanUser);
 
-  const userFound = validUsers[cleanUser];
-  if (userFound && userFound.pass === cleanPass) {
+  const allUsers = getUsers();
+  const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser && u.active !== false);
+
+  if (userFound && String(userFound.pass || '').trim() === cleanPass) {
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     const expiresAt = Date.now() + ONE_WEEK_MS;
 
     return res.json({
       success: true,
       token: `auth-token-${cleanUser}-${Date.now()}`,
-      user: { username: cleanUser, name: userFound.name },
+      user: {
+        username: userFound.username,
+        name: userFound.name,
+        role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
+        permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'configuracoes'] : ['logistica', 'consulta'])
+      },
       expiresAt: expiresAt,
       message: 'Login realizado com sucesso.'
     });
   }
 
-  return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos.' });
+  // Fallback seguro para contas padrão
+  const defaultSeeds = {
+    'alexandre': { pass: '102030', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'configuracoes'] },
+    'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
+    'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] }
+  };
+
+  const seed = defaultSeeds[cleanUser];
+  if (seed && seed.pass === cleanPass) {
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    const expiresAt = Date.now() + ONE_WEEK_MS;
+
+    return res.json({
+      success: true,
+      token: `auth-token-${cleanUser}-${Date.now()}`,
+      user: {
+        username: cleanUser,
+        name: seed.name,
+        role: seed.role,
+        permissions: seed.permissions
+      },
+      expiresAt: expiresAt,
+      message: 'Login realizado com sucesso.'
+    });
+  }
+
+  return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos ou usuário inativo.' });
+});
+
+// API: Listar Usuários (Admin)
+app.get('/api/admin/users', (req, res) => {
+  const users = getUsers().map(u => ({
+    username: u.username,
+    name: u.name,
+    role: u.role || 'user',
+    permissions: u.permissions || ['logistica', 'consulta'],
+    active: u.active !== false
+  }));
+  res.json({ success: true, users });
+});
+
+// API: Salvar / Atualizar Usuário e Permissões (Admin)
+app.post('/api/admin/users/save', (req, res) => {
+  const { username, name, pass, role, permissions, active } = req.body || {};
+
+  if (!username || !name) {
+    return res.status(400).json({ success: false, message: 'Usuário e Nome são obrigatórios.' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const users = getUsers();
+  const idx = users.findIndex(u => u.username.toLowerCase() === cleanUser);
+
+  if (idx >= 0) {
+    // Atualizar existente
+    users[idx].name = String(name).trim();
+    if (pass && String(pass).trim() !== '') {
+      users[idx].pass = String(pass).trim();
+    }
+    users[idx].role = role || users[idx].role || 'user';
+    users[idx].permissions = Array.isArray(permissions) ? permissions : (users[idx].permissions || ['logistica', 'consulta']);
+    users[idx].active = active !== undefined ? !!active : users[idx].active;
+  } else {
+    // Criar novo
+    if (!pass) {
+      return res.status(400).json({ success: false, message: 'Senha é obrigatória para novo usuário.' });
+    }
+    users.push({
+      username: cleanUser,
+      name: String(name).trim(),
+      pass: String(pass).trim(),
+      role: role || 'user',
+      permissions: Array.isArray(permissions) ? permissions : ['logistica', 'consulta'],
+      active: active !== undefined ? !!active : true
+    });
+  }
+
+  saveUsers(users);
+  res.json({ success: true, message: `Usuário "${cleanUser}" salvo com sucesso.` });
+});
+
+// API: Excluir Usuário (Admin)
+app.post('/api/admin/users/delete', (req, res) => {
+  const { username } = req.body || {};
+  const cleanUser = String(username || '').trim().toLowerCase();
+
+  if (cleanUser === 'alexandre') {
+    return res.status(400).json({ success: false, message: 'O usuário principal Alexandre não pode ser excluído.' });
+  }
+
+  let users = getUsers();
+  users = users.filter(u => u.username.toLowerCase() !== cleanUser);
+  saveUsers(users);
+
+  res.json({ success: true, message: `Usuário "${cleanUser}" removido com sucesso.` });
 });
 
 // API: Consulta Protheus individual por NF e Empresa
@@ -163,7 +358,12 @@ app.post('/api/upload', upload.single('faturaFile'), async (req, res) => {
     }
 
     const tipo = req.body.tipoTransportadora || 'RODONAVES';
-    const script = (tipo === 'VIPP_TIPO2') ? 'parser_tipo2.py' : 'parser_rodonaves.py';
+    let script = 'parser_rodonaves.py';
+    if (tipo === 'VIPP_TIPO2') {
+      script = 'parser_tipo2.py';
+    } else if (tipo === 'CORREIOS_SFE' || req.file.originalname.toLowerCase().includes('correio')) {
+      script = 'parser_correios.py';
+    }
 
     const result = await runPythonParser(script, req.file.path);
     if (result.success && result.items) {
@@ -206,6 +406,67 @@ app.get('/api/sample-tipo2', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
+});
+
+// API: Carregar exemplo local Fatura Correios (Exemplo_CORREIO_OACO.pdf)
+app.get('/api/sample-correios', async (req, res) => {
+  try {
+    const samplePath = path.join(__dirname, 'Exemplo_CORREIO_OACO.pdf');
+    if (!fs.existsSync(samplePath)) {
+      return res.status(404).json({ success: false, message: 'Arquivo Exemplo_CORREIO_OACO.pdf não encontrado.' });
+    }
+    const result = await runPythonParser('parser_correios.py', samplePath);
+    if (result.success && result.items) {
+      const empKey = (result.fatura && result.fatura.empresaKey) ? result.fatura.empresaKey : 'OACO';
+      result.items = await enrichItemsWithProtheus(result.items, empKey);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: ViPP Config (GET & POST)
+app.get('/api/vipp/config', (req, res) => {
+  const cfg = getVippConfig();
+  res.json({
+    success: true,
+    config: {
+      usuario: cfg.usuario || '',
+      token: cfg.token ? (cfg.token.slice(0, 3) + '••••••••' + cfg.token.slice(-3)) : '',
+      hasToken: !!cfg.token,
+      idPerfil: cfg.idPerfil || '179551',
+      contrato: cfg.contrato || '9912742673',
+      ativo: !!cfg.token
+    }
+  });
+});
+
+app.post('/api/vipp/config', (req, res) => {
+  const { usuario, token, idPerfil, contrato } = req.body || {};
+  const current = getVippConfig();
+
+  const newConfig = {
+    usuario: usuario !== undefined ? String(usuario).trim() : current.usuario,
+    token: (token && String(token).trim() !== '') ? String(token).trim() : current.token,
+    idPerfil: idPerfil !== undefined ? String(idPerfil).trim() : current.idPerfil,
+    contrato: contrato !== undefined ? String(contrato).trim() : current.contrato,
+    ativo: true,
+    updatedAt: new Date().toISOString()
+  };
+
+  saveVippConfig(newConfig);
+  res.json({
+    success: true,
+    message: 'Configurações da API ViPP Visualset salvas com sucesso!',
+    config: {
+      usuario: newConfig.usuario,
+      hasToken: !!newConfig.token,
+      idPerfil: newConfig.idPerfil,
+      contrato: newConfig.contrato,
+      ativo: !!newConfig.token
+    }
+  });
 });
 
 // API: Obter Histórico de Integrações

@@ -1,4 +1,4 @@
-# 📘 Documentação Completa do Projeto: Portal de Conciliação de Fretes & Protheus
+# 📘 Documentação Completa: Plataforma de Apoio GSI Multi-Empresas & Protheus
 
 > **Documento de Gestão, Arquitetura e Aperfeiçoamento**  
 > **Status:** Versão 1.0 Operacional e Publicada na Nuvem 24/7  
@@ -51,6 +51,7 @@ O ecossistema do Portal de Conciliação de Fretes é composto por 4 módulos pr
 ### 📄 A. Extração Inteligente de Faturas (Parsers Python)
 - **Faturas Rodonaves (Tipo 1 - PDF):** O extrator Plumber (`parser_rodonaves.py`) lê PDFs multipáginas da Rodonaves, extraindo CT-es, NFs originárias, valores orçados/cobrados e identificando o pagador.
 - **Faturas VIPP Visualset / Correios (Tipo 2 - CSV/TXT):** O parser (`parser_tipo2.py`) lê relatórios de frete e postagem em formato texto ou separado por vírgulas.
+- **Faturas Correios SFE (Extrato Analítico PDF - Aba 2):** O parser nativo (`parser_correios.py`) lê faturas analíticas mensais dos Correios, extraindo todas as etiquetas de rastreamento (`AD...BR`, `AP...BR`), valores de frete, serviços (`SEDEX`/`PAC`), pesos e datas de postagem.
 - **Detecção Automática do Pagador & Empresa:** Identificação automática da empresa pagadora no cabeçalho da fatura:
   - **OACO PRODUTOS DE ACO LTDA** ➔ Empresa 16
   - **GSI BW EQUIPAMENTOS DE ACO LTDA** ➔ Empresa 15
@@ -71,10 +72,19 @@ O ecossistema do Portal de Conciliação de Fretes é composto por 4 módulos pr
 
 ---
 
-## 📍 3. Onde Paramos (Status Atual - Versão 1.0)
+## 📍 3. Onde Paramos (Status Atual - Versão 1.1)
 
 1. **Aplicação Publicada na Nuvem 24/7:** O sistema está hospedado e funcionando no Render (`https://conciliacao-fretes.onrender.com`).
-2. **Botão "Lançar Fretes" Inabilitado:** O botão de gravação no Protheus foi mantido visivelmente **desabilitado (`disabled`)** em tom cinza, garantindo segurança operacional até que o módulo de inclusão no banco de dados esteja homologado.
+2. **Aba 1 (Faturas Rodonaves / Transportadoras):** 🟢 **100% Operacional** com parsers PDF e consulta SQL Protheus.
+3. **Aba 2 — Fatura Correios & ViPP Visualset (Status: Aguardando Token):**
+   - **Construído e Testado:** Parser PDF Correios (`parser_correios.py`), módulo cliente SOAP/REST ViPP (`vipp_api.py`), tela e modal de configuração (`#vippConfigModal`) e endpoints `/api/vipp/config`.
+   - **Status de Espera:** Aguardando o envio do **Token da API WebService ViPP** solicitado à VisualSet Tecnologia.
+   - **Ação Futura:** Assim que a empresa fornecer a chave, basta cadastrá-la no botão `⚙️ Configurar Token API ViPP` do portal para que a busca automática Etiqueta $\rightarrow$ NF no ERP seja ativada.
+4. **Aba 3 — Configurações & Gerenciamento de Usuários (Status: 🟢 Concluído):**
+   - **Estrutura de 2 Níveis:** Abas principais (`📦 LOGÍSTICA`, `🔍 CONSULTA PED/NF`, `⚙️ CONFIGURAÇÕES`) com sub-abas internas.
+   - **Controle de Acesso:** Permissões granulares cadastradas por usuário (`logistica`, `consulta`, `configuracoes`). O usuário `alexandre` possui acesso total, enquanto `erica` e `wallerson` possuem acesso às duas primeiras abas.
+   - **Modais e Ferramentas:** Modais para Cadastro/Edição de Usuário (`#userModal`) e Alteração de Senha do próprio usuário (`#myPasswordModal`).
+5. **Botão "Lançar Fretes" Inabilitado:** O botão de gravação no Protheus foi mantido visivelmente **desabilitado (`disabled`)** em tom cinza, garantindo segurança operacional até que o módulo de inclusão no banco de dados esteja homologado.
 
 ---
 
@@ -84,9 +94,9 @@ O ecossistema do Portal de Conciliação de Fretes é composto por 4 módulos pr
 - Compilação do arquivo REST ADVPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) no AppServer do Protheus.
 - Habilitação do botão de gravação para efetivar a inclusão automática dos fretes via ExecAuto.
 
-### 🔹 Fase 2: Autenticação de Usuários por Perfil
-- Implementação de tela de Login com controle de acesso (Operador de Conferência vs. Administrador).
-- Registro de log de auditoria (quem conferiu, editou e exportou cada fatura).
+### 🔹 Fase 2: Autenticação e Controle de Acesso por Usuário 🟢 (Concluído)
+- Tela de Login com persistência de 7 dias no `localStorage`.
+- Gerenciamento completo de permissões de abas por perfil e reset de senhas.
 
 ### 🔹 Fase 3: Regras Automáticas de Divergência
 - Alerta visual imediato caso a diferença entre o frete cobrado pela transportadora e o frete cobrado do cliente exceda uma tolerância configurável (ex: ± R$ 5,00).

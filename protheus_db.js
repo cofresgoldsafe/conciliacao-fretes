@@ -98,7 +98,8 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
           RTRIM(D2.D2_DOC) AS D2_DOC,
           RTRIM(D2.D2_PEDIDO) AS D2_PEDIDO,
           ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
-          ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT
+          ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+          RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
       FROM ${sd2Table} D2
       LEFT JOIN ${sc5Table} C5 
         ON C5.C5_FILIAL = D2.D2_FILIAL 
@@ -115,6 +116,7 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
       const freteCobrado = parseFloat(row.C5_FRETE || 0);
       const freteEmbutido = parseFloat(row.C5_VLR_FRT || 0);
       const freteTotal = roundVal(freteCobrado + freteEmbutido);
+      const nomeCli = row.C5_NOMECLI ? String(row.C5_NOMECLI).trim() : '';
 
       return {
         encontrado: true,
@@ -124,6 +126,7 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
         freteCobrado: freteCobrado,
         freteEmbutido: freteEmbutido,
         freteProtheusTotal: freteTotal, // Soma C5_FRETE + C5_VLR_FRT
+        nomeCli: nomeCli,
         origem: 'LIVE_RAILWAY_PROTHEUS'
       };
     }
@@ -177,9 +180,9 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
   const padded9 = cleanTerm.padStart(9, '0');
 
   const empresasInfo = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd2: "SD2160", sc5: "SC5160", defaultClient: "OACO PRODUTOS DE ACO LTDA" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sd2: "SD2150", sc5: "SC5150", defaultClient: "GSI BRASIL EQUIPAMENTOS AGROPECUARIOS" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sd2: "SD2140", sc5: "SC5140", defaultClient: "METAL PLENO ESTRUTURAS METALLICAS S.A." }
+    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd2: "SD2160", sc5: "SC5160", defaultClient: "CLIENTE NÃO INFORMADO" },
+    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sd2: "SD2150", sc5: "SC5150", defaultClient: "CLIENTE NÃO INFORMADO" },
+    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sd2: "SD2140", sc5: "SC5140", defaultClient: "CLIENTE NÃO INFORMADO" }
   ];
 
   const results = [];
@@ -195,7 +198,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
             RTRIM(D2.D2_DOC) AS NF,
             RTRIM(D2.D2_PEDIDO) AS PED_VENDA,
             ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
-            ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT
+            ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+            RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
         FROM ${emp.sd2} D2
         LEFT JOIN ${emp.sc5} C5 
           ON C5.C5_FILIAL = D2.D2_FILIAL 
@@ -211,12 +215,15 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
         for (const row of dbRes.rows) {
           const freteCobrado = parseFloat(row.C5_FRETE || 0);
           const freteEmbutido = parseFloat(row.C5_VLR_FRT || 0);
+          const clientName = (row.C5_NOMECLI && String(row.C5_NOMECLI).trim()) 
+            ? String(row.C5_NOMECLI).trim() 
+            : emp.defaultClient;
           results.push({
             empresa: emp.nome,
             pedVenda: row.PED_VENDA || 'N/A',
             nf: row.NF || 'N/A',
             valorCobrado: roundVal(freteCobrado + freteEmbutido),
-            nomeCli: emp.defaultClient
+            nomeCli: clientName
           });
         }
       }
@@ -236,52 +243,52 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
 
     if (cleanTerm.includes('630') || cleanTerm === '546') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000630", nf: "000000546", valorCobrado: 137.14, nomeCli: "OACO PRODUTOS DE ACO LTDA" },
-        { empresa: "Empresa 15 (GSI)", pedVenda: "000630", nf: "000001089", valorCobrado: 245.50, nomeCli: "GSI BRASIL EQUIPAMENTOS AGROPECUARIOS" },
-        { empresa: "Empresa 14 (METAL PLENO)", pedVenda: "000630", nf: "000000312", valorCobrado: 180.00, nomeCli: "METAL PLENO ESTRUTURAS METALLICAS S.A." }
+        { empresa: "Empresa 16 (OACO)", pedVenda: "000630", nf: "000000546", valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" },
+        { empresa: "Empresa 15 (GSI)", pedVenda: "000630", nf: "000001089", valorCobrado: 245.50, nomeCli: "AGROPECUARIA SANTA BARBARA" },
+        { empresa: "Empresa 14 (METAL PLENO)", pedVenda: "000630", nf: "000000312", valorCobrado: 180.00, nomeCli: "CONSTRUTORA SILVA & SANTOS" }
       ];
     }
 
     if (cleanTerm.includes('635') || cleanTerm === '551') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000635", nf: "000000551", valorCobrado: 100.00, nomeCli: "OACO PRODUTOS DE ACO LTDA" },
+        { empresa: "Empresa 16 (OACO)", pedVenda: "000635", nf: "000000551", valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" },
         { empresa: "Empresa 15 (GSI)", pedVenda: "000635", nf: "000001102", valorCobrado: 320.80, nomeCli: "AGRO GSI DISTRIBUIDORA LTDA" }
       ];
     }
 
     if (cleanTerm.includes('598') || cleanTerm === '561') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000598", nf: "000000561", valorCobrado: 158.48, nomeCli: "OACO PRODUTOS DE ACO LTDA" },
-        { empresa: "Empresa 14 (METAL PLENO)", pedVenda: "000598", nf: "000000415", valorCobrado: 210.00, nomeCli: "METAL PLENO S.A." }
+        { empresa: "Empresa 16 (OACO)", pedVenda: "000598", nf: "000000561", valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" },
+        { empresa: "Empresa 14 (METAL PLENO)", pedVenda: "000598", nf: "000000415", valorCobrado: 210.00, nomeCli: "ESTRUTURAS METALLICAS BETA S.A." }
       ];
     }
 
     return [
-      { empresa: "Empresa 16 (OACO)", pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 12), valorCobrado: 137.14, nomeCli: "OACO PRODUTOS DE ACO LTDA" },
-      { empresa: "Empresa 15 (GSI)", pedVenda: formattedPed, nf: "000001" + (parseInt(numOnly || '100', 10) + 45), valorCobrado: 289.90, nomeCli: "GSI BRASIL EQUIPAMENTOS AGROPECUARIOS" },
-      { empresa: "Empresa 14 (METAL PLENO)", pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 88), valorCobrado: 195.50, nomeCli: "METAL PLENO ESTRUTURAS METALLICAS S.A." }
+      { empresa: "Empresa 16 (OACO)", pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 12), valorCobrado: 137.14, nomeCli: "CLIENTE DEMO OACO LTDA" },
+      { empresa: "Empresa 15 (GSI)", pedVenda: formattedPed, nf: "000001" + (parseInt(numOnly || '100', 10) + 45), valorCobrado: 289.90, nomeCli: "AGROPECUARIA GSI DEMO S.A." },
+      { empresa: "Empresa 14 (METAL PLENO)", pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 88), valorCobrado: 195.50, nomeCli: "CONSTRUTORA METAL PLENO DEMO" }
     ];
   }
 
   if (tipo === 'nfe') {
     if (cleanTerm === '546' || cleanTerm === '000000546') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000630", nf: "000000546", valorCobrado: 137.14, nomeCli: "OACO PRODUTOS DE ACO LTDA" }
+        { empresa: "Empresa 16 (OACO)", pedVenda: "000630", nf: "000000546", valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" }
       ];
     }
     if (cleanTerm === '551' || cleanTerm === '000000551') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000635", nf: "000000551", valorCobrado: 100.00, nomeCli: "OACO PRODUTOS DE ACO LTDA" }
+        { empresa: "Empresa 16 (OACO)", pedVenda: "000635", nf: "000000551", valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" }
       ];
     }
     if (cleanTerm === '561' || cleanTerm === '000000561') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000598", nf: "000000561", valorCobrado: 158.48, nomeCli: "OACO PRODUTOS DE ACO LTDA" }
+        { empresa: "Empresa 16 (OACO)", pedVenda: "000598", nf: "000000561", valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" }
       ];
     }
 
     return [
-      { empresa: "Empresa 16 (OACO)", pedVenda: "000" + cleanTerm.slice(-3).padStart(3, '0'), nf: padded9, valorCobrado: 175.80, nomeCli: "OACO PRODUTOS DE ACO LTDA" }
+      { empresa: "Empresa 16 (OACO)", pedVenda: "000" + cleanTerm.slice(-3).padStart(3, '0'), nf: padded9, valorCobrado: 175.80, nomeCli: "CLIENTE DEMO NFE LTDA" }
     ];
   }
 
