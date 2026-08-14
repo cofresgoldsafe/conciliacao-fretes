@@ -51,17 +51,17 @@ Criar uma plataforma web centralizada, acessível pela internet por pessoas auto
 - **Aplicação no Ar:** O sistema está rodando online e acessível 24/7 sem depender de computador local ligado.
 - **Aba 1 (Upload Faturas & Conciliação Inteligente):** 🟢 **100% Concluída**:
   - Parsers PDF Rodonaves e CSV/TXT operando com batimento automático T-SQL no Protheus (`C5_FRETE + C5_VLR_FRT`).
-  - **Módulo de Regras de Divergência Automática (v1.2):** Ordenação dinâmica com CT-es divergentes no topo da grid, cartões estatísticos de resumo (Prejuízo, Não Encontrados, OK) e badges visuais coloridos (🔴 Prejuízo, 🟡 Não Encontrada, 🟢 Bateu, 🔵 Sobra).
-  - **Filtros por Chips & Tolerância Flexível:** Campo de tolerância configurável (padrão R$ 0,00) e chips de filtro por status com recálculo instantâneo sem recarregar a página.
-  - **Segurança Anti-XSS:** Sanitização com `escapeHtml` e proteção contra dados nulos e imprecisões de ponto flutuante IEEE 754.
+  - Módulo de Regras de Divergência Automática com ordenação, chips de filtro e tolerância flexível.
 - **Aba 2 (Fatura Correios SFE & ViPP VisualSet):** 🟡 **CHECKPOINT DE AGUARDAMENTO:**
-  - Parser PDF Correios SFE ([`parser_correios.py`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/parser_correios.py)) concluído com extração de 100% das etiquetas (`AD...BR`, `AP...BR`), valores, serviços e datas.
-  - Módulo cliente WebService ViPP ([`vipp_api.py`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/vipp_api.py)) e interface de configuração de Token ([`#vippConfigModal`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/index.html)) implementados.
-  - **Ponto de Parada:** Aguardando o envio do **Token da API WebService ViPP** solicitado à VisualSet Tecnologia.
-- **Aba 3 (Configurações & Gerenciamento de Usuários):** 🟢 **100% Concluída**:
-  - Reestruturação da navegação em 2 níveis (Abas Principais no topo + Sub-Abas internas).
+  - Parser PDF Correios SFE ([`parser_correios.py`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/parser_correios.py)) concluído. Aguardando envio do Token WebService pela VisualSet.
+- **Aba 3 (Vendedores & Comissões):** 🟢 **100% Concluída (v1.3)**:
+  - **Sub-aba 1 (Consulta Pedido):** Pesquisa multi-critério (`C5_CODWEB`, `C5_NUM`, `C5_NOMECLI`), com unicidade de CodWeb e listagem multi-empresa. Drill-down com modal de detalhes cadastrais, entrega, pagamento e tabela completa de itens do pedido (`SC6`).
+  - **Sub-aba 2 (Comissões):** Consulta periódica nas tabelas `SE3` (ciclo padrão de 26 a 25), limitação de segurança de 60 dias, cards de resumo e isolamento por vendedor logado.
+  - **Usuários Vendedores:** Cadastrados `juliana` (000074), `andrea` (000064) e `figueiredo` (000004).
+- **Aba 4 (Configurações & Gerenciamento de Usuários):** 🟢 **100% Concluída**:
+  - Reestruturação da navegação em 2 níveis (4 Abas Principais no topo + Sub-Abas internas).
   - Tabela de gerenciamento de usuários com controle de acesso dinâmico por perfil e abas permitidas.
-- **Módulo de Gravação no Protheus (Fase Final):** O botão *"Lançar Fretes no Protheus"* permanece desabilitado propositalmente (`disabled`), aguardando a publicação da URL do endpoint REST AdvPL no AppServer do Protheus na fase final do projeto.
+- **Módulo de Gravação no Protheus (Fase Final):** Botão aguardando publicação do endpoint REST AdvPL no AppServer.
 
 ---
 

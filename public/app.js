@@ -105,30 +105,32 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyUserPermissions(user) {
+    const mainTabLogistica = document.getElementById('mainTabLogistica');
+    const mainTabConsulta = document.getElementById('mainTabConsulta');
+    const mainTabVendedores = document.getElementById('mainTabVendedores');
     const mainTabConfig = document.getElementById('mainTabConfig');
     
     // Garante que o usuário Alexandre ou Administrador tenha permissão total mesmo com sessão antiga no localStorage
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
     if (!perms || (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin')) {
-      perms = ['logistica', 'consulta', 'configuracoes'];
+      perms = ['logistica', 'consulta', 'vendedores', 'configuracoes'];
     }
 
-    // 3ª Aba Principal (Configurações) só fica visível se o usuário tiver permissão 'configuracoes'
-    if (mainTabConfig) {
-      if (perms.includes('configuracoes')) {
-        mainTabConfig.classList.remove('hidden');
-        mainTabConfig.style.display = '';
-      } else {
-        mainTabConfig.classList.add('hidden');
-      }
-    }
+    if (mainTabLogistica) mainTabLogistica.style.display = perms.includes('logistica') ? '' : 'none';
+    if (mainTabConsulta) mainTabConsulta.style.display = perms.includes('consulta') ? '' : 'none';
+    if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
+    if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
-    // Se o usuário atual estiver em uma aba que não tem permissão, redireciona para Logística
+    // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
+    ajustarEscopoVendedor(user);
+
+    // Se o usuário atual estiver em uma aba que não tem permissão, redireciona para a primeira permitida
     const activeMainBtn = document.querySelector('.main-tab-btn.active');
     if (activeMainBtn) {
       const activeMain = activeMainBtn.getAttribute('data-main-tab');
       if (!perms.includes(activeMain)) {
-        switchMainTab('logistica');
+        const firstPerm = perms[0] || 'logistica';
+        switchMainTab(firstPerm);
       }
     }
   }
@@ -269,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const mainTabBtns = document.querySelectorAll('.main-tab-btn');
   const subGroupLogistica = document.getElementById('subGroupLogistica');
   const subGroupConsulta = document.getElementById('subGroupConsulta');
+  const subGroupVendedores = document.getElementById('subGroupVendedores');
   const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
   function switchMainTab(targetMain) {
@@ -277,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hide all sub groups
     if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
     if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
+    if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
     if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
 
     const activeMainBtn = document.querySelector(`.main-tab-btn[data-main-tab="${targetMain}"]`);
@@ -290,6 +294,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (targetMain === 'consulta') {
       if (subGroupConsulta) subGroupConsulta.classList.remove('hidden');
       firstSubBtn = subGroupConsulta ? subGroupConsulta.querySelector('.nav-tab-btn') : null;
+    } else if (targetMain === 'vendedores') {
+      if (subGroupVendedores) subGroupVendedores.classList.remove('hidden');
+      firstSubBtn = subGroupVendedores ? subGroupVendedores.querySelector('.nav-tab-btn') : null;
+      initComissaoDates();
     } else if (targetMain === 'configuracoes') {
       if (subGroupConfiguracoes) subGroupConfiguracoes.classList.remove('hidden');
       firstSubBtn = subGroupConfiguracoes ? subGroupConfiguracoes.querySelector('.nav-tab-btn') : null;
@@ -1023,15 +1031,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const permsHtml = [
         perms.includes('logistica') ? '<span class="perm-badge perm-badge-logistica">📦 Logística</span>' : '',
         perms.includes('consulta') ? '<span class="perm-badge perm-badge-consulta">🔍 Consulta</span>' : '',
+        perms.includes('vendedores') ? '<span class="perm-badge perm-badge-vendedores">💼 Vendedores</span>' : '',
         perms.includes('configuracoes') ? '<span class="perm-badge perm-badge-configuracoes">⚙️ Configurações</span>' : ''
       ].filter(Boolean).join(' ');
 
       const isMainAdmin = u.username.toLowerCase() === 'alexandre';
 
+      let roleLabel = 'Operador';
+      if (u.role === 'admin') roleLabel = 'Administrador';
+      if (u.role === 'vendedor') roleLabel = 'Vendedor';
+
       tr.innerHTML = `
         <td><strong>${u.username}</strong></td>
         <td>${u.name}</td>
-        <td><span class="status-badge ${u.role === 'admin' ? 'sucesso' : 'pendente'}">${u.role === 'admin' ? 'Administrador' : 'Operador'}</span></td>
+        <td><span class="status-badge ${u.role === 'admin' ? 'sucesso' : (u.role === 'vendedor' ? 'pendente' : 'neutro')}">${roleLabel}</span></td>
         <td>${permsHtml || '<em style="color: var(--text-muted);">Nenhuma</em>'}</td>
         <td><span class="status-badge ${u.active ? 'sucesso' : 'divergente'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
         <td style="text-align: right;">
@@ -1074,6 +1087,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const permVendedores = document.getElementById('permVendedores');
+
   function openUserModalForNew() {
     if (userModalTitle) userModalTitle.textContent = '➕ Cadastrar Novo Usuário';
     if (editUsername) { editUsername.value = ''; editUsername.disabled = false; }
@@ -1082,6 +1097,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editRole) editRole.value = 'user';
     if (permLogistica) permLogistica.checked = true;
     if (permConsulta) permConsulta.checked = true;
+    if (permVendedores) permVendedores.checked = true;
     if (permConfiguracoes) permConfiguracoes.checked = false;
     if (userModalMsg) userModalMsg.classList.add('hidden');
     if (userModal) userModal.classList.remove('hidden');
@@ -1097,6 +1113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const perms = userObj.permissions || ['logistica', 'consulta'];
     if (permLogistica) permLogistica.checked = perms.includes('logistica');
     if (permConsulta) permConsulta.checked = perms.includes('consulta');
+    if (permVendedores) permVendedores.checked = perms.includes('vendedores');
     if (permConfiguracoes) permConfiguracoes.checked = perms.includes('configuracoes');
 
     if (userModalMsg) userModalMsg.classList.add('hidden');
@@ -1118,6 +1135,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const selectedPerms = [];
       if (permLogistica && permLogistica.checked) selectedPerms.push('logistica');
       if (permConsulta && permConsulta.checked) selectedPerms.push('consulta');
+      if (permVendedores && permVendedores.checked) selectedPerms.push('vendedores');
       if (permConfiguracoes && permConfiguracoes.checked) selectedPerms.push('configuracoes');
 
       const payload = {
@@ -1142,7 +1160,6 @@ document.addEventListener('DOMContentLoaded', () => {
           setTimeout(() => {
             if (userModal) userModal.classList.add('hidden');
             loadUsersTable();
-            // If editing current logged in user, refresh session
             if (currentUser && currentUser.username.toLowerCase() === payload.username.toLowerCase()) {
               currentUser.permissions = payload.permissions;
               applyUserPermissions(currentUser);
@@ -1156,4 +1173,472 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // --- MÓDULO VENDEDORES: CONSULTA PEDIDOS & COMISSÕES ---
+  const VENDEDOR_USERS = {
+    'juliana': '000074',
+    'andrea': '000064',
+    'figueiredo': '000004'
+  };
+
+  function ajustarEscopoVendedor(user) {
+    const comisVendorSelect = document.getElementById('comisVendorSelect');
+    const comisVendorSelectGroup = document.getElementById('comisVendorSelectGroup');
+    if (!comisVendorSelect) return;
+
+    if (user && user.role === 'vendedor' && VENDEDOR_USERS[user.username.toLowerCase()]) {
+      const vendCode = VENDEDOR_USERS[user.username.toLowerCase()];
+      comisVendorSelect.value = vendCode;
+      comisVendorSelect.disabled = true;
+      if (comisVendorSelectGroup) {
+        const label = comisVendorSelectGroup.querySelector('label');
+        if (label) label.textContent = `👤 Vendedor: ${user.name || user.username} (Fixo)`;
+      }
+    } else {
+      comisVendorSelect.disabled = false;
+      if (comisVendorSelectGroup) {
+        const label = comisVendorSelectGroup.querySelector('label');
+        if (label) label.textContent = '👤 Vendedor';
+      }
+    }
+  }
+
+  function initComissaoDates() {
+    const comisDataIni = document.getElementById('comisDataIni');
+    const comisDataFim = document.getElementById('comisDataFim');
+    if (!comisDataIni || !comisDataFim) return;
+
+    if (!comisDataIni.value || !comisDataFim.value) {
+      const today = new Date();
+      const curDay = today.getDate();
+      let dIni, dFim;
+
+      if (curDay <= 25) {
+        dIni = new Date(today.getFullYear(), today.getMonth() - 1, 26);
+        dFim = new Date(today.getFullYear(), today.getMonth(), 25);
+      } else {
+        dIni = new Date(today.getFullYear(), today.getMonth(), 26);
+        dFim = new Date(today.getFullYear(), today.getMonth() + 1, 25);
+      }
+
+      const toDateString = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      comisDataIni.value = toDateString(dIni);
+      comisDataFim.value = toDateString(dFim);
+    }
+  }
+
+  // --- SUB-ABA: VENDEDORES - CONSULTA PEDIDOS ---
+  const vendBuscaCodWeb = document.getElementById('vendBuscaCodWeb');
+  const vendBuscaNumPed = document.getElementById('vendBuscaNumPed');
+  const vendBuscaNomeCli = document.getElementById('vendBuscaNomeCli');
+  const btnBuscarVendPedidos = document.getElementById('btnBuscarVendPedidos');
+  const btnLimparVendPedidos = document.getElementById('btnLimparVendPedidos');
+  const vendPedidosResults = document.getElementById('vendPedidosResults');
+  const vendPedidosEmptyState = document.getElementById('vendPedidosEmptyState');
+  const vendPedidosTableBody = document.getElementById('vendPedidosTableBody');
+  const vendPedidosCount = document.getElementById('vendPedidosCount');
+
+  // Modal Detalhes do Pedido
+  const pedidoDetalhesModal = document.getElementById('pedidoDetalhesModal');
+  const pedidoDetalhesBody = document.getElementById('pedidoDetalhesBody');
+  const btnCloseDetalhesModal = document.getElementById('btnCloseDetalhesModal');
+  const btnFecharDetalhesModal = document.getElementById('btnFecharDetalhesModal');
+  const btnImprimirDetalhes = document.getElementById('btnImprimirDetalhes');
+
+  async function buscarPedidosVendedoresAction() {
+    const codWeb = vendBuscaCodWeb ? vendBuscaCodWeb.value.trim() : '';
+    const numPed = vendBuscaNumPed ? vendBuscaNumPed.value.trim() : '';
+    const nomeCli = vendBuscaNomeCli ? vendBuscaNomeCli.value.trim() : '';
+
+    if (!codWeb && !numPed && !nomeCli) {
+      alert('Por favor, informe ao menos um critério de busca (CodWeb, Número do Pedido ou Nome do Cliente).');
+      return;
+    }
+
+    if (btnBuscarVendPedidos) {
+      btnBuscarVendPedidos.disabled = true;
+      btnBuscarVendPedidos.textContent = 'Buscando...';
+    }
+
+    try {
+      const response = await fetch('/api/vendedores/pedidos/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codWeb, numPed, nomeCli })
+      });
+      const data = await response.json();
+
+      if (data.success && data.data && data.data.length > 0) {
+        renderVendPedidosTable(data.data);
+      } else {
+        if (vendPedidosTableBody) vendPedidosTableBody.innerHTML = '';
+        if (vendPedidosResults) vendPedidosResults.classList.add('hidden');
+        if (vendPedidosEmptyState) {
+          vendPedidosEmptyState.classList.remove('hidden');
+          vendPedidosEmptyState.innerHTML = `
+            <div class="empty-icon">⚠️</div>
+            <h4>Nenhum pedido encontrado</h4>
+            <p>Não encontramos nenhum pedido nas empresas 14, 15 ou 16 com os critérios informados.</p>
+          `;
+        }
+      }
+    } catch (err) {
+      alert('Erro ao buscar pedidos no servidor: ' + err.message);
+    } finally {
+      if (btnBuscarVendPedidos) {
+        btnBuscarVendPedidos.disabled = false;
+        btnBuscarVendPedidos.textContent = '🔍 Buscar';
+      }
+    }
+  }
+
+  function renderVendPedidosTable(pedidos) {
+    if (!vendPedidosTableBody) return;
+    vendPedidosTableBody.innerHTML = '';
+
+    if (vendPedidosCount) vendPedidosCount.textContent = pedidos.length;
+    if (vendPedidosEmptyState) vendPedidosEmptyState.classList.add('hidden');
+    if (vendPedidosResults) vendPedidosResults.classList.remove('hidden');
+
+    pedidos.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="company-badge">${escapeHtml(p.empresa)}</span></td>
+        <td>
+          <span class="link-codweb" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}" title="Clique para ver detalhes do pedido">
+            ${escapeHtml(p.codWeb)}
+          </span>
+        </td>
+        <td>
+          <span class="link-pedido" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}" title="Clique para ver detalhes do pedido">
+            <strong>${escapeHtml(p.numPed)}</strong>
+          </span>
+        </td>
+        <td>${escapeHtml(p.nomeCli)}</td>
+        <td style="text-align: center;">
+          <button class="btn btn-outline btn-sm btn-ver-detalhe" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}">
+            📄 Detalhes
+          </button>
+        </td>
+      `;
+      vendPedidosTableBody.appendChild(tr);
+    });
+
+    vendPedidosTableBody.querySelectorAll('.link-pedido, .link-codweb, .btn-ver-detalhe').forEach(el => {
+      el.addEventListener('click', () => {
+        const emp = el.getAttribute('data-empresa') || 'OACO';
+        const ped = el.getAttribute('data-ped');
+        if (ped) abrirDetalhesPedidoModal(emp, ped);
+      });
+    });
+  }
+
+  async function abrirDetalhesPedidoModal(empresaKey, numPedido) {
+    if (!pedidoDetalhesModal || !pedidoDetalhesBody) return;
+
+    pedidoDetalhesBody.innerHTML = `
+      <div style="text-align: center; padding: 2rem;">
+        <div class="spinner" style="margin: 0 auto 1rem auto; width: 32px; height: 32px; border: 3px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <p>Carregando dados completos do Pedido <strong>${numPedido}</strong> no Protheus...</p>
+      </div>
+    `;
+    pedidoDetalhesModal.classList.remove('hidden');
+
+    try {
+      const response = await fetch(`/api/vendedores/pedidos/detalhes?empresaKey=${encodeURIComponent(empresaKey)}&numPedido=${encodeURIComponent(numPedido)}`);
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        renderModalDetalhesContent(data.data);
+      } else {
+        pedidoDetalhesBody.innerHTML = `
+          <div class="empty-results-box">
+            <div class="empty-icon">⚠️</div>
+            <h4>Não foi possível obter os detalhes do pedido</h4>
+            <p>${data.message || 'Verifique se o pedido ainda existe no Protheus.'}</p>
+          </div>
+        `;
+      }
+    } catch (err) {
+      pedidoDetalhesBody.innerHTML = `
+        <div class="empty-results-box">
+          <div class="empty-icon">❌</div>
+          <h4>Erro de comunicação</h4>
+          <p>${err.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderModalDetalhesContent(det) {
+    const cli = det.cliente || {};
+    const com = det.comercial || {};
+    const tot = det.totais || {};
+    const itens = det.itens || [];
+
+    const formatEmissao = (em) => {
+      if (!em || em.length !== 8) return em || '-';
+      return `${em.slice(6,8)}/${em.slice(4,6)}/${em.slice(0,4)}`;
+    };
+
+    let itensHtml = '';
+    if (itens.length > 0) {
+      itensHtml = itens.map(i => `
+        <tr>
+          <td style="text-align: center; color: var(--text-muted);">${escapeHtml(i.item || '01')}</td>
+          <td><code>${escapeHtml(i.produto || '-')}</code></td>
+          <td><strong>${escapeHtml(i.descricao || '-')}</strong></td>
+          <td style="text-align: right; font-weight: 600;">${i.qtd}</td>
+          <td style="text-align: right;">${formatCurrency(i.prcUnit)}</td>
+          <td style="text-align: right; font-weight: 700; color: #60a5fa;">${formatCurrency(i.total)}</td>
+        </tr>
+      `).join('');
+    } else {
+      itensHtml = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Nenhum item listado na tabela SC6 deste pedido.</td></tr>`;
+    }
+
+    pedidoDetalhesBody.innerHTML = `
+      <!-- Cabeçalho Rápido do Pedido -->
+      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.6); padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span class="company-badge" style="font-size: 0.9rem; padding: 4px 10px;">${escapeHtml(det.empresa)}</span>
+          <span style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;">Pedido Nº ${escapeHtml(det.numPedido)}</span>
+          <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">CodWeb: ${escapeHtml(det.codWeb)}</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          📅 Emissão: <strong>${formatEmissao(det.emissao)}</strong>
+        </div>
+      </div>
+
+      <!-- Grid de Informações: Cliente & Comercial -->
+      <div class="info-section-grid">
+        <!-- Box Cliente & Endereço -->
+        <div class="info-box">
+          <h4>👤 Dados do Cliente & Entrega</h4>
+          <div class="info-row">
+            <span class="label">Razão Social:</span>
+            <span class="val">${escapeHtml(cli.nome || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">CNPJ / CPF:</span>
+            <span class="val">${escapeHtml(cli.cnpj || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Endereço:</span>
+            <span class="val">${escapeHtml(cli.endereco || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Bairro / Cidade:</span>
+            <span class="val">${escapeHtml(cli.bairro || '-')}, ${escapeHtml(cli.cidade || '-')}/${escapeHtml(cli.uf || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">CEP:</span>
+            <span class="val">${escapeHtml(cli.cep || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Contato / Tel:</span>
+            <span class="val">${escapeHtml(cli.telefone || cli.email || '-')}</span>
+          </div>
+        </div>
+
+        <!-- Box Comercial & Transporte -->
+        <div class="info-box">
+          <h4>🚚 Logística & Pagamento</h4>
+          <div class="info-row">
+            <span class="label">Transportadora:</span>
+            <span class="val">${escapeHtml(com.transportadora || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Condição Pagto:</span>
+            <span class="val">${escapeHtml(com.condPagto || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Vendedor:</span>
+            <span class="val">${escapeHtml(com.vendedor || com.codVendedor || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Observações:</span>
+            <span class="val" style="font-size: 0.8rem; max-width: 200px; word-break: break-word;">${escapeHtml(com.observacoes || 'Nenhuma observação informada.')}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de Produtos do Pedido -->
+      <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px;">
+        <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">📦 Itens e Produtos do Pedido (Grade SC6)</h4>
+        <div class="table-responsive">
+          <table class="data-table" style="font-size: 0.85rem;">
+            <thead>
+              <tr>
+                <th style="width: 8%; text-align: center;">Item</th>
+                <th style="width: 20%;">Código</th>
+                <th style="width: 36%;">Descrição</th>
+                <th style="width: 10%; text-align: right;">Qtd</th>
+                <th style="width: 13%; text-align: right;">Unitário</th>
+                <th style="width: 13%; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itensHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Box de Totais -->
+      <div class="totais-box" style="display: flex; justify-content: flex-end;">
+        <div style="min-width: 280px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted);">
+            <span>Subtotal Produtos:</span>
+            <span>${formatCurrency(tot.totalProdutos)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted);">
+            <span>Frete (Cobrado + Embutido):</span>
+            <span>${formatCurrency(tot.totalFrete)}</span>
+          </div>
+          ${tot.totalDesconto > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--accent-rose);">
+            <span>Descontos:</span>
+            <span>- ${formatCurrency(tot.totalDesconto)}</span>
+          </div>` : ''}
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; color: #10b981; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 4px;">
+            <span>Total Geral do Pedido:</span>
+            <span>${formatCurrency(tot.totalGeral)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (btnBuscarVendPedidos) btnBuscarVendPedidos.addEventListener('click', buscarPedidosVendedoresAction);
+  if (btnLimparVendPedidos) {
+    btnLimparVendPedidos.addEventListener('click', () => {
+      if (vendBuscaCodWeb) vendBuscaCodWeb.value = '';
+      if (vendBuscaNumPed) vendBuscaNumPed.value = '';
+      if (vendBuscaNomeCli) vendBuscaNomeCli.value = '';
+      if (vendPedidosTableBody) vendPedidosTableBody.innerHTML = '';
+      if (vendPedidosResults) vendPedidosResults.classList.add('hidden');
+      if (vendPedidosEmptyState) vendPedidosEmptyState.classList.remove('hidden');
+    });
+  }
+
+  [vendBuscaCodWeb, vendBuscaNumPed, vendBuscaNomeCli].forEach(inp => {
+    if (inp) {
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          buscarPedidosVendedoresAction();
+        }
+      });
+    }
+  });
+
+  if (btnCloseDetalhesModal) btnCloseDetalhesModal.addEventListener('click', () => pedidoDetalhesModal.classList.add('hidden'));
+  if (btnFecharDetalhesModal) btnFecharDetalhesModal.addEventListener('click', () => pedidoDetalhesModal.classList.add('hidden'));
+  if (btnImprimirDetalhes) btnImprimirDetalhes.addEventListener('click', () => window.print());
+
+  // --- SUB-ABA: VENDEDORES - COMISSÕES ---
+  const comisDataIni = document.getElementById('comisDataIni');
+  const comisDataFim = document.getElementById('comisDataFim');
+  const comisVendorSelect = document.getElementById('comisVendorSelect');
+  const btnBuscarComissoes = document.getElementById('btnBuscarComissoes');
+  const comissoesSummaryCards = document.getElementById('comissoesSummaryCards');
+  const comissoesResults = document.getElementById('comissoesResults');
+  const comissoesEmptyState = document.getElementById('comissoesEmptyState');
+  const comissoesTableBody = document.getElementById('comissoesTableBody');
+  const comisTotalComissao = document.getElementById('comisTotalComissao');
+  const comisTotalBase = document.getElementById('comisTotalBase');
+  const comisTotalCount = document.getElementById('comisTotalCount');
+
+  async function consultarComissoesAction() {
+    const dataIni = comisDataIni ? comisDataIni.value : '';
+    const dataFim = comisDataFim ? comisDataFim.value : '';
+    const codVend = comisVendorSelect ? comisVendorSelect.value : '';
+
+    if (!dataIni || !dataFim) {
+      alert('Por favor, informe a Data Inicial e a Data Final do ciclo.');
+      return;
+    }
+
+    const d1 = new Date(dataIni);
+    const d2 = new Date(dataFim);
+    const diffDays = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+    if (diffDays > 60) {
+      alert('O intervalo entre as datas não pode ser superior a 60 dias para proteger a performance do banco Protheus.');
+      return;
+    }
+
+    if (btnBuscarComissoes) {
+      btnBuscarComissoes.disabled = true;
+      btnBuscarComissoes.textContent = 'Consultando...';
+    }
+
+    try {
+      const response = await fetch('/api/vendedores/comissoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataIni, dataFim, codVend })
+      });
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        renderComissoesReport(data.data);
+      } else {
+        alert(data.message || 'Erro ao consultar comissões.');
+      }
+    } catch (err) {
+      alert('Erro de conexão ao consultar comissões: ' + err.message);
+    } finally {
+      if (btnBuscarComissoes) {
+        btnBuscarComissoes.disabled = false;
+        btnBuscarComissoes.textContent = '📊 Consultar Comissões';
+      }
+    }
+  }
+
+  function renderComissoesReport(resData) {
+    const list = resData.comissoes || [];
+
+    if (comisTotalComissao) comisTotalComissao.textContent = formatCurrency(resData.totalGeralComissao);
+    if (comisTotalBase) comisTotalBase.textContent = formatCurrency(resData.totalGeralBase);
+    if (comisTotalCount) comisTotalCount.textContent = resData.totalRegistros || list.length;
+
+    if (comissoesSummaryCards) comissoesSummaryCards.classList.remove('hidden');
+    if (comissoesEmptyState) comissoesEmptyState.classList.add('hidden');
+    if (comissoesResults) comissoesResults.classList.remove('hidden');
+
+    if (!comissoesTableBody) return;
+    comissoesTableBody.innerHTML = '';
+
+    if (list.length === 0) {
+      comissoesTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
+      return;
+    }
+
+    const formatEmissao = (em) => {
+      if (!em || em.length !== 8) return em || '-';
+      return `${em.slice(6,8)}/${em.slice(4,6)}/${em.slice(0,4)}`;
+    };
+
+    list.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(item.nomeVendedor || item.codVend || '-')}</strong></td>
+        <td>${formatEmissao(item.emissao)}</td>
+        <td><code>${escapeHtml(item.pedido)}</code></td>
+        <td>${escapeHtml(item.cliente)}</td>
+        <td style="text-align: right; font-weight: 500;">${formatCurrency(item.valorBase)}</td>
+        <td style="text-align: right; font-weight: 700; color: #10b981;">${formatCurrency(item.valorComis)}</td>
+      `;
+      comissoesTableBody.appendChild(tr);
+    });
+  }
+
+  if (btnBuscarComissoes) btnBuscarComissoes.addEventListener('click', consultarComissoesAction);
 });

@@ -4,7 +4,15 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
-const { consultarProtheusNF, buscarProtheusMultiEmpresa } = require('./protheus_db');
+const { 
+  consultarProtheusNF, 
+  buscarProtheusMultiEmpresa,
+  buscarPedidosVendedores,
+  obterDetalhesPedido,
+  buscarComissoesPeriodo,
+  VENDEDORES_MAP,
+  getNomeVendedor
+} = require('./protheus_db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,7 +57,7 @@ function getUsers() {
       name: 'Alexandre',
       pass: '102030',
       role: 'admin',
-      permissions: ['logistica', 'consulta', 'configuracoes'],
+      permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'],
       active: true
     },
     {
@@ -66,6 +74,33 @@ function getUsers() {
       pass: '10203040',
       role: 'user',
       permissions: ['logistica', 'consulta'],
+      active: true
+    },
+    {
+      username: 'juliana',
+      name: 'Juliana',
+      pass: '102030',
+      role: 'vendedor',
+      vendorCode: '000074',
+      permissions: ['vendedores'],
+      active: true
+    },
+    {
+      username: 'andrea',
+      name: 'Andrea',
+      pass: '102030',
+      role: 'vendedor',
+      vendorCode: '000064',
+      permissions: ['vendedores'],
+      active: true
+    },
+    {
+      username: 'figueiredo',
+      name: 'Figueiredo',
+      pass: '102030',
+      role: 'vendedor',
+      vendorCode: '000004',
+      permissions: ['vendedores'],
       active: true
     }
   ];
@@ -345,6 +380,61 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
 
     const rows = await buscarProtheusMultiEmpresa(tipo, termo);
     res.json({ success: true, tipo, termo, count: rows.length, rows });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: Vendedores - Buscar Pedidos Multi-Empresa (CodWeb / NumPed / NomeCli)
+app.post('/api/vendedores/pedidos/search', async (req, res) => {
+  try {
+    const { codWeb, numPed, nomeCli } = req.body || {};
+    if (!codWeb && !numPed && !nomeCli) {
+      return res.status(400).json({ success: false, message: 'Informe ao menos um critério de busca (CodWeb, Número do Pedido ou Nome do Cliente).' });
+    }
+    const results = await buscarPedidosVendedores({ codWeb, numPed, nomeCli });
+    res.json({ success: true, count: results.length, data: results });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: Vendedores - Obter Detalhes Completos do Pedido (Cabeçalho, Endereço, Itens SC6)
+app.get('/api/vendedores/pedidos/detalhes', async (req, res) => {
+  try {
+    const { empresaKey, numPedido } = req.query || {};
+    if (!numPedido) {
+      return res.status(400).json({ success: false, message: 'Número do Pedido é obrigatório.' });
+    }
+    const detalhes = await obterDetalhesPedido(empresaKey, numPedido);
+    res.json({ success: true, data: detalhes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// API: Vendedores - Relatório de Comissões por Período
+app.post('/api/vendedores/comissoes', async (req, res) => {
+  try {
+    const { dataIni, dataFim, codVend } = req.body || {};
+    if (!dataIni || !dataFim) {
+      return res.status(400).json({ success: false, message: 'Datas inicial e final são obrigatórias.' });
+    }
+
+    // Validação de intervalo máximo de 60 dias
+    const s1 = String(dataIni).replace(/\D/g, '');
+    const s2 = String(dataFim).replace(/\D/g, '');
+    if (s1.length === 8 && s2.length === 8) {
+      const d1 = new Date(`${s1.slice(0,4)}-${s1.slice(4,6)}-${s1.slice(6,8)}`);
+      const d2 = new Date(`${s2.slice(0,4)}-${s2.slice(4,6)}-${s2.slice(6,8)}`);
+      const diffDays = Math.ceil(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+      if (diffDays > 60) {
+        return res.status(400).json({ success: false, message: 'O intervalo selecionado não pode ser superior a 60 dias.' });
+      }
+    }
+
+    const resultado = await buscarComissoesPeriodo({ dataIni, dataFim, codVend });
+    res.json({ success: true, data: resultado });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

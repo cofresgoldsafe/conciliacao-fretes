@@ -7,6 +7,7 @@
     "permissions": [
       "logistica",
       "consulta",
+      "vendedores",
       "configuracoes"
     ],
     "active": true
@@ -30,6 +31,39 @@
     "permissions": [
       "logistica",
       "consulta"
+    ],
+    "active": true
+  },
+  {
+    "username": "juliana",
+    "name": "Juliana",
+    "pass": "102030",
+    "role": "vendedor",
+    "vendorCode": "000074",
+    "permissions": [
+      "vendedores"
+    ],
+    "active": true
+  },
+  {
+    "username": "andrea",
+    "name": "Andrea",
+    "pass": "102030",
+    "role": "vendedor",
+    "vendorCode": "000064",
+    "permissions": [
+      "vendedores"
+    ],
+    "active": true
+  },
+  {
+    "username": "figueiredo",
+    "name": "Figueiredo",
+    "pass": "102030",
+    "role": "vendedor",
+    "vendorCode": "000004",
+    "permissions": [
+      "vendedores"
     ],
     "active": true
   }

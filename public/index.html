@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=4.0">
+  <link rel="stylesheet" href="style.css?v=5.0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -51,6 +51,9 @@
       <button class="main-tab-btn" data-main-tab="consulta" id="mainTabConsulta">
         <span>🔍 CONSULTA PED/NF</span>
       </button>
+      <button class="main-tab-btn" data-main-tab="vendedores" id="mainTabVendedores">
+        <span>💼 VENDEDORES</span>
+      </button>
       <button class="main-tab-btn" data-main-tab="configuracoes" id="mainTabConfig">
         <span>⚙️ CONFIGURAÇÕES</span>
       </button>
@@ -75,6 +78,18 @@
         <button class="nav-tab-btn active" data-tab="tab-consulta">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <span>Consulta NFe ou Pedido</span>
+        </button>
+      </div>
+
+      <!-- Sub-abas de Vendedores -->
+      <div class="sub-tabs-group hidden" id="subGroupVendedores">
+        <button class="nav-tab-btn active" data-tab="tab-vend-pedidos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Consulta Pedido</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-vend-comissoes">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Comissões</span>
         </button>
       </div>
 
@@ -408,7 +423,175 @@
       </section>
     </div>
 
-    <!-- ABA 3 PRINCIPAL: CONFIGURAÇÕES & USUÁRIOS -->
+    <!-- ABA VENDEDORES 1: CONSULTA PEDIDO -->
+    <div id="tab-vend-pedidos" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>💼 Consulta de Pedidos de Venda (Multi-Empresa)</h2>
+            <p class="desc">Pesquise pedidos cadastrados nas empresas OACO (16), GSI (15) ou Metal Pleno (14) por Código Web, Número do Pedido ou Nome do Cliente.</p>
+          </div>
+        </div>
+
+        <div class="vend-search-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: flex-end; margin-top: 1rem; background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0;">
+            <label for="vendBuscaCodWeb">🌐 CodWeb (Único)</label>
+            <input type="text" id="vendBuscaCodWeb" class="input-text" placeholder="ex: WEB-98412..." />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="vendBuscaNumPed">📄 Número do Pedido (SC5)</label>
+            <input type="text" id="vendBuscaNumPed" class="input-text" placeholder="ex: 000630 ou 630..." />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="vendBuscaNomeCli">👤 Nome do Cliente</label>
+            <input type="text" id="vendBuscaNomeCli" class="input-text" placeholder="ex: Metalúrgica São José..." />
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btnBuscarVendPedidos" class="btn btn-primary" style="flex: 1; height: 42px;">
+              🔍 Buscar
+            </button>
+            <button id="btnLimparVendPedidos" class="btn btn-outline" style="height: 42px;" title="Limpar Campos">
+              🧹
+            </button>
+          </div>
+        </div>
+
+        <!-- Resultados da Busca de Pedidos -->
+        <div id="vendPedidosResults" class="hidden" style="margin-top: 1.5rem;">
+          <div class="table-header-info flex-between" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-weight: 600; font-size: 0.95rem;">
+              📦 Pedidos Localizados (<span id="vendPedidosCount">0</span>)
+            </div>
+            <div class="badge-tip" style="font-size: 0.8rem; color: var(--text-muted);">
+              💡 Clique no número do pedido ou no botão para ver todos os detalhes e produtos.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 22%;">Empresa</th>
+                  <th style="width: 18%;">CodWeb</th>
+                  <th style="width: 18%;">Número Pedido</th>
+                  <th style="width: 28%;">Nome Cliente</th>
+                  <th style="width: 14%; text-align: center;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="vendPedidosTableBody">
+                <!-- Linhas injetadas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="vendPedidosEmptyState" class="empty-results-box" style="margin-top: 1.5rem;">
+          <div class="empty-icon">💼</div>
+          <h4>Consulte um Pedido de Venda</h4>
+          <p>Informe o <strong>CodWeb</strong>, o <strong>Número do Pedido</strong> ou o <strong>Nome do Cliente</strong> e clique em <strong>Buscar</strong> para localizar nas 3 empresas.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA VENDEDORES 2: COMISSÕES -->
+    <div id="tab-vend-comissoes" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>💰 Relatório de Comissões de Vendas</h2>
+            <p class="desc">Consulta do fechamento mensal de comissões (ciclo padrão de 26 a 25) nas tabelas SE3 do Protheus.</p>
+          </div>
+        </div>
+
+        <!-- Filtros do Período -->
+        <div class="comis-filter-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end; margin-top: 1rem; background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0;">
+            <label for="comisDataIni">📅 Data Inicial (Início do Ciclo)</label>
+            <input type="date" id="comisDataIni" class="input-text" />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="comisDataFim">📅 Data Final (Fechamento)</label>
+            <input type="date" id="comisDataFim" class="input-text" />
+          </div>
+
+          <div class="form-group" style="margin: 0;" id="comisVendorSelectGroup">
+            <label for="comisVendorSelect">👤 Vendedor</label>
+            <select id="comisVendorSelect" class="form-select">
+              <option value="">Todos os Vendedores</option>
+              <option value="000004">Figueiredo (000004)</option>
+              <option value="000064">Andrea (000064)</option>
+              <option value="000074">Juliana (000074)</option>
+            </select>
+          </div>
+
+          <div>
+            <button id="btnBuscarComissoes" class="btn btn-primary" style="width: 100%; height: 42px;">
+              📊 Consultar Comissões
+            </button>
+          </div>
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; align-items: center; gap: 0.35rem;">
+          <span>⏱️ <em>Padrão sugerido: dia 26 do mês anterior até dia 25 do mês atual. Limite máximo de 60 dias por consulta.</em></span>
+        </div>
+
+        <!-- Card de Resumo de Totais do Período -->
+        <div id="comissoesSummaryCards" class="hidden" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+          <div class="stat-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.05)); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #34d399; font-weight: 600;">💰 Total de Comissões</div>
+            <div id="comisTotalComissao" style="font-size: 1.75rem; font-weight: 700; color: #10b981; margin-top: 0.35rem;">R$ 0,00</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Valor a ser pago no período</div>
+          </div>
+
+          <div class="stat-card" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.05)); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #60a5fa; font-weight: 600;">📈 Total Base de Vendas</div>
+            <div id="comisTotalBase" style="font-size: 1.75rem; font-weight: 700; color: #3b82f6; margin-top: 0.35rem;">R$ 0,00</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Base de faturamento gerador</div>
+          </div>
+
+          <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600;">📑 Lançamentos</div>
+            <div id="comisTotalCount" style="font-size: 1.75rem; font-weight: 700; color: #f8fafc; margin-top: 0.35rem;">0</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Registros de comissão encontrados</div>
+          </div>
+        </div>
+
+        <!-- Tabela de Comissões -->
+        <div id="comissoesResults" class="hidden" style="margin-top: 1.5rem;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 18%;">Vendedor</th>
+                  <th style="width: 14%;">Emissão</th>
+                  <th style="width: 16%;">Pedido</th>
+                  <th style="width: 26%;">Cliente</th>
+                  <th style="width: 13%; text-align: right;">Valor Base</th>
+                  <th style="width: 13%; text-align: right;">Comissão</th>
+                </tr>
+              </thead>
+              <tbody id="comissoesTableBody">
+                <!-- Injetado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty State Comissoes -->
+        <div id="comissoesEmptyState" class="empty-results-box" style="margin-top: 1.5rem;">
+          <div class="empty-icon">📊</div>
+          <h4>Nenhum relatório gerado</h4>
+          <p>Selecione as datas do ciclo e clique em <strong>Consultar Comissões</strong> para apurar os valores.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA 4 PRINCIPAL: CONFIGURAÇÕES & USUÁRIOS -->
     <div id="tab-configuracoes" class="tab-pane hidden">
       <section class="card config-card">
         <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
@@ -554,15 +737,19 @@
             <div style="display: flex; flex-direction: column; gap: 0.5rem; background: rgba(15, 23, 42, 0.4); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
               <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                 <input type="checkbox" id="permLogistica" value="logistica" checked />
-                <span>📦 1ª Aba Principal: <strong>LOGÍSTICA</strong> (Upload Faturas & Correios)</span>
+                <span>📦 1ª Aba: <strong>LOGÍSTICA</strong> (Upload Faturas & Correios)</span>
               </label>
               <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                 <input type="checkbox" id="permConsulta" value="consulta" checked />
-                <span>🔍 2ª Aba Principal: <strong>CONSULTA PED/NF</strong> (Consultas Multi-Empresa)</span>
+                <span>🔍 2ª Aba: <strong>CONSULTA PED/NF</strong> (Consultas Multi-Empresa)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="permVendedores" value="vendedores" checked />
+                <span>💼 3ª Aba: <strong>VENDEDORES</strong> (Consulta Pedido & Comissões)</span>
               </label>
               <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                 <input type="checkbox" id="permConfiguracoes" value="configuracoes" />
-                <span>⚙️ 3ª Aba Principal: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
+                <span>⚙️ 4ª Aba: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
               </label>
             </div>
           </div>
@@ -608,6 +795,28 @@
     </div>
   </div>
 
+  <!-- Modal Detalhes do Pedido de Venda -->
+  <div id="pedidoDetalhesModal" class="modal hidden">
+    <div class="modal-content modal-large" style="max-width: 900px;">
+      <div class="modal-header flex-between" style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 id="detalheModalTitulo" style="margin: 0; font-size: 1.25rem;">📄 Detalhes do Pedido de Venda</h3>
+          <span id="detalheModalSubtitulo" style="font-size: 0.85rem; color: var(--text-muted);">Informações cadastrais, logística, pagamento e itens</span>
+        </div>
+        <button id="btnCloseDetalhesModal" class="close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body" id="pedidoDetalhesBody" style="max-height: 75vh; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- Preenchido via JS -->
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--panel-border); padding-top: 1rem;">
+        <button type="button" id="btnImprimirDetalhes" class="btn btn-outline">🖨️ Imprimir Pedido</button>
+        <button type="button" id="btnFecharDetalhesModal" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Login Overlay (Exibido se não estiver autenticado ou se a sessão de 7 dias expirar) -->
   <div id="loginOverlay" class="login-overlay">
     <div class="login-card">
@@ -645,6 +854,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=4.0"></script>
+  <script src="app.js?v=5.0"></script>
 </body>
 </html>

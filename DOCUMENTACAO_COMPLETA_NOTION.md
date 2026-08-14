@@ -80,11 +80,14 @@ O ecossistema do Portal de Conciliação de Fretes é composto por 4 módulos pr
    - **Construído e Testado:** Parser PDF Correios (`parser_correios.py`), módulo cliente SOAP/REST ViPP (`vipp_api.py`), tela e modal de configuração (`#vippConfigModal`) e endpoints `/api/vipp/config`.
    - **Status de Espera:** Aguardando o envio do **Token da API WebService ViPP** solicitado à VisualSet Tecnologia.
    - **Ação Futura:** Assim que a empresa fornecer a chave, basta cadastrá-la no botão `⚙️ Configurar Token API ViPP` do portal para que a busca automática Etiqueta $\rightarrow$ NF no ERP seja ativada.
-4. **Aba 3 — Configurações & Gerenciamento de Usuários (Status: 🟢 Concluído):**
-   - **Estrutura de 2 Níveis:** Abas principais (`📦 LOGÍSTICA`, `🔍 CONSULTA PED/NF`, `⚙️ CONFIGURAÇÕES`) com sub-abas internas.
-   - **Controle de Acesso:** Permissões granulares cadastradas por usuário (`logistica`, `consulta`, `configuracoes`). O usuário `alexandre` possui acesso total, enquanto `erica` e `wallerson` possuem acesso às duas primeiras abas.
-   - **Modais e Ferramentas:** Modais para Cadastro/Edição de Usuário (`#userModal`) e Alteração de Senha do próprio usuário (`#myPasswordModal`).
-5. **Botão "Lançar Fretes" Inabilitado:** O botão de gravação no Protheus foi mantido visivelmente **desabilitado (`disabled`)** em tom cinza, garantindo segurança operacional até que o módulo de inclusão no banco de dados esteja homologado.
+4. **Aba 3 — Vendedores (Status: 🟢 Concluído):**
+   - **Sub-aba 1 (Consulta Pedido):** Busca multi-empresa por `CodWeb`, `Número do Pedido` ou `Nome do Cliente`. Modal de detalhamento completo com cadastro, entrega, condições de pagamento e itens da tabela `SC6`.
+   - **Sub-aba 2 (Comissões):** Consulta de comissões por período (ciclo 26 a 25) nas tabelas `SE3`, com totalizadores em destaque, limitação de 60 dias e isolamento por vendedor (`juliana`, `andrea`, `figueiredo`).
+5. **Aba 4 — Configurações & Gerenciamento de Usuários (Status: 🟢 Concluído):**
+   - **Estrutura de 2 Níveis:** 4 Abas principais (`📦 LOGÍSTICA`, `🔍 CONSULTA PED/NF`, `💼 VENDEDORES`, `⚙️ CONFIGURAÇÕES`) com sub-abas internas.
+   - **Controle de Acesso:** Permissões granulares cadastradas por usuário (`logistica`, `consulta`, `vendedores`, `configuracoes`).
+   - **Usuários Ativos:** `alexandre` (Admin), `erica`, `wallerson` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
+6. **Botão "Lançar Fretes" Inabilitado:** O botão de gravação no Protheus foi mantido visivelmente **desabilitado (`disabled`)** em tom cinza, aguardando a publicação do endpoint REST no Protheus.
 
 ---
 
