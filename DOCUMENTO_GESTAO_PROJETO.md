@@ -1,84 +1,74 @@
 # 📘 Documento de Gestão, Atualização e Aperfeiçoamento do Projeto
 ## Plataforma de Apoio GSI Multi-Empresas (Integração Protheus)
 
-> **Status Atual:** Versão 1.0 Publicada e Operacional na Nuvem 24/7  
-> **Link do Sistema:** `https://conciliacao-fretes.onrender.com`  
+> **Status Atual:** Versão 1.3 Publicada e Operacional na Nuvem 24/7  
+> **Link de Produção:** `https://conciliacao-fretes.onrender.com`  
 > **Repositório GitHub:** `https://github.com/cofresgoldsafe/conciliacao-fretes`  
-> **Segurança:** Documento livre de senhas e chaves de acesso.
+> **Segurança:** Documento livre de credenciais sensíveis e senhas.
 
 ---
 
-## 1. 🎯 Objetivos do Projeto
-Criar uma plataforma web centralizada, acessível pela internet por pessoas autorizadas da equipe, para:
-1. Fazer upload de faturas de transportadoras em diferentes formatos (PDF Tipo 1 Rodonaves, CSV/TXT Tipo 2 VIPP/Correios).
-2. Extrair automaticamente todos os CT-es (Conhecimentos de Transporte), valores orçados, valores cobrados e clientes.
-3. Consultar em tempo real no banco de dados do Protheus o **Pedido de Venda (`D2_PEDIDO`)** e o **Frete Cobrado do Cliente (`C5_FRETE + C5_VLR_FRT`)** correspondente à Nota Fiscal.
-4. Identificar automaticamente qual empresa do grupo é a pagadora (**Empresa 16 OACO**, **Empresa 15 GSI** ou **Empresa 14 Metal Pleno**).
-5. Permitir a conferência, recálculo e exportação dos dados em CSV antes da efetivação no ERP.
+## 1. 🎯 Objetivos da Plataforma
+Prover um portal corporativo em nuvem, acessível por operadores, administradores e equipe comercial, para:
+1. **Conciliação Inteligente de Faturas:** Ler faturas Rodonaves (PDF) e Correios/VIPP (CSV/TXT/PDF), batendo automaticamente com os fretes cobrados no Protheus (`C5_FRETE + C5_VLR_FRT`).
+2. **Consulta Rápida de Pedidos (Multi-Empresa):** Localizar pedidos em tempo real nas 3 empresas do grupo (OACO 16, GSI 15 e Metal Pleno 14) por `CodWeb`, `Número do Pedido` ou `Nome do Cliente`.
+3. **Drill-Down e Impressão de Pedidos:** Exibir dados cadastrais completos da base mestra `SA1010` (CNPJ/CPF, Endereço com complemento, Bairro, Cidade/UF, CEP, Contato/Tel), logística, condições de pagamento e grade de itens (`SC6`).
+4. **Fechamento de Comissões de Vendedores:** Apurar comissões periódicas nas tabelas `SE3` (ciclo padrão de 26 a 25), com totalizadores gerais, trava de 60 dias e isolamento seguro por vendedor logado.
+5. **Governança e Controle de Acesso:** Gerenciar permissões de navegação por perfil e usuário.
 
 ---
 
-## 2. ✅ O que foi Desenvolvido (Entregas Realizadas)
+## 2. ✅ O que foi Desenvolvido (Entregas Concluídas)
 
-### 📄 A. Extratores e Analisadores de Arquivos (Parsers Python)
-- **Parser Rodonaves (`parser_rodonaves.py`):** Processamento inteligente de PDFs multi-páginas da Rodonaves. Extrai número do CT-e, nota fiscal originária, valores orçados e cobrados, dados da fatura e CNPJ/Razão Social do pagador.
-- **Parser Tipo 2 (`parser_tipo2.py`):** Suporte para relatórios em CSV/TXT de faturas VIPP Visualset / Correios / Logística.
-- **Identificação Automática de Empresa:** Leitura do cabeçalho da fatura para direcionar consultas à empresa correta no Protheus.
+### 📦 Módulo 1: Logística & Conciliação de Fretes
+* **Parsers Python:** `parser_rodonaves.py` (PDF Rodonaves multi-páginas), `parser_tipo2.py` (CSV/TXT) e `parser_correios.py` (Fatura Analítica Correios SFE).
+* **Consulta SQL Protheus em Tempo Real:** Relaciona itens de saída (`SD2`) com pedidos de venda (`SC5`), unificando o frete cobrado em uma coluna única.
+* **Painel de Divergências:** Cartões estatísticos de resumo, badges coloridos, chips de filtro rápido por status e tolerância configurável em R$.
+* **Edição Viva de NF (`Doc (NF)`):** Reconsulta instantânea ao Protheus e exportação da tabela em CSV.
 
-### 🔌 B. Conexão ao Protheus & Consulta Multi-Empresas (`protheus_db.js`)
-- Conexão em tempo real via consulta SQL à API Nuvem do Protheus.
-- Execução de `LEFT JOIN` entre os itens de saída (`SD2`) e os pedidos de venda (`SC5`).
-- Unificação do frete em uma única coluna inteligente (**`Cobrado Cli.`**), somando `C5_FRETE` e `C5_VLR_FRT`.
-- Roteamento dinâmico de tabelas por sufixo de empresa:
-  - **Empresa 16 (OACO):** `SD2160` + `SC5160`
-  - **Empresa 15 (GSI):** `SD2150` + `SC5150`
-  - **Empresa 14 (Metal Pleno):** `SD2140` + `SC5140`
+### 💼 Módulo 2: Vendedores & Comissões (v1.3)
+* **Sub-aba 1 (Consulta Pedido):**
+  * Pesquisa multi-empresa simultânea nas tabelas `SC5160` (OACO), `SC5150` (GSI) e `SC5140` (Metal Pleno).
+  * Modal rico com busca de endereço e contato na tabela mestra `SA1010`, máscaras automáticas de CNPJ/CPF/CEP/Telefone e grade de itens `SC6`.
+* **Sub-aba 2 (Comissões):**
+  * Consulta periódica nas tabelas `SE3160` (OACO), `SE3150` (GSI) e `SE3140` (Metal Pleno) com leitura de `E3_BASE`, `E3_PORC` e `E3_COMIS`.
+  * Totalizadores de Base e Comissão no topo da tela.
+  * Coluna **`Empresa`** com as siglas oficiais: **`MP`**, **`GSI`** e **`OACO`**.
+  * De-Para de vendedores: `000004` (Figueiredo), `000064` (Andrea), `000074` (Juliana).
+  * Trava de intervalo de 60 dias para proteção do banco de dados.
 
-### 💻 C. Interface Web Responsiva (`public/`)
-- Design escuro moderno, funcional e sem excessos decorativos.
-- **Campos Editáveis na Grid:** O campo `Doc (NF)` pode ser alterado diretamente na tela, disparando uma reconsulta automática ao Protheus.
-- **Batimento Automático:** Indicador percentual que valida se a soma dos CT-es bate com o valor total da fatura.
-- **Exportação CSV:** Botão para download instantâneo da tabela conciliada.
+### ⚙️ Módulo 3: Configurações & Controle de Acesso
+* Gestão de usuários (`data/users.json`), senhas e permissões de abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
+* Usuários ativos: `alexandre` (Admin), `erica`, `wallerson` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
 
-### 🌐 D. Implantação 100% Nuvem (Render + Docker)
-- Arquitetura empacotada em container Docker ([`Dockerfile`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/Dockerfile)).
-- Publicação no Render com atualização automática a cada novo código no GitHub.
-
----
-
-## 3. 📍 Onde Paramos (Status Atual - v1.2)
-
-- **Aplicação no Ar:** O sistema está rodando online e acessível 24/7 sem depender de computador local ligado.
-- **Aba 1 (Upload Faturas & Conciliação Inteligente):** 🟢 **100% Concluída**:
-  - Parsers PDF Rodonaves e CSV/TXT operando com batimento automático T-SQL no Protheus (`C5_FRETE + C5_VLR_FRT`).
-  - Módulo de Regras de Divergência Automática com ordenação, chips de filtro e tolerância flexível.
-- **Aba 2 (Fatura Correios SFE & ViPP VisualSet):** 🟡 **CHECKPOINT DE AGUARDAMENTO:**
-  - Parser PDF Correios SFE ([`parser_correios.py`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/parser_correios.py)) concluído. Aguardando envio do Token WebService pela VisualSet.
-- **Aba 3 (Vendedores & Comissões):** 🟢 **100% Concluída (v1.3)**:
-  - **Sub-aba 1 (Consulta Pedido):** Pesquisa multi-critério (`C5_CODWEB`, `C5_NUM`, `C5_NOMECLI`), com unicidade de CodWeb e listagem multi-empresa. Drill-down com modal de detalhes cadastrais, entrega, pagamento e tabela completa de itens do pedido (`SC6`).
-  - **Sub-aba 2 (Comissões):** Consulta periódica nas tabelas `SE3` (ciclo padrão de 26 a 25), limitação de segurança de 60 dias, cards de resumo e isolamento por vendedor logado.
-  - **Usuários Vendedores:** Cadastrados `juliana` (000074), `andrea` (000064) e `figueiredo` (000004).
-- **Aba 4 (Configurações & Gerenciamento de Usuários):** 🟢 **100% Concluída**:
-  - Reestruturação da navegação em 2 níveis (4 Abas Principais no topo + Sub-Abas internas).
-  - Tabela de gerenciamento de usuários com controle de acesso dinâmico por perfil e abas permitidas.
-- **Módulo de Gravação no Protheus (Fase Final):** Botão aguardando publicação do endpoint REST AdvPL no AppServer.
+### 🌐 Módulo 4: Implantação 100% Nuvem
+* Container Docker no Render com deploy contínuo integrado ao GitHub.
+* API de banco no Railway com driver ODBC SQL Server.
 
 ---
 
-## 4. 🚀 Plano de Aperfeiçoamento (Roadmap de Evolução)
+## 3. 📍 Status Atual dos Módulos
 
-### 🔹 Fase 1: Regras Automáticas de Divergência
-- 🟢 **CONCLUÍDO (v1.2):** Destaque visual automático, badges de prejuízo/sobra, cartões estatísticos e ordenação por prioridade com divergentes no topo.
-
-### 🔹 Fase 2: Suporte a Novas Transportadoras
-- Adição de novos modelos de leitura para transportadoras adicionais (Jamef, Brasspress, TNT, etc.).
-
-### 🔹 Fase 3: Módulo de Gravação no Protheus (Fase Final)
-- Integração da classe REST ADVPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) no AppServer do Protheus.
-- Habilitação do botão de gravação para efetivar a inclusão via `MATA116` / ExecAuto.
+| Módulo / Funcionalidade | Status | Observações |
+| :--- | :---: | :--- |
+| **Aba 1 (Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
+| **Aba 2 (Correios & ViPP VisualSet)** | 🟡 Em Espera | Parser analítico PDF pronto; aguardando token WebService ViPP da VisualSet. |
+| **Aba 3 (Vendedores: Consulta Pedido & Comissões)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010` e comissões `SE3`. |
+| **Aba 4 (Configurações & Usuários)** | 🟢 100% Concluído | Operacional com controle de perfis e 6 usuários cadastrados. |
+| **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Fase Final | Classe AdvPL pronta ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)), botão desabilitado aguardando AppServer. |
 
 ---
 
-## 5. 🛡️ Diretrizes de Segurança
-- Nenhuma chave de API, senha ou credencial de banco de dados deve ser inserida neste documento ou comitada no código do GitHub.
-- As credenciais de acesso continuam armazenadas estritamente em Variáveis de Ambiente (`Environment Variables`) no painel da nuvem.
+## 4. 🗄️ Estrutura Técnica de Tabelas Protheus
+
+* **Pedidos de Venda:** `SC5160` (OACO 16), `SC5150` (GSI 15), `SC5140` (Metal Pleno 14)
+* **Itens do Pedido:** `SC6160` (OACO 16), `SC6150` (GSI 15), `SC6140` (Metal Pleno 14)
+* **Comissões:** `SE3160` (OACO 16), `SE3150` (GSI 15), `SE3140` (Metal Pleno 14)
+* **Itens de Saída (NF):** `SD2160` (OACO 16), `SD2150` (GSI 15), `SD2140` (Metal Pleno 14)
+* **Cadastro Mestre de Clientes:** `SA1010` (Base compartilhada)
+
+---
+
+## 5. 🛡️ Segurança
+* Nenhuma senha, token ou chave confidencial foi gravada neste documento ou versionada no GitHub.
+* Variáveis sensíveis permanecem restritas ao painel de variáveis de ambiente do Render e Railway.
