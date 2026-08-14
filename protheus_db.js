@@ -455,38 +455,89 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
       uf: '',
       cep: '',
       telefone: '',
-      email: ''
+      email: '',
+      contato: ''
     };
 
     if (head && head.COD_CLI) {
       try {
-        const sa1Table = (empresaKey === 'OACO') ? 'SA1160' : 'SA1010';
+        const cleanCodCli = String(head.COD_CLI).trim();
+        const paddedCodCli = cleanCodCli.padStart(6, '0');
         const sqlSA1 = `
           SELECT TOP 1
-            RTRIM(ISNULL(A1_CGC, '')) AS CGC_CLI,
-            RTRIM(ISNULL(A1_END, '')) AS END_CLI,
-            RTRIM(ISNULL(A1_BAIRRO, '')) AS BAIRRO_CLI,
-            RTRIM(ISNULL(A1_MUN, '')) AS CIDADE_CLI,
-            RTRIM(ISNULL(A1_EST, '')) AS UF_CLI,
-            RTRIM(ISNULL(A1_CEP, '')) AS CEP_CLI,
-            RTRIM(ISNULL(A1_TEL, '')) AS TEL_CLI,
-            RTRIM(ISNULL(A1_EMAIL, '')) AS EMAIL_CLI
-          FROM ${sa1Table}
-          WHERE A1_COD = '${head.COD_CLI}' AND D_E_L_E_T_ = ' '
+            RTRIM(ISNULL(A1_NOME, '')) AS A1_NOME,
+            RTRIM(ISNULL(A1_CGC, '')) AS A1_CGC,
+            RTRIM(ISNULL(A1_END, '')) AS A1_END,
+            RTRIM(ISNULL(A1_COMPLEM, '')) AS A1_COMPLEM,
+            RTRIM(ISNULL(A1_BAIRRO, '')) AS A1_BAIRRO,
+            RTRIM(ISNULL(A1_MUN, '')) AS A1_MUN,
+            RTRIM(ISNULL(A1_EST, '')) AS A1_EST,
+            RTRIM(ISNULL(A1_CEP, '')) AS A1_CEP,
+            RTRIM(ISNULL(A1_TEL, '')) AS A1_TEL,
+            RTRIM(ISNULL(A1_EMAIL, '')) AS A1_EMAIL,
+            RTRIM(ISNULL(A1_CONTATO, '')) AS A1_CONTATO
+          FROM SA1010
+          WHERE (A1_COD = '${cleanCodCli}' OR A1_COD = '${paddedCodCli}') 
+            AND D_E_L_E_T_ = ' '
         `;
         const resSA1 = await executeRailwayQuery(sqlSA1);
         if (resSA1 && resSA1.rows && resSA1.rows.length > 0) {
           const a1 = resSA1.rows[0];
-          cliInfo.cnpj = a1.CGC_CLI || '';
-          cliInfo.endereco = a1.END_CLI || '';
-          cliInfo.bairro = a1.BAIRRO_CLI || '';
-          cliInfo.cidade = a1.CIDADE_CLI || '';
-          cliInfo.uf = a1.UF_CLI || '';
-          cliInfo.cep = a1.CEP_CLI || '';
-          cliInfo.telefone = a1.TEL_CLI || '';
-          cliInfo.email = a1.EMAIL_CLI || '';
+          
+          // Formata CNPJ (14 dígitos) ou CPF (11 dígitos)
+          let cgcFormatado = a1.A1_CGC || '';
+          const cgcDigits = cgcFormatado.replace(/\D/g, '');
+          if (cgcDigits.length === 11) {
+            cgcFormatado = cgcDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+          } else if (cgcDigits.length === 14) {
+            cgcFormatado = cgcDigits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+          }
+
+          // Formata CEP (8 dígitos)
+          let cepFormatado = a1.A1_CEP || '';
+          const cepDigits = cepFormatado.replace(/\D/g, '');
+          if (cepDigits.length === 8) {
+            cepFormatado = cepDigits.replace(/(\d{5})(\d{3})/, '$1-$2');
+          }
+
+          // Formata Telefone
+          let telFormatado = a1.A1_TEL || '';
+          const telDigits = telFormatado.replace(/\D/g, '');
+          if (telDigits.length === 10) {
+            telFormatado = telDigits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+          } else if (telDigits.length === 11) {
+            telFormatado = telDigits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+          }
+
+          // Monta Endereço + Complemento
+          let enderecoCompleto = a1.A1_END || '';
+          if (a1.A1_COMPLEM && a1.A1_COMPLEM.trim()) {
+            enderecoCompleto += (enderecoCompleto ? ', ' : '') + a1.A1_COMPLEM.trim();
+          }
+
+          // Monta Contato / Tel / Email
+          let contatoFinal = telFormatado;
+          if (a1.A1_CONTATO && a1.A1_CONTATO.trim()) {
+            contatoFinal += (contatoFinal ? ' | ' : '') + `Contato: ${a1.A1_CONTATO.trim()}`;
+          }
+          if (a1.A1_EMAIL && a1.A1_EMAIL.trim()) {
+            contatoFinal += (contatoFinal ? ' | ' : '') + a1.A1_EMAIL.trim();
+          }
+
+          cliInfo.nome = a1.A1_NOME || cliInfo.nome;
+          cliInfo.cnpj = cgcFormatado;
+          cliInfo.endereco = enderecoCompleto;
+          cliInfo.bairro = a1.A1_BAIRRO || '';
+          cliInfo.cidade = a1.A1_MUN || '';
+          cliInfo.uf = a1.A1_EST || '';
+          cliInfo.cep = cepFormatado;
+          cliInfo.telefone = contatoFinal;
+          cliInfo.email = a1.A1_EMAIL || '';
+          cliInfo.contato = a1.A1_CONTATO || '';
         }
-      } catch (errSA1) {}
+      } catch (errSA1) {
+        console.warn('Erro ao consultar SA1010:', errSA1.message);
+      }
     }
 
     const sqlC6 = `

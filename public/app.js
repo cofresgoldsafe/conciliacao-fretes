@@ -1423,11 +1423,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <h4>👤 Dados do Cliente & Entrega</h4>
           <div class="info-row">
             <span class="label">Razão Social:</span>
-            <span class="val">${escapeHtml(cli.nome || '-')}</span>
+            <span class="val"><strong>${escapeHtml(cli.nome || '-')}</strong></span>
           </div>
           <div class="info-row">
             <span class="label">CNPJ / CPF:</span>
-            <span class="val">${escapeHtml(cli.cnpj || '-')}</span>
+            <span class="val"><code>${escapeHtml(cli.cnpj || '-')}</code></span>
           </div>
           <div class="info-row">
             <span class="label">Endereço:</span>
@@ -1435,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="info-row">
             <span class="label">Bairro / Cidade:</span>
-            <span class="val">${escapeHtml(cli.bairro || '-')}, ${escapeHtml(cli.cidade || '-')}/${escapeHtml(cli.uf || '-')}</span>
+            <span class="val">${escapeHtml((cli.bairro || cli.cidade) ? `${cli.bairro ? cli.bairro + ', ' : ''}${cli.cidade || ''}${cli.uf ? '/' + cli.uf : ''}` : '-')}</span>
           </div>
           <div class="info-row">
             <span class="label">CEP:</span>
