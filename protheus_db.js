@@ -592,7 +592,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
 
 /**
  * Consulta Relatório de Comissões por Período
- * Tabelas SE3160 (OACO), SE3150 (GSI), SE3140 (Metal Pleno)
+ * Tabelas SE3160 (OACO), SE3150 (GSI)
  */
 async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
@@ -600,9 +600,9 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   const cleanCodVend = codVend ? String(codVend).trim() : '';
 
   const empresas = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", se3: "SE3150" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", se3: "SE3140" }
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", se3: "SE3150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", se3: "SE3140" }
   ];
 
   const results = [];
@@ -620,8 +620,8 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
           RTRIM(E3.E3_PEDIDO) AS E3_PEDIDO,
           RTRIM(E3.E3_CODCLI) AS E3_CODCLI,
           ISNULL(E3.E3_BASE, 0) AS E3_BASE,
-          ISNULL(E3.E3_COMIS, 0) AS E3_COMIS,
-          ISNULL(E3.E3_VALOR, 0) AS E3_VALOR
+          ISNULL(E3.E3_PORC, 0) AS E3_PORC,
+          ISNULL(E3.E3_COMIS, 0) AS E3_COMIS
         FROM ${emp.se3} E3
         WHERE E3.E3_EMISSAO >= '${cleanDataIni}' 
           AND E3.E3_EMISSAO <= '${cleanDataFim}'
@@ -634,12 +634,13 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
       if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
         for (const row of dbRes.rows) {
           const valorBase = parseFloat(row.E3_BASE || 0);
-          const percComis = parseFloat(row.E3_COMIS || 0);
-          const valorComis = parseFloat(row.E3_VALOR || (valorBase * (percComis / 100)));
+          const percComis = parseFloat(row.E3_PORC || 0);
+          const valorComis = parseFloat(row.E3_COMIS || 0);
 
           results.push({
             empresa: emp.nome,
             empresaKey: emp.key,
+            empresaSigla: emp.sigla,
             codVend: row.E3_VEND,
             nomeVendedor: getNomeVendedor(row.E3_VEND),
             emissao: row.E3_EMISSAO,
@@ -652,47 +653,21 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
         }
       }
     } catch (err) {
-      // Ignora erro e continua
+      console.warn(`Erro na consulta de comissões da empresa ${emp.nome}:`, err.message);
     }
   }
 
-  if (results.length > 0) {
-    const totalBase = results.reduce((acc, c) => acc + c.valorBase, 0);
-    const totalComissao = results.reduce((acc, c) => acc + c.valorComis, 0);
-    return {
-      comissoes: results,
-      totalGeralBase: roundVal(totalBase),
-      totalGeralComissao: roundVal(totalComissao),
-      totalRegistros: results.length
-    };
-  }
+  // Ordena por data de emissão decrescente
+  results.sort((a, b) => (b.emissao || '').localeCompare(a.emissao || ''));
 
-  // Fallback simulado para testes caso o banco não retorne registros no período
-  const mockComissoes = [
-    { empresa: "Empresa 16 (OACO)", empresaKey: "OACO", codVend: "000074", nomeVendedor: "Juliana", emissao: "20260805", pedido: "000630", cliente: "001420 - METALURGICA SAO JOSE LTDA", valorBase: 3450.00, percComis: 3.5, valorComis: 120.75 },
-    { empresa: "Empresa 16 (OACO)", empresaKey: "OACO", codVend: "000074", nomeVendedor: "Juliana", emissao: "20260812", pedido: "000645", cliente: "001890 - CENTRAL DE DISTRIBUICAO SUL", valorBase: 5800.00, percComis: 3.5, valorComis: 203.00 },
-    { empresa: "Empresa 15 (GSI)", empresaKey: "GSI", codVend: "000064", nomeVendedor: "Andrea", emissao: "20260802", pedido: "000635", cliente: "002230 - DISTRIBUIDORA DE ACO BRASIL", valorBase: 4200.00, percComis: 4.0, valorComis: 168.00 },
-    { empresa: "Empresa 15 (GSI)", empresaKey: "GSI", codVend: "000064", nomeVendedor: "Andrea", emissao: "20260810", pedido: "000712", cliente: "003110 - COOPERATIVA AGROINDUSTRIAL DO SUL", valorBase: 7150.00, percComis: 4.0, valorComis: 286.00 },
-    { empresa: "Empresa 14 (METAL PLENO)", empresaKey: "METAL_PLENO", codVend: "000004", nomeVendedor: "Figueiredo", emissao: "20260728", pedido: "000598", cliente: "001550 - IND E COM DE MAQUINAS ALFA", valorBase: 8900.00, percComis: 3.0, valorComis: 267.00 },
-    { empresa: "Empresa 14 (METAL PLENO)", empresaKey: "METAL_PLENO", codVend: "000004", nomeVendedor: "Figueiredo", emissao: "20260808", pedido: "000840", cliente: "004020 - ENGELUZ ENGENHARIA ELETRICA", valorBase: 6400.00, percComis: 3.0, valorComis: 192.00 }
-  ];
-
-  const filteredMock = mockComissoes.filter(c => {
-    if (cleanCodVend) {
-      const matchVend = c.codVend === cleanCodVend || c.codVend === cleanCodVend.padStart(6, '0') || c.nomeVendedor.toLowerCase() === cleanCodVend.toLowerCase();
-      if (!matchVend) return false;
-    }
-    return true;
-  });
-
-  const totalBase = filteredMock.reduce((acc, c) => acc + c.valorBase, 0);
-  const totalComissao = filteredMock.reduce((acc, c) => acc + c.valorComis, 0);
+  const totalBase = results.reduce((acc, c) => acc + c.valorBase, 0);
+  const totalComis = results.reduce((acc, c) => acc + c.valorComis, 0);
 
   return {
-    comissoes: filteredMock,
+    comissoes: results,
     totalGeralBase: roundVal(totalBase),
-    totalGeralComissao: roundVal(totalComissao),
-    totalRegistros: filteredMock.length
+    totalGeralComissao: roundVal(totalComis),
+    totalRegistros: results.length
   };
 }
 

@@ -1617,7 +1617,7 @@ document.addEventListener('DOMContentLoaded', () => {
     comissoesTableBody.innerHTML = '';
 
     if (list.length === 0) {
-      comissoesTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
+      comissoesTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
       return;
     }
 
@@ -1628,8 +1628,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     list.forEach(item => {
       const tr = document.createElement('tr');
+      const empSigla = item.empresaSigla || (item.empresaKey === 'METAL_PLENO' ? 'MP' : (item.empresaKey === 'GSI' ? 'GSI' : 'OACO'));
+
       tr.innerHTML = `
         <td><strong>${escapeHtml(item.nomeVendedor || item.codVend || '-')}</strong></td>
+        <td style="text-align: center;"><span class="company-badge" style="font-weight: 700; padding: 2px 8px; font-size: 0.78rem;">${escapeHtml(empSigla)}</span></td>
         <td>${formatEmissao(item.emissao)}</td>
         <td><code>${escapeHtml(item.pedido)}</code></td>
         <td>${escapeHtml(item.cliente)}</td>
