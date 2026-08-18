@@ -589,10 +589,13 @@ document.addEventListener('DOMContentLoaded', () => {
     sumTransp.textContent = currentFatura.transportadora;
     const empCod = currentFatura.empresaCodigo || '16';
     const empNome = currentFatura.pagador || 'OACO PRODUTOS DE ACO LTDA';
-    
     sumCnpj.innerHTML = `Pagador: <strong>${empNome}</strong> <span class="ped-venda-badge" style="margin-left: 8px;">Protheus Empresa ${empCod} (${currentFatura.empresaKey || 'OACO'})</span>`;
     sumFaturaNum.textContent = currentFatura.numeroFatura;
-    sumDatas.textContent = `Emissão: ${currentFatura.dataEmissao} | Venc: ${currentFatura.dataVencimento}`;
+    const sumVencimentoVal = document.getElementById('sumVencimentoVal');
+    const sumEmissao = document.getElementById('sumEmissao');
+    if (sumVencimentoVal) sumVencimentoVal.textContent = currentFatura.dataVencimento || 'N/A';
+    if (sumEmissao) sumEmissao.textContent = `Emissão: ${currentFatura.dataEmissao || 'N/A'}`;
+    if (sumDatas) sumDatas.textContent = `Emissão: ${currentFatura.dataEmissao} | Venc: ${currentFatura.dataVencimento}`;
     sumQtdFretes.textContent = `${currentFatura.qtdFretes} CT-es`;
     sumValorTotal.textContent = formatCurrency(currentFatura.valorTotal);
 
@@ -769,7 +772,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="mono-text"><strong>${formatCurrency(freteProtheusTotal)}</strong></td>
         <td class="mono-text"><strong>${formatCurrency(item.valorCobrado)}</strong></td>
         <td>${item._divInfo.badgeHtml}</td>
-        <td class="mono-text"><span class="venc-badge">📅 ${escapeHtml(dataVenc)}</span></td>
         <td class="mono-text"><span class="ped-venda-badge">${escapeHtml(item.codCli || '—')}</span></td>
         <td>${escapeHtml(item.cliente)}</td>
       `;

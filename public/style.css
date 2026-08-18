@@ -287,6 +287,42 @@ body {
   color: var(--text-muted);
 }
 
+.vencimento-highlight-box {
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  padding: 6px 12px;
+  width: fit-content;
+}
+
+.venc-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.venc-date-highlight {
+  font-size: 1.25rem !important;
+  color: #38bdf8 !important;
+  font-family: var(--font-mono);
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.emissao-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
 .highlight-card {
   background: linear-gradient(135deg, #1e293b, #0f172a);
   border-color: #0284c7;

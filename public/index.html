@@ -146,8 +146,12 @@
           </div>
           <div class="summary-card">
             <span class="card-label">Nº Fatura</span>
-            <strong id="sumFaturaNum">13851138-26</strong>
-            <small id="sumDatas">Emissão: 15/07/2026 | Venc: 31/07/2026</small>
+            <strong id="sumFaturaNum" class="fatura-num-text">13851138-26</strong>
+            <div class="vencimento-highlight-box">
+              <span class="venc-label">📅 Vencimento:</span>
+              <strong id="sumVencimentoVal" class="venc-date-highlight">31/07/2026</strong>
+            </div>
+            <small id="sumEmissao" class="emissao-text">Emissão: 15/07/2026</small>
           </div>
           <div class="summary-card">
             <span class="card-label">Qtd. CT-es Lidos</span>
@@ -220,7 +224,6 @@
                 <th class="protheus-col-header">Cobrado Cli.</th>
                 <th>Valor Cobrado Transp.</th>
                 <th>Divergência / Validação</th>
-                <th>Data Venc. 📅</th>
                 <th class="protheus-col-header">CodCli</th>
                 <th>Cliente</th>
               </tr>
@@ -232,7 +235,7 @@
               <tr class="table-foot-row">
                 <td colspan="5" class="text-right"><strong>TOTAIS CONCILIADOS:</strong></td>
                 <td id="footTotalCobrado"><strong>R$ 0,00</strong></td>
-                <td colspan="4"></td>
+                <td colspan="3"></td>
               </tr>
             </tfoot>
           </table>
@@ -855,6 +858,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5.4"></script>
+  <script src="app.js?v=5.5"></script>
 </body>
 </html>
