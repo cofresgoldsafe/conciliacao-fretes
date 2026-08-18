@@ -103,11 +103,17 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por 4 m�
 
 ---
 
-### ⚙️ 4. ABA CONFIGURAÇÕES & USUÁRIOS
-* **Gerenciamento Completo de Usuários (`data/users.json`):**
-  * Cadastro de novos usuários, alteração de senhas e edição de permissões por abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
+### ⚙️ 4. ABA CONFIGURAÇÕES & AUDITORIA DE USO
+* **Sub-aba 1 `[ Usuários & Permissões ]`:**
+  * Gestão completa de contas, alteração de senhas e edição de permissões por abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
   * Modal de Alteração de Senha do próprio usuário logado (`#myPasswordModal`).
   * Sessão persistente por **7 dias** via `localStorage`.
+* **Sub-aba 2 `[ Atividades & Auditoria ]`:**
+  * **Painel de Adoção e Telemetria em Tempo Real:** Monitora o uso efetivo por operadores e vendedores (não apenas logins).
+  * **Cards Estatísticos:** Usuários Ativos e Total de Ações Realizadas.
+  * **Tabela de Resumo por Usuário:** Login, Nome, Perfil, Status, **Último Acesso Ativo Relativo** (*"Online agora"*, *"Há X min"*, *"Há X h"*) e Contador de Ações.
+  * **Feed de Atividades (Últimos 100 Eventos):** Registro em tempo real com badges semânticos para Login, Consulta de Pedido, Detalhes de Pedido, Fechamento de Comissões e Upload de Fatura.
+  * **Persistência em Nuvem (Supabase PostgreSQL):** Tabela `user_activities` com auto-criação de schema e fallback gracioso local via `postgres_db.js`.
 
 ---
 
