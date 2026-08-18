@@ -29,11 +29,14 @@ Implementamos com sucesso a nova aba **ASSIST. FINANC.** com a funcionalidade de
    - **Cards de Status Visual:**
      - 🟢 **SALDO OK:** Diferença igual a R$ 0,00.
      - 🔴 **DIVERGÊNCIA:** Exibição destacada do valor da diferença (`R$`).
-4. **Motor de Diagnóstico Micro & Algoritmo de Concatenação (N para 1):**
+4. **Motor de Compensação de Vendas Cartão / Domicílio Líquido (Bruto - Taxa = Líquido):**
+   - Reconhece recebimentos de cartão (`Credito Domicilio T.o.p`, `INTERPAG GSI`, `INTERPAG OACO`, Adquirentes) onde o Banco Inter credita o valor líquido (`+ R$ 373,21`) e o Protheus registra a Venda Bruta (`+ R$ 380,00`) e o Débito da Taxa MDR (`- R$ 6,79`).
+   - Elimina falsos alertas de pendências consolidando o par compensado.
+5. **Motor de Diagnóstico Micro & Algoritmo de Concatenação (N para 1):**
    - Ao clicar em `🔍 Analisar Divergência & Lançamentos`, o sistema confronta as movimentações da `SE5` com o extrato bancário dos últimos 3 dias.
    - **Agrupamento Inteligente (N:1):** Reconhece quando múltiplos lançamentos no Protheus (ex: 2 a 6 despesas/boletos desmembrados) somam o valor exato de um único débito no Banco Inter (lote de pagamentos/fornecedores).
    - Identifica lançamentos que constam no Protheus mas faltam no Banco e vice-versa.
-5. **Painel de Credenciais mTLS do Banco Inter:**
+6. **Painel de Credenciais mTLS do Banco Inter:**
    - Modal com status de cada empresa e orientação sobre as variáveis de ambiente no Render (`INTER_CLIENT_ID_14`, `INTER_CLIENT_SECRET_14`, `INTER_CERT_14`, `INTER_KEY_14`, etc.).
 
 ---

@@ -744,6 +744,14 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   };
 }
 
+function roundVal(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+function formatCurrency(val) {
+  return 'R$ ' + (Number(val) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 /**
  * =========================================================================
  * MÓDULO ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA (BANCO INTER 077)
@@ -944,7 +952,66 @@ function algoritmoMatchingConciliacao(lancamentosProtheus, transacoesBanco) {
     }
   }
 
-  // ─── PASSO 2: Casamento N:1 (Vários lançamentos no Protheus que somam 1 no Banco) ───
+  // ─── PASSO 2: Casamento de Vendas Cartão / Domicílio Líquido (1 Crédito Bruto - 1 Débito Taxa = 1 Crédito Líquido no Banco) ───
+  // No Banco: Crédito Líquido (ex: 373,21 - Credito Domicilio T.o.p)
+  // No Protheus: Crédito Bruto (ex: 380,00) + Débito Taxa (ex: 6,79 com INTERPAG / TAXA / MDR)
+  for (const b of bList) {
+    if (b.matched || b.tipoOperacao !== 'C') continue;
+
+    // Créditos do Protheus maiores que o valor líquido do banco
+    const creditosDisponiveis = pList.filter(p => 
+      !p.matched && 
+      p.tipoOperacao === 'C' && 
+      p.valor > b.valor &&
+      (Math.abs(new Date(p.dataIso || p.data) - new Date(b.dataIso || b.data)) <= 86400000 * 2)
+    );
+
+    // Débitos do Protheus (taxas) menores que o valor do banco
+    const debitosDisponiveis = pList.filter(p => 
+      !p.matched && 
+      p.tipoOperacao === 'D' && 
+      p.valor < b.valor &&
+      (Math.abs(new Date(p.dataIso || p.data) - new Date(b.dataIso || b.data)) <= 86400000 * 2)
+    );
+
+    let matchFound = false;
+
+    for (const pCred of creditosDisponiveis) {
+      for (const pDeb of debitosDisponiveis) {
+        const liquidoCalculado = Number((pCred.valor - pDeb.valor).toFixed(2));
+        
+        if (Math.abs(liquidoCalculado - b.valor) < 0.01) {
+          pCred.matched = true;
+          pDeb.matched = true;
+          b.matched = true;
+
+          const g = {
+            id: `g-${groupId++}`,
+            tipo: 'CARTAO_LIQUIDO',
+            tipoOperacao: 'C',
+            valorTotal: b.valor,
+            valorBruto: pCred.valor,
+            valorTaxa: pDeb.valor,
+            dataBanco: b.dataIso || b.data,
+            bancoItems: [b],
+            protheusItems: [pCred, pDeb],
+            status: 'CONCILIADO_CARTAO_LIQUIDO',
+            detalhe: `Venda Bruta ${formatCurrency(pCred.valor)} - Taxa ${formatCurrency(pDeb.valor)} = ${formatCurrency(b.valor)} Líquido no Banco`
+          };
+
+          pCred.matchGroup = g.id;
+          pDeb.matchGroup = g.id;
+          b.matchGroup = g.id;
+          gruposConciliados.push(g);
+          matchFound = true;
+          break;
+        }
+      }
+      if (matchFound) break;
+    }
+  }
+
+  // ─── PASSO 3: Casamento N:1 (Vários lançamentos no Protheus que somam 1 no Banco) ───
   // Comum em lotes de pagamentos, folha, fornecedores ou guias agrupadas
   for (const b of bList) {
     if (b.matched) continue;
@@ -981,7 +1048,7 @@ function algoritmoMatchingConciliacao(lancamentosProtheus, transacoesBanco) {
     }
   }
 
-  // ─── PASSO 3: Identificação de Itens Órfãos / Não Conciliados ───
+  // ─── PASSO 4: Identificação de Itens Órfãos / Não Conciliados ───
   const orfaosBanco = bList.filter(b => !b.matched);
   const orfaosProtheus = pList.filter(p => !p.matched);
 
@@ -993,6 +1060,7 @@ function algoritmoMatchingConciliacao(lancamentosProtheus, transacoesBanco) {
       totalBanco: bList.length,
       totalProtheus: pList.length,
       totalConciliados1_1: gruposConciliados.filter(g => g.tipo === '1:1').length,
+      totalCartaoLiquido: gruposConciliados.filter(g => g.tipo === 'CARTAO_LIQUIDO').length,
       totalAgrupadosN_1: gruposConciliados.filter(g => g.tipo === 'N:1').length,
       totalOrfaosBanco: orfaosBanco.length,
       totalOrfaosProtheus: orfaosProtheus.length

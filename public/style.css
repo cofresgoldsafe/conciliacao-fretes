@@ -1769,5 +1769,13 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
+.diag-tab-btn[data-diag-view="cartao"].active {
+  color: #c084fc;
+  border-bottom-color: #c084fc;
+}
 
-
+.tag-count-purple {
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}

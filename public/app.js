@@ -1943,6 +1943,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const diagContentView = document.getElementById('diagContentView');
   const diagTabBtns = document.querySelectorAll('.diag-tab-btn');
 
+  const badgeCountCartao = document.getElementById('badgeCountCartao');
   const badgeCountAgrupados = document.getElementById('badgeCountAgrupados');
   const badgeCountOrfaosP = document.getElementById('badgeCountOrfaosP');
   const badgeCountOrfaosB = document.getElementById('badgeCountOrfaosB');
@@ -1955,7 +1956,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentConciliacaoData = null;
   let currentDiagnosticoData = null;
-  let currentDiagView = 'agrupados';
+  let currentDiagView = 'cartao';
 
   /**
    * Calcula o dia útil anterior pulando fins de semana (offset = 1 -> último útil, offset = 2 -> D-2 útil, etc.)
@@ -2189,6 +2190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Atualiza badges de contagem
+      if (badgeCountCartao) badgeCountCartao.textContent = data.resumo.totalCartaoLiquido || 0;
       if (badgeCountAgrupados) badgeCountAgrupados.textContent = data.resumo.totalAgrupadosN_1 || 0;
       if (badgeCountOrfaosP) badgeCountOrfaosP.textContent = data.resumo.totalOrfaosProtheus || 0;
       if (badgeCountOrfaosB) badgeCountOrfaosB.textContent = data.resumo.totalOrfaosBanco || 0;
@@ -2197,19 +2199,30 @@ document.addEventListener('DOMContentLoaded', () => {
       // Resumo de topo
       if (diagResumoBadges) {
         diagResumoBadges.innerHTML = `
+          <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); color: #c084fc; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+            💳 ${data.resumo.totalCartaoLiquido || 0} Vendas de Cartão Conciliadas (Bruto - Taxa)
+          </div>
           <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); color: #38bdf8; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            📦 ${data.resumo.totalAgrupadosN_1} Lotes Agrupados no Protheus (N:1)
+            📦 ${data.resumo.totalAgrupadosN_1 || 0} Lotes Agrupados no Protheus (N:1)
           </div>
           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            ⚠️ ${data.resumo.totalOrfaosProtheus} Movimentos Protheus sem Par no Banco
+            ⚠️ ${data.resumo.totalOrfaosProtheus || 0} Movimentos Protheus sem Par no Banco
           </div>
           <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            ⚠️ ${data.resumo.totalOrfaosBanco} Lançamentos Banco sem Par no Protheus
+            ⚠️ ${data.resumo.totalOrfaosBanco || 0} Lançamentos Banco sem Par no Protheus
           </div>
           <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #10b981; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            ✅ ${data.resumo.totalConciliados1_1} Conciliados 1:1 Exatos
+            ✅ ${data.resumo.totalConciliados1_1 || 0} Conciliados 1:1 Exatos
           </div>
         `;
+      }
+
+      // Se houver vendas de cartão, prioriza a visualização da aba cartao
+      if ((data.resumo.totalCartaoLiquido || 0) > 0) {
+        currentDiagView = 'cartao';
+        diagTabBtns.forEach(b => b.classList.remove('active'));
+        const btnCartao = document.querySelector('.diag-tab-btn[data-diag-view="cartao"]');
+        if (btnCartao) btnCartao.classList.add('active');
       }
 
       // Renderiza a view inicial
@@ -2244,7 +2257,98 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderDiagnosticoView(tipo) {
     if (!diagContentView || !currentDiagnosticoData) return;
 
-    if (tipo === 'agrupados') {
+    if (tipo === 'cartao') {
+      const cartoes = (currentDiagnosticoData.gruposConciliados || []).filter(g => g.tipo === 'CARTAO_LIQUIDO');
+      if (cartoes.length === 0) {
+        diagContentView.innerHTML = `
+          <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">💳</div>
+            <p>Nenhuma venda de cartão ou domicílio com desconto de taxa identificada neste período.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `<div style="display: flex; flex-direction: column; gap: 1rem;">`;
+      cartoes.forEach((grp) => {
+        const bancoItem = grp.bancoItems[0] || {};
+        const pCred = grp.protheusItems.find(p => p.tipoOperacao === 'C') || {};
+        const pDeb = grp.protheusItems.find(p => p.tipoOperacao === 'D') || {};
+
+        html += `
+          <div class="lote-card" style="border-left: 4px solid #a855f7; background: rgba(30, 27, 75, 0.25);">
+            <div class="lote-header">
+              <div>
+                <span class="lote-banco-badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);">
+                  💳 Banco Inter • Crédito Líquido ${formatCurrency(grp.valorTotal)}
+                </span>
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">
+                  Data: <strong>${formatDisplayDate(grp.dataBanco)}</strong> | ${escapeHtml(bancoItem.titulo || bancoItem.descricao || 'Credito Domicilio T.o.p')}
+                </span>
+              </div>
+              <div>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 8px; border-radius: 4px;">
+                  🟢 Conciliado (Bruto - Taxa)
+                </span>
+              </div>
+            </div>
+
+            <!-- Equação Visual da Conciliação de Cartão -->
+            <div style="margin: 0.75rem 0; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.5); border-radius: 6px; border: 1px dashed rgba(168, 85, 247, 0.3); display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 0.5rem; font-size: 0.85rem;">
+              <div style="text-align: center;">
+                <span style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">(+) Venda Bruta Protheus</span>
+                <strong style="color: #10b981; font-size: 0.95rem;">${formatCurrency(grp.valorBruto)}</strong>
+              </div>
+              <span style="color: var(--text-muted); font-size: 1.2rem; font-weight: 700;">−</span>
+              <div style="text-align: center;">
+                <span style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">(−) Taxa Cartão/MDR</span>
+                <strong style="color: #f87171; font-size: 0.95rem;">${formatCurrency(grp.valorTaxa)}</strong>
+              </div>
+              <span style="color: var(--text-muted); font-size: 1.2rem; font-weight: 700;">=</span>
+              <div style="text-align: center;">
+                <span style="display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">(=) Crédito Líquido no Banco</span>
+                <strong style="color: #c084fc; font-size: 0.95rem;">${formatCurrency(grp.valorTotal)}</strong>
+              </div>
+            </div>
+
+            <div class="lote-protheus-items">
+              <span style="font-size: 0.75rem; font-weight: 700; color: #a855f7; text-transform: uppercase; letter-spacing: 0.04em;">
+                ↳ Lançamentos Compensados no ERP Protheus (SE5):
+              </span>
+              
+              <!-- Linha do Crédito Bruto -->
+              <div class="lote-item-row" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; padding: 6px 10px; border-radius: 6px;">
+                <div>
+                  <span style="color: #10b981; font-weight: 700; margin-right: 6px;">[ + RECEBIMENTO ]</span>
+                  <span style="color: var(--text-primary); font-weight: 600;">${escapeHtml(pCred.historico || 'Valor recebido s/ Titulo')}</span>
+                  ${pCred.beneficiario ? `<span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 6px;">(${escapeHtml(pCred.beneficiario)})</span>` : ''}
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 8px;">${formatDisplayDate(pCred.dataIso || pCred.data)}</span>
+                  <strong style="color: #10b981;">+ ${formatCurrency(pCred.valor)}</strong>
+                </div>
+              </div>
+
+              <!-- Linha do Débito da Taxa -->
+              <div class="lote-item-row" style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid #f87171; padding: 6px 10px; border-radius: 6px;">
+                <div>
+                  <span style="color: #f87171; font-weight: 700; margin-right: 6px;">[ − TAXA CARTÃO ]</span>
+                  <span style="color: var(--text-primary); font-weight: 600;">${escapeHtml(pDeb.historico || 'Desconto taxa cartão')}</span>
+                  ${pDeb.beneficiario ? `<span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 6px;">(${escapeHtml(pDeb.beneficiario)})</span>` : ''}
+                </div>
+                <div>
+                  <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 8px;">${formatDisplayDate(pDeb.dataIso || pDeb.data)}</span>
+                  <strong style="color: #f87171;">− ${formatCurrency(pDeb.valor)}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      diagContentView.innerHTML = html;
+
+    } else if (tipo === 'agrupados') {
       const agrupados = (currentDiagnosticoData.gruposConciliados || []).filter(g => g.tipo === 'N:1');
       if (agrupados.length === 0) {
         diagContentView.innerHTML = `
