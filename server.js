@@ -200,7 +200,7 @@ app.post('/api/auth/login', async (req, res) => {
         name: userFound.name,
         role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
         vendorCode: userFound.vendorCode || null,
-        permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'configuracoes'] : ['logistica', 'consulta'])
+        permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'configuracoes'] : ['logistica', 'consulta'])
       },
       expiresAt: expiresAt,
       message: 'Login realizado com sucesso.'
