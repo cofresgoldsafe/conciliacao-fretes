@@ -724,30 +724,31 @@ app.get('/api/financeiro/conciliacao', async (req, res) => {
         const saldoProtheus = saldoProtheusInfo.saldoProtheus || 0;
 
         // 2. Saldo Banco Inter
-        let saldoBanco = 0;
+        let saldoBanco = null;
         let origemBanco = 'api_real_inter';
         let statusBancoMsg = '';
+        let statusConciliacao = 'PENDENTE_INTER';
+        let diferenca = null;
 
         try {
           const resInter = await consultarSaldoInter(empCode, dataIso);
           if (resInter.origem === 'simulacao_pendente_credenciais') {
-            // Se ainda não tiver as chaves mTLS cadastradas no Render, usa o saldo Protheus com baseline
-            saldoBanco = saldoProtheus;
+            saldoBanco = null;
             origemBanco = 'simulacao_pendente_credenciais';
-            statusBancoMsg = 'Aguardando credenciais mTLS no Render. Exibindo baseline do Protheus.';
+            statusConciliacao = 'PENDENTE_INTER';
+            statusBancoMsg = 'Credenciais mTLS não carregadas no Render. Clique em "Status Credenciais Inter" acima.';
           } else {
-            saldoBanco = resInter.saldoDisponivel || 0;
+            saldoBanco = resInter.saldoDisponivel !== undefined ? resInter.saldoDisponivel : 0;
+            diferenca = Number((saldoBanco - saldoProtheus).toFixed(2));
+            statusConciliacao = Math.abs(diferenca) < 0.01 ? 'OK' : 'DIVERGENTE';
           }
         } catch (interErr) {
           console.warn(`Aviso Inter Empresa ${empCode}:`, interErr.message);
-          saldoBanco = saldoProtheus;
-          origemBanco = 'fallback_erro_inter';
-          statusBancoMsg = `Erro na API Inter: ${interErr.message}. Usando baseline.`;
+          saldoBanco = null;
+          origemBanco = 'erro_api_inter';
+          statusConciliacao = 'ERRO_INTER';
+          statusBancoMsg = `Erro na API do Banco Inter: ${interErr.message}`;
         }
-
-        // 3. Comparativo de Saldos
-        const diferenca = Number((saldoBanco - saldoProtheus).toFixed(2));
-        const statusConciliacao = Math.abs(diferenca) < 0.01 ? 'OK' : 'DIVERGENTE';
 
         resultados.push({
           empresaCodigo: empCode,

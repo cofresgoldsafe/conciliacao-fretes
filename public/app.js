@@ -2078,27 +2078,41 @@ document.addEventListener('DOMContentLoaded', () => {
     empresas.forEach(emp => {
       const card = document.createElement('div');
       const isOk = emp.status === 'OK';
-      const isErro = emp.status === 'ERRO';
-      const statusClass = isOk ? 'status-card-ok' : (isErro ? 'status-card-erro' : 'status-card-divergente');
+      const isDivergente = emp.status === 'DIVERGENTE';
+      const isPendente = emp.status === 'PENDENTE_INTER';
+      const isErro = emp.status === 'ERRO' || emp.status === 'ERRO_INTER';
 
-      card.className = `concil-card ${statusClass}`;
-
+      let statusClass = 'status-card-divergente';
       let badgeHtml = '';
+
       if (isOk) {
+        statusClass = 'status-card-ok';
         badgeHtml = `<span class="badge-status-ok">🟢 SALDO OK</span>`;
+      } else if (isPendente) {
+        statusClass = 'status-card-divergente';
+        badgeHtml = `<span class="badge-status-erro" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">🟡 AGUARDANDO INTER</span>`;
       } else if (isErro) {
-        badgeHtml = `<span class="badge-status-erro">⚠️ ERRO PROTHEUS</span>`;
+        statusClass = 'status-card-erro';
+        badgeHtml = `<span class="badge-status-erro">⚠️ ERRO API INTER</span>`;
       } else {
+        statusClass = 'status-card-divergente';
         badgeHtml = `<span class="badge-status-divergente">🔴 DIVERGÊNCIA</span>`;
       }
 
-      const diffVal = emp.diferenca || 0;
-      const diffClass = Math.abs(diffVal) < 0.01 ? 'diff-val-zero' : 'diff-val-alert';
-      const diffSinal = diffVal > 0 ? '+' : '';
-      const diffFormatted = `${diffSinal}${formatCurrency(diffVal)}`;
+      let saldoBancoHtml = '<span class="concil-metric-val" style="color: var(--text-muted); font-size: 0.95rem;">Aguardando...</span>';
+      let diffHtml = '<span class="concil-diff-val" style="color: var(--text-muted);">--</span>';
+
+      if (emp.saldoBanco !== null && emp.saldoBanco !== undefined) {
+        saldoBancoHtml = `<span class="concil-metric-val">${formatCurrency(emp.saldoBanco)}</span>`;
+        const diffVal = emp.diferenca || 0;
+        const diffClass = Math.abs(diffVal) < 0.01 ? 'diff-val-zero' : 'diff-val-alert';
+        const diffSinal = diffVal > 0 ? '+' : '';
+        diffHtml = `<span class="concil-diff-val ${diffClass}">${diffSinal}${formatCurrency(diffVal)}</span>`;
+      }
 
       const dataSaldoProtheusFmt = formatDisplayDate(emp.dataUltimoSaldoProtheus || emp.dataReferenciaYmd);
 
+      card.className = `concil-card ${statusClass}`;
       card.innerHTML = `
         <div class="concil-card-header">
           <div class="concil-empresa-info">
@@ -2113,15 +2127,15 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="concil-metrics-grid">
           <div class="concil-metric-box">
             <span class="concil-metric-label">Saldo Protheus (SE8)</span>
-            <span class="concil-metric-val">${formatCurrency(emp.saldoProtheus)}</span>
+            <span class="concil-metric-val" style="color: ${emp.saldoProtheus < 0 ? '#f87171' : 'var(--text-primary)'};">${formatCurrency(emp.saldoProtheus)}</span>
           </div>
           <div class="concil-metric-box">
             <span class="concil-metric-label">Saldo Banco Inter</span>
-            <span class="concil-metric-val">${formatCurrency(emp.saldoBanco)}</span>
+            ${saldoBancoHtml}
           </div>
           <div class="concil-diff-box">
             <span class="concil-metric-label">Diferença de Saldo:</span>
-            <span class="concil-diff-val ${diffClass}">${diffFormatted}</span>
+            ${diffHtml}
           </div>
         </div>
 
