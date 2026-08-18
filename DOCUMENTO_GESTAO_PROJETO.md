@@ -52,7 +52,7 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 | Módulo / Funcionalidade | Status | Observações |
 | :--- | :---: | :--- |
 | **Aba 1 (Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
-| **Aba 2 (Correios & ViPP VisualSet)** | 🟡 Em Espera | Parser analítico PDF pronto; aguardando token WebService ViPP da VisualSet. |
+| **Aba 2 (Correios & FTP ViPP VisualSet)** | 🟢 Canal FTP Homologado | Parser PDF pronto; canal FTP testado e aprovado; aguardando primeiro CSV de retorno na pasta `/Retorno` (Ponto de Parada 7). |
 | **Aba 3 (Vendedores: Consulta Pedido & Comissões)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010` e comissões `SE3`. |
 | **Aba 4 (Configurações & Usuários)** | 🟢 100% Concluído | Operacional com controle de perfis e 6 usuários cadastrados. |
 | **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Fase Final | Classe AdvPL pronta ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)), botão desabilitado aguardando AppServer. |

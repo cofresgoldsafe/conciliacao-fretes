@@ -361,6 +361,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  async function uploadFile(file) {
+    if (!file) return;
+    const tipo = transportadoraSelect ? transportadoraSelect.value : 'RODONAVES';
+    showLoading(true, `Lendo Fatura (${file.name}) e consultando Protheus...`);
+    const formData = new FormData();
+    formData.append('faturaFile', file);
+    formData.append('tipoTransportadora', tipo);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) {
+        renderFaturaData(data);
+      } else {
+        alert('Erro ao processar fatura: ' + (data.message || data.error || 'Erro desconhecido.'));
+      }
+    } catch (err) {
+      alert('Erro ao conectar com o servidor para enviar a fatura.');
+      console.error('Upload Error:', err);
+    } finally {
+      showLoading(false);
+      if (fileInput) fileInput.value = '';
+    }
+  }
+
+  const btnSampleRodonaves = document.getElementById('btnSampleRodonaves');
+  if (btnSampleRodonaves) {
+    btnSampleRodonaves.addEventListener('click', async () => {
+      showLoading(true, 'Carregando exemplo Rodonaves (OACO) e consultando Protheus...');
+      try {
+        const response = await fetch('/api/sample-rodonaves');
+        const data = await response.json();
+        if (data.success) {
+          renderFaturaData(data);
+        } else {
+          alert('Erro ao carregar exemplo Rodonaves: ' + data.message);
+        }
+      } catch (err) {
+        alert('Erro ao carregar exemplo Rodonaves.');
+        console.error(err);
+      } finally {
+        showLoading(false);
+      }
+    });
+  }
+
   // --- TAB 2 LOGIC (CORREIOS & VIPP) ---
   const dropzoneCorreios = document.getElementById('dropzoneCorreios');
   const faturaFileCorreios = document.getElementById('faturaFileCorreios');
