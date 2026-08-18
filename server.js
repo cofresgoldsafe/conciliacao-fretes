@@ -21,11 +21,22 @@ const {
   deleteUser: deleteUserDB,
   getHistory: getHistoryDB,
   saveHistoryItem: saveHistoryItemDB,
+  logUserActivity,
+  getAuditSummary,
   isPostgresConnected
 } = require('./postgres_db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+function getUserFromReq(req) {
+  const rawUser = req.headers['x-user-username'] || req.query.loggedUser || (req.body && req.body.loggedUser) || '';
+  const rawName = req.headers['x-user-name'] || req.query.loggedName || (req.body && req.body.loggedName) || rawUser;
+  return { 
+    username: String(rawUser || 'sistema').toLowerCase().trim(), 
+    name: String(rawName || rawUser || 'Sistema').trim() 
+  };
+}
 
 app.use(cors());
 app.use(express.json());
@@ -173,6 +184,14 @@ app.post('/api/auth/login', async (req, res) => {
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     const expiresAt = Date.now() + ONE_WEEK_MS;
 
+    logUserActivity({
+      username: userFound.username,
+      userName: userFound.name,
+      actionType: 'LOGIN',
+      description: `Login realizado com sucesso (${userFound.role || 'user'})`,
+      ip: req.ip
+    }).catch(() => {});
+
     return res.json({
       success: true,
       token: `auth-token-${cleanUser}-${Date.now()}`,
@@ -202,6 +221,14 @@ app.post('/api/auth/login', async (req, res) => {
   if (seed && seed.pass === cleanPass) {
     const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     const expiresAt = Date.now() + ONE_WEEK_MS;
+
+    logUserActivity({
+      username: cleanUser,
+      userName: seed.name,
+      actionType: 'LOGIN',
+      description: `Login realizado com sucesso (${seed.role})`,
+      ip: req.ip
+    }).catch(() => {});
 
     return res.json({
       success: true,
@@ -254,6 +281,15 @@ app.post('/api/admin/users/save', async (req, res) => {
     active: active !== undefined ? !!active : true
   });
 
+  const curUser = getUserFromReq(req);
+  logUserActivity({
+    username: curUser.username,
+    userName: curUser.name,
+    actionType: 'GESTÃO_USUARIO',
+    description: `Salvou configurações do usuário "${cleanUser}"`,
+    ip: req.ip
+  }).catch(() => {});
+
   res.json({ success: true, message: `Usuário "${cleanUser}" salvo com sucesso.` });
 });
 
@@ -267,7 +303,27 @@ app.post('/api/admin/users/delete', async (req, res) => {
   }
 
   await deleteUserDB(cleanUser);
+
+  const curUser = getUserFromReq(req);
+  logUserActivity({
+    username: curUser.username,
+    userName: curUser.name,
+    actionType: 'EXCLUSÃO_USUARIO',
+    description: `Excluiu o usuário "${cleanUser}"`,
+    ip: req.ip
+  }).catch(() => {});
+
   res.json({ success: true, message: `Usuário "${cleanUser}" removido com sucesso.` });
+});
+
+// API: Obter Resumo de Auditoria e Logs de Atividades (Admin)
+app.get('/api/admin/audit-summary', async (req, res) => {
+  try {
+    const summary = await getAuditSummary();
+    res.json({ success: true, ...summary });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 // API: Consulta Protheus individual por NF e Empresa
@@ -292,6 +348,17 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
     }
 
     const rows = await buscarProtheusMultiEmpresa(tipo, termo);
+
+    const user = getUserFromReq(req);
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PED_NF',
+      description: `Consultou ${tipo === 'pedVenda' ? 'Pedido' : 'NFe'}: "${termo}" (${rows.length} resultado(s))`,
+      ip: req.ip,
+      metadata: { tipo, termo, count: rows.length }
+    }).catch(() => {});
+
     res.json({ success: true, tipo, termo, count: rows.length, rows });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -306,6 +373,18 @@ app.post('/api/vendedores/pedidos/search', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Informe ao menos um critério de busca (CodWeb, Número do Pedido ou Nome do Cliente).' });
     }
     const results = await buscarPedidosVendedores({ codWeb, numPed, nomeCli });
+
+    const user = getUserFromReq(req);
+    const filtros = [codWeb && `Web: ${codWeb}`, numPed && `Ped: ${numPed}`, nomeCli && `Cli: ${nomeCli}`].filter(Boolean).join(' | ');
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS',
+      description: `Pesquisou pedidos: ${filtros} (${results.length} resultado(s))`,
+      ip: req.ip,
+      metadata: { codWeb, numPed, nomeCli, count: results.length }
+    }).catch(() => {});
+
     res.json({ success: true, count: results.length, data: results });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -320,6 +399,17 @@ app.get('/api/vendedores/pedidos/detalhes', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Número do Pedido é obrigatório.' });
     }
     const detalhes = await obterDetalhesPedido(empresaKey, numPedido);
+
+    const user = getUserFromReq(req);
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'DETALHES_PEDIDO',
+      description: `Visualizou detalhes do Pedido ${numPedido} (${empresaKey || 'OACO'})`,
+      ip: req.ip,
+      metadata: { empresaKey, numPedido }
+    }).catch(() => {});
+
     res.json({ success: true, data: detalhes });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -347,6 +437,18 @@ app.post('/api/vendedores/comissoes', async (req, res) => {
     }
 
     const resultado = await buscarComissoesPeriodo({ dataIni, dataFim, codVend });
+
+    const user = getUserFromReq(req);
+    const vendTxt = codVend ? `Vendedor ${codVend}` : 'Todos os Vendedores';
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_COMISSOES',
+      description: `Consultou comissões (${dataIni} a ${dataFim}) - ${vendTxt} (${resultado ? resultado.totalRegistros : 0} lançamentos)`,
+      ip: req.ip,
+      metadata: { dataIni, dataFim, codVend, totalRegistros: resultado ? resultado.totalRegistros : 0 }
+    }).catch(() => {});
+
     res.json({ success: true, data: resultado });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -372,6 +474,17 @@ app.post('/api/upload', upload.single('faturaFile'), async (req, res) => {
     if (result.success && result.items) {
       const empKey = (result.fatura && result.fatura.empresaKey) ? result.fatura.empresaKey : 'OACO';
       result.items = await enrichItemsWithProtheus(result.items, empKey);
+
+      const user = getUserFromReq(req);
+      const fatNum = (result.fatura && result.fatura.numeroFatura) ? result.fatura.numeroFatura : req.file.originalname;
+      logUserActivity({
+        username: user.username,
+        userName: user.name,
+        actionType: 'UPLOAD_FATURA',
+        description: `Processou fatura ${fatNum} (${result.items.length} CT-es) - ${empKey}`,
+        ip: req.ip,
+        metadata: { arquivo: req.file.originalname, fatura: fatNum, empresaKey: empKey, qtdFretes: result.items.length }
+      }).catch(() => {});
     }
     res.json(result);
   } catch (err) {

@@ -96,6 +96,27 @@ async function initPostgres() {
         );
       `);
 
+      // 4. Cria Tabela de Atividades / Telemetria dos Usuários
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS user_activities (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(100) NOT NULL,
+          user_name VARCHAR(200) NOT NULL,
+          action_type VARCHAR(50) NOT NULL,
+          description TEXT NOT NULL,
+          ip_address VARCHAR(100),
+          metadata JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `);
+
+      // 5. Garante colunas de rastreamento na tabela users
+      await client.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS total_actions INTEGER DEFAULT 0;
+      `);
+
       // 4. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
@@ -368,6 +389,138 @@ async function saveHistoryItem(item) {
   } catch {}
 }
 
+/**
+ * Registra uma Atividade / Ação de Usuário
+ */
+async function logUserActivity({ username, userName, actionType, description, ip, metadata }) {
+  const cleanUser = String(username || 'anonimo').trim().toLowerCase();
+  const cleanName = String(userName || cleanUser).trim();
+  const cleanType = String(actionType || 'OUTRO').trim().toUpperCase();
+  const cleanDesc = String(description || '').trim();
+  const metaObj = metadata && typeof metadata === 'object' ? metadata : {};
+
+  const p = getPool();
+  if (p && isConnected) {
+    try {
+      // 1. Insere log na tabela user_activities
+      await p.query(`
+        INSERT INTO user_activities (username, user_name, action_type, description, ip_address, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6);
+      `, [cleanUser, cleanName, cleanType, cleanDesc, ip || '', JSON.stringify(metaObj)]);
+
+      // 2. Atualiza contador e último acesso do usuário
+      if (cleanType === 'LOGIN') {
+        await p.query(`
+          UPDATE users 
+          SET last_login_at = NOW(), last_active_at = NOW(), total_actions = COALESCE(total_actions, 0) + 1, updated_at = NOW()
+          WHERE username = $1;
+        `, [cleanUser]);
+      } else {
+        await p.query(`
+          UPDATE users 
+          SET last_active_at = NOW(), total_actions = COALESCE(total_actions, 0) + 1, updated_at = NOW()
+          WHERE username = $1;
+        `, [cleanUser]);
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao registrar log de atividade:', err.message);
+    }
+  }
+
+  // Grava em arquivo local para contingência
+  try {
+    const activitiesFile = path.join(dataDir, 'activities.json');
+    let acts = [];
+    if (fs.existsSync(activitiesFile)) {
+      acts = JSON.parse(fs.readFileSync(activitiesFile, 'utf-8'));
+    }
+    acts.unshift({
+      id: 'ACT-' + Date.now(),
+      username: cleanUser,
+      userName: cleanName,
+      actionType: cleanType,
+      description: cleanDesc,
+      ip: ip || '',
+      metadata: metaObj,
+      createdAt: new Date().toISOString()
+    });
+    if (acts.length > 200) acts = acts.slice(0, 200);
+    fs.writeFileSync(activitiesFile, JSON.stringify(acts, null, 2));
+  } catch {}
+}
+
+/**
+ * Retorna o resumo de auditoria para o Admin
+ */
+async function getAuditSummary() {
+  const p = getPool();
+  if (p && isConnected) {
+    try {
+      const usersRes = await p.query(`
+        SELECT 
+          id, username, name, role, vendor_code AS "vendorCode", active,
+          last_login_at AS "lastLoginAt",
+          last_active_at AS "lastActiveAt",
+          COALESCE(total_actions, 0) AS "totalActions"
+        FROM users 
+        ORDER BY COALESCE(last_active_at, created_at) DESC;
+      `);
+
+      const actsRes = await p.query(`
+        SELECT 
+          id, username, user_name AS "userName", action_type AS "actionType", 
+          description, ip_address AS "ip", metadata,
+          created_at AS "createdAt"
+        FROM user_activities 
+        ORDER BY id DESC 
+        LIMIT 100;
+      `);
+
+      const statsRes = await p.query(`
+        SELECT 
+          COUNT(*) AS "totalActivities",
+          COUNT(DISTINCT username) AS "activeUsersCount"
+        FROM user_activities;
+      `);
+
+      return {
+        users: usersRes.rows || [],
+        recentActivities: actsRes.rows || [],
+        stats: statsRes.rows[0] || { totalActivities: 0, activeUsersCount: 0 },
+        dbConnected: true
+      };
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao obter resumo de auditoria do banco:', err.message);
+    }
+  }
+
+  // Fallback Local
+  try {
+    const activitiesFile = path.join(dataDir, 'activities.json');
+    let acts = [];
+    if (fs.existsSync(activitiesFile)) {
+      acts = JSON.parse(fs.readFileSync(activitiesFile, 'utf-8'));
+    }
+    let localUsers = [];
+    if (fs.existsSync(usersFile)) {
+      localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+    }
+    return {
+      users: localUsers.map(u => ({
+        ...u,
+        lastLoginAt: null,
+        lastActiveAt: null,
+        totalActions: acts.filter(a => a.username === u.username).length
+      })),
+      recentActivities: acts,
+      stats: { totalActivities: acts.length, activeUsersCount: new Set(acts.map(a => a.username)).size },
+      dbConnected: false
+    };
+  } catch {
+    return { users: [], recentActivities: [], stats: { totalActivities: 0, activeUsersCount: 0 }, dbConnected: false };
+  }
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -379,5 +532,7 @@ module.exports = {
   deleteUser,
   getHistory,
   saveHistoryItem,
+  logUserActivity,
+  getAuditSummary,
   isPostgresConnected
 };

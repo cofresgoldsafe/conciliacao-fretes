@@ -42,9 +42,10 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
   * De-Para de vendedores: `000004` (Figueiredo), `000064` (Andrea), `000074` (Juliana).
   * Trava de intervalo de 60 dias para proteção do banco de dados.
 
-### ⚙️ Módulo 3: Configurações & Controle de Acesso
-* Gestão de usuários, senhas e permissões de abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
-* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência perpétua de usuários, históricos e auditoria via `postgres_db.js`, com auto-criação de schema e fallback gracioso local.
+### ⚙️ Módulo 3: Configurações, Controle de Acesso & Auditoria de Uso
+* **Sub-aba 1 (Usuários & Permissões):** Gestão de contas, senhas e permissões de abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
+* **Sub-aba 2 (Atividades & Auditoria):** Painel administrativo em tempo real com métricas de engajamento (usuários ativos, volume de ações), último acesso ativo relativo ("Online agora", "há X min") e feed detalhado dos últimos 100 eventos de negócio (logins, consultas de pedidos, relatórios de comissões, visualização de detalhes e uploads de faturas).
+* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência de tabelas `users`, `history` e `user_activities` via `postgres_db.js`, com auto-criação de schema e fallback gracioso local.
 * Usuários ativos: `alexandre` (Admin), `erica`, `wallerson` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
 
 ### 🌐 Módulo 4: Implantação 100% Nuvem
@@ -61,7 +62,7 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 | **Aba 1 (Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
 | **Aba 2 (Correios & FTP ViPP VisualSet)** | 🟢 Canal FTP Homologado | Parser PDF pronto; canal FTP testado e aprovado; aguardando primeiro CSV de retorno na pasta `/Retorno` (Ponto de Parada 7). |
 | **Aba 3 (Vendedores: Consulta Pedido, Comissões & Metas)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010`, comissões `SE3` e cálculo dinâmico de Meta Atingida. |
-| **Aba 4 (Configurações & Usuários)** | 🟢 100% Concluído | Operacional com controle de perfis e 6 usuários cadastrados. |
+| **Aba 4 (Configurações: Usuários & Auditoria de Uso)** | 🟢 100% Concluído | Operacional com 2 sub-abas, controle de perfis e telemetria de adoção no Supabase PostgreSQL. |
 | **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Fase Final | Classe AdvPL pronta ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)), botão desabilitado aguardando AppServer. |
 
 ---

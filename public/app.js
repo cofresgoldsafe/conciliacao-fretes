@@ -13,6 +13,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const navTabBtns = document.querySelectorAll('.nav-tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
+  // Intercepta todas as requisições fetch para anexar a identidade do usuário logado
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options = {}) {
+    options = options || {};
+    options.headers = options.headers || {};
+    if (currentUser) {
+      if (options.headers instanceof Headers) {
+        options.headers.set('x-user-username', currentUser.username || '');
+        options.headers.set('x-user-name', currentUser.name || currentUser.username || '');
+      } else if (Array.isArray(options.headers)) {
+        options.headers.push(['x-user-username', currentUser.username || '']);
+        options.headers.push(['x-user-name', currentUser.name || currentUser.username || '']);
+      } else {
+        options.headers['x-user-username'] = currentUser.username || '';
+        options.headers['x-user-name'] = currentUser.name || currentUser.username || '';
+      }
+    }
+    return originalFetch.call(this, url, options);
+  };
+
   // DOM Elements - Tab 1 (Upload)
   const transportadoraSelect = document.getElementById('transportadoraSelect');
   const dropzone = document.getElementById('dropzone');
@@ -331,6 +351,10 @@ document.addEventListener('DOMContentLoaded', () => {
       tabPanes.forEach(pane => pane.classList.add('hidden'));
       const targetPane = document.getElementById(targetTab);
       if (targetPane) targetPane.classList.remove('hidden');
+
+      if (targetTab === 'tab-config-logs') {
+        loadAuditDashboard();
+      }
     });
   });
 
@@ -1238,6 +1262,164 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userModalMsg) userModalMsg.textContent = '❌ Erro de comunicação com o servidor.';
       }
     });
+  // --- SUB-ABA: ATIVIDADES & AUDITORIA DE USO DOS USUÁRIOS ---
+  const btnRefreshAudit = document.getElementById('btnRefreshAudit');
+  const auditDbBadge = document.getElementById('auditDbBadge');
+  const statAuditActiveUsers = document.getElementById('statAuditActiveUsers');
+  const statAuditTotalUsers = document.getElementById('statAuditTotalUsers');
+  const statAuditTotalActions = document.getElementById('statAuditTotalActions');
+  const auditUsersTableBody = document.getElementById('auditUsersTableBody');
+  const auditActivitiesTableBody = document.getElementById('auditActivitiesTableBody');
+
+  if (btnRefreshAudit) {
+    btnRefreshAudit.addEventListener('click', () => {
+      loadAuditDashboard();
+    });
+  }
+
+  function formatTimeAgo(isoString) {
+    if (!isoString) return '<span style="color: var(--text-muted);">Nunca acessou</span>';
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '<span style="color: var(--text-muted);">Nunca acessou</span>';
+
+    const now = new Date();
+    const diffSec = Math.floor((now - date) / 1000);
+    
+    const formattedDate = date.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+    if (diffSec < 60) return `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Online agora</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
+    if (diffSec < 3600) {
+      const mins = Math.floor(diffSec / 60);
+      return `<span style="color: #38bdf8; font-weight: 600;">Há ${mins} min</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
+    }
+    if (diffSec < 86400) {
+      const hours = Math.floor(diffSec / 3600);
+      return `<span style="color: var(--text-secondary);">Há ${hours} h</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
+    }
+    const days = Math.floor(diffSec / 86400);
+    return `<span style="color: var(--text-secondary);">Há ${days} dia(s)</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
+  }
+
+  function getActionBadge(actionType) {
+    const type = String(actionType || '').toUpperCase();
+    if (type === 'LOGIN') {
+      return `<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">🔑 Login</span>`;
+    }
+    if (type === 'CONSULTA_PED_NF' || type === 'CONSULTA_PEDIDOS') {
+      return `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🔍 Consulta Pedido</span>`;
+    }
+    if (type === 'DETALHES_PEDIDO') {
+      return `<span class="badge" style="background: rgba(129, 140, 248, 0.15); color: #818cf8; border: 1px solid rgba(129, 140, 248, 0.3);">📄 Detalhes Pedido</span>`;
+    }
+    if (type === 'CONSULTA_COMISSOES') {
+      return `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">💰 Comissões</span>`;
+    }
+    if (type === 'UPLOAD_FATURA') {
+      return `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.3);">📦 Upload Fatura</span>`;
+    }
+    return `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3);">${type}</span>`;
+  }
+
+  async function loadAuditDashboard() {
+    if (!auditUsersTableBody || !auditActivitiesTableBody) return;
+
+    try {
+      auditUsersTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Carregando resumo dos usuários...</td></tr>`;
+      auditActivitiesTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Carregando feed de atividades...</td></tr>`;
+
+      const response = await fetch('/api/admin/audit-summary');
+      const data = await response.json();
+
+      if (data.success) {
+        if (auditDbBadge) {
+          if (data.dbConnected) {
+            auditDbBadge.textContent = '🟢 Supabase PostgreSQL Ativo';
+            auditDbBadge.style.color = '#10b981';
+            auditDbBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+          } else {
+            auditDbBadge.textContent = '🟡 Modo Contingência Local';
+            auditDbBadge.style.color = '#f59e0b';
+            auditDbBadge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+          }
+        }
+
+        const usersList = data.users || [];
+        const activitiesList = data.recentActivities || [];
+
+        const activeCount = usersList.filter(u => (parseInt(u.totalActions, 10) || 0) > 0 || u.lastActiveAt).length;
+        const totalActionsSum = usersList.reduce((acc, curr) => acc + (parseInt(curr.totalActions, 10) || 0), 0);
+
+        if (statAuditActiveUsers) statAuditActiveUsers.textContent = activeCount;
+        if (statAuditTotalUsers) statAuditTotalUsers.textContent = `Total: ${usersList.length} usuários cadastrados`;
+        if (statAuditTotalActions) statAuditTotalActions.textContent = totalActionsSum;
+
+        // Renderiza Tabela de Usuários
+        if (usersList.length === 0) {
+          auditUsersTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum usuário cadastrado.</td></tr>`;
+        } else {
+          auditUsersTableBody.innerHTML = usersList.map(u => {
+            const roleBadge = u.role === 'admin' 
+              ? '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Admin</span>'
+              : (u.role === 'vendedor' 
+                ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Vendedor (${u.vendorCode || 'S/C'})</span>`
+                : '<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Operador</span>');
+
+            const statusBadge = u.active !== false
+              ? '<span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">Ativo</span>'
+              : '<span class="badge" style="background: rgba(148, 163, 184, 0.1); color: #94a3b8;">Inativo</span>';
+
+            const countActions = parseInt(u.totalActions, 10) || 0;
+            const countBadge = countActions > 0
+              ? `<span style="font-weight: 700; color: #10b981; font-size: 0.95rem;">${countActions} ação(ões)</span>`
+              : `<span style="color: var(--text-muted);">0</span>`;
+
+            return `
+              <tr>
+                <td><strong style="color: var(--text-primary); font-family: monospace;">${u.username}</strong></td>
+                <td>${u.name}</td>
+                <td>${roleBadge}</td>
+                <td>${statusBadge}</td>
+                <td>${formatTimeAgo(u.lastActiveAt || u.lastLoginAt)}</td>
+                <td style="text-align: right;">${countBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Renderiza Feed de Atividades
+        if (activitiesList.length === 0) {
+          auditActivitiesTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma atividade registrada ainda. Conforme os usuários realizarem consultas e logins, elas aparecerão aqui em tempo real.</td></tr>`;
+        } else {
+          auditActivitiesTableBody.innerHTML = activitiesList.map(act => {
+            const dateStr = act.createdAt 
+              ? new Date(act.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+              : 'N/A';
+
+            return `
+              <tr>
+                <td style="color: var(--text-muted); font-size: 0.85rem; font-family: monospace; white-space: nowrap;">${dateStr}</td>
+                <td>
+                  <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${act.userName || act.username}</div>
+                  <small style="color: var(--text-muted); font-family: monospace;">@${act.username}</small>
+                </td>
+                <td>${getActionBadge(act.actionType)}</td>
+                <td style="color: var(--text-secondary); font-size: 0.9rem;">${act.description}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } else {
+        auditUsersTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 1.5rem;">Erro ao carregar dados: ${data.message || 'Desconhecido'}</td></tr>`;
+        auditActivitiesTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 1.5rem;">Erro ao carregar feed de atividades.</td></tr>`;
+      }
+    } catch (err) {
+      console.error('Erro ao carregar auditoria:', err);
+      if (auditUsersTableBody) auditUsersTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 1.5rem;">Falha na conexão com o servidor.</td></tr>`;
+      if (auditActivitiesTableBody) auditActivitiesTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 1.5rem;">Falha na conexão com o servidor.</td></tr>`;
+    }
   }
 
   // --- MÓDULO VENDEDORES: CONSULTA PEDIDOS & COMISSÕES ---
