@@ -43,12 +43,14 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
   * Trava de intervalo de 60 dias para proteção do banco de dados.
 
 ### ⚙️ Módulo 3: Configurações & Controle de Acesso
-* Gestão de usuários (`data/users.json`), senhas e permissões de abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
+* Gestão de usuários, senhas e permissões de abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
+* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência perpétua de usuários, históricos e auditoria via `postgres_db.js`, com auto-criação de schema e fallback gracioso local.
 * Usuários ativos: `alexandre` (Admin), `erica`, `wallerson` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
 
 ### 🌐 Módulo 4: Implantação 100% Nuvem
 * Container Docker no Render com deploy contínuo integrado ao GitHub.
-* API de banco no Railway com driver ODBC SQL Server.
+* API de banco Protheus no Railway com driver ODBC SQL Server.
+* Banco de dados relacional PostgreSQL no Supabase (Pooler SSL / `DATABASE_URL`).
 
 ---
 

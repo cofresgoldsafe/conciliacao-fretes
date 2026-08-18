@@ -14,6 +14,16 @@ const {
   getNomeVendedor
 } = require('./protheus_db');
 
+const {
+  initPostgres,
+  getUsers: getUsersDB,
+  saveUser: saveUserDB,
+  deleteUser: deleteUserDB,
+  getHistory: getHistoryDB,
+  saveHistoryItem: saveHistoryItemDB,
+  isPostgresConnected
+} = require('./postgres_db');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -36,81 +46,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // Configure uploads and data directories
 const uploadsDir = path.join(__dirname, 'uploads');
 const dataDir = path.join(__dirname, 'data');
-const historyFile = path.join(dataDir, 'history.json');
 const vippConfigFile = path.join(dataDir, 'vipp_config.json');
-const usersFile = path.join(dataDir, 'users.json');
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-if (!fs.existsSync(historyFile)) fs.writeFileSync(historyFile, JSON.stringify([]));
-
-function getUsers() {
-  try {
-    if (fs.existsSync(usersFile)) {
-      return JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-    }
-  } catch {}
-
-  const defaultUsers = [
-    {
-      username: 'alexandre',
-      name: 'Alexandre',
-      pass: '102030',
-      role: 'admin',
-      permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'],
-      active: true
-    },
-    {
-      username: 'erica',
-      name: 'Érica',
-      pass: '1020304050',
-      role: 'user',
-      permissions: ['logistica', 'consulta'],
-      active: true
-    },
-    {
-      username: 'wallerson',
-      name: 'Wallerson',
-      pass: '10203040',
-      role: 'user',
-      permissions: ['logistica', 'consulta'],
-      active: true
-    },
-    {
-      username: 'juliana',
-      name: 'Juliana',
-      pass: '102030',
-      role: 'vendedor',
-      vendorCode: '000074',
-      permissions: ['vendedores'],
-      active: true
-    },
-    {
-      username: 'andrea',
-      name: 'Andrea',
-      pass: '102030',
-      role: 'vendedor',
-      vendorCode: '000064',
-      permissions: ['vendedores'],
-      active: true
-    },
-    {
-      username: 'figueiredo',
-      name: 'Figueiredo',
-      pass: '102030',
-      role: 'vendedor',
-      vendorCode: '000004',
-      permissions: ['vendedores'],
-      active: true
-    }
-  ];
-  fs.writeFileSync(usersFile, JSON.stringify(defaultUsers, null, 2));
-  return defaultUsers;
-}
-
-function saveUsers(usersList) {
-  fs.writeFileSync(usersFile, JSON.stringify(usersList, null, 2));
-}
 
 function getVippConfig() {
   try {
@@ -129,21 +68,6 @@ function getVippConfig() {
 
 function saveVippConfig(cfg) {
   fs.writeFileSync(vippConfigFile, JSON.stringify(cfg, null, 2));
-}
-
-function getHistory() {
-  try {
-    const raw = fs.readFileSync(historyFile, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function saveHistoryItem(item) {
-  const history = getHistory();
-  history.unshift(item);
-  fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
 }
 
 const storage = multer.diskStorage({
@@ -235,14 +159,14 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
 }
 
 // API: Auth Login com Permissões por Usuário
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
   const cleanUser = String(username || '').trim().toLowerCase();
   const cleanPass = String(password || '').trim();
 
   console.log('API Login Attempt for user:', cleanUser);
 
-  const allUsers = getUsers();
+  const allUsers = await getUsersDB();
   const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser && u.active !== false);
 
   if (userFound && String(userFound.pass || '').trim() === cleanPass) {
@@ -256,6 +180,7 @@ app.post('/api/auth/login', (req, res) => {
         username: userFound.username,
         name: userFound.name,
         role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
+        vendorCode: userFound.vendorCode || null,
         permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'configuracoes'] : ['logistica', 'consulta'])
       },
       expiresAt: expiresAt,
@@ -265,9 +190,12 @@ app.post('/api/auth/login', (req, res) => {
 
   // Fallback seguro para contas padrão
   const defaultSeeds = {
-    'alexandre': { pass: '102030', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'configuracoes'] },
+    'alexandre': { pass: '102030', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'] },
     'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
-    'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] }
+    'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] },
+    'juliana': { pass: '102030', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
+    'andrea': { pass: '102030', name: 'Andrea', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] },
+    'figueiredo': { pass: '102030', name: 'Figueiredo', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] }
   };
 
   const seed = defaultSeeds[cleanUser];
@@ -282,6 +210,7 @@ app.post('/api/auth/login', (req, res) => {
         username: cleanUser,
         name: seed.name,
         role: seed.role,
+        vendorCode: seed.vendorCode || null,
         permissions: seed.permissions
       },
       expiresAt: expiresAt,
@@ -293,59 +222,43 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // API: Listar Usuários (Admin)
-app.get('/api/admin/users', (req, res) => {
-  const users = getUsers().map(u => ({
+app.get('/api/admin/users', async (req, res) => {
+  const allUsers = await getUsersDB();
+  const users = allUsers.map(u => ({
     username: u.username,
     name: u.name,
     role: u.role || 'user',
+    vendorCode: u.vendorCode || '',
     permissions: u.permissions || ['logistica', 'consulta'],
     active: u.active !== false
   }));
-  res.json({ success: true, users });
+  res.json({ success: true, users, dbConnected: isPostgresConnected() });
 });
 
 // API: Salvar / Atualizar Usuário e Permissões (Admin)
-app.post('/api/admin/users/save', (req, res) => {
-  const { username, name, pass, role, permissions, active } = req.body || {};
+app.post('/api/admin/users/save', async (req, res) => {
+  const { username, name, pass, role, vendorCode, permissions, active } = req.body || {};
 
   if (!username || !name) {
     return res.status(400).json({ success: false, message: 'Usuário e Nome são obrigatórios.' });
   }
 
   const cleanUser = String(username).trim().toLowerCase();
-  const users = getUsers();
-  const idx = users.findIndex(u => u.username.toLowerCase() === cleanUser);
+  await saveUserDB({
+    username: cleanUser,
+    name: String(name).trim(),
+    pass: pass ? String(pass).trim() : undefined,
+    role: role || 'user',
+    vendorCode: vendorCode || null,
+    permissions: Array.isArray(permissions) ? permissions : ['logistica', 'consulta'],
+    active: active !== undefined ? !!active : true
+  });
 
-  if (idx >= 0) {
-    // Atualizar existente
-    users[idx].name = String(name).trim();
-    if (pass && String(pass).trim() !== '') {
-      users[idx].pass = String(pass).trim();
-    }
-    users[idx].role = role || users[idx].role || 'user';
-    users[idx].permissions = Array.isArray(permissions) ? permissions : (users[idx].permissions || ['logistica', 'consulta']);
-    users[idx].active = active !== undefined ? !!active : users[idx].active;
-  } else {
-    // Criar novo
-    if (!pass) {
-      return res.status(400).json({ success: false, message: 'Senha é obrigatória para novo usuário.' });
-    }
-    users.push({
-      username: cleanUser,
-      name: String(name).trim(),
-      pass: String(pass).trim(),
-      role: role || 'user',
-      permissions: Array.isArray(permissions) ? permissions : ['logistica', 'consulta'],
-      active: active !== undefined ? !!active : true
-    });
-  }
-
-  saveUsers(users);
   res.json({ success: true, message: `Usuário "${cleanUser}" salvo com sucesso.` });
 });
 
 // API: Excluir Usuário (Admin)
-app.post('/api/admin/users/delete', (req, res) => {
+app.post('/api/admin/users/delete', async (req, res) => {
   const { username } = req.body || {};
   const cleanUser = String(username || '').trim().toLowerCase();
 
@@ -353,10 +266,7 @@ app.post('/api/admin/users/delete', (req, res) => {
     return res.status(400).json({ success: false, message: 'O usuário principal Alexandre não pode ser excluído.' });
   }
 
-  let users = getUsers();
-  users = users.filter(u => u.username.toLowerCase() !== cleanUser);
-  saveUsers(users);
-
+  await deleteUserDB(cleanUser);
   res.json({ success: true, message: `Usuário "${cleanUser}" removido com sucesso.` });
 });
 
@@ -563,12 +473,23 @@ app.post('/api/vipp/config', (req, res) => {
 });
 
 // API: Obter Histórico de Integrações
-app.get('/api/history', (req, res) => {
-  res.json({ success: true, history: getHistory() });
+app.get('/api/history', async (req, res) => {
+  const history = await getHistoryDB();
+  res.json({ success: true, history });
+});
+
+// API: Health Check & Status do Banco de Dados
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    postgres: isPostgresConnected() ? 'connected' : 'local_fallback',
+    version: '1.4.0 (18/08/2026 09:20)'
+  });
 });
 
 // API: Lançar fretes no Protheus
-app.post('/api/protheus/launch', (req, res) => {
+app.post('/api/protheus/launch', async (req, res) => {
   const { fatura, items } = req.body;
   
   if (!items || !Array.isArray(items)) {
@@ -609,7 +530,7 @@ app.post('/api/protheus/launch', (req, res) => {
     logs: results
   };
 
-  saveHistoryItem(historyRecord);
+  await saveHistoryItemDB(historyRecord);
 
   res.json({
     success: true,
@@ -622,9 +543,10 @@ app.post('/api/protheus/launch', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`=================================================`);
   console.log(`🚀 Portal Faturas & Protheus Multi-Empresa (14/15/16) rodando na porta ${PORT}`);
   console.log(`👉 Acesse: http://localhost:3000`);
   console.log(`=================================================`);
+  await initPostgres();
 });
