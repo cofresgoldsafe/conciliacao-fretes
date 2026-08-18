@@ -851,6 +851,37 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.removeChild(link);
   });
 
+  const btnClearFatura = document.getElementById('btnClearFatura');
+  if (btnClearFatura) {
+    btnClearFatura.addEventListener('click', () => {
+      if (confirm('Deseja limpar todos os dados da conferência e carregar uma nova fatura?')) {
+        currentFatura = null;
+        currentItems = [];
+        filterText = '';
+        activeStatusFilter = 'all';
+
+        if (faturaSummary) faturaSummary.classList.add('hidden');
+        if (tableSection) tableSection.classList.add('hidden');
+        if (dropzone) dropzone.classList.remove('hidden');
+        if (loadingState) loadingState.classList.add('hidden');
+        if (fileInput) fileInput.value = '';
+        if (tableSearch) tableSearch.value = '';
+        if (tolerancyInput) tolerancyInput.value = '0.00';
+
+        if (filterChips) {
+          filterChips.forEach(c => c.classList.remove('active'));
+          const allChip = document.querySelector('.filter-chip[data-filter="all"]');
+          if (allChip) allChip.classList.add('active');
+        }
+
+        const ctesTableBody = document.getElementById('ctesTableBody');
+        if (ctesTableBody) ctesTableBody.innerHTML = '';
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }
+
   btnLancarProtheus.disabled = true;
   btnLancarProtheus.addEventListener('click', (e) => {
     e.preventDefault();

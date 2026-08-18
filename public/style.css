@@ -581,6 +581,47 @@ body {
   color: #6ee7b7;
 }
 
+.div-card.clear-action-card {
+  border-left: 4px solid #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  justify-content: center;
+  background-color: rgba(30, 41, 59, 0.7);
+  user-select: none;
+}
+
+.div-card.clear-action-card:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-left-color: var(--accent-rose);
+  border-color: rgba(239, 68, 68, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.clear-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clear-card-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.clear-btn-text {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  letter-spacing: 0.05em;
+  transition: color 0.2s ease;
+}
+
+.div-card.clear-action-card:hover .clear-btn-text {
+  color: #fb7185;
+}
+
 .filter-btn-group {
   display: flex;
   gap: 8px;
