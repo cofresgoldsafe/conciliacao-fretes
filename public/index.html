@@ -109,13 +109,12 @@
         <div class="section-title-row">
           <div>
             <h2>1. Upload da Fatura da Transportadora</h2>
-            <p class="desc">Selecione a transportadora/tipo de fatura e envie o arquivo (PDF, CSV ou TXT) para extração e consulta no Protheus.</p>
+            <p class="desc">Envie o arquivo PDF da fatura da transportadora para extração e conciliação com o ERP Protheus.</p>
           </div>
           <div class="transp-select-group">
-            <label for="transportadoraSelect">Tipo de Fatura:</label>
+            <label for="transportadoraSelect">Transportadora / Tipo:</label>
             <select id="transportadoraSelect" class="form-select">
-              <option value="RODONAVES" selected>Rodonaves Transportes (Tipo 1 - PDF)</option>
-              <option value="VIPP_TIPO2">VIPP Visualset / Correios (Tipo 2 - CSV/TXT)</option>
+              <option value="RODONAVES" selected>Rodonaves Transportes (PDF)</option>
             </select>
           </div>
         </div>
@@ -125,8 +124,8 @@
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           </div>
           <h3>Arraste e solte o arquivo da fatura aqui</h3>
-          <p>Formato aceito: PDF (Rodonaves) ou CSV/TXT (VIPP/Correios)</p>
-          <input type="file" id="fileInput" accept=".pdf,.csv,.txt,.xls,.xlsx" class="file-input">
+          <p>Formato aceito: PDF</p>
+          <input type="file" id="fileInput" accept=".pdf" class="file-input">
         </div>
 
         <!-- Loading State -->
@@ -858,6 +857,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5.5"></script>
+  <script src="app.js?v=5.6"></script>
 </body>
 </html>
