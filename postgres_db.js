@@ -8,15 +8,20 @@ const historyFile = path.join(dataDir, 'history.json');
 
 let pool = null;
 let isConnected = false;
+let lastDbError = null;
 
 function getConnectionString() {
-  let url = process.env.DATABASE_URL || '';
-  const pass = process.env.DATABASE_PASS || '';
+  let url = (process.env.DATABASE_URL || '').trim();
+  const pass = (process.env.DATABASE_PASS || '').trim();
   if (url && pass) {
     url = url.replace('[YOUR-PASSWORD]', encodeURIComponent(pass))
              .replace('[YOUR_PASSWORD]', encodeURIComponent(pass))
              .replace('[DATABASE_PASS]', encodeURIComponent(pass))
              .replace('[PASSWORD]', encodeURIComponent(pass));
+  }
+  // Remove sslmode da query string para evitar conflito com rejectUnauthorized: false do pg
+  if (url.includes('sslmode=')) {
+    url = url.replace(/([?&])sslmode=[^&]+(&|$)/, '$1').replace(/[?&]$/, '');
   }
   return url;
 }
@@ -44,14 +49,32 @@ function getPool() {
 
     pool.on('error', (err) => {
       console.warn('⚠️ [Postgres Pool Error]:', err.message);
+      lastDbError = err;
       isConnected = false;
     });
 
     return pool;
   } catch (err) {
     console.error('❌ [Postgres] Erro ao instanciar Pool:', err.message);
+    lastDbError = err;
     return null;
   }
+}
+
+function getDiagnosticInfo() {
+  const rawUrl = (process.env.DATABASE_URL || '').trim();
+  const hasPass = !!(process.env.DATABASE_PASS || '').trim();
+  let masked = 'NÃO CONFIGURADA';
+  if (rawUrl) {
+    masked = rawUrl.replace(/:([^:@]+)@/, ':****@');
+  }
+  return {
+    hasDatabaseUrl: !!rawUrl,
+    hasDatabasePass: hasPass,
+    maskedUrl: masked,
+    isConnected,
+    lastDbError: lastDbError ? (lastDbError.message || String(lastDbError)) : null
+  };
 }
 
 /**
@@ -585,5 +608,6 @@ module.exports = {
   saveHistoryItem,
   logUserActivity,
   getAuditSummary,
+  getDiagnosticInfo,
   isPostgresConnected
 };

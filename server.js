@@ -23,6 +23,7 @@ const {
   saveHistoryItem: saveHistoryItemDB,
   logUserActivity,
   getAuditSummary,
+  getDiagnosticInfo,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -597,7 +598,8 @@ app.get('/api/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     postgres: isPostgresConnected() ? 'connected' : 'local_fallback',
-    version: '1.4.0 (18/08/2026 09:20)'
+    diagnostic: getDiagnosticInfo(),
+    version: '1.4.0 (18/08/2026 10:10)'
   });
 });
 
