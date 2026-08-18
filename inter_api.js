@@ -46,6 +46,9 @@ const CONTAS_INTER = {
   }
 };
 
+// Cache de tokens de acesso por empresa
+const tokenCache = {};
+
 // Mapeamento de caminhos locais padrão para certificados
 const LOCAL_CERT_PATHS = {
   "15": {
