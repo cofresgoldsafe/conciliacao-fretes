@@ -134,7 +134,7 @@ async function initPostgres() {
 
         if (localUsers.length === 0) {
           localUsers = [
-            { username: 'alexandre', name: 'Alexandre', pass: '102030', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'], active: true },
+            { username: 'alexandre', name: 'Alexandre', pass: '321654', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'], active: true },
             { username: 'erica', name: 'Érica', pass: '1020304050', role: 'user', permissions: ['logistica', 'consulta'], active: true },
             { username: 'wallerson', name: 'Wallerson', pass: '10203040', role: 'user', permissions: ['logistica', 'consulta'], active: true },
             { username: 'juliana', name: 'Juliana', pass: '102030', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },
@@ -160,6 +160,12 @@ async function initPostgres() {
         }
         console.log(`✅ [Postgres] Migrados com sucesso ${localUsers.length} usuários para o Supabase PostgreSQL.`);
       }
+
+      // 6. Garante sincronização das senhas atualizadas no Supabase
+      await client.query(`
+        UPDATE users SET pass = '321654', permissions = '["logistica","consulta","vendedores","configuracoes"]'::jsonb WHERE username = 'alexandre';
+        UPDATE users SET pass = '10203040' WHERE username = 'wallerson';
+      `);
 
       return true;
     } finally {

@@ -209,7 +209,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   // Fallback seguro para contas padrão
   const defaultSeeds = {
-    'alexandre': { pass: '102030', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'] },
+    'alexandre': { pass: '321654', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'] },
     'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
     'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] },
     'juliana': { pass: '102030', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
