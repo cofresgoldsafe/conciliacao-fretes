@@ -1011,40 +1011,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- MODALS HANDLER ---
-  btnOpenHistory.addEventListener('click', async () => {
-    historyModalBody.innerHTML = '<p>Carregando histórico de integrações...</p>';
-    historyModal.classList.remove('hidden');
-    try {
-      const response = await fetch('/api/history');
-      const data = await response.json();
-      if (data.success && data.history.length > 0) {
-        historyModalBody.innerHTML = data.history.map(item => `
-          <div class="history-card">
-            <div class="history-card-header">
-              <span class="history-card-title">${item.transportadora} — Fatura ${item.faturaNumero}</span>
-              <span class="status-badge sucesso">✓ Integrado na Empresa ${item.empresaCodigo || '16'}</span>
+  if (btnOpenHistory) {
+    btnOpenHistory.addEventListener('click', async () => {
+      historyModalBody.innerHTML = '<p>Carregando histórico de integrações...</p>';
+      historyModal.classList.remove('hidden');
+      try {
+        const response = await fetch('/api/history');
+        const data = await response.json();
+        if (data.success && data.history.length > 0) {
+          historyModalBody.innerHTML = data.history.map(item => `
+            <div class="history-card">
+              <div class="history-card-header">
+                <span class="history-card-title">${item.transportadora} — Fatura ${item.faturaNumero}</span>
+                <span class="status-badge sucesso">✓ Integrado na Empresa ${item.empresaCodigo || '16'}</span>
+              </div>
+              <div class="history-card-meta">
+                <span>🏢 Pagador: <strong>${item.pagador || 'OACO'}</strong></span> | 
+                <span>📅 Data Integração: ${item.dataIntegracao}</span> | 
+                <span>⏳ Vencimento: <strong>${item.dataVencimento || '31/07/2026'}</strong></span> | 
+                <span>📦 ${item.totalFretes} CT-es</span> | 
+                <span>💰 Total: <strong>${formatCurrency(item.valorTotal)}</strong></span>
+              </div>
             </div>
-            <div class="history-card-meta">
-              <span>🏢 Pagador: <strong>${item.pagador || 'OACO'}</strong></span> | 
-              <span>📅 Data Integração: ${item.dataIntegracao}</span> | 
-              <span>⏳ Vencimento: <strong>${item.dataVencimento || '31/07/2026'}</strong></span> | 
-              <span>📦 ${item.totalFretes} CT-es</span> | 
-              <span>💰 Total: <strong>${formatCurrency(item.valorTotal)}</strong></span>
-            </div>
-          </div>
-        `).join('');
-      } else {
-        historyModalBody.innerHTML = '<p style="color: var(--text-muted);">Nenhum histórico de integração gravado ainda.</p>';
+          `).join('');
+        } else {
+          historyModalBody.innerHTML = '<p style="color: var(--text-muted);">Nenhum histórico de integração gravado ainda.</p>';
+        }
+      } catch (err) {
+        historyModalBody.innerHTML = '<p style="color: var(--accent-rose);">Erro ao buscar histórico.</p>';
       }
-    } catch (err) {
-      historyModalBody.innerHTML = '<p style="color: var(--accent-rose);">Erro ao buscar histórico.</p>';
-    }
-  });
+    });
+  }
 
-  btnCloseModal.addEventListener('click', () => resultModal.classList.add('hidden'));
-  btnConfirmModal.addEventListener('click', () => resultModal.classList.add('hidden'));
-  btnCloseHistoryModal.addEventListener('click', () => historyModal.classList.add('hidden'));
-  btnConfirmHistoryModal.addEventListener('click', () => historyModal.classList.add('hidden'));
+  if (btnCloseModal) btnCloseModal.addEventListener('click', () => resultModal.classList.add('hidden'));
+  if (btnConfirmModal) btnConfirmModal.addEventListener('click', () => resultModal.classList.add('hidden'));
+  if (btnCloseHistoryModal) btnCloseHistoryModal.addEventListener('click', () => historyModal.classList.add('hidden'));
+  if (btnConfirmHistoryModal) btnConfirmHistoryModal.addEventListener('click', () => historyModal.classList.add('hidden'));
 
   // --- USER MANAGEMENT (TAB CONFIGURAÇÕES) ---
   const btnNewUser = document.getElementById('btnNewUser');
