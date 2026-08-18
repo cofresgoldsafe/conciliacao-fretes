@@ -199,6 +199,7 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
   for (const item of items) {
     if (!item.docOriginario || String(item.docOriginario).trim() === '') {
       item.pedVenda = 'Pendente (Vínculo ViPP)';
+      item.codCli = '';
       item.freteCobradoProtheus = 0.00;
       item.freteEmbutidoProtheus = 0.00;
       item.freteProtheusTotal = 0.00;
@@ -211,6 +212,7 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
     try {
       const protheusData = await consultarProtheusNF(item.docOriginario, empresaKey);
       item.pedVenda = protheusData.pedVenda || 'N/A';
+      item.codCli = protheusData.codCli || '';
       item.freteCobradoProtheus = protheusData.freteCobrado || 0.00;
       item.freteEmbutidoProtheus = protheusData.freteEmbutido || 0.00;
       item.freteProtheusTotal = protheusData.freteProtheusTotal || (item.freteCobradoProtheus + item.freteEmbutidoProtheus);
@@ -220,6 +222,7 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
     } catch (err) {
       console.error(`Erro ao consultar Protheus para NF ${item.docOriginario}:`, err.message);
       item.pedVenda = 'Erro Consulta';
+      item.codCli = '';
       item.freteCobradoProtheus = 0.00;
       item.freteEmbutidoProtheus = 0.00;
       item.freteProtheusTotal = 0.00;

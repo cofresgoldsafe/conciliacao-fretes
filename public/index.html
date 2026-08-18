@@ -111,17 +111,12 @@
             <h2>1. Upload da Fatura da Transportadora</h2>
             <p class="desc">Selecione a transportadora/tipo de fatura e envie o arquivo (PDF, CSV ou TXT) para extração e consulta no Protheus.</p>
           </div>
-          <div class="transp-select-group" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
-            <div>
-              <label for="transportadoraSelect">Tipo de Fatura:</label>
-              <select id="transportadoraSelect" class="form-select">
-                <option value="RODONAVES" selected>Rodonaves Transportes (Tipo 1 - PDF)</option>
-                <option value="VIPP_TIPO2">VIPP Visualset / Correios (Tipo 2 - CSV/TXT)</option>
-              </select>
-            </div>
-            <button type="button" id="btnSampleRodonaves" class="btn btn-secondary btn-sm" style="height: 38px;">
-              ⚡ Carregar Exemplo Rodonaves (OACO)
-            </button>
+          <div class="transp-select-group">
+            <label for="transportadoraSelect">Tipo de Fatura:</label>
+            <select id="transportadoraSelect" class="form-select">
+              <option value="RODONAVES" selected>Rodonaves Transportes (Tipo 1 - PDF)</option>
+              <option value="VIPP_TIPO2">VIPP Visualset / Correios (Tipo 2 - CSV/TXT)</option>
+            </select>
           </div>
         </div>
 
@@ -226,8 +221,8 @@
                 <th>Valor Cobrado Transp.</th>
                 <th>Divergência / Validação</th>
                 <th>Data Venc. 📅</th>
+                <th class="protheus-col-header">CodCli</th>
                 <th>Cliente</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody id="ctesTableBody">
@@ -860,6 +855,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5.3"></script>
+  <script src="app.js?v=5.4"></script>
 </body>
 </html>

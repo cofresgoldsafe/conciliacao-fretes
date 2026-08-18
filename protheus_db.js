@@ -97,6 +97,7 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
       SELECT TOP 1
           RTRIM(D2.D2_DOC) AS D2_DOC,
           RTRIM(D2.D2_PEDIDO) AS D2_PEDIDO,
+          RTRIM(ISNULL(C5.C5_CLIENTE, ISNULL(D2.D2_CLIENTE, ''))) AS COD_CLI,
           ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
           ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
           RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
@@ -117,12 +118,14 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
       const freteEmbutido = parseFloat(row.C5_VLR_FRT || 0);
       const freteTotal = roundVal(freteCobrado + freteEmbutido);
       const nomeCli = row.C5_NOMECLI ? String(row.C5_NOMECLI).trim() : '';
+      const codCli = row.COD_CLI ? String(row.COD_CLI).trim() : '';
 
       return {
         encontrado: true,
         empresa: empresaKey,
         tabela: sd2Table,
         pedVenda: row.D2_PEDIDO || 'N/A',
+        codCli: codCli,
         freteCobrado: freteCobrado,
         freteEmbutido: freteEmbutido,
         freteProtheusTotal: freteTotal, // Soma C5_FRETE + C5_VLR_FRT

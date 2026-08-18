@@ -389,27 +389,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const btnSampleRodonaves = document.getElementById('btnSampleRodonaves');
-  if (btnSampleRodonaves) {
-    btnSampleRodonaves.addEventListener('click', async () => {
-      showLoading(true, 'Carregando exemplo Rodonaves (OACO) e consultando Protheus...');
-      try {
-        const response = await fetch('/api/sample-rodonaves');
-        const data = await response.json();
-        if (data.success) {
-          renderFaturaData(data);
-        } else {
-          alert('Erro ao carregar exemplo Rodonaves: ' + data.message);
-        }
-      } catch (err) {
-        alert('Erro ao carregar exemplo Rodonaves.');
-        console.error(err);
-      } finally {
-        showLoading(false);
-      }
-    });
-  }
-
   // --- TAB 2 LOGIC (CORREIOS & VIPP) ---
   const dropzoneCorreios = document.getElementById('dropzoneCorreios');
   const faturaFileCorreios = document.getElementById('faturaFileCorreios');
@@ -755,6 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
           (item.numFrete && item.numFrete.toLowerCase().includes(filterText)) ||
           (item.docOriginario && item.docOriginario.toLowerCase().includes(filterText)) ||
           (item.pedVenda && item.pedVenda.toLowerCase().includes(filterText)) ||
+          (item.codCli && item.codCli.toLowerCase().includes(filterText)) ||
           (item.cliente && item.cliente.toLowerCase().includes(filterText))
         );
         if (!matchesText) return false;
@@ -790,12 +770,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="mono-text"><strong>${formatCurrency(item.valorCobrado)}</strong></td>
         <td>${item._divInfo.badgeHtml}</td>
         <td class="mono-text"><span class="venc-badge">📅 ${escapeHtml(dataVenc)}</span></td>
+        <td class="mono-text"><span class="ped-venda-badge">${escapeHtml(item.codCli || '—')}</span></td>
         <td>${escapeHtml(item.cliente)}</td>
-        <td>
-          <span class="status-badge ${item.status === 'Lançado no Protheus' ? 'sucesso' : 'pendente'}" id="statusBadge-${realIndex}">
-            ${escapeHtml(item.status)}
-          </span>
-        </td>
       `;
       ctesTableBody.appendChild(tr);
     });
@@ -814,12 +790,14 @@ document.addEventListener('DOMContentLoaded', () => {
           const resData = await res.json();
           if (resData.success && resData.data && resData.data.encontrado) {
             currentItems[idx].pedVenda = resData.data.pedVenda;
+            currentItems[idx].codCli = resData.data.codCli || '';
             currentItems[idx].freteCobradoProtheus = resData.data.freteCobrado;
             currentItems[idx].freteEmbutidoProtheus = resData.data.freteEmbutido;
             currentItems[idx].freteProtheusTotal = resData.data.freteProtheusTotal;
             currentItems[idx].protheusEncontrado = true;
           } else {
             currentItems[idx].pedVenda = 'N/A';
+            currentItems[idx].codCli = '';
             currentItems[idx].freteCobradoProtheus = 0;
             currentItems[idx].freteEmbutidoProtheus = 0;
             currentItems[idx].freteProtheusTotal = 0;
@@ -829,6 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
           console.error('Erro na requisição ao Protheus:', err);
           currentItems[idx].protheusEncontrado = false;
+          currentItems[idx].codCli = '';
           renderTableRows();
         }
       });
@@ -853,10 +832,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnExportCsv.addEventListener('click', () => {
     if (!currentItems || currentItems.length === 0) return;
-    let csv = 'DOC;Num Frete;Doc (NF);Ped Venda;Cobrado Cli.;Data Vencimento;Valor Orcado;Valor Cobrado;Cliente;Status\n';
+    let csv = 'DOC;Num Frete;Doc (NF);Ped Venda;Cobrado Cli.;Valor Cobrado;Divergencia;Data Vencimento;CodCli;Cliente\n';
     currentItems.forEach(i => {
       const fTotal = i.freteProtheusTotal || ((i.freteCobradoProtheus || 0) + (i.freteEmbutidoProtheus || 0));
-      csv += `"${i.doc}";"${i.numFrete}";"${i.docOriginario}";"${i.pedVenda}";"${fTotal}";"${i.dataVencimento || currentFatura.dataVencimento}";"${i.valorOrcadoStr || i.valorOrcado}";"${i.valorCobradoStr || i.valorCobrado}";"${i.cliente}";"${i.status}"\n`;
+      const divLabel = (i._divInfo && i._divInfo.type === 'danger') ? `Prejuizo +${i._divInfo.diffVal}` : (i._divInfo && i._divInfo.type === 'info') ? `Sobra ${Math.abs(i._divInfo.diffVal)}` : 'OK';
+      csv += `"${i.doc}";"${i.numFrete}";"${i.docOriginario}";"${i.pedVenda}";"${fTotal}";"${i.valorCobradoStr || i.valorCobrado}";"${divLabel}";"${i.dataVencimento || currentFatura.dataVencimento}";"${i.codCli || ''}";"${i.cliente}"\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
