@@ -763,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <input 
             type="text" 
             class="editable-input ${item.isEdited ? 'edited' : ''}" 
-            value="${escapeHtml(item.docOriginario)}" 
+            value="${escapeHtml(item.docOriginario && /^\d+$/.test(item.docOriginario) ? item.docOriginario.padStart(9, '0') : (item.docOriginario || ''))}" 
             data-index="${realIndex}"
             title="Clique para editar a NF (Consulta SD2_DOC)"
           />
@@ -781,7 +781,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.editable-input').forEach(input => {
       input.addEventListener('change', async (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'), 10);
-        const newNf = e.target.value.trim();
+        const rawNf = e.target.value.trim();
+        const newNf = /^\d+$/.test(rawNf) ? rawNf.padStart(9, '0') : rawNf;
+        e.target.value = newNf;
         currentItems[idx].docOriginario = newNf;
         currentItems[idx].isEdited = true;
         e.target.classList.add('edited');

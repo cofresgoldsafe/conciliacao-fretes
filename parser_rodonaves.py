@@ -41,8 +41,9 @@ def parse_rodonaves_pdf(pdf_path):
                                 break
                         
                         clean_nf_match = re.search(r'(\d+)', doc_orig)
-                        clean_nf = clean_nf_match.group(1).lstrip('0') if clean_nf_match else doc_orig
-                        if not clean_nf:
+                        if clean_nf_match:
+                            clean_nf = clean_nf_match.group(1).zfill(9)
+                        else:
                             clean_nf = doc_orig
                         
                         val_orcado = row_clean[5] if len(row_clean) > 5 else "0,00"
