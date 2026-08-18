@@ -46,8 +46,17 @@ const CONTAS_INTER = {
   }
 };
 
-// Cache de tokens de acesso por empresa
-const tokenCache = {};
+// Mapeamento de caminhos locais padrão para certificados
+const LOCAL_CERT_PATHS = {
+  "15": {
+    cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado GSI\\Inter API_Certificado.crt',
+    key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado GSI\\Inter API_Chave.key'
+  },
+  "16": {
+    cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado OACO\\Inter API_Certificado.crt',
+    key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado OACO\\Inter API_Chave.key'
+  }
+};
 
 /**
  * Obtém as credenciais mTLS configuradas para uma empresa
@@ -55,37 +64,72 @@ const tokenCache = {};
 function getInterCredentials(empresaCodigo) {
   const code = String(empresaCodigo).trim();
   
-  const clientId = process.env[`INTER_CLIENT_ID_${code}`] || 
-                   process.env[`INTER_CLIENT_ID_${CONTAS_INTER[code]?.empresaNome?.split(' ')[0]}`] || 
-                   process.env.INTER_CLIENT_ID || '';
+  let clientId = '';
+  let clientSecret = '';
+  let certRaw = '';
+  let keyRaw = '';
 
-  const clientSecret = process.env[`INTER_CLIENT_SECRET_${code}`] || 
-                       process.env[`INTER_CLIENT_SECRET_${CONTAS_INTER[code]?.empresaNome?.split(' ')[0]}`] || 
-                       process.env.INTER_CLIENT_SECRET || '';
+  if (code === '15') { // GSI
+    clientId = process.env.GSI_clientId || process.env.GSI_CLIENT_ID || 
+               process.env.INTER_CLIENT_ID_15 || process.env.INTER_CLIENT_ID_GSI || process.env.INTER_CLIENT_ID || '';
+    clientSecret = process.env.GSI_clientSecret || process.env.GSI_CLIENT_SECRET || 
+                   process.env.INTER_CLIENT_SECRET_15 || process.env.INTER_CLIENT_SECRET_GSI || process.env.INTER_CLIENT_SECRET || '';
+    certRaw = process.env.GSI_cert || process.env.GSI_CERT || 
+              process.env.INTER_CERT_15 || process.env.INTER_CERT_GSI || process.env.INTER_CERT || '';
+    keyRaw = process.env.GSI_key || process.env.GSI_KEY || 
+             process.env.INTER_KEY_15 || process.env.INTER_KEY_GSI || process.env.INTER_KEY || '';
+  } else if (code === '16') { // OAÇO
+    clientId = process.env.OACO_clientId || process.env.OACO_CLIENT_ID || 
+               process.env.INTER_CLIENT_ID_16 || process.env.INTER_CLIENT_ID_OACO || process.env.INTER_CLIENT_ID || '';
+    clientSecret = process.env.OACO_clientSecret || process.env.OACO_CLIENT_SECRET || 
+                   process.env.INTER_CLIENT_SECRET_16 || process.env.INTER_CLIENT_SECRET_OACO || process.env.INTER_CLIENT_SECRET || '';
+    certRaw = process.env.OACO_cert || process.env.OACO_CERT || 
+              process.env.INTER_CERT_16 || process.env.INTER_CERT_OACO || process.env.INTER_CERT || '';
+    keyRaw = process.env.OACO_key || process.env.OACO_KEY || 
+             process.env.INTER_KEY_16 || process.env.INTER_KEY_OACO || process.env.INTER_KEY || '';
+  } else { // 14 Metal Pleno
+    clientId = process.env.MP_clientId || process.env.MP_CLIENT_ID || 
+               process.env.INTER_CLIENT_ID_14 || process.env.INTER_CLIENT_ID_METAL_PLENO || process.env.INTER_CLIENT_ID || '';
+    clientSecret = process.env.MP_clientSecret || process.env.MP_CLIENT_SECRET || 
+                   process.env.INTER_CLIENT_SECRET_14 || process.env.INTER_CLIENT_SECRET_METAL_PLENO || process.env.INTER_CLIENT_SECRET || '';
+    certRaw = process.env.MP_cert || process.env.MP_CERT || 
+              process.env.INTER_CERT_14 || process.env.INTER_CERT_METAL_PLENO || process.env.INTER_CERT || '';
+    keyRaw = process.env.MP_key || process.env.MP_KEY || 
+             process.env.INTER_KEY_14 || process.env.INTER_KEY_METAL_PLENO || process.env.INTER_KEY || '';
+  }
 
-  // Certificado e chave podem vir em Base64, texto PEM ou caminho de arquivo
-  const certRaw = process.env[`INTER_CERT_${code}`] || process.env.INTER_CERT || '';
-  const keyRaw = process.env[`INTER_KEY_${code}`] || process.env.INTER_KEY || '';
+  // Fallback para caminhos locais conhecidos no drive D:
+  const localFallbacks = LOCAL_CERT_PATHS[code];
+  if (!certRaw && localFallbacks && fs.existsSync(localFallbacks.cert)) {
+    certRaw = localFallbacks.cert;
+  }
+  if (!keyRaw && localFallbacks && fs.existsSync(localFallbacks.key)) {
+    keyRaw = localFallbacks.key;
+  }
 
   let cert = null;
   let key = null;
 
   if (certRaw) {
-    if (fs.existsSync(certRaw)) {
+    if (Buffer.isBuffer(certRaw)) {
+      cert = certRaw;
+    } else if (typeof certRaw === 'string' && fs.existsSync(certRaw)) {
       cert = fs.readFileSync(certRaw);
-    } else if (certRaw.includes('BEGIN CERTIFICATE')) {
+    } else if (typeof certRaw === 'string' && certRaw.includes('BEGIN CERTIFICATE')) {
       cert = Buffer.from(certRaw, 'utf8');
-    } else {
+    } else if (typeof certRaw === 'string') {
       try { cert = Buffer.from(certRaw, 'base64'); } catch (e) { cert = certRaw; }
     }
   }
 
   if (keyRaw) {
-    if (fs.existsSync(keyRaw)) {
+    if (Buffer.isBuffer(keyRaw)) {
+      key = keyRaw;
+    } else if (typeof keyRaw === 'string' && fs.existsSync(keyRaw)) {
       key = fs.readFileSync(keyRaw);
-    } else if (keyRaw.includes('BEGIN RSA PRIVATE KEY') || keyRaw.includes('BEGIN PRIVATE KEY')) {
+    } else if (typeof keyRaw === 'string' && (keyRaw.includes('BEGIN RSA PRIVATE KEY') || keyRaw.includes('BEGIN PRIVATE KEY'))) {
       key = Buffer.from(keyRaw, 'utf8');
-    } else {
+    } else if (typeof keyRaw === 'string') {
       try { key = Buffer.from(keyRaw, 'base64'); } catch (e) { key = keyRaw; }
     }
   }
@@ -132,7 +176,7 @@ async function getInterAccessToken(empresaCodigo) {
   const creds = getInterCredentials(empresaCodigo);
   
   if (!creds.isConfigured) {
-    throw new Error(`Credenciais do Banco Inter não configuradas para a Empresa ${empresaCodigo}. Configure INTER_CLIENT_ID_${empresaCodigo}, INTER_CLIENT_SECRET_${empresaCodigo}, INTER_CERT_${empresaCodigo} e INTER_KEY_${empresaCodigo} no Render.`);
+    throw new Error(`Credenciais do Banco Inter não configuradas para a Empresa ${empresaCodigo}. Configure ${empresaCodigo === '15' ? 'GSI_clientId/GSI_clientSecret' : 'OACO_clientId/OACO_clientSecret'} e os certificados.`);
   }
 
   // Verifica cache
@@ -141,14 +185,35 @@ async function getInterAccessToken(empresaCodigo) {
     return cached.accessToken;
   }
 
+  const scopesToTry = ['extrato.read', 'banking.saldo banking.extrato.read', 'extrato.read boleto-cobranca.read', ''];
+  let lastError = null;
+
+  for (const scope of scopesToTry) {
+    try {
+      const token = await requestOAuthToken(creds, scope);
+      return token;
+    } catch (err) {
+      lastError = err;
+      // Se o erro não for de escopo ou 400, não adianta tentar outros escopos
+      if (!err.message.includes('400') && !err.message.includes('scope')) {
+        break;
+      }
+    }
+  }
+
+  throw lastError || new Error(`Falha ao autenticar no Banco Inter para Empresa ${empresaCodigo}`);
+}
+
+function requestOAuthToken(creds, scope) {
   return new Promise((resolve, reject) => {
-    const postParams = new URLSearchParams({
+    const params = {
       client_id: creds.clientId,
       client_secret: creds.clientSecret,
-      grant_type: 'client_credentials',
-      scope: 'banking.saldo banking.extrato.read'
-    }).toString();
+      grant_type: 'client_credentials'
+    };
+    if (scope) params.scope = scope;
 
+    const postParams = new URLSearchParams(params).toString();
     const urlObj = new URL(`${INTER_BASE_URL}/oauth/v2/token`);
 
     const options = {
@@ -173,7 +238,7 @@ async function getInterAccessToken(empresaCodigo) {
           try {
             const json = JSON.parse(data);
             const expiresIn = (json.expires_in || 3600) * 1000;
-            tokenCache[empresaCodigo] = {
+            tokenCache[creds.empresaCodigo] = {
               accessToken: json.access_token,
               expiresAt: Date.now() + expiresIn
             };
