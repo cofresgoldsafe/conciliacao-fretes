@@ -85,14 +85,21 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por 4 m�
     * **Grade de Produtos (`SC6`):** Código do Produto, Descrição, Quantidade, Valor Unitário, Valor Total e Previsão de Entrega.
     * **Quadro de Totais:** Subtotal dos Produtos, Frete (Cobrado + Embutido), Descontos e Total Geral do Pedido.
     * Botão para **🖨️ Imprimir Pedido**.
-* **Sub-aba `[ Comissões ]`:**
+* **Sub-aba `[ Comissões & Metas ]`:**
   * **Regra de Fechamento de Ciclo:** Sugere automaticamente o período de fechamento oficial (**do dia 26 do mês anterior ao dia 25 do mês atual**).
   * **Trava de Segurança:** Limite máximo de **60 dias** entre as datas para preservar o desempenho do banco Protheus.
-  * **Cards de Resumo no Topo:** Total em Comissões (R$), Total da Base de Vendas (R$) e Quantidade de Lançamentos.
+  * **Cards de Resumo & Indicadores no Topo:**
+    * **Card "Meta Atingida (%)":** Indicador percentual de atingimento de meta de faturamento, substituindo o antigo totalizador de valor em R$ a pagar pela porcentagem atingida de faturamento.
+      * *Meta Individual:* **R$ 120.000,00** por vendedor (aplicada quando filtrado por vendedor específico ou vendedor logado).
+      * *Meta Global da Equipe:* **R$ 360.000,00** ($3 \times \text{R\$\ } 120.000,00$, aplicada na seleção "Todos os Vendedores" com os 3 vendedores do grupo).
+      * *Fórmula de Cálculo Dinâmico Proporcional:*
+        $$\text{Meta Atingida (\%)} = \left( \frac{\text{Total Faturado (Soma } E3\_BASE)}{\text{Meta Proporcional}} \right) \times 100$$
+    * **Total Faturado / Base de Vendas (R$):** Soma acumulada dos valores base de faturamento (`E3_BASE`) no período apurado.
+    * **Qtd. de Lançamentos / Vendas:** Contagem de registros e pedidos apurados no período.
   * **Grid de Apuração (`SE3160`, `SE3150`, `SE3140`):**
     * Colunas: `Vendedor` | `Empresa` (`MP`, `GSI` ou `OACO`) | `Emissão` | `Pedido` | `Cliente` | `Valor Base` (`E3_BASE`) | `Comissão` (`E3_COMIS`).
     * De-Para oficial de Vendedores: `000004` ➔ **Figueiredo** | `000064` ➔ **Andrea** | `000074` ➔ **Juliana**.
-    * Isolamento por Perfil: Usuários vendedores logados visualizam estritamente suas próprias comissões.
+    * Isolamento por Perfil: Usuários vendedores logados visualizam estritamente suas próprias comissões e sua respectiva meta individual.
 
 ---
 
@@ -137,7 +144,7 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por 4 m�
 
 1. 🟢 **Aba 1 (Logística - Upload Faturas):** 100% Concluída com regras de divergência, cartões estatísticos e filtros.
 2. 🟡 **Aba 2 (Logística - Correios & ViPP):** Parser concluído e testado. Aguardando fornecimento do Token ViPP pela VisualSet.
-3. 🟢 **Aba 3 (Vendedores - Pedidos & Comissões):** 100% Concluída e homologada com as 3 empresas e dados mestres de `SA1010`.
+3. 🟢 **Aba 3 (Vendedores - Pedidos, Comissões & Metas):** 100% Concluída e homologada com as 3 empresas, dados mestres de `SA1010` e indicador dinâmico proporcional de Meta Atingida.
 4. 🟢 **Aba 4 (Configurações & Usuários):** 100% Concluída com controle granular de acesso e 6 usuários ativos.
 5. 🔵 **Gravação Direta no Protheus (Fase Final):** Rotina AdvPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) estruturada com `MATA116`/ExecAuto, com botão desabilitado na interface aguardando publicação no AppServer.
 

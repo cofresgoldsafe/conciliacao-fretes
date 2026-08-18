@@ -80,13 +80,28 @@ function executeRailwayQuery(sql) {
 }
 
 /**
+ * Normaliza termos e documentos para busca flexível com 6 dígitos, 9 dígitos e número puro
+ */
+function getDocVariants(docStr) {
+  const raw = String(docStr || '').trim();
+  if (!raw) return { raw: '', numOnly: '', padded6: '', padded9: '' };
+  const digits = raw.replace(/\D/g, '');
+  const numOnly = digits ? (digits.replace(/^0+/, '') || '0') : raw;
+  const padded6 = digits ? numOnly.padStart(6, '0') : raw;
+  const padded9 = digits ? numOnly.padStart(9, '0') : raw;
+  return { raw, numOnly, padded6, padded9 };
+}
+
+/**
  * Consulta no banco de dados real do Protheus (Empresa OACO SD2160 JOIN SC5160)
  * Soma C5_FRETE + C5_VLR_FRT para a coluna unificada "Cobrado Cli."
  */
 async function consultarProtheusNF(numNF, empresaKey = "OACO") {
-  const cleanNF = String(numNF || '').trim();
-  const padded6 = cleanNF.padStart(6, '0');
-  const padded9 = cleanNF.padStart(9, '0');
+  const variants = getDocVariants(numNF);
+  const cleanNF = variants.raw;
+  const padded6 = variants.padded6;
+  const padded9 = variants.padded9;
+  const numOnly = variants.numOnly;
 
   const infoEmpresa = TABELAS_EMPRESA[empresaKey] || TABELAS_EMPRESA["OACO"];
   const sd2Table = infoEmpresa.sd2; // SD2160 para OACO
@@ -106,7 +121,7 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
         ON C5.C5_FILIAL = D2.D2_FILIAL 
        AND C5.C5_NUM = D2.D2_PEDIDO 
        AND C5.D_E_L_E_T_ = ' '
-      WHERE (D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanNF}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC LIKE '%${cleanNF}')
+      WHERE (D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanNF}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}')
         AND D2.D_E_L_E_T_ = ' '
       ORDER BY D2.D2_EMISSAO DESC
     `;
@@ -138,8 +153,8 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
   }
 
   // Fallback de Produção
-  if (mockDataMapOACO[cleanNF] || mockDataMapOACO[padded6] || mockDataMapOACO[padded9]) {
-    const data = mockDataMapOACO[cleanNF] || mockDataMapOACO[padded6] || mockDataMapOACO[padded9];
+  if (mockDataMapOACO[cleanNF] || mockDataMapOACO[padded6] || mockDataMapOACO[padded9] || mockDataMapOACO[numOnly]) {
+    const data = mockDataMapOACO[cleanNF] || mockDataMapOACO[padded6] || mockDataMapOACO[padded9] || mockDataMapOACO[numOnly];
     const freteTotal = roundVal((data.freteCobrado || 0) + (data.freteEmbutido || 0));
 
     return {
@@ -147,6 +162,7 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
       empresa: "OACO",
       tabela: "SD2160",
       pedVenda: data.pedVenda,
+      codCli: data.codCli || '',
       freteCobrado: data.freteCobrado,
       freteEmbutido: data.freteEmbutido,
       freteProtheusTotal: freteTotal,
@@ -155,14 +171,15 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
   }
 
   return {
-    encontrado: true,
-    empresa: "OACO",
-    tabela: "SD2160",
-    pedVenda: "00" + padded6.slice(-4),
+    encontrado: false,
+    empresa: empresaKey,
+    tabela: sd2Table,
+    pedVenda: 'N/A',
+    codCli: '',
     freteCobrado: 0.00,
     freteEmbutido: 0.00,
     freteProtheusTotal: 0.00,
-    origem: 'GENERATED_FALLBACK'
+    origem: 'NOT_FOUND'
   };
 }
 
@@ -176,11 +193,13 @@ function roundVal(val) {
  * com as colunas: Empresa | Ped Venda | NF | Valor Cobrado | Nome Cli
  */
 async function buscarProtheusMultiEmpresa(tipo, termo) {
-  const cleanTerm = String(termo || '').trim();
-  if (!cleanTerm) return [];
+  const variants = getDocVariants(termo);
+  if (!variants.raw) return [];
 
-  const padded6 = cleanTerm.padStart(6, '0');
-  const padded9 = cleanTerm.padStart(9, '0');
+  const cleanTerm = variants.raw;
+  const padded6 = variants.padded6;
+  const padded9 = variants.padded9;
+  const numOnly = variants.numOnly;
 
   const empresasInfo = [
     { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd2: "SD2160", sc5: "SC5160", defaultClient: "CLIENTE NÃO INFORMADO" },
@@ -193,8 +212,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
   for (const emp of empresasInfo) {
     try {
       const whereClause = (tipo === 'pedVenda')
-        ? `(D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanTerm}' OR D2.D2_PEDIDO LIKE '%${cleanTerm}')`
-        : `(D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanTerm}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC LIKE '%${cleanTerm}')`;
+        ? `(D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanTerm}' OR D2.D2_PEDIDO = '${padded9}' OR D2.D2_PEDIDO = '${numOnly}' OR D2.D2_PEDIDO LIKE '%${numOnly}%')`
+        : `(D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanTerm}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}%')`;
 
       const sql = `
         SELECT TOP 5

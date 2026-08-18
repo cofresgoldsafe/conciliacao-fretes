@@ -1610,6 +1610,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnImprimirDetalhes) btnImprimirDetalhes.addEventListener('click', () => window.print());
 
   // --- SUB-ABA: VENDEDORES - COMISSÕES ---
+  const META_POR_VENDEDOR = 120000.00;
   const comisDataIni = document.getElementById('comisDataIni');
   const comisDataFim = document.getElementById('comisDataFim');
   const comisVendorSelect = document.getElementById('comisVendorSelect');
@@ -1618,7 +1619,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const comissoesResults = document.getElementById('comissoesResults');
   const comissoesEmptyState = document.getElementById('comissoesEmptyState');
   const comissoesTableBody = document.getElementById('comissoesTableBody');
-  const comisTotalComissao = document.getElementById('comisTotalComissao');
+  const comisMetaAtingida = document.getElementById('comisMetaAtingida');
+  const comisMetaDesc = document.getElementById('comisMetaDesc');
   const comisTotalBase = document.getElementById('comisTotalBase');
   const comisTotalCount = document.getElementById('comisTotalCount');
 
@@ -1671,7 +1673,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderComissoesReport(resData) {
     const list = resData.comissoes || [];
 
-    if (comisTotalComissao) comisTotalComissao.textContent = formatCurrency(resData.totalGeralComissao);
+    const numVendedores = (comisVendorSelect && comisVendorSelect.value) ? 1 : 3;
+    const metaTotal = numVendedores * META_POR_VENDEDOR;
+    const totalBase = parseFloat(resData.totalGeralBase) || 0;
+    const percAtingido = metaTotal > 0 ? (totalBase / metaTotal) * 100 : 0;
+
+    if (comisMetaAtingida) {
+      comisMetaAtingida.textContent = `${percAtingido.toFixed(2).replace('.', ',')}% Atingida`;
+    }
+    if (comisMetaDesc) {
+      comisMetaDesc.textContent = `Meta: ${formatCurrency(metaTotal)} (${numVendedores} vendedor${numVendedores > 1 ? 'es' : ''})`;
+    }
     if (comisTotalBase) comisTotalBase.textContent = formatCurrency(resData.totalGeralBase);
     if (comisTotalCount) comisTotalCount.textContent = resData.totalRegistros || list.length;
 

@@ -13,7 +13,7 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 1. **Conciliação Inteligente de Faturas:** Ler faturas Rodonaves (PDF) e Correios/VIPP (CSV/TXT/PDF), batendo automaticamente com os fretes cobrados no Protheus (`C5_FRETE + C5_VLR_FRT`).
 2. **Consulta Rápida de Pedidos (Multi-Empresa):** Localizar pedidos em tempo real nas 3 empresas do grupo (OACO 16, GSI 15 e Metal Pleno 14) por `CodWeb`, `Número do Pedido` ou `Nome do Cliente`.
 3. **Drill-Down e Impressão de Pedidos:** Exibir dados cadastrais completos da base mestra `SA1010` (CNPJ/CPF, Endereço com complemento, Bairro, Cidade/UF, CEP, Contato/Tel), logística, condições de pagamento e grade de itens (`SC6`).
-4. **Fechamento de Comissões de Vendedores:** Apurar comissões periódicas nas tabelas `SE3` (ciclo padrão de 26 a 25), com totalizadores gerais, trava de 60 dias e isolamento seguro por vendedor logado.
+4. **Fechamento de Comissões e Metas:** Apurar faturamento e comissões periódicas nas tabelas `SE3` (ciclo padrão de 26 a 25), com indicador dinâmico de Meta Atingida (% proporcional com base em R$ 120k/vendedor ou R$ 360k global), totalizador de base faturada, trava de 60 dias e isolamento seguro por vendedor logado.
 5. **Governança e Controle de Acesso:** Gerenciar permissões de navegação por perfil e usuário.
 
 ---
@@ -22,7 +22,8 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 
 ### 📦 Módulo 1: Logística & Conciliação de Fretes
 * **Parsers Python:** `parser_rodonaves.py` (PDF Rodonaves multi-páginas), `parser_tipo2.py` (CSV/TXT) e `parser_correios.py` (Fatura Analítica Correios SFE).
-* **Consulta SQL Protheus em Tempo Real:** Relaciona itens de saída (`SD2`) com pedidos de venda (`SC5`), unificando o frete cobrado em uma coluna única.
+* **Consulta SQL Protheus em Tempo Real:** Relaciona itens de saída (`SD2`) com pedidos de venda (`SC5`), unificando o frete cobrado em uma coluna única (`C5_FRETE + C5_VLR_FRT`).
+* **Normalização Multi-Formato de NFe (`getDocVariants`):** Compatibilidade total e busca indexada em `SD2` para NFs com 6 dígitos (`000629`), 9 dígitos com zeros à esquerda (`000000629`) e números puros (`629`), garantindo que qualquer fatura (ex: Rodonaves 31-08) localize instantaneamente o Pedido de Venda e o Cliente em tempo real.
 * **Painel de Divergências:** Cartões estatísticos de resumo, badges coloridos, chips de filtro rápido por status e tolerância configurável em R$.
 * **Edição Viva de NF (`Doc (NF)`):** Reconsulta instantânea ao Protheus e exportação da tabela em CSV.
 
@@ -30,9 +31,13 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 * **Sub-aba 1 (Consulta Pedido):**
   * Pesquisa multi-empresa simultânea nas tabelas `SC5160` (OACO), `SC5150` (GSI) e `SC5140` (Metal Pleno).
   * Modal rico com busca de endereço e contato na tabela mestra `SA1010`, máscaras automáticas de CNPJ/CPF/CEP/Telefone e grade de itens `SC6`.
-* **Sub-aba 2 (Comissões):**
+* **Sub-aba 2 (Comissões & Metas):**
   * Consulta periódica nas tabelas `SE3160` (OACO), `SE3150` (GSI) e `SE3140` (Metal Pleno) com leitura de `E3_BASE`, `E3_PORC` e `E3_COMIS`.
-  * Totalizadores de Base e Comissão no topo da tela.
+  * **Card "Meta Atingida":** Cálculo dinâmico proporcional de faturamento, substituindo a exibição de comissão a pagar em R$ pela porcentagem atingida de faturamento em relação à meta comercial:
+    * **Meta Individual:** R$ 120.000,00 por vendedor (para vendedor selecionado ou perfil de vendedor logado).
+    * **Meta Global:** R$ 360.000,00 para os 3 vendedores do grupo (quando selecionado "Todos os Vendedores").
+    * **Fórmula Proporcional:** `% Meta Atingida = (Total Faturado / Meta Proporcional) * 100`.
+  * Totalizadores de Base Faturada (`E3_BASE`) e Quantidade de Vendas no topo da tela.
   * Coluna **`Empresa`** com as siglas oficiais: **`MP`**, **`GSI`** e **`OACO`**.
   * De-Para de vendedores: `000004` (Figueiredo), `000064` (Andrea), `000074` (Juliana).
   * Trava de intervalo de 60 dias para proteção do banco de dados.
@@ -53,7 +58,7 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 | :--- | :---: | :--- |
 | **Aba 1 (Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
 | **Aba 2 (Correios & FTP ViPP VisualSet)** | 🟢 Canal FTP Homologado | Parser PDF pronto; canal FTP testado e aprovado; aguardando primeiro CSV de retorno na pasta `/Retorno` (Ponto de Parada 7). |
-| **Aba 3 (Vendedores: Consulta Pedido & Comissões)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010` e comissões `SE3`. |
+| **Aba 3 (Vendedores: Consulta Pedido, Comissões & Metas)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010`, comissões `SE3` e cálculo dinâmico de Meta Atingida. |
 | **Aba 4 (Configurações & Usuários)** | 🟢 100% Concluído | Operacional com controle de perfis e 6 usuários cadastrados. |
 | **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Fase Final | Classe AdvPL pronta ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)), botão desabilitado aguardando AppServer. |
 
