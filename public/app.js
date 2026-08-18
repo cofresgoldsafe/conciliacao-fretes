@@ -1262,6 +1262,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userModalMsg) userModalMsg.textContent = '❌ Erro de comunicação com o servidor.';
       }
     });
+  }
+
   // --- SUB-ABA: ATIVIDADES & AUDITORIA DE USO DOS USUÁRIOS ---
   const btnRefreshAudit = document.getElementById('btnRefreshAudit');
   const auditDbBadge = document.getElementById('auditDbBadge');
