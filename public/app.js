@@ -836,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnExportCsv.addEventListener('click', () => {
     if (!currentItems || currentItems.length === 0) return;
-    let csv = 'DOC;Num Frete;Doc (NF);Ped Venda;Cobrado Cli.;Valor Cobrado;Divergencia;Data Vencimento;CodCli;Cliente\n';
+    let csv = 'DOC;Num Frete;Doc (NF);Ped Venda;Cobrado Cli.;Valor Transp.;Divergencia;Data Vencimento;CodCli;Cliente\n';
     currentItems.forEach(i => {
       const fTotal = i.freteProtheusTotal || ((i.freteCobradoProtheus || 0) + (i.freteEmbutidoProtheus || 0));
       const divLabel = (i._divInfo && i._divInfo.type === 'danger') ? `Prejuizo +${i._divInfo.diffVal}` : (i._divInfo && i._divInfo.type === 'info') ? `Sobra ${Math.abs(i._divInfo.diffVal)}` : 'OK';

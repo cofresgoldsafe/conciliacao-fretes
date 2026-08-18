@@ -419,13 +419,18 @@ body {
 .mono-text {
   font-family: var(--font-mono);
   font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .badge-doc {
   background-color: rgba(255, 255, 255, 0.08);
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 4px;
   font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  display: inline-block;
+  letter-spacing: 0.02em;
 }
 
 .ped-venda-badge {
