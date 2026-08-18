@@ -9,11 +9,23 @@ const historyFile = path.join(dataDir, 'history.json');
 let pool = null;
 let isConnected = false;
 
+function getConnectionString() {
+  let url = process.env.DATABASE_URL || '';
+  const pass = process.env.DATABASE_PASS || '';
+  if (url && pass) {
+    url = url.replace('[YOUR-PASSWORD]', encodeURIComponent(pass))
+             .replace('[YOUR_PASSWORD]', encodeURIComponent(pass))
+             .replace('[DATABASE_PASS]', encodeURIComponent(pass))
+             .replace('[PASSWORD]', encodeURIComponent(pass));
+  }
+  return url;
+}
+
 // Inicializa Pool de Conexão com o PostgreSQL
 function getPool() {
   if (pool) return pool;
 
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = getConnectionString();
   if (!connectionString) {
     console.log('ℹ️ [Postgres] DATABASE_URL não configurada. Usando armazenamento JSON local em /data.');
     return null;
@@ -25,7 +37,7 @@ function getPool() {
       ssl: {
         rejectUnauthorized: false
       },
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: 8000,
       idleTimeoutMillis: 30000,
       max: 10
     });
@@ -433,14 +445,14 @@ async function logUserActivity({ username, userName, actionType, description, ip
     }
   }
 
-  // Grava em arquivo local para contingência
+  // Grava em arquivo local para contingência e atualiza dados do usuário
   try {
     const activitiesFile = path.join(dataDir, 'activities.json');
     let acts = [];
     if (fs.existsSync(activitiesFile)) {
       acts = JSON.parse(fs.readFileSync(activitiesFile, 'utf-8'));
     }
-    acts.unshift({
+    const newAct = {
       id: 'ACT-' + Date.now(),
       username: cleanUser,
       userName: cleanName,
@@ -449,9 +461,22 @@ async function logUserActivity({ username, userName, actionType, description, ip
       ip: ip || '',
       metadata: metaObj,
       createdAt: new Date().toISOString()
-    });
+    };
+    acts.unshift(newAct);
     if (acts.length > 200) acts = acts.slice(0, 200);
     fs.writeFileSync(activitiesFile, JSON.stringify(acts, null, 2));
+
+    // Atualiza data/users.json local
+    if (fs.existsSync(usersFile)) {
+      let localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+      const uIdx = localUsers.findIndex(u => String(u.username || '').toLowerCase() === cleanUser);
+      if (uIdx >= 0) {
+        localUsers[uIdx].lastActiveAt = newAct.createdAt;
+        if (cleanType === 'LOGIN') localUsers[uIdx].lastLoginAt = newAct.createdAt;
+        localUsers[uIdx].totalActions = (localUsers[uIdx].totalActions || 0) + 1;
+        fs.writeFileSync(usersFile, JSON.stringify(localUsers, null, 2));
+      }
+    }
   } catch {}
 }
 
@@ -460,7 +485,7 @@ async function logUserActivity({ username, userName, actionType, description, ip
  */
 async function getAuditSummary() {
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
       const usersRes = await p.query(`
         SELECT 
@@ -489,6 +514,7 @@ async function getAuditSummary() {
         FROM user_activities;
       `);
 
+      isConnected = true;
       return {
         users: usersRes.rows || [],
         recentActivities: actsRes.rows || [],
@@ -496,11 +522,12 @@ async function getAuditSummary() {
         dbConnected: true
       };
     } catch (err) {
-      console.warn('⚠️ [Postgres] Erro ao obter resumo de auditoria do banco:', err.message);
+      console.warn('⚠️ [Postgres] Erro ao obter resumo de auditoria do banco, usando fallback local:', err.message);
+      isConnected = false;
     }
   }
 
-  // Fallback Local
+  // Fallback Local Inteligente
   try {
     const activitiesFile = path.join(dataDir, 'activities.json');
     let acts = [];
@@ -511,15 +538,33 @@ async function getAuditSummary() {
     if (fs.existsSync(usersFile)) {
       localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
     }
-    return {
-      users: localUsers.map(u => ({
+
+    const mappedUsers = localUsers.map(u => {
+      const uName = String(u.username || '').toLowerCase();
+      const userActs = acts.filter(a => String(a.username || '').toLowerCase() === uName);
+      const lastAct = userActs.length > 0 ? userActs[0].createdAt : (u.lastActiveAt || u.lastLoginAt || null);
+      const lastLog = userActs.find(a => a.actionType === 'LOGIN');
+      return {
         ...u,
-        lastLoginAt: null,
-        lastActiveAt: null,
-        totalActions: acts.filter(a => a.username === u.username).length
-      })),
+        lastLoginAt: lastLog ? lastLog.createdAt : (u.lastLoginAt || null),
+        lastActiveAt: lastAct,
+        totalActions: userActs.length || (u.totalActions || 0)
+      };
+    });
+
+    // Ordena por último acesso ativo
+    mappedUsers.sort((a, b) => {
+      const ta = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0;
+      const tb = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0;
+      return tb - ta;
+    });
+
+    const activeUsersCount = mappedUsers.filter(u => u.totalActions > 0 || u.lastActiveAt).length;
+
+    return {
+      users: mappedUsers,
       recentActivities: acts,
-      stats: { totalActivities: acts.length, activeUsersCount: new Set(acts.map(a => a.username)).size },
+      stats: { totalActivities: acts.length, activeUsersCount },
       dbConnected: false
     };
   } catch {
