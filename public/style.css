@@ -1482,4 +1482,292 @@ body {
   border-top: 1px solid var(--panel-border);
 }
 
+/* ==========================================================================
+   ESTILOS: ASSISTENTE FINANCEIRO & CONCILIAÇÃO BANCÁRIA (BANCO INTER 077)
+   ========================================================================== */
+
+.btn-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-chip:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.btn-chip.active {
+  background: rgba(37, 99, 235, 0.25);
+  color: #60a5fa;
+  border-color: rgba(37, 99, 235, 0.5);
+  font-weight: 600;
+}
+
+.concil-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.concil-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.concil-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.concil-card.status-card-ok {
+  border-top: 4px solid #10b981;
+}
+
+.concil-card.status-card-divergente {
+  border-top: 4px solid #ef4444;
+}
+
+.concil-card.status-card-erro {
+  border-top: 4px solid #f59e0b;
+}
+
+.concil-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.concil-empresa-info h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.concil-empresa-info .concil-conta-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--panel-border);
+  margin-top: 4px;
+}
+
+.badge-status-ok {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.badge-status-divergente {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.badge-status-erro {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.concil-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+}
+
+.concil-metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.concil-metric-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.concil-metric-val {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary);
+}
+
+.concil-diff-box {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  margin-top: 0.25rem;
+}
+
+.concil-diff-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.diff-val-zero {
+  color: #10b981;
+}
+
+.diff-val-alert {
+  color: #f87171;
+}
+
+.concil-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.concil-meta-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Diagnóstico e Lotes Agrupados N:1 */
+.diag-tabs .diag-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.diag-tabs .diag-tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.diag-tabs .diag-tab-btn.active {
+  color: #38bdf8;
+  border-bottom-color: #38bdf8;
+}
+
+.tag-count {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.lote-card {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lote-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lote-banco-badge {
+  background: rgba(37, 99, 235, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.lote-protheus-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-left: 1rem;
+  border-left: 2px dashed rgba(56, 189, 248, 0.4);
+}
+
+.lote-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.lote-item-row strong {
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+
 

@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/08/2026 10:10</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/08/2026 13:30 (Módulo Financeiro)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -51,10 +51,14 @@
       <button class="main-tab-btn" data-main-tab="vendedores" id="mainTabVendedores">
         <span>💼 VENDEDORES</span>
       </button>
+      <button class="main-tab-btn" data-main-tab="financeiro" id="mainTabFinanceiro">
+        <span>💰 ASSIST. FINANC.</span>
+      </button>
       <button class="main-tab-btn" data-main-tab="configuracoes" id="mainTabConfig">
         <span>⚙️ CONFIGURAÇÕES</span>
       </button>
     </nav>
+
 
     <!-- 2ª CAMADA DE NAVEGAÇÃO: SUB-ABAS (SUB-NÍVEL) -->
     <nav class="sub-tabs-container" id="subTabsContainer">
@@ -87,6 +91,14 @@
         <button class="nav-tab-btn" data-tab="tab-vend-comissoes">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           <span>Comissões</span>
+        </button>
+      </div>
+
+      <!-- Sub-abas de Assistente Financeiro -->
+      <div class="sub-tabs-group hidden" id="subGroupFinanceiro">
+        <button class="nav-tab-btn active" data-tab="tab-conciliacao-bancaria">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"/></svg>
+          <span>Conciliação Bancária</span>
         </button>
       </div>
 
@@ -720,7 +732,158 @@
       </section>
     </div>
 
+    <!-- ABA 5: ASSIST. FINANC. -> Conciliação Bancária -->
+    <div id="tab-conciliacao-bancaria" class="tab-pane">
+      
+      <!-- Seção Superior de Filtros e Controles -->
+      <section class="card upload-section">
+        <div class="section-title-row flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>🏦 Conciliação Bancária Automatizada — Banco Inter (077)</span>
+              <span class="version-tag" style="background: rgba(34, 197, 94, 0.12); color: #22c55e; border-color: rgba(34, 197, 94, 0.25);">Protheus SE8/SE5 vs Inter API</span>
+            </h2>
+            <p class="desc">Confronte o saldo de fechamento do dia útil anterior e audite lançamentos divergentes com agrupamento inteligente N:1.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="btnOpenInterConfig" class="btn btn-outline btn-sm" title="Verificar status das chaves de API do Banco Inter">
+              🔑 Status Credenciais Inter
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Filtros -->
+        <div class="concil-filter-bar" style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1.25rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.45); border-radius: 10px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="min-width: 220px; flex: 1;">
+            <label for="concilDataRef" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">
+              📅 Data de Referência (Saldo até):
+            </label>
+            <input type="date" id="concilDataRef" class="form-input" style="width: 100%; height: 42px; font-weight: 600; font-family: 'JetBrains Mono', monospace;" />
+            <div class="quick-date-chips" style="display: flex; gap: 0.4rem; margin-top: 0.4rem;">
+              <button type="button" class="btn-chip active" id="btnChipUltimoUtil">Último Dia Útil</button>
+              <button type="button" class="btn-chip" id="btnChipD2">D-2</button>
+              <button type="button" class="btn-chip" id="btnChipD3">D-3</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="min-width: 280px; flex: 1.5;">
+            <label for="concilEmpresaSelect" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">
+              🏢 Seleção de Empresa:
+            </label>
+            <select id="concilEmpresaSelect" class="form-select" style="width: 100%; height: 42px; font-weight: 600;">
+              <option value="ALL" selected>🏢 Todas as 3 Empresas (14 - Metal Pleno, 15 - GSI, 16 - OAÇO)</option>
+              <option value="14">14 - Metal Pleno / S4BW (Conta 3974073-9)</option>
+              <option value="15">15 - GSI Cofres (Conta 13776065-5)</option>
+              <option value="16">16 - OAÇO Produtos de Aço (Conta 4816560-5)</option>
+            </select>
+          </div>
+
+          <div style="align-self: flex-end;">
+            <button id="btnExecutarConciliacao" class="btn btn-primary btn-large" style="height: 42px; padding: 0 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
+              <span>⚡ Iniciar Conciliação Bancária</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Estado Inicial: Pronto para Iniciar (Clean State) -->
+        <div id="concilIdleState" class="concil-idle-box" style="margin-top: 1.5rem; padding: 2.5rem 1.5rem; text-align: center; background: rgba(30, 41, 59, 0.25); border: 1px dashed var(--panel-border); border-radius: 12px;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🏦</div>
+          <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text-primary);">Aba pronta para conciliação</h3>
+          <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 1.25rem; font-size: 0.9rem; line-height: 1.5;">
+            Defina a data desejada e clique em <strong>"Iniciar Conciliação Bancária"</strong> para ler os saldos da tabela <code>SE8</code> no Protheus e confrontar com os saldos da API do Banco Inter para as empresas selecionadas.
+          </p>
+          <div style="display: inline-flex; gap: 1rem; flex-wrap: wrap; justify-content: center; font-size: 0.8rem; color: var(--text-muted);">
+            <span>🛡️ <strong>14:</strong> Metal Pleno (SE8140)</span>
+            <span>🛡️ <strong>15:</strong> GSI Cofres (SE8150)</span>
+            <span>🛡️ <strong>16:</strong> OAÇO (SE8160)</span>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="concilLoadingState" class="loading-state hidden" style="margin-top: 1.5rem; padding: 2.5rem 1rem;">
+          <div class="spinner"></div>
+          <p id="concilLoadingMsg" style="font-weight: 500; margin-top: 1rem;">Consultando saldos na tabela SE8 do Protheus e comunicando com o Banco Inter...</p>
+        </div>
+      </section>
+
+      <!-- Seção de Cards de Saldos (Macro) -->
+      <section id="concilResultsSection" class="concil-results-section hidden" style="margin-top: 1.5rem;">
+        <div class="section-subtitle-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div>
+            <h3 style="font-size: 1.1rem; margin: 0; color: var(--text-primary);">📊 Resultados da Conciliação de Saldos</h3>
+            <span id="concilResumoDataTexto" style="font-size: 0.82rem; color: var(--text-muted);">Data de Fechamento Avaliada: --/--/----</span>
+          </div>
+          <button id="btnRecarregarConciliacao" class="btn btn-outline btn-sm" title="Reconsultar saldos">
+            🔄 Atualizar Consulta
+          </button>
+        </div>
+
+        <!-- Grid de Cards das Empresas -->
+        <div id="concilCardsContainer" class="concil-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+          <!-- Preenchido via JavaScript -->
+        </div>
+      </section>
+
+      <!-- Seção de Diagnóstico Detalhado de Lançamentos (Micro) -->
+      <section id="concilDiagnosticoSection" class="card concil-diag-section hidden" style="margin-top: 1.5rem;">
+        <div class="section-title-row flex-between" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 1rem; margin-bottom: 1.25rem;">
+          <div>
+            <h3 id="diagEmpresaTitulo" style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span>🔍 Diagnóstico de Lançamentos & Auditoria IA</span>
+            </h3>
+            <span id="diagPeriodoSubtitulo" style="font-size: 0.85rem; color: var(--text-muted);">Analisando movimentações Protheus (SE5) vs Extrato Inter dos últimos 3 dias</span>
+          </div>
+          <button id="btnFecharDiagnostico" class="btn btn-outline btn-sm">
+            ✖️ Fechar Diagnóstico
+          </button>
+        </div>
+
+        <!-- Resumo Rápido dos Lançamentos -->
+        <div id="diagResumoBadges" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+          <!-- Preenchido via JS -->
+        </div>
+
+        <!-- Abas Internas do Diagnóstico -->
+        <div class="diag-tabs" style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--panel-border); margin-bottom: 1rem;">
+          <button class="diag-tab-btn active" data-diag-view="agrupados">
+            📦 Lotes Agrupados (N:1) <span id="badgeCountAgrupados" class="tag-count">0</span>
+          </button>
+          <button class="diag-tab-btn" data-diag-view="orfaosProtheus">
+            ⚠️ Faltantes no Banco <span id="badgeCountOrfaosP" class="tag-count">0</span>
+          </button>
+          <button class="diag-tab-btn" data-diag-view="orfaosBanco">
+            ⚠️ Faltantes no Protheus <span id="badgeCountOrfaosB" class="tag-count">0</span>
+          </button>
+          <button class="diag-tab-btn" data-diag-view="conciliados11">
+            ✅ Conciliados Diretos (1:1) <span id="badgeCount11" class="tag-count">0</span>
+          </button>
+        </div>
+
+        <!-- Painel de Visualização das Listagens de Lançamentos -->
+        <div id="diagContentView" style="min-height: 200px;">
+          <!-- Preenchido via JS -->
+        </div>
+      </section>
+
+    </div>
+
   </main>
+
+  <!-- Modal Configuração Credenciais Banco Inter -->
+  <div id="interConfigModal" class="modal hidden">
+    <div class="modal-content modal-large" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3>🔑 Status de Conexão com a API do Banco Inter</h3>
+        <button id="btnCloseInterConfigModal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="interConfigModalBody" style="display: flex; flex-direction: column; gap: 1rem; max-height: 70vh; overflow-y: auto;">
+        <!-- Preenchido via JS -->
+      </div>
+      <div class="modal-footer">
+        <button id="btnConfirmInterConfigModal" class="btn btn-primary">Entendido</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Result Log -->
   <div id="resultModal" class="modal hidden">
@@ -738,6 +901,7 @@
 
   <!-- Modal Configuração Token ViPP -->
   <div id="vippConfigModal" class="modal hidden">
+
     <div class="modal-content">
       <div class="modal-header">
         <h3>🔑 Configuração da API WebService ViPP Visualset</h3>
@@ -844,8 +1008,12 @@
                 <span>💼 3ª Aba: <strong>VENDEDORES</strong> (Consulta Pedido & Comissões)</span>
               </label>
               <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="permFinanceiro" value="financeiro" checked />
+                <span>💰 4ª Aba: <strong>ASSIST. FINANC.</strong> (Conciliação Bancária Inter x Protheus)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                 <input type="checkbox" id="permConfiguracoes" value="configuracoes" />
-                <span>⚙️ 4ª Aba: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
+                <span>⚙️ 5ª Aba: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
               </label>
             </div>
           </div>
@@ -950,6 +1118,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=6.2"></script>
+  <script src="app.js?v=7.0"></script>
 </body>
 </html>

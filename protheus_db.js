@@ -744,6 +744,290 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   };
 }
 
+/**
+ * =========================================================================
+ * MÓDULO ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA (BANCO INTER 077)
+ * =========================================================================
+ */
+
+const EMPRESAS_FINANCEIRO = {
+  "14": {
+    codigo: "14",
+    nome: "METAL PLENO / S4BW",
+    banco: "077",
+    agencia: "0001",
+    conta: "397407319",
+    contaFormatada: "3974073-9",
+    tabelaSE8: "SE8140",
+    tabelaSE5: "SE5140"
+  },
+  "15": {
+    codigo: "15",
+    nome: "GSI COFRES",
+    banco: "077",
+    agencia: "0001",
+    conta: "137760655",
+    contaFormatada: "13776065-5",
+    tabelaSE8: "SE8150",
+    tabelaSE5: "SE5150"
+  },
+  "16": {
+    codigo: "16",
+    nome: "OAÇO PRODUTOS DE AÇO",
+    banco: "077",
+    agencia: "0001",
+    conta: "48165605",
+    contaFormatada: "4816560-5",
+    tabelaSE8: "SE8160",
+    tabelaSE5: "SE5160"
+  }
+};
+
+/**
+ * Consulta o Saldo Protheus (SE8) para uma empresa e data de referência
+ */
+async function consultarSaldoSE8(empresaCodigo, dataYmd) {
+  const emp = EMPRESAS_FINANCEIRO[String(empresaCodigo)];
+  if (!emp) throw new Error(`Empresa inválida: ${empresaCodigo}`);
+
+  const cleanData = String(dataYmd || '').replace(/\D/g, '');
+  if (!cleanData || cleanData.length !== 8) {
+    throw new Error('Data inválida para consulta SE8 (esperado YYYYMMDD)');
+  }
+
+  const sql = `
+    SELECT TOP 1 
+      E8_FILIAL, 
+      E8_BANCO, 
+      E8_AGENCIA, 
+      E8_CONTA, 
+      E8_DTSALAT, 
+      E8_SALATUA,
+      E8_DTSALAN,
+      E8_SALANT
+    FROM ${emp.tabelaSE8}
+    WHERE E8_BANCO = '077'
+      AND E8_DTSALAT <= '${cleanData}'
+      AND D_E_L_E_T_ = ' '
+    ORDER BY E8_DTSALAT DESC
+  `;
+
+  try {
+    const res = await executeRailwayQuery(sql);
+    const rows = res.rows || res;
+    if (rows && rows.length > 0) {
+      const row = rows[0];
+      return {
+        empresaCodigo: emp.codigo,
+        empresaNome: emp.nome,
+        conta: emp.conta,
+        contaFormatada: emp.contaFormatada,
+        dataSaldoConsultada: cleanData,
+        dataUltimoSaldoProtheus: row.E8_DTSALAT || cleanData,
+        saldoProtheus: roundVal(parseFloat(row.E8_SALATUA || 0)),
+        saldoAnteriorProtheus: roundVal(parseFloat(row.E8_SALANT || 0)),
+        encontrado: true
+      };
+    }
+    return {
+      empresaCodigo: emp.codigo,
+      empresaNome: emp.nome,
+      conta: emp.conta,
+      contaFormatada: emp.contaFormatada,
+      dataSaldoConsultada: cleanData,
+      dataUltimoSaldoProtheus: cleanData,
+      saldoProtheus: 0,
+      saldoAnteriorProtheus: 0,
+      encontrado: false
+    };
+  } catch (err) {
+    console.error(`Erro ao consultar SE8 da Empresa ${emp.codigo}:`, err.message);
+    throw err;
+  }
+}
+
+/**
+ * Consulta Movimentações Bancárias Protheus (SE5) em um período
+ */
+async function consultarExtratoSE5(empresaCodigo, dataInicioYmd, dataFimYmd) {
+  const emp = EMPRESAS_FINANCEIRO[String(empresaCodigo)];
+  if (!emp) throw new Error(`Empresa inválida: ${empresaCodigo}`);
+
+  const dIni = String(dataInicioYmd || '').replace(/\D/g, '');
+  const dFim = String(dataFimYmd || '').replace(/\D/g, '');
+
+  const sql = `
+    SELECT 
+      R_E_C_N_O_ AS ID,
+      E5_DATA, 
+      E5_VALOR, 
+      E5_RECPAG, 
+      E5_DOCUMEN, 
+      E5_HISTOR, 
+      E5_BENEF, 
+      E5_TIPODOC,
+      E5_NATUREZ
+    FROM ${emp.tabelaSE5}
+    WHERE E5_BANCO = '077'
+      AND E5_DATA >= '${dIni}'
+      AND E5_DATA <= '${dFim}'
+      AND D_E_L_E_T_ = ' '
+    ORDER BY E5_DATA DESC, E5_VALOR DESC
+  `;
+
+  try {
+    const res = await executeRailwayQuery(sql);
+    const rows = res.rows || res || [];
+    return rows.map((r, index) => {
+      const valor = roundVal(parseFloat(r.E5_VALOR || 0));
+      const tipo = (r.E5_RECPAG || '').trim().toUpperCase() === 'R' ? 'C' : 'D'; // C = Crédito, D = Débito
+      return {
+        id: r.ID || `se5-${emp.codigo}-${index}`,
+        data: r.E5_DATA || '',
+        dataIso: r.E5_DATA ? `${r.E5_DATA.slice(0,4)}-${r.E5_DATA.slice(4,6)}-${r.E5_DATA.slice(6,8)}` : '',
+        valor: valor,
+        tipoOperacao: tipo,
+        recPag: (r.E5_RECPAG || '').trim().toUpperCase(),
+        documento: (r.E5_DOCUMEN || '').trim(),
+        historico: (r.E5_HISTOR || '').trim(),
+        beneficiario: (r.E5_BENEF || '').trim(),
+        tipoDoc: (r.E5_TIPODOC || '').trim(),
+        natureza: (r.E5_NATUREZ || '').trim()
+      };
+    });
+  } catch (err) {
+    console.error(`Erro ao consultar SE5 da Empresa ${emp.codigo}:`, err.message);
+    throw err;
+  }
+}
+
+/**
+ * Algoritmo de Conciliação Inteligente de Lançamentos
+ * Suporta correspondência 1:1 e aglutinação N:1 (múltiplos no Protheus = 1 no Banco)
+ */
+function algoritmoMatchingConciliacao(lancamentosProtheus, transacoesBanco) {
+  const pList = lancamentosProtheus.map(p => ({ ...p, matched: false, matchGroup: null }));
+  const bList = transacoesBanco.map(b => ({ ...b, matched: false, matchGroup: null }));
+
+  const gruposConciliados = [];
+  let groupId = 1;
+
+  // ─── PASSO 1: Casamento 1:1 Direto (Mesmo valor, mesmo tipo D/C e mesma data aproximada) ───
+  for (const b of bList) {
+    if (b.matched) continue;
+    
+    // Procura correspondente 1:1 exato no Protheus
+    const pIndex = pList.findIndex(p => 
+      !p.matched && 
+      p.tipoOperacao === b.tipoOperacao && 
+      Math.abs(p.valor - b.valor) < 0.01 &&
+      (Math.abs(new Date(p.dataIso || p.data) - new Date(b.dataIso || b.data)) <= 86400000 * 2) // até 2 dias de diferença
+    );
+
+    if (pIndex !== -1) {
+      const p = pList[pIndex];
+      p.matched = true;
+      b.matched = true;
+      const g = {
+        id: `g-${groupId++}`,
+        tipo: '1:1',
+        tipoOperacao: b.tipoOperacao,
+        valorTotal: b.valor,
+        dataBanco: b.dataIso || b.data,
+        bancoItems: [b],
+        protheusItems: [p],
+        status: 'CONCILIADO_1_1'
+      };
+      p.matchGroup = g.id;
+      b.matchGroup = g.id;
+      gruposConciliados.push(g);
+    }
+  }
+
+  // ─── PASSO 2: Casamento N:1 (Vários lançamentos no Protheus que somam 1 no Banco) ───
+  // Comum em lotes de pagamentos, folha, fornecedores ou guias agrupadas
+  for (const b of bList) {
+    if (b.matched) continue;
+
+    // Candidatos do Protheus com o mesmo tipo (D/C) e não casados
+    const candidatos = pList.filter(p => 
+      !p.matched && 
+      p.tipoOperacao === b.tipoOperacao &&
+      p.valor <= b.valor + 0.01
+    );
+
+    if (candidatos.length >= 2) {
+      // Busca subconjunto que some exatamente o valor do banco
+      const subconjunto = findSubsetSum(candidatos, b.valor, 0.01, 8);
+      if (subconjunto && subconjunto.length >= 2) {
+        b.matched = true;
+        for (const p of subconjunto) {
+          p.matched = true;
+          p.matchGroup = `g-${groupId}`;
+        }
+        const g = {
+          id: `g-${groupId++}`,
+          tipo: 'N:1',
+          tipoOperacao: b.tipoOperacao,
+          valorTotal: b.valor,
+          dataBanco: b.dataIso || b.data,
+          bancoItems: [b],
+          protheusItems: subconjunto,
+          status: 'CONCILIADO_AGRUPADO_N_1'
+        };
+        b.matchGroup = g.id;
+        gruposConciliados.push(g);
+      }
+    }
+  }
+
+  // ─── PASSO 3: Identificação de Itens Órfãos / Não Conciliados ───
+  const orfaosBanco = bList.filter(b => !b.matched);
+  const orfaosProtheus = pList.filter(p => !p.matched);
+
+  return {
+    gruposConciliados,
+    orfaosBanco,
+    orfaosProtheus,
+    resumo: {
+      totalBanco: bList.length,
+      totalProtheus: pList.length,
+      totalConciliados1_1: gruposConciliados.filter(g => g.tipo === '1:1').length,
+      totalAgrupadosN_1: gruposConciliados.filter(g => g.tipo === 'N:1').length,
+      totalOrfaosBanco: orfaosBanco.length,
+      totalOrfaosProtheus: orfaosProtheus.length
+    }
+  };
+}
+
+/**
+ * Heurística de Subset-Sum para agrupar até maxItems lançamentos do Protheus
+ */
+function findSubsetSum(items, targetSum, tolerance = 0.01, maxItems = 6) {
+  // Ordena decrescente por valor para otimizar poda
+  const sorted = [...items].sort((a, b) => b.valor - a.valor);
+
+  function backtrack(index, currentSubset, currentSum) {
+    if (Math.abs(currentSum - targetSum) <= tolerance && currentSubset.length >= 2) {
+      return currentSubset;
+    }
+    if (currentSum > targetSum + tolerance || currentSubset.length >= maxItems || index >= sorted.length) {
+      return null;
+    }
+
+    for (let i = index; i < sorted.length; i++) {
+      const item = sorted[i];
+      if (currentSum + item.valor > targetSum + tolerance) continue;
+
+      const res = backtrack(i + 1, [...currentSubset, item], currentSum + item.valor);
+      if (res) return res;
+    }
+    return null;
+  }
+
+  return backtrack(0, [], 0);
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
@@ -753,6 +1037,12 @@ module.exports = {
   executeRailwayQuery,
   TABELAS_EMPRESA,
   VENDEDORES_MAP,
-  getNomeVendedor
+  getNomeVendedor,
+  // Exportações do Módulo Financeiro
+  EMPRESAS_FINANCEIRO,
+  consultarSaldoSE8,
+  consultarExtratoSE5,
+  algoritmoMatchingConciliacao
 };
+
 

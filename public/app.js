@@ -128,17 +128,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTabLogistica = document.getElementById('mainTabLogistica');
     const mainTabConsulta = document.getElementById('mainTabConsulta');
     const mainTabVendedores = document.getElementById('mainTabVendedores');
+    const mainTabFinanceiro = document.getElementById('mainTabFinanceiro');
     const mainTabConfig = document.getElementById('mainTabConfig');
     
     // Garante que o usuário Alexandre ou Administrador tenha permissão total mesmo com sessão antiga no localStorage
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
     if (!perms || (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin')) {
-      perms = ['logistica', 'consulta', 'vendedores', 'configuracoes'];
+      perms = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
     }
 
     if (mainTabLogistica) mainTabLogistica.style.display = perms.includes('logistica') ? '' : 'none';
     if (mainTabConsulta) mainTabConsulta.style.display = perms.includes('consulta') ? '' : 'none';
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
+    if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
@@ -292,6 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const subGroupLogistica = document.getElementById('subGroupLogistica');
   const subGroupConsulta = document.getElementById('subGroupConsulta');
   const subGroupVendedores = document.getElementById('subGroupVendedores');
+  const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
   const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
   function switchMainTab(targetMain) {
@@ -301,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
     if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
     if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
+    if (subGroupFinanceiro) subGroupFinanceiro.classList.add('hidden');
     if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
 
     const activeMainBtn = document.querySelector(`.main-tab-btn[data-main-tab="${targetMain}"]`);
@@ -318,6 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (subGroupVendedores) subGroupVendedores.classList.remove('hidden');
       firstSubBtn = subGroupVendedores ? subGroupVendedores.querySelector('.nav-tab-btn') : null;
       initComissaoDates();
+    } else if (targetMain === 'financeiro') {
+      if (subGroupFinanceiro) subGroupFinanceiro.classList.remove('hidden');
+      firstSubBtn = subGroupFinanceiro ? subGroupFinanceiro.querySelector('.nav-tab-btn') : null;
+      initConciliacaoBancaria();
     } else if (targetMain === 'configuracoes') {
       if (subGroupConfiguracoes) subGroupConfiguracoes.classList.remove('hidden');
       firstSubBtn = subGroupConfiguracoes ? subGroupConfiguracoes.querySelector('.nav-tab-btn') : null;
@@ -1906,4 +1914,571 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btnBuscarComissoes) btnBuscarComissoes.addEventListener('click', consultarComissoesAction);
+
+  // =========================================================================
+  // MÓDULO ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA INTER (077) X PROTHEUS
+  // =========================================================================
+
+  const concilDataRef = document.getElementById('concilDataRef');
+  const btnChipUltimoUtil = document.getElementById('btnChipUltimoUtil');
+  const btnChipD2 = document.getElementById('btnChipD2');
+  const btnChipD3 = document.getElementById('btnChipD3');
+  const concilEmpresaSelect = document.getElementById('concilEmpresaSelect');
+  const btnExecutarConciliacao = document.getElementById('btnExecutarConciliacao');
+  const btnOpenInterConfig = document.getElementById('btnOpenInterConfig');
+
+  const concilIdleState = document.getElementById('concilIdleState');
+  const concilLoadingState = document.getElementById('concilLoadingState');
+  const concilLoadingMsg = document.getElementById('concilLoadingMsg');
+  const concilResultsSection = document.getElementById('concilResultsSection');
+  const concilResumoDataTexto = document.getElementById('concilResumoDataTexto');
+  const btnRecarregarConciliacao = document.getElementById('btnRecarregarConciliacao');
+  const concilCardsContainer = document.getElementById('concilCardsContainer');
+
+  const concilDiagnosticoSection = document.getElementById('concilDiagnosticoSection');
+  const diagEmpresaTitulo = document.getElementById('diagEmpresaTitulo');
+  const diagPeriodoSubtitulo = document.getElementById('diagPeriodoSubtitulo');
+  const btnFecharDiagnostico = document.getElementById('btnFecharDiagnostico');
+  const diagResumoBadges = document.getElementById('diagResumoBadges');
+  const diagContentView = document.getElementById('diagContentView');
+  const diagTabBtns = document.querySelectorAll('.diag-tab-btn');
+
+  const badgeCountAgrupados = document.getElementById('badgeCountAgrupados');
+  const badgeCountOrfaosP = document.getElementById('badgeCountOrfaosP');
+  const badgeCountOrfaosB = document.getElementById('badgeCountOrfaosB');
+  const badgeCount11 = document.getElementById('badgeCount11');
+
+  const interConfigModal = document.getElementById('interConfigModal');
+  const interConfigModalBody = document.getElementById('interConfigModalBody');
+  const btnCloseInterConfigModal = document.getElementById('btnCloseInterConfigModal');
+  const btnConfirmInterConfigModal = document.getElementById('btnConfirmInterConfigModal');
+
+  let currentConciliacaoData = null;
+  let currentDiagnosticoData = null;
+  let currentDiagView = 'agrupados';
+
+  /**
+   * Calcula o dia útil anterior pulando fins de semana (offset = 1 -> último útil, offset = 2 -> D-2 útil, etc.)
+   */
+  function getPreviousBusinessDate(offset = 1) {
+    const d = new Date();
+    let count = 0;
+    while (count < offset) {
+      d.setDate(d.getDate() - 1);
+      const day = d.getDay();
+      if (day !== 0 && day !== 6) { // Pula Domingo (0) e Sábado (6)
+        count++;
+      }
+    }
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function formatDisplayDate(dateIso) {
+    if (!dateIso) return '-';
+    if (dateIso.length === 8 && !dateIso.includes('-')) {
+      return `${dateIso.slice(6,8)}/${dateIso.slice(4,6)}/${dateIso.slice(0,4)}`;
+    }
+    const parts = dateIso.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateIso;
+  }
+
+  /**
+   * Inicializa a aba de Conciliação Bancária
+   */
+  function initConciliacaoBancaria() {
+    if (concilDataRef && !concilDataRef.value) {
+      concilDataRef.value = getPreviousBusinessDate(1);
+    }
+  }
+
+  // Chips de seleção rápida de data
+  if (btnChipUltimoUtil) {
+    btnChipUltimoUtil.addEventListener('click', () => {
+      document.querySelectorAll('.quick-date-chips .btn-chip').forEach(c => c.classList.remove('active'));
+      btnChipUltimoUtil.classList.add('active');
+      if (concilDataRef) concilDataRef.value = getPreviousBusinessDate(1);
+    });
+  }
+
+  if (btnChipD2) {
+    btnChipD2.addEventListener('click', () => {
+      document.querySelectorAll('.quick-date-chips .btn-chip').forEach(c => c.classList.remove('active'));
+      btnChipD2.classList.add('active');
+      if (concilDataRef) concilDataRef.value = getPreviousBusinessDate(2);
+    });
+  }
+
+  if (btnChipD3) {
+    btnChipD3.addEventListener('click', () => {
+      document.querySelectorAll('.quick-date-chips .btn-chip').forEach(c => c.classList.remove('active'));
+      btnChipD3.classList.add('active');
+      if (concilDataRef) concilDataRef.value = getPreviousBusinessDate(3);
+    });
+  }
+
+  /**
+   * Executa a Conciliação de Saldos
+   */
+  async function executarConciliacaoAction() {
+    const dataRef = (concilDataRef && concilDataRef.value) ? concilDataRef.value : getPreviousBusinessDate(1);
+    const empresaSel = (concilEmpresaSelect && concilEmpresaSelect.value) ? concilEmpresaSelect.value : 'ALL';
+
+    if (concilIdleState) concilIdleState.classList.add('hidden');
+    if (concilResultsSection) concilResultsSection.classList.add('hidden');
+    if (concilDiagnosticoSection) concilDiagnosticoSection.classList.add('hidden');
+    if (concilLoadingState) {
+      concilLoadingState.classList.remove('hidden');
+      if (concilLoadingMsg) concilLoadingMsg.textContent = `Consultando saldos SE8 no Protheus e extrato do Banco Inter para a data ${formatDisplayDate(dataRef)}...`;
+    }
+
+    try {
+      const res = await fetch(`/api/financeiro/conciliacao?data=${dataRef}&empresa=${empresaSel}`);
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao consultar saldos de conciliação.');
+      }
+
+      currentConciliacaoData = data;
+      renderConciliacaoCards(data.empresas || [], data.dataReferenciaIso);
+
+      if (concilResumoDataTexto) {
+        concilResumoDataTexto.textContent = `Data de Fechamento Avaliada: ${formatDisplayDate(data.dataReferenciaIso)} (${data.empresas.length} empresa${data.empresas.length > 1 ? 's' : ''})`;
+      }
+
+      if (concilResultsSection) concilResultsSection.classList.remove('hidden');
+    } catch (err) {
+      alert(`⚠️ Erro ao executar conciliação: ${err.message}`);
+      if (concilIdleState) concilIdleState.classList.remove('hidden');
+    } finally {
+      if (concilLoadingState) concilLoadingState.classList.add('hidden');
+    }
+  }
+
+  if (btnExecutarConciliacao) btnExecutarConciliacao.addEventListener('click', executarConciliacaoAction);
+  if (btnRecarregarConciliacao) btnRecarregarConciliacao.addEventListener('click', executarConciliacaoAction);
+
+  /**
+   * Renderiza os Cards de Saldos das Empresas
+   */
+  function renderConciliacaoCards(empresas, dataRefIso) {
+    if (!concilCardsContainer) return;
+    concilCardsContainer.innerHTML = '';
+
+    if (!empresas || empresas.length === 0) {
+      concilCardsContainer.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: var(--text-muted);">Nenhuma conta encontrada para os parâmetros informados.</div>`;
+      return;
+    }
+
+    empresas.forEach(emp => {
+      const card = document.createElement('div');
+      const isOk = emp.status === 'OK';
+      const isErro = emp.status === 'ERRO';
+      const statusClass = isOk ? 'status-card-ok' : (isErro ? 'status-card-erro' : 'status-card-divergente');
+
+      card.className = `concil-card ${statusClass}`;
+
+      let badgeHtml = '';
+      if (isOk) {
+        badgeHtml = `<span class="badge-status-ok">🟢 SALDO OK</span>`;
+      } else if (isErro) {
+        badgeHtml = `<span class="badge-status-erro">⚠️ ERRO PROTHEUS</span>`;
+      } else {
+        badgeHtml = `<span class="badge-status-divergente">🔴 DIVERGÊNCIA</span>`;
+      }
+
+      const diffVal = emp.diferenca || 0;
+      const diffClass = Math.abs(diffVal) < 0.01 ? 'diff-val-zero' : 'diff-val-alert';
+      const diffSinal = diffVal > 0 ? '+' : '';
+      const diffFormatted = `${diffSinal}${formatCurrency(diffVal)}`;
+
+      const dataSaldoProtheusFmt = formatDisplayDate(emp.dataUltimoSaldoProtheus || emp.dataReferenciaYmd);
+
+      card.innerHTML = `
+        <div class="concil-card-header">
+          <div class="concil-empresa-info">
+            <h4>
+              <span>🏢 ${escapeHtml(emp.empresaNome)}</span>
+            </h4>
+            <span class="concil-conta-badge">Banco Inter (077) • Ag. ${escapeHtml(emp.agencia || '0001')} / Conta: ${escapeHtml(emp.contaFormatada || emp.conta)}</span>
+          </div>
+          <div>${badgeHtml}</div>
+        </div>
+
+        <div class="concil-metrics-grid">
+          <div class="concil-metric-box">
+            <span class="concil-metric-label">Saldo Protheus (SE8)</span>
+            <span class="concil-metric-val">${formatCurrency(emp.saldoProtheus)}</span>
+          </div>
+          <div class="concil-metric-box">
+            <span class="concil-metric-label">Saldo Banco Inter</span>
+            <span class="concil-metric-val">${formatCurrency(emp.saldoBanco)}</span>
+          </div>
+          <div class="concil-diff-box">
+            <span class="concil-metric-label">Diferença de Saldo:</span>
+            <span class="concil-diff-val ${diffClass}">${diffFormatted}</span>
+          </div>
+        </div>
+
+        ${emp.statusBancoMsg ? `
+          <div style="font-size: 0.73rem; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px;">
+            ℹ️ ${escapeHtml(emp.statusBancoMsg)}
+          </div>
+        ` : ''}
+
+        <div class="concil-card-footer">
+          <span class="concil-meta-date">Fechamento SE8: <strong>${dataSaldoProtheusFmt}</strong></span>
+          <button class="btn ${isOk ? 'btn-outline btn-sm' : 'btn-primary btn-sm'} btn-analisar-divergencia" data-empresa="${emp.empresaCodigo}" data-empresa-nome="${escapeHtml(emp.empresaNome)}">
+            ${isOk ? '📋 Inspecionar Lançamentos' : '🔍 Analisar Divergência & Lançamentos'}
+          </button>
+        </div>
+      `;
+
+      // Event listener do botão de auditoria da empresa
+      const btnAnalisar = card.querySelector('.btn-analisar-divergencia');
+      if (btnAnalisar) {
+        btnAnalisar.addEventListener('click', () => {
+          abrirDiagnosticoEmpresa(emp.empresaCodigo, emp.empresaNome, emp.dataReferenciaIso);
+        });
+      }
+
+      concilCardsContainer.appendChild(card);
+    });
+  }
+
+  /**
+   * Abre o painel de Diagnóstico e Auditoria Detalhada de Lançamentos
+   */
+  async function abrirDiagnosticoEmpresa(empresaCodigo, empresaNome, dataRefIso) {
+    if (concilDiagnosticoSection) {
+      concilDiagnosticoSection.classList.remove('hidden');
+      concilDiagnosticoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    if (diagEmpresaTitulo) {
+      diagEmpresaTitulo.innerHTML = `<span>🔍 Diagnóstico de Lançamentos — Empresa ${empresaCodigo} (${escapeHtml(empresaNome)})</span>`;
+    }
+    if (diagPeriodoSubtitulo) {
+      diagPeriodoSubtitulo.textContent = `Carregando movimentações Protheus (SE5) e Extrato do Banco Inter até ${formatDisplayDate(dataRefIso)}...`;
+    }
+    if (diagContentView) {
+      diagContentView.innerHTML = `
+        <div style="padding: 2.5rem; text-align: center;">
+          <div class="spinner"></div>
+          <p style="margin-top: 1rem; color: var(--text-muted);">Processando algoritmo de conciliação 1:1 e agrupamentos N:1...</p>
+        </div>
+      `;
+    }
+
+    try {
+      const res = await fetch(`/api/financeiro/diagnostico?empresa=${empresaCodigo}&data=${dataRefIso}&dias=3`);
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao carregar diagnóstico.');
+      }
+
+      currentDiagnosticoData = data;
+
+      if (diagPeriodoSubtitulo) {
+        diagPeriodoSubtitulo.textContent = `Período Analisado: ${formatDisplayDate(data.periodo.inicio)} a ${formatDisplayDate(data.periodo.fim)} • ${data.lancamentosProtheusTotal} lançamentos no Protheus, ${data.transacoesBancoTotal} no Banco`;
+      }
+
+      // Atualiza badges de contagem
+      if (badgeCountAgrupados) badgeCountAgrupados.textContent = data.resumo.totalAgrupadosN_1 || 0;
+      if (badgeCountOrfaosP) badgeCountOrfaosP.textContent = data.resumo.totalOrfaosProtheus || 0;
+      if (badgeCountOrfaosB) badgeCountOrfaosB.textContent = data.resumo.totalOrfaosBanco || 0;
+      if (badgeCount11) badgeCount11.textContent = data.resumo.totalConciliados1_1 || 0;
+
+      // Resumo de topo
+      if (diagResumoBadges) {
+        diagResumoBadges.innerHTML = `
+          <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); color: #38bdf8; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+            📦 ${data.resumo.totalAgrupadosN_1} Lotes Agrupados no Protheus (N:1)
+          </div>
+          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+            ⚠️ ${data.resumo.totalOrfaosProtheus} Movimentos Protheus sem Par no Banco
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+            ⚠️ ${data.resumo.totalOrfaosBanco} Lançamentos Banco sem Par no Protheus
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #10b981; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+            ✅ ${data.resumo.totalConciliados1_1} Conciliados 1:1 Exatos
+          </div>
+        `;
+      }
+
+      // Renderiza a view inicial
+      renderDiagnosticoView(currentDiagView);
+    } catch (err) {
+      if (diagContentView) {
+        diagContentView.innerHTML = `<div class="empty-state" style="padding: 2rem; text-align: center; color: #f87171;">⚠️ Falha ao carregar auditoria: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+  }
+
+  // Alternador de sub-abas do diagnóstico
+  diagTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      diagTabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const view = btn.getAttribute('data-diag-view');
+      currentDiagView = view;
+      renderDiagnosticoView(view);
+    });
+  });
+
+  if (btnFecharDiagnostico) {
+    btnFecharDiagnostico.addEventListener('click', () => {
+      if (concilDiagnosticoSection) concilDiagnosticoSection.classList.add('hidden');
+    });
+  }
+
+  /**
+   * Renderiza a visualização selecionada no painel de diagnóstico
+   */
+  function renderDiagnosticoView(tipo) {
+    if (!diagContentView || !currentDiagnosticoData) return;
+
+    if (tipo === 'agrupados') {
+      const agrupados = (currentDiagnosticoData.gruposConciliados || []).filter(g => g.tipo === 'N:1');
+      if (agrupados.length === 0) {
+        diagContentView.innerHTML = `
+          <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📦</div>
+            <p>Nenhum lote com múltiplos lançamentos no Protheus agrupado para um único pagamento bancário neste período.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `<div style="display: flex; flex-direction: column; gap: 1rem;">`;
+      agrupados.forEach((grp, idx) => {
+        const bancoItem = grp.bancoItems[0] || {};
+        const tipoDesc = grp.tipoOperacao === 'D' ? 'Débito / Pagamento' : 'Crédito / Recebimento';
+        const tipoColor = grp.tipoOperacao === 'D' ? '#f87171' : '#10b981';
+
+        html += `
+          <div class="lote-card">
+            <div class="lote-header">
+              <div>
+                <span class="lote-banco-badge">🏦 Banco Inter • 1 Transação de ${formatCurrency(grp.valorTotal)}</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Data: <strong>${formatDisplayDate(grp.dataBanco)}</strong> | ${escapeHtml(bancoItem.titulo || bancoItem.descricao || '')}</span>
+              </div>
+              <div>
+                <span style="font-size: 0.78rem; font-weight: 700; color: ${tipoColor}; background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px;">
+                  ${grp.protheusItems.length} Lançamentos no Protheus somam exatamente este valor
+                </span>
+              </div>
+            </div>
+
+            <div class="lote-protheus-items">
+              <span style="font-size: 0.75rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.04em;">
+                ↳ Lançamentos Vinculados no ERP Protheus (SE5):
+              </span>
+              ${grp.protheusItems.map(p => `
+                <div class="lote-item-row" style="background: rgba(0,0,0,0.2); padding: 6px 10px; border-radius: 6px;">
+                  <div>
+                    <span style="color: var(--text-primary); font-weight: 600;">${escapeHtml(p.historico || 'Lançamento')}</span>
+                    ${p.beneficiario ? `<span style="font-size: 0.75rem; color: var(--text-muted); margin-left: 6px;">(${escapeHtml(p.beneficiario)})</span>` : ''}
+                    ${p.documento ? `<span style="font-size: 0.72rem; color: #94a3b8; margin-left: 6px;">Doc: ${escapeHtml(p.documento)}</span>` : ''}
+                  </div>
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 8px;">${formatDisplayDate(p.dataIso || p.data)}</span>
+                    <strong>${formatCurrency(p.valor)}</strong>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+      diagContentView.innerHTML = html;
+
+    } else if (tipo === 'orfaosProtheus') {
+      const orfaosP = currentDiagnosticoData.orfaosProtheus || [];
+      if (orfaosP.length === 0) {
+        diagContentView.innerHTML = `<div style="padding: 2rem; text-align: center; color: #10b981;">✅ Todos os lançamentos do Protheus foram localizados no extrato bancário.</div>`;
+        return;
+      }
+
+      let html = `
+        <div style="margin-bottom: 0.5rem; font-size: 0.82rem; color: var(--text-muted);">
+          Estes lançamentos constam na tabela <code>SE5</code> do Protheus, mas <strong>NÃO</strong> foram identificados no extrato do Banco Inter:
+        </div>
+        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Documento</th>
+                <th>Histórico / Beneficiário</th>
+                <th style="text-align: right;">Valor (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      orfaosP.forEach(p => {
+        const isCredito = p.tipoOperacao === 'C';
+        html += `
+          <tr>
+            <td>${formatDisplayDate(p.dataIso || p.data)}</td>
+            <td><span class="tag-count" style="color: ${isCredito ? '#10b981' : '#f87171'}; font-weight: 700;">${isCredito ? 'CRÉDITO' : 'DÉBITO'}</span></td>
+            <td><code>${escapeHtml(p.documento || '-')}</code></td>
+            <td><strong>${escapeHtml(p.historico || '-')}</strong> ${p.beneficiario ? `<br><small style="color: var(--text-muted);">${escapeHtml(p.beneficiario)}</small>` : ''}</td>
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: ${isCredito ? '#10b981' : '#f87171'};">${formatCurrency(p.valor)}</td>
+          </tr>
+        `;
+      });
+      html += `</tbody></table></div>`;
+      diagContentView.innerHTML = html;
+
+    } else if (tipo === 'orfaosBanco') {
+      const orfaosB = currentDiagnosticoData.orfaosBanco || [];
+      if (orfaosB.length === 0) {
+        diagContentView.innerHTML = `<div style="padding: 2rem; text-align: center; color: #10b981;">✅ Todas as transações do extrato do Banco Inter foram localizadas no Protheus.</div>`;
+        return;
+      }
+
+      let html = `
+        <div style="margin-bottom: 0.5rem; font-size: 0.82rem; color: var(--text-muted);">
+          Estas transações constam no extrato do <strong>Banco Inter</strong>, mas <strong>NÃO</strong> foram identificadas no Protheus (possível lançamento pendente de digitação):
+        </div>
+        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Transação / Título</th>
+                <th>Documento</th>
+                <th style="text-align: right;">Valor (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      orfaosB.forEach(b => {
+        const isCredito = b.tipoOperacao === 'C';
+        html += `
+          <tr>
+            <td>${formatDisplayDate(b.dataIso || b.data)}</td>
+            <td><span class="tag-count" style="color: ${isCredito ? '#10b981' : '#f87171'}; font-weight: 700;">${isCredito ? 'CRÉDITO' : 'DÉBITO'}</span></td>
+            <td><strong>${escapeHtml(b.titulo || b.descricao || 'Transação')}</strong></td>
+            <td><code>${escapeHtml(b.documento || '-')}</code></td>
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: ${isCredito ? '#10b981' : '#f87171'};">${formatCurrency(b.valor)}</td>
+          </tr>
+        `;
+      });
+      html += `</tbody></table></div>`;
+      diagContentView.innerHTML = html;
+
+    } else if (tipo === 'conciliados11') {
+      const conc11 = (currentDiagnosticoData.gruposConciliados || []).filter(g => g.tipo === '1:1');
+      if (conc11.length === 0) {
+        diagContentView.innerHTML = `<div style="padding: 2rem; text-align: center; color: var(--text-muted);">Nenhum lançamento 1:1 registrado.</div>`;
+        return;
+      }
+
+      let html = `
+        <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Lançamento Protheus</th>
+                <th>Transação Banco Inter</th>
+                <th style="text-align: right;">Valor (R$)</th>
+                <th style="text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      conc11.forEach(g => {
+        const p = g.protheusItems[0] || {};
+        const b = g.bancoItems[0] || {};
+        const isCredito = g.tipoOperacao === 'C';
+        html += `
+          <tr>
+            <td>${formatDisplayDate(g.dataBanco)}</td>
+            <td><span class="tag-count" style="color: ${isCredito ? '#10b981' : '#f87171'}; font-weight: 700;">${isCredito ? 'CRÉDITO' : 'DÉBITO'}</span></td>
+            <td>${escapeHtml(p.historico || '-')} ${p.beneficiario ? `<br><small style="color: var(--text-muted);">${escapeHtml(p.beneficiario)}</small>` : ''}</td>
+            <td>${escapeHtml(b.titulo || b.descricao || '-')}</td>
+            <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace;">${formatCurrency(g.valorTotal)}</td>
+            <td style="text-align: center;"><span class="badge-status-ok" style="font-size: 0.7rem; padding: 2px 6px;">🟢 1:1 Conciliado</span></td>
+          </tr>
+        `;
+      });
+      html += `</tbody></table></div>`;
+      diagContentView.innerHTML = html;
+    }
+  }
+
+  /**
+   * Modal de Configuração / Credenciais do Banco Inter
+   */
+  async function abrirModalInterConfig() {
+    if (!interConfigModal) return;
+    interConfigModal.classList.remove('hidden');
+
+    if (interConfigModalBody) {
+      interConfigModalBody.innerHTML = `<div style="text-align: center; padding: 2rem;"><div class="spinner"></div><p>Verificando credenciais no Render...</p></div>`;
+    }
+
+    try {
+      const res = await fetch('/api/financeiro/inter-config');
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Erro ao carregar status do Inter.');
+      }
+
+      const statusMap = data.status || {};
+      let html = `
+        <div style="background: rgba(30, 41, 59, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border); font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+          <strong style="color: var(--text-primary);">ℹ️ Como Funciona a Integração com o Banco Inter:</strong><br>
+          A API do Banco Inter exige autenticação mTLS (OAuth 2.0 com Certificados Digitais X.509 <code>.crt</code> e chave <code>.key</code>).<br>
+          Cadastre as variáveis no painel de <em>Environment Variables</em> do Render para cada empresa:
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      `;
+
+      for (const [code, info] of Object.entries(statusMap)) {
+        html += `
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <strong style="font-size: 0.95rem; color: var(--text-primary);">🏢 Empresa ${code}: ${escapeHtml(info.empresaNome)}</strong>
+              <span style="font-size: 0.78rem; font-weight: 700; color: ${info.isConfigured ? '#10b981' : '#fbbf24'};">${escapeHtml(info.statusDesc)}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.4rem;">
+              <span>Conta: <strong>${escapeHtml(info.contaFormatada)}</strong></span>
+              <span>Client ID: <strong>${info.hasClientId ? '✅ Configurado' : '❌ Ausente (INTER_CLIENT_ID_' + code + ')'}</strong></span>
+              <span>Client Secret: <strong>${info.hasClientSecret ? '✅ Configurado' : '❌ Ausente (INTER_CLIENT_SECRET_' + code + ')'}</strong></span>
+              <span>Certificado mTLS: <strong>${info.hasCert ? '✅ Carregado' : '❌ Ausente (INTER_CERT_' + code + ')'}</strong></span>
+              <span>Chave Privada: <strong>${info.hasKey ? '✅ Carregada' : '❌ Ausente (INTER_KEY_' + code + ')'}</strong></span>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      if (interConfigModalBody) interConfigModalBody.innerHTML = html;
+    } catch (err) {
+      if (interConfigModalBody) {
+        interConfigModalBody.innerHTML = `<div class="empty-state" style="padding: 1.5rem; text-align: center; color: #f87171;">⚠️ Falha ao verificar credenciais: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+  }
+
+  if (btnOpenInterConfig) btnOpenInterConfig.addEventListener('click', abrirModalInterConfig);
+  if (btnCloseInterConfigModal) btnCloseInterConfigModal.addEventListener('click', () => interConfigModal.classList.add('hidden'));
+  if (btnConfirmInterConfigModal) btnConfirmInterConfigModal.addEventListener('click', () => interConfigModal.classList.add('hidden'));
 });
+
