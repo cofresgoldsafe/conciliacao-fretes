@@ -2451,7 +2451,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <th>Data</th>
                 <th>Tipo</th>
                 <th>Transação / Título</th>
-                <th>Documento</th>
+                <th>Cliente Provável (Extrato)</th>
                 <th style="text-align: right;">Valor (R$)</th>
               </tr>
             </thead>
@@ -2459,12 +2459,13 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       orfaosB.forEach(b => {
         const isCredito = b.tipoOperacao === 'C';
+        const clienteProvavel = b.descricao || b.detalhes || b.titulo || '-';
         html += `
           <tr>
             <td>${formatDisplayDate(b.dataIso || b.data)}</td>
             <td><span class="tag-count" style="color: ${isCredito ? '#10b981' : '#f87171'}; font-weight: 700;">${isCredito ? 'CRÉDITO' : 'DÉBITO'}</span></td>
-            <td><strong>${escapeHtml(b.titulo || b.descricao || 'Transação')}</strong></td>
-            <td><code>${escapeHtml(b.documento || '-')}</code></td>
+            <td><strong>${escapeHtml(b.titulo || 'Transação')}</strong></td>
+            <td><span style="color: var(--text-primary); font-weight: 600;">${escapeHtml(clienteProvavel)}</span></td>
             <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: ${isCredito ? '#10b981' : '#f87171'};">${formatCurrency(b.valor)}</td>
           </tr>
         `;

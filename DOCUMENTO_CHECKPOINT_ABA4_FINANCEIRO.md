@@ -51,3 +51,14 @@ Implementamos com sucesso a nova aba **ASSIST. FINANC.** com a funcionalidade de
 | [`public/index.html`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/index.html) | **MODIFICADO** | Marcação da aba principal, sub-aba, cards de saldo, diagnóstico e modal de credenciais |
 | [`public/app.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/app.js) | **MODIFICADO** | Lógica interativa de filtros, chamadas de API, renderização de cards e visualizador de lotes N:1 |
 | [`public/style.css`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/style.css) | **MODIFICADO** | Estilos modernos para cards de saldo, badges de status, botões de data e cartões de lote agrupado |
+
+---
+
+## 4. 📌 Registro de Pendências & Evoluções Homologadas
+
+1. **🟡 Pendência 1: Credenciais mTLS do Banco Inter — Empresa 14 (Metal Pleno / S4BW):**
+   - **Status:** *Aguardando Configuração*.
+   - **Contexto:** As contas correntes das empresas **15 (GSI)** e **16 (OAÇO)** estão totalmente conectadas via API oficial do Inter. A conta **14 (Metal Pleno - CC `3974073-9`)** permanece aguardando a geração das credenciais (Client ID e Secret) e emissão dos certificados mTLS (`INTER_CERT_14` e `INTER_KEY_14`) no painel de desenvolvedor do Banco Inter para inserção no Render.
+2. **✅ Evolução 2: Coluna "Cliente Provável (Extrato)" em Faltantes no Protheus:**
+   - **Status:** *Homologado e Publicado (19/08/2026 10:38)*.
+   - **Contexto:** Na sub-aba *⚠️ Faltantes no Protheus* do diagnóstico de conciliação, a antiga coluna *Documento* (que sempre exibia `-`) foi substituída por **"Cliente Provável (Extrato)"**. Agora é exibida a descrição/identificação do depositante ou beneficiário vinda diretamente do extrato bancário (ex: `COMPANIA THERMAS DO RIO...`, `INTER PAG INSTITUIÇÃO DE PAG...`), permitindo ao operador identificar com agilidade a qual cliente ou movimento o crédito pertence para digitação no ERP Protheus.

@@ -408,7 +408,7 @@ async function consultarExtratoInter(empresaCodigo, dataInicioIso, dataFimIso) {
                 tipoOperacao: t.tipoOperacao || (t.tipoTransacao === 'DEBITO' || Number(t.valor) < 0 ? 'D' : 'C'),
                 valor: Math.abs(Number(t.valor || 0)),
                 titulo: t.titulo || t.descricao || 'Transação Bancária',
-                descricao: t.descricao || '',
+                descricao: t.descricao || t.detalhes || t.nomePagador || t.nomeRecebedor || '',
                 documento: t.numeroDocumento || t.codigoTransacao || ''
               }));
 
