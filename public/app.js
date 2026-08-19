@@ -1939,7 +1939,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const diagEmpresaTitulo = document.getElementById('diagEmpresaTitulo');
   const diagPeriodoSubtitulo = document.getElementById('diagPeriodoSubtitulo');
   const btnFecharDiagnostico = document.getElementById('btnFecharDiagnostico');
-  const diagResumoBadges = document.getElementById('diagResumoBadges');
   const diagContentView = document.getElementById('diagContentView');
   const diagTabBtns = document.querySelectorAll('.diag-tab-btn');
 
@@ -1956,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentConciliacaoData = null;
   let currentDiagnosticoData = null;
-  let currentDiagView = 'cartao';
+  let currentDiagView = 'orfaosBanco';
 
   /**
    * Calcula o dia útil anterior pulando fins de semana (offset = 1 -> último útil, offset = 2 -> D-2 útil, etc.)
@@ -2210,34 +2209,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (badgeCountOrfaosB) badgeCountOrfaosB.textContent = data.resumo.totalOrfaosBanco || 0;
       if (badgeCount11) badgeCount11.textContent = data.resumo.totalConciliados1_1 || 0;
 
-      // Resumo de topo
-      if (diagResumoBadges) {
-        diagResumoBadges.innerHTML = `
-          <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); color: #c084fc; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            💳 ${data.resumo.totalCartaoLiquido || 0} Vendas de Cartão Conciliadas (Bruto - Taxa)
-          </div>
-          <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); color: #38bdf8; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            📦 ${data.resumo.totalAgrupadosN_1 || 0} Lotes Agrupados no Protheus (N:1)
-          </div>
-          <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #f87171; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            ⚠️ ${data.resumo.totalOrfaosProtheus || 0} Movimentos Protheus sem Par no Banco
-          </div>
-          <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #fbbf24; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            ⚠️ ${data.resumo.totalOrfaosBanco || 0} Lançamentos Banco sem Par no Protheus
-          </div>
-          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #10b981; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-            ✅ ${data.resumo.totalConciliados1_1 || 0} Conciliados 1:1 Exatos
-          </div>
-        `;
-      }
-
-      // Se houver vendas de cartão, prioriza a visualização da aba cartao
-      if ((data.resumo.totalCartaoLiquido || 0) > 0) {
-        currentDiagView = 'cartao';
-        diagTabBtns.forEach(b => b.classList.remove('active'));
-        const btnCartao = document.querySelector('.diag-tab-btn[data-diag-view="cartao"]');
-        if (btnCartao) btnCartao.classList.add('active');
-      }
+      // Define aba inicial padrão como a 1ª aba (orfaosBanco - Faltantes no Protheus)
+      currentDiagView = 'orfaosBanco';
+      diagTabBtns.forEach(b => b.classList.remove('active'));
+      const defaultTab = document.querySelector('.diag-tab-btn[data-diag-view="orfaosBanco"]');
+      if (defaultTab) defaultTab.classList.add('active');
 
       // Renderiza a view inicial
       renderDiagnosticoView(currentDiagView);

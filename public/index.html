@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/08/2026 16:20 (Cartão Líquido)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 19/08/2026 10:24 (Reordenação Abas Conciliação)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -838,27 +838,22 @@
           </button>
         </div>
 
-        <!-- Resumo Rápido dos Lançamentos -->
-        <div id="diagResumoBadges" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
-          <!-- Preenchido via JS -->
-        </div>
-
         <!-- Abas Internas do Diagnóstico -->
         <div class="diag-tabs" style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--panel-border); margin-bottom: 1rem; overflow-x: auto;">
-          <button class="diag-tab-btn active" data-diag-view="cartao">
-            💳 Vendas Cartão / Domicílio <span id="badgeCountCartao" class="tag-count">0</span>
-          </button>
-          <button class="diag-tab-btn" data-diag-view="agrupados">
-            📦 Lotes Agrupados (N:1) <span id="badgeCountAgrupados" class="tag-count">0</span>
+          <button class="diag-tab-btn active" data-diag-view="orfaosBanco">
+            ⚠️ Faltantes no Protheus <span id="badgeCountOrfaosB" class="tag-count">0</span>
           </button>
           <button class="diag-tab-btn" data-diag-view="orfaosProtheus">
             ⚠️ Faltantes no Banco <span id="badgeCountOrfaosP" class="tag-count">0</span>
           </button>
-          <button class="diag-tab-btn" data-diag-view="orfaosBanco">
-            ⚠️ Faltantes no Protheus <span id="badgeCountOrfaosB" class="tag-count">0</span>
-          </button>
           <button class="diag-tab-btn" data-diag-view="conciliados11">
             ✅ Conciliados Diretos (1:1) <span id="badgeCount11" class="tag-count">0</span>
+          </button>
+          <button class="diag-tab-btn" data-diag-view="agrupados">
+            📦 Lotes Agrupados (N:1) <span id="badgeCountAgrupados" class="tag-count">0</span>
+          </button>
+          <button class="diag-tab-btn" data-diag-view="cartao">
+            💳 Vendas Cartão / Domicílio <span id="badgeCountCartao" class="tag-count">0</span>
           </button>
         </div>
 
@@ -1121,6 +1116,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=7.1"></script>
+  <script src="app.js?v=7.2"></script>
 </body>
 </html>
