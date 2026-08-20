@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 20/08/2026 09:20 (Permissões e Gestão de Usuários Blindada)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 20/08/2026 10:18 (Consulta Avançada: Código Web, Vlr NF e Vlr Frete Cob.)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -350,14 +350,29 @@
       <section class="card consulta-card">
         <div class="section-title-row">
           <div>
-            <h2>3. Consulta NFe ou Pedido de Venda</h2>
-            <p class="desc">Consulte o status de vendas e fretes nas Empresas Protheus (<strong>Empresa 16 - OACO, Empresa 15 - GSI, Empresa 14 - Metal Pleno</strong>).</p>
+            <h2>2. Consulta NFe, Pedido de Venda ou Código Web</h2>
+            <p class="desc">Consulte o status de vendas, NFe e fretes nas Empresas Protheus (<strong>Empresa 16 - OACO, Empresa 15 - GSI, Empresa 14 - Metal Pleno</strong>).</p>
           </div>
         </div>
 
         <!-- Search Form Container -->
         <div class="search-form-box">
           <div class="search-fields-grid">
+            <div class="search-field-group" id="groupCodWeb">
+              <label for="searchCodWeb">
+                <span>🌐 Código Web Pipe</span>
+              </label>
+              <div class="input-with-icon">
+                <input type="text" id="searchCodWeb" class="form-input" placeholder="Ex: 98412 ou WEB-98412" />
+                <span class="field-status-tag" id="tagCodWeb">Ativo</span>
+              </div>
+              <small class="field-hint">Busca pelo C5_CODWEB do pedido no Protheus.</small>
+            </div>
+
+            <div class="search-divider-or">
+              <span>OU</span>
+            </div>
+
             <div class="search-field-group" id="groupPedVenda">
               <label for="searchPedVenda">
                 <span>📦 Número do Pedido de Venda</span>
@@ -387,7 +402,7 @@
 
           <!-- Helper notice when mutually exclusive -->
           <div id="mutuallyExclusiveNotice" class="search-notice-bar">
-            💡 Preencha um dos campos acima. Ao digitar no Pedido ou na NFe, o outro campo será bloqueado automaticamente.
+            💡 Preencha um dos 3 campos acima. Ao digitar no Código Web, Pedido ou NFe, os demais campos serão bloqueados automaticamente.
           </div>
 
           <div class="search-actions-row">
@@ -404,7 +419,7 @@
         <!-- Loading State Consulta -->
         <div id="consultaLoading" class="loading-state hidden">
           <div class="spinner"></div>
-          <p id="consultaLoadingMsg">Consultando tabelas SD2/SC5 nas Empresas Protheus (16, 15 e 14)...</p>
+          <p id="consultaLoadingMsg">Consultando tabelas SD2/SC5/SF2 nas Empresas Protheus (16, 15 e 14)...</p>
         </div>
 
         <!-- Search Results Section -->
@@ -423,11 +438,13 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th style="width: 22%;">Empresa</th>
-                  <th style="width: 18%;">Ped Venda</th>
-                  <th style="width: 18%;">NF</th>
-                  <th style="width: 18%;">Valor Cobrado</th>
-                  <th style="width: 24%;">Nome Cli</th>
+                  <th style="width: 16%;">Empresa</th>
+                  <th style="width: 13%;">CodWeb</th>
+                  <th style="width: 13%;">Ped Venda</th>
+                  <th style="width: 12%;">NF</th>
+                  <th style="width: 13%;">Vlr NF</th>
+                  <th style="width: 13%;">Vlr Frete Cob.</th>
+                  <th style="width: 20%;">Nome Cli</th>
                 </tr>
               </thead>
               <tbody id="consultaTableBody">
@@ -441,7 +458,7 @@
         <div id="consultaEmptyState" class="empty-results-box">
           <div class="empty-icon">🔍</div>
           <h4>Nenhuma busca realizada ainda</h4>
-          <p>Preencha o <strong>Número do Pedido de Venda</strong> ou o <strong>Número da NFe</strong> acima e clique em <strong>Buscar</strong> para visualizar os resultados multi-empresa.</p>
+          <p>Preencha o <strong>Código Web Pipe</strong>, o <strong>Número do Pedido de Venda</strong> ou o <strong>Número da NFe</strong> acima e clique em <strong>Buscar</strong> para visualizar os resultados multi-empresa.</p>
         </div>
 
       </section>

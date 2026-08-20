@@ -60,8 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnLancarProtheus = document.getElementById('btnLancarProtheus');
 
   // DOM Elements - Tab 3 (Consulta NFe ou Pedido)
+  const searchCodWeb = document.getElementById('searchCodWeb');
   const searchPedVenda = document.getElementById('searchPedVenda');
   const searchNFe = document.getElementById('searchNFe');
+  const tagCodWeb = document.getElementById('tagCodWeb');
   const tagPedVenda = document.getElementById('tagPedVenda');
   const tagNFe = document.getElementById('tagNFe');
   const btnBuscarConsulta = document.getElementById('btnBuscarConsulta');
@@ -934,51 +936,141 @@ document.addEventListener('DOMContentLoaded', () => {
     alert('A gravação automática de fretes no Protheus está desabilitada por enquanto (módulo em homologação). Utilize a consulta e a exportação em CSV para conferência.');
   });
 
-  // --- TAB 3 LOGIC (CONSULTA NFE OU PEDIDO) ---
+  // --- TAB 3 LOGIC (CONSULTA NFE, PEDIDO OU CÓDIGO WEB) ---
   function updateSearchInputsState() {
-    const pedValue = searchPedVenda.value.trim();
-    const nfeValue = searchNFe.value.trim();
+    const codWebValue = searchCodWeb ? searchCodWeb.value.trim() : '';
+    const pedValue = searchPedVenda ? searchPedVenda.value.trim() : '';
+    const nfeValue = searchNFe ? searchNFe.value.trim() : '';
 
-    if (pedValue !== '') {
-      searchNFe.disabled = true;
-      searchNFe.placeholder = 'Bloqueado (Pedido preenchido)';
-      tagNFe.textContent = 'Bloqueado';
-      tagNFe.classList.add('blocked');
-    } else {
-      searchNFe.disabled = false;
-      searchNFe.placeholder = 'Ex: 546 ou 000000546';
-      tagNFe.textContent = 'Ativo';
-      tagNFe.classList.remove('blocked');
-    }
+    if (codWebValue !== '') {
+      if (searchPedVenda) {
+        searchPedVenda.disabled = true;
+        searchPedVenda.placeholder = 'Bloqueado (Cód. Web preenchido)';
+      }
+      if (tagPedVenda) {
+        tagPedVenda.textContent = 'Bloqueado';
+        tagPedVenda.classList.add('blocked');
+      }
 
-    if (nfeValue !== '') {
-      searchPedVenda.disabled = true;
-      searchPedVenda.placeholder = 'Bloqueado (NFe preenchida)';
-      tagPedVenda.textContent = 'Bloqueado';
-      tagPedVenda.classList.add('blocked');
+      if (searchNFe) {
+        searchNFe.disabled = true;
+        searchNFe.placeholder = 'Bloqueado (Cód. Web preenchido)';
+      }
+      if (tagNFe) {
+        tagNFe.textContent = 'Bloqueado';
+        tagNFe.classList.add('blocked');
+      }
+
+      if (searchCodWeb) searchCodWeb.disabled = false;
+      if (tagCodWeb) {
+        tagCodWeb.textContent = 'Ativo';
+        tagCodWeb.classList.remove('blocked');
+      }
+    } else if (pedValue !== '') {
+      if (searchCodWeb) {
+        searchCodWeb.disabled = true;
+        searchCodWeb.placeholder = 'Bloqueado (Pedido preenchido)';
+      }
+      if (tagCodWeb) {
+        tagCodWeb.textContent = 'Bloqueado';
+        tagCodWeb.classList.add('blocked');
+      }
+
+      if (searchNFe) {
+        searchNFe.disabled = true;
+        searchNFe.placeholder = 'Bloqueado (Pedido preenchido)';
+      }
+      if (tagNFe) {
+        tagNFe.textContent = 'Bloqueado';
+        tagNFe.classList.add('blocked');
+      }
+
+      if (searchPedVenda) searchPedVenda.disabled = false;
+      if (tagPedVenda) {
+        tagPedVenda.textContent = 'Ativo';
+        tagPedVenda.classList.remove('blocked');
+      }
+    } else if (nfeValue !== '') {
+      if (searchCodWeb) {
+        searchCodWeb.disabled = true;
+        searchCodWeb.placeholder = 'Bloqueado (NFe preenchida)';
+      }
+      if (tagCodWeb) {
+        tagCodWeb.textContent = 'Bloqueado';
+        tagCodWeb.classList.add('blocked');
+      }
+
+      if (searchPedVenda) {
+        searchPedVenda.disabled = true;
+        searchPedVenda.placeholder = 'Bloqueado (NFe preenchida)';
+      }
+      if (tagPedVenda) {
+        tagPedVenda.textContent = 'Bloqueado';
+        tagPedVenda.classList.add('blocked');
+      }
+
+      if (searchNFe) searchNFe.disabled = false;
+      if (tagNFe) {
+        tagNFe.textContent = 'Ativo';
+        tagNFe.classList.remove('blocked');
+      }
     } else {
-      searchPedVenda.disabled = false;
-      searchPedVenda.placeholder = 'Ex: 000630 ou 630';
-      tagPedVenda.textContent = 'Ativo';
-      tagPedVenda.classList.remove('blocked');
+      if (searchCodWeb) {
+        searchCodWeb.disabled = false;
+        searchCodWeb.placeholder = 'Ex: 98412 ou WEB-98412';
+      }
+      if (tagCodWeb) {
+        tagCodWeb.textContent = 'Ativo';
+        tagCodWeb.classList.remove('blocked');
+      }
+
+      if (searchPedVenda) {
+        searchPedVenda.disabled = false;
+        searchPedVenda.placeholder = 'Ex: 000630 ou 630';
+      }
+      if (tagPedVenda) {
+        tagPedVenda.textContent = 'Ativo';
+        tagPedVenda.classList.remove('blocked');
+      }
+
+      if (searchNFe) {
+        searchNFe.disabled = false;
+        searchNFe.placeholder = 'Ex: 546 ou 000000546';
+      }
+      if (tagNFe) {
+        tagNFe.textContent = 'Ativo';
+        tagNFe.classList.remove('blocked');
+      }
     }
   }
 
-  if (searchPedVenda && searchNFe) {
-    searchPedVenda.addEventListener('input', updateSearchInputsState);
-    searchNFe.addEventListener('input', updateSearchInputsState);
-  }
+  if (searchCodWeb) searchCodWeb.addEventListener('input', updateSearchInputsState);
+  if (searchPedVenda) searchPedVenda.addEventListener('input', updateSearchInputsState);
+  if (searchNFe) searchNFe.addEventListener('input', updateSearchInputsState);
+
+  // Gatilho tecla Enter nos 3 campos de busca
+  [searchCodWeb, searchPedVenda, searchNFe].forEach(input => {
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (btnBuscarConsulta) btnBuscarConsulta.click();
+        }
+      });
+    }
+  });
 
   if (btnLimparConsulta) {
     btnLimparConsulta.addEventListener('click', () => {
-      searchPedVenda.value = '';
-      searchNFe.value = '';
+      if (searchCodWeb) searchCodWeb.value = '';
+      if (searchPedVenda) searchPedVenda.value = '';
+      if (searchNFe) searchNFe.value = '';
       updateSearchInputsState();
       consultaResultsSection.classList.add('hidden');
       consultaEmptyState.innerHTML = `
         <div class="empty-icon">🔍</div>
         <h4>Nenhuma busca realizada ainda</h4>
-        <p>Preencha o <strong>Número do Pedido de Venda</strong> ou o <strong>Número da NFe</strong> acima e clique em <strong>Buscar</strong> para visualizar os resultados multi-empresa.</p>
+        <p>Preencha o <strong>Código Web Pipe</strong>, o <strong>Número do Pedido de Venda</strong> ou o <strong>Número da NFe</strong> acima e clique em <strong>Buscar</strong> para visualizar os resultados multi-empresa.</p>
       `;
       consultaEmptyState.classList.remove('hidden');
       if (consultaTableBody) consultaTableBody.innerHTML = '';
@@ -987,16 +1079,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnBuscarConsulta) {
     btnBuscarConsulta.addEventListener('click', async () => {
-      const pedValue = searchPedVenda.value.trim();
-      const nfeValue = searchNFe.value.trim();
+      const codWebValue = searchCodWeb ? searchCodWeb.value.trim() : '';
+      const pedValue = searchPedVenda ? searchPedVenda.value.trim() : '';
+      const nfeValue = searchNFe ? searchNFe.value.trim() : '';
 
-      if (!pedValue && !nfeValue) {
-        alert('Por favor, preencha o Número do Pedido de Venda OU o Número da NFe para buscar.');
+      if (!codWebValue && !pedValue && !nfeValue) {
+        alert('Por favor, preencha o Código Web Pipe, o Número do Pedido de Venda OU o Número da NFe para buscar.');
         return;
       }
 
-      const tipo = pedValue ? 'pedVenda' : 'nfe';
-      const termo = pedValue || nfeValue;
+      let tipo = 'codWeb';
+      let termo = codWebValue;
+      if (pedValue) {
+        tipo = 'pedVenda';
+        termo = pedValue;
+      } else if (nfeValue) {
+        tipo = 'nfe';
+        termo = nfeValue;
+      }
 
       consultaEmptyState.classList.add('hidden');
       consultaResultsSection.classList.add('hidden');
@@ -1020,23 +1120,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function getTipoDescricao(tipo) {
+    if (tipo === 'codWeb') return 'Código Web Pipe';
+    if (tipo === 'pedVenda') return 'Pedido de Venda';
+    return 'Número da NFe';
+  }
+
   function renderConsultaResults(rows, tipo, termo) {
     consultaTableBody.innerHTML = '';
     
     rows.forEach(row => {
       const tr = document.createElement('tr');
+      const codWebText = row.codWeb && row.codWeb !== '-' ? row.codWeb : '-';
+      const codWebHtml = codWebText !== '-'
+        ? `<span class="badge-tag" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight: 600; padding: 2px 8px; border-radius: 4px;">${escapeHtml(codWebText)}</span>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
       tr.innerHTML = `
         <td><span class="badge-doc">${escapeHtml(row.empresa)}</span></td>
-        <td><span class="ped-venda-badge">${escapeHtml(row.pedVenda)}</span></td>
-        <td class="mono-text"><strong>${escapeHtml(row.nf)}</strong></td>
-        <td class="mono-text"><strong>${formatCurrency(row.valorCobrado)}</strong></td>
-        <td><strong>${escapeHtml(row.nomeCli)}</strong></td>
+        <td class="mono-text">${codWebHtml}</td>
+        <td><span class="ped-venda-badge">${escapeHtml(row.pedVenda || '-')}</span></td>
+        <td class="mono-text"><strong>${escapeHtml(row.nf || '-')}</strong></td>
+        <td class="mono-text"><strong>${formatCurrency(row.valorNf || 0)}</strong></td>
+        <td class="mono-text"><strong>${formatCurrency(row.valorCobrado || 0)}</strong></td>
+        <td><strong>${escapeHtml(row.nomeCli || '-')}</strong></td>
       `;
       consultaTableBody.appendChild(tr);
     });
 
     resultsCountBadge.textContent = `${rows.length} ${rows.length === 1 ? 'registro encontrado' : 'registros encontrados'}`;
-    searchParamInfo.innerHTML = `Busca realizada por: <strong>${tipo === 'pedVenda' ? 'Pedido de Venda' : 'Número da NFe'} (${escapeHtml(termo)})</strong>`;
+    searchParamInfo.innerHTML = `Busca realizada por: <strong>${getTipoDescricao(tipo)} (${escapeHtml(termo)})</strong>`;
 
     consultaEmptyState.classList.add('hidden');
     consultaResultsSection.classList.remove('hidden');
@@ -1045,12 +1158,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderConsultaEmptyResults(tipo, termo) {
     consultaTableBody.innerHTML = '';
     resultsCountBadge.textContent = '0 registros encontrados';
-    searchParamInfo.innerHTML = `Busca por <strong>${tipo === 'pedVenda' ? 'Pedido' : 'NFe'} (${escapeHtml(termo)})</strong>`;
+    searchParamInfo.innerHTML = `Busca por <strong>${getTipoDescricao(tipo)} (${escapeHtml(termo)})</strong>`;
     
     consultaEmptyState.innerHTML = `
       <div class="empty-icon">⚠️</div>
       <h4>Nenhum registro encontrado</h4>
-      <p>Não foram encontrados dados no Protheus para o ${tipo === 'pedVenda' ? 'Pedido de Venda' : 'Número de NFe'} "<strong>${escapeHtml(termo)}</strong>". Tente outro número.</p>
+      <p>Não foram encontrados dados no Protheus para o ${getTipoDescricao(tipo)} "<strong>${escapeHtml(termo)}</strong>". Tente outro termo de busca.</p>
     `;
     consultaEmptyState.classList.remove('hidden');
     consultaResultsSection.classList.add('hidden');

@@ -69,7 +69,14 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por 4 m�
 ---
 
 ### 🔍 2. ABA CONSULTA PED/NF
-* Consulta rápida de Notas Fiscais e Pedidos de Venda com roteamento dinâmico multi-empresa.
+* **Busca Tripartite em Linha com Exclusão Mútua (OU):**
+  * `Código Web Pipe` (`C5_CODWEB`) | `Número do Pedido de Venda` (`C5_NUM` / `D2_PEDIDO`) | `Número da NFe (Doc)` (`D2_DOC` / `F2_DOC`).
+  * Bloqueio automático dos demais campos ao digitar em um deles.
+  * Disposição harmoniosa dos 3 campos na mesma linha com atalho de tecla `Enter`.
+* **Roteamento Dinâmico Multi-Empresa:**
+  * Consulta simultânea nas tabelas das 3 empresas: OACO (16), GSI (15) e Metal Pleno (14) cruzando `SC5`, `SD2` e `SF2`.
+* **Grid de Resultados com 7 Colunas:**
+  * `Empresa` | `CodWeb` (`C5_CODWEB`) | `Ped Venda` | `NF` | `Vlr NF` (`F2_VALBRUT` / `D2_TOTAL`) | `Vlr Frete Cob.` (`C5_FRETE` + `C5_VLR_FRT`) | `Nome Cli` (`C5_NOMECLI`).
 
 ---
 

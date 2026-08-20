@@ -359,10 +359,10 @@ app.get('/api/protheus/consulta/:nf', async (req, res) => {
   }
 });
 
-// API: Consulta Multi-Empresa Avançada por Pedido de Venda ou NFe
+// API: Consulta Multi-Empresa Avançada por Código Web, Pedido de Venda ou NFe
 app.get('/api/protheus/consulta-avancada', async (req, res) => {
   try {
-    const tipo = req.query.tipo || 'pedVenda'; // 'pedVenda' ou 'nfe'
+    const tipo = req.query.tipo || 'pedVenda'; // 'codWeb', 'pedVenda' ou 'nfe'
     const termo = req.query.termo || '';
 
     if (!termo) {
@@ -371,12 +371,13 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
 
     const rows = await buscarProtheusMultiEmpresa(tipo, termo);
 
+    const tipoLabel = tipo === 'codWeb' ? 'Código Web' : (tipo === 'pedVenda' ? 'Pedido' : 'NFe');
     const user = getUserFromReq(req);
     logUserActivity({
       username: user.username,
       userName: user.name,
       actionType: 'CONSULTA_PED_NF',
-      description: `Consultou ${tipo === 'pedVenda' ? 'Pedido' : 'NFe'}: "${termo}" (${rows.length} resultado(s))`,
+      description: `Consultou ${tipoLabel}: "${termo}" (${rows.length} resultado(s))`,
       ip: req.ip,
       metadata: { tipo, termo, count: rows.length }
     }).catch(() => {});

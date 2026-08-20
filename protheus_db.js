@@ -190,7 +190,7 @@ function roundVal(val) {
 /**
  * Consulta de Vendas / NFe em Multi-Empresas no Protheus
  * Retorna registros das empresas OACO (16), GSI (15) e Metal Pleno (14)
- * com as colunas: Empresa | Ped Venda | NF | Valor Cobrado | Nome Cli
+ * com as colunas: Empresa | CodWeb | Ped Venda | NF | Vlr NF | Vlr Frete Cob. | Nome Cli
  */
 async function buscarProtheusMultiEmpresa(tipo, termo) {
   const variants = getDocVariants(termo);
@@ -202,48 +202,90 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
   const numOnly = variants.numOnly;
 
   const empresasInfo = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd2: "SD2160", sc5: "SC5160", defaultClient: "CLIENTE NÃO INFORMADO" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sd2: "SD2150", sc5: "SC5150", defaultClient: "CLIENTE NÃO INFORMADO" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sd2: "SD2140", sc5: "SC5140", defaultClient: "CLIENTE NÃO INFORMADO" }
+    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd2: "SD2160", sc5: "SC5160", sf2: "SF2160", defaultClient: "CLIENTE NÃO INFORMADO" },
+    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sd2: "SD2150", sc5: "SC5150", sf2: "SF2150", defaultClient: "CLIENTE NÃO INFORMADO" },
+    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sd2: "SD2140", sc5: "SC5140", sf2: "SF2140", defaultClient: "CLIENTE NÃO INFORMADO" }
   ];
 
   const results = [];
+  const seen = new Set();
 
   for (const emp of empresasInfo) {
     try {
-      const whereClause = (tipo === 'pedVenda')
-        ? `(D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanTerm}' OR D2.D2_PEDIDO = '${padded9}' OR D2.D2_PEDIDO = '${numOnly}' OR D2.D2_PEDIDO LIKE '%${numOnly}%')`
-        : `(D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanTerm}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}%')`;
+      let sql = '';
+      if (tipo === 'codWeb') {
+        sql = `
+          SELECT TOP 10
+              RTRIM(ISNULL(D2.D2_DOC, '')) AS NF,
+              RTRIM(C5.C5_NUM) AS PED_VENDA,
+              RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+              ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
+              ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
+              ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+              RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
+          FROM ${emp.sc5} C5
+          LEFT JOIN ${emp.sd2} D2 
+            ON D2.D2_FILIAL = C5.C5_FILIAL 
+           AND D2.D2_PEDIDO = C5.C5_NUM 
+           AND D2.D_E_L_E_T_ = ' '
+          LEFT JOIN ${emp.sf2} F2 
+            ON F2.F2_FILIAL = D2.D2_FILIAL 
+           AND F2.F2_DOC = D2.D2_DOC 
+           AND F2.D_E_L_E_T_ = ' '
+          WHERE (RTRIM(C5.C5_CODWEB) = '${cleanTerm}' OR C5.C5_CODWEB LIKE '%${cleanTerm}%')
+            AND C5.D_E_L_E_T_ = ' '
+          ORDER BY C5.C5_EMISSAO DESC
+        `;
+      } else {
+        const whereClause = (tipo === 'pedVenda')
+          ? `(D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanTerm}' OR D2.D2_PEDIDO = '${padded9}' OR D2.D2_PEDIDO = '${numOnly}' OR D2.D2_PEDIDO LIKE '%${numOnly}%')`
+          : `(D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanTerm}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}%')`;
 
-      const sql = `
-        SELECT TOP 5
-            RTRIM(D2.D2_DOC) AS NF,
-            RTRIM(D2.D2_PEDIDO) AS PED_VENDA,
-            ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
-            ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
-            RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
-        FROM ${emp.sd2} D2
-        LEFT JOIN ${emp.sc5} C5 
-          ON C5.C5_FILIAL = D2.D2_FILIAL 
-         AND C5.C5_NUM = D2.D2_PEDIDO 
-         AND C5.D_E_L_E_T_ = ' '
-        WHERE ${whereClause}
-          AND D2.D_E_L_E_T_ = ' '
-        ORDER BY D2.D2_EMISSAO DESC
-      `;
+        sql = `
+          SELECT TOP 10
+              RTRIM(D2.D2_DOC) AS NF,
+              RTRIM(D2.D2_PEDIDO) AS PED_VENDA,
+              RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+              ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
+              ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
+              ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+              RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
+          FROM ${emp.sd2} D2
+          LEFT JOIN ${emp.sc5} C5 
+            ON C5.C5_FILIAL = D2.D2_FILIAL 
+           AND C5.C5_NUM = D2.D2_PEDIDO 
+           AND C5.D_E_L_E_T_ = ' '
+          LEFT JOIN ${emp.sf2} F2 
+            ON F2.F2_FILIAL = D2.D2_FILIAL 
+           AND F2.F2_DOC = D2.D2_DOC 
+           AND F2.D_E_L_E_T_ = ' '
+          WHERE ${whereClause}
+            AND D2.D_E_L_E_T_ = ' '
+          ORDER BY D2.D2_EMISSAO DESC
+        `;
+      }
 
       const dbRes = await executeRailwayQuery(sql);
       if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
         for (const row of dbRes.rows) {
+          const pedVenda = row.PED_VENDA || '-';
+          const nf = row.NF || '-';
+          const seenKey = `${emp.key}_${pedVenda}_${nf}`;
+          if (seen.has(seenKey)) continue;
+          seen.add(seenKey);
+
           const freteCobrado = parseFloat(row.C5_FRETE || 0);
           const freteEmbutido = parseFloat(row.C5_VLR_FRT || 0);
+          const valorNf = parseFloat(row.VALOR_NF || 0);
           const clientName = (row.C5_NOMECLI && String(row.C5_NOMECLI).trim()) 
             ? String(row.C5_NOMECLI).trim() 
             : emp.defaultClient;
           results.push({
             empresa: emp.nome,
-            pedVenda: row.PED_VENDA || 'N/A',
-            nf: row.NF || 'N/A',
+            codWeb: row.C5_CODWEB || '-',
+            pedVenda: pedVenda,
+            nf: nf,
+            valorNf: roundVal(valorNf),
             valorCobrado: roundVal(freteCobrado + freteEmbutido),
             nomeCli: clientName
           });
@@ -259,58 +301,82 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
   }
 
   // Fallback para testes locais e simulação multi-empresa
+  if (tipo === 'codWeb') {
+    if (cleanTerm.includes('98412') || cleanTerm.includes('630')) {
+      return [
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" }
+      ];
+    }
+    if (cleanTerm.includes('77210')) {
+      return [
+        { empresa: "Empresa 15 (GSI)", codWeb: "WEB-77210", pedVenda: "000630", nf: "000001089", valorNf: 5920.00, valorCobrado: 245.50, nomeCli: "AGROPECUARIA SANTA BARBARA" }
+      ];
+    }
+    if (cleanTerm.includes('55102')) {
+      return [
+        { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-55102", pedVenda: "000630", nf: "000000312", valorNf: 4120.00, valorCobrado: 180.00, nomeCli: "CONSTRUTORA SILVA & SANTOS" }
+      ];
+    }
+
+    const formattedWeb = cleanTerm.toUpperCase().startsWith('WEB-') ? cleanTerm.toUpperCase() : `WEB-${cleanTerm}`;
+    return [
+      { empresa: "Empresa 16 (OACO)", codWeb: formattedWeb, pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" },
+      { empresa: "Empresa 15 (GSI)", codWeb: formattedWeb, pedVenda: "000635", nf: "000001102", valorNf: 4950.00, valorCobrado: 320.80, nomeCli: "AGRO GSI DISTRIBUIDORA LTDA" }
+    ];
+  }
+
   if (tipo === 'pedVenda') {
     const numOnly = cleanTerm.replace(/\D/g, '');
     const formattedPed = padded6;
 
     if (cleanTerm.includes('630') || cleanTerm === '546') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000630", nf: "000000546", valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" },
-        { empresa: "Empresa 15 (GSI)", pedVenda: "000630", nf: "000001089", valorCobrado: 245.50, nomeCli: "AGROPECUARIA SANTA BARBARA" },
-        { empresa: "Empresa 14 (METAL PLENO)", pedVenda: "000630", nf: "000000312", valorCobrado: 180.00, nomeCli: "CONSTRUTORA SILVA & SANTOS" }
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" },
+        { empresa: "Empresa 15 (GSI)", codWeb: "WEB-77210", pedVenda: "000630", nf: "000001089", valorNf: 5920.00, valorCobrado: 245.50, nomeCli: "AGROPECUARIA SANTA BARBARA" },
+        { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-55102", pedVenda: "000630", nf: "000000312", valorNf: 4120.00, valorCobrado: 180.00, nomeCli: "CONSTRUTORA SILVA & SANTOS" }
       ];
     }
 
     if (cleanTerm.includes('635') || cleanTerm === '551') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000635", nf: "000000551", valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" },
-        { empresa: "Empresa 15 (GSI)", pedVenda: "000635", nf: "000001102", valorCobrado: 320.80, nomeCli: "AGRO GSI DISTRIBUIDORA LTDA" }
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98413", pedVenda: "000635", nf: "000000551", valorNf: 2800.00, valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" },
+        { empresa: "Empresa 15 (GSI)", codWeb: "WEB-77301", pedVenda: "000635", nf: "000001102", valorNf: 4950.00, valorCobrado: 320.80, nomeCli: "AGRO GSI DISTRIBUIDORA LTDA" }
       ];
     }
 
     if (cleanTerm.includes('598') || cleanTerm === '561') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000598", nf: "000000561", valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" },
-        { empresa: "Empresa 14 (METAL PLENO)", pedVenda: "000598", nf: "000000415", valorCobrado: 210.00, nomeCli: "ESTRUTURAS METALLICAS BETA S.A." }
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98500", pedVenda: "000598", nf: "000000561", valorNf: 3250.00, valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" },
+        { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-55190", pedVenda: "000598", nf: "000000415", valorNf: 3900.00, valorCobrado: 210.00, nomeCli: "ESTRUTURAS METALLICAS BETA S.A." }
       ];
     }
 
     return [
-      { empresa: "Empresa 16 (OACO)", pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 12), valorCobrado: 137.14, nomeCli: "CLIENTE DEMO OACO LTDA" },
-      { empresa: "Empresa 15 (GSI)", pedVenda: formattedPed, nf: "000001" + (parseInt(numOnly || '100', 10) + 45), valorCobrado: 289.90, nomeCli: "AGROPECUARIA GSI DEMO S.A." },
-      { empresa: "Empresa 14 (METAL PLENO)", pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 88), valorCobrado: 195.50, nomeCli: "CONSTRUTORA METAL PLENO DEMO" }
+      { empresa: "Empresa 16 (OACO)", codWeb: "WEB-" + (parseInt(numOnly || '100', 10) + 120), pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 12), valorNf: 3500.00, valorCobrado: 137.14, nomeCli: "CLIENTE DEMO OACO LTDA" },
+      { empresa: "Empresa 15 (GSI)", codWeb: "WEB-" + (parseInt(numOnly || '100', 10) + 240), pedVenda: formattedPed, nf: "000001" + (parseInt(numOnly || '100', 10) + 45), valorNf: 4800.00, valorCobrado: 289.90, nomeCli: "AGROPECUARIA GSI DEMO S.A." },
+      { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-" + (parseInt(numOnly || '100', 10) + 360), pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 88), valorNf: 4100.00, valorCobrado: 195.50, nomeCli: "CONSTRUTORA METAL PLENO DEMO" }
     ];
   }
 
   if (tipo === 'nfe') {
     if (cleanTerm === '546' || cleanTerm === '000000546') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000630", nf: "000000546", valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" }
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" }
       ];
     }
     if (cleanTerm === '551' || cleanTerm === '000000551') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000635", nf: "000000551", valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" }
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98413", pedVenda: "000635", nf: "000000551", valorNf: 2800.00, valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" }
       ];
     }
     if (cleanTerm === '561' || cleanTerm === '000000561') {
       return [
-        { empresa: "Empresa 16 (OACO)", pedVenda: "000598", nf: "000000561", valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" }
+        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98500", pedVenda: "000598", nf: "000000561", valorNf: 3250.00, valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" }
       ];
     }
 
     return [
-      { empresa: "Empresa 16 (OACO)", pedVenda: "000" + cleanTerm.slice(-3).padStart(3, '0'), nf: padded9, valorCobrado: 175.80, nomeCli: "CLIENTE DEMO NFE LTDA" }
+      { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000" + cleanTerm.slice(-3).padStart(3, '0'), nf: padded9, valorNf: 3750.00, valorCobrado: 175.80, nomeCli: "CLIENTE DEMO NFE LTDA" }
     ];
   }
 
