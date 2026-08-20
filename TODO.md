@@ -10,9 +10,9 @@
 - [x] [SEC-07] Restringir origens no CORS e sanitizar mensagens de erro 500
 
 ## 🟡 Resiliência & SRE (Média Prioridade)
-- [ ] [SRE-01] Adicionar tratamento de reconexão e timeouts no pool PostgreSQL (postgres_db.js)
+- [x] [SRE-01] Adicionar tratamento de reconexão e timeouts no pool PostgreSQL (postgres_db.js)
 - [x] [SRE-02] Implementar idempotência e deduplicação de webhooks do Banco Inter
-- [ ] [SRE-03] Configurar express-rate-limit em rotas sensíveis de autenticação
+- [x] [SRE-03] Configurar express-rate-limit em rotas sensíveis de autenticação
 
 ## 🟢 Testes & Qualidade
 - [x] [QA-01] Criar suíte de testes de segurança e regressão (test_security.js e test_webhooks.js via npm test)
