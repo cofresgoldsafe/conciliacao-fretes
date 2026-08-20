@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Configura ambiente Python
-RUN python3 -m pip install --break-system-packages pdfplumber
+RUN python3 -m pip install --break-system-packages pdfplumber pypdf
 
 # Define o diretório de trabalho
 WORKDIR /app

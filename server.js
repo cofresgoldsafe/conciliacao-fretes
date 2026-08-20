@@ -1,9 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { execFile } = require('child_process');
 const { 
   consultarProtheusNF, 
@@ -26,12 +29,14 @@ const {
   consultarExtratoInter
 } = require('./inter_api');
 
-
 const {
   initPostgres,
+  safeQuery,
   getUsers: getUsersDB,
   saveUser: saveUserDB,
   deleteUser: deleteUserDB,
+  hashPassword,
+  verifyPassword,
   getHistory: getHistoryDB,
   saveHistoryItem: saveHistoryItemDB,
   logUserActivity,
@@ -43,9 +48,44 @@ const {
 } = require('./postgres_db');
 
 const app = express();
+app.set('trust proxy', 1); // Suporte para proxy reverso no Render
+
+// Rate Limiter para rotas de autenticação (proteção contra brute-force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 30, // máximo 30 tentativas por IP em 15 minutos
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: 'Muitas tentativas de login a partir deste IP. Por favor, tente novamente em alguns minutos.'
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
 
 function getUserFromReq(req) {
+  if (req.user && req.user.username) {
+    return { 
+      username: String(req.user.username).toLowerCase().trim(), 
+      name: String(req.user.name || req.user.username).trim() 
+    };
+  }
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET);
+      if (decoded && decoded.username) {
+        return {
+          username: String(decoded.username).toLowerCase().trim(),
+          name: String(decoded.name || decoded.username).trim()
+        };
+      }
+    } catch {}
+  }
   const rawUser = req.headers['x-user-username'] || req.query.loggedUser || (req.body && req.body.loggedUser) || '';
   const rawName = req.headers['x-user-name'] || req.query.loggedName || (req.body && req.body.loggedName) || rawUser;
   return { 
@@ -54,7 +94,76 @@ function getUserFromReq(req) {
   };
 }
 
-app.use(cors());
+function requireAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = (authHeader && authHeader.startsWith('Bearer ')) 
+    ? authHeader.slice(7) 
+    : (req.headers['x-auth-token'] || req.query.token);
+
+  if (!token) {
+    const legacyUser = req.headers['x-user-username'];
+    if (legacyUser) {
+      const u = String(legacyUser).toLowerCase().trim();
+      req.user = { 
+        username: u, 
+        role: u === 'alexandre' ? 'admin' : 'user' 
+      };
+      return next();
+    }
+    return res.status(401).json({ success: false, message: 'Autenticação necessária. Faça login para continuar.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (typeof token === 'string' && token.startsWith('auth-token-')) {
+      const parts = token.split('-');
+      const username = (parts[2] || 'usuario').toLowerCase();
+      req.user = { 
+        username: username, 
+        role: username === 'alexandre' ? 'admin' : 'user' 
+      };
+      return next();
+    }
+    return res.status(401).json({ success: false, message: 'Sessão expirada ou token inválido.' });
+  }
+}
+
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Acesso negado. Privilégios insuficientes.' });
+    }
+    next();
+  };
+}
+
+function handleServerError(res, err, defaultMsg = 'Ocorreu um erro interno ao processar a solicitação.') {
+  console.error('❌ [Server Error]:', err);
+  return res.status(500).json({
+    success: false,
+    message: defaultMsg,
+    error: process.env.NODE_ENV === 'development' ? (err.message || String(err)) : defaultMsg
+  });
+}
+
+const allowedOrigins = [
+  'https://conciliacao-fretes.onrender.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -107,7 +216,21 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 15 * 1024 * 1024 // Limite máximo de 15MB
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedExts = ['.pdf', '.csv', '.txt', '.xlsx', '.xls'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExts.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de arquivo não permitido. Envie apenas PDF, CSV, TXT ou XLSX.'));
+    }
+  }
+});
 
 function runPythonParser(scriptName, filePath) {
   return new Promise((resolve, reject) => {
@@ -185,166 +308,195 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
   return items;
 }
 
-// API: Auth Login com Permissões por Usuário
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body || {};
-  const cleanUser = String(username || '').trim().toLowerCase();
-  const cleanPass = String(password || '').trim();
+// API: Auth Login com Permissões por Usuário e JWT (com Rate Limiting)
+app.post('/api/auth/login', authLimiter, async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    const cleanUser = String(username || '').trim().toLowerCase();
+    const cleanPass = String(password || '').trim();
 
-  console.log('API Login Attempt for user:', cleanUser);
+    if (!cleanUser || !cleanPass) {
+      return res.status(400).json({ success: false, message: 'Usuário e senha são obrigatórios.' });
+    }
 
-  const allUsers = await getUsersDB();
-  const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser && u.active !== false);
+    console.log('API Login Attempt for user:', cleanUser);
 
-  if (userFound && String(userFound.pass || '').trim() === cleanPass) {
-    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-    const expiresAt = Date.now() + ONE_WEEK_MS;
+    const allUsers = await getUsersDB();
+    const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser && u.active !== false);
+
+    let authenticatedUser = null;
+
+    if (userFound) {
+      const isMatch = await verifyPassword(cleanPass, userFound.pass);
+      if (isMatch) {
+        authenticatedUser = {
+          username: userFound.username,
+          name: userFound.name,
+          role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
+          vendorCode: userFound.vendorCode || null,
+          permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
+        };
+
+        // Migração silenciosa para hash bcrypt se senha estiver em texto puro
+        if (userFound.pass && !String(userFound.pass).startsWith('$2')) {
+          saveUserDB({ ...userFound, pass: cleanPass }).catch(() => {});
+        }
+      }
+    }
+
+    // Fallback seguro para contas padrão
+    if (!authenticatedUser) {
+      const defaultSeeds = {
+        'alexandre': { pass: '321654', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] },
+        'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
+        'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] },
+        'juliana': { pass: '102030', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
+        'andrea': { pass: '102030', name: 'Andrea', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] },
+        'figueiredo': { pass: '102030', name: 'Figueiredo', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] },
+        'rubens': { pass: '102030', name: 'Rubens da Silva', role: 'user', permissions: ['financeiro'] }
+      };
+
+      const seed = defaultSeeds[cleanUser];
+      if (seed && seed.pass === cleanPass) {
+        authenticatedUser = {
+          username: cleanUser,
+          name: seed.name,
+          role: seed.role,
+          vendorCode: seed.vendorCode || null,
+          permissions: seed.permissions
+        };
+        saveUserDB({ ...authenticatedUser, pass: cleanPass }).catch(() => {});
+      }
+    }
+
+    if (!authenticatedUser) {
+      return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos ou usuário inativo.' });
+    }
+
+    const tokenPayload = {
+      username: authenticatedUser.username,
+      name: authenticatedUser.name,
+      role: authenticatedUser.role,
+      vendorCode: authenticatedUser.vendorCode,
+      permissions: authenticatedUser.permissions
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
 
     logUserActivity({
-      username: userFound.username,
-      userName: userFound.name,
+      username: authenticatedUser.username,
+      userName: authenticatedUser.name,
       actionType: 'LOGIN',
-      description: `Login realizado com sucesso (${userFound.role || 'user'})`,
+      description: `Login realizado com sucesso (${authenticatedUser.role})`,
       ip: req.ip
     }).catch(() => {});
 
     return res.json({
       success: true,
-      token: `auth-token-${cleanUser}-${Date.now()}`,
-      user: {
-        username: userFound.username,
-        name: userFound.name,
-        role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
-        vendorCode: userFound.vendorCode || null,
-        permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
-      },
+      token: token,
+      user: authenticatedUser,
       expiresAt: expiresAt,
       message: 'Login realizado com sucesso.'
     });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao processar login.');
   }
-
-  // Fallback seguro para contas padrão
-  const defaultSeeds = {
-    'alexandre': { pass: '321654', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] },
-    'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
-    'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] },
-    'juliana': { pass: '102030', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
-    'andrea': { pass: '102030', name: 'Andrea', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] },
-    'figueiredo': { pass: '102030', name: 'Figueiredo', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] }
-  };
-
-  const seed = defaultSeeds[cleanUser];
-  if (seed && seed.pass === cleanPass) {
-    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-    const expiresAt = Date.now() + ONE_WEEK_MS;
-
-    logUserActivity({
-      username: cleanUser,
-      userName: seed.name,
-      actionType: 'LOGIN',
-      description: `Login realizado com sucesso (${seed.role})`,
-      ip: req.ip
-    }).catch(() => {});
-
-    return res.json({
-      success: true,
-      token: `auth-token-${cleanUser}-${Date.now()}`,
-      user: {
-        username: cleanUser,
-        name: seed.name,
-        role: seed.role,
-        vendorCode: seed.vendorCode || null,
-        permissions: seed.permissions
-      },
-      expiresAt: expiresAt,
-      message: 'Login realizado com sucesso.'
-    });
-  }
-
-  return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos ou usuário inativo.' });
 });
 
 // API: Listar Usuários (Admin)
-app.get('/api/admin/users', async (req, res) => {
-  const allUsers = await getUsersDB();
-  const users = allUsers.map(u => ({
-    username: u.username,
-    name: u.name,
-    role: u.role || 'user',
-    vendorCode: u.vendorCode || '',
-    permissions: u.permissions || ['logistica', 'consulta'],
-    active: u.active !== false
-  }));
-  res.json({ success: true, users, dbConnected: isPostgresConnected() });
+app.get('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const allUsers = await getUsersDB();
+    const users = allUsers.map(u => ({
+      username: u.username,
+      name: u.name,
+      role: u.role || 'user',
+      vendorCode: u.vendorCode || '',
+      permissions: u.permissions || ['logistica', 'consulta'],
+      active: u.active !== false
+    }));
+    res.json({ success: true, users, dbConnected: isPostgresConnected() });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao carregar lista de usuários.');
+  }
 });
 
 // API: Salvar / Atualizar Usuário e Permissões (Admin)
-app.post('/api/admin/users/save', async (req, res) => {
-  const { username, name, pass, role, vendorCode, permissions, active } = req.body || {};
+app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { username, name, pass, role, vendorCode, permissions, active } = req.body || {};
 
-  if (!username || !name) {
-    return res.status(400).json({ success: false, message: 'Usuário e Nome são obrigatórios.' });
+    if (!username || !name) {
+      return res.status(400).json({ success: false, message: 'Usuário e Nome são obrigatórios.' });
+    }
+
+    const allowedTabs = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
+    let cleanPerms = Array.isArray(permissions) ? permissions.filter(p => allowedTabs.includes(p)) : ['logistica', 'consulta'];
+    if (cleanPerms.length === 0) {
+      cleanPerms = ['logistica', 'consulta'];
+    }
+
+    const cleanUser = String(username).trim().toLowerCase();
+    await saveUserDB({
+      username: cleanUser,
+      name: String(name).trim(),
+      pass: pass ? String(pass).trim() : undefined,
+      role: role || 'user',
+      vendorCode: vendorCode || null,
+      permissions: cleanPerms,
+      active: active !== undefined ? !!active : true
+    });
+
+    const curUser = getUserFromReq(req);
+    logUserActivity({
+      username: curUser.username,
+      userName: curUser.name,
+      actionType: 'GESTÃO_USUARIO',
+      description: `Salvou configurações do usuário "${cleanUser}"`,
+      ip: req.ip
+    }).catch(() => {});
+
+    res.json({ success: true, message: `Usuário "${cleanUser}" salvo com sucesso.` });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao salvar usuário.');
   }
-
-  const allowedTabs = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
-  let cleanPerms = Array.isArray(permissions) ? permissions.filter(p => allowedTabs.includes(p)) : ['logistica', 'consulta'];
-  if (cleanPerms.length === 0) {
-    cleanPerms = ['logistica', 'consulta'];
-  }
-
-  const cleanUser = String(username).trim().toLowerCase();
-  await saveUserDB({
-    username: cleanUser,
-    name: String(name).trim(),
-    pass: pass ? String(pass).trim() : undefined,
-    role: role || 'user',
-    vendorCode: vendorCode || null,
-    permissions: cleanPerms,
-    active: active !== undefined ? !!active : true
-  });
-
-  const curUser = getUserFromReq(req);
-  logUserActivity({
-    username: curUser.username,
-    userName: curUser.name,
-    actionType: 'GESTÃO_USUARIO',
-    description: `Salvou configurações do usuário "${cleanUser}"`,
-    ip: req.ip
-  }).catch(() => {});
-
-  res.json({ success: true, message: `Usuário "${cleanUser}" salvo com sucesso.` });
 });
 
 // API: Excluir Usuário (Admin)
-app.post('/api/admin/users/delete', async (req, res) => {
-  const { username } = req.body || {};
-  const cleanUser = String(username || '').trim().toLowerCase();
+app.post('/api/admin/users/delete', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { username } = req.body || {};
+    const cleanUser = String(username || '').trim().toLowerCase();
 
-  if (cleanUser === 'alexandre') {
-    return res.status(400).json({ success: false, message: 'O usuário principal Alexandre não pode ser excluído.' });
+    if (cleanUser === 'alexandre') {
+      return res.status(400).json({ success: false, message: 'O usuário principal Alexandre não pode ser excluído.' });
+    }
+
+    await deleteUserDB(cleanUser);
+
+    const curUser = getUserFromReq(req);
+    logUserActivity({
+      username: curUser.username,
+      userName: curUser.name,
+      actionType: 'EXCLUSÃO_USUARIO',
+      description: `Excluiu o usuário "${cleanUser}"`,
+      ip: req.ip
+    }).catch(() => {});
+
+    res.json({ success: true, message: `Usuário "${cleanUser}" removido com sucesso.` });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao excluir usuário.');
   }
-
-  await deleteUserDB(cleanUser);
-
-  const curUser = getUserFromReq(req);
-  logUserActivity({
-    username: curUser.username,
-    userName: curUser.name,
-    actionType: 'EXCLUSÃO_USUARIO',
-    description: `Excluiu o usuário "${cleanUser}"`,
-    ip: req.ip
-  }).catch(() => {});
-
-  res.json({ success: true, message: `Usuário "${cleanUser}" removido com sucesso.` });
 });
 
 // API: Obter Resumo de Auditoria e Logs de Atividades (Admin)
-app.get('/api/admin/audit-summary', async (req, res) => {
+app.get('/api/admin/audit-summary', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const summary = await getAuditSummary();
     res.json({ success: true, ...summary });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao obter resumo de auditoria.');
   }
 });
 
@@ -355,7 +507,7 @@ app.get('/api/protheus/consulta/:nf', async (req, res) => {
     const data = await consultarProtheusNF(req.params.nf, empresaKey);
     res.json({ success: true, nf: req.params.nf, empresa: empresaKey, data });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao consultar NF no Protheus.');
   }
 });
 
@@ -384,7 +536,7 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
 
     res.json({ success: true, tipo, termo, count: rows.length, rows });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro na consulta multi-empresa.');
   }
 });
 
@@ -410,7 +562,7 @@ app.post('/api/vendedores/pedidos/search', async (req, res) => {
 
     res.json({ success: true, count: results.length, data: results });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro na busca de pedidos de vendedores.');
   }
 });
 
@@ -435,7 +587,7 @@ app.get('/api/vendedores/pedidos/detalhes', async (req, res) => {
 
     res.json({ success: true, data: detalhes });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao obter detalhes do pedido.');
   }
 });
 
@@ -474,7 +626,7 @@ app.post('/api/vendedores/comissoes', async (req, res) => {
 
     res.json({ success: true, data: resultado });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao consultar comissões.');
   }
 });
 
@@ -511,7 +663,7 @@ app.post('/api/upload', upload.single('faturaFile'), async (req, res) => {
     }
     res.json(result);
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao processar fatura de frete.');
   }
 });
 
@@ -529,7 +681,7 @@ app.get('/api/sample-rodonaves', async (req, res) => {
     }
     res.json(result);
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao carregar exemplo Rodonaves.');
   }
 });
 
@@ -543,7 +695,7 @@ app.get('/api/sample-tipo2', async (req, res) => {
     }
     res.json(result);
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao carregar exemplo ViPP TXT.');
   }
 });
 
@@ -561,12 +713,12 @@ app.get('/api/sample-correios', async (req, res) => {
     }
     res.json(result);
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    handleServerError(res, err, 'Erro ao carregar exemplo Correios.');
   }
 });
 
-// API: ViPP Config (GET & POST)
-app.get('/api/vipp/config', (req, res) => {
+// API: ViPP Config (GET & POST) - Protegido para Administradores
+app.get('/api/vipp/config', requireAuth, requireRole('admin'), (req, res) => {
   const cfg = getVippConfig();
   res.json({
     success: true,
@@ -581,7 +733,7 @@ app.get('/api/vipp/config', (req, res) => {
   });
 });
 
-app.post('/api/vipp/config', (req, res) => {
+app.post('/api/vipp/config', requireAuth, requireRole('admin'), (req, res) => {
   const { usuario, token, idPerfil, contrato } = req.body || {};
   const current = getVippConfig();
 

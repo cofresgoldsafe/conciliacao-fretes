@@ -2,6 +2,34 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+
+/**
+ * Funções de Criptografia e Verificação Segura de Senhas (Bcrypt)
+ */
+async function hashPassword(plain) {
+  if (!plain) return '';
+  const clean = String(plain).trim();
+  if (clean.startsWith('$2a$') || clean.startsWith('$2b$') || clean.startsWith('$2y$')) {
+    return clean; // Já está hasheada
+  }
+  return await bcrypt.hash(clean, 10);
+}
+
+async function verifyPassword(plain, stored) {
+  if (!plain || !stored) return false;
+  const clean = String(plain).trim();
+  const st = String(stored).trim();
+  if (st.startsWith('$2a$') || st.startsWith('$2b$') || st.startsWith('$2y$')) {
+    try {
+      return await bcrypt.compare(clean, st);
+    } catch {
+      return false;
+    }
+  }
+  // Fallback seguro para senhas legadas em texto puro
+  return clean === st;
+}
 
 const dataDir = path.join(__dirname, 'data');
 const usersFile = path.join(dataDir, 'users.json');
@@ -27,7 +55,7 @@ function getConnectionString() {
   return url;
 }
 
-// Inicializa Pool de Conexão com o PostgreSQL
+// Inicializa Pool de Conexão com o PostgreSQL com Resiliência e Timeouts
 function getPool() {
   if (pool) return pool;
 
@@ -43,8 +71,12 @@ function getPool() {
       ssl: {
         rejectUnauthorized: false
       },
-      connectionTimeoutMillis: 8000,
+      connectionTimeoutMillis: 10000,
       idleTimeoutMillis: 30000,
+      query_timeout: 10000,
+      statement_timeout: 10000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
       max: 10
     });
 
@@ -54,12 +86,71 @@ function getPool() {
       isConnected = false;
     });
 
+    startHealthCheck();
+
     return pool;
   } catch (err) {
     console.error('❌ [Postgres] Erro ao instanciar Pool:', err.message);
     lastDbError = err;
     return null;
   }
+}
+
+/**
+ * Health Check e Reconexão Automática em Background
+ */
+let healthCheckTimer = null;
+function startHealthCheck() {
+  if (healthCheckTimer || !process.env.DATABASE_URL) return;
+  healthCheckTimer = setInterval(async () => {
+    if (!isConnected && pool) {
+      try {
+        const client = await pool.connect();
+        await client.query('SELECT 1;');
+        client.release();
+        isConnected = true;
+        lastDbError = null;
+        console.log('🟢 [Postgres Auto-Reconnect] Conexão com Supabase restabelecida com sucesso!');
+      } catch (err) {
+        lastDbError = err;
+        isConnected = false;
+      }
+    }
+  }, 60000);
+  if (healthCheckTimer && healthCheckTimer.unref) {
+    healthCheckTimer.unref(); // Não bloqueia encerramento do processo em testes
+  }
+}
+
+/**
+ * Executa queries no PostgreSQL de forma resiliente com retries e tolerância a falhas
+ */
+async function safeQuery(text, params = [], maxRetries = 1) {
+  const p = getPool();
+  if (!p) return null;
+
+  let attempt = 0;
+  while (attempt <= maxRetries) {
+    try {
+      const res = await p.query(text, params);
+      isConnected = true;
+      lastDbError = null;
+      return res;
+    } catch (err) {
+      attempt++;
+      const isTransient = /timeout|econnreset|econnrefused|closed|terminat|57p01|57p03/i.test(err.message || '');
+      lastDbError = err;
+      isConnected = false;
+
+      if (isTransient && attempt <= maxRetries) {
+        console.warn(`⚠️ [Postgres Resiliência] Erro transitório na query (tentativa ${attempt}/${maxRetries}): ${err.message}. Retentando...`);
+        await new Promise(r => setTimeout(r, 200));
+        continue;
+      }
+      throw err;
+    }
+  }
+  return null;
 }
 
 function getDiagnosticInfo() {
@@ -200,6 +291,7 @@ async function initPostgres() {
         }
 
         for (const u of localUsers) {
+          const hashedPass = await hashPassword(u.pass || '102030');
           await client.query(`
             INSERT INTO users (username, name, pass, role, vendor_code, permissions, active)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -207,7 +299,7 @@ async function initPostgres() {
           `, [
             u.username.toLowerCase().trim(),
             u.name || u.username,
-            u.pass,
+            hashedPass,
             u.role || 'user',
             u.vendorCode || null,
             JSON.stringify(u.permissions || ['logistica', 'consulta']),
@@ -216,12 +308,6 @@ async function initPostgres() {
         }
         console.log(`✅ [Postgres] Migrados com sucesso ${localUsers.length} usuários para o Supabase PostgreSQL.`);
       }
-
-      // 6. Garante sincronização das senhas atualizadas no Supabase
-      await client.query(`
-        UPDATE users SET pass = '321654', permissions = '["logistica","consulta","vendedores","financeiro","configuracoes"]'::jsonb WHERE username = 'alexandre';
-        UPDATE users SET pass = '10203040' WHERE username = 'wallerson';
-      `);
 
       return true;
     } finally {
@@ -239,14 +325,14 @@ async function initPostgres() {
  */
 async function getUsers() {
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
-      const res = await p.query(`
+      const res = await safeQuery(`
         SELECT username, name, pass, role, vendor_code AS "vendorCode", permissions, active 
         FROM users 
         ORDER BY id ASC;
       `);
-      if (res.rows && res.rows.length > 0) {
+      if (res && res.rows && res.rows.length > 0) {
         // Atualiza cache local
         try {
           fs.writeFileSync(usersFile, JSON.stringify(res.rows, null, 2));
@@ -279,12 +365,16 @@ async function saveUser(userData) {
   const permissions = Array.isArray(userData.permissions) ? userData.permissions : ['logistica', 'consulta'];
   const active = userData.active !== undefined ? !!userData.active : true;
 
+  let hashedPass = null;
+  if (userData.pass && String(userData.pass).trim() !== '') {
+    hashedPass = await hashPassword(String(userData.pass).trim());
+  }
+
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
-      if (userData.pass && String(userData.pass).trim() !== '') {
-        const cleanPass = String(userData.pass).trim();
-        await p.query(`
+      if (hashedPass) {
+        await safeQuery(`
           INSERT INTO users (username, name, pass, role, vendor_code, permissions, active, updated_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
           ON CONFLICT (username) DO UPDATE SET
@@ -295,12 +385,13 @@ async function saveUser(userData) {
             permissions = EXCLUDED.permissions,
             active = EXCLUDED.active,
             updated_at = NOW();
-        `, [cleanUser, cleanName, cleanPass, cleanRole, vendorCode, JSON.stringify(permissions), active]);
+        `, [cleanUser, cleanName, hashedPass, cleanRole, vendorCode, JSON.stringify(permissions), active]);
       } else {
         // Atualiza sem mexer na senha
-        await p.query(`
+        const defaultHash = await hashPassword('102030');
+        await safeQuery(`
           INSERT INTO users (username, name, pass, role, vendor_code, permissions, active, updated_at)
-          VALUES ($1, $2, '102030', $3, $4, $5, $6, NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
           ON CONFLICT (username) DO UPDATE SET
             name = EXCLUDED.name,
             role = EXCLUDED.role,
@@ -308,7 +399,7 @@ async function saveUser(userData) {
             permissions = EXCLUDED.permissions,
             active = EXCLUDED.active,
             updated_at = NOW();
-        `, [cleanUser, cleanName, cleanRole, vendorCode, JSON.stringify(permissions), active]);
+        `, [cleanUser, cleanName, defaultHash, cleanRole, vendorCode, JSON.stringify(permissions), active]);
       }
     } catch (err) {
       console.warn('⚠️ [Postgres] Erro ao salvar usuário no banco:', err.message);
@@ -324,18 +415,19 @@ async function saveUser(userData) {
     const idx = localUsers.findIndex(u => u.username.toLowerCase() === cleanUser);
     if (idx >= 0) {
       localUsers[idx].name = cleanName;
-      if (userData.pass && String(userData.pass).trim() !== '') {
-        localUsers[idx].pass = String(userData.pass).trim();
+      if (hashedPass) {
+        localUsers[idx].pass = hashedPass;
       }
       localUsers[idx].role = cleanRole;
-      if (vendorCode) localUsers[idx].vendorCode = vendorCode;
+      if (vendorCode !== undefined) localUsers[idx].vendorCode = vendorCode;
       localUsers[idx].permissions = permissions;
       localUsers[idx].active = active;
     } else {
+      const defaultHash = hashedPass || (await hashPassword('102030'));
       localUsers.push({
         username: cleanUser,
         name: cleanName,
-        pass: userData.pass || '102030',
+        pass: defaultHash,
         role: cleanRole,
         vendorCode: vendorCode,
         permissions: permissions,
@@ -346,6 +438,8 @@ async function saveUser(userData) {
   } catch (e) {
     console.warn('Erro ao atualizar cache local de usuários:', e.message);
   }
+
+  return true;
 }
 
 /**
@@ -354,9 +448,9 @@ async function saveUser(userData) {
 async function deleteUser(username) {
   const cleanUser = String(username || '').trim().toLowerCase();
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
-      await p.query('DELETE FROM users WHERE username = $1;', [cleanUser]);
+      await safeQuery('DELETE FROM users WHERE username = $1;', [cleanUser]);
     } catch (err) {
       console.warn('⚠️ [Postgres] Erro ao excluir usuário no banco:', err.message);
     }
@@ -377,9 +471,9 @@ async function deleteUser(username) {
  */
 async function getHistory() {
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
-      const res = await p.query(`
+      const res = await safeQuery(`
         SELECT 
           id,
           data_conciliacao AS "dataConciliacao",
@@ -394,7 +488,7 @@ async function getHistory() {
         ORDER BY id DESC 
         LIMIT 100;
       `);
-      if (res.rows && res.rows.length > 0) {
+      if (res && res.rows && res.rows.length > 0) {
         return res.rows.map(r => ({
           ...r,
           ...(r.detalhes || {})
@@ -419,9 +513,9 @@ async function getHistory() {
  */
 async function saveHistoryItem(item) {
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
-      await p.query(`
+      await safeQuery(`
         INSERT INTO history (
           fatura_numero, transportadora, empresa, valor_total, qtd_fretes, divergencias, detalhes
         ) VALUES ($1, $2, $3, $4, $5, $6, $7);
@@ -462,23 +556,23 @@ async function logUserActivity({ username, userName, actionType, description, ip
   const metaObj = metadata && typeof metadata === 'object' ? metadata : {};
 
   const p = getPool();
-  if (p && isConnected) {
+  if (p) {
     try {
       // 1. Insere log na tabela user_activities
-      await p.query(`
+      await safeQuery(`
         INSERT INTO user_activities (username, user_name, action_type, description, ip_address, metadata)
         VALUES ($1, $2, $3, $4, $5, $6);
       `, [cleanUser, cleanName, cleanType, cleanDesc, ip || '', JSON.stringify(metaObj)]);
 
       // 2. Atualiza contador e último acesso do usuário
       if (cleanType === 'LOGIN') {
-        await p.query(`
+        await safeQuery(`
           UPDATE users 
           SET last_login_at = NOW(), last_active_at = NOW(), total_actions = COALESCE(total_actions, 0) + 1, updated_at = NOW()
           WHERE username = $1;
         `, [cleanUser]);
       } else {
-        await p.query(`
+        await safeQuery(`
           UPDATE users 
           SET last_active_at = NOW(), total_actions = COALESCE(total_actions, 0) + 1, updated_at = NOW()
           WHERE username = $1;
@@ -531,7 +625,7 @@ async function getAuditSummary() {
   const p = getPool();
   if (p) {
     try {
-      const usersRes = await p.query(`
+      const usersRes = await safeQuery(`
         SELECT 
           id, username, name, role, vendor_code AS "vendorCode", active,
           last_login_at AS "lastLoginAt",
@@ -541,7 +635,7 @@ async function getAuditSummary() {
         ORDER BY COALESCE(last_active_at, created_at) DESC;
       `);
 
-      const actsRes = await p.query(`
+      const actsRes = await safeQuery(`
         SELECT 
           id, username, user_name AS "userName", action_type AS "actionType", 
           description, ip_address AS "ip", metadata,
@@ -551,23 +645,23 @@ async function getAuditSummary() {
         LIMIT 100;
       `);
 
-      const statsRes = await p.query(`
+      const statsRes = await safeQuery(`
         SELECT 
           COUNT(*) AS "totalActivities",
           COUNT(DISTINCT username) AS "activeUsersCount"
         FROM user_activities;
       `);
 
-      isConnected = true;
-      return {
-        users: usersRes.rows || [],
-        recentActivities: actsRes.rows || [],
-        stats: statsRes.rows[0] || { totalActivities: 0, activeUsersCount: 0 },
-        dbConnected: true
-      };
+      if (usersRes && actsRes && statsRes) {
+        return {
+          users: usersRes.rows || [],
+          recentActivities: actsRes.rows || [],
+          stats: statsRes.rows[0] || { totalActivities: 0, activeUsersCount: 0 },
+          dbConnected: true
+        };
+      }
     } catch (err) {
       console.warn('⚠️ [Postgres] Erro ao obter resumo de auditoria do banco, usando fallback local:', err.message);
-      isConnected = false;
     }
   }
 
@@ -634,17 +728,19 @@ async function saveInterWebhookEvent({ empresaCodigo = '14', eventId, tipo = 'PI
   // 1. Tenta gravar no Supabase PostgreSQL
   if (p) {
     try {
-      const res = await p.query(
+      const res = await safeQuery(
         `INSERT INTO inter_webhook_events (empresa_codigo, event_id, tipo, payload, created_at)
          VALUES ($1, $2, $3, $4, NOW())
          ON CONFLICT (empresa_codigo, event_id) DO NOTHING
          RETURNING id, empresa_codigo AS "empresaCodigo", event_id AS "eventId", tipo, created_at AS "createdAt";`,
         [emp, evtId, tipo, rawPayloadStr]
       );
-      if (res.rows.length > 0) {
+      if (res && res.rows && res.rows.length > 0) {
         return { success: true, savedTo: 'postgres', event: res.rows[0] };
       }
-      return { success: true, savedTo: 'postgres', duplicate: true, eventId: evtId };
+      if (res && res.rows) {
+        return { success: true, savedTo: 'postgres', duplicate: true, eventId: evtId };
+      }
     } catch (err) {
       console.warn('⚠️ [Postgres Webhook Save Error]:', err.message);
     }
@@ -694,8 +790,8 @@ async function getInterWebhookEvents(empresaCodigo = null, limit = 50) {
       query += ` ORDER BY created_at DESC LIMIT $${params.length + 1};`;
       params.push(maxLimit);
 
-      const res = await p.query(query, params);
-      return res.rows;
+      const res = await safeQuery(query, params);
+      if (res && res.rows) return res.rows;
     } catch (err) {
       console.warn('⚠️ [Postgres Webhook Get Error]:', err.message);
     }
@@ -721,9 +817,12 @@ function isPostgresConnected() {
 
 module.exports = {
   initPostgres,
+  safeQuery,
   getUsers,
   saveUser,
   deleteUser,
+  hashPassword,
+  verifyPassword,
   getHistory,
   saveHistoryItem,
   logUserActivity,

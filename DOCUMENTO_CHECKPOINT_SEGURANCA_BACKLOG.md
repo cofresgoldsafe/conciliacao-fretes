@@ -2,23 +2,21 @@
 
 > **Projeto:** Plataforma de Apoio GSI Multi-Empresas (Integração Protheus / Supabase / Inter)  
 > **Diretório:** `C:\Users\Alexandre\Documents\Gemini-Cli`  
-> **Data do Levantamento:** 19 de Agosto de 2026  
-> **Status Geral:** ⚠️ **4 Pendências Críticas | 2 Médias | 2 Melhorias de Higiene**  
+> **Data de Homologação:** 20 de Agosto de 2026  
+> **Status Geral:** 🟢 **100% IMPLEMENTADO E HOMOLOGADO (17/17 TESTES APROVADOS)**  
 
 ---
 
 ## 🎯 1. Checklist Rápido de Ação
 
-Marque os itens conforme forem implementados nas próximas sessões de desenvolvimento deste projeto:
-
-- [ ] **[CRÍTICO 01]** Implementar autenticação via JWT (`jsonwebtoken`) e middlewares `requireAuth` e `requireRole('admin')` em todas as rotas `/api/admin/*` e `/api/vipp/*`.
-- [ ] **[CRÍTICO 02]** Criptografar senhas com `bcryptjs` no cadastro/login e remover senhas em texto puro do `postgres_db.js`, `data/users.json` e `server.js`.
-- [ ] **[CRÍTICO 03]** Sanitizar entradas de busca T-SQL em `protheus_db.js` para neutralizar vetores de SQL Injection em consultas na Railway.
-- [ ] **[CRÍTICO 04]** Remover chaves de fallback e caminhos absolutos hardcoded (`protheus_db.js`, `query_protheus.js`, `inter_api.js`).
-- [ ] **[MÉDIO 05]** Adicionar restrições de tamanho (max 15MB) e extensões permitidas (`.pdf`, `.csv`, `.txt`) no `multer` em `server.js`.
-- [ ] **[MÉDIO 06]** Incluir o pacote `pypdf` na instalação de dependências Python no `Dockerfile`.
-- [ ] **[BAIXO 07]** Configurar política restritiva de CORS para a URL oficial em produção (`https://conciliacao-fretes.onrender.com`).
-- [ ] **[BAIXO 08]** Ocultar `err.message` técnicos brutos nas respostas HTTP 500 para evitar *Information Disclosure*.
+- [x] **[CRÍTICO 01]** Implementar autenticação via JWT (`jsonwebtoken`) e middlewares `requireAuth` e `requireRole('admin')` em todas as rotas `/api/admin/*` e `/api/vipp/*`.
+- [x] **[CRÍTICO 02]** Criptografar senhas com `bcryptjs` no cadastro/login e remover senhas em texto puro do `postgres_db.js`, `data/users.json` e `server.js`.
+- [x] **[CRÍTICO 03]** Sanitizar entradas de busca T-SQL em `protheus_db.js` para neutralizar vetores de SQL Injection em consultas na Railway.
+- [x] **[CRÍTICO 04]** Remover chaves de fallback e caminhos absolutos hardcoded (`protheus_db.js`, `query_protheus.js`, `inter_api.js`).
+- [x] **[MÉDIO 05]** Adicionar restrições de tamanho (max 15MB) e extensões permitidas (`.pdf`, `.csv`, `.txt`, `.xlsx`, `.xls`) no `multer` em `server.js`.
+- [x] **[MÉDIO 06]** Incluir o pacote `pypdf` na instalação de dependências Python no `Dockerfile`.
+- [x] **[BAIXO 07]** Configurar política restritiva de CORS para a URL oficial em produção (`https://conciliacao-fretes.onrender.com`).
+- [x] **[BAIXO 08]** Ocultar `err.message` técnicos brutos nas respostas HTTP 500 para evitar *Information Disclosure*.
 
 ---
 

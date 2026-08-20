@@ -82,8 +82,24 @@ function executeRailwayQuery(sql) {
 /**
  * Normaliza termos e documentos para busca flexível com 6 dígitos, 9 dígitos e número puro
  */
+/**
+ * Sanitiza valores para inserção segura em consultas T-SQL
+ * Escapa aspas simples e remove caracteres perigosos de injeção
+ */
+function sanitizeSqlParam(value) {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/'/g, "''")                // Duplica aspas simples (escape padrão SQL Server)
+    .replace(/;/g, '')                  // Remove ponto e vírgula para evitar stacking queries
+    .replace(/--/g, '')                 // Remove comentários de linha
+    .replace(/\/\*[\s\S]*?\*\//g, '')   // Remove bloco de comentários completo /* ... */
+    .replace(/\/\*/g, '')
+    .replace(/\*\//g, '')
+    .trim();
+}
+
 function getDocVariants(docStr) {
-  const raw = String(docStr || '').trim();
+  const raw = sanitizeSqlParam(docStr);
   if (!raw) return { raw: '', numOnly: '', padded6: '', padded9: '' };
   const digits = raw.replace(/\D/g, '');
   const numOnly = digits ? (digits.replace(/^0+/, '') || '0') : raw;
@@ -320,9 +336,9 @@ function getNomeVendedor(cod) {
  * Permite buscar por CodWeb, Número do Pedido ou Nome do Cliente nas 3 empresas
  */
 async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
-  const cleanCodWeb = String(codWeb || '').trim();
-  const cleanNumPed = String(numPed || '').trim();
-  const cleanNomeCli = String(nomeCli || '').trim();
+  const cleanCodWeb = sanitizeSqlParam(codWeb);
+  const cleanNumPed = sanitizeSqlParam(numPed);
+  const cleanNomeCli = sanitizeSqlParam(nomeCli);
 
   if (!cleanCodWeb && !cleanNumPed && !cleanNomeCli) {
     return [];
@@ -394,7 +410,7 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
  * Retorna dados cadastrais, endereço, transporte, condição de pagamento e itens (SC6)
  */
 async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
-  const cleanPed = String(numPedido || '').trim();
+  const cleanPed = sanitizeSqlParam(numPedido);
   const paddedPed6 = cleanPed.padStart(6, '0');
   const empMap = {
     "OACO": { codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160" },
@@ -444,7 +460,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
 
     if (head && head.COD_CLI) {
       try {
-        const cleanCodCli = String(head.COD_CLI).trim();
+        const cleanCodCli = sanitizeSqlParam(head.COD_CLI);
         const paddedCodCli = cleanCodCli.padStart(6, '0');
         const sqlSA1 = `
           SELECT TOP 1
@@ -599,7 +615,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
 async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
   const cleanDataFim = String(dataFim || '').replace(/\D/g, '');
-  const cleanCodVend = codVend ? String(codVend).trim() : '';
+  const cleanCodVend = sanitizeSqlParam(codVend);
 
   const empresas = [
     { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160" },

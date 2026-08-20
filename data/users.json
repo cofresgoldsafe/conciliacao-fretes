@@ -2,7 +2,7 @@
   {
     "username": "alexandre",
     "name": "Alexandre",
-    "pass": "321654",
+    "pass": "$2b$10$p0RJWNsHaXZhB.OVofss9ekoTYw5/e9fG9McA24vn03Ws.z/KMOUi",
     "role": "admin",
     "permissions": [
       "logistica",
@@ -11,12 +11,15 @@
       "financeiro",
       "configuracoes"
     ],
-    "active": true
+    "active": true,
+    "lastActiveAt": "2026-08-20T17:47:29.794Z",
+    "lastLoginAt": "2026-08-20T17:47:29.794Z",
+    "totalActions": 9
   },
   {
     "username": "erica",
     "name": "Érica",
-    "pass": "1020304050",
+    "pass": "$2b$10$5KtjOcAMub6EtmKpeVyUf.KIeTGjxSvea/XDRnQqCgIDdqOUObMrq",
     "role": "user",
     "permissions": [
       "logistica",
@@ -27,7 +30,7 @@
   {
     "username": "wallerson",
     "name": "Wallerson",
-    "pass": "10203040",
+    "pass": "$2b$10$4K2LJfNjtIcHjM1Nj8vXiOpZh2esE4jvbE1YRd3brORaQLB4UJCOq",
     "role": "user",
     "permissions": [
       "logistica",
@@ -38,7 +41,7 @@
   {
     "username": "juliana",
     "name": "Juliana",
-    "pass": "102030",
+    "pass": "$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq",
     "role": "vendedor",
     "vendorCode": "000074",
     "permissions": [
@@ -49,7 +52,7 @@
   {
     "username": "andrea",
     "name": "Andrea",
-    "pass": "102030",
+    "pass": "$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq",
     "role": "vendedor",
     "vendorCode": "000064",
     "permissions": [
@@ -60,7 +63,7 @@
   {
     "username": "figueiredo",
     "name": "Figueiredo",
-    "pass": "102030",
+    "pass": "$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq",
     "role": "vendedor",
     "vendorCode": "000004",
     "permissions": [
@@ -71,7 +74,7 @@
   {
     "username": "rubens",
     "name": "Rubens da Silva",
-    "pass": "102030",
+    "pass": "$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq",
     "role": "user",
     "permissions": [
       "financeiro"

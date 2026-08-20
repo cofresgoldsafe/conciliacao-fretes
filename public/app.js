@@ -13,11 +13,33 @@ document.addEventListener('DOMContentLoaded', () => {
   const navTabBtns = document.querySelectorAll('.nav-tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
-  // Intercepta todas as requisições fetch para anexar a identidade do usuário logado
+  // Intercepta todas as requisições fetch para anexar token JWT e dados do usuário logado
   const originalFetch = window.fetch;
   window.fetch = function(url, options = {}) {
     options = options || {};
     options.headers = options.headers || {};
+
+    let token = currentToken;
+    if (!token) {
+      try {
+        const rawSession = localStorage.getItem('conciliacao_fretes_session');
+        if (rawSession) {
+          const sess = JSON.parse(rawSession);
+          if (sess && sess.token) token = sess.token;
+        }
+      } catch {}
+    }
+
+    if (token) {
+      if (options.headers instanceof Headers) {
+        options.headers.set('Authorization', `Bearer ${token}`);
+      } else if (Array.isArray(options.headers)) {
+        options.headers.push(['Authorization', `Bearer ${token}`]);
+      } else {
+        options.headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
     if (currentUser) {
       if (options.headers instanceof Headers) {
         options.headers.set('x-user-username', currentUser.username || '');
@@ -97,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let currentUser = null;
+  let currentToken = null;
 
   // --- AUTHENTICATION & 7-DAY SESSION SYSTEM ---
   function checkAuthSession() {
@@ -106,7 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const session = JSON.parse(rawSession);
         if (session && session.expiresAt && session.expiresAt > Date.now()) {
           currentUser = session.user;
-          showAuthenticatedUser(session.user);
+          currentToken = session.token || null;
+          showAuthenticatedUser(session.user, session.token);
           return true;
         }
       } catch (e) {
@@ -117,8 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
-  function showAuthenticatedUser(user) {
+  function showAuthenticatedUser(user, token) {
     currentUser = user;
+    if (token) currentToken = token;
     if (loginOverlay) loginOverlay.classList.add('hidden');
     if (userInfo) userInfo.textContent = user.name || user.username;
 
@@ -212,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
             expiresAt: data.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)
           };
           localStorage.setItem('conciliacao_fretes_session', JSON.stringify(session));
-          showAuthenticatedUser(data.user);
+          showAuthenticatedUser(data.user, data.token);
         } else {
           if (loginErrorMsg) {
             loginErrorMsg.textContent = `⚠️ ${data.message || 'Usuário ou senha incorretos.'}`;
@@ -237,6 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', () => {
       if (confirm('Deseja realmente encerrar sua sessão?')) {
         localStorage.removeItem('conciliacao_fretes_session');
+        currentToken = null;
+        currentUser = null;
         showLoginOverlay(true);
       }
     });
