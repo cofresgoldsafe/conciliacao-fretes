@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ACT-1787056082845",
+    "username": "andrea",
+    "userName": "Andrea",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (26/07/2026 a 25/08/2026) - Vendedor 000064 (24 lançamentos)",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-08-18T12:28:02.845Z"
+  },
+  {
+    "id": "ACT-1787056082843",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS",
+    "description": "Pesquisou pedidos: Ped: 000703 (1 resultado(s))",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-08-18T12:28:02.843Z"
+  },
+  {
+    "id": "ACT-1787056082838",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (vendedor)",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-08-18T12:28:02.838Z"
+  }
+]

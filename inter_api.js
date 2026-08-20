@@ -51,6 +51,11 @@ const tokenCache = {};
 
 // Mapeamento de caminhos locais padrão para certificados
 const LOCAL_CERT_PATHS = {
+  "14": {
+    webhookCa: 'D:\\Backup IA\\Projetos Antigos\\Certificado_Webhook\\ca.crt',
+    cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado METAL_PLENO\\Inter API_Certificado.crt',
+    key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado METAL_PLENO\\Inter API_Chave.key'
+  },
   "15": {
     cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado GSI\\Inter API_Certificado.crt',
     key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado GSI\\Inter API_Chave.key'

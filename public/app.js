@@ -146,14 +146,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
     ajustarEscopoVendedor(user);
 
+    // Se o usuário não tem nenhuma permissão atribuída
+    if (perms.length === 0) {
+      mainTabBtns.forEach(b => b.classList.remove('active'));
+      if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
+      if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
+      if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
+      if (subGroupFinanceiro) subGroupFinanceiro.classList.add('hidden');
+      if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
+      tabPanes.forEach(pane => pane.classList.add('hidden'));
+      return;
+    }
+
     // Se o usuário atual estiver em uma aba que não tem permissão, redireciona para a primeira permitida
     const activeMainBtn = document.querySelector('.main-tab-btn.active');
     if (activeMainBtn) {
       const activeMain = activeMainBtn.getAttribute('data-main-tab');
       if (!perms.includes(activeMain)) {
-        const firstPerm = perms[0] || 'logistica';
-        switchMainTab(firstPerm);
+        const firstPerm = perms[0];
+        if (firstPerm) switchMainTab(firstPerm);
       }
+    } else if (perms.length > 0) {
+      switchMainTab(perms[0]);
     }
   }
 
@@ -1094,6 +1108,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const editRole = document.getElementById('editRole');
   const permLogistica = document.getElementById('permLogistica');
   const permConsulta = document.getElementById('permConsulta');
+  const permVendedores = document.getElementById('permVendedores');
+  const permFinanceiro = document.getElementById('permFinanceiro');
   const permConfiguracoes = document.getElementById('permConfiguracoes');
   const userModalMsg = document.getElementById('userModalMsg');
   const usersTableBody = document.getElementById('usersTableBody');
@@ -1130,6 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         perms.includes('logistica') ? '<span class="perm-badge perm-badge-logistica">📦 Logística</span>' : '',
         perms.includes('consulta') ? '<span class="perm-badge perm-badge-consulta">🔍 Consulta</span>' : '',
         perms.includes('vendedores') ? '<span class="perm-badge perm-badge-vendedores">💼 Vendedores</span>' : '',
+        perms.includes('financeiro') ? '<span class="perm-badge perm-badge-financeiro">💰 Assist. Financ.</span>' : '',
         perms.includes('configuracoes') ? '<span class="perm-badge perm-badge-configuracoes">⚙️ Configurações</span>' : ''
       ].filter(Boolean).join(' ');
 
@@ -1185,8 +1202,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const permVendedores = document.getElementById('permVendedores');
-
   function openUserModalForNew() {
     if (userModalTitle) userModalTitle.textContent = '➕ Cadastrar Novo Usuário';
     if (editUsername) { editUsername.value = ''; editUsername.disabled = false; }
@@ -1196,6 +1211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (permLogistica) permLogistica.checked = true;
     if (permConsulta) permConsulta.checked = true;
     if (permVendedores) permVendedores.checked = true;
+    if (permFinanceiro) permFinanceiro.checked = false;
     if (permConfiguracoes) permConfiguracoes.checked = false;
     if (userModalMsg) userModalMsg.classList.add('hidden');
     if (userModal) userModal.classList.remove('hidden');
@@ -1212,6 +1228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (permLogistica) permLogistica.checked = perms.includes('logistica');
     if (permConsulta) permConsulta.checked = perms.includes('consulta');
     if (permVendedores) permVendedores.checked = perms.includes('vendedores');
+    if (permFinanceiro) permFinanceiro.checked = perms.includes('financeiro');
     if (permConfiguracoes) permConfiguracoes.checked = perms.includes('configuracoes');
 
     if (userModalMsg) userModalMsg.classList.add('hidden');
@@ -1234,7 +1251,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (permLogistica && permLogistica.checked) selectedPerms.push('logistica');
       if (permConsulta && permConsulta.checked) selectedPerms.push('consulta');
       if (permVendedores && permVendedores.checked) selectedPerms.push('vendedores');
+      if (permFinanceiro && permFinanceiro.checked) selectedPerms.push('financeiro');
       if (permConfiguracoes && permConfiguracoes.checked) selectedPerms.push('configuracoes');
+
+      if (selectedPerms.length === 0) {
+        if (userModalMsg) {
+          userModalMsg.textContent = '⚠️ Selecione ao menos 1 aba de permissão para o usuário.';
+          userModalMsg.classList.remove('hidden');
+        }
+        return;
+      }
 
       const payload = {
         username: editUsername.value.trim(),

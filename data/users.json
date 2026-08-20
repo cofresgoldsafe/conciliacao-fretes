@@ -8,6 +8,7 @@
       "logistica",
       "consulta",
       "vendedores",
+      "financeiro",
       "configuracoes"
     ],
     "active": true
@@ -64,6 +65,16 @@
     "vendorCode": "000004",
     "permissions": [
       "vendedores"
+    ],
+    "active": true
+  },
+  {
+    "username": "rubens",
+    "name": "Rubens da Silva",
+    "pass": "102030",
+    "role": "user",
+    "permissions": [
+      "financeiro"
     ],
     "active": true
   }

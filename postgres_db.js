@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const dataDir = path.join(__dirname, 'data');
 const usersFile = path.join(dataDir, 'users.json');
@@ -152,6 +153,26 @@ async function initPostgres() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS total_actions INTEGER DEFAULT 0;
       `);
 
+      // 6. Cria Tabela de Eventos de Webhook (Banco Inter / Multi-Empresas 14, 15, 16)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS inter_webhook_events (
+          id SERIAL PRIMARY KEY,
+          empresa_codigo VARCHAR(10) NOT NULL,
+          event_id VARCHAR(150) NOT NULL,
+          tipo VARCHAR(50) DEFAULT 'PIX',
+          payload JSONB NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_inter_webhook_empresa_event UNIQUE (empresa_codigo, event_id)
+        );
+      `);
+      // Garante migração de constraint se tabela já existia com UNIQUE apenas em event_id
+      try {
+        await client.query(`
+          ALTER TABLE inter_webhook_events DROP CONSTRAINT IF EXISTS inter_webhook_events_event_id_key;
+          ALTER TABLE inter_webhook_events ADD CONSTRAINT uq_inter_webhook_empresa_event UNIQUE (empresa_codigo, event_id);
+        `);
+      } catch {}
+
       // 4. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
@@ -169,7 +190,7 @@ async function initPostgres() {
 
         if (localUsers.length === 0) {
           localUsers = [
-            { username: 'alexandre', name: 'Alexandre', pass: '321654', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'], active: true },
+            { username: 'alexandre', name: 'Alexandre', pass: '321654', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'], active: true },
             { username: 'erica', name: 'Érica', pass: '1020304050', role: 'user', permissions: ['logistica', 'consulta'], active: true },
             { username: 'wallerson', name: 'Wallerson', pass: '10203040', role: 'user', permissions: ['logistica', 'consulta'], active: true },
             { username: 'juliana', name: 'Juliana', pass: '102030', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },
@@ -198,7 +219,7 @@ async function initPostgres() {
 
       // 6. Garante sincronização das senhas atualizadas no Supabase
       await client.query(`
-        UPDATE users SET pass = '321654', permissions = '["logistica","consulta","vendedores","configuracoes"]'::jsonb WHERE username = 'alexandre';
+        UPDATE users SET pass = '321654', permissions = '["logistica","consulta","vendedores","financeiro","configuracoes"]'::jsonb WHERE username = 'alexandre';
         UPDATE users SET pass = '10203040' WHERE username = 'wallerson';
       `);
 
@@ -595,6 +616,105 @@ async function getAuditSummary() {
   }
 }
 
+const webhooksFile = path.join(dataDir, 'inter_webhooks.json');
+
+let writeQueue = Promise.resolve();
+
+/**
+ * Salva um evento de Webhook recebido do Banco Inter de forma idempotente e determinística
+ */
+async function saveInterWebhookEvent({ empresaCodigo = '14', eventId, tipo = 'PIX', payload = {} }) {
+  const p = getPool();
+  const emp = String(empresaCodigo || '14').trim();
+  const rawPayloadStr = typeof payload === 'string' ? payload : JSON.stringify(payload || {});
+  // Fallback determinístico por hash SHA-256 se eventId não for fornecido
+  const evtId = eventId || `evt-${crypto.createHash('sha256').update(emp + ':' + rawPayloadStr).digest('hex').slice(0, 32)}`;
+  const now = new Date().toISOString();
+
+  // 1. Tenta gravar no Supabase PostgreSQL
+  if (p) {
+    try {
+      const res = await p.query(
+        `INSERT INTO inter_webhook_events (empresa_codigo, event_id, tipo, payload, created_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (empresa_codigo, event_id) DO NOTHING
+         RETURNING id, empresa_codigo AS "empresaCodigo", event_id AS "eventId", tipo, created_at AS "createdAt";`,
+        [emp, evtId, tipo, rawPayloadStr]
+      );
+      if (res.rows.length > 0) {
+        return { success: true, savedTo: 'postgres', event: res.rows[0] };
+      }
+      return { success: true, savedTo: 'postgres', duplicate: true, eventId: evtId };
+    } catch (err) {
+      console.warn('⚠️ [Postgres Webhook Save Error]:', err.message);
+    }
+  }
+
+  // 2. Fallback em arquivo JSON local serializado por fila para evitar race conditions
+  return new Promise((resolve) => {
+    writeQueue = writeQueue.then(async () => {
+      try {
+        let localEvts = [];
+        if (fs.existsSync(webhooksFile)) {
+          localEvts = JSON.parse(fs.readFileSync(webhooksFile, 'utf-8'));
+        }
+        const exists = localEvts.some(e => String(e.empresaCodigo) === emp && String(e.eventId) === evtId);
+        if (!exists) {
+          const newEvt = { id: localEvts.length + 1, empresaCodigo: emp, eventId: evtId, tipo, payload: typeof payload === 'string' ? JSON.parse(payload) : payload, createdAt: now };
+          localEvts.unshift(newEvt);
+          if (localEvts.length > 200) localEvts = localEvts.slice(0, 200);
+          fs.writeFileSync(webhooksFile, JSON.stringify(localEvts, null, 2));
+          resolve({ success: true, savedTo: 'json_fallback', event: newEvt });
+          return;
+        }
+        resolve({ success: true, savedTo: 'json_fallback', duplicate: true, eventId: evtId });
+      } catch (err) {
+        console.error('❌ [Local Webhook Save Error]:', err.message);
+        resolve({ success: false, error: err.message });
+      }
+    });
+  });
+}
+
+/**
+ * Consulta histórico de eventos de Webhook recebidos
+ */
+async function getInterWebhookEvents(empresaCodigo = null, limit = 50) {
+  const p = getPool();
+  const maxLimit = Math.max(1, Math.min(parseInt(limit, 10) || 50, 200));
+
+  if (p) {
+    try {
+      let query = 'SELECT id, empresa_codigo AS "empresaCodigo", event_id AS "eventId", tipo, payload, created_at AS "createdAt" FROM inter_webhook_events';
+      const params = [];
+      if (empresaCodigo && empresaCodigo !== 'todas') {
+        query += ' WHERE empresa_codigo = $1';
+        params.push(String(empresaCodigo).trim());
+      }
+      query += ` ORDER BY created_at DESC LIMIT $${params.length + 1};`;
+      params.push(maxLimit);
+
+      const res = await p.query(query, params);
+      return res.rows;
+    } catch (err) {
+      console.warn('⚠️ [Postgres Webhook Get Error]:', err.message);
+    }
+  }
+
+  // Fallback JSON
+  try {
+    if (fs.existsSync(webhooksFile)) {
+      let localEvts = JSON.parse(fs.readFileSync(webhooksFile, 'utf-8'));
+      if (empresaCodigo && empresaCodigo !== 'todas') {
+        localEvts = localEvts.filter(e => String(e.empresaCodigo) === String(empresaCodigo));
+      }
+      return localEvts.slice(0, maxLimit);
+    }
+  } catch {}
+
+  return [];
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -609,5 +729,7 @@ module.exports = {
   logUserActivity,
   getAuditSummary,
   getDiagnosticInfo,
+  saveInterWebhookEvent,
+  getInterWebhookEvents,
   isPostgresConnected
 };

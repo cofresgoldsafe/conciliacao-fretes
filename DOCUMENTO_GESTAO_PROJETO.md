@@ -42,13 +42,17 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
   * De-Para de vendedores: `000004` (Figueiredo), `000064` (Andrea), `000074` (Juliana).
   * Trava de intervalo de 60 dias para proteção do banco de dados.
 
-### ⚙️ Módulo 3: Configurações, Controle de Acesso & Auditoria de Uso
-* **Sub-aba 1 (Usuários & Permissões):** Gestão de contas, senhas e permissões de abas (`logistica`, `consulta`, `vendedores`, `configuracoes`).
-* **Sub-aba 2 (Atividades & Auditoria):** Painel administrativo em tempo real com métricas de engajamento (usuários ativos, volume de ações), último acesso ativo relativo ("Online agora", "há X min") e feed detalhado dos últimos 100 eventos de negócio (logins, consultas de pedidos, relatórios de comissões, visualização de detalhes e uploads de faturas).
-* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência de tabelas `users`, `history` e `user_activities` via `postgres_db.js`, com auto-criação de schema e fallback gracioso local.
-* Usuários ativos: `alexandre` (Admin), `erica`, `wallerson` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
+### 💰 Módulo 4: Assistente Financeiro (Conciliação Bancária Inter x Protheus)
+* **Sub-aba 1 (Conciliação Bancária):** Conciliação de extratos da Conta Corrente Banco Inter 077 com títulos financeiros Protheus (`SE1`/`SE2`), filtros por data, cartões de conciliação e exportação.
+* **Webhook & Integração Pix/Boleto:** Monitoramento de eventos e persistência.
 
-### 🌐 Módulo 4: Implantação 100% Nuvem
+### ⚙️ Módulo 5: Configurações, Controle de Acesso & Auditoria de Uso
+* **Sub-aba 1 (Usuários & Permissões):** Gestão de contas, senhas e permissões granulares para as 5 abas principais (`logistica`, `consulta`, `vendedores`, `financeiro`, `configuracoes`). Blindagem contra arrays vazios e roteamento automático para perfis especializados (ex: operador Rubens com acesso exclusivo a Assist. Financ.).
+* **Sub-aba 2 (Atividades & Auditoria):** Painel administrativo em tempo real com métricas de engajamento (usuários ativos, volume de ações), último acesso ativo relativo e feed detalhado dos últimos eventos de negócio.
+* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência de tabelas `users`, `history` e `user_activities` via `postgres_db.js`, com auto-criação de schema e fallback gracioso local.
+* Usuários ativos: `alexandre` (Admin), `erica`, `wallerson`, `rubens` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
+
+### 🌐 Módulo 6: Implantação 100% Nuvem
 * Container Docker no Render com deploy contínuo integrado ao GitHub.
 * API de banco Protheus no Railway com driver ODBC SQL Server.
 * Banco de dados relacional PostgreSQL no Supabase (Pooler SSL / `DATABASE_URL`).
@@ -59,10 +63,11 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 
 | Módulo / Funcionalidade | Status | Observações |
 | :--- | :---: | :--- |
-| **Aba 1 (Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
-| **Aba 2 (Correios & FTP ViPP VisualSet)** | 🟢 Canal FTP Homologado | Parser PDF pronto; canal FTP testado e aprovado; aguardando primeiro CSV de retorno na pasta `/Retorno` (Ponto de Parada 7). |
+| **Aba 1 (Logística: Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
+| **Aba 2 (Consulta: Pedidos e NFs Multi-Empresa)** | 🟢 100% Concluído | Operacional com pesquisa unificada em 14, 15 e 16. |
 | **Aba 3 (Vendedores: Consulta Pedido, Comissões & Metas)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010`, comissões `SE3` e cálculo dinâmico de Meta Atingida. |
-| **Aba 4 (Configurações: Usuários & Auditoria de Uso)** | 🟢 100% Concluído | Operacional com 2 sub-abas, controle de perfis e telemetria de adoção no Supabase PostgreSQL. |
+| **Aba 4 (Assist. Financ.: Conciliação Inter x Protheus)** | 🟢 100% Concluído | Operacional com leitura de extratos Inter e batimento financeiro. |
+| **Aba 5 (Configurações: Usuários & Auditoria de Uso)** | 🟢 100% Concluído | Operacional com controle granular para as 5 abas, badges e auditoria de atividades. |
 | **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Fase Final | Classe AdvPL pronta ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)), botão desabilitado aguardando AppServer. |
 
 ---
@@ -77,6 +82,8 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 
 ---
 
-## 5. 🛡️ Segurança
+## 5. 🛡️ Segurança & Backlog de Hardening
 * Nenhuma senha, token ou chave confidencial foi gravada neste documento ou versionada no GitHub.
 * Variáveis sensíveis permanecem restritas ao painel de variáveis de ambiente do Render e Railway.
+* ⚠️ **Backlog de Segurança & Auditoria Técnica:** Consulte o documento detalhado [`DOCUMENTO_CHECKPOINT_SEGURANCA_BACKLOG.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/DOCUMENTO_CHECKPOINT_SEGURANCA_BACKLOG.md) para a lista priorizada de correções e checklist de implementação.
+

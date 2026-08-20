@@ -45,9 +45,11 @@ Implementamos com sucesso a nova aba **ASSIST. FINANC.** com a funcionalidade de
 
 | Arquivo | Tipo | Descrição |
 | :--- | :---: | :--- |
-| [`inter_api.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/inter_api.js) | **NOVO** | Módulo de autenticação mTLS OAuth 2.0, consulta de saldo e extrato do Banco Inter |
-| [`protheus_db.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/protheus_db.js) | **MODIFICADO** | Consultas `SE8` (saldos), `SE5` (movimentações) e algoritmo de subset-sum N:1 |
-| [`server.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/server.js) | **MODIFICADO** | Endpoints `/api/financeiro/conciliacao`, `/api/financeiro/diagnostico` e `/api/financeiro/inter-config` |
+| [`inter_api.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/inter_api.js) | **MODIFICADO** | Módulo de autenticação mTLS OAuth 2.0, consulta de saldo/extrato e suporte a Webhook CA da Metal Pleno |
+| [`protheus_db.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/protheus_db.js) | **MODIFICADO** | Consultas `SE8` (saldos), `SE5` (movimentações) e persistência de webhooks |
+| [`postgres_db.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/postgres_db.js) | **MODIFICADO** | Tabela `inter_webhook_events` no Supabase com chave composta `(empresa_codigo, event_id)` e fallback JSON |
+| [`server.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/server.js) | **MODIFICADO** | Endpoints de conciliação, receptor de webhooks Inter (`POST /api/webhooks/inter/:empresa`) e log (`GET /api/financeiro/webhooks`) |
+| [`test_webhooks.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_webhooks.js) | **NOVO** | Suite de testes unitários e de integração HTTP E2E para webhooks com 100% de asserções estritas |
 | [`public/index.html`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/index.html) | **MODIFICADO** | Marcação da aba principal, sub-aba, cards de saldo, diagnóstico e modal de credenciais |
 | [`public/app.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/app.js) | **MODIFICADO** | Lógica interativa de filtros, chamadas de API, renderização de cards e visualizador de lotes N:1 |
 | [`public/style.css`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/style.css) | **MODIFICADO** | Estilos modernos para cards de saldo, badges de status, botões de data e cartões de lote agrupado |
@@ -56,9 +58,17 @@ Implementamos com sucesso a nova aba **ASSIST. FINANC.** com a funcionalidade de
 
 ## 4. 📌 Registro de Pendências & Evoluções Homologadas
 
-1. **🟡 Pendência 1: Credenciais mTLS do Banco Inter — Empresa 14 (Metal Pleno / S4BW):**
+1. **✅ Evolução 3: Receptor & Gerenciamento de Webhooks Banco Inter (Multi-Empresas 14, 15, 16):**
+   - **Status:** *Homologado e Testado com Sucesso (20/08/2026)*.
+   - **Entregas:**
+     - Endpoint público de recepção de webhooks `POST /api/webhooks/inter/:empresa` e `POST /api/webhooks/inter` com resposta HTTP 200 instantânea (<50ms).
+     - Processamento inteligente de Pix avulso, Boletos/Cobrança e **Batch Pix em lote** individualizando cada transação por `endToEndId`/`txid`.
+     - Idempotência estrita com chave única composta `(empresa_codigo, event_id)` no Supabase e fallback determinístico SHA-256 para eventos sem ID.
+     - Suporte ao certificado de Autoridade Certificadora do Inter (`ca.crt`) da Metal Pleno em `D:\Backup IA\Projetos Antigos\Certificado_Webhook\ca.crt`.
+     - Endpoint protegido de auditoria `GET /api/financeiro/webhooks` com validação de usuários autenticados e Master API Key.
+2. **🟡 Pendência 1: Credenciais mTLS Ativas do Banco Inter — Empresa 14 (Metal Pleno / S4BW):**
    - **Status:** *Aguardando Configuração*.
-   - **Contexto:** As contas correntes das empresas **15 (GSI)** e **16 (OAÇO)** estão totalmente conectadas via API oficial do Inter. A conta **14 (Metal Pleno - CC `3974073-9`)** permanece aguardando a geração das credenciais (Client ID e Secret) e emissão dos certificados mTLS (`INTER_CERT_14` e `INTER_KEY_14`) no painel de desenvolvedor do Banco Inter para inserção no Render.
-2. **✅ Evolução 2: Coluna "Cliente Provável (Extrato)" em Faltantes no Protheus:**
+   - **Contexto:** As contas correntes das empresas **15 (GSI)** e **16 (OAÇO)** estão totalmente conectadas via API oficial do Inter. A conta **14 (Metal Pleno - CC `3974073-9`)** permanece aguardando a geração das chaves de aplicação (Client ID, Client Secret e par `Inter API_Certificado.crt` / `Inter API_Chave.key`) no painel de desenvolvedor do Banco Inter para inserção no Render.
+3. **✅ Evolução 2: Coluna "Cliente Provável (Extrato)" em Faltantes no Protheus:**
    - **Status:** *Homologado e Publicado (19/08/2026 10:38)*.
    - **Contexto:** Na sub-aba *⚠️ Faltantes no Protheus* do diagnóstico de conciliação, a antiga coluna *Documento* (que sempre exibia `-`) foi substituída por **"Cliente Provável (Extrato)"**. Agora é exibida a descrição/identificação do depositante ou beneficiário vinda diretamente do extrato bancário (ex: `COMPANIA THERMAS DO RIO...`, `INTER PAG INSTITUIÇÃO DE PAG...`), permitindo ao operador identificar com agilidade a qual cliente ou movimento o crédito pertence para digitação no ERP Protheus.

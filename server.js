@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { 
   consultarProtheusNF, 
@@ -36,6 +37,8 @@ const {
   logUserActivity,
   getAuditSummary,
   getDiagnosticInfo,
+  saveInterWebhookEvent,
+  getInterWebhookEvents,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -213,7 +216,7 @@ app.post('/api/auth/login', async (req, res) => {
         name: userFound.name,
         role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
         vendorCode: userFound.vendorCode || null,
-        permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'configuracoes'] : ['logistica', 'consulta'])
+        permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
       },
       expiresAt: expiresAt,
       message: 'Login realizado com sucesso.'
@@ -222,7 +225,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   // Fallback seguro para contas padrão
   const defaultSeeds = {
-    'alexandre': { pass: '321654', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'configuracoes'] },
+    'alexandre': { pass: '321654', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] },
     'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
     'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] },
     'juliana': { pass: '102030', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
@@ -283,6 +286,12 @@ app.post('/api/admin/users/save', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Usuário e Nome são obrigatórios.' });
   }
 
+  const allowedTabs = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
+  let cleanPerms = Array.isArray(permissions) ? permissions.filter(p => allowedTabs.includes(p)) : ['logistica', 'consulta'];
+  if (cleanPerms.length === 0) {
+    cleanPerms = ['logistica', 'consulta'];
+  }
+
   const cleanUser = String(username).trim().toLowerCase();
   await saveUserDB({
     username: cleanUser,
@@ -290,7 +299,7 @@ app.post('/api/admin/users/save', async (req, res) => {
     pass: pass ? String(pass).trim() : undefined,
     role: role || 'user',
     vendorCode: vendorCode || null,
-    permissions: Array.isArray(permissions) ? permissions : ['logistica', 'consulta'],
+    permissions: cleanPerms,
     active: active !== undefined ? !!active : true
   });
 
@@ -922,11 +931,121 @@ app.get('/api/financeiro/diagnostico', async (req, res) => {
   }
 });
 
-app.listen(PORT, async () => {
-  console.log(`=================================================`);
-  console.log(`🚀 Portal Faturas & Protheus Multi-Empresa (14/15/16) rodando na porta ${PORT}`);
-  console.log(`👉 Acesse: http://localhost:3000`);
-  console.log(`=================================================`);
-  await initPostgres();
+// =================================================================
+// WEBHOOK BANCO INTER (Multi-Empresa: 14 - Metal Pleno, 15 - GSI, 16 - OAÇO)
+// =================================================================
+
+// Endpoint de Recepção de Notificações em Tempo Real (Pix, Boletos, Banking)
+app.post(['/api/webhooks/inter', '/api/webhooks/inter/:empresa'], async (req, res) => {
+  try {
+    // 1. Validação opcional de segredo de webhook (se configurado no ambiente) com timingSafeEqual
+    const expectedSecret = (process.env.INTER_WEBHOOK_SECRET || '').trim();
+    if (expectedSecret) {
+      const incomingSecret = String(req.headers['x-webhook-secret'] || req.headers['x-inter-secret'] || req.query.secret || '').trim();
+      const bufIncoming = Buffer.from(incomingSecret);
+      const bufExpected = Buffer.from(expectedSecret);
+      const isMatch = (bufIncoming.length === bufExpected.length) && crypto.timingSafeEqual(bufIncoming, bufExpected);
+      if (!isMatch) {
+        console.warn('⛔ [Webhook Inter] Acesso rejeitado: segredo de webhook inválido.');
+        return res.status(401).json({ success: false, error: 'Unauthorized webhook secret' });
+      }
+    }
+
+    // 2. Resolução estrita do código da empresa por rota, header ou campos estruturados
+    const rawEmp = req.params.empresa || req.query.empresa || req.headers['x-empresa-codigo'] || req.body?.empresaCodigo || req.body?.empresa;
+    let empCode = '14';
+    if (rawEmp && ['14', '15', '16'].includes(String(rawEmp).trim())) {
+      empCode = String(rawEmp).trim();
+    } else if (req.body) {
+      const b = req.body;
+      const digits = String(b.contaCorrente || b.conta || b.cnpjDestinatario || b.cnpjRecebedor || b.chavePix || '').replace(/\D/g, '');
+      if (digits.includes('137760655') || digits.includes('18324901000114')) empCode = '15';
+      else if (digits.includes('48165605') || digits.includes('61237790000118')) empCode = '16';
+      else if (digits.includes('397407319') || digits.includes('44914992000138') || digits.includes('10870367000144')) empCode = '14';
+    }
+
+    const b = req.body || {};
+
+    // 3. Tratamento de Batch Pix (múltiplas transações em um único webhook)
+    if (Array.isArray(b.pix)) {
+      if (b.pix.length === 0) {
+        return res.status(200).json({ received: true, totalEvents: 0, empresaCodigo: empCode, message: 'Empty pix array' });
+      }
+
+      // Responde HTTP 200 rápido ao Inter
+      res.status(200).json({ received: true, totalEvents: b.pix.length, empresaCodigo: empCode, tipo: 'PIX_BATCH' });
+
+      // Grava cada transação Pix isoladamente de forma determinística
+      for (const pixItem of b.pix) {
+        const evtId = pixItem?.endToEndId || pixItem?.txid || null;
+        saveInterWebhookEvent({
+          empresaCodigo: empCode,
+          eventId: evtId,
+          tipo: 'PIX',
+          payload: pixItem
+        }).catch(e => console.warn('⚠️ [Pix Batch Item Save Error]:', e.message));
+      }
+      return;
+    }
+
+    // 4. Tratamento de Notificações Singulares (Boleto, Cobrança, Pix Único, Banking)
+    const eventId = b.txid || b.nossoNumero || b.idTransacao || b.codigoSolicitacao || b.endToEndId || null;
+    const tipo = b.nossoNumero ? 'BOLETO' : (b.pix || b.txid || b.endToEndId ? 'PIX' : (b.tipoOperacao || b.tipoTransacao ? 'BANKING' : 'EVENTO_INTER'));
+
+    // Resposta imediata HTTP 200 para o Banco Inter
+    res.status(200).json({ received: true, empresaCodigo: empCode, tipo });
+
+    // Gravação assíncrona/idempotente determinística
+    saveInterWebhookEvent({
+      empresaCodigo: empCode,
+      eventId,
+      tipo,
+      payload: b
+    }).catch(e => console.warn('⚠️ [Webhook Event Async Save Warning]:', e.message));
+
+  } catch (err) {
+    console.error('❌ Erro no webhook Inter:', err.message);
+    res.status(200).json({ received: true, error: err.message });
+  }
 });
+
+// Endpoint de Consulta de Eventos de Webhook Recebidos (Protegido com Validação Real de Usuário)
+app.get('/api/financeiro/webhooks', async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+    const isMasterApiKey = (apiKey && apiKey === process.env.API_KEY);
+
+    if (!isMasterApiKey) {
+      const allUsers = await getUsersDB();
+      const validUser = allUsers.find(u => u.username.toLowerCase() === user.username.toLowerCase() && u.active);
+      if (!validUser || !['admin', 'operador', 'financeiro'].includes(validUser.role || 'user')) {
+        return res.status(401).json({ success: false, error: 'Acesso restrito a usuários autorizados' });
+      }
+    }
+
+    const { empresa, limit } = req.query;
+    const eventos = await getInterWebhookEvents(empresa, limit || 50);
+    res.json({
+      success: true,
+      total: eventos.length,
+      empresa: empresa || 'todas',
+      eventos
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    console.log(`=================================================`);
+    console.log(`🚀 Portal Faturas & Protheus Multi-Empresa (14/15/16) rodando na porta ${PORT}`);
+    console.log(`👉 Acesse: http://localhost:3000`);
+    console.log(`=================================================`);
+    await initPostgres();
+  });
+}
+
+module.exports = app;
 
