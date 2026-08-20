@@ -296,91 +296,7 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
     }
   }
 
-  if (results.length > 0) {
-    return results;
-  }
-
-  // Fallback para testes locais e simulação multi-empresa
-  if (tipo === 'codWeb') {
-    if (cleanTerm.includes('98412') || cleanTerm.includes('630')) {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" }
-      ];
-    }
-    if (cleanTerm.includes('77210')) {
-      return [
-        { empresa: "Empresa 15 (GSI)", codWeb: "WEB-77210", pedVenda: "000630", nf: "000001089", valorNf: 5920.00, valorCobrado: 245.50, nomeCli: "AGROPECUARIA SANTA BARBARA" }
-      ];
-    }
-    if (cleanTerm.includes('55102')) {
-      return [
-        { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-55102", pedVenda: "000630", nf: "000000312", valorNf: 4120.00, valorCobrado: 180.00, nomeCli: "CONSTRUTORA SILVA & SANTOS" }
-      ];
-    }
-
-    const formattedWeb = cleanTerm.toUpperCase().startsWith('WEB-') ? cleanTerm.toUpperCase() : `WEB-${cleanTerm}`;
-    return [
-      { empresa: "Empresa 16 (OACO)", codWeb: formattedWeb, pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" },
-      { empresa: "Empresa 15 (GSI)", codWeb: formattedWeb, pedVenda: "000635", nf: "000001102", valorNf: 4950.00, valorCobrado: 320.80, nomeCli: "AGRO GSI DISTRIBUIDORA LTDA" }
-    ];
-  }
-
-  if (tipo === 'pedVenda') {
-    const numOnly = cleanTerm.replace(/\D/g, '');
-    const formattedPed = padded6;
-
-    if (cleanTerm.includes('630') || cleanTerm === '546') {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" },
-        { empresa: "Empresa 15 (GSI)", codWeb: "WEB-77210", pedVenda: "000630", nf: "000001089", valorNf: 5920.00, valorCobrado: 245.50, nomeCli: "AGROPECUARIA SANTA BARBARA" },
-        { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-55102", pedVenda: "000630", nf: "000000312", valorNf: 4120.00, valorCobrado: 180.00, nomeCli: "CONSTRUTORA SILVA & SANTOS" }
-      ];
-    }
-
-    if (cleanTerm.includes('635') || cleanTerm === '551') {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98413", pedVenda: "000635", nf: "000000551", valorNf: 2800.00, valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" },
-        { empresa: "Empresa 15 (GSI)", codWeb: "WEB-77301", pedVenda: "000635", nf: "000001102", valorNf: 4950.00, valorCobrado: 320.80, nomeCli: "AGRO GSI DISTRIBUIDORA LTDA" }
-      ];
-    }
-
-    if (cleanTerm.includes('598') || cleanTerm === '561') {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98500", pedVenda: "000598", nf: "000000561", valorNf: 3250.00, valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" },
-        { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-55190", pedVenda: "000598", nf: "000000415", valorNf: 3900.00, valorCobrado: 210.00, nomeCli: "ESTRUTURAS METALLICAS BETA S.A." }
-      ];
-    }
-
-    return [
-      { empresa: "Empresa 16 (OACO)", codWeb: "WEB-" + (parseInt(numOnly || '100', 10) + 120), pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 12), valorNf: 3500.00, valorCobrado: 137.14, nomeCli: "CLIENTE DEMO OACO LTDA" },
-      { empresa: "Empresa 15 (GSI)", codWeb: "WEB-" + (parseInt(numOnly || '100', 10) + 240), pedVenda: formattedPed, nf: "000001" + (parseInt(numOnly || '100', 10) + 45), valorNf: 4800.00, valorCobrado: 289.90, nomeCli: "AGROPECUARIA GSI DEMO S.A." },
-      { empresa: "Empresa 14 (METAL PLENO)", codWeb: "WEB-" + (parseInt(numOnly || '100', 10) + 360), pedVenda: formattedPed, nf: "000000" + (parseInt(numOnly || '100', 10) + 88), valorNf: 4100.00, valorCobrado: 195.50, nomeCli: "CONSTRUTORA METAL PLENO DEMO" }
-    ];
-  }
-
-  if (tipo === 'nfe') {
-    if (cleanTerm === '546' || cleanTerm === '000000546') {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000630", nf: "000000546", valorNf: 3840.50, valorCobrado: 137.14, nomeCli: "METALURGICA SAO JOSE LTDA" }
-      ];
-    }
-    if (cleanTerm === '551' || cleanTerm === '000000551') {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98413", pedVenda: "000635", nf: "000000551", valorNf: 2800.00, valorCobrado: 100.00, nomeCli: "DISTRIBUIDORA DE ACO BRASIL" }
-      ];
-    }
-    if (cleanTerm === '561' || cleanTerm === '000000561') {
-      return [
-        { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98500", pedVenda: "000598", nf: "000000561", valorNf: 3250.00, valorCobrado: 158.48, nomeCli: "IND E COM DE MAQUINAS ALFA LTDA" }
-      ];
-    }
-
-    return [
-      { empresa: "Empresa 16 (OACO)", codWeb: "WEB-98412", pedVenda: "000" + cleanTerm.slice(-3).padStart(3, '0'), nf: padded9, valorNf: 3750.00, valorCobrado: 175.80, nomeCli: "CLIENTE DEMO NFE LTDA" }
-    ];
-  }
-
-  return [];
+  return results;
 }
 
 const VENDEDORES_MAP = {
@@ -470,28 +386,7 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
     }
   }
 
-  if (results.length > 0) {
-    return results;
-  }
-
-  // Fallback simulado para testes locais e ambiente demonstrativo
-  const fallbackOrders = [
-    { empresa: "Empresa 16 (OACO)", empresaKey: "OACO", codWeb: "WEB-98412", numPed: "000630", nomeCli: "METALURGICA SAO JOSE LTDA", emissao: "20260810", vendedor: "Juliana", codVendedor: "000074" },
-    { empresa: "Empresa 16 (OACO)", empresaKey: "OACO", codWeb: "WEB-98413", numPed: "000635", nomeCli: "DISTRIBUIDORA DE ACO BRASIL", emissao: "20260811", vendedor: "Andrea", codVendedor: "000064" },
-    { empresa: "Empresa 15 (GSI)", empresaKey: "GSI", codWeb: "WEB-77210", numPed: "000630", nomeCli: "AGROPECUARIA SANTA BARBARA", emissao: "20260809", vendedor: "Figueiredo", codVendedor: "000004" },
-    { empresa: "Empresa 14 (METAL PLENO)", empresaKey: "METAL_PLENO", codWeb: "WEB-55102", numPed: "000630", nomeCli: "CONSTRUTORA SILVA & SANTOS", emissao: "20260808", vendedor: "Juliana", codVendedor: "000074" },
-    { empresa: "Empresa 15 (GSI)", empresaKey: "GSI", codWeb: "WEB-77301", numPed: "000712", nomeCli: "COOPERATIVA AGROINDUSTRIAL DO SUL", emissao: "20260812", vendedor: "Andrea", codVendedor: "000064" },
-    { empresa: "Empresa 14 (METAL PLENO)", empresaKey: "METAL_PLENO", codWeb: "WEB-55190", numPed: "000840", nomeCli: "ENGELUZ ENGENHARIA ELETRICA", emissao: "20260813", vendedor: "Figueiredo", codVendedor: "000004" },
-    { empresa: "Empresa 16 (OACO)", empresaKey: "OACO", codWeb: "WEB-98500", numPed: "000645", nomeCli: "CENTRAL DE DISTRIBUICAO SUL", emissao: "20260814", vendedor: "Juliana", codVendedor: "000074" }
-  ];
-
-  return fallbackOrders.filter(o => {
-    let match = true;
-    if (cleanCodWeb) match = match && o.codWeb.toLowerCase().includes(cleanCodWeb.toLowerCase());
-    if (cleanNumPed) match = match && (o.numPed.includes(cleanNumPed) || o.numPed.includes(paddedPed6));
-    if (cleanNomeCli) match = match && o.nomeCli.toLowerCase().includes(cleanNomeCli.toLowerCase());
-    return match;
-  });
+  return results;
 }
 
 /**
@@ -688,44 +583,12 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
     console.warn('Erro ao consultar detalhes do pedido:', err.message);
   }
 
-  // Fallback detalhado para demonstração e testes offline
   return {
-    encontrado: true,
+    encontrado: false,
     empresa: emp.nome,
     empresaKey: empresaKey,
     numPedido: paddedPed6,
-    codWeb: "WEB-" + paddedPed6.slice(-4),
-    emissao: "20260810",
-    cliente: {
-      codigo: "001420",
-      loja: "01",
-      nome: "METALURGICA SAO JOSE LTDA",
-      cnpj: "12.345.678/0001-90",
-      endereco: "AVENIDA INDUSTRIAL, 1500 - DISTRITO INDUSTRIAL",
-      bairro: "ZONA NORTE",
-      cidade: "RIBEIRAO PRETO",
-      uf: "SP",
-      cep: "14055-000",
-      telefone: "(16) 3999-8800",
-      email: "compras@saojosemetal.com.br"
-    },
-    comercial: {
-      transportadora: "RODONAVES TRANSPORTES LTDA",
-      condPagto: "30 / 60 DIAS (BOLETO)",
-      vendedor: "Juliana",
-      codVendedor: "000074",
-      observacoes: "Entregar em horário comercial das 08h às 17h."
-    },
-    totais: {
-      totalProdutos: 3450.00,
-      totalFrete: 137.14,
-      totalDesconto: 0.00,
-      totalGeral: 3587.14
-    },
-    itens: [
-      { item: "01", produto: "COFRE-DIG-40", descricao: "COFRE DIGITAL ELETRONICO MOD 40 BLINDADO", qtd: 2, prcUnit: 1200.00, total: 2400.00, entrega: "20260820" },
-      { item: "02", produto: "GAVETA-ANTI-FURTO", descricao: "GAVETA ANTI-FURTO AUTOMATICA ACO 2MM", qtd: 3, prcUnit: 350.00, total: 1050.00, entrega: "20260820" }
-    ]
+    message: 'Pedido não encontrado no Protheus.'
   };
 }
 
