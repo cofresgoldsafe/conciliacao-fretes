@@ -617,34 +617,59 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoading(false);
       }
     });
-  }
+  // --- VIPP FTP STATUS & SYNC LOGIC ---
+  const btnSyncVippFtp = document.getElementById('btnSyncVippFtp');
+  const vippFtpStatusText = document.getElementById('vippFtpStatusText');
+  const vippFtpStatusDot = document.getElementById('vippFtpStatusDot');
 
-  async function uploadCorreiosFile(file) {
-    showLoading(true, `Lendo Fatura Correios (${file.name}) e buscando etiquetas/NFs no ERP Protheus...`);
-    const formData = new FormData();
-    formData.append('faturaFile', file);
-    formData.append('tipoTransportadora', tipoCorreios ? tipoCorreios.value : 'CORREIOS_SFE');
-
+  async function checkVippFtpStatus() {
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      if (data.success) {
-        renderFaturaData(data);
-        const tab1Btn = document.querySelector('[data-tab="tab-upload"]');
-        if (tab1Btn) tab1Btn.click();
-      } else {
-        alert('Erro ao ler a fatura Correios: ' + data.message);
+      const res = await fetch('/api/vipp/ftp-status');
+      const data = await res.json();
+      if (data.success && data.data) {
+        const s = data.data;
+        if (vippFtpStatusText) {
+          const filesTxt = s.filesCount > 0 ? `${s.filesCount} arquivos CSV` : '0 arquivos';
+          const postTxt = s.totalPostagens > 0 ? `${s.totalPostagens} postagens (${s.totalEtiquetas} etiquetas únicas)` : '0 postagens';
+          vippFtpStatusText.innerHTML = `FTP ViPP (/Retorno): <strong>Conectado e Operacional</strong> <span style="font-size: 0.85rem; color: #94a3b8; margin-left: 8px;">(${filesTxt} • ${postTxt})</span>`;
+        }
+        if (vippFtpStatusDot) {
+          vippFtpStatusDot.style.backgroundColor = s.status === 'error' ? '#ef4444' : '#10b981';
+        }
       }
-    } catch (err) {
-      alert('Erro no upload da Fatura Correios.');
-      console.error(err);
-    } finally {
-      showLoading(false);
+    } catch (e) {
+      console.warn('Erro ao consultar status FTP ViPP:', e);
     }
   }
+
+  if (btnSyncVippFtp) {
+    btnSyncVippFtp.addEventListener('click', async () => {
+      const originalHtml = btnSyncVippFtp.innerHTML;
+      btnSyncVippFtp.disabled = true;
+      btnSyncVippFtp.innerHTML = '<span>⏳ Sincronizando...</span>';
+      try {
+        const res = await fetch('/api/vipp/sync-ftp', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert(`✅ FTP ViPP Sincronizado com Sucesso!\n\n• Arquivos Baixados: ${data.data.files ? data.data.files.length : 0}\n• Total de Postagens: ${data.data.totalPostagens || 0}\n• Etiquetas Únicas: ${data.data.totalEtiquetas || 0}`);
+          await checkVippFtpStatus();
+          if (currentItems && currentItems.length > 0) {
+            renderTableRows();
+          }
+        } else {
+          alert(`Aviso na sincronização ViPP: ${data.data?.warning || data.error || 'Não foi possível atualizar o FTP'}`);
+        }
+      } catch (err) {
+        alert('Erro ao comunicar com o servidor para sincronização do FTP ViPP.');
+      } finally {
+        btnSyncVippFtp.disabled = false;
+        btnSyncVippFtp.innerHTML = originalHtml;
+      }
+    });
+  }
+
+  // Executa checagem de status na inicialização
+  checkVippFtpStatus();
 
   function showLoading(isLoading, msg = 'Processando...') {
     if (isLoading) {
@@ -716,6 +741,26 @@ document.addEventListener('DOMContentLoaded', () => {
   function getItemDivergence(item, tolerancy = 0.00) {
     if (!item) {
       return { type: 'warning', orderPriority: 1, badgeHtml: `<span class="diverg-badge status-warning">⚠️ Dados Indisponíveis</span>`, diffVal: 0 };
+    }
+
+    // Identificação: Ordem de Serviço (OS)
+    if (item.tipoDoc === 'OS' || (item.docOriginario && String(item.docOriginario).toUpperCase().startsWith('OS'))) {
+      return {
+        type: 'os',
+        orderPriority: 4,
+        badgeHtml: `<span class="diverg-badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.35);">🔧 OS (Sem Cobrança)</span>`,
+        diffVal: 0
+      };
+    }
+
+    // Identificação: Objeto Sem Informação no ViPP ainda
+    if (item.tipoDoc === 'SEM_INFO' || item.docOriginario === 'Sem Info' || item.status === 'Sem Info') {
+      return {
+        type: 'seminfo',
+        orderPriority: 1,
+        badgeHtml: `<span class="diverg-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35);">⚠️ Sem Info</span>`,
+        diffVal: 0
+      };
     }
 
     if (item.protheusEncontrado === false) {
@@ -791,8 +836,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const divInfo = getItemDivergence(item, tolerancy);
       item._divInfo = divInfo;
       if (divInfo.type === 'danger') cntDanger++;
-      else if (divInfo.type === 'warning') cntWarning++;
-      else if (divInfo.type === 'success' || divInfo.type === 'info') cntSuccess++;
+      else if (divInfo.type === 'warning' || divInfo.type === 'seminfo') cntWarning++;
+      else if (divInfo.type === 'success' || divInfo.type === 'info' || divInfo.type === 'os') cntSuccess++;
     });
 
     // Atualizar estatísticas dos cartões no topo
@@ -800,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cntDivergWarning) cntDivergWarning.textContent = cntWarning;
     if (cntDivergSuccess) cntDivergSuccess.textContent = cntSuccess;
 
-    // Clonar e ordenar por prioridade de divergência (Divergentes Prejuízo -> Warning -> Info -> Success)
+    // Clonar e ordenar por prioridade de divergência (Divergentes Prejuízo -> Warning/SemInfo -> Info -> Success -> OS)
     const sortedItems = [...currentItems].sort((a, b) => {
       return a._divInfo.orderPriority - b._divInfo.orderPriority;
     });
@@ -819,6 +864,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (activeStatusFilter === 'danger') return item._divInfo.type === 'danger';
       if (activeStatusFilter === 'warning') return item._divInfo.type === 'warning';
+      if (activeStatusFilter === 'seminfo') return item._divInfo.type === 'seminfo';
+      if (activeStatusFilter === 'os') return item._divInfo.type === 'os';
       if (activeStatusFilter === 'success') return item._divInfo.type === 'success' || item._divInfo.type === 'info';
       return true;
     });
@@ -827,8 +874,18 @@ document.addEventListener('DOMContentLoaded', () => {
       totalCobrado += item.valorCobrado || 0;
 
       const realIndex = currentItems.indexOf(item);
-      const dataVenc = item.dataVencimento || currentFatura.dataVencimento || '31/07/2026';
       const freteProtheusTotal = item.freteProtheusTotal || ((item.freteCobradoProtheus || 0) + (item.freteEmbutidoProtheus || 0));
+      const isSemInfo = item.docOriginario === 'Sem Info' || item.tipoDoc === 'SEM_INFO';
+      const isOS = item.tipoDoc === 'OS' || (item.docOriginario && String(item.docOriginario).toUpperCase().startsWith('OS'));
+
+      let displayDocVal = item.docOriginario || '';
+      if (displayDocVal && /^\d+$/.test(displayDocVal)) {
+        displayDocVal = displayDocVal.padStart(9, '0');
+      }
+
+      const inputStyle = isSemInfo 
+        ? 'color: #fbbf24; border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.08);' 
+        : (isOS ? 'color: #c084fc; border-color: rgba(139, 92, 246, 0.5);' : '');
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -838,9 +895,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <input 
             type="text" 
             class="editable-input ${item.isEdited ? 'edited' : ''}" 
-            value="${escapeHtml(item.docOriginario && /^\d+$/.test(item.docOriginario) ? item.docOriginario.padStart(9, '0') : (item.docOriginario || ''))}" 
+            style="${inputStyle}"
+            value="${escapeHtml(displayDocVal)}" 
             data-index="${realIndex}"
-            title="Clique para editar a NF (Consulta SD2_DOC)"
+            placeholder="Digite NF ou Pedido"
+            title="Clique para editar a NF ou Pedido (Busca Protheus automática)"
           />
         </td>
         <td><span class="ped-venda-badge">${escapeHtml(item.pedVenda || 'N/A')}</span></td>
@@ -854,26 +913,68 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.querySelectorAll('.editable-input').forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.target.blur();
+        }
+      });
+
       input.addEventListener('change', async (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'), 10);
-        const rawNf = e.target.value.trim();
-        const newNf = /^\d+$/.test(rawNf) ? rawNf.padStart(9, '0') : rawNf;
-        e.target.value = newNf;
+        const rawVal = e.target.value.trim();
+
+        if (!rawVal || rawVal.toLowerCase() === 'sem info') {
+          currentItems[idx].docOriginario = 'Sem Info';
+          currentItems[idx].tipoDoc = 'SEM_INFO';
+          currentItems[idx].pedVenda = 'Sem Info';
+          currentItems[idx].codCli = '';
+          currentItems[idx].freteCobradoProtheus = 0;
+          currentItems[idx].freteEmbutidoProtheus = 0;
+          currentItems[idx].freteProtheusTotal = 0;
+          currentItems[idx].protheusEncontrado = false;
+          currentItems[idx].isEdited = true;
+          renderTableRows();
+          return;
+        }
+
+        if (rawVal.toUpperCase().startsWith('OS')) {
+          const osMatch = rawVal.match(/\bOS\s*(\d+)/i);
+          const osNum = osMatch ? osMatch[1] : rawVal.replace(/\D/g, '');
+          currentItems[idx].docOriginario = `OS ${osNum}`;
+          currentItems[idx].tipoDoc = 'OS';
+          currentItems[idx].osNum = osNum;
+          currentItems[idx].pedVenda = 'N/A (OS)';
+          currentItems[idx].codCli = '';
+          currentItems[idx].freteCobradoProtheus = 0;
+          currentItems[idx].freteEmbutidoProtheus = 0;
+          currentItems[idx].freteProtheusTotal = 0;
+          currentItems[idx].protheusEncontrado = true;
+          currentItems[idx].isEdited = true;
+          renderTableRows();
+          return;
+        }
+
+        const cleanDigits = rawVal.replace(/\D/g, '');
+        const queryTerm = cleanDigits || rawVal;
+        const newNf = cleanDigits ? cleanDigits.padStart(9, '0') : rawVal;
         currentItems[idx].docOriginario = newNf;
         currentItems[idx].isEdited = true;
         e.target.classList.add('edited');
 
         try {
           const empKey = currentFatura.empresaKey || 'OACO';
-          const res = await fetch(`/api/protheus/consulta/${newNf}?empresa=${empKey}`);
+          const res = await fetch(`/api/protheus/consulta/${encodeURIComponent(queryTerm)}?empresa=${empKey}`);
           const resData = await res.json();
           if (resData.success && resData.data && resData.data.encontrado) {
+            currentItems[idx].docOriginario = resData.data.nfDoc ? (resData.data.nfDoc.length === 6 ? resData.data.nfDoc.padStart(9, '0') : resData.data.nfDoc) : newNf;
             currentItems[idx].pedVenda = resData.data.pedVenda;
             currentItems[idx].codCli = resData.data.codCli || '';
             currentItems[idx].freteCobradoProtheus = resData.data.freteCobrado;
             currentItems[idx].freteEmbutidoProtheus = resData.data.freteEmbutido;
             currentItems[idx].freteProtheusTotal = resData.data.freteProtheusTotal;
             currentItems[idx].protheusEncontrado = true;
+            currentItems[idx].tipoDoc = 'NF';
+            if (resData.data.nomeCli) currentItems[idx].cliente = resData.data.nomeCli;
           } else {
             currentItems[idx].pedVenda = 'N/A';
             currentItems[idx].codCli = '';

@@ -20,13 +20,13 @@ O sistema é uma plataforma multi-empresas integrada para operações de logíst
 
 ## 2. Stack Tecnológica & Arquitetura
 
-- **Backend:** Node.js (Express), CommonJS (server.js, postgres_db.js, protheus_db.js, inter_api.js).
+- **Backend:** Node.js (Express), CommonJS (server.js, postgres_db.js, protheus_db.js, inter_api.js, vipp_ftp.js).
 - **Frontend:** HTML5, CSS3/Tailwind, JavaScript Vanilla (public/index.html, public/app.js).
 - **Bancos de Dados:** 
   - PostgreSQL (Supabase / local pool pg) para dados operacionais, auditoria e usuários.
   - Microsoft SQL Server (TOTVS Protheus) via túnel FastAPI/Railway.
 - **Hospedagem:** Render Web Service (Dockerfile, Procfile).
-- **Scripts Auxiliares:** Python 3 (pdfplumber, pypdf, equests).
+- **Scripts Auxiliares:** Python 3 (pdfplumber, pypdf, requests, vipp_ftp_sync.py).
 - **AdvPL / TOTVS:** Fontes de integração Protheus (AMARFRET.PRW, REST_AMARFRET.PRW).
 
 ---
@@ -48,10 +48,11 @@ As seguintes pendências foram identificadas na auditoria completa e devem ser p
 - [x] **[SRE-01] Resiliência de Conexões (Pool PG):** Pool PostgreSQL parametrizado com TCP KeepAlive, timeouts estritos (`connectionTimeoutMillis`, `query_timeout`, `statement_timeout`), wrapper `safeQuery` com retries automáticos para erros transitórios e rotina de auto-reconexão/health check em background.
 - [x] **[SRE-02] Idempotência em Pagamentos/Webhooks:** Idempotência estrita implementada e testada no receptor de webhooks do Banco Inter.
 - [x] **[SRE-03] Rate Limiting:** Configurado `express-rate-limit` com `trust proxy` (Render) e proteção anti brute-force na rota `/api/auth/login` (30 req / 15 min com HTTP 429).
+- [x] **[SRE-04] Automação FTP ViPP & Conciliação Correios:** Módulo de conexão FTP nativo (`vipp_ftp.js` / `vipp_ftp_sync.py`) com sincronização incremental de CSVs (`/Retorno`), classificação de **Ordem de Serviço (OS)** vs **Nota Fiscal (NF)**, tratamento de `Sem Info` e edição manual com busca instantânea no Protheus.
 
 ### 🟢 Testes & Qualidade (QA & Tech Lead)
-- [x] **[QA-01] Testes Automatizados:** Suíte completa de testes de segurança e webhooks (`npm test` -> `test_security.js` e `test_webhooks.js`).
-- [ ] **[QA-02] Testes E2E (Playwright):** Criar fluxos de teste ponta a ponta para os fluxos críticos de navegação e conciliação.
+- [x] **[QA-01] Testes Automatizados:** Suíte completa de testes de segurança, webhooks e FTP ViPP (`test_security.js`, `test_webhooks.js`, `test_vipp_ftp.js`).
+- [x] **[QA-02] Testes E2E (Fluxos & Navegação):** Suíte completa de testes ponta a ponta (`test_e2e.js`) cobrindo autenticação, entrega da SPA, RBAC admin/user, uploads, health check e APIs financeiras com 100% de aprovação (47/47 testes passando).
 
 ---
 

@@ -1,39 +1,44 @@
-# 📌 Documento de Checkpoint & Ponto de Parada 7: Aba 2 (Fatura Correios & Integração FTP ViPP)
+# 📌 Documento de Checkpoint: Aba 2 (Fatura Correios & Integração FTP ViPP)
 
 > **Projeto:** Portal de Conciliação de Fretes & ERP Protheus Multi-Empresas  
 > **Módulo:** 2ª Aba — Fatura Correios SFE & Automação de Retorno ViPP VisualSet  
-> **Data do Registro:** 17 de Agosto de 2026  
-> **Status:** 🟢 **CANAL FTP HOMOLOGADO / AGUARDANDO ARQUIVO DE RETORNO DO VIPP**  
+> **Data do Registro:** 21 de Agosto de 2026  
+> **Status:** 🟢 **INTEGRAÇÃO CONCLUÍDA E HOMOLOGADA (100% OPERACIONAL)**  
 
 ---
 
-## 1. 🎯 Fluxo Operacional e Arquitetura Definida
+## 1. 🎯 Fluxo Operacional e Arquitetura Consolidada
 
-Ficou estabelecido que o fluxo de conciliação da **Aba 2 (Correios)** funcionará da seguinte forma:
+O fluxo de conciliação da **Aba 2 (Correios & ViPP)** opera de forma automatizada e com fallback para edição manual:
 
 ```mermaid
 flowchart TD
     A["1. Upload da Fatura Correios (PDF Extrato SFE)"] --> B["2. Parser Python (parser_correios.py)"]
-    B --> C["Extração de Etiquetas (AD...BR), Valores e Pagador"]
-    C --> D["3. Conexão Automática ao Servidor FTP ViPP"]
-    D --> E["4. Leitura dos Arquivos de Retorno (/Retorno/*.csv)"]
-    E --> F["5. Cruzamento: Etiqueta ➔ Nota Fiscal (SF2) e Pedido (SC5)"]
-    F --> G["6. Consulta em Tempo Real no ERP Protheus (SD2 / SC5)"]
-    G --> H["7. Exibição da Grade Conciliada com Divergências e Batimento"]
+    B --> C["Extração de Etiquetas (AD...BR / AP...BR) e Valores"]
+    C --> D["3. Cruzamento com Índice FTP ViPP (vipp_ftp.js / data/vipp_retorno)"]
+    
+    D --> E{"Etiqueta no ViPP?"}
+    
+    E -- "NÃO (Objeto sem evento recente)" --> F["Identificação: 'Sem Info'"]
+    F --> F1["Status: ⚠️ Sem Info"]
+    F1 --> F2["Operador pode digitar NF ou Pedido manualmente"]
+    F2 --> G["4. Consulta em Tempo Real no ERP Protheus (SD2 / SC5)"]
+    
+    E -- "SIM" --> H{"Coluna Y contém 'OS {num}'?"}
+    
+    H -- "SIM" --> I["Classificação: 🔧 OS {num}"]
+    I --> I1["pedVenda = 'N/A (OS)' | freteCobrado = R$ 0,00 | Status: 🔧 OS (Sem Cobrança)"]
+    
+    H -- "NÃO" --> J["Classificação: 📄 NF {num}"]
+    J --> G
+    
+    G --> K["5. Batimento de Frete: Cobrado Cliente (C5_FRETE + C5_VLR_FRT) vs Fatura Correios"]
+    K --> L["6. Grade Interativa com Filtros Rápidos e Exportação CSV"]
 ```
-
-### **Passo a Passo do Processamento:**
-1. **Upload da Fatura SFE:** O operador envia o PDF analítico emitido pelos Correios (ex: `Exemplo_CORREIO_OACO.pdf`).
-2. **Extração das Postagens:** O parser extrai 100% das etiquetas de rastreamento (`AD...BR`, `AP...BR`), datas de postagem, serviços (`SEDEX`/`PAC`), pesos tarifados e valores cobrados pelos Correios.
-3. **Consulta Automática ao FTP:** O backend conecta-se ao FTP da ViPP, acessa o diretório `/Retorno` e localiza o arquivo correspondente (formato CSV/TXT).
-4. **Resolução de Chaves:** O sistema vincula cada etiqueta ao número da **Nota Fiscal de Saída (`D2_DOC`)** e **Pedido de Venda (`C5_NUM`)**.
-5. **Batimento no Protheus:** Com as NFs identificadas, o sistema executa a query SQL nas tabelas correspondentes da empresa (**OACO 16**, **GSI 15** ou **Metal Pleno 14**), comparando o frete cobrado do cliente (`C5_FRETE + C5_VLR_FRT`) com o valor cobrado pelos Correios.
 
 ---
 
 ## 2. 🔐 Dados de Acesso ao Servidor FTP ViPP (Homologados)
-
-Os testes de autenticação e navegação foram executados e aprovados com sucesso em 17/08/2026:
 
 | Parâmetro | Configuração Oficial |
 | :--- | :--- |
@@ -43,31 +48,39 @@ Os testes de autenticação e navegação foram executados e aprovados com suces
 | **Senha** | `123456vs` |
 | **Modo de Transferência** | Modo Passivo (`PASV = True`) |
 | **Pasta de Retorno** | `/Retorno` |
+| **Padrão de Arquivos** | `Relatorio_Agendado_Vipp{DDMMYYYY}_0001.CSV` |
 | **Status da Conexão** | ✅ **100% Testado e Operacional** |
 
 ---
 
-## 3. ⚙️ Entregas e Componentes Já Construídos
+## 3. 📊 Mapeamento do Layout CSV ViPP
 
-1. **Parser Nativo PDF Correios SFE ([`parser_correios.py`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/parser_correios.py)):**
-   - Leitura completa de faturas analíticas multi-páginas.
-   - Reconhecimento automático do pagador por CNPJ/Razão Social:
-     - **OACO (Empresa 16):** CNPJ `61.237.790/0001-18`
-     - **GSI COFRES / BW (Empresa 15):** CNPJ `00.867.784/0001-51`
-     - **METAL PLENO (Empresa 14):** CNPJ `10.870.367/0001-44`
-2. **Script de Teste de Conexão FTP:**
-   - Rotina em Python com `ftplib` para autenticação e listagem da pasta `/Retorno`.
-3. **Backend Express ([`server.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/server.js)):**
-   - Endpoints `/api/upload` e `/api/sample-correios` estruturados.
-4. **Interface do Usuário ([`public/index.html`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/index.html) e [`public/app.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/app.js)):**
-   - Sub-aba *"Fatura Correios & ViPP"* na 1ª Aba Principal (**📦 LOGÍSTICA**).
+- **Coluna K (Índice 10):** Número da Etiqueta Correios (`AD...BR`, `AP...BR`).
+- **Coluna Y (Índice 24):** Observação / Identificador da postagem:
+  - Contém `OS 1234` ➔ Classificada como **Ordem de Serviço (OS)**.
+  - Não contém `OS` ➔ Classificada como **Nota Fiscal (NF)**.
+- **Coluna V (Índice 21):** Documento fiscal / Número da NF.
+- **Coluna Z (Índice 25):** Chave de Acesso da NFe (44 dígitos).
+- **Coluna 52 (Coluna BA):** Destinatário (Razão Social / Nome do Cliente).
+- **Coluna 53 (Coluna BB):** Observação livre / Dados complementares.
 
 ---
 
-## 4. 🛑 Registro do Ponto de Parada 7
+## 4. ⚙️ Entregas e Componentes Construídos
 
-* **Estado Atual:** A conexão FTP está validada e pronta para consumo. A pasta `/Retorno` encontra-se acessível e vazia no momento.
-* **Próxima Ação Necessária:**
-  1. Aguardar a geração do primeiro arquivo de teste/retorno na pasta `/Retorno` pela equipe do ViPP (Diego).
-  2. Mapear o cabeçalho e layout das colunas do arquivo CSV gerado.
-  3. Implementar a rotina de download e parsing automático desse CSV no momento do upload do PDF da fatura dos Correios.
+1. **Sincronizador FTP e Parser CSV ([`vipp_ftp_sync.py`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/vipp_ftp_sync.py)):**
+   - Download incremental dos arquivos em `/Retorno` com cache local em `data/vipp_retorno/`.
+   - Detecção inteligente de OS vs. NF e extração completa de metadados.
+2. **Módulo de Integração Backend ([`vipp_ftp.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/vipp_ftp.js)):**
+   - Cache em memória O(1) por etiqueta.
+   - Enriquecimento automático de itens de fatura com regras de OS, NF e Sem Info.
+   - Endpoints `/api/vipp/sync-ftp`, `/api/vipp/ftp-status` e `/api/vipp/postagens`.
+3. **Consulta Dinâmica ERP Protheus ([`protheus_db.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/protheus_db.js)):**
+   - Suporte a busca reversa tanto por número de NF quanto por número de Pedido de Venda (`C5_NUM` / `D2_PEDIDO`).
+4. **Interface do Usuário ([`public/index.html`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/index.html) e [`public/app.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/app.js)):**
+   - Barra de status de conexão e sincronização FTP em tempo real.
+   - Suporte visual completo ao estado `Sem Info` com campo editável para inserção manual de NF ou Pedido.
+   - Badges para **OS** (`🔧 OS (Sem Cobrança)`) e filtros dedicados por status.
+5. **Suíte de Testes Automatizados ([`test_vipp_ftp.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_vipp_ftp.js)):**
+   - 6 testes cobrindo conexão FTP, parsing CSV, regras OS/NF/Sem Info e queries reais no Protheus.
+

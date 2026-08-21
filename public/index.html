@@ -221,12 +221,14 @@
         </div>
 
         <!-- Filter Chips & Tolerancy Input -->
-        <div class="filter-btn-group" style="margin: 12px 0;">
+        <div class="filter-btn-group" style="margin: 12px 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
           <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Filtrar por Status:</span>
-          <button class="filter-chip active" data-filter="all">Todos os CT-es</button>
+          <button class="filter-chip active" data-filter="all">Todos os Itens</button>
           <button class="filter-chip chip-danger" data-filter="danger">🔴 Divergentes (Prejuízo)</button>
           <button class="filter-chip chip-warning" data-filter="warning">🟡 Não Encontradas</button>
-          <button class="filter-chip chip-success" data-filter="success">🟢 Apenas OK</button>
+          <button class="filter-chip" data-filter="seminfo" style="background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">⚠️ Sem Info</button>
+          <button class="filter-chip" data-filter="os" style="background: rgba(139, 92, 246, 0.12); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3);">🔧 Ordens de Serviço (OS)</button>
+          <button class="filter-chip chip-success" data-filter="success">🟢 Frete OK</button>
 
           <div style="margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted);">
             <label for="tolerancyInput" style="font-weight: 600;">Tolerância (R$):</label>
@@ -292,13 +294,26 @@
           </button>
         </div>
 
-        <!-- Card de Status do Token ViPP -->
-        <div id="vippTokenStatusBox" class="alert-info-box" style="margin-bottom: 1.5rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+        <!-- Card de Status do FTP ViPP & Sincronização -->
+        <div id="vippFtpStatusBox" class="alert-info-box" style="margin-bottom: 1.25rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
           <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <span id="vippStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background-color: #f59e0b; display: inline-block;"></span>
-            <span id="vippStatusText">Status API ViPP: <strong>Aguardando Token da API WebService</strong> (Modo Leitura SFE PDF Ativo)</span>
+            <span id="vippFtpStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background-color: #10b981; display: inline-block;"></span>
+            <span id="vippFtpStatusText">FTP ViPP (/Retorno): <strong>Conectado</strong></span>
           </div>
-          <button type="button" id="btnQuickConfigVipp" class="btn btn-secondary btn-sm">Informar Token</button>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="btnSyncVippFtp" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+              <span>🔄 Sincronizar FTP ViPP</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card de Status do Token ViPP (Opcional WebService) -->
+        <div id="vippTokenStatusBox" class="alert-info-box" style="margin-bottom: 1.5rem; padding: 0.75rem 1.25rem; border-radius: 8px; background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.15); display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span id="vippStatusDot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #10b981; display: inline-block;"></span>
+            <span id="vippStatusText" style="font-size: 0.85rem;">Automação FTP Ativa (CSVs diários de movimentação /Retorno)</span>
+          </div>
+          <button type="button" id="btnQuickConfigVipp" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 2px 8px;">Credenciais API</button>
         </div>
 
         <form id="uploadFormCorreios" class="upload-form">

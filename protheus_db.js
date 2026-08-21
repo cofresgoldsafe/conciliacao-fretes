@@ -137,7 +137,10 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
         ON C5.C5_FILIAL = D2.D2_FILIAL 
        AND C5.C5_NUM = D2.D2_PEDIDO 
        AND C5.D_E_L_E_T_ = ' '
-      WHERE (D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanNF}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}')
+      WHERE (
+        D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanNF}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}'
+        OR D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanNF}' OR C5.C5_NUM = '${padded6}' OR C5.C5_NUM = '${cleanNF}'
+      )
         AND D2.D_E_L_E_T_ = ' '
       ORDER BY D2.D2_EMISSAO DESC
     `;
@@ -150,11 +153,13 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
       const freteTotal = roundVal(freteCobrado + freteEmbutido);
       const nomeCli = row.C5_NOMECLI ? String(row.C5_NOMECLI).trim() : '';
       const codCli = row.COD_CLI ? String(row.COD_CLI).trim() : '';
+      const nfDoc = row.D2_DOC ? String(row.D2_DOC).trim() : cleanNF;
 
       return {
         encontrado: true,
         empresa: empresaKey,
         tabela: sd2Table,
+        nfDoc: nfDoc,
         pedVenda: row.D2_PEDIDO || 'N/A',
         codCli: codCli,
         freteCobrado: freteCobrado,

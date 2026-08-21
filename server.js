@@ -30,6 +30,14 @@ const {
 } = require('./inter_api');
 
 const {
+  syncVippFtp,
+  getVippIndex,
+  getPostingByEtiqueta,
+  getFtpStatus,
+  enrichCorreiosItems
+} = require('./vipp_ftp');
+
+const {
   initPostgres,
   safeQuery,
   getUsers: getUsersDB,
@@ -271,13 +279,30 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
   const empCodigo = empresaKey === 'METAL_PLENO' ? '14' : empresaKey === 'GSI' ? '15' : '16';
 
   for (const item of items) {
-    if (!item.docOriginario || String(item.docOriginario).trim() === '') {
-      item.pedVenda = 'Pendente (Vínculo ViPP)';
+    const rawDoc = String(item.docOriginario || '').trim();
+    if (!rawDoc || rawDoc === 'Sem Info' || rawDoc === 'Pendente (Vínculo ViPP)') {
+      item.docOriginario = 'Sem Info';
+      item.pedVenda = 'Sem Info';
       item.codCli = '';
       item.freteCobradoProtheus = 0.00;
       item.freteEmbutidoProtheus = 0.00;
       item.freteProtheusTotal = 0.00;
       item.protheusEncontrado = false;
+      item.status = 'Sem Info';
+      item.empresaKey = empresaKey;
+      item.tabela = `SD2${empCodigo}0`;
+      continue;
+    }
+
+    if (rawDoc.toUpperCase().startsWith('OS')) {
+      item.tipoDoc = 'OS';
+      item.pedVenda = 'N/A (OS)';
+      item.codCli = '';
+      item.freteCobradoProtheus = 0.00;
+      item.freteEmbutidoProtheus = 0.00;
+      item.freteProtheusTotal = 0.00;
+      item.protheusEncontrado = true;
+      item.status = 'OS Identificada';
       item.empresaKey = empresaKey;
       item.tabela = `SD2${empCodigo}0`;
       continue;
@@ -291,8 +316,11 @@ async function enrichItemsWithProtheus(items, empresaKey = 'OACO') {
       item.freteEmbutidoProtheus = protheusData.freteEmbutido || 0.00;
       item.freteProtheusTotal = protheusData.freteProtheusTotal || (item.freteCobradoProtheus + item.freteEmbutidoProtheus);
       item.protheusEncontrado = protheusData.encontrado;
-      item.empresaKey = protheusData.empresa;
-      item.tabela = protheusData.tabela;
+      item.empresaKey = protheusData.empresa || empresaKey;
+      item.tabela = protheusData.tabela || `SD2${empCodigo}0`;
+      if (protheusData.encontrado && protheusData.nomeCli && (!item.cliente || item.cliente.includes('DEFINIR'))) {
+        item.cliente = protheusData.nomeCli;
+      }
     } catch (err) {
       console.error(`Erro ao consultar Protheus para NF ${item.docOriginario}:`, err.message);
       item.pedVenda = 'Erro Consulta';
@@ -639,16 +667,22 @@ app.post('/api/upload', upload.single('faturaFile'), async (req, res) => {
 
     const tipo = req.body.tipoTransportadora || 'RODONAVES';
     let script = 'parser_rodonaves.py';
+    const isCorreios = tipo === 'CORREIOS_SFE' || req.file.originalname.toLowerCase().includes('correio');
+
     if (tipo === 'VIPP_TIPO2') {
       script = 'parser_tipo2.py';
-    } else if (tipo === 'CORREIOS_SFE' || req.file.originalname.toLowerCase().includes('correio')) {
+    } else if (isCorreios) {
       script = 'parser_correios.py';
     }
 
     const result = await runPythonParser(script, req.file.path);
     if (result.success && result.items) {
       const empKey = (result.fatura && result.fatura.empresaKey) ? result.fatura.empresaKey : 'OACO';
-      result.items = await enrichItemsWithProtheus(result.items, empKey);
+      if (isCorreios) {
+        result.items = await enrichCorreiosItems(result.items, empKey);
+      } else {
+        result.items = await enrichItemsWithProtheus(result.items, empKey);
+      }
 
       const user = getUserFromReq(req);
       const fatNum = (result.fatura && result.fatura.numeroFatura) ? result.fatura.numeroFatura : req.file.originalname;
@@ -709,11 +743,60 @@ app.get('/api/sample-correios', async (req, res) => {
     const result = await runPythonParser('parser_correios.py', samplePath);
     if (result.success && result.items) {
       const empKey = (result.fatura && result.fatura.empresaKey) ? result.fatura.empresaKey : 'OACO';
-      result.items = await enrichItemsWithProtheus(result.items, empKey);
+      result.items = await enrichCorreiosItems(result.items, empKey);
     }
     res.json(result);
   } catch (err) {
     handleServerError(res, err, 'Erro ao carregar exemplo Correios.');
+  }
+});
+
+// API: Status da Integração FTP ViPP
+app.get('/api/vipp/ftp-status', (req, res) => {
+  try {
+    const status = getFtpStatus();
+    res.json({ success: true, data: status });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao consultar status do FTP ViPP.');
+  }
+});
+
+// API: Sincronização Sob Demanda do FTP ViPP
+app.post('/api/vipp/sync-ftp', async (req, res) => {
+  try {
+    const syncRes = await syncVippFtp(true);
+    const user = getUserFromReq(req);
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'SYNC_FTP_VIPP',
+      description: `Sincronizou FTP ViPP: ${syncRes.totalPostagens || 0} postagens (${syncRes.files ? syncRes.files.length : 0} arquivos)`,
+      ip: req.ip,
+      metadata: { totalPostagens: syncRes.totalPostagens, filesCount: syncRes.files ? syncRes.files.length : 0 }
+    }).catch(() => {});
+
+    res.json({
+      success: syncRes.success,
+      data: syncRes
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao sincronizar arquivos do FTP ViPP.');
+  }
+});
+
+// API: Listar Postagens ViPP Indexadas
+app.get('/api/vipp/postagens', async (req, res) => {
+  try {
+    const index = getVippIndex();
+    res.json({
+      success: true,
+      total: index.totalPostagens,
+      files: index.files,
+      lastSync: index.lastSync,
+      data: index.list
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao listar postagens ViPP.');
   }
 });
 
