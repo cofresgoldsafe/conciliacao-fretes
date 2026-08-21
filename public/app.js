@@ -2020,6 +2020,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ? '<span class="status-badge status-info" style="font-size: 0.8rem; padding: 3px 8px; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3);">📦 Atualiza Estoque: Sim</span>' 
       : (fiscal.atualizaEstoque === 'N' ? '<span class="status-badge neutro" style="font-size: 0.8rem; padding: 3px 8px;">📦 Atualiza Estoque: Não</span>' : '');
 
+    const bairroCidade = (cli.bairro || cli.cidade) 
+      ? `${cli.bairro ? cli.bairro + ', ' : ''}${cli.cidade || ''}${cli.uf ? ' / ' + cli.uf : ''}`
+      : '-';
+
+    const geraFinLabel = fiscal.geraFinanceiro === 'S' 
+      ? '<strong style="color: #34d399;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Gera Duplicata)</span>' 
+      : (fiscal.geraFinanceiro === 'N' ? '<strong style="color: #f87171;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Duplicata)</span>' : '-');
+
+    const atuEstoqueLabel = fiscal.atualizaEstoque === 'S' 
+      ? '<strong style="color: #60a5fa;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Movimenta Estoque)</span>' 
+      : (fiscal.atualizaEstoque === 'N' ? '<strong style="color: #fbbf24;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Movimentação)</span>' : '-');
+
     pedidoDetalhesBody.innerHTML = `
       <!-- Cabeçalho Rápido do Pedido -->
       <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.6); padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); flex-wrap: wrap; gap: 0.5rem;">
@@ -2055,7 +2067,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="info-row">
             <span class="label">Bairro / Cidade:</span>
-            <span class="val">${escapeHtml((cli.bairro || cli.cidade) ? `${cli.bairro ? cli.bairro + ', ' : ''}${cli.cidade || ''}${cli.uf ? '/' + cli.uf : ''}` : '-')}</span>
+            <span class="val">${escapeHtml(bairroCidade)}</span>
           </div>
           <div class="info-row">
             <span class="label">CEP:</span>
@@ -2088,11 +2100,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="info-row">
             <span class="label">Gera Financeiro:</span>
-            <span class="val">${fiscal.geraFinanceiro === 'S' ? '<strong style="color: #34d399;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Gera Duplicata)</span>' : (fiscal.geraFinanceiro === 'N' ? '<strong style="color: #f87171;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Duplicata)</span>' : '-')}</span>
+            <span class="val">${geraFinLabel}</span>
           </div>
           <div class="info-row">
             <span class="label">Atualiza Estoque:</span>
-            <span class="val">${fiscal.atualizaEstoque === 'S' ? '<strong style="color: #60a5fa;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Movimenta Estoque)</span>' : (fiscal.atualizaEstoque === 'N' ? '<strong style="color: #fbbf24;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Movimentação)</span>' : '-')</span>
+            <span class="val">${atuEstoqueLabel}</span>
           </div>
           <div class="info-row">
             <span class="label">TES Utilizada(s):</span>
