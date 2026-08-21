@@ -557,13 +557,19 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         ISNULL(C6.C6_VALOR, 0) AS VALOR,
         RTRIM(ISNULL(C6.C6_TES, '')) AS TES,
         RTRIM(ISNULL(C6.C6_ENTREG, '')) AS PREV_ENTREGA,
-        RTRIM(ISNULL(F4.F4_DUPLIC, '')) AS F4_DUPLIC,
-        RTRIM(ISNULL(F4.F4_ESTOQUE, '')) AS F4_ESTOQUE,
-        RTRIM(ISNULL(F4.F4_TEXTO, '')) AS F4_TEXTO
+        RTRIM(ISNULL(COALESCE(F4_01.F4_DUPLIC, F4_16.F4_DUPLIC, F4_09.F4_DUPLIC, ''), '')) AS F4_DUPLIC,
+        RTRIM(ISNULL(COALESCE(F4_01.F4_ESTOQUE, F4_16.F4_ESTOQUE, F4_09.F4_ESTOQUE, ''), '')) AS F4_ESTOQUE,
+        RTRIM(ISNULL(COALESCE(F4_01.F4_TEXTO, F4_16.F4_TEXTO, F4_09.F4_TEXTO, ''), '')) AS F4_TEXTO
       FROM ${emp.sc6} C6
-      LEFT JOIN SF4090 F4
-        ON RTRIM(F4.F4_CODIGO) = RTRIM(C6.C6_TES)
-       AND F4.D_E_L_E_T_ = ' '
+      LEFT JOIN SF4010 F4_01
+        ON RTRIM(F4_01.F4_CODIGO) = RTRIM(C6.C6_TES)
+       AND F4_01.D_E_L_E_T_ = ' '
+      LEFT JOIN SF4160 F4_16
+        ON RTRIM(F4_16.F4_CODIGO) = RTRIM(C6.C6_TES)
+       AND F4_16.D_E_L_E_T_ = ' '
+      LEFT JOIN SF4090 F4_09
+        ON RTRIM(F4_09.F4_CODIGO) = RTRIM(C6.C6_TES)
+       AND F4_09.D_E_L_E_T_ = ' '
       WHERE (C6.C6_NUM = '${paddedPed6}' OR C6.C6_NUM = '${cleanPed}')
         AND C6.D_E_L_E_T_ = ' '
       ORDER BY C6.C6_ITEM ASC
@@ -578,7 +584,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
       const totalDesconto = parseFloat(head.DESCONTO || 0);
       const totalGeral = totalProdutos + totalFrete - totalDesconto;
 
-      // Consolidação de dados fiscais da TES (SF4090)
+      // Consolidação de dados fiscais da TES (SF4)
       const distinctTes = [...new Set(itens.map(i => (i.TES || '').trim()).filter(Boolean))];
       const hasDuplicSim = itens.some(i => (i.F4_DUPLIC || '').trim().toUpperCase() === 'S');
       const hasDuplicNao = itens.some(i => (i.F4_DUPLIC || '').trim().toUpperCase() === 'N');
@@ -613,10 +619,9 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
               RTRIM(ISNULL(E1_EMISSAO, '')) AS EMISSAO,
               RTRIM(ISNULL(E1_VENCTO, '')) AS VENCTO,
               RTRIM(ISNULL(E1_VENCREA, '')) AS VENCREA,
-              RTRIM(ISNULL(E1_BAIXA, '')) AS BAIXA,
-              ISNULL(E1_VALREC, 0) AS VALOR_RECEBIDO
+              RTRIM(ISNULL(E1_BAIXA, '')) AS BAIXA
             FROM ${emp.se1}
-            WHERE (E1_NUM = '${paddedNota9}' OR E1_NUM = '${paddedNota6}' OR E1_NUM = '${cleanNota}')
+            WHERE (E1_NUM = '${paddedNota9}' OR E1_NUM = '${paddedNota6}' OR E1_NUM = '${cleanNota}' OR E1_PEDIDO = '${paddedPed6}' OR E1_PEDIDO = '${cleanPed}')
               AND D_E_L_E_T_ = ' '
             ORDER BY E1_PARCELA ASC, E1_VENCTO ASC
           `;
@@ -639,8 +644,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
                 vencimentoReal: f.VENCREA,
                 dataBaixa: dataBaixa,
                 estaPago: estaPago,
-                status: estaPago ? 'PAGO' : 'PENDENTE',
-                valorRecebido: parseFloat(f.VALOR_RECEBIDO || 0)
+                status: estaPago ? 'PAGO' : 'PENDENTE'
               };
             });
           }
