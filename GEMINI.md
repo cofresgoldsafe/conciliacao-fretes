@@ -2,17 +2,17 @@
 
 > **Projeto:** Portal de Conciliação de Frete, Consulta Operacional e Gestão Financeira  
 > **Repositório:** C:\Users\Alexandre\Documents\Gemini-Cli  
-> **Última Atualização:** 20 de Agosto de 2026  
-> **Status:** Em Produção no Render (https://conciliacao-fretes.onrender.com) com integrações ativas (Protheus ERP / Supabase / Banco Inter / ViPP).
+> **Última Atualização:** 21 de Agosto de 2026  
+> **Status:** Em Produção no Render (https://conciliacao-fretes.onrender.com) com integrações ativas (Protheus ERP / Supabase / Banco Inter / ViPP FTP).
 
 ---
 
 ## 1. Visão Geral do Sistema & Domínio de Negócio
 
 O sistema é uma plataforma multi-empresas integrada para operações de logística, consulta de pedidos/notas fiscais e conciliação bancária/frete:
-1. **Consulta Multi-Empresas (Aba 1):** Busca unificada de Notas Fiscais e Pedidos no ERP TOTVS Protheus (tabelas SC5, SC6, SF2, SD2, SA1, SE1, SE2) para empresas **OACO**, **GSI** e **MP**. Conexão intermediada via API FastAPI na Railway (pi-protheus-production.up.railway.app).
-2. **Conciliação de Fretes (Aba 2):** Processamento e auditoria de faturas de transportadoras (Correios, Rodonaves, TNT, Braspress, etc.) cruzando faturas em PDF/CSV/TXT com os CTEs e pedidos faturados. Parsers dedicados em Python (parser_correios.py, parser_rodonaves.py, parser_tipo2.py).
-3. **Configurações & Gestão de Acessos (Aba 3):** Gestão de operadores, credenciais ViPP (ipp_api.py), tabelas de parâmetros e regras de frete.
+1. **Consulta Multi-Empresas (Aba 1):** Busca unificada de Notas Fiscais e Pedidos no ERP TOTVS Protheus (tabelas SC5, SC6, SF2, SD2, SA1, SE1, SE2) para empresas **OACO**, **GSI** e **MP**. Conexão intermediada via API FastAPI na Railway ( pi-protheus-production.up.railway.app).
+2. **Conciliação de Fretes (Aba 2):** Processamento e auditoria de faturas de transportadoras (Correios, Rodonaves, TNT, Braspress, etc.) cruzando faturas em PDF/CSV/TXT com os CTEs e pedidos faturados. Parsers dedicados em Python (parser_correios.py, parser_rodonaves.py, parser_tipo2.py) com validação estrita de formatos e assinaturas digitais.
+3. **Configurações & Gestão de Acessos (Aba 3):** Gestão de operadores, credenciais ViPP ( ipp_api.py), tabelas de parâmetros e regras de frete.
 4. **Módulo Financeiro & Extratos (Aba 4):** Integração com API v2 do **Banco Inter** (inter_api.js) com mTLS (certificados .crt/.key), emissão de Pix, boletos, extratos bancários e recepção de webhooks.
 5. **Telemetria & Auditoria:** Armazenamento de logs de ações, buscas e auditorias de conciliação no banco de dados **PostgreSQL / Supabase** (postgres_db.js).
 
@@ -48,11 +48,11 @@ As seguintes pendências foram identificadas na auditoria completa e devem ser p
 - [x] **[SRE-01] Resiliência de Conexões (Pool PG):** Pool PostgreSQL parametrizado com TCP KeepAlive, timeouts estritos (`connectionTimeoutMillis`, `query_timeout`, `statement_timeout`), wrapper `safeQuery` com retries automáticos para erros transitórios e rotina de auto-reconexão/health check em background.
 - [x] **[SRE-02] Idempotência em Pagamentos/Webhooks:** Idempotência estrita implementada e testada no receptor de webhooks do Banco Inter.
 - [x] **[SRE-03] Rate Limiting:** Configurado `express-rate-limit` com `trust proxy` (Render) e proteção anti brute-force na rota `/api/auth/login` (30 req / 15 min com HTTP 429).
-- [x] **[SRE-04] Automação FTP ViPP & Conciliação Correios:** Módulo de conexão FTP nativo (`vipp_ftp.js` / `vipp_ftp_sync.py`) com sincronização incremental de CSVs (`/Retorno`), classificação de **Ordem de Serviço (OS)** vs **Nota Fiscal (NF)**, tratamento de `Sem Info` e edição manual com busca instantânea no Protheus.
+- [x] **[SRE-04] Automação FTP ViPP & Conciliação Correios:** Módulo de conexão FTP nativo (`vipp_ftp.js` / `vipp_ftp_sync.py`) com sincronização incremental de CSVs (`/Retorno`), classificação de **Ordem de Serviço (OS)** vs **Nota Fiscal (NF)**, suporte expandido para `ORDEM DE SERVIÇO 1258`, tratamento de `Sem Info` e edição manual com busca instantânea no Protheus.
 
 ### 🟢 Testes & Qualidade (QA & Tech Lead)
 - [x] **[QA-01] Testes Automatizados:** Suíte completa de testes de segurança, webhooks e FTP ViPP (`test_security.js`, `test_webhooks.js`, `test_vipp_ftp.js`).
-- [x] **[QA-02] Testes E2E (Fluxos & Navegação):** Suíte completa de testes ponta a ponta (`test_e2e.js`) cobrindo autenticação, entrega da SPA, RBAC admin/user, uploads, health check e APIs financeiras com 100% de aprovação (47/47 testes passando).
+- [x] **[QA-02] Testes E2E (Fluxos & Navegação):** Suíte completa de testes ponta a ponta (`test_e2e.js`) cobrindo autenticação, entrega da SPA, RBAC admin/user, uploads, health check, validação cruzada de faturas e APIs financeiras com 100% de aprovação (52/52 testes passando).
 
 ---
 
