@@ -1840,6 +1840,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function formatNFeBadge(notaFiscal) {
+    const nf = (notaFiscal || '').trim();
+    if (!nf || nf === '-' || nf === '0') {
+      return `<span style="color: var(--text-muted); font-style: italic; font-size: 0.82rem;">⏳ Não emitida</span>`;
+    }
+    // Protheus grava XXXXXXXXX (ou sequencia de X) quando o pedido é cancelado
+    if (/^X+$/i.test(nf) || nf.toUpperCase().includes('CANCEL')) {
+      return `<span class="status-badge divergente" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; padding: 2px 8px; border-radius: 4px;">🚫 Cancelado</span>`;
+    }
+    return `<span class="badge-doc" style="font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 3px 8px; border-radius: 4px;">📄 NF ${escapeHtml(nf)}</span>`;
+  }
+
   function renderVendPedidosTable(pedidos) {
     if (!vendPedidosTableBody) return;
     vendPedidosTableBody.innerHTML = '';
@@ -1862,6 +1874,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <strong>${escapeHtml(p.numPed)}</strong>
           </span>
         </td>
+        <td>${formatNFeBadge(p.notaFiscal)}</td>
         <td>${escapeHtml(p.nomeCli)}</td>
         <td style="text-align: center;">
           <button class="btn btn-outline btn-sm btn-ver-detalhe" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}">
@@ -1922,11 +1935,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const cli = det.cliente || {};
     const com = det.comercial || {};
     const tot = det.totais || {};
+    const fiscal = det.fiscal || {};
+    const faturas = det.faturas || [];
     const itens = det.itens || [];
 
-    const formatEmissao = (em) => {
-      if (!em || em.length !== 8) return em || '-';
-      return `${em.slice(6,8)}/${em.slice(4,6)}/${em.slice(0,4)}`;
+    const formatDataProtheus = (dt) => {
+      if (!dt || String(dt).trim().length !== 8) return dt ? String(dt).trim() : '-';
+      const s = String(dt).trim();
+      return `${s.slice(6,8)}/${s.slice(4,6)}/${s.slice(0,4)}`;
     };
 
     let itensHtml = '';
@@ -1936,29 +1952,91 @@ document.addEventListener('DOMContentLoaded', () => {
           <td style="text-align: center; color: var(--text-muted);">${escapeHtml(i.item || '01')}</td>
           <td><code>${escapeHtml(i.produto || '-')}</code></td>
           <td><strong>${escapeHtml(i.descricao || '-')}</strong></td>
+          <td style="text-align: center;"><code>${escapeHtml(i.tes || '-')}</code></td>
+          <td style="text-align: center;">
+            ${i.geraFinanceiro === 'S' 
+              ? '<span class="status-badge sucesso" style="padding: 2px 6px; font-size: 0.75rem;" title="Gera Duplicata/Financeiro">Sim (S)</span>' 
+              : (i.geraFinanceiro === 'N' ? '<span class="status-badge neutro" style="padding: 2px 6px; font-size: 0.75rem;" title="Não gera financeiro">Não (N)</span>' : '-')}
+          </td>
+          <td style="text-align: center;">
+            ${i.atualizaEstoque === 'S' 
+              ? '<span class="status-badge status-info" style="padding: 2px 6px; font-size: 0.75rem; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3);" title="Movimenta/Atualiza Estoque">Sim (S)</span>' 
+              : (i.atualizaEstoque === 'N' ? '<span class="status-badge neutro" style="padding: 2px 6px; font-size: 0.75rem;" title="Não movimenta estoque">Não (N)</span>' : '-')}
+          </td>
           <td style="text-align: right; font-weight: 600;">${i.qtd}</td>
           <td style="text-align: right;">${formatCurrency(i.prcUnit)}</td>
           <td style="text-align: right; font-weight: 700; color: #60a5fa;">${formatCurrency(i.total)}</td>
         </tr>
       `).join('');
     } else {
-      itensHtml = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Nenhum item listado na tabela SC6 deste pedido.</td></tr>`;
+      itensHtml = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted);">Nenhum item listado na tabela SC6 deste pedido.</td></tr>`;
     }
+
+    // Renderização das Faturas / Títulos SE1
+    let faturasHtml = '';
+    if (faturas.length > 0) {
+      faturasHtml = faturas.map(f => {
+        const venctoFormatted = formatDataProtheus(f.vencimento);
+        const baixaFormatted = f.estaPago ? formatDataProtheus(f.dataBaixa) : '';
+        
+        let statusBadge = '';
+        if (f.estaPago) {
+          statusBadge = `<span class="status-badge sucesso" style="font-weight: 600; padding: 2px 8px;">✓ Pago em ${baixaFormatted}</span>`;
+        } else {
+          statusBadge = `<span class="status-badge pendente" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 600; padding: 2px 8px;">⏳ Pendente</span>`;
+        }
+
+        const parcelaBadge = f.parcela && f.parcela !== 'Única' && f.parcela !== ' '
+          ? `<span class="ped-venda-badge" style="font-size: 0.75rem; background: rgba(139, 92, 246, 0.15); color: #c084fc; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 6px; border-radius: 4px;">Parcela ${escapeHtml(f.parcela)}</span>`
+          : `<span class="ped-venda-badge" style="font-size: 0.75rem; color: var(--text-muted);">Única</span>`;
+
+        return `
+          <tr>
+            <td style="text-align: center;"><code>${escapeHtml(f.numTitulo || det.notaFiscal || '-')}</code></td>
+            <td style="text-align: center;">${parcelaBadge}</td>
+            <td style="text-align: right; font-weight: 600;">${formatCurrency(f.valor)}</td>
+            <td style="text-align: center;"><strong>${venctoFormatted}</strong></td>
+            <td style="text-align: center;">${f.estaPago ? `<strong style="color: #34d399;">${baixaFormatted}</strong>` : `<span style="color: var(--text-muted); font-style: italic;">Pendente</span>`}</td>
+            <td style="text-align: center;">${statusBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      let motivoVazio = 'Nenhuma fatura localizada na tabela SE1 para este pedido.';
+      if (!det.notaFiscal || det.notaFiscal === '-' || det.notaFiscal === '0') {
+        motivoVazio = '⏳ NF-e ainda não emitida — títulos a receber serão gerados no Protheus após o faturamento.';
+      } else if (/^X+$/i.test(det.notaFiscal)) {
+        motivoVazio = '🚫 Pedido cancelado — nenhum título financeiro ativo na SE1.';
+      }
+      faturasHtml = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1rem;">${motivoVazio}</td></tr>`;
+    }
+
+    // Badges fiscais consolidados do pedido
+    const badgeGeraFin = fiscal.geraFinanceiro === 'S' 
+      ? '<span class="status-badge sucesso" style="font-size: 0.8rem; padding: 3px 8px;">💰 Gera Financeiro: Sim</span>' 
+      : (fiscal.geraFinanceiro === 'N' ? '<span class="status-badge neutro" style="font-size: 0.8rem; padding: 3px 8px;">💰 Gera Financeiro: Não</span>' : '');
+    
+    const badgeAtuEstoque = fiscal.atualizaEstoque === 'S' 
+      ? '<span class="status-badge status-info" style="font-size: 0.8rem; padding: 3px 8px; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3);">📦 Atualiza Estoque: Sim</span>' 
+      : (fiscal.atualizaEstoque === 'N' ? '<span class="status-badge neutro" style="font-size: 0.8rem; padding: 3px 8px;">📦 Atualiza Estoque: Não</span>' : '');
 
     pedidoDetalhesBody.innerHTML = `
       <!-- Cabeçalho Rápido do Pedido -->
       <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.6); padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); flex-wrap: wrap; gap: 0.5rem;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <span class="company-badge" style="font-size: 0.9rem; padding: 4px 10px;">${escapeHtml(det.empresa)}</span>
           <span style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;">Pedido Nº ${escapeHtml(det.numPedido)}</span>
           <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">CodWeb: ${escapeHtml(det.codWeb)}</span>
+          ${formatNFeBadge(det.notaFiscal)}
+          ${badgeGeraFin}
+          ${badgeAtuEstoque}
         </div>
         <div style="font-size: 0.85rem; color: var(--text-muted);">
-          📅 Emissão: <strong>${formatEmissao(det.emissao)}</strong>
+          📅 Emissão: <strong>${formatDataProtheus(det.emissao)}</strong>
         </div>
       </div>
 
-      <!-- Grid de Informações: Cliente & Comercial -->
+      <!-- Grid de Informações: Cliente & Comercial / Fiscal -->
       <div class="info-section-grid">
         <!-- Box Cliente & Endereço -->
         <div class="info-box">
@@ -1989,9 +2067,9 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Box Comercial & Transporte -->
+        <!-- Box Comercial & Transporte / Fiscal -->
         <div class="info-box">
-          <h4>🚚 Logística & Pagamento</h4>
+          <h4>🚚 Logística, Pagamento & Fiscal</h4>
           <div class="info-row">
             <span class="label">Transportadora:</span>
             <span class="val">${escapeHtml(com.transportadora || '-')}</span>
@@ -2005,6 +2083,22 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="val">${escapeHtml(com.vendedor || com.codVendedor || '-')}</span>
           </div>
           <div class="info-row">
+            <span class="label">Data de Emissão:</span>
+            <span class="val"><strong>${formatDataProtheus(det.emissao)}</strong></span>
+          </div>
+          <div class="info-row">
+            <span class="label">Gera Financeiro:</span>
+            <span class="val">${fiscal.geraFinanceiro === 'S' ? '<strong style="color: #34d399;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Gera Duplicata)</span>' : (fiscal.geraFinanceiro === 'N' ? '<strong style="color: #f87171;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Duplicata)</span>' : '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Atualiza Estoque:</span>
+            <span class="val">${fiscal.atualizaEstoque === 'S' ? '<strong style="color: #60a5fa;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Movimenta Estoque)</span>' : (fiscal.atualizaEstoque === 'N' ? '<strong style="color: #fbbf24;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Movimentação)</span>' : '-')</span>
+          </div>
+          <div class="info-row">
+            <span class="label">TES Utilizada(s):</span>
+            <span class="val"><code>${escapeHtml(fiscal.tes || '-')}</code></span>
+          </div>
+          <div class="info-row">
             <span class="label">Observações:</span>
             <span class="val" style="font-size: 0.8rem; max-width: 200px; word-break: break-word;">${escapeHtml(com.observacoes || 'Nenhuma observação informada.')}</span>
           </div>
@@ -2013,17 +2107,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <!-- Tabela de Produtos do Pedido -->
       <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px;">
-        <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">📦 Itens e Produtos do Pedido (Grade SC6)</h4>
+        <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">📦 Itens e Produtos do Pedido (Grade SC6 + TES SF4)</h4>
         <div class="table-responsive">
           <table class="data-table" style="font-size: 0.85rem;">
             <thead>
               <tr>
-                <th style="width: 8%; text-align: center;">Item</th>
-                <th style="width: 20%;">Código</th>
-                <th style="width: 36%;">Descrição</th>
-                <th style="width: 10%; text-align: right;">Qtd</th>
-                <th style="width: 13%; text-align: right;">Unitário</th>
-                <th style="width: 13%; text-align: right;">Total</th>
+                <th style="width: 6%; text-align: center;">Item</th>
+                <th style="width: 16%;">Código</th>
+                <th style="width: 28%;">Descrição</th>
+                <th style="width: 8%; text-align: center;">TES</th>
+                <th style="width: 9%; text-align: center;">Gera Fin.</th>
+                <th style="width: 9%; text-align: center;">Estoque</th>
+                <th style="width: 8%; text-align: right;">Qtd</th>
+                <th style="width: 8%; text-align: right;">Unitário</th>
+                <th style="width: 8%; text-align: right;">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -2033,8 +2130,35 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
 
+      <!-- Tabela de Faturas Geradas (SE1) -->
+      <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px; margin-top: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 0.5rem;">
+          <h4 style="margin: 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">
+            💳 Faturas & Títulos a Receber (SE1 - Protheus)
+          </h4>
+          ${faturas.length > 0 ? `<span style="font-size: 0.8rem; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 2px 8px; border-radius: 4px;">${faturas.length} ${faturas.length === 1 ? 'título / parcela' : 'títulos / parcelas'}</span>` : ''}
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" style="font-size: 0.85rem;">
+            <thead>
+              <tr>
+                <th style="width: 18%; text-align: center;">Nº Fatura / Título</th>
+                <th style="width: 14%; text-align: center;">Parcela</th>
+                <th style="width: 16%; text-align: right;">Valor</th>
+                <th style="width: 16%; text-align: center;">Vencimento</th>
+                <th style="width: 18%; text-align: center;">Data Pagamento</th>
+                <th style="width: 18%; text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${faturasHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Box de Totais -->
-      <div class="totais-box" style="display: flex; justify-content: flex-end;">
+      <div class="totais-box" style="display: flex; justify-content: flex-end; margin-top: 1rem;">
         <div style="min-width: 280px; display: flex; flex-direction: column; gap: 6px;">
           <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted);">
             <span>Subtotal Produtos:</span>

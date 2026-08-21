@@ -375,6 +375,7 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
         SELECT TOP 30
             RTRIM(C5.C5_NUM) AS C5_NUM,
             RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+            RTRIM(ISNULL(C5.C5_NOTA, '')) AS C5_NOTA,
             RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI,
             RTRIM(ISNULL(C5.C5_CLIENTE, '')) AS C5_CLIENTE,
             RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS C5_LOJACLI,
@@ -395,6 +396,7 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
             empresaKey: emp.key,
             codWeb: row.C5_CODWEB || '-',
             numPed: row.C5_NUM || '-',
+            notaFiscal: row.C5_NOTA ? String(row.C5_NOTA).trim() : '',
             nomeCli: row.C5_NOMECLI || 'CLIENTE NÃO INFORMADO',
             emissao: row.C5_EMISSAO || '',
             vendedor: getNomeVendedor(row.C5_VEND1),
@@ -418,9 +420,9 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
   const cleanPed = sanitizeSqlParam(numPedido);
   const paddedPed6 = cleanPed.padStart(6, '0');
   const empMap = {
-    "OACO": { codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160" },
-    "GSI": { codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150" },
-    "METAL_PLENO": { codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140" }
+    "OACO": { codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160", se1: "SE1160" },
+    "GSI": { codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150", se1: "SE1150" },
+    "METAL_PLENO": { codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140", se1: "SE1140" }
   };
   const emp = empMap[empresaKey] || empMap["OACO"];
 
@@ -429,6 +431,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
       SELECT TOP 1
         RTRIM(C5.C5_NUM) AS NUM_PEDIDO,
         RTRIM(ISNULL(C5.C5_CODWEB, '')) AS COD_WEB,
+        RTRIM(ISNULL(C5.C5_NOTA, '')) AS NOTA_FISCAL,
         RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS EMISSAO,
         RTRIM(ISNULL(C5.C5_CLIENTE, '')) AS COD_CLI,
         RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS LOJA_CLI,
@@ -546,17 +549,24 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
 
     const sqlC6 = `
       SELECT
-        RTRIM(C6_ITEM) AS ITEM,
-        RTRIM(C6_PRODUTO) AS PRODUTO,
-        RTRIM(C6_DESCRI) AS DESCRICAO,
-        ISNULL(C6_QTDVEN, 0) AS QTD,
-        ISNULL(C6_PRCVEN, 0) AS PRCVEN,
-        ISNULL(C6_VALOR, 0) AS VALOR,
-        RTRIM(ISNULL(C6_ENTREG, '')) AS PREV_ENTREGA
-      FROM ${emp.sc6}
-      WHERE (C6_NUM = '${paddedPed6}' OR C6_NUM = '${cleanPed}')
-        AND D_E_L_E_T_ = ' '
-      ORDER BY C6_ITEM ASC
+        RTRIM(C6.C6_ITEM) AS ITEM,
+        RTRIM(C6.C6_PRODUTO) AS PRODUTO,
+        RTRIM(C6.C6_DESCRI) AS DESCRICAO,
+        ISNULL(C6.C6_QTDVEN, 0) AS QTD,
+        ISNULL(C6.C6_PRCVEN, 0) AS PRCVEN,
+        ISNULL(C6.C6_VALOR, 0) AS VALOR,
+        RTRIM(ISNULL(C6.C6_TES, '')) AS TES,
+        RTRIM(ISNULL(C6.C6_ENTREG, '')) AS PREV_ENTREGA,
+        RTRIM(ISNULL(F4.F4_DUPLIC, '')) AS F4_DUPLIC,
+        RTRIM(ISNULL(F4.F4_ESTOQUE, '')) AS F4_ESTOQUE,
+        RTRIM(ISNULL(F4.F4_TEXTO, '')) AS F4_TEXTO
+      FROM ${emp.sc6} C6
+      LEFT JOIN SF4090 F4
+        ON RTRIM(F4.F4_CODIGO) = RTRIM(C6.C6_TES)
+       AND F4.D_E_L_E_T_ = ' '
+      WHERE (C6.C6_NUM = '${paddedPed6}' OR C6.C6_NUM = '${cleanPed}')
+        AND C6.D_E_L_E_T_ = ' '
+      ORDER BY C6.C6_ITEM ASC
     `;
 
     const resC6 = await executeRailwayQuery(sqlC6);
@@ -568,14 +578,88 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
       const totalDesconto = parseFloat(head.DESCONTO || 0);
       const totalGeral = totalProdutos + totalFrete - totalDesconto;
 
+      // Consolidação de dados fiscais da TES (SF4090)
+      const distinctTes = [...new Set(itens.map(i => (i.TES || '').trim()).filter(Boolean))];
+      const hasDuplicSim = itens.some(i => (i.F4_DUPLIC || '').trim().toUpperCase() === 'S');
+      const hasDuplicNao = itens.some(i => (i.F4_DUPLIC || '').trim().toUpperCase() === 'N');
+      const geraFinanceiro = hasDuplicSim ? 'S' : (hasDuplicNao ? 'N' : '-');
+
+      const hasEstoqueSim = itens.some(i => (i.F4_ESTOQUE || '').trim().toUpperCase() === 'S');
+      const hasEstoqueNao = itens.some(i => (i.F4_ESTOQUE || '').trim().toUpperCase() === 'N');
+      const atualizaEstoque = hasEstoqueSim ? 'S' : (hasEstoqueNao ? 'N' : '-');
+
+      const fiscalInfo = {
+        tes: distinctTes.join(', ') || '-',
+        geraFinanceiro: geraFinanceiro, // 'S' ou 'N' ou '-'
+        atualizaEstoque: atualizaEstoque // 'S' ou 'N' ou '-'
+      };
+
+      // Consulta Faturas / Títulos a Receber (SE1)
+      let faturas = [];
+      const rawNota = head && head.NOTA_FISCAL ? String(head.NOTA_FISCAL).trim() : '';
+      if (rawNota && !/^X+$/i.test(rawNota)) {
+        try {
+          const cleanNota = sanitizeSqlParam(rawNota);
+          const paddedNota9 = cleanNota.padStart(9, '0');
+          const paddedNota6 = cleanNota.padStart(6, '0');
+          const sqlSE1 = `
+            SELECT
+              RTRIM(ISNULL(E1_NUM, '')) AS NUM_TITULO,
+              RTRIM(ISNULL(E1_PREFIXO, '')) AS PREFIXO,
+              RTRIM(ISNULL(E1_PARCELA, '')) AS PARCELA,
+              RTRIM(ISNULL(E1_TIPO, '')) AS TIPO,
+              ISNULL(E1_VALOR, 0) AS VALOR,
+              ISNULL(E1_SALDO, 0) AS SALDO,
+              RTRIM(ISNULL(E1_EMISSAO, '')) AS EMISSAO,
+              RTRIM(ISNULL(E1_VENCTO, '')) AS VENCTO,
+              RTRIM(ISNULL(E1_VENCREA, '')) AS VENCREA,
+              RTRIM(ISNULL(E1_BAIXA, '')) AS BAIXA,
+              ISNULL(E1_VALREC, 0) AS VALOR_RECEBIDO
+            FROM ${emp.se1}
+            WHERE (E1_NUM = '${paddedNota9}' OR E1_NUM = '${paddedNota6}' OR E1_NUM = '${cleanNota}')
+              AND D_E_L_E_T_ = ' '
+            ORDER BY E1_PARCELA ASC, E1_VENCTO ASC
+          `;
+          const resSE1 = await executeRailwayQuery(sqlSE1);
+          if (resSE1 && resSE1.rows && resSE1.rows.length > 0) {
+            faturas = resSE1.rows.map(f => {
+              const dataBaixa = (f.BAIXA || '').trim();
+              const estaPago = !!(dataBaixa && dataBaixa !== '' && dataBaixa !== '0' && dataBaixa.length === 8);
+              const parcelaStr = (f.PARCELA || '').trim();
+              return {
+                numTitulo: f.NUM_TITULO,
+                prefixo: f.PREFIXO,
+                parcela: parcelaStr || 'Única',
+                parcelaRaw: parcelaStr,
+                tipo: f.TIPO,
+                valor: parseFloat(f.VALOR || 0),
+                saldo: parseFloat(f.SALDO || 0),
+                emissao: f.EMISSAO,
+                vencimento: f.VENCTO,
+                vencimentoReal: f.VENCREA,
+                dataBaixa: dataBaixa,
+                estaPago: estaPago,
+                status: estaPago ? 'PAGO' : 'PENDENTE',
+                valorRecebido: parseFloat(f.VALOR_RECEBIDO || 0)
+              };
+            });
+          }
+        } catch (errSE1) {
+          console.warn(`Erro ao consultar títulos na tabela ${emp.se1}:`, errSE1.message);
+        }
+      }
+
       return {
         encontrado: true,
         empresa: emp.nome,
         empresaKey: empresaKey,
         numPedido: head.NUM_PEDIDO || paddedPed6,
         codWeb: head.COD_WEB || '-',
+        notaFiscal: head.NOTA_FISCAL ? String(head.NOTA_FISCAL).trim() : '',
         emissao: head.EMISSAO,
         cliente: cliInfo,
+        fiscal: fiscalInfo,
+        faturas: faturas,
         comercial: {
           transportadora: head.TRANSP || 'Transportadora Padrão',
           condPagto: head.CONDPAG || 'À Vista / Boleto',
@@ -596,6 +680,10 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
           qtd: parseFloat(i.QTD || 0),
           prcUnit: parseFloat(i.PRCVEN || 0),
           total: parseFloat(i.VALOR || 0),
+          tes: (i.TES || '').trim() || '-',
+          geraFinanceiro: (i.F4_DUPLIC || '').trim().toUpperCase() === 'S' ? 'S' : ((i.F4_DUPLIC || '').trim().toUpperCase() === 'N' ? 'N' : '-'),
+          atualizaEstoque: (i.F4_ESTOQUE || '').trim().toUpperCase() === 'S' ? 'S' : ((i.F4_ESTOQUE || '').trim().toUpperCase() === 'N' ? 'N' : '-'),
+          tesDescricao: (i.F4_TEXTO || '').trim(),
           entrega: i.PREV_ENTREGA
         }))
       };
