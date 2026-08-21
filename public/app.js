@@ -2074,8 +2074,16 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="val">${escapeHtml(cli.cep || '-')}</span>
           </div>
           <div class="info-row">
-            <span class="label">Contato / Tel:</span>
-            <span class="val">${escapeHtml(cli.telefone || cli.email || '-')}</span>
+            <span class="label">Contato:</span>
+            <span class="val">${escapeHtml(cli.contato || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Telefone:</span>
+            <span class="val">${escapeHtml(cli.telefone || '-')}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">E-mail:</span>
+            <span class="val" style="word-break: break-all;">${escapeHtml(cli.email || '-')}</span>
           </div>
         </div>
 

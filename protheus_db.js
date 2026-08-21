@@ -522,25 +522,16 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
             enderecoCompleto += (enderecoCompleto ? ', ' : '') + a1.A1_COMPLEM.trim();
           }
 
-          // Monta Contato / Tel / Email
-          let contatoFinal = telFormatado;
-          if (a1.A1_CONTATO && a1.A1_CONTATO.trim()) {
-            contatoFinal += (contatoFinal ? ' | ' : '') + `Contato: ${a1.A1_CONTATO.trim()}`;
-          }
-          if (a1.A1_EMAIL && a1.A1_EMAIL.trim()) {
-            contatoFinal += (contatoFinal ? ' | ' : '') + a1.A1_EMAIL.trim();
-          }
-
-          cliInfo.nome = a1.A1_NOME || cliInfo.nome;
+          cliInfo.nome = a1.A1_NOME ? a1.A1_NOME.trim() : cliInfo.nome;
           cliInfo.cnpj = cgcFormatado;
           cliInfo.endereco = enderecoCompleto;
-          cliInfo.bairro = a1.A1_BAIRRO || '';
-          cliInfo.cidade = a1.A1_MUN || '';
-          cliInfo.uf = a1.A1_EST || '';
+          cliInfo.bairro = a1.A1_BAIRRO ? a1.A1_BAIRRO.trim() : '';
+          cliInfo.cidade = a1.A1_MUN ? a1.A1_MUN.trim() : '';
+          cliInfo.uf = a1.A1_EST ? a1.A1_EST.trim() : '';
           cliInfo.cep = cepFormatado;
-          cliInfo.telefone = contatoFinal;
-          cliInfo.email = a1.A1_EMAIL || '';
-          cliInfo.contato = a1.A1_CONTATO || '';
+          cliInfo.telefone = telFormatado || (a1.A1_TEL ? a1.A1_TEL.trim() : '');
+          cliInfo.email = a1.A1_EMAIL ? a1.A1_EMAIL.trim() : '';
+          cliInfo.contato = a1.A1_CONTATO ? a1.A1_CONTATO.trim() : '';
         }
       } catch (errSA1) {
         console.warn('Erro ao consultar SA1010:', errSA1.message);

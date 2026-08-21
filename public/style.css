@@ -1049,8 +1049,10 @@ body {
 .info-row {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
   font-size: 0.85rem;
-  padding: 4px 0;
+  padding: 5px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
@@ -1060,12 +1062,17 @@ body {
 
 .info-row .label {
   color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 105px;
 }
 
 .info-row .val {
   font-weight: 500;
   color: var(--text-main);
   text-align: right;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .totais-box {
