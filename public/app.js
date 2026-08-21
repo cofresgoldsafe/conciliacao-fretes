@@ -144,11 +144,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function showAuthenticatedUser(user, token) {
     currentUser = user;
     if (token) currentToken = token;
-    if (loginOverlay) loginOverlay.classList.add('hidden');
+    if (loginOverlay) {
+      loginOverlay.classList.add('hidden');
+      loginOverlay.style.display = 'none';
+    }
     if (userInfo) userInfo.textContent = user.name || user.username;
 
-    // Apply Tab Permissions
-    applyUserPermissions(user);
+    // Apply Tab Permissions safely
+    try {
+      applyUserPermissions(user);
+    } catch (err) {
+      console.warn('Aviso ao aplicar permissões do usuário:', err);
+    }
   }
 
   function applyUserPermissions(user) {
@@ -171,7 +178,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
-    ajustarEscopoVendedor(user);
+    try {
+      ajustarEscopoVendedor(user);
+    } catch {}
 
     // Se o usuário não tem nenhuma permissão atribuída
     if (perms.length === 0) {
@@ -191,10 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const activeMain = activeMainBtn.getAttribute('data-main-tab');
       if (!perms.includes(activeMain)) {
         const firstPerm = perms[0];
-        if (firstPerm) switchMainTab(firstPerm);
+        if (firstPerm && typeof switchMainTab === 'function') switchMainTab(firstPerm);
       }
     } else if (perms.length > 0) {
-      switchMainTab(perms[0]);
+      if (typeof switchMainTab === 'function') switchMainTab(perms[0]);
     }
   }
 
@@ -202,11 +211,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!loginOverlay) return;
     if (show) {
       loginOverlay.classList.remove('hidden');
+      loginOverlay.style.display = 'flex';
       if (loginUsername) loginUsername.value = '';
       if (loginPassword) loginPassword.value = '';
       if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
     } else {
       loginOverlay.classList.add('hidden');
+      loginOverlay.style.display = 'none';
     }
   }
 
@@ -617,6 +628,35 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoading(false);
       }
     });
+  }
+
+  async function uploadCorreiosFile(file) {
+    showLoading(true, `Lendo Fatura Correios (${file.name}) e buscando etiquetas/NFs no ERP Protheus...`);
+    const formData = new FormData();
+    formData.append('faturaFile', file);
+    formData.append('tipoTransportadora', tipoCorreios ? tipoCorreios.value : 'CORREIOS_SFE');
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success) {
+        renderFaturaData(data);
+        const tab1Btn = document.querySelector('[data-tab="tab-upload"]');
+        if (tab1Btn) tab1Btn.click();
+      } else {
+        alert('Erro ao ler a fatura Correios: ' + data.message);
+      }
+    } catch (err) {
+      alert('Erro no upload da Fatura Correios.');
+      console.error(err);
+    } finally {
+      showLoading(false);
+    }
+  }
+
   // --- VIPP FTP STATUS & SYNC LOGIC ---
   const btnSyncVippFtp = document.getElementById('btnSyncVippFtp');
   const vippFtpStatusText = document.getElementById('vippFtpStatusText');
