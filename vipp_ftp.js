@@ -1,5 +1,5 @@
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { consultarProtheusNF } = require('./protheus_db');
 
 let memoryIndex = {
@@ -18,9 +18,23 @@ let memoryIndex = {
 function runSyncScript(forceSync = false) {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(__dirname, 'vipp_ftp_sync.py');
-    const cmd = `python "${scriptPath}" ${forceSync ? '--sync' : ''}`;
-    
-    exec(cmd, { cwd: __dirname, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+    const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+    const args = [scriptPath];
+    if (forceSync) args.push('--sync');
+
+    execFile(pythonBin, args, { cwd: __dirname, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+      if (err && pythonBin === 'python3') {
+        return execFile('python', args, { cwd: __dirname, encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }, (err2, out2, stderr2) => {
+          if (err2) {
+            return reject(new Error(`Erro ao executar sincronização ViPP: ${err2.message} - ${stderr2}`));
+          }
+          try {
+            resolve(JSON.parse(out2));
+          } catch (pe) {
+            reject(new Error(`Resposta inválida do sincronizador ViPP: ${out2}`));
+          }
+        });
+      }
       if (err) {
         return reject(new Error(`Erro ao executar sincronização ViPP: ${err.message} - ${stderr}`));
       }
