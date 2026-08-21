@@ -76,7 +76,7 @@ def parse_all_csv_files():
             
         header = rows[0]
         
-        for r_idx, row in enumerate(rows[1:], 1):
+        for r_idx, row in enumerate(rows, 1):
             if len(row) < 11:
                 continue
                 

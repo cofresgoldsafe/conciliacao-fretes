@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1787343207892",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:13:27.892Z"
+  },
+  {
+    "id": "ACT-1787343197513",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:13:17.513Z"
+  },
+  {
+    "id": "ACT-1787343197319",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:13:17.319Z"
+  },
+  {
     "id": "ACT-1787342769174",
     "username": "alexandre",
     "userName": "Alexandre",
