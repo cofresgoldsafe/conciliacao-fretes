@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node test_security.js && node test_webhooks.js && node test_vipp_ftp.js && node test_e2e.js"
+    "test": "node test_security.js && node test_webhooks.js && node test_vipp_ftp.js && node test_e2e.js",
+    "version:bump": "node bump_version.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
