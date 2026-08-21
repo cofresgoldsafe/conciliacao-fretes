@@ -667,12 +667,15 @@ app.post('/api/upload', upload.single('faturaFile'), async (req, res) => {
 
     const tipo = req.body.tipoTransportadora || 'RODONAVES';
     let script = 'parser_rodonaves.py';
-    const isCorreios = tipo === 'CORREIOS_SFE' || req.file.originalname.toLowerCase().includes('correio');
+    let isCorreios = false;
 
     if (tipo === 'VIPP_TIPO2') {
       script = 'parser_tipo2.py';
-    } else if (isCorreios) {
+    } else if (tipo === 'CORREIOS_SFE') {
       script = 'parser_correios.py';
+      isCorreios = true;
+    } else {
+      script = 'parser_rodonaves.py';
     }
 
     const result = await runPythonParser(script, req.file.path);

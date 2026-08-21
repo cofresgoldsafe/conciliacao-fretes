@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success) {
         renderFaturaData(data);
       } else {
-        alert('Erro ao processar fatura: ' + (data.message || data.error || 'Erro desconhecido.'));
+        alert(data.message || data.error || 'Erro ao processar fatura.');
       }
     } catch (err) {
       alert('Erro ao conectar com o servidor para enviar a fatura.');
@@ -624,7 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab1Btn = document.querySelector('[data-tab="tab-upload"]');
         if (tab1Btn) tab1Btn.click();
       } else {
-        alert('Erro ao ler a fatura Correios: ' + data.message);
+        alert(data.message || data.error || 'Erro ao ler a fatura Correios.');
       }
     } catch (err) {
       alert('Erro no upload da Fatura Correios.');

@@ -175,6 +175,32 @@ async function runE2ESuite() {
       assert.strictEqual(res.body.success, false);
     });
 
+    await testAsync('Aba Rodonaves rejeita fatura dos Correios via HTTP com 400', async () => {
+      const fs = require('fs');
+      const fileBlob = new Blob([fs.readFileSync('Exemplo_CORREIO_OACO.pdf')], { type: 'application/pdf' });
+      const fd = new FormData();
+      fd.append('faturaFile', fileBlob, 'Exemplo_CORREIO_OACO.pdf');
+      fd.append('tipoTransportadora', 'RODONAVES');
+      const res = await fetch(`${baseUrl}/api/upload`, { method: 'POST', body: fd });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.success, false);
+      assert.ok(body.message.includes('específica para faturas da transportadora Rodonaves'));
+    });
+
+    await testAsync('Aba Correios rejeita fatura da Rodonaves via HTTP com 400', async () => {
+      const fs = require('fs');
+      const fileBlob = new Blob([fs.readFileSync('Exemplo_FAT_OACO.pdf')], { type: 'application/pdf' });
+      const fd = new FormData();
+      fd.append('faturaFile', fileBlob, 'Exemplo_FAT_OACO.pdf');
+      fd.append('tipoTransportadora', 'CORREIOS_SFE');
+      const res = await fetch(`${baseUrl}/api/upload`, { method: 'POST', body: fd });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.success, false);
+      assert.ok(body.message.includes('só serve para faturas dos Correios'));
+    });
+
     await testAsync('Consulta ao histórico de conciliações (/api/history) retorna 200', async () => {
       const res = await request('GET', '/api/history');
       assert.strictEqual(res.status, 200);

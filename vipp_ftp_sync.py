@@ -113,8 +113,8 @@ def parse_all_csv_files():
                 servico_nome = 'PAC REVERSO (03301)'
                 
             # Classificação: OS vs NF
-            # Regra: se Col Y contiver "OS 1234", é Ordem de Serviço. Caso contrário, é NF.
-            os_match = re.search(r'\bOS\s*(\d+)', col_y, re.IGNORECASE)
+            # Regra: se Col Y contiver "OS 1234" ou "ORDEM DE SERVICO 1234", é Ordem de Serviço. Caso contrário, é NF.
+            os_match = re.search(r'\b(?:OS|ORDEM\s+DE\s+SERVI[CÇ]O|ORDEM\s+SERVI[CÇ]O)[:\s-]*(\d+)', col_y, re.IGNORECASE)
             
             if os_match:
                 tipo_doc = 'OS'
@@ -122,7 +122,7 @@ def parse_all_csv_files():
                 identificador = f"OS {os_num}"
                 doc_originario = f"OS {os_num}"
                 nf_num = ''
-                nf_aux_match = re.search(r'\bNF\s*(\d+)', col_y, re.IGNORECASE)
+                nf_aux_match = re.search(r'\b(?:NF|NOTA\s+FISCAL)[:\s-]*(\d+)', col_y, re.IGNORECASE)
                 if nf_aux_match:
                     nf_num = nf_aux_match.group(1)
                 elif doc_fiscal.isdigit():
@@ -130,7 +130,7 @@ def parse_all_csv_files():
             else:
                 tipo_doc = 'NF'
                 os_num = ''
-                nf_match = re.search(r'\bNF\s*(\d+)', col_y, re.IGNORECASE)
+                nf_match = re.search(r'\b(?:NF|NOTA\s+FISCAL)[:\s-]*(\d+)', col_y, re.IGNORECASE)
                 if nf_match:
                     nf_num = nf_match.group(1)
                 elif doc_fiscal.isdigit():

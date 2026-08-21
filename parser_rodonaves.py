@@ -76,13 +76,13 @@ def parse_rodonaves_pdf(pdf_path):
 
     # Validação Estrita de Padrão e Assinatura Rodonaves
     text_upper = full_text.upper()
-    is_rodonaves = ("RODONAVES" in text_upper or "44.914.992" in full_text or "RTE" in text_upper)
+    is_rodonaves = bool(re.search(r'\bRODONAVES\b', text_upper) or "44.914.992" in full_text or re.search(r'\bRTE\b', text_upper))
     
     if not is_rodonaves or len(cte_items) == 0:
         return {
             "success": False,
             "isWrongFormat": True,
-            "message": "Esta tela é específica para faturas da transportadora Rodonaves. O arquivo enviado não corresponde ao padrão esperado."
+            "message": "Esta tela é específica para faturas da transportadora Rodonaves. O arquivo enviado não corresponde ao padrão da Rodonaves."
         }
 
     # Extração Dinâmica do Pagador no PDF
