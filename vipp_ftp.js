@@ -101,16 +101,25 @@ function getFtpStatus() {
  * - Se encontrado com NF: tipoDoc = 'NF', consulta Protheus (pedVenda, cliente, frete cobrado)
  * - Se NÃO encontrado no ViPP: docOriginario = 'Sem Info', pedVenda = 'Sem Info', status = 'Sem Info' (Permite edição manual)
  */
-async function enrichCorreiosItems(items, empresaKey = 'OACO') {
+async function enrichCorreiosItems(items, empresaKey = 'OACO', autoSyncRemote = true) {
   if (!items || !Array.isArray(items)) return items;
 
-  // Garante que o índice em memória esteja carregado
-  if (!memoryIndex.lastSync && Object.keys(memoryIndex.byEtiqueta).length === 0) {
+  // Garante que o índice em memória busque novos arquivos no FTP se o cache estiver vazio ou há mais de 1 minuto sem checar
+  const now = Date.now();
+  const lastSyncTime = memoryIndex.lastSync ? new Date(memoryIndex.lastSync).getTime() : 0;
+  const isStale = (now - lastSyncTime) > 60 * 1000; // Mais de 1 minuto
+
+  if (autoSyncRemote && (isStale || Object.keys(memoryIndex.byEtiqueta).length === 0)) {
     try {
-      await syncVippFtp(false); // Carrega do cache local inicialmente
+      await syncVippFtp(true); // Conecta ao FTP e baixa arquivos novos de /Retorno
     } catch (e) {
-      console.warn('Aviso: Cache inicial ViPP não pôde ser carregado:', e.message);
+      console.warn('Aviso: Sincronização remota FTP falhou, usando cache local:', e.message);
+      if (Object.keys(memoryIndex.byEtiqueta).length === 0) {
+        await syncVippFtp(false).catch(() => {});
+      }
     }
+  } else if (Object.keys(memoryIndex.byEtiqueta).length === 0) {
+    await syncVippFtp(false).catch(() => {});
   }
 
   for (const item of items) {
