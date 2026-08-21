@@ -602,30 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (faturaFileCorreios && faturaFileCorreios.files.length > 0) {
         uploadCorreiosFile(faturaFileCorreios.files[0]);
       } else {
-        alert('Por favor, selecione um arquivo de Fatura Correios ou utilize o botão "⚡ Carregar Exemplo Correios".');
-      }
-    });
-  }
-
-  if (btnSampleCorreios) {
-    btnSampleCorreios.addEventListener('click', async () => {
-      showLoading(true, 'Carregando exemplo de Extrato Analítico dos Correios (OACO) e consultando ERP Protheus...');
-      try {
-        const response = await fetch('/api/sample-correios');
-        const data = await response.json();
-        if (data.success) {
-          renderFaturaData(data);
-          // Switch to tab 1 results or keep open table
-          const tab1Btn = document.querySelector('[data-tab="tab-upload"]');
-          if (tab1Btn) tab1Btn.click();
-        } else {
-          alert('Erro ao carregar exemplo dos Correios: ' + data.message);
-        }
-      } catch (err) {
-        alert('Erro ao carregar exemplo dos Correios.');
-        console.error(err);
-      } finally {
-        showLoading(false);
+        alert('Por favor, selecione um arquivo de Fatura Correios.');
       }
     });
   }

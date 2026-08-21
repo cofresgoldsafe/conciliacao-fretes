@@ -4,6 +4,9 @@ import os
 import re
 import pypdf
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 def parse_correios_pdf(file_path):
     reader = pypdf.PdfReader(file_path)
     full_text = '\n'.join([p.extract_text() for p in reader.pages])
@@ -102,6 +105,15 @@ def parse_correios_pdf(file_path):
                 "status": "Pendente Batimento ViPP"
             })
             item_id += 1
+
+    # Validação Estrita de Padrão e Assinatura Correios
+    is_correios = ("CORREIOS" in text_upper or "SFE" in text_upper or "ECT" in text_upper or "SEDEX" in text_upper or "PAC" in text_upper)
+    if not is_correios or len(cte_items) == 0:
+        return {
+            "success": False,
+            "isWrongFormat": True,
+            "message": "Esta aba só serve para faturas dos Correios. O arquivo enviado não é compatível com o formato dos Correios."
+        }
 
     fatura_header["qtdFretes"] = len(cte_items)
     fatura_header["valorTotal"] = round(sum(item["valorCobrado"] for item in cte_items), 2)

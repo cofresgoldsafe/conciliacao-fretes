@@ -676,25 +676,29 @@ app.post('/api/upload', upload.single('faturaFile'), async (req, res) => {
     }
 
     const result = await runPythonParser(script, req.file.path);
-    if (result.success && result.items) {
-      const empKey = (result.fatura && result.fatura.empresaKey) ? result.fatura.empresaKey : 'OACO';
-      if (isCorreios) {
-        result.items = await enrichCorreiosItems(result.items, empKey);
-      } else {
-        result.items = await enrichItemsWithProtheus(result.items, empKey);
-      }
-
-      const user = getUserFromReq(req);
-      const fatNum = (result.fatura && result.fatura.numeroFatura) ? result.fatura.numeroFatura : req.file.originalname;
-      logUserActivity({
-        username: user.username,
-        userName: user.name,
-        actionType: 'UPLOAD_FATURA',
-        description: `Processou fatura ${fatNum} (${result.items.length} CT-es) - ${empKey}`,
-        ip: req.ip,
-        metadata: { arquivo: req.file.originalname, fatura: fatNum, empresaKey: empKey, qtdFretes: result.items.length }
-      }).catch(() => {});
+    if (!result.success || !result.items || result.items.length === 0) {
+      const errorMsg = result.message || result.error || 'Formato de arquivo incompatível com a transportadora selecionada.';
+      return res.status(400).json({ success: false, message: errorMsg });
     }
+
+    const empKey = (result.fatura && result.fatura.empresaKey) ? result.fatura.empresaKey : 'OACO';
+    if (isCorreios) {
+      result.items = await enrichCorreiosItems(result.items, empKey);
+    } else {
+      result.items = await enrichItemsWithProtheus(result.items, empKey);
+    }
+
+    const user = getUserFromReq(req);
+    const fatNum = (result.fatura && result.fatura.numeroFatura) ? result.fatura.numeroFatura : req.file.originalname;
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'UPLOAD_FATURA',
+      description: `Processou fatura ${fatNum} (${result.items.length} CT-es) - ${empKey}`,
+      ip: req.ip,
+      metadata: { arquivo: req.file.originalname, fatura: fatNum, empresaKey: empKey, qtdFretes: result.items.length }
+    }).catch(() => {});
+
     res.json(result);
   } catch (err) {
     handleServerError(res, err, 'Erro ao processar fatura de frete.');

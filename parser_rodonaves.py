@@ -3,6 +3,9 @@ import json
 import re
 import pdfplumber
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 def parse_rodonaves_pdf(pdf_path):
     cte_items = []
     fatura_header = {
@@ -71,6 +74,17 @@ def parse_rodonaves_pdf(pdf_path):
                             "status": "Pendente"
                         })
 
+    # Validação Estrita de Padrão e Assinatura Rodonaves
+    text_upper = full_text.upper()
+    is_rodonaves = ("RODONAVES" in text_upper or "44.914.992" in full_text or "RTE" in text_upper)
+    
+    if not is_rodonaves or len(cte_items) == 0:
+        return {
+            "success": False,
+            "isWrongFormat": True,
+            "message": "Esta tela é específica para faturas da transportadora Rodonaves. O arquivo enviado não corresponde ao padrão esperado."
+        }
+
     # Extração Dinâmica do Pagador no PDF
     pagador_match = re.search(r'Pagador\s*[\n\r]*\s*([^\n\r]+)', full_text, re.IGNORECASE)
     if pagador_match:
@@ -84,7 +98,6 @@ def parse_rodonaves_pdf(pdf_path):
             fatura_header["pagadorCnpj"] = found_cnpj
 
     # Identificação Automática da Empresa (OACO = 16, GSI = 15, METAL PLENO = 14)
-    text_upper = full_text.upper()
     if "METAL PLENO" in text_upper:
         fatura_header["empresaKey"] = "METAL_PLENO"
         fatura_header["empresaCodigo"] = "14"

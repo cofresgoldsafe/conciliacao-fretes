@@ -1,5 +1,205 @@
 [
   {
+    "id": "ACT-1787342769174",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:06:09.174Z"
+  },
+  {
+    "id": "ACT-1787342760701",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:06:00.701Z"
+  },
+  {
+    "id": "ACT-1787342760428",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:06:00.428Z"
+  },
+  {
+    "id": "ACT-1787342712165",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:05:12.165Z"
+  },
+  {
+    "id": "ACT-1787342711922",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T20:05:11.922Z"
+  },
+  {
+    "id": "ACT-1787342269780",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:57:49.780Z"
+  },
+  {
+    "id": "ACT-1787342265753",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:57:45.753Z"
+  },
+  {
+    "id": "ACT-1787342265566",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:57:45.566Z"
+  },
+  {
+    "id": "ACT-1787342056695",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:54:16.695Z"
+  },
+  {
+    "id": "ACT-1787342052603",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:54:12.604Z"
+  },
+  {
+    "id": "ACT-1787342052420",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:54:12.420Z"
+  },
+  {
+    "id": "ACT-1787341885161",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:51:25.162Z"
+  },
+  {
+    "id": "ACT-1787341880750",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:51:20.750Z"
+  },
+  {
+    "id": "ACT-1787341880481",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:51:20.481Z"
+  },
+  {
+    "id": "ACT-1787341770951",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:49:30.951Z"
+  },
+  {
+    "id": "ACT-1787341766554",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:49:26.554Z"
+  },
+  {
+    "id": "ACT-1787341766377",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:49:26.377Z"
+  },
+  {
+    "id": "ACT-1787340193116",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:23:13.116Z"
+  },
+  {
+    "id": "ACT-1787340188904",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:23:08.904Z"
+  },
+  {
+    "id": "ACT-1787340188638",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "LOGIN",
+    "description": "Login realizado com sucesso (admin)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-08-21T19:23:08.638Z"
+  },
+  {
     "id": "ACT-1787339718749",
     "username": "alexandre",
     "userName": "Alexandre",

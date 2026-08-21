@@ -1,5 +1,544 @@
 [
   {
+    "id": 122,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787342761075tna4_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787342761075tna4_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T20:06:01.169Z"
+  },
+  {
+    "id": 121,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787342761075tna4_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787342761075tna4_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T20:06:01.169Z"
+  },
+  {
+    "id": 120,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R1787342761075tna4_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R1787342761075tna4_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T20:06:01.159Z"
+  },
+  {
+    "id": 119,
+    "empresaCodigo": "14",
+    "eventId": "evt-ea05a7bbcbd4f2b906537add18cd311f",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R1787342761075tna4",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T20:06:01.103Z"
+  },
+  {
+    "id": 118,
+    "empresaCodigo": "16",
+    "eventId": "E_R1787342761075tna4_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787342761075tna4_001",
+      "txid": "TX_R1787342761075tna4_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T20:06:01.097Z"
+  },
+  {
+    "id": 117,
+    "empresaCodigo": "14",
+    "eventId": "E_R1787342761075tna4_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787342761075tna4_001",
+      "txid": "TX_R1787342761075tna4_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T20:06:01.076Z"
+  },
+  {
+    "id": 116,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17873427125384f7p_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17873427125384f7p_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T20:05:12.616Z"
+  },
+  {
+    "id": 115,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17873427125384f7p_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17873427125384f7p_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T20:05:12.616Z"
+  },
+  {
+    "id": 114,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R17873427125384f7p_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R17873427125384f7p_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T20:05:12.604Z"
+  },
+  {
+    "id": 113,
+    "empresaCodigo": "14",
+    "eventId": "evt-be3d43c1c3139c7b94efcab1d1a51118",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R17873427125384f7p",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T20:05:12.552Z"
+  },
+  {
+    "id": 112,
+    "empresaCodigo": "16",
+    "eventId": "E_R17873427125384f7p_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17873427125384f7p_001",
+      "txid": "TX_R17873427125384f7p_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T20:05:12.548Z"
+  },
+  {
+    "id": 111,
+    "empresaCodigo": "14",
+    "eventId": "E_R17873427125384f7p_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17873427125384f7p_001",
+      "txid": "TX_R17873427125384f7p_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T20:05:12.540Z"
+  },
+  {
+    "id": 110,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787342266057sgfm_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787342266057sgfm_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T19:57:46.171Z"
+  },
+  {
+    "id": 109,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787342266057sgfm_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787342266057sgfm_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T19:57:46.171Z"
+  },
+  {
+    "id": 108,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R1787342266057sgfm_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R1787342266057sgfm_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T19:57:46.119Z"
+  },
+  {
+    "id": 107,
+    "empresaCodigo": "14",
+    "eventId": "evt-9c26f2e1767c96f7abad797803ab992a",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R1787342266057sgfm",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T19:57:46.069Z"
+  },
+  {
+    "id": 106,
+    "empresaCodigo": "16",
+    "eventId": "E_R1787342266057sgfm_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787342266057sgfm_001",
+      "txid": "TX_R1787342266057sgfm_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T19:57:46.065Z"
+  },
+  {
+    "id": 105,
+    "empresaCodigo": "14",
+    "eventId": "E_R1787342266057sgfm_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787342266057sgfm_001",
+      "txid": "TX_R1787342266057sgfm_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T19:57:46.058Z"
+  },
+  {
+    "id": 104,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787342052948hvsu_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787342052948hvsu_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T19:54:13.012Z"
+  },
+  {
+    "id": 103,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787342052948hvsu_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787342052948hvsu_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T19:54:13.012Z"
+  },
+  {
+    "id": 102,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R1787342052948hvsu_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R1787342052948hvsu_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T19:54:13.003Z"
+  },
+  {
+    "id": 101,
+    "empresaCodigo": "14",
+    "eventId": "evt-102ec14ef29d3560244f47633f5f696f",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R1787342052948hvsu",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T19:54:12.959Z"
+  },
+  {
+    "id": 100,
+    "empresaCodigo": "16",
+    "eventId": "E_R1787342052948hvsu_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787342052948hvsu_001",
+      "txid": "TX_R1787342052948hvsu_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T19:54:12.955Z"
+  },
+  {
+    "id": 99,
+    "empresaCodigo": "14",
+    "eventId": "E_R1787342052948hvsu_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787342052948hvsu_001",
+      "txid": "TX_R1787342052948hvsu_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T19:54:12.949Z"
+  },
+  {
+    "id": 98,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787341881251ei9w_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787341881251ei9w_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T19:51:21.347Z"
+  },
+  {
+    "id": 97,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R1787341881251ei9w_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R1787341881251ei9w_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T19:51:21.347Z"
+  },
+  {
+    "id": 96,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R1787341881251ei9w_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R1787341881251ei9w_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T19:51:21.334Z"
+  },
+  {
+    "id": 95,
+    "empresaCodigo": "14",
+    "eventId": "evt-7337e8f0842395bc3aaee06db363caa4",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R1787341881251ei9w",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T19:51:21.268Z"
+  },
+  {
+    "id": 94,
+    "empresaCodigo": "16",
+    "eventId": "E_R1787341881251ei9w_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787341881251ei9w_001",
+      "txid": "TX_R1787341881251ei9w_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T19:51:21.262Z"
+  },
+  {
+    "id": 93,
+    "empresaCodigo": "14",
+    "eventId": "E_R1787341881251ei9w_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R1787341881251ei9w_001",
+      "txid": "TX_R1787341881251ei9w_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T19:51:21.253Z"
+  },
+  {
+    "id": 92,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17873417669106tff_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17873417669106tff_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T19:49:27.014Z"
+  },
+  {
+    "id": 91,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17873417669106tff_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17873417669106tff_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T19:49:27.013Z"
+  },
+  {
+    "id": 90,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R17873417669106tff_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R17873417669106tff_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T19:49:27.002Z"
+  },
+  {
+    "id": 89,
+    "empresaCodigo": "14",
+    "eventId": "evt-fc0845e332559bceea0db17e56512604",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R17873417669106tff",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T19:49:26.959Z"
+  },
+  {
+    "id": 88,
+    "empresaCodigo": "16",
+    "eventId": "E_R17873417669106tff_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17873417669106tff_001",
+      "txid": "TX_R17873417669106tff_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T19:49:26.955Z"
+  },
+  {
+    "id": 87,
+    "empresaCodigo": "14",
+    "eventId": "E_R17873417669106tff_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17873417669106tff_001",
+      "txid": "TX_R17873417669106tff_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T19:49:26.911Z"
+  },
+  {
+    "id": 86,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17873401892889fxk_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17873401892889fxk_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-21T19:23:09.369Z"
+  },
+  {
+    "id": 85,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17873401892889fxk_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17873401892889fxk_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-21T19:23:09.369Z"
+  },
+  {
+    "id": 84,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R17873401892889fxk_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R17873401892889fxk_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-21T19:23:09.356Z"
+  },
+  {
+    "id": 83,
+    "empresaCodigo": "14",
+    "eventId": "evt-ab27a795a6b9b02ab4f829191c83fff3",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R17873401892889fxk",
+      "valor": 88
+    },
+    "createdAt": "2026-08-21T19:23:09.301Z"
+  },
+  {
+    "id": 82,
+    "empresaCodigo": "16",
+    "eventId": "E_R17873401892889fxk_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17873401892889fxk_001",
+      "txid": "TX_R17873401892889fxk_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-21T19:23:09.297Z"
+  },
+  {
+    "id": 81,
+    "empresaCodigo": "14",
+    "eventId": "E_R17873401892889fxk_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17873401892889fxk_001",
+      "txid": "TX_R17873401892889fxk_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-21T19:23:09.290Z"
+  },
+  {
     "id": 80,
     "empresaCodigo": "14",
     "eventId": "E_BATCH_R1787339715006q69x_2",

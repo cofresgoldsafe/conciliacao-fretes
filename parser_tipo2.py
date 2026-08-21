@@ -72,36 +72,11 @@ def parse_tipo2_file(file_path):
         fatura_header["empresaCodigo"] = "16"
 
     if len(cte_items) == 0:
-        cte_items = [
-            {
-                "id": 1,
-                "doc": "VIPP-CTe",
-                "numFrete": "VP-998812-1",
-                "docOriginarioRaw": "000000570",
-                "docOriginario": "570",
-                "valorOrcadoStr": "45,50",
-                "valorOrcado": 45.50,
-                "valorCobradoStr": "45,50",
-                "valorCobrado": 45.50,
-                "cliente": "DISTRIBUIDORA DE ACO SP",
-                "dataVencimento": "28/08/2026",
-                "status": "Pendente"
-            },
-            {
-                "id": 2,
-                "doc": "VIPP-CTe",
-                "numFrete": "VP-998813-1",
-                "docOriginarioRaw": "000000572",
-                "docOriginario": "572",
-                "valorOrcadoStr": "62,80",
-                "valorOrcado": 62.80,
-                "valorCobradoStr": "62,80",
-                "valorCobrado": 62.80,
-                "cliente": "INDUSTRIA METALURGICA ABC",
-                "dataVencimento": "28/08/2026",
-                "status": "Pendente"
-            }
-        ]
+        return {
+            "success": False,
+            "isWrongFormat": True,
+            "message": "O arquivo CSV/TXT do ViPP não contém registros válidos de postagem ou está em formato incompatível."
+        }
 
     fatura_header["qtdFretes"] = len(cte_items)
     fatura_header["valorTotal"] = round(sum(item["valorCobrado"] for item in cte_items), 2)

@@ -92,6 +92,38 @@ async function runTests() {
     assert.strictEqual(res.freteCobrado, 128.00, 'Frete cobrado deve ser R$ 128,00');
   });
 
+  // Teste 7: Validação de Formato Rodonaves (Rejeita arquivo dos Correios)
+  await test('Validação Rodonaves: Rejeita PDF dos Correios com mensagem descritiva', async () => {
+    const { execSync } = require('child_process');
+    const out = execSync('python parser_rodonaves.py Exemplo_CORREIO_OACO.pdf', { encoding: 'utf-8' });
+    const parsed = JSON.parse(out);
+    assert.strictEqual(parsed.success, false, 'Deve rejeitar PDF dos Correios');
+    assert.strictEqual(parsed.isWrongFormat, true, 'Deve indicar isWrongFormat: true');
+    assert.ok(parsed.message.includes('Rodonaves'), 'Mensagem deve indicar que a tela é para Rodonaves');
+  });
+
+  // Teste 8: Validação de Formato Correios (Rejeita arquivo da Rodonaves)
+  await test('Validação Correios: Rejeita PDF da Rodonaves com mensagem descritiva', async () => {
+    const { execSync } = require('child_process');
+    const out = execSync('python parser_correios.py Exemplo_FAT_OACO.pdf', { encoding: 'utf-8' });
+    const parsed = JSON.parse(out);
+    assert.strictEqual(parsed.success, false, 'Deve rejeitar PDF da Rodonaves');
+    assert.strictEqual(parsed.isWrongFormat, true, 'Deve indicar isWrongFormat: true');
+    assert.ok(parsed.message.includes('Correios'), 'Mensagem deve indicar que a aba é para Correios');
+  });
+
+  // Teste 9: Sucesso no upload legítimo de cada transportadora
+  await test('Validação legítima: Rodonaves aceita FAT e Correios aceita SFE', async () => {
+    const { execSync } = require('child_process');
+    const outRod = JSON.parse(execSync('python parser_rodonaves.py Exemplo_FAT_OACO.pdf', { encoding: 'utf-8' }));
+    assert.strictEqual(outRod.success, true, 'Rodonaves deve aceitar Exemplo_FAT_OACO.pdf');
+    assert.ok(outRod.items.length > 0, 'Deve conter itens');
+
+    const outCor = JSON.parse(execSync('python parser_correios.py Exemplo_CORREIO_OACO.pdf', { encoding: 'utf-8' }));
+    assert.strictEqual(outCor.success, true, 'Correios deve aceitar Exemplo_CORREIO_OACO.pdf');
+    assert.ok(outCor.items.length > 0, 'Deve conter itens');
+  });
+
   console.log('\n====================================================');
   console.log(`📊 RESULTADO DOS TESTES: ${passed}/${total} APROVADOS (${Math.round((passed/total)*100)}%)`);
   console.log('====================================================\n');
