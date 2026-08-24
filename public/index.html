@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.20">
+  <link rel="stylesheet" href="style.css?v=8.21">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 18:11 (fix(credito): valida existencia real do pedido no Protheus e bloqueia pedidos inexistentes)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 18:48 (feat(credito): integra SE4 condicao pagto, formatacao moeda, consulta CNPJ publico e campos manuais em branco)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1175,7 +1175,7 @@
               </div>
               <div class="form-group">
                 <label>Total do Pedido (R$) *</label>
-                <input type="number" step="0.01" id="cr_total_pedido" class="form-input" required />
+                <input type="text" id="cr_total_pedido" class="form-input" placeholder="0,00" required style="font-weight: 700; font-family: 'JetBrains Mono', monospace;" />
               </div>
               <div class="form-group">
                 <label>Desconto do Pedido</label>
@@ -1186,46 +1186,54 @@
 
           <!-- Bloco 2: Condições Comerciais -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem;">2. Condições Comerciais & Características</h3>
+            <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>2. Condições Comerciais & Pagamento</span>
+              <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">⚡ Protheus SE4</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>Faturado a Prazo?</label>
-                <select id="cr_faturado" class="form-select">
+                <label>Faturado a Prazo? *</label>
+                <select id="cr_faturado" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (Boleto/Prazo)</option>
                   <option value="N">Não (À Vista/Antecipado)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Possui Entrada?</label>
-                <select id="cr_entrada" class="form-select">
+                <label>Possui Entrada? *</label>
+                <select id="cr_entrada" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (-4 pts)</option>
                   <option value="S">Sim (+12 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Qtd. Grande?</label>
-                <select id="cr_quant_grande" class="form-select">
+                <label>Qtd. Grande? *</label>
+                <select id="cr_quant_grande" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+1 pt)</option>
                   <option value="S">Sim (-13 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Prod. Ñ Combinam?</label>
-                <select id="cr_prod_nao_combinam" class="form-select">
+                <label>Prod. Ñ Combinam? *</label>
+                <select id="cr_prod_nao_combinam" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+2 pts)</option>
                   <option value="S">Sim (-5 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Armário/Cofre &gt; 2k?</label>
-                <select id="cr_armario_cofre_gt_2000" class="form-select">
+                <label>Armário/Cofre &gt; 2k? *</label>
+                <select id="cr_armario_cofre_gt_2000" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não</option>
                   <option value="S">Sim (Exige Contrato)</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>UF do Cliente *</label>
-                <input type="text" id="cr_uf_cliente" maxlength="2" class="form-input" value="SP" required style="text-transform: uppercase;" />
+                <input type="text" id="cr_uf_cliente" maxlength="2" class="form-input" placeholder="SP" required style="text-transform: uppercase;" />
               </div>
             </div>
           </div>
@@ -1238,77 +1246,89 @@
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>Entrega = Cadastro?</label>
-                <select id="cr_entrega_igual_cadastro" class="form-select">
+                <label>Entrega = Cadastro? *</label>
+                <select id="cr_entrega_igual_cadastro" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+2 pts)</option>
                   <option value="N">Não (-9 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Cadastro = Receita?</label>
-                <select id="cr_cadastro_igual_receita" class="form-select">
+                <label>Cadastro = Receita? *</label>
+                <select id="cr_cadastro_igual_receita" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+3 pts)</option>
                   <option value="N">Não (-3 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Casa/Sala no Endereço?</label>
-                <select id="cr_casa_sala_conj_end" class="form-select">
+                <label>Casa/Sala no Endereço? *</label>
+                <select id="cr_casa_sala_conj_end" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não / Prédio (+1 pt)</option>
                   <option value="S">Sim (-5 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Google Maps Fachada</label>
-                <select id="cr_google_maps" class="form-select">
+                <label>Google Maps Fachada *</label>
+                <select id="cr_google_maps" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="10">10 (Top +6 pts)</option>
-                  <option value="5" selected>5 (Compatível 0 pts)</option>
+                  <option value="5">5 (Compatível 0 pts)</option>
                   <option value="0">0 (Residencial -6 pts)</option>
                   <option value="-">- (Não Visto -3 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Registro.Br Confere?</label>
-                <select id="cr_registro_br" class="form-select">
+                <label>Registro.Br Confere? *</label>
+                <select id="cr_registro_br" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não</option>
                   <option value="S">Sim (+6 pts se entrega dif)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>ScamAdvizer Score (0-100)</label>
-                <input type="number" id="cr_scamadvizer_score" class="form-input" value="100" />
+                <label>ScamAdvizer Score (0-100) *</label>
+                <input type="number" id="cr_scamadvizer_score" class="form-input" placeholder="0 a 100" min="0" max="100" required />
               </div>
             </div>
           </div>
 
           <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 1rem;">4. E-mails, Site & Porte Corporativo</h3>
+            <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>4. E-mails, Site & Porte Corporativo</span>
+              <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">✍️ Manual / Dados Públicos</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>E-mail Corporativo?</label>
-                <select id="cr_email_corporativo" class="form-select">
+                <label>E-mail Corporativo? *</label>
+                <select id="cr_email_corporativo" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+3 pts)</option>
                   <option value="N">Não (-3 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Mail Finan Diferente?</label>
-                <select id="cr_existe_mail_financeiro" class="form-select">
+                <label>Mail Finan Diferente? *</label>
+                <select id="cr_existe_mail_financeiro" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (0 pts)</option>
                   <option value="N">Não (-7 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>E-mail Gratuito?</label>
-                <select id="cr_mail_gratuito" class="form-select">
+                <label>E-mail Gratuito? *</label>
+                <select id="cr_mail_gratuito" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+2 pts)</option>
                   <option value="S">Sim (Gmail/Hotmail -8)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Possui Site Ativo?</label>
-                <select id="cr_possui_site" class="form-select">
+                <label>Possui Site Ativo? *</label>
+                <select id="cr_possui_site" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+1 pt)</option>
                   <option value="N">Não (-15 pts)</option>
                 </select>
@@ -1318,48 +1338,55 @@
                 <input type="date" id="cr_fundacao_matriz" class="form-input" required />
               </div>
               <div class="form-group">
-                <label>Capital Social (R$)</label>
-                <input type="number" id="cr_capital_social" class="form-input" value="100000" />
+                <label>Capital Social (R$) *</label>
+                <input type="text" id="cr_capital_social" class="form-input" placeholder="0,00" required />
               </div>
             </div>
           </div>
 
           <!-- Bloco 5: Bureau, Serasa & Protestos -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem;">5. Serasa, Protestos & Histórico Interno</h3>
+            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>5. Serasa, Protestos & Histórico Interno</span>
+              <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">✍️ Bureau / Serasa</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>Score Serasa (0-1000) *</label>
-                <input type="number" id="cr_score_serasa" class="form-input" value="750" required />
+                <input type="number" id="cr_score_serasa" class="form-input" placeholder="0 a 1000" min="0" max="1000" required />
               </div>
               <div class="form-group">
-                <label>Possui Protestos?</label>
-                <select id="cr_protestos" class="form-select">
+                <label>Possui Protestos? *</label>
+                <select id="cr_protestos" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+5 pts)</option>
                   <option value="S">Sim (-10 pts)</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Valor Protestos (R$)</label>
-                <input type="number" id="cr_valor_protestos" class="form-input" value="0" />
+                <input type="text" id="cr_valor_protestos" class="form-input" placeholder="0,00" value="0,00" />
               </div>
               <div class="form-group">
-                <label>PFIN Sim?</label>
-                <select id="cr_pfin" class="form-select">
+                <label>PFIN Sim? *</label>
+                <select id="cr_pfin" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+1 pt)</option>
                   <option value="S">Sim (-5 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Cheques Sem Fundo?</label>
-                <select id="cr_ch_sem_fundo" class="form-select">
+                <label>Cheques Sem Fundo? *</label>
+                <select id="cr_ch_sem_fundo" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (0 pts)</option>
                   <option value="S">Sim (-6 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>CNPJ Ativo na RF?</label>
-                <select id="cr_cnpj_ativo" class="form-select">
+                <label>CNPJ Ativo na RF? *</label>
+                <select id="cr_cnpj_ativo" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+2 pts)</option>
                   <option value="N">Não (-100 pts)</option>
                 </select>
@@ -1369,46 +1396,55 @@
 
           <!-- Bloco 6: Histórico Interno & Certidões -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem;">6. FGTS, Certidões & Histórico de Compras</h3>
+            <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>6. FGTS, Certidões & Histórico de Compras</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✍️ Caixa / Histórico</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>Pgtos em Aberto?</label>
-                <select id="cr_pgtos_abertos" class="form-select">
+                <label>Pgtos em Aberto? *</label>
+                <select id="cr_pgtos_abertos" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+1 pt)</option>
                   <option value="S">Sim (-3 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Comprou e Pagou 2x+?</label>
-                <select id="cr_comprou_pagou" class="form-select">
+                <label>Comprou e Pagou 2x+? *</label>
+                <select id="cr_comprou_pagou" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+9 pts)</option>
                   <option value="N">Não (-3 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Comprou e Pagou 5x+?</label>
-                <select id="cr_comprou_pagou_5x" class="form-select">
+                <label>Comprou e Pagou 5x+? *</label>
+                <select id="cr_comprou_pagou_5x" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (0 pts)</option>
                   <option value="S">Sim (+23 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>FGTS Regular?</label>
-                <select id="cr_fgts_situacao_regular" class="form-select">
+                <label>FGTS Regular? *</label>
+                <select id="cr_fgts_situacao_regular" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Regular (0 pts)</option>
                   <option value="N">Irregular (-6 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Razão = FGTS?</label>
-                <select id="cr_razao_fgts_igual" class="form-select">
+                <label>Razão = FGTS? *</label>
+                <select id="cr_razao_fgts_igual" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="S">Igual (0 pts)</option>
                   <option value="N">Divergente (-10 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>3 NFs Confirmadas?</label>
-                <select id="cr_tres_nfs_confirmadas" class="form-select">
+                <label>3 NFs Confirmadas? *</label>
+                <select id="cr_tres_nfs_confirmadas" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (-3 pts)</option>
                   <option value="S">Sim (+3 pts)</option>
                   <option value="D">Dispensado</option>
@@ -1426,8 +1462,8 @@
               </div>
               <div class="form-group">
                 <label for="cr_decisao_final">Decisão Final do Analista *</label>
-                <select id="cr_decisao_final" class="form-select" style="font-weight: 700;">
-                  <option value="Liberado">Liberado</option>
+                <select id="cr_decisao_final" class="form-select" style="font-weight: 700;" required>
+                  <option value="Liberado" selected>Liberado</option>
                   <option value="Entrada">Liberar com Entrada</option>
                   <option value="Só À Vista">Bloquear para Prazo (Só À Vista)</option>
                   <option value="Bloqueado">Bloqueado</option>
@@ -1785,6 +1821,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.20"></script>
+  <script src="app.js?v=8.21"></script>
 </body>
 </html>

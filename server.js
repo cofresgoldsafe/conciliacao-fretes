@@ -1561,6 +1561,35 @@ const {
   salvarAnalise: salvarAnaliseCredito
 } = require('./analise_credito_engine');
 
+// Função utilitária para consulta de CNPJ em bases públicas governamentais (BrasilAPI)
+async function consultarCnpjPublico(cnpjStr) {
+  if (!cnpjStr) return null;
+  const digits = String(cnpjStr).replace(/\D/g, '');
+  if (digits.length !== 14) return null;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Gemini-Auditores/1.0' }
+    });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const d = await res.json();
+      return {
+        fundacao: d.data_inicio_atividade || '',
+        capitalSocial: typeof d.capital_social === 'number' ? d.capital_social : parseFloat(d.capital_social) || 0,
+        cnpjAtivo: (d.descricao_situacao_cadastral || d.situacao_cadastral || '').toUpperCase().includes('ATIVA') ? 'S' : 'N'
+      };
+    }
+  } catch (e) {
+    console.warn('Consulta CNPJ público falhou (ignorado silenciosamente):', e.message);
+  }
+  return null;
+}
+
 // 1. Consulta Protheus para auto-preenchimento
 app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
   try {
@@ -1584,7 +1613,7 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     };
     const empKey = empKeyMap[String(empresa).trim()] || "METAL_PLENO";
 
-    // Executa busca real no banco de dados Protheus (SC5 / SC6 / SA1 / SE1)
+    // Executa busca real no banco de dados Protheus (SC5 / SC6 / SA1 / SE1 / SE4)
     const detalhes = await obterDetalhesPedido(empKey, pedNormalizado);
 
     if (!detalhes || !detalhes.encontrado) {
@@ -1599,13 +1628,19 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
 
     const cli = detalhes.cliente || {};
     const tot = detalhes.totais || {};
-    const email = String(cli.email || '').toLowerCase().trim();
-    const isEmailGratuito = email.includes('@gmail') || email.includes('@hotmail') || email.includes('@yahoo') || email.includes('@outlook');
-    const endStr = String(cli.endereco || '').toLowerCase();
-    const isSalaConj = endStr.includes('sala') || endStr.includes('conj') || endStr.includes('cj') || endStr.includes('apto');
-
     const totalVal = Number(tot.totalGeral || tot.totalProdutos || 0);
     const qtdItensTotal = (detalhes.itens || []).reduce((acc, it) => acc + Number(it.qtd || 0), 0);
+
+    // Condição de Pagamento vinda da SE4 (E4_COND e E4_CTRADT)
+    const condInfo = detalhes.comercial?.condPagInfo || {};
+    const faturadoVal = condInfo.faturado || (detalhes.fiscal?.geraFinanceiro === 'S' ? 'S' : 'N');
+    const entradaVal = condInfo.possuiEntrada || 'N';
+
+    // Consulta CNPJ em bases públicas (Fundação e Capital Social)
+    let dadosCnpj = null;
+    if (cli.cnpj) {
+      dadosCnpj = await consultarCnpjPublico(cli.cnpj);
+    }
 
     res.json({
       success: true,
@@ -1617,26 +1652,40 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       cliente_nome: cli.nome || '',
       total_pedido: parseFloat(totalVal.toFixed(2)),
       desconto_ped: tot.totalDesconto > 0 ? `R$ ${tot.totalDesconto.toFixed(2)}` : 'OK',
-      faturado: detalhes.fiscal?.geraFinanceiro === 'S' || (detalhes.faturas && detalhes.faturas.length > 0) ? 'S' : 'N',
-      entrada: 'N',
+      faturado: faturadoVal,
+      entrada: entradaVal,
       quant_grande: qtdItensTotal > 15 ? 'S' : 'N',
       prod_nao_combinam: 'N',
       armario_cofre_gt_2000: totalVal > 2000 ? 'S' : 'N',
-      entrega_igual_cadastro: 'S',
       uf_cliente: (cli.uf || 'SP').toUpperCase().trim(),
-      cnpj_ativo: 'S',
-      pgtos_abertos: 'N',
-      comprou_pagou: 'S',
-      comprou_pagou_5x: 'N',
-      cadastro_igual_receita: 'S',
-      casa_sala_conj_end: isSalaConj ? 'S' : 'N',
-      email_corporativo: email && !isEmailGratuito ? 'S' : 'N',
-      existe_mail_financeiro: 'S',
-      mail_gratuito: isEmailGratuito ? 'S' : 'N',
-      possui_site: email && !isEmailGratuito ? 'S' : 'N',
-      fundacao_matriz: '',
-      empresa_grande_conhecida: 'N',
-      capital_social: 0,
+      cnpj_ativo: dadosCnpj ? dadosCnpj.cnpjAtivo : '',
+      fundacao_matriz: dadosCnpj ? dadosCnpj.fundacao : '',
+      capital_social: dadosCnpj && dadosCnpj.capitalSocial > 0 ? dadosCnpj.capitalSocial : '',
+
+      // Todos os campos de conferência manual vêm em branco para o usuário preencher
+      entrega_igual_cadastro: '',
+      cadastro_igual_receita: '',
+      casa_sala_conj_end: '',
+      google_maps: '',
+      registro_br: '',
+      scamadvizer_score: '',
+      email_corporativo: '',
+      existe_mail_financeiro: '',
+      mail_gratuito: '',
+      possui_site: '',
+      score_serasa: '',
+      protestos: '',
+      valor_protestos: '',
+      pfin: '',
+      ch_sem_fundo: '',
+      pgtos_abertos: '',
+      comprou_pagou: '',
+      comprou_pagou_5x: '',
+      fgts_situacao_regular: '',
+      razao_fgts_igual: '',
+      tres_nfs_confirmadas: '',
+      obs: '',
+      decisao_final: 'Liberado',
       mensagem: `Pedido #${detalhes.numPedido || pedNormalizado} encontrado com sucesso no Protheus.`
     });
   } catch (err) {

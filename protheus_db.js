@@ -538,6 +538,72 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
       }
     }
 
+    // Consulta Condição de Pagamento (SE4) para obter E4_COND e E4_CTRADT
+    let condPagInfo = {
+      codigo: head ? (head.CONDPAG || '').trim() : '',
+      descricao: '',
+      e4_cond: '',
+      e4_ctradt: '',
+      possuiEntrada: 'N',
+      faturado: 'N'
+    };
+
+    if (head && head.CONDPAG) {
+      try {
+        const cleanCond = sanitizeSqlParam(head.CONDPAG);
+        const paddedCond = cleanCond.padStart(3, '0');
+        const se4Table = `SE4${emp.codigo}0`;
+        const sqlSE4 = `
+          SELECT TOP 1
+            RTRIM(ISNULL(E4_CODIGO, '')) AS E4_CODIGO,
+            RTRIM(ISNULL(E4_COND, '')) AS E4_COND,
+            RTRIM(ISNULL(E4_CTRADT, '')) AS E4_CTRADT,
+            RTRIM(ISNULL(E4_DESCRI, '')) AS E4_DESCRI
+          FROM ${se4Table}
+          WHERE (E4_CODIGO = '${cleanCond}' OR E4_CODIGO = '${paddedCond}')
+            AND D_E_L_E_T_ = ' '
+        `;
+        let resSE4 = await executeRailwayQuery(sqlSE4);
+        if (!resSE4 || !resSE4.rows || resSE4.rows.length === 0) {
+          const sqlSE4_01 = `
+            SELECT TOP 1
+              RTRIM(ISNULL(E4_CODIGO, '')) AS E4_CODIGO,
+              RTRIM(ISNULL(E4_COND, '')) AS E4_COND,
+              RTRIM(ISNULL(E4_CTRADT, '')) AS E4_CTRADT,
+              RTRIM(ISNULL(E4_DESCRI, '')) AS E4_DESCRI
+            FROM SE4010
+            WHERE (E4_CODIGO = '${cleanCond}' OR E4_CODIGO = '${paddedCond}')
+              AND D_E_L_E_T_ = ' '
+          `;
+          resSE4 = await executeRailwayQuery(sqlSE4_01);
+        }
+
+        if (resSE4 && resSE4.rows && resSE4.rows.length > 0) {
+          const rowE4 = resSE4.rows[0];
+          const e4Cond = (rowE4.E4_COND || '').trim();
+          const e4Ctradt = String(rowE4.E4_CTRADT || '').trim();
+
+          // Regra 1: E4_CTRADT = '1' OU se E4_COND contiver '00,' no início (ex: '00,15') -> possui entrada
+          const hasEntrada = (e4Ctradt === '1' || e4Cond.startsWith('00,') || e4Cond.startsWith('0,'));
+          
+          // Regra 2: E4_COND diferente de '00' e '0' -> Faturado a Prazo (faturado = 'S')
+          // Se E4_COND for '00' ou '0' -> À Vista / Antecipado (faturado = 'N')
+          const isFaturado = (e4Cond !== '00' && e4Cond !== '0' && e4Cond !== '');
+
+          condPagInfo = {
+            codigo: rowE4.E4_CODIGO || cleanCond,
+            descricao: rowE4.E4_DESCRI || '',
+            e4_cond: e4Cond,
+            e4_ctradt: e4Ctradt,
+            possuiEntrada: hasEntrada ? 'S' : 'N',
+            faturado: isFaturado ? 'S' : 'N'
+          };
+        }
+      } catch (errSE4) {
+        console.warn('Erro ao consultar SE4:', errSE4.message);
+      }
+    }
+
     const sqlC6 = `
       SELECT
         RTRIM(C6.C6_ITEM) AS ITEM,
@@ -658,6 +724,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         comercial: {
           transportadora: head.TRANSP || 'Transportadora Padrão',
           condPagto: head.CONDPAG || 'À Vista / Boleto',
+          condPagInfo: condPagInfo,
           vendedor: getNomeVendedor(head.VEND1),
           codVendedor: head.VEND1,
           observacoes: head.OBS

@@ -3352,41 +3352,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const setVal = (id, val) => {
           const el = document.getElementById(id);
-          if (el && val !== undefined && val !== null) el.value = val;
+          if (el) {
+            el.value = (val !== undefined && val !== null) ? val : '';
+          }
         };
 
         setVal('cr_pedido_venda', data.pedido_venda);
         setVal('cr_cod_web', data.cod_web || '');
         setVal('cr_cliente_codigo', data.cliente_codigo || '');
         setVal('cr_cliente_nome', data.cliente_nome || '');
-        setVal('cr_total_pedido', data.total_pedido || 0);
+        
+        // Formata moeda Brasileira com 2 casas decimais (ex: 2.318,00)
+        if (data.total_pedido !== undefined && data.total_pedido !== null) {
+          setVal('cr_total_pedido', Number(data.total_pedido).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        } else {
+          setVal('cr_total_pedido', '');
+        }
+
         setVal('cr_desconto_ped', data.desconto_ped || 'OK');
-        setVal('cr_faturado', data.faturado || 'S');
-        setVal('cr_entrada', data.entrada || 'N');
-        setVal('cr_quant_grande', data.quant_grande || 'N');
-        setVal('cr_prod_nao_combinam', data.prod_nao_combinam || 'N');
-        setVal('cr_armario_cofre_gt_2000', data.armario_cofre_gt_2000 || 'N');
-        setVal('cr_uf_cliente', data.uf_cliente || 'SP');
-        setVal('cr_entrega_igual_cadastro', data.entrega_igual_cadastro || 'S');
-        setVal('cr_cadastro_igual_receita', data.cadastro_igual_receita || 'S');
-        setVal('cr_casa_sala_conj_end', data.casa_sala_conj_end || 'N');
-        setVal('cr_email_corporativo', data.email_corporativo || 'S');
-        setVal('cr_existe_mail_financeiro', data.existe_mail_financeiro || 'S');
-        setVal('cr_mail_gratuito', data.mail_gratuito || 'N');
-        setVal('cr_possui_site', data.possui_site || 'S');
+        setVal('cr_faturado', data.faturado || '');
+        setVal('cr_entrada', data.entrada || '');
+        setVal('cr_quant_grande', data.quant_grande || '');
+        setVal('cr_prod_nao_combinam', data.prod_nao_combinam || '');
+        setVal('cr_armario_cofre_gt_2000', data.armario_cofre_gt_2000 || '');
+        setVal('cr_uf_cliente', data.uf_cliente || '');
+        
+        // Campos de dados públicos ou em branco
+        setVal('cr_cnpj_ativo', data.cnpj_ativo || '');
         setVal('cr_fundacao_matriz', data.fundacao_matriz || '');
-        setVal('cr_capital_social', data.capital_social || 100000);
-        setVal('cr_cnpj_ativo', data.cnpj_ativo || 'S');
-        setVal('cr_pgtos_abertos', data.pgtos_abertos || 'N');
-        setVal('cr_comprou_pagou', data.comprou_pagou || 'S');
-        setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x || 'N');
+        if (data.capital_social) {
+          setVal('cr_capital_social', Number(data.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        } else {
+          setVal('cr_capital_social', '');
+        }
+
+        // Todos os campos manuais em branco
+        setVal('cr_entrega_igual_cadastro', '');
+        setVal('cr_cadastro_igual_receita', '');
+        setVal('cr_casa_sala_conj_end', '');
+        setVal('cr_google_maps', '');
+        setVal('cr_registro_br', '');
+        setVal('cr_scamadvizer_score', '');
+        setVal('cr_email_corporativo', '');
+        setVal('cr_existe_mail_financeiro', '');
+        setVal('cr_mail_gratuito', '');
+        setVal('cr_possui_site', '');
+        setVal('cr_score_serasa', '');
+        setVal('cr_protestos', '');
+        setVal('cr_valor_protestos', '0,00');
+        setVal('cr_pfin', '');
+        setVal('cr_ch_sem_fundo', '');
+        setVal('cr_pgtos_abertos', '');
+        setVal('cr_comprou_pagou', '');
+        setVal('cr_comprou_pagou_5x', '');
+        setVal('cr_fgts_situacao_regular', '');
+        setVal('cr_razao_fgts_igual', '');
+        setVal('cr_tres_nfs_confirmadas', '');
 
         if (creditoProtheusBadge) {
           creditoProtheusBadge.classList.remove('hidden');
           creditoProtheusBadge.style.background = 'rgba(34, 197, 94, 0.12)';
           creditoProtheusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
           creditoProtheusBadge.style.color = '#22c55e';
-          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso do Protheus ERP. Complete os campos e clique em Consultar.`;
+          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso do Protheus ERP. Condição de Pagamento (SE4): Faturado: <strong>${data.faturado}</strong> | Entrada: <strong>${data.entrada}</strong>. Complete os campos manuais abaixo.`;
         }
       } catch (err) {
         // Limpa campos para evitar dados falsos/stale
@@ -3424,13 +3452,68 @@ document.addEventListener('DOMContentLoaded', () => {
         return el ? el.value.trim() : '';
       };
 
+      const parseMoeda = (valStr) => {
+        if (!valStr) return 0;
+        const limpo = String(valStr).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
+        return parseFloat(limpo) || 0;
+      };
+
+      // Lista de campos com validação de preenchimento obrigatório
+      const camposObrigatorios = [
+        { id: 'cr_pedido_venda', label: 'Nº Pedido' },
+        { id: 'cr_cliente_nome', label: 'Razão Social' },
+        { id: 'cr_total_pedido', label: 'Total do Pedido' },
+        { id: 'cr_faturado', label: 'Faturado a Prazo' },
+        { id: 'cr_entrada', label: 'Possui Entrada' },
+        { id: 'cr_quant_grande', label: 'Qtd. Grande' },
+        { id: 'cr_prod_nao_combinam', label: 'Prod. Ñ Combinam' },
+        { id: 'cr_armario_cofre_gt_2000', label: 'Armário/Cofre > 2k' },
+        { id: 'cr_uf_cliente', label: 'UF do Cliente' },
+        { id: 'cr_entrega_igual_cadastro', label: 'Entrega = Cadastro' },
+        { id: 'cr_cadastro_igual_receita', label: 'Cadastro = Receita' },
+        { id: 'cr_casa_sala_conj_end', label: 'Casa/Sala no Endereço' },
+        { id: 'cr_google_maps', label: 'Google Maps Fachada' },
+        { id: 'cr_registro_br', label: 'Registro.Br Confere' },
+        { id: 'cr_scamadvizer_score', label: 'ScamAdvizer Score' },
+        { id: 'cr_email_corporativo', label: 'E-mail Corporativo' },
+        { id: 'cr_existe_mail_financeiro', label: 'Mail Finan Diferente' },
+        { id: 'cr_mail_gratuito', label: 'E-mail Gratuito' },
+        { id: 'cr_possui_site', label: 'Possui Site Ativo' },
+        { id: 'cr_fundacao_matriz', label: 'Fundação Matriz' },
+        { id: 'cr_capital_social', label: 'Capital Social' },
+        { id: 'cr_score_serasa', label: 'Score Serasa' },
+        { id: 'cr_protestos', label: 'Possui Protestos' },
+        { id: 'cr_pfin', label: 'PFIN Sim' },
+        { id: 'cr_ch_sem_fundo', label: 'Cheques Sem Fundo' },
+        { id: 'cr_cnpj_ativo', label: 'CNPJ Ativo na RF' },
+        { id: 'cr_pgtos_abertos', label: 'Pgtos em Aberto' },
+        { id: 'cr_comprou_pagou', label: 'Comprou e Pagou 2x+' },
+        { id: 'cr_comprou_pagou_5x', label: 'Comprou e Pagou 5x+' },
+        { id: 'cr_fgts_situacao_regular', label: 'FGTS Regular' },
+        { id: 'cr_razao_fgts_igual', label: 'Razão = FGTS' },
+        { id: 'cr_tres_nfs_confirmadas', label: '3 NFs Confirmadas' }
+      ];
+
+      for (const item of camposObrigatorios) {
+        const val = getVal(item.id);
+        if (!val) {
+          const el = document.getElementById(item.id);
+          if (el) {
+            el.focus();
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          alert(`⚠️ Campo obrigatório não preenchido: "${item.label}".\n\nNenhum campo pode estar em branco para calcular o Score e registrar no banco.`);
+          return;
+        }
+      }
+
       const payload = {
         empresa: creditoEmpresaSelect ? creditoEmpresaSelect.value : '14',
         pedido_venda: getVal('cr_pedido_venda'),
         cod_web: getVal('cr_cod_web'),
         cliente_codigo: getVal('cr_cliente_codigo'),
         cliente_nome: getVal('cr_cliente_nome'),
-        total_pedido: parseFloat(getVal('cr_total_pedido')) || 0,
+        total_pedido: parseMoeda(getVal('cr_total_pedido')),
         desconto_ped: getVal('cr_desconto_ped') || 'OK',
         faturado: getVal('cr_faturado') || 'S',
         entrada: getVal('cr_entrada') || 'N',
@@ -3438,30 +3521,30 @@ document.addEventListener('DOMContentLoaded', () => {
         prod_nao_combinam: getVal('cr_prod_nao_combinam') || 'N',
         armario_cofre_gt_2000: getVal('cr_armario_cofre_gt_2000') || 'N',
         uf_cliente: getVal('cr_uf_cliente') || 'SP',
-        entrega_igual_cadastro: getVal('cr_entrega_igual_cadastro') || 'S',
-        cadastro_igual_receita: getVal('cr_cadastro_igual_receita') || 'S',
-        casa_sala_conj_end: getVal('cr_casa_sala_conj_end') || 'N',
-        google_maps: getVal('cr_google_maps') || '5',
-        registro_br: getVal('cr_registro_br') || 'N',
-        scamadvizer_score: parseFloat(getVal('cr_scamadvizer_score')) || 100,
-        email_corporativo: getVal('cr_email_corporativo') || 'S',
-        existe_mail_financeiro: getVal('cr_existe_mail_financeiro') || 'S',
-        mail_gratuito: getVal('cr_mail_gratuito') || 'N',
-        possui_site: getVal('cr_possui_site') || 'S',
-        fundacao_matriz: getVal('cr_fundacao_matriz') || '',
-        capital_social: parseFloat(getVal('cr_capital_social')) || 0,
-        score_serasa: parseInt(getVal('cr_score_serasa')) || 0,
-        protestos: getVal('cr_protestos') || 'N',
-        valor_protestos: parseFloat(getVal('cr_valor_protestos')) || 0,
-        pfin: getVal('cr_pfin') || 'N',
-        ch_sem_fundo: getVal('cr_ch_sem_fundo') || 'N',
-        cnpj_ativo: getVal('cr_cnpj_ativo') || 'S',
-        pgtos_abertos: getVal('cr_pgtos_abertos') || 'N',
-        comprou_pagou: getVal('cr_comprou_pagou') || 'S',
-        comprou_pagou_5x: getVal('cr_comprou_pagou_5x') || 'N',
-        fgts_situacao_regular: getVal('cr_fgts_situacao_regular') || 'S',
-        razao_fgts_igual: getVal('cr_razao_fgts_igual') || 'S',
-        tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas') || 'N',
+        entrega_igual_cadastro: getVal('cr_entrega_igual_cadastro'),
+        cadastro_igual_receita: getVal('cr_cadastro_igual_receita'),
+        casa_sala_conj_end: getVal('cr_casa_sala_conj_end'),
+        google_maps: getVal('cr_google_maps'),
+        registro_br: getVal('cr_registro_br'),
+        scamadvizer_score: parseFloat(getVal('cr_scamadvizer_score')) || 0,
+        email_corporativo: getVal('cr_email_corporativo'),
+        existe_mail_financeiro: getVal('cr_existe_mail_financeiro'),
+        mail_gratuito: getVal('cr_mail_gratuito'),
+        possui_site: getVal('cr_possui_site'),
+        fundacao_matriz: getVal('cr_fundacao_matriz'),
+        capital_social: parseMoeda(getVal('cr_capital_social')),
+        score_serasa: parseInt(getVal('cr_score_serasa'), 10) || 0,
+        protestos: getVal('cr_protestos'),
+        valor_protestos: parseMoeda(getVal('cr_valor_protestos')),
+        pfin: getVal('cr_pfin'),
+        ch_sem_fundo: getVal('cr_ch_sem_fundo'),
+        cnpj_ativo: getVal('cr_cnpj_ativo'),
+        pgtos_abertos: getVal('cr_pgtos_abertos'),
+        comprou_pagou: getVal('cr_comprou_pagou'),
+        comprou_pagou_5x: getVal('cr_comprou_pagou_5x'),
+        fgts_situacao_regular: getVal('cr_fgts_situacao_regular'),
+        razao_fgts_igual: getVal('cr_razao_fgts_igual'),
+        tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas'),
         obs: getVal('cr_obs'),
         decisao_final: getVal('cr_decisao_final') || 'Liberado'
       };
