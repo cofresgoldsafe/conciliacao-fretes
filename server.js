@@ -1642,6 +1642,8 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       dadosCnpj = await consultarCnpjPublico(cli.cnpj);
     }
 
+    const histFin = detalhes.historicoFinanceiro || {};
+
     res.json({
       success: true,
       encontrado: true,
@@ -1662,7 +1664,14 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       fundacao_matriz: dadosCnpj ? dadosCnpj.fundacao : '',
       capital_social: dadosCnpj && dadosCnpj.capitalSocial > 0 ? dadosCnpj.capitalSocial : '',
 
-      // Todos os campos de conferência manual vêm em branco para o usuário preencher
+      // Histórico Financeiro Consolidado das empresas 09, 14, 15 e 16 (Protheus SE1)
+      pgtos_abertos: histFin.temPgtosAbertos || 'N',
+      comprou_pagou: histFin.comprou2x || 'N',
+      comprou_pagou_5x: histFin.comprou5x || 'N',
+      total_compras_pagas: histFin.totalComprasPagas || 0,
+      total_titulos_abertos: histFin.titulosAbertos || 0,
+
+      // Campos manuais que permanecem em branco para o analista
       entrega_igual_cadastro: '',
       cadastro_igual_receita: '',
       casa_sala_conj_end: '',
@@ -1678,9 +1687,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       valor_protestos: '',
       pfin: '',
       ch_sem_fundo: '',
-      pgtos_abertos: '',
-      comprou_pagou: '',
-      comprou_pagou_5x: '',
       fgts_situacao_regular: '',
       razao_fgts_igual: '',
       tres_nfs_confirmadas: '',

@@ -3386,7 +3386,12 @@ document.addEventListener('DOMContentLoaded', () => {
           setVal('cr_capital_social', '');
         }
 
-        // Todos os campos manuais em branco
+        // Histórico Financeiro Protheus SE1 (Empresas 09, 14, 15 e 16)
+        setVal('cr_pgtos_abertos', data.pgtos_abertos !== undefined ? data.pgtos_abertos : 'N');
+        setVal('cr_comprou_pagou', data.comprou_pagou !== undefined ? data.comprou_pagou : 'N');
+        setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x !== undefined ? data.comprou_pagou_5x : 'N');
+
+        // Campos manuais em branco para o analista preencher
         setVal('cr_entrega_igual_cadastro', '');
         setVal('cr_cadastro_igual_receita', '');
         setVal('cr_casa_sala_conj_end', '');
@@ -3402,9 +3407,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_valor_protestos', '0,00');
         setVal('cr_pfin', '');
         setVal('cr_ch_sem_fundo', '');
-        setVal('cr_pgtos_abertos', '');
-        setVal('cr_comprou_pagou', '');
-        setVal('cr_comprou_pagou_5x', '');
         setVal('cr_fgts_situacao_regular', '');
         setVal('cr_razao_fgts_igual', '');
         setVal('cr_tres_nfs_confirmadas', '');
@@ -3414,7 +3416,7 @@ document.addEventListener('DOMContentLoaded', () => {
           creditoProtheusBadge.style.background = 'rgba(34, 197, 94, 0.12)';
           creditoProtheusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
           creditoProtheusBadge.style.color = '#22c55e';
-          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso do Protheus ERP. Condição de Pagamento (SE4): Faturado: <strong>${data.faturado}</strong> | Entrada: <strong>${data.entrada}</strong>. Complete os campos manuais abaixo.`;
+          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong> nas empresas 09, 14, 15 e 16. Complete os campos manuais restantes.`;
         }
       } catch (err) {
         // Limpa campos para evitar dados falsos/stale

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.23">
+  <link rel="stylesheet" href="style.css?v=8.24">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 19:40 (fix(credito): corrige tabela SE4010 compartilhada para condicoes de pagamento de todas as empresas)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 20:07 (feat(credito): consolida historico financeiro SE1 multi-empresa (09, 14, 15, 16) e reestrutura secao 2)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1195,18 +1195,18 @@
             </div>
           </div>
 
-          <!-- Bloco 2: Condições Comerciais -->
+          <!-- Bloco 2: Comercial & Pagamento -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>2. Condições Comerciais & Pagamento</span>
-              <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">⚡ Protheus SE4</span>
+              <span>2. Condições Comerciais & Histórico de Pagamentos</span>
+              <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">⚡ Protheus SE1 / SE4</span>
             </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>Faturado a Prazo? *</label>
                 <select id="cr_faturado" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
-                  <option value="S">Sim (Boleto/Prazo)</option>
+                  <option value="S">Sim (Faturado)</option>
                   <option value="N">Não (À Vista/Antecipado)</option>
                 </select>
               </div>
@@ -1216,6 +1216,30 @@
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (-4 pts)</option>
                   <option value="S">Sim (+12 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Pgtos em Aberto? *</label>
+                <select id="cr_pgtos_abertos" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="N">Não (+1 pt)</option>
+                  <option value="S">Sim (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Comprou e Pagou 2x+? *</label>
+                <select id="cr_comprou_pagou" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="S">Sim (+9 pts)</option>
+                  <option value="N">Não (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Comprou e Pagou 5x+? *</label>
+                <select id="cr_comprou_pagou_5x" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="N">Não (0 pts)</option>
+                  <option value="S">Sim (+23 pts)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1408,34 +1432,10 @@
           <!-- Bloco 6: Histórico Interno & Certidões -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>6. FGTS, Certidões & Histórico de Compras</span>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✍️ Caixa / Histórico</span>
+              <span>6. FGTS & Certidões Comerciais</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✍️ Conferência Manual (Caixa)</span>
             </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
-              <div class="form-group">
-                <label>Pgtos em Aberto? *</label>
-                <select id="cr_pgtos_abertos" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="N">Não (+1 pt)</option>
-                  <option value="S">Sim (-3 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Comprou e Pagou 2x+? *</label>
-                <select id="cr_comprou_pagou" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="S">Sim (+9 pts)</option>
-                  <option value="N">Não (-3 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Comprou e Pagou 5x+? *</label>
-                <select id="cr_comprou_pagou_5x" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="N">Não (0 pts)</option>
-                  <option value="S">Sim (+23 pts)</option>
-                </select>
-              </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>FGTS Regular? *</label>
                 <select id="cr_fgts_situacao_regular" class="form-select" required>
@@ -1865,6 +1865,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.23"></script>
+  <script src="app.js?v=8.24"></script>
 </body>
 </html>

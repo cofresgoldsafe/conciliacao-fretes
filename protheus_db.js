@@ -696,6 +696,22 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         }
       }
 
+      // Consulta Consolidada do Histórico Financeiro do Cliente em SE1090, SE1140, SE1150 e SE1160
+      let historicoFinanceiro = {
+        totalComprasPagas: 0,
+        titulosAbertos: 0,
+        temPgtosAbertos: 'N',
+        comprou2x: 'N',
+        comprou5x: 'N'
+      };
+      if (head && head.COD_CLI) {
+        try {
+          historicoFinanceiro = await obterHistoricoFinanceiroCliente(head.COD_CLI);
+        } catch (errHist) {
+          console.warn('Erro ao obter histórico financeiro consolidado SE1:', errHist.message);
+        }
+      }
+
       return {
         encontrado: true,
         empresa: emp.nome,
@@ -707,6 +723,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         cliente: cliInfo,
         fiscal: fiscalInfo,
         faturas: faturas,
+        historicoFinanceiro: historicoFinanceiro,
         comercial: {
           transportadora: head.TRANSP || 'Transportadora Padrão',
           condPagto: head.CONDPAG || 'À Vista / Boleto',
@@ -1182,11 +1199,99 @@ function findSubsetSum(items, targetSum, tolerance = 0.01, maxItems = 6) {
   return backtrack(0, [], 0);
 }
 
+/**
+ * Consulta e consolida o histórico financeiro do cliente em todas as 4 bases SE1 (09, 14, 15, 16).
+ * Deduplica parcelas por documento (E1_NUM) e calcula:
+ * - Total de compras pagas (E1_BAIXA preenchido)
+ * - Se possui títulos em aberto (E1_BAIXA vazio e E1_SALDO > 0)
+ * - Comprou e pagou 2x+ ('S' | 'N')
+ * - Comprou e pagou 5x+ ('S' | 'N')
+ */
+async function obterHistoricoFinanceiroCliente(codCliente) {
+  if (!codCliente) {
+    return {
+      totalComprasPagas: 0,
+      titulosAbertos: 0,
+      temPgtosAbertos: 'N',
+      comprou2x: 'N',
+      comprou5x: 'N',
+      detalhesEmpresas: {}
+    };
+  }
+
+  const cleanCod = sanitizeSqlParam(codCliente);
+  const paddedCod = cleanCod.padStart(6, '0');
+  const tabelas = [
+    { codEmpresa: '09', tabela: 'SE1090', nome: 'Empresa 09' },
+    { codEmpresa: '14', tabela: 'SE1140', nome: 'Empresa 14 (Metal Pleno)' },
+    { codEmpresa: '15', tabela: 'SE1150', nome: 'Empresa 15 (GSI)' },
+    { codEmpresa: '16', tabela: 'SE1160', nome: 'Empresa 16 (OACO)' }
+  ];
+
+  const titulosPagosDistintos = new Set();
+  const titulosAbertosDistintos = new Set();
+  const detalhesEmpresas = {};
+
+  for (const emp of tabelas) {
+    try {
+      const sql = `
+        SELECT
+          RTRIM(E1_PREFIXO) AS PREFIXO,
+          RTRIM(E1_NUM) AS NUM,
+          RTRIM(E1_PARCELA) AS PARCELA,
+          RTRIM(E1_TIPO) AS TIPO,
+          ISNULL(E1_VALOR, 0) AS VALOR,
+          ISNULL(E1_SALDO, 0) AS SALDO,
+          RTRIM(ISNULL(E1_BAIXA, '')) AS BAIXA,
+          RTRIM(ISNULL(E1_EMISSAO, '')) AS EMISSAO,
+          RTRIM(ISNULL(E1_VENCTO, '')) AS VENCTO
+        FROM ${emp.tabela}
+        WHERE (E1_CLIENTE = '${cleanCod}' OR E1_CLIENTE = '${paddedCod}')
+          AND D_E_L_E_T_ = ' '
+      `;
+      const res = await executeRailwayQuery(sql);
+      const rows = res && res.rows ? res.rows : [];
+      detalhesEmpresas[emp.codEmpresa] = { totalLinhas: rows.length };
+
+      for (const r of rows) {
+        const numDoc = (r.NUM || '').trim();
+        if (!numDoc) continue;
+        const docKey = `${emp.codEmpresa}_${numDoc}`;
+
+        const isBaixado = r.BAIXA && r.BAIXA.trim() !== '' && Number(r.SALDO || 0) <= 0;
+        const isAberto = (!r.BAIXA || r.BAIXA.trim() === '') && Number(r.SALDO || 0) > 0;
+
+        if (isBaixado) {
+          titulosPagosDistintos.add(docKey);
+        }
+        if (isAberto) {
+          titulosAbertosDistintos.add(docKey);
+        }
+      }
+    } catch (e) {
+      console.warn(`Erro ao consultar histórico financeiro em ${emp.tabela}:`, e.message);
+    }
+  }
+
+  const totalComprasPagas = titulosPagosDistintos.size;
+  const totalAbertos = titulosAbertosDistintos.size;
+
+  return {
+    totalComprasPagas,
+    titulosAbertos: totalAbertos,
+    temPgtosAbertos: totalAbertos > 0 ? 'S' : 'N',
+    comprou2x: totalComprasPagas >= 2 ? 'S' : 'N',
+    comprou5x: totalComprasPagas >= 5 ? 'S' : 'N',
+    detalhesEmpresas
+  };
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
   obterDetalhesPedido,
+  obterHistoricoFinanceiroCliente,
   buscarComissoesPeriodo,
   executeRailwayQuery,
   TABELAS_EMPRESA,
