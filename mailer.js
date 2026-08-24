@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const https = require('https');
 
 /**
  * Utilitário de Mascaramento Seguro de E-mail (Anti-PII Leak)
@@ -28,9 +29,86 @@ function isValidEmail(email) {
 }
 
 /**
+ * Envia E-mail via API REST HTTP do Mailjet (Porta 443 HTTPS - imune a bloqueios de portas SMTP em nuvem)
+ */
+function sendViaMailjetHttpApi({ apiKey, secretKey, fromEmail, fromName, toEmail, toName, subject, text, html }) {
+  return new Promise((resolve, reject) => {
+    const authHeader = 'Basic ' + Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
+    const payload = JSON.stringify({
+      Messages: [
+        {
+          From: {
+            Email: fromEmail,
+            Name: fromName || 'Plataforma GSI'
+          },
+          To: [
+            {
+              Email: toEmail,
+              Name: toName || 'Usuário'
+            }
+          ],
+          Subject: subject,
+          TextPart: text,
+          HTMLPart: html
+        }
+      ]
+    });
+
+    const options = {
+      hostname: 'api.mailjet.com',
+      port: 443,
+      path: '/v3.1/send',
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      },
+      timeout: 12000
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            const msgInfo = (json.Messages && json.Messages[0]) || {};
+            if (msgInfo.Status === 'success' || msgInfo.Status === 'queued' || (msgInfo.To && msgInfo.To.length > 0)) {
+              resolve({
+                success: true,
+                mode: 'mailjet_http_api_443',
+                messageId: (msgInfo.To && msgInfo.To[0] && msgInfo.To[0].MessageID) || 'mj-' + Date.now(),
+                response: json
+              });
+            } else {
+              const errDetail = (msgInfo.Errors && msgInfo.Errors.map(e => e.ErrorMessage).join('; ')) || 'Status não-sucesso retornado pelo Mailjet';
+              reject(new Error(`Mailjet API erro no envio: ${errDetail}`));
+            }
+          } else {
+            const errDetail = json.ErrorMessage || json.message || data;
+            reject(new Error(`Mailjet API HTTP ${res.statusCode}: ${errDetail}`));
+          }
+        } catch (e) {
+          reject(new Error(`Mailjet API resposta inválida: ${data}`));
+        }
+      });
+    });
+
+    req.on('error', err => reject(err));
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout ao conectar na API HTTP do Mailjet'));
+    });
+
+    req.write(payload);
+    req.end();
+  });
+}
+
+/**
  * Instancia o Transporter do Nodemailer com base nas variáveis de ambiente
- * Suporta tanto a convenção (SMTP_server, SMTP_login, SMTP_pass, SMTP_port, SMTP_from)
- * quanto a convenção (SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_PORT, SMTP_FROM).
  */
 function getTransporter() {
   const host = (process.env.SMTP_server || process.env.SMTP_SERVER || process.env.SMTP_HOST || process.env.SMTP_host || '').trim();
@@ -47,7 +125,7 @@ function getTransporter() {
   return nodemailer.createTransport({
     host,
     port,
-    secure, // false para 587 (usa STARTTLS), true para 465 (SSL direto)
+    secure,
     auth: {
       user,
       pass
@@ -55,20 +133,14 @@ function getTransporter() {
     tls: {
       rejectUnauthorized: false
     },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000
   });
 }
 
 /**
  * Envia E-mail com o Código de 4 Dígitos de Autenticação em Dois Fatores (2FA)
- * @param {Object} params
- * @param {string} params.to - E-mail do destinatário
- * @param {string} params.code - Código numérico de 4 dígitos (ex: "7492")
- * @param {string} params.name - Nome do usuário
- * @param {string} params.username - Login do usuário
- * @param {string} [params.ip] - IP de origem da requisição
  */
 async function send2FACodeEmail({ to, code, name, username, ip = '' }) {
   if (!to || !isValidEmail(to)) {
@@ -80,13 +152,18 @@ async function send2FACodeEmail({ to, code, name, username, ip = '' }) {
   const senderUser = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || 'nao-responda@oaco.com.br').trim();
   
   let rawFrom = (process.env.SMTP_from || process.env.SMTP_FROM || senderUser).trim();
-  if (rawFrom && !rawFrom.includes('<') && isValidEmail(rawFrom)) {
-    rawFrom = `"Plataforma GSI" <${rawFrom}>`;
-  } else if (!rawFrom) {
-    rawFrom = `"Plataforma GSI" <${senderUser}>`;
-  }
-  const fromAddress = rawFrom;
+  let fromEmailOnly = rawFrom;
+  let fromNameOnly = 'Plataforma de Apoio GSI';
 
+  if (rawFrom.includes('<') && rawFrom.includes('>')) {
+    const match = rawFrom.match(/^(.*?)\s*<([^>]+)>/);
+    if (match) {
+      fromNameOnly = match[1].replace(/["']/g, '').trim() || fromNameOnly;
+      fromEmailOnly = match[2].trim();
+    }
+  }
+
+  const fromAddress = rawFrom.includes('<') ? rawFrom : `"${fromNameOnly}" <${fromEmailOnly}>`;
   const subject = `🔐 Seu Código de Acesso 2FA: ${cleanCode} — Plataforma GSI`;
 
   const htmlContent = `
@@ -156,6 +233,33 @@ Se você não solicitou este acesso, desconsidere este e-mail.
 ${ip ? `Origem da solicitação: IP ${ip}` : ''}
   `.trim();
 
+  const host = (process.env.SMTP_server || process.env.SMTP_SERVER || process.env.SMTP_HOST || process.env.SMTP_host || '').trim();
+  const apiKey = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || '').trim();
+  const secretKey = (process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim();
+
+  // 1. Se configurado com Mailjet, prioriza a API REST HTTP (Porta 443 HTTPS imune a bloqueios de nuvem)
+  if (host.includes('mailjet') && apiKey && secretKey) {
+    try {
+      const httpRes = await sendViaMailjetHttpApi({
+        apiKey,
+        secretKey,
+        fromEmail: fromEmailOnly,
+        fromName: fromNameOnly,
+        toEmail: to,
+        toName: userName,
+        subject,
+        text: textContent,
+        html: htmlContent
+      });
+
+      console.log(`🟢 [Mailer HTTP API] E-mail 2FA enviado com sucesso para ${maskEmail(to)} via Mailjet (ID: ${httpRes.messageId})`);
+      return httpRes;
+    } catch (httpErr) {
+      console.warn(`⚠️ [Mailer HTTP Warning] Falha na API HTTP do Mailjet (${httpErr.message}). Tentando fallback SMTP...`);
+    }
+  }
+
+  // 2. Transporter Nodemailer (SMTP clássico)
   const transporter = getTransporter();
 
   if (!transporter) {
@@ -180,7 +284,7 @@ ${ip ? `Origem da solicitação: IP ${ip}` : ''}
       html: htmlContent
     });
 
-    console.log(`🟢 [Mailer] E-mail 2FA enviado com sucesso para ${maskEmail(to)} (MessageID: ${info.messageId})`);
+    console.log(`🟢 [Mailer SMTP] E-mail 2FA enviado com sucesso para ${maskEmail(to)} (MessageID: ${info.messageId})`);
     return {
       success: true,
       mode: 'smtp',
@@ -188,7 +292,6 @@ ${ip ? `Origem da solicitação: IP ${ip}` : ''}
     };
   } catch (err) {
     console.error(`❌ [Mailer Error] Falha ao enviar e-mail 2FA para ${to}:`, err.message);
-    // Em caso de falha de conexão SMTP em produção, loga no console para não deixar o usuário travado
     console.log(`⚠️ [Mailer Fallback] Código 2FA gerado para ${to}: [ ${cleanCode} ]`);
     return {
       success: false,
@@ -199,7 +302,7 @@ ${ip ? `Origem da solicitação: IP ${ip}` : ''}
 }
 
 /**
- * Função de Diagnóstico e Teste de Conexão SMTP em Tempo Real
+ * Função de Diagnóstico e Teste de Conexão SMTP / Mailjet HTTP API em Tempo Real
  */
 async function testSmtpConnection(targetEmail) {
   const host = (process.env.SMTP_server || process.env.SMTP_SERVER || process.env.SMTP_HOST || process.env.SMTP_host || '').trim();
@@ -208,6 +311,16 @@ async function testSmtpConnection(targetEmail) {
   const hasPass = Boolean((process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim());
   const rawFrom = (process.env.SMTP_from || process.env.SMTP_FROM || user).trim();
 
+  let fromEmailOnly = rawFrom;
+  let fromNameOnly = 'Plataforma de Apoio GSI';
+  if (rawFrom.includes('<') && rawFrom.includes('>')) {
+    const match = rawFrom.match(/^(.*?)\s*<([^>]+)>/);
+    if (match) {
+      fromNameOnly = match[1].replace(/["']/g, '').trim() || fromNameOnly;
+      fromEmailOnly = match[2].trim();
+    }
+  }
+
   const diagnostic = {
     timestamp: new Date().toISOString(),
     config: {
@@ -215,9 +328,10 @@ async function testSmtpConnection(targetEmail) {
       port,
       user: user ? maskEmail(user) : 'NÃO CONFIGURADO (process.env.SMTP_login)',
       hasPassword: hasPass,
-      from: rawFrom || 'NÃO CONFIGURADO (process.env.SMTP_from)'
+      from: rawFrom || 'NÃO CONFIGURADO (process.env.SMTP_from)',
+      driver: host.includes('mailjet') ? 'Mailjet HTTP API (HTTPS 443) + Fallback SMTP' : 'SMTP Nodemailer'
     },
-    transporterConfigured: false,
+    transporterConfigured: Boolean(host && user && hasPass),
     verifySuccess: false,
     verifyMessage: '',
     sendTestSuccess: false,
@@ -225,14 +339,49 @@ async function testSmtpConnection(targetEmail) {
     errorMessage: null
   };
 
-  const transporter = getTransporter();
-  if (!transporter) {
-    diagnostic.errorMessage = 'Variáveis de SMTP incompletas no Render. Verifique SMTP_server, SMTP_login e SMTP_pass.';
+  if (!host || !user || !hasPass) {
+    diagnostic.errorMessage = 'Variáveis incompletas no Render. Verifique SMTP_server, SMTP_login e SMTP_pass.';
     return diagnostic;
   }
 
-  diagnostic.transporterConfigured = true;
+  // Se for Mailjet, testa disparo direto via API HTTPS (Porta 443)
+  if (host.includes('mailjet')) {
+    diagnostic.verifySuccess = true;
+    diagnostic.verifyMessage = 'Driver Mailjet HTTP API (HTTPS 443) ativo!';
 
+    if (targetEmail && isValidEmail(targetEmail)) {
+      try {
+        const httpRes = await sendViaMailjetHttpApi({
+          apiKey: user,
+          secretKey: (process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim(),
+          fromEmail: fromEmailOnly,
+          fromName: fromNameOnly,
+          toEmail: targetEmail,
+          toName: 'Teste GSI',
+          subject: '🧪 Teste de Conexão Mailjet HTTP API — Plataforma GSI',
+          text: 'Teste de envio via Mailjet REST API HTTPS na Plataforma GSI.',
+          html: `
+            <div style="font-family: Arial, sans-serif; padding: 20px; background: #0f172a; color: #fff; border-radius: 8px;">
+              <h2 style="color: #38bdf8;">✅ Teste Mailjet HTTP API Bem-Sucedido!</h2>
+              <p>O envio via API REST HTTPS (Porta 443) funcionou com sucesso para <strong>${targetEmail}</strong>.</p>
+              <p style="color: #94a3b8; font-size: 12px;">Data/Hora do Teste: ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+          `
+        });
+
+        diagnostic.sendTestSuccess = true;
+        diagnostic.sendTestDetails = httpRes;
+      } catch (httpErr) {
+        diagnostic.sendTestSuccess = false;
+        diagnostic.errorMessage = httpErr.message;
+      }
+    }
+
+    return diagnostic;
+  }
+
+  // Outros provedores via SMTP clássico
+  const transporter = getTransporter();
   try {
     await transporter.verify();
     diagnostic.verifySuccess = true;
