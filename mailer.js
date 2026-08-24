@@ -51,9 +51,12 @@ function getTransporter() {
       user,
       pass
     },
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 10000
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000
   });
 }
 
@@ -74,7 +77,14 @@ async function send2FACodeEmail({ to, code, name, username, ip = '' }) {
   const cleanCode = String(code || '').trim();
   const userName = name || username || 'Usuário';
   const senderUser = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || 'nao-responda@oaco.com.br').trim();
-  const fromAddress = process.env.SMTP_from || process.env.SMTP_FROM || `"Plataforma de Apoio GSI" <${senderUser}>`;
+  
+  let rawFrom = (process.env.SMTP_from || process.env.SMTP_FROM || senderUser).trim();
+  if (rawFrom && !rawFrom.includes('<') && isValidEmail(rawFrom)) {
+    rawFrom = `"Plataforma GSI" <${rawFrom}>`;
+  } else if (!rawFrom) {
+    rawFrom = `"Plataforma GSI" <${senderUser}>`;
+  }
+  const fromAddress = rawFrom;
 
   const subject = `🔐 Seu Código de Acesso 2FA: ${cleanCode} — Plataforma GSI`;
 
@@ -187,8 +197,87 @@ ${ip ? `Origem da solicitação: IP ${ip}` : ''}
   }
 }
 
+/**
+ * Função de Diagnóstico e Teste de Conexão SMTP em Tempo Real
+ */
+async function testSmtpConnection(targetEmail) {
+  const host = (process.env.SMTP_server || process.env.SMTP_SERVER || process.env.SMTP_HOST || process.env.SMTP_host || '').trim();
+  const port = parseInt(process.env.SMTP_port || process.env.SMTP_PORT || '587', 10);
+  const user = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || '').trim();
+  const hasPass = Boolean((process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim());
+  const rawFrom = (process.env.SMTP_from || process.env.SMTP_FROM || user).trim();
+
+  const diagnostic = {
+    timestamp: new Date().toISOString(),
+    config: {
+      host: host || 'NÃO CONFIGURADO (process.env.SMTP_server)',
+      port,
+      user: user ? maskEmail(user) : 'NÃO CONFIGURADO (process.env.SMTP_login)',
+      hasPassword: hasPass,
+      from: rawFrom || 'NÃO CONFIGURADO (process.env.SMTP_from)'
+    },
+    transporterConfigured: false,
+    verifySuccess: false,
+    verifyMessage: '',
+    sendTestSuccess: false,
+    sendTestDetails: null,
+    errorMessage: null
+  };
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    diagnostic.errorMessage = 'Variáveis de SMTP incompletas no Render. Verifique SMTP_server, SMTP_login e SMTP_pass.';
+    return diagnostic;
+  }
+
+  diagnostic.transporterConfigured = true;
+
+  try {
+    await transporter.verify();
+    diagnostic.verifySuccess = true;
+    diagnostic.verifyMessage = 'Conexão e Autenticação SMTP verificadas com sucesso!';
+  } catch (vErr) {
+    diagnostic.verifySuccess = false;
+    diagnostic.verifyMessage = `Falha na verificação SMTP: ${vErr.message}`;
+    diagnostic.errorMessage = vErr.message;
+    return diagnostic;
+  }
+
+  if (targetEmail && isValidEmail(targetEmail)) {
+    try {
+      const fromAddr = rawFrom.includes('<') ? rawFrom : `"Plataforma GSI" <${rawFrom}>`;
+      const info = await transporter.sendMail({
+        from: fromAddr,
+        to: targetEmail,
+        subject: '🧪 Teste de Conexão SMTP — Plataforma GSI',
+        text: 'Este é um e-mail de teste disparado pelo módulo de diagnóstico da Plataforma GSI.',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; background: #0f172a; color: #fff; border-radius: 8px;">
+            <h2 style="color: #38bdf8;">✅ Teste de Conexão SMTP Bem-Sucedido!</h2>
+            <p>O servidor SMTP está respondendo e disparou este e-mail com sucesso para <strong>${targetEmail}</strong>.</p>
+            <p style="color: #94a3b8; font-size: 12px;">Data/Hora do Teste: ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        `
+      });
+
+      diagnostic.sendTestSuccess = true;
+      diagnostic.sendTestDetails = {
+        messageId: info.messageId,
+        response: info.response,
+        accepted: info.accepted
+      };
+    } catch (sErr) {
+      diagnostic.sendTestSuccess = false;
+      diagnostic.errorMessage = `Erro ao disparar e-mail de teste: ${sErr.message}`;
+    }
+  }
+
+  return diagnostic;
+}
+
 module.exports = {
   maskEmail,
   isValidEmail,
-  send2FACodeEmail
+  send2FACodeEmail,
+  testSmtpConnection
 };

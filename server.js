@@ -61,7 +61,8 @@ const {
 const {
   send2FACodeEmail,
   maskEmail,
-  isValidEmail
+  isValidEmail,
+  testSmtpConnection
 } = require('./mailer');
 
 const app = express();
@@ -616,6 +617,20 @@ app.post('/api/auth/resend-2fa', resend2FALimiter, async (req, res) => {
     });
   } catch (err) {
     return handleServerError(res, err, 'Erro ao reenviar código 2FA.');
+  }
+});
+
+// API: Diagnóstico de Conexão SMTP em Tempo Real
+app.get('/api/auth/diag-smtp', async (req, res) => {
+  try {
+    const targetEmail = req.query.to ? String(req.query.to).trim() : null;
+    const diag = await testSmtpConnection(targetEmail);
+    res.json({
+      success: diag.verifySuccess,
+      diagnostic: diag
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
