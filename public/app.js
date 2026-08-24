@@ -3305,6 +3305,330 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // =================================================================
+  // ANÁLISE DE CRÉDITO & SCORE COMERCIAL (PROTHEUS)
+  // =================================================================
+  const btnIniciarConsultaCredito = document.getElementById('btnIniciarConsultaCredito');
+  const creditoEmpresaSelect = document.getElementById('creditoEmpresaSelect');
+  const creditoNumPedido = document.getElementById('creditoNumPedido');
+  const creditoProtheusBadge = document.getElementById('creditoProtheusBadge');
+  const creditoResultadoSection = document.getElementById('creditoResultadoSection');
+  const formAnaliseCreditoCompleto = document.getElementById('formAnaliseCreditoCompleto');
+  const historicoCreditoTableBody = document.getElementById('historicoCreditoTableBody');
+  const buscaHistoricoCredito = document.getElementById('buscaHistoricoCredito');
+  const btnSaveScoreConfig = document.getElementById('btnSaveScoreConfig');
+  const btnResetScoreConfig = document.getElementById('btnResetScoreConfig');
+  const scoreConfigForm = document.getElementById('scoreConfigForm');
+
+  let listaHistoricoCredito = [];
+
+  // Iniciar Consulta Protheus
+  if (btnIniciarConsultaCredito) {
+    btnIniciarConsultaCredito.addEventListener('click', async () => {
+      const emp = creditoEmpresaSelect ? creditoEmpresaSelect.value : '14';
+      const numPed = creditoNumPedido ? creditoNumPedido.value.trim() : '';
+
+      if (!numPed) {
+        alert('Por favor, informe o número do Pedido de Venda Protheus.');
+        return;
+      }
+
+      btnIniciarConsultaCredito.disabled = true;
+      btnIniciarConsultaCredito.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; display: inline-block;"></div> Consultando...';
+      if (creditoProtheusBadge) creditoProtheusBadge.classList.add('hidden');
+      if (creditoResultadoSection) creditoResultadoSection.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/financeiro/analise-credito/protheus', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empresa: emp, numero_pedido: numPed })
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Erro ao consultar pedido no Protheus.');
+        }
+
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el && val !== undefined && val !== null) el.value = val;
+        };
+
+        setVal('cr_pedido_venda', data.pedido_venda);
+        setVal('cr_cod_web', data.cod_web || '');
+        setVal('cr_cliente_codigo', data.cliente_codigo || '');
+        setVal('cr_cliente_nome', data.cliente_nome || '');
+        setVal('cr_total_pedido', data.total_pedido || 0);
+        setVal('cr_desconto_ped', data.desconto_ped || 'OK');
+        setVal('cr_faturado', data.faturado || 'S');
+        setVal('cr_entrada', data.entrada || 'N');
+        setVal('cr_quant_grande', data.quant_grande || 'N');
+        setVal('cr_prod_nao_combinam', data.prod_nao_combinam || 'N');
+        setVal('cr_armario_cofre_gt_2000', data.armario_cofre_gt_2000 || 'N');
+        setVal('cr_uf_cliente', data.uf_cliente || 'SP');
+        setVal('cr_entrega_igual_cadastro', data.entrega_igual_cadastro || 'S');
+        setVal('cr_cadastro_igual_receita', data.cadastro_igual_receita || 'S');
+        setVal('cr_casa_sala_conj_end', data.casa_sala_conj_end || 'N');
+        setVal('cr_email_corporativo', data.email_corporativo || 'S');
+        setVal('cr_existe_mail_financeiro', data.existe_mail_financeiro || 'S');
+        setVal('cr_mail_gratuito', data.mail_gratuito || 'N');
+        setVal('cr_possui_site', data.possui_site || 'S');
+        setVal('cr_fundacao_matriz', data.fundacao_matriz || '');
+        setVal('cr_capital_social', data.capital_social || 100000);
+        setVal('cr_cnpj_ativo', data.cnpj_ativo || 'S');
+        setVal('cr_pgtos_abertos', data.pgtos_abertos || 'N');
+        setVal('cr_comprou_pagou', data.comprou_pagou || 'S');
+        setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x || 'N');
+
+        if (creditoProtheusBadge) {
+          creditoProtheusBadge.classList.remove('hidden');
+          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso do Protheus ERP. Complete os campos e clique em Consultar.`;
+        }
+      } catch (err) {
+        alert('Falha na consulta Protheus: ' + err.message);
+      } finally {
+        btnIniciarConsultaCredito.disabled = false;
+        btnIniciarConsultaCredito.innerHTML = '<span>⚡ Iniciar Consulta Protheus</span>';
+      }
+    });
+  }
+
+  // Submeter Análise de Crédito
+  if (formAnaliseCreditoCompleto) {
+    formAnaliseCreditoCompleto.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+      };
+
+      const payload = {
+        empresa: creditoEmpresaSelect ? creditoEmpresaSelect.value : '14',
+        pedido_venda: getVal('cr_pedido_venda'),
+        cod_web: getVal('cr_cod_web'),
+        cliente_codigo: getVal('cr_cliente_codigo'),
+        cliente_nome: getVal('cr_cliente_nome'),
+        total_pedido: parseFloat(getVal('cr_total_pedido')) || 0,
+        desconto_ped: getVal('cr_desconto_ped') || 'OK',
+        faturado: getVal('cr_faturado') || 'S',
+        entrada: getVal('cr_entrada') || 'N',
+        quant_grande: getVal('cr_quant_grande') || 'N',
+        prod_nao_combinam: getVal('cr_prod_nao_combinam') || 'N',
+        armario_cofre_gt_2000: getVal('cr_armario_cofre_gt_2000') || 'N',
+        uf_cliente: getVal('cr_uf_cliente') || 'SP',
+        entrega_igual_cadastro: getVal('cr_entrega_igual_cadastro') || 'S',
+        cadastro_igual_receita: getVal('cr_cadastro_igual_receita') || 'S',
+        casa_sala_conj_end: getVal('cr_casa_sala_conj_end') || 'N',
+        google_maps: getVal('cr_google_maps') || '5',
+        registro_br: getVal('cr_registro_br') || 'N',
+        scamadvizer_score: parseFloat(getVal('cr_scamadvizer_score')) || 100,
+        email_corporativo: getVal('cr_email_corporativo') || 'S',
+        existe_mail_financeiro: getVal('cr_existe_mail_financeiro') || 'S',
+        mail_gratuito: getVal('cr_mail_gratuito') || 'N',
+        possui_site: getVal('cr_possui_site') || 'S',
+        fundacao_matriz: getVal('cr_fundacao_matriz') || '',
+        capital_social: parseFloat(getVal('cr_capital_social')) || 0,
+        score_serasa: parseInt(getVal('cr_score_serasa')) || 0,
+        protestos: getVal('cr_protestos') || 'N',
+        valor_protestos: parseFloat(getVal('cr_valor_protestos')) || 0,
+        pfin: getVal('cr_pfin') || 'N',
+        ch_sem_fundo: getVal('cr_ch_sem_fundo') || 'N',
+        cnpj_ativo: getVal('cr_cnpj_ativo') || 'S',
+        pgtos_abertos: getVal('cr_pgtos_abertos') || 'N',
+        comprou_pagou: getVal('cr_comprou_pagou') || 'S',
+        comprou_pagou_5x: getVal('cr_comprou_pagou_5x') || 'N',
+        fgts_situacao_regular: getVal('cr_fgts_situacao_regular') || 'S',
+        razao_fgts_igual: getVal('cr_razao_fgts_igual') || 'S',
+        tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas') || 'N',
+        obs: getVal('cr_obs'),
+        decisao_final: getVal('cr_decisao_final') || 'Liberado'
+      };
+
+      if (!payload.pedido_venda || !payload.cliente_nome || !payload.uf_cliente || !payload.fundacao_matriz) {
+        alert('Atenção: Todos os campos obrigatórios (Pedido, Cliente, UF, Fundação) devem ser preenchidos para registrar no banco.');
+        return;
+      }
+
+      const btnSubmit = document.getElementById('btnCalcularSalvarCredito');
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = 'Gravando...';
+      }
+
+      try {
+        const res = await fetch('/api/financeiro/analise-credito/calcular-salvar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Erro ao calcular e salvar score.');
+        }
+
+        const resScore = data.resultado;
+        const txtTotalScore = document.getElementById('txtTotalScore');
+        const txtRiscoBadge = document.getElementById('txtRiscoBadge');
+        const txtSugestaoParecer = document.getElementById('txtSugestaoParecer');
+        const scoreBadgeVal = document.getElementById('scoreBadgeVal');
+
+        if (txtTotalScore) txtTotalScore.textContent = resScore.totalScore;
+        if (txtRiscoBadge) {
+          txtRiscoBadge.textContent = resScore.risco;
+          txtRiscoBadge.style.background = resScore.risco === 'SEM-RISCO' ? 'rgba(34, 197, 94, 0.2)' : (resScore.risco === 'GOLPE' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.2)');
+          txtRiscoBadge.style.color = resScore.risco === 'SEM-RISCO' ? '#22c55e' : (resScore.risco === 'GOLPE' ? '#f87171' : '#fbbf24');
+        }
+        if (txtSugestaoParecer) txtSugestaoParecer.textContent = resScore.sugestao;
+        if (scoreBadgeVal) {
+          scoreBadgeVal.style.color = resScore.totalScore > 5 ? '#22c55e' : '#f87171';
+          scoreBadgeVal.style.borderColor = resScore.totalScore > 5 ? '#22c55e' : '#f87171';
+          scoreBadgeVal.style.background = resScore.totalScore > 5 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+        }
+
+        const setAlerta = (id, val, text) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.textContent = val !== 'N/A' ? text : 'Dispensado / Sem Risco';
+            el.style.color = val !== 'N/A' ? '#f87171' : '#22c55e';
+          }
+        };
+
+        setAlerta('valAlertaPedCompra', resScore.alertaPedCompra, 'SOLICITAR PED. COMPRA');
+        setAlerta('valAlertaContrato', resScore.alertaContratoEntrega, 'SOLIC. CONTRATO ENTREGA');
+        setAlerta('valAlertaGolpe', resScore.alertaPerigoGolpe, 'CHECAGEM REVERSA');
+        setAlerta('valAlertaCadReceita', resScore.alertaCadastroReceita, 'CORRIGIR END. DIVERGENTE');
+
+        if (creditoResultadoSection) creditoResultadoSection.classList.remove('hidden');
+        creditoResultadoSection.scrollIntoView({ behavior: 'smooth' });
+
+        carregarHistoricoCredito();
+      } catch (err) {
+        alert('Erro ao calcular e registrar análise: ' + err.message);
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.innerHTML = '🛡️ Consultar & Gravar no Banco';
+        }
+      }
+    });
+  }
+
+  // Carregar Histórico
+  async function carregarHistoricoCredito() {
+    try {
+      const res = await fetch('/api/financeiro/analise-credito/historico');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.historico)) {
+        listaHistoricoCredito = data.historico;
+        renderHistoricoCreditoTable();
+      }
+    } catch (e) {
+      console.warn('Falha ao carregar histórico de crédito', e);
+    }
+  }
+
+  function renderHistoricoCreditoTable() {
+    if (!historicoCreditoTableBody) return;
+    const termo = buscaHistoricoCredito ? buscaHistoricoCredito.value.toLowerCase().trim() : '';
+
+    const filtrados = listaHistoricoCredito.filter(item => {
+      return (
+        String(item.pedido_venda || '').toLowerCase().includes(termo) ||
+        String(item.cliente_nome || '').toLowerCase().includes(termo) ||
+        String(item.empresa || '').toLowerCase().includes(termo) ||
+        String(item.risco || '').toLowerCase().includes(termo)
+      );
+    });
+
+    if (filtrados.length === 0) {
+      historicoCreditoTableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada.</td></tr>`;
+      return;
+    }
+
+    historicoCreditoTableBody.innerHTML = filtrados.map(item => {
+      const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
+      const scoreColor = item.total_score > 5 ? '#22c55e' : '#f87171';
+      return `
+        <tr>
+          <td style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">${dataStr}</td>
+          <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${escapeHtml(item.empresa)}</span></td>
+          <td><strong style="color: #38bdf8; font-family: var(--font-mono);">#${escapeHtml(item.pedido_venda)}</strong></td>
+          <td><strong>${escapeHtml(item.cliente_nome)}</strong></td>
+          <td style="text-align: right; font-weight: 700; font-family: var(--font-mono);">R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+          <td style="text-align: center;"><span class="badge" style="color: ${scoreColor}; font-weight: 800;">${item.total_score}</span></td>
+          <td style="text-align: center;"><span class="badge" style="font-size: 0.75rem; font-weight: 700;">${escapeHtml(item.risco)}</span></td>
+          <td>
+            <div style="font-size: 0.82rem; color: #38bdf8; font-weight: 600;">${escapeHtml(item.sugestao)}</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Decisão: ${escapeHtml(item.decisao_final || 'Liberado')}</div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (buscaHistoricoCredito) {
+    buscaHistoricoCredito.addEventListener('input', renderHistoricoCreditoTable);
+  }
+
+  // Carregar Configurações do Score
+  async function carregarScoreConfigUI() {
+    try {
+      const res = await fetch('/api/financeiro/analise-credito/config');
+      const data = await res.json();
+      if (data.success && data.config) {
+        const cfg = data.config;
+        for (const [k, v] of Object.entries(cfg)) {
+          const el = document.getElementById(`cfg_${k}`);
+          if (el) el.value = v;
+        }
+      }
+    } catch (e) {
+      console.warn('Falha ao carregar score config', e);
+    }
+  }
+
+  if (scoreConfigForm) {
+    scoreConfigForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const cfg = {};
+      const inputs = scoreConfigForm.querySelectorAll('input');
+      inputs.forEach(inp => {
+        const k = inp.id.replace('cfg_', '');
+        cfg[k] = parseFloat(inp.value) || 0;
+      });
+
+      try {
+        const res = await fetch('/api/financeiro/analise-credito/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cfg)
+        });
+        const d = await res.json();
+        if (d.success) {
+          alert('Parâmetros do Score de Crédito salvos com sucesso!');
+        } else {
+          alert('Erro ao salvar: ' + d.error);
+        }
+      } catch (err) {
+        alert('Falha ao salvar configurações.');
+      }
+    });
+  }
+
+  if (btnResetScoreConfig) {
+    btnResetScoreConfig.addEventListener('click', async () => {
+      if (confirm('Deseja restaurar todos os parâmetros para os valores originais da planilha Score 2025?')) {
+        carregarScoreConfigUI();
+      }
+    });
+  }
+
+  carregarHistoricoCredito();
+  carregarScoreConfigUI();
+
   if (btnOpenInterConfig) btnOpenInterConfig.addEventListener('click', abrirModalInterConfig);
   if (btnCloseInterConfigModal) btnCloseInterConfigModal.addEventListener('click', () => interConfigModal.classList.add('hidden'));
   if (btnConfirmInterConfigModal) btnConfirmInterConfigModal.addEventListener('click', () => interConfigModal.classList.add('hidden'));

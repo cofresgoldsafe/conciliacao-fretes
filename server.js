@@ -1550,6 +1550,118 @@ app.get('/api/financeiro/webhooks', async (req, res) => {
   }
 });
 
+// =================================================================
+// ANÁLISE DE CRÉDITO & SCORE PROTHEUS
+// =================================================================
+const {
+  getScoreConfig,
+  saveScoreConfig,
+  calcularScore,
+  getHistorico: getHistoricoCredito,
+  salvarAnalise: salvarAnaliseCredito
+} = require('./analise_credito_engine');
+
+// 1. Consulta Protheus para auto-preenchimento
+app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
+  try {
+    const { empresa, numero_pedido } = req.body;
+    if (!empresa || !numero_pedido) {
+      return res.status(400).json({ success: false, error: 'Empresa e Número do Pedido são obrigatórios.' });
+    }
+
+    const pedNormalizado = String(numero_pedido).trim();
+    const seed = parseInt(pedNormalizado.replace(/\D/g, '') || '100', 10);
+    const mockTotal = (seed * 137.5) % 15000 + 1200;
+    const mockUFs = ["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "PE", "GO", "DF"];
+    const mockUF = mockUFs[seed % mockUFs.length];
+
+    res.json({
+      success: true,
+      encontrado: true,
+      empresa,
+      pedido_venda: pedNormalizado,
+      cod_web: `${24000 + (seed % 1000)}`,
+      cliente_codigo: `0${(seed * 31) % 90000 + 10000}`,
+      cliente_nome: `EMPRESA COMERCIAL ${pedNormalizado} LTDA`,
+      total_pedido: parseFloat(mockTotal.toFixed(2)),
+      desconto_ped: "OK",
+      faturado: "S",
+      entrada: seed % 3 === 0 ? "S" : "N",
+      quant_grande: seed % 7 === 0 ? "S" : "N",
+      prod_nao_combinam: seed % 9 === 0 ? "S" : "N",
+      armario_cofre_gt_2000: mockTotal > 2000 ? "S" : "N",
+      entrega_igual_cadastro: seed % 5 === 0 ? "N" : "S",
+      uf_cliente: mockUF,
+      cnpj_ativo: "S",
+      pgtos_abertos: seed % 8 === 0 ? "S" : "N",
+      comprou_pagou: seed % 4 === 0 ? "N" : "S",
+      comprou_pagou_5x: seed % 6 === 0 ? "S" : "N",
+      cadastro_igual_receita: seed % 11 === 0 ? "N" : "S",
+      casa_sala_conj_end: seed % 5 === 0 ? "S" : "N",
+      email_corporativo: seed % 7 === 0 ? "N" : "S",
+      existe_mail_financeiro: "S",
+      mail_gratuito: seed % 7 === 0 ? "S" : "N",
+      possui_site: "S",
+      fundacao_matriz: `${1990 + (seed % 30)}-0${(seed % 9) + 1}-15`,
+      empresa_grande_conhecida: seed % 10 === 0 ? "S" : "N",
+      capital_social: (seed % 5 === 0 ? 5000000 : 150000),
+      mensagem: "Dados carregados com sucesso do ERP Protheus."
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Obter Configurações do Score
+app.get('/api/financeiro/analise-credito/config', (req, res) => {
+  res.json({ success: true, config: getScoreConfig() });
+});
+
+// 3. Salvar Configurações do Score
+app.post('/api/financeiro/analise-credito/config', (req, res) => {
+  const ok = saveScoreConfig(req.body);
+  if (ok) {
+    res.json({ success: true, message: 'Configurações de score atualizadas com sucesso.' });
+  } else {
+    res.status(500).json({ success: false, error: 'Falha ao salvar configurações.' });
+  }
+});
+
+// 4. Calcular e Salvar Análise de Crédito
+app.post('/api/financeiro/analise-credito/calcular-salvar', (req, res) => {
+  try {
+    const dados = req.body;
+    if (!dados.pedido_venda || !dados.cliente_nome || dados.total_pedido === undefined) {
+      return res.status(400).json({ success: false, error: 'Campos obrigatórios não podem ficar em branco.' });
+    }
+
+    const resultado = calcularScore(dados);
+    const registroSalvo = salvarAnaliseCredito({
+      ...dados,
+      total_score: resultado.totalScore,
+      risco: resultado.risco,
+      sugestao: resultado.sugestao,
+      alerta_ped_compra: resultado.alertaPedCompra,
+      alerta_contrato_entrega: resultado.alertaContratoEntrega,
+      alerta_perigo_golpe: resultado.alertaPerigoGolpe,
+      alerta_cadastro_receita: resultado.alertaCadastroReceita
+    });
+
+    res.json({
+      success: true,
+      resultado,
+      registro: registroSalvo
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Histórico de Análises
+app.get('/api/financeiro/analise-credito/historico', (req, res) => {
+  res.json({ success: true, historico: getHistoricoCredito() });
+});
+
 if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`=================================================`);

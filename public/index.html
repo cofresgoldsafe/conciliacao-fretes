@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.18">
+  <link rel="stylesheet" href="style.css?v=8.19">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 16:51 (feat(mailer): integra Mailjet HTTP REST API (porta 443 HTTPS imune a bloqueios de nuvem))</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 18:00 (feat(credito): painel de analise de credito e score Protheus no Assist Financ)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -100,6 +100,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"/></svg>
           <span>Conciliação Bancária</span>
         </button>
+        <button class="nav-tab-btn" data-tab="tab-analise-credito" id="btnTabAnaliseCredito">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Análise de Crédito</span>
+        </button>
       </div>
 
       <!-- Sub-abas de Configurações -->
@@ -111,6 +115,10 @@
         <button class="nav-tab-btn" data-tab="tab-config-logs">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
           <span>Atividades & Auditoria</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-config-score" id="btnTabConfigScore">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Análise de Crédito (Configuração)</span>
         </button>
       </div>
     </nav>
@@ -747,6 +755,168 @@
       </section>
     </div>
 
+    <!-- SUB-ABA 3 DE CONFIGURAÇÕES: CALIBRAÇÃO DE SCORE & ANÁLISE DE CRÉDITO -->
+    <div id="tab-config-score" class="tab-pane hidden">
+      <section class="card config-card">
+        <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2>⚖️ Calibração de Pesos & Limites de Análise de Crédito</h2>
+            <p class="desc">Defina os limites monetários, pesos cadastrais, pontuações de Serasa e critérios de decisão do motor de Score.</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button id="btnResetScoreConfig" class="btn btn-outline btn-sm">
+              🔄 Restaurar Padrões da Planilha
+            </button>
+            <button id="btnSaveScoreConfig" class="btn btn-primary btn-sm">
+              💾 Salvar Parâmetros do Score
+            </button>
+          </div>
+        </div>
+
+        <form id="scoreConfigForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- 1. Limites Monetários -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 1rem;">1. Limites Monetários & Gatilhos Operacionais</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_limite_pedido_alto">Limite Pedido Alto (-8 pts) (R$)</label>
+                <input type="number" id="cfg_limite_pedido_alto" class="form-input" value="21000" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_limite_pedido_compra">Gatilho Solicitar Pedido Compra (R$)</label>
+                <input type="number" id="cfg_limite_pedido_compra" class="form-input" value="5000" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_limite_armario_cofre">Gatilho Contrato Entrega Armário/Cofre (R$)</label>
+                <input type="number" id="cfg_limite_armario_cofre" class="form-input" value="2000" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Pesos Comerciais -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem;">2. Pesos Comerciais, Vendas a Prazo e Histórico</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_peso_faturado_avista">À Vista / Antecipado (+pts)</label>
+                <input type="number" id="cfg_peso_faturado_avista" class="form-input" value="100" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_entrada_sim">Com Entrada (+pts)</label>
+                <input type="number" id="cfg_peso_entrada_sim" class="form-input" value="12" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_entrada_nao">Sem Entrada (-pts)</label>
+                <input type="number" id="cfg_peso_entrada_nao" class="form-input" value="-4" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_comprou_2x_sim">Comprou e Pagou 2x+ (+pts)</label>
+                <input type="number" id="cfg_peso_comprou_2x_sim" class="form-input" value="9" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_comprou_5x_sim">Comprou e Pagou 5x+ (+pts)</label>
+                <input type="number" id="cfg_peso_comprou_5x_sim" class="form-input" value="23" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_muitos_itens_sim">Muitos Itens / Qtd Grande (-pts)</label>
+                <input type="number" id="cfg_peso_muitos_itens_sim" class="form-input" value="-13" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_prod_variados_sim">Produtos Ñ Combinam (-pts)</label>
+                <input type="number" id="cfg_peso_prod_variados_sim" class="form-input" value="-5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pgtos_abertos_sim">Títulos em Atraso / Abertos (-pts)</label>
+                <input type="number" id="cfg_peso_pgtos_abertos_sim" class="form-input" value="-3" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Pesos Cadastrais e Domínio -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #a855f7; margin-bottom: 1rem;">3. Pesos Cadastrais, Localização & Domínio</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_peso_entrega_cadastro_nao">Entrega != Cadastro (-pts)</label>
+                <input type="number" id="cfg_peso_entrega_cadastro_nao" class="form-input" value="-9" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_uf_rj">UF Rio de Janeiro RJ (-pts)</label>
+                <input type="number" id="cfg_peso_uf_rj" class="form-input" value="-12" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_cnpj_ativo_nao">CNPJ Inativo (-pts)</label>
+                <input type="number" id="cfg_peso_cnpj_ativo_nao" class="form-input" value="-100" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_email_gratuito_sim">E-mail Gratuito Gmail/Hotmail (-pts)</label>
+                <input type="number" id="cfg_peso_email_gratuito_sim" class="form-input" value="-8" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_site_ativo_nao">Sem Site Ativo (-pts)</label>
+                <input type="number" id="cfg_peso_site_ativo_nao" class="form-input" value="-15" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_maps_10">Google Maps 10 (+pts)</label>
+                <input type="number" id="cfg_peso_maps_10" class="form-input" value="6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_maps_0">Google Maps 0 (-pts)</label>
+                <input type="number" id="cfg_peso_maps_0" class="form-input" value="-6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_endereco_sala_sim">Casa / Sala / Conjunto (-pts)</label>
+                <input type="number" id="cfg_peso_endereco_sala_sim" class="form-input" value="-5" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Pesos Serasa, Protestos e Certidões -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem;">4. Serasa, Protestos, Cheques & Certidões</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_peso_protestos_sim">Com Protestos (-pts)</label>
+                <input type="number" id="cfg_peso_protestos_sim" class="form-input" value="-10" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_protestos_nao">Sem Protestos (+pts)</label>
+                <input type="number" id="cfg_peso_protestos_nao" class="form-input" value="5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pfin_sim">PFIN Sim (-pts)</label>
+                <input type="number" id="cfg_peso_pfin_sim" class="form-input" value="-5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_ch_sem_fundo_sim">Cheques Sem Fundo (-pts)</label>
+                <input type="number" id="cfg_peso_ch_sem_fundo_sim" class="form-input" value="-6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_serasa_700">Score Serasa > 700 (+pts)</label>
+                <input type="number" id="cfg_peso_serasa_700" class="form-input" value="8" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_serasa_baixo">Score Serasa <= 200 (-pts)</label>
+                <input type="number" id="cfg_peso_serasa_baixo" class="form-input" value="-15" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_fgts_regular_nao">FGTS Irregular (-pts)</label>
+                <input type="number" id="cfg_peso_fgts_regular_nao" class="form-input" value="-6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_razao_fgts_igual_nao">Razão != FGTS (-pts)</label>
+                <input type="number" id="cfg_peso_razao_fgts_igual_nao" class="form-input" value="-10" />
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+            <button type="submit" class="btn btn-primary btn-large">💾 Salvar Parâmetros do Score</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
     <!-- ABA 5: ASSIST. FINANC. -> Conciliação Bancária -->
     <div id="tab-conciliacao-bancaria" class="tab-pane">
       
@@ -880,6 +1050,437 @@
 
     </div>
 
+    <!-- ABA 6: ASSIST. FINANC. -> Análise de Crédito & Score Comercial -->
+    <div id="tab-analise-credito" class="tab-pane hidden">
+      <!-- Seção Superior: Seletor de Empresa e Pedido -->
+      <section class="card upload-section">
+        <div class="section-title-row flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>🛡️ Análise de Crédito & Score Comercial Integrado</span>
+              <span class="version-tag" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.25);">Protheus SC5/SA1/SE1 vs Matriz de Risco</span>
+            </h2>
+            <p class="desc">Consulte os dados cadastrais e de venda no Protheus ERP e complete as validações de Bureau/Serasa para calcular o Score e gravar a auditoria.</p>
+          </div>
+        </div>
+
+        <!-- Barra de Consulta Protheus -->
+        <div style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1.25rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.45); border-radius: 10px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="min-width: 260px; flex: 1;">
+            <label for="creditoEmpresaSelect" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">
+              🏢 Empresa Ativa Protheus:
+            </label>
+            <select id="creditoEmpresaSelect" class="form-select" style="width: 100%; height: 42px; font-weight: 600;">
+              <option value="14" selected>14 - Metal Pleno / S4BW</option>
+              <option value="15">15 - GSI Cofres & Armários</option>
+              <option value="16">16 - OAÇO Produtos de Aço</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="min-width: 200px; flex: 1;">
+            <label for="creditoNumPedido" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">
+              📄 Nº do Pedido de Venda:
+            </label>
+            <input type="text" id="creditoNumPedido" class="form-input" placeholder="Ex: 162, 166, 446..." style="width: 100%; height: 42px; font-weight: 700; font-family: 'JetBrains Mono', monospace;" />
+          </div>
+
+          <div style="align-self: flex-end;">
+            <button id="btnIniciarConsultaCredito" class="btn btn-primary btn-large" style="height: 42px; padding: 0 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
+              <span>⚡ Iniciar Consulta Protheus</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="creditoProtheusBadge" class="alert-info-box hidden" style="margin-top: 1rem; padding: 0.85rem 1.25rem; border-radius: 8px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e;">
+          ✓ Dados cadastrais e de venda importados com sucesso do Protheus ERP. Complete os campos abaixo e clique em Consultar.
+        </div>
+      </section>
+
+      <!-- Painel de Resultado do Score (Exibido após Cálculo) -->
+      <section id="creditoResultadoSection" class="card hidden" style="margin-top: 1.5rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--panel-border);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: center; gap: 1.25rem;">
+            <div id="scoreBadgeVal" style="width: 72px; height: 72px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: 1.8rem; background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 2px solid #22c55e;">
+              <span id="txtTotalScore">--</span>
+              <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Pontos</span>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Classificação de Risco:</span>
+                <span id="txtRiscoBadge" class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; font-weight: 800; font-size: 0.85rem; padding: 3px 10px; border-radius: 6px;">SEM-RISCO</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">
+                Parecer: <span id="txtSugestaoParecer" style="color: #38bdf8; text-decoration: underline;">LIBERADO</span>
+              </h3>
+            </div>
+          </div>
+          <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 14px; border-radius: 8px; font-weight: 600;">
+            ✓ Gravado com Sucesso no Banco de Dados
+          </span>
+        </div>
+
+        <!-- 4 Alertas de Segurança -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div id="cardAlertaPedCompra" class="summary-card stat-card">
+            <div class="stat-label">📋 Pedido de Compra Oficial</div>
+            <div class="stat-value" id="valAlertaPedCompra" style="font-size: 1rem; color: #fbbf24;">Dispensado</div>
+            <div class="stat-desc">Obrigatório para pedidos &gt; R$ 5.000,00</div>
+          </div>
+
+          <div id="cardAlertaContrato" class="summary-card stat-card">
+            <div class="stat-label">📦 Contrato de Entrega</div>
+            <div class="stat-value" id="valAlertaContrato" style="font-size: 1rem; color: #c084fc;">Dispensado</div>
+            <div class="stat-desc">Armários / Cofres de alto valor (&gt; R$ 2k)</div>
+          </div>
+
+          <div id="cardAlertaGolpe" class="summary-card stat-card">
+            <div class="stat-label">🚨 Risco de Fraude / Golpe</div>
+            <div class="stat-value" id="valAlertaGolpe" style="font-size: 1rem; color: #22c55e;">Sem Risco</div>
+            <div class="stat-desc">Checagem reversa se entrega != cadastro</div>
+          </div>
+
+          <div id="cardAlertaCadReceita" class="summary-card stat-card">
+            <div class="stat-label">❗ Conformidade Cadastral</div>
+            <div class="stat-value" id="valAlertaCadReceita" style="font-size: 1rem; color: #22c55e;">Conforme</div>
+            <div class="stat-desc">Cruzamento com Receita Federal</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Formulário Completo de 53 Campos -->
+      <section class="card" style="margin-top: 1.5rem;">
+        <form id="formAnaliseCreditoCompleto" style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- Bloco 1: Venda & Cliente -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>1. Identificação do Cliente & Pedido</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">⚡ Protheus ERP</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Nº Pedido *</label>
+                <input type="text" id="cr_pedido_venda" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label>Cód. Web / Pipedrive</label>
+                <input type="text" id="cr_cod_web" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label>Cód. Cliente Protheus</label>
+                <input type="text" id="cr_cliente_codigo" class="form-input" />
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Razão Social do Cliente *</label>
+                <input type="text" id="cr_cliente_nome" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label>Total do Pedido (R$) *</label>
+                <input type="number" step="0.01" id="cr_total_pedido" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label>Desconto do Pedido</label>
+                <input type="text" id="cr_desconto_ped" class="form-input" value="OK" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 2: Condições Comerciais -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem;">2. Condições Comerciais & Características</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Faturado a Prazo?</label>
+                <select id="cr_faturado" class="form-select">
+                  <option value="S">Sim (Boleto/Prazo)</option>
+                  <option value="N">Não (À Vista/Antecipado)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Possui Entrada?</label>
+                <select id="cr_entrada" class="form-select">
+                  <option value="N">Não (-4 pts)</option>
+                  <option value="S">Sim (+12 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Qtd. Grande?</label>
+                <select id="cr_quant_grande" class="form-select">
+                  <option value="N">Não (+1 pt)</option>
+                  <option value="S">Sim (-13 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Prod. Ñ Combinam?</label>
+                <select id="cr_prod_nao_combinam" class="form-select">
+                  <option value="N">Não (+2 pts)</option>
+                  <option value="S">Sim (-5 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Armário/Cofre &gt; 2k?</label>
+                <select id="cr_armario_cofre_gt_2000" class="form-select">
+                  <option value="N">Não</option>
+                  <option value="S">Sim (Exige Contrato)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>UF do Cliente *</label>
+                <input type="text" id="cr_uf_cliente" maxlength="2" class="form-input" value="SP" required style="text-transform: uppercase;" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 3: Endereço & Domínio -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #a855f7; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>3. Endereço, Localização & Domínio</span>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">✍️ Conferência Manual</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Entrega = Cadastro?</label>
+                <select id="cr_entrega_igual_cadastro" class="form-select">
+                  <option value="S">Sim (+2 pts)</option>
+                  <option value="N">Não (-9 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cadastro = Receita?</label>
+                <select id="cr_cadastro_igual_receita" class="form-select">
+                  <option value="S">Sim (+3 pts)</option>
+                  <option value="N">Não (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Casa/Sala no Endereço?</label>
+                <select id="cr_casa_sala_conj_end" class="form-select">
+                  <option value="N">Não / Prédio (+1 pt)</option>
+                  <option value="S">Sim (-5 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Google Maps Fachada</label>
+                <select id="cr_google_maps" class="form-select">
+                  <option value="10">10 (Top +6 pts)</option>
+                  <option value="5" selected>5 (Compatível 0 pts)</option>
+                  <option value="0">0 (Residencial -6 pts)</option>
+                  <option value="-">- (Não Visto -3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Registro.Br Confere?</label>
+                <select id="cr_registro_br" class="form-select">
+                  <option value="N">Não</option>
+                  <option value="S">Sim (+6 pts se entrega dif)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>ScamAdvizer Score (0-100)</label>
+                <input type="number" id="cr_scamadvizer_score" class="form-input" value="100" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 1rem;">4. E-mails, Site & Porte Corporativo</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>E-mail Corporativo?</label>
+                <select id="cr_email_corporativo" class="form-select">
+                  <option value="S">Sim (+3 pts)</option>
+                  <option value="N">Não (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Mail Finan Diferente?</label>
+                <select id="cr_existe_mail_financeiro" class="form-select">
+                  <option value="S">Sim (0 pts)</option>
+                  <option value="N">Não (-7 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>E-mail Gratuito?</label>
+                <select id="cr_mail_gratuito" class="form-select">
+                  <option value="N">Não (+2 pts)</option>
+                  <option value="S">Sim (Gmail/Hotmail -8)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Possui Site Ativo?</label>
+                <select id="cr_possui_site" class="form-select">
+                  <option value="S">Sim (+1 pt)</option>
+                  <option value="N">Não (-15 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fundação Matriz *</label>
+                <input type="date" id="cr_fundacao_matriz" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label>Capital Social (R$)</label>
+                <input type="number" id="cr_capital_social" class="form-input" value="100000" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 5: Bureau, Serasa & Protestos -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem;">5. Serasa, Protestos & Histórico Interno</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Score Serasa (0-1000) *</label>
+                <input type="number" id="cr_score_serasa" class="form-input" value="750" required />
+              </div>
+              <div class="form-group">
+                <label>Possui Protestos?</label>
+                <select id="cr_protestos" class="form-select">
+                  <option value="N">Não (+5 pts)</option>
+                  <option value="S">Sim (-10 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Valor Protestos (R$)</label>
+                <input type="number" id="cr_valor_protestos" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label>PFIN Sim?</label>
+                <select id="cr_pfin" class="form-select">
+                  <option value="N">Não (+1 pt)</option>
+                  <option value="S">Sim (-5 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cheques Sem Fundo?</label>
+                <select id="cr_ch_sem_fundo" class="form-select">
+                  <option value="N">Não (0 pts)</option>
+                  <option value="S">Sim (-6 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>CNPJ Ativo na RF?</label>
+                <select id="cr_cnpj_ativo" class="form-select">
+                  <option value="S">Sim (+2 pts)</option>
+                  <option value="N">Não (-100 pts)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 6: Histórico Interno & Certidões -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem;">6. FGTS, Certidões & Histórico de Compras</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Pgtos em Aberto?</label>
+                <select id="cr_pgtos_abertos" class="form-select">
+                  <option value="N">Não (+1 pt)</option>
+                  <option value="S">Sim (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Comprou e Pagou 2x+?</label>
+                <select id="cr_comprou_pagou" class="form-select">
+                  <option value="S">Sim (+9 pts)</option>
+                  <option value="N">Não (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Comprou e Pagou 5x+?</label>
+                <select id="cr_comprou_pagou_5x" class="form-select">
+                  <option value="N">Não (0 pts)</option>
+                  <option value="S">Sim (+23 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>FGTS Regular?</label>
+                <select id="cr_fgts_situacao_regular" class="form-select">
+                  <option value="S">Regular (0 pts)</option>
+                  <option value="N">Irregular (-6 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Razão = FGTS?</label>
+                <select id="cr_razao_fgts_igual" class="form-select">
+                  <option value="S">Igual (0 pts)</option>
+                  <option value="N">Divergente (-10 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>3 NFs Confirmadas?</label>
+                <select id="cr_tres_nfs_confirmadas" class="form-select">
+                  <option value="N">Não (-3 pts)</option>
+                  <option value="S">Sim (+3 pts)</option>
+                  <option value="D">Dispensado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloco 7: Observações e Parecer Final -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label for="cr_obs">Observações Internas do Analista</label>
+                <input type="text" id="cr_obs" class="form-input" placeholder="Anotações sobre transportadora, garantias ou contato com financeiro..." />
+              </div>
+              <div class="form-group">
+                <label for="cr_decisao_final">Decisão Final do Analista *</label>
+                <select id="cr_decisao_final" class="form-select" style="font-weight: 700;">
+                  <option value="Liberado">Liberado</option>
+                  <option value="Entrada">Liberar com Entrada</option>
+                  <option value="Só À Vista">Bloquear para Prazo (Só À Vista)</option>
+                  <option value="Bloqueado">Bloqueado</option>
+                  <option value="Cancelado">Pedido Cancelado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">
+              ⚠️ Nenhum campo pode estar em branco para gravação definitiva no banco.
+            </span>
+            <button type="submit" id="btnCalcularSalvarCredito" class="btn btn-primary btn-large" style="padding: 0.75rem 2rem; font-weight: 700; background: #059669; border-color: #047857;">
+              🛡️ Consultar & Gravar no Banco
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Histórico de Consultas Realizadas -->
+      <section class="card" style="margin-top: 1.5rem;">
+        <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">📜 Histórico de Análises de Crédito Gravadas</h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Consultas armazenadas para conferência permanente</span>
+          </div>
+          <input type="text" id="buscaHistoricoCredito" placeholder="🔍 Filtrar por pedido, cliente ou risco..." class="form-input" style="width: 280px; height: 36px; font-size: 0.82rem;" />
+        </div>
+
+        <div class="table-container">
+          <table class="data-table" id="historicoCreditoTable">
+            <thead>
+              <tr>
+                <th style="width: 130px;">Data / Hora</th>
+                <th style="width: 80px;">Empresa</th>
+                <th style="width: 100px;">Pedido</th>
+                <th>Cliente / Razão Social</th>
+                <th style="width: 120px; text-align: right;">Total Pedido</th>
+                <th style="width: 80px; text-align: center;">Score</th>
+                <th style="width: 130px; text-align: center;">Risco</th>
+                <th style="width: 220px;">Sugestão / Decisão</th>
+              </tr>
+            </thead>
+            <tbody id="historicoCreditoTableBody">
+              <tr>
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise realizada ainda.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- Modal Configuração Credenciais Banco Inter -->
@@ -1184,6 +1785,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.18"></script>
+  <script src="app.js?v=8.19"></script>
 </body>
 </html>
