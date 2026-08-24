@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.24">
+  <link rel="stylesheet" href="style.css?v=8.25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 20:07 (feat(credito): consolida historico financeiro SE1 multi-empresa (09, 14, 15, 16) e reestrutura secao 2)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 20:49 (feat(credito): normalizacao de enderecos Protheus vs Receita, label ScamAdvizer, Serasa & Apontamentos e default Dispensado em 3 NFs)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1323,7 +1323,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>ScamAdvizer Score (0-100) *</label>
+                <label>ScamAdvizer *</label>
                 <input type="number" id="cr_scamadvizer_score" class="form-input" placeholder="0 a 100" min="0" max="100" required />
               </div>
             </div>
@@ -1382,7 +1382,7 @@
           <!-- Bloco 5: Bureau, Serasa & Protestos -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>5. Serasa, Protestos & Histórico Interno</span>
+              <span>5. Serasa & Apontamentos</span>
               <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">✍️ Bureau / Serasa</span>
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
@@ -1455,10 +1455,9 @@
               <div class="form-group">
                 <label>3 NFs Confirmadas? *</label>
                 <select id="cr_tres_nfs_confirmadas" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="N">Não (-3 pts)</option>
+                  <option value="D" selected>Dispensado</option>
                   <option value="S">Sim (+3 pts)</option>
-                  <option value="D">Dispensado</option>
+                  <option value="N">Não (-3 pts)</option>
                 </select>
               </div>
             </div>
@@ -1865,6 +1864,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.24"></script>
+  <script src="app.js?v=8.25"></script>
 </body>
 </html>

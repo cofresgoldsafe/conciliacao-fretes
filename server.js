@@ -1561,7 +1561,70 @@ const {
   salvarAnalise: salvarAnaliseCredito
 } = require('./analise_credito_engine');
 
-// Função utilitária para consulta de CNPJ em bases públicas governamentais (BrasilAPI)
+// Funções de Normalização e Comparação Semântica de Endereços (Protheus vs Receita Federal)
+function normalizarTextoEnd(txt) {
+  if (!txt) return '';
+  return String(txt)
+    .toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.,\-\/\\()]/g, ' ')
+    .replace(/\b(ESTRADA|ESTR|EST)\b/g, 'EST')
+    .replace(/\b(AVENIDA|AV)\b/g, 'AV')
+    .replace(/\b(RODOVIA|ROD)\b/g, 'ROD')
+    .replace(/\b(RUA|R)\b/g, 'R')
+    .replace(/\b(TRAVESSA|TRAV|TV)\b/g, 'TV')
+    .replace(/\b(ALAMEDA|AL)\b/g, 'AL')
+    .replace(/\b(PRACA|PRC|PC)\b/g, 'PC')
+    .replace(/\b(JARDIM|JDM|JD)\b/g, 'JD')
+    .replace(/\b(PARQUE|PRQ|PQ)\b/g, 'PQ')
+    .replace(/\b(VILA|VL)\b/g, 'VL')
+    .replace(/\b(AREA RURAL|ZONA RURAL|RURAL)\b/g, 'RURAL')
+    .replace(/\b(DOUTOR|DR)\b/g, 'DR')
+    .replace(/\b(PROFESSOR|PROF)\b/g, 'PROF')
+    .replace(/\b(SANTO|STO|SANTA|STA|SAO)\b/g, 'SAO')
+    .replace(/\b(NUMERO|N|NO|NUM)\b/g, '')
+    .replace(/\b(SEM NUMERO|S N|SN)\b/g, 'SN')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extrairNumeroEnd(txt) {
+  if (!txt) return '';
+  const m = String(txt).match(/\b\d+\b/);
+  return m ? m[0] : '';
+}
+
+function compararEnderecos(endProtheus, endReceita, numProtheus, numReceita) {
+  const norm1 = normalizarTextoEnd(endProtheus);
+  const norm2 = normalizarTextoEnd(endReceita);
+
+  const n1 = numProtheus || extrairNumeroEnd(endProtheus);
+  const n2 = numReceita || extrairNumeroEnd(endReceita);
+
+  const tokens1 = new Set(norm1.split(' ').filter(x => x.length > 1));
+  const tokens2 = new Set(norm2.split(' ').filter(x => x.length > 1));
+
+  let matches = 0;
+  for (const t of tokens1) {
+    if (tokens2.has(t)) matches++;
+  }
+
+  const minTokens = Math.min(tokens1.size, tokens2.size);
+  const similarity = minTokens > 0 ? (matches / minTokens) : 0;
+  const numMatch = (!n1 && !n2) || (n1 === n2);
+
+  return {
+    norm1,
+    norm2,
+    n1,
+    n2,
+    similarity,
+    numMatch,
+    iguais: similarity >= 0.70 && numMatch
+  };
+}
+
+// Função utilitária para consulta de CNPJ em bases públicas governamentais (BrasilAPI com fallback ReceitaWS)
 async function consultarCnpjPublico(cnpjStr) {
   if (!cnpjStr) return null;
   const digits = String(cnpjStr).replace(/\D/g, '');
@@ -1569,10 +1632,10 @@ async function consultarCnpjPublico(cnpjStr) {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
+    const timeout = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'Gemini-Auditores/1.0' }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gemini-Auditores/1.0' }
     });
     clearTimeout(timeout);
 
@@ -1581,12 +1644,49 @@ async function consultarCnpjPublico(cnpjStr) {
       return {
         fundacao: d.data_inicio_atividade || '',
         capitalSocial: typeof d.capital_social === 'number' ? d.capital_social : parseFloat(d.capital_social) || 0,
-        cnpjAtivo: (d.descricao_situacao_cadastral || d.situacao_cadastral || '').toUpperCase().includes('ATIVA') ? 'S' : 'N'
+        cnpjAtivo: (d.descricao_situacao_cadastral || d.situacao_cadastral || '').toUpperCase().includes('ATIVA') ? 'S' : 'N',
+        logradouro: d.logradouro || '',
+        numero: d.numero || '',
+        bairro: d.bairro || '',
+        municipio: d.municipio || '',
+        uf: d.uf || '',
+        cep: d.cep || '',
+        enderecoCompleto: `${d.descricao_tipo_de_logradouro || ''} ${d.logradouro || ''}, ${d.numero || ''} - ${d.bairro || ''}, ${d.municipio || ''} - ${d.uf || ''}`.trim()
       };
     }
   } catch (e) {
-    console.warn('Consulta CNPJ público falhou (ignorado silenciosamente):', e.message);
+    console.warn('Consulta BrasilAPI falhou, tentando fallback ReceitaWS:', e.message);
   }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res2 = await fetch(`https://receitaws.com.br/v1/cnpj/${digits}`, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gemini-Auditores/1.0' }
+    });
+    clearTimeout(timeout);
+
+    if (res2.ok) {
+      const d2 = await res2.json();
+      const cap = String(d2.capital_social || '0').replace(/\./g, '').replace(',', '.');
+      return {
+        fundacao: d2.abertura || '',
+        capitalSocial: parseFloat(cap) || 0,
+        cnpjAtivo: (d2.situacao || '').toUpperCase().includes('ATIVA') ? 'S' : 'N',
+        logradouro: d2.logradouro || '',
+        numero: d2.numero || '',
+        bairro: d2.bairro || '',
+        municipio: d2.municipio || '',
+        uf: d2.uf || '',
+        cep: d2.cep || '',
+        enderecoCompleto: `${d2.logradouro || ''}, ${d2.numero || ''} - ${d2.bairro || ''}, ${d2.municipio || ''} - ${d2.uf || ''}`.trim()
+      };
+    }
+  } catch (e2) {
+    console.warn('Consulta CNPJ fallback ReceitaWS falhou:', e2.message);
+  }
+
   return null;
 }
 
@@ -1636,10 +1736,28 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     const faturadoVal = condInfo.faturado || (detalhes.fiscal?.geraFinanceiro === 'S' ? 'S' : 'N');
     const entradaVal = condInfo.possuiEntrada || 'N';
 
-    // Consulta CNPJ em bases públicas (Fundação e Capital Social)
+    // Consulta CNPJ em bases públicas (Fundação, Capital Social e Endereço Oficial)
     let dadosCnpj = null;
     if (cli.cnpj) {
       dadosCnpj = await consultarCnpjPublico(cli.cnpj);
+    }
+
+    // Comparação Inteligente de Endereço Protheus vs Receita Federal
+    let cadastroIgualReceitaVal = '';
+    let comparacaoEnderecoInfo = null;
+
+    if (dadosCnpj && cli.endereco) {
+      const endProtheus = `${cli.endereco} ${cli.bairro || ''} ${cli.cidade || ''} ${cli.uf || ''}`;
+      const endReceita = `${dadosCnpj.logradouro} ${dadosCnpj.numero} ${dadosCnpj.bairro} ${dadosCnpj.municipio} ${dadosCnpj.uf}`;
+      const comp = compararEnderecos(endProtheus, endReceita, extrairNumeroEnd(cli.endereco), dadosCnpj.numero);
+      
+      cadastroIgualReceitaVal = comp.iguais ? 'S' : 'N';
+      comparacaoEnderecoInfo = {
+        iguais: comp.iguais,
+        similarity: comp.similarity,
+        endProtheus: cli.endereco,
+        endReceita: dadosCnpj.enderecoCompleto || `${dadosCnpj.logradouro}, ${dadosCnpj.numero}`
+      };
     }
 
     const histFin = detalhes.historicoFinanceiro || {};
@@ -1671,9 +1789,15 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       total_compras_pagas: histFin.totalComprasPagas || 0,
       total_titulos_abertos: histFin.titulosAbertos || 0,
 
+      // Comparação de endereço inteligente Protheus vs Receita
+      cadastro_igual_receita: cadastroIgualReceitaVal,
+      comparacao_endereco: comparacaoEnderecoInfo,
+
+      // Campos com valor padrão pré-definido
+      tres_nfs_confirmadas: 'D', // Default: Dispensado
+
       // Campos manuais que permanecem em branco para o analista
       entrega_igual_cadastro: '',
-      cadastro_igual_receita: '',
       casa_sala_conj_end: '',
       google_maps: '',
       registro_br: '',
@@ -1689,7 +1813,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       ch_sem_fundo: '',
       fgts_situacao_regular: '',
       razao_fgts_igual: '',
-      tres_nfs_confirmadas: '',
       obs: '',
       decisao_final: 'Liberado',
       mensagem: `Pedido #${detalhes.numPedido || pedNormalizado} encontrado com sucesso no Protheus.`

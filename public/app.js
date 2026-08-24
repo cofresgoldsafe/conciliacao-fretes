@@ -3391,9 +3391,18 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_comprou_pagou', data.comprou_pagou !== undefined ? data.comprou_pagou : 'N');
         setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x !== undefined ? data.comprou_pagou_5x : 'N');
 
+        // Comparação de Endereço Protheus vs Receita Federal
+        if (data.cadastro_igual_receita) {
+          setVal('cr_cadastro_igual_receita', data.cadastro_igual_receita);
+        } else {
+          setVal('cr_cadastro_igual_receita', '');
+        }
+
+        // Valor Padrão para 3 NFs Confirmadas (Dispensado)
+        setVal('cr_tres_nfs_confirmadas', data.tres_nfs_confirmadas || 'D');
+
         // Campos manuais em branco para o analista preencher
         setVal('cr_entrega_igual_cadastro', '');
-        setVal('cr_cadastro_igual_receita', '');
         setVal('cr_casa_sala_conj_end', '');
         setVal('cr_google_maps', '');
         setVal('cr_registro_br', '');
@@ -3409,14 +3418,21 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_ch_sem_fundo', '');
         setVal('cr_fgts_situacao_regular', '');
         setVal('cr_razao_fgts_igual', '');
-        setVal('cr_tres_nfs_confirmadas', '');
 
         if (creditoProtheusBadge) {
           creditoProtheusBadge.classList.remove('hidden');
           creditoProtheusBadge.style.background = 'rgba(34, 197, 94, 0.12)';
           creditoProtheusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
           creditoProtheusBadge.style.color = '#22c55e';
-          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong> nas empresas 09, 14, 15 e 16. Complete os campos manuais restantes.`;
+          
+          let endMsg = '';
+          if (data.comparacao_endereco) {
+            endMsg = data.comparacao_endereco.iguais 
+              ? ' | Endereço Receita: <strong>Conforme</strong> (variação aceita)' 
+              : ' | Endereço Receita: <strong>Divergente</strong>';
+          }
+
+          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong>${endMsg}.`;
         }
       } catch (err) {
         // Limpa campos para evitar dados falsos/stale
@@ -3818,10 +3834,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <!-- Bloco 2: Comercial & Pagamento -->
         <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Condições Comerciais & Pagamento</h4>
+          <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Condições Comerciais & Histórico de Pagamentos</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">Faturado a Prazo:</strong> ${fmtSimNao(item.faturado)}</div>
             <div><strong style="color:var(--text-muted)">Possui Entrada:</strong> ${fmtSimNao(item.entrada)}</div>
+            <div><strong style="color:var(--text-muted)">Pgtos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)}</div>
+            <div><strong style="color:var(--text-muted)">Comprou e Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)}</div>
+            <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)}</div>
             <div><strong style="color:var(--text-muted)">Qtd. Grande:</strong> ${fmtSimNao(item.quant_grande)}</div>
             <div><strong style="color:var(--text-muted)">Prod. Ñ Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)}</div>
             <div><strong style="color:var(--text-muted)">Armário/Cofre > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
@@ -3838,7 +3857,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div><strong style="color:var(--text-muted)">Casa/Sala no Endereço:</strong> ${fmtSimNao(item.casa_sala_conj_end)}</div>
             <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')}</div>
             <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)}</div>
-            <div><strong style="color:var(--text-muted)">ScamAdvizer Score:</strong> <strong>${item.scamadvizer_score ?? '-'}</strong> / 100</div>
+            <div><strong style="color:var(--text-muted)">ScamAdvizer:</strong> <strong>${item.scamadvizer_score ?? '-'}</strong> / 100</div>
           </div>
         </div>
 
@@ -3857,7 +3876,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <!-- Bloco 5: Bureau, Serasa & Protestos -->
         <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa, Protestos & Histórico de Crédito</h4>
+          <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa & Apontamentos</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">Score Serasa:</strong> <strong>${item.score_serasa ?? '-'}</strong> / 1000</div>
             <div><strong style="color:var(--text-muted)">Possui Protestos:</strong> ${fmtSimNao(item.protestos)}</div>
@@ -3870,11 +3889,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <!-- Bloco 6: Histórico Interno & FGTS -->
         <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS, Certidões & Histórico de Compras</h4>
+          <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS & Certidões Comerciais</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">Pgtos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)}</div>
-            <div><strong style="color:var(--text-muted)">Comprou e Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)}</div>
-            <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)}</div>
             <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'}</div>
             <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : '<span style="color:#f87171">Divergente</span>'}</div>
             <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')}</div>
