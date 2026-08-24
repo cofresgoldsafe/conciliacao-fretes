@@ -40,10 +40,17 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Proteção Anti-Brute Force:** Limite estrito de 3 tentativas incorretas por token com bloqueio imediato do token (`BLOCKED`).
    - **Rate Limiting Dedicado:** `verify2FALimiter` (20 req / 5 min) e `resend2FALimiter` (máx 2 req / 45s).
    - **Prevenção de Vazamento PII:** Função `maskEmail` para ofuscar o e-mail no payload e na interface do usuário (ex: `al*******@oaco.com.br`).
-   - **Módulo de E-mail (`mailer.js`):** Integração com Nodemailer e suporte a variáveis de ambiente SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`) com fallback de desenvolvimento não-bloqueante no console.
    - **Gestão de Usuários com E-mail:** Atualização de cadastro de usuários com campo `email` no frontend e validação sintática RFC 5322 no backend.
-6. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-7. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+6. [x] **Módulo de E-mails Resiliente e Aprendizados de Nuvem (`mailer.js`):**
+   - **Driver Híbrido SMTP / Mailjet REST API (HTTPS 443):** Provedores de nuvem (Render, AWS) bloqueiam portas SMTP clássicas (25, 465, 587) por padrão. Para máxima resiliência, implementou-se envio direto via **Mailjet HTTP API v3.1** (`https://api.mailjet.com/v3.1/send` na porta 443 via módulo `https` nativo) utilizando Basic Auth com as credenciais já existentes (`SMTP_login` e `SMTP_pass`).
+   - **Compatibilidade SMTP Corporativo:** Suporte a `tls: { rejectUnauthorized: false }` para certificados autoassinados/intermediários e flexibilidade de variáveis (`SMTP_server`, `SMTP_login`, `SMTP_pass`, `SMTP_port`, `SMTP_from`, `SMTP_secure`).
+   - **Ferramenta de Diagnóstico em Tempo Real:** Endpoint `/api/auth/diag-smtp` para testes imediatos de conectividade e validação de remetentes.
+7. [x] **Integração Bancária mTLS Banco Inter — Metal Pleno / S4BW (`inter_api.js`):**
+   - **Autenticação mTLS Multi-Empresas:** Suporte a credenciais mTLS no Render via `MP_clientId`, `MP_clientSecret`, `MP_cert` e `MP_key` (Empresa 14 - Metal Pleno / S4BW - Conta `3974073-9`).
+   - **Decodificação Resiliente de Certificados:** Normalização automática de quebras de linha `\n` escapadas e suporte a certificados codificados em Base64 ou texto puro PEM.
+   - **Conciliação e Saldo em Tempo Real:** Consulta ao vivo de saldo (`/banking/v2/saldo`) confrontado com `SE8140` e extrato (`/banking/v2/extrato`) com agrupamento inteligente N:1 e 1:1 contra `SE5140`.
+8. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+9. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.
