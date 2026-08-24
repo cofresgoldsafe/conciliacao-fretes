@@ -1,7 +1,10 @@
 const assert = require('assert');
 const http = require('http');
+const jwt = require('jsonwebtoken');
 const app = require('./server');
 const { saveInterWebhookEvent, getInterWebhookEvents } = require('./postgres_db');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
 
 function makeRequest(server, options, bodyData = null) {
   return new Promise((resolve, reject) => {
@@ -146,12 +149,15 @@ async function runTestSuite() {
     console.log('✅ HTTP 4: Tentativa de header spoofing bloqueada com 401 Unauthorized.');
 
     // 9. HTTP: Acesso Autorizado em GET /api/financeiro/webhooks para Administrador
+    const testAdminToken = jwt.sign({ username: 'alexandre', role: 'admin' }, JWT_SECRET, { expiresIn: '1h' });
     const httpRes5 = await makeRequest(testServer, {
       path: '/api/financeiro/webhooks?empresa=14',
       method: 'GET',
-      headers: { 'x-user-username': 'alexandre' }
+      headers: { 
+        'Authorization': `Bearer ${testAdminToken}`
+      }
     });
-    assert.strictEqual(httpRes5.status, 200, 'HTTP 5 Falhou: Usuário alexandre deve ter acesso aos logs');
+    assert.strictEqual(httpRes5.status, 200, 'HTTP 5 Falhou: Usuário alexandre com token JWT deve ter acesso aos logs');
     assert.strictEqual(httpRes5.body.success, true);
     assert.ok(Array.isArray(httpRes5.body.eventos));
     console.log('✅ HTTP 5: Acesso autorizado a administrador validado com sucesso.');

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node test_security.js && node test_webhooks.js && node test_vipp_ftp.js && node test_e2e.js && node test_vendedores_nfe.js",
+    "test": "node test_2fa.js && node test_security.js && node test_webhooks.js && node test_vipp_ftp.js && node test_e2e.js && node test_vendedores_nfe.js",
     "version:bump": "node bump_version.js"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "jsonwebtoken": "^9.0.3",
     "mssql": "^12.7.0",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^9.0.5",
     "oracledb": "^7.0.1",
     "pg": "^8.23.0",
     "tedious": "^20.0.0"

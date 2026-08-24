@@ -9,47 +9,77 @@ document.addEventListener('DOMContentLoaded', () => {
   const userInfo = document.getElementById('userInfo');
   const btnLogout = document.getElementById('btnLogout');
 
+  // DOM Elements - 2FA (Dois Fatores)
+  const twoFactorForm = document.getElementById('twoFactorForm');
+  const twoFactorMsgText = document.getElementById('twoFactorMsgText');
+  const twoFactorEmailMasked = document.getElementById('twoFactorEmailMasked');
+  const twoFactorErrorMsg = document.getElementById('twoFactorErrorMsg');
+  const btnVerify2FA = document.getElementById('btnVerify2FA');
+  const btnBackToLogin = document.getElementById('btnBackToLogin');
+  const btnResend2FA = document.getElementById('btnResend2FA');
+  const twoFactorTimer = document.getElementById('twoFactorTimer');
+  const digitInputs = [
+    document.getElementById('digit1'),
+    document.getElementById('digit2'),
+    document.getElementById('digit3'),
+    document.getElementById('digit4')
+  ];
+
+  let currentTemp2FAToken = null;
+  let twoFactorTimerInterval = null;
+
   // DOM Elements - Tab Navigation
   const navTabBtns = document.querySelectorAll('.nav-tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
 
-  // Intercepta todas as requisições fetch para anexar token JWT e dados do usuário logado
+  // Valida se o destino da requisição é da mesma origem (same-origin) antes de injetar credenciais
+  function isSameOriginUrl(targetUrl) {
+    if (!targetUrl) return false;
+    try {
+      const urlStr = (typeof targetUrl === 'object' && targetUrl instanceof Request) 
+        ? targetUrl.url 
+        : String(targetUrl);
+
+      // URLs relativas são sempre da mesma origem
+      if (urlStr.startsWith('/') && !urlStr.startsWith('//')) return true;
+      if (!urlStr.startsWith('http://') && !urlStr.startsWith('https://') && !urlStr.startsWith('//')) return true;
+
+      // URLs absolutas: valida se o origin bate com window.location.origin
+      const parsed = new URL(urlStr, window.location.origin);
+      return parsed.origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  }
+
+  // Intercepta requisições fetch da mesma origem para anexar token JWT e dados do usuário logado
   const originalFetch = window.fetch;
   window.fetch = function(url, options = {}) {
     options = options || {};
-    options.headers = options.headers || {};
+    
+    // Só anexa credenciais/tokens sensíveis se a requisição for para a mesma origem (prevenção de vazamento P0)
+    if (isSameOriginUrl(url)) {
+      options.headers = options.headers || {};
 
-    let token = currentToken;
-    if (!token) {
-      try {
-        const rawSession = localStorage.getItem('conciliacao_fretes_session');
-        if (rawSession) {
-          const sess = JSON.parse(rawSession);
-          if (sess && sess.token) token = sess.token;
-        }
-      } catch {}
-    }
-
-    if (token) {
-      if (options.headers instanceof Headers) {
-        options.headers.set('Authorization', `Bearer ${token}`);
-      } else if (Array.isArray(options.headers)) {
-        options.headers.push(['Authorization', `Bearer ${token}`]);
-      } else {
-        options.headers['Authorization'] = `Bearer ${token}`;
+      let token = currentToken;
+      if (!token) {
+        try {
+          const rawSession = localStorage.getItem('conciliacao_fretes_session');
+          if (rawSession) {
+            const sess = JSON.parse(rawSession);
+            if (sess && sess.token) token = sess.token;
+          }
+        } catch {}
       }
-    }
 
-    if (currentUser) {
-      if (options.headers instanceof Headers) {
-        options.headers.set('x-user-username', currentUser.username || '');
-        options.headers.set('x-user-name', currentUser.name || currentUser.username || '');
-      } else if (Array.isArray(options.headers)) {
-        options.headers.push(['x-user-username', currentUser.username || '']);
-        options.headers.push(['x-user-name', currentUser.name || currentUser.username || '']);
-      } else {
-        options.headers['x-user-username'] = currentUser.username || '';
-        options.headers['x-user-name'] = currentUser.name || currentUser.username || '';
+      if (token) {
+        if (options.headers instanceof Headers) {
+          options.headers.set('Authorization', `Bearer ${token}`);
+        } else if (Array.isArray(options.headers)) {
+          options.headers.push(['Authorization', `Bearer ${token}`]);
+        } else {
+          options.headers['Authorization'] = `Bearer ${token}`;
+        }
       }
     }
     return originalFetch.call(this, url, options);
@@ -207,19 +237,149 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function start2FACountdown(durationSeconds = 300) {
+    if (twoFactorTimerInterval) clearInterval(twoFactorTimerInterval);
+    let remaining = durationSeconds;
+
+    function updateDisplay() {
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      if (twoFactorTimer) {
+        twoFactorTimer.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        if (remaining <= 60) {
+          twoFactorTimer.style.color = '#f87171';
+        } else {
+          twoFactorTimer.style.color = 'var(--text-muted)';
+        }
+      }
+      if (remaining <= 0) {
+        clearInterval(twoFactorTimerInterval);
+        if (twoFactorErrorMsg) {
+          twoFactorErrorMsg.textContent = '⚠️ O código de 4 dígitos expirou. Clique em Reenviar para receber um novo código.';
+          twoFactorErrorMsg.classList.remove('hidden');
+        }
+        if (btnVerify2FA) btnVerify2FA.disabled = true;
+      }
+      remaining--;
+    }
+
+    if (btnVerify2FA) btnVerify2FA.disabled = false;
+    updateDisplay();
+    twoFactorTimerInterval = setInterval(updateDisplay, 1000);
+  }
+
+  function show2FAStep(tempToken, emailMasked) {
+    currentTemp2FAToken = tempToken;
+    if (loginForm) {
+      loginForm.classList.add('hidden');
+      loginForm.style.display = 'none';
+    }
+    if (twoFactorForm) {
+      twoFactorForm.classList.remove('hidden');
+      twoFactorForm.style.display = 'block';
+    }
+    if (twoFactorEmailMasked) twoFactorEmailMasked.textContent = emailMasked || 'seu e-mail corporativo';
+    if (twoFactorErrorMsg) twoFactorErrorMsg.classList.add('hidden');
+
+    digitInputs.forEach(inp => {
+      if (inp) inp.value = '';
+    });
+    setTimeout(() => {
+      if (digitInputs[0]) digitInputs[0].focus();
+    }, 100);
+
+    start2FACountdown(300);
+  }
+
+  function resetToLoginForm() {
+    if (twoFactorTimerInterval) clearInterval(twoFactorTimerInterval);
+    currentTemp2FAToken = null;
+    if (twoFactorForm) {
+      twoFactorForm.classList.add('hidden');
+      twoFactorForm.style.display = 'none';
+    }
+    if (loginForm) {
+      loginForm.classList.remove('hidden');
+      loginForm.style.display = 'block';
+    }
+    if (loginPassword) {
+      loginPassword.value = '';
+      loginPassword.focus();
+    }
+    if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
+  }
+
   function showLoginOverlay(show) {
     if (!loginOverlay) return;
     if (show) {
       loginOverlay.classList.remove('hidden');
       loginOverlay.style.display = 'flex';
+      resetToLoginForm();
       if (loginUsername) loginUsername.value = '';
-      if (loginPassword) loginPassword.value = '';
-      if (loginErrorMsg) loginErrorMsg.classList.add('hidden');
     } else {
       loginOverlay.classList.add('hidden');
       loginOverlay.style.display = 'none';
     }
   }
+
+  // Configuração dos campos de dígitos OTP (Auto-advance & Paste)
+  digitInputs.forEach((input, idx) => {
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+      const val = input.value.replace(/[^0-9]/g, '');
+      input.value = val ? val.slice(-1) : '';
+
+      if (input.value && idx < digitInputs.length - 1) {
+        if (digitInputs[idx + 1]) {
+          digitInputs[idx + 1].focus();
+          digitInputs[idx + 1].select();
+        }
+      }
+
+      // Se todos os 4 dígitos foram preenchidos, submete automaticamente
+      const fullCode = digitInputs.map(d => d ? d.value : '').join('');
+      if (fullCode.length === 4) {
+        if (twoFactorForm) {
+          if (typeof twoFactorForm.requestSubmit === 'function') {
+            twoFactorForm.requestSubmit();
+          } else {
+            twoFactorForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+        }
+      }
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && idx > 0) {
+        if (digitInputs[idx - 1]) digitInputs[idx - 1].focus();
+      } else if (e.key === 'ArrowLeft' && idx > 0) {
+        if (digitInputs[idx - 1]) digitInputs[idx - 1].focus();
+      } else if (e.key === 'ArrowRight' && idx < digitInputs.length - 1) {
+        if (digitInputs[idx + 1]) digitInputs[idx + 1].focus();
+      }
+    });
+
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+      const digits = pasteData.replace(/[^0-9]/g, '').slice(0, 4);
+      if (digits) {
+        for (let i = 0; i < digits.length; i++) {
+          if (digitInputs[i]) digitInputs[i].value = digits[i];
+        }
+        const nextIdx = Math.min(digits.length, digitInputs.length - 1);
+        if (digitInputs[nextIdx]) digitInputs[nextIdx].focus();
+        if (digits.length === 4 && twoFactorForm) {
+          if (typeof twoFactorForm.requestSubmit === 'function') {
+            twoFactorForm.requestSubmit();
+          } else {
+            twoFactorForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+        }
+      }
+    });
+  });
 
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
@@ -241,14 +401,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const data = await response.json();
 
-        if (data.success && data.user) {
-          const session = {
-            token: data.token,
-            user: data.user,
-            expiresAt: data.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)
-          };
-          localStorage.setItem('conciliacao_fretes_session', JSON.stringify(session));
-          showAuthenticatedUser(data.user, data.token);
+        if (data.success) {
+          if (data.require2FA) {
+            // Avança para a tela de inserção do código de 4 dígitos
+            show2FAStep(data.tempToken, data.emailMasked);
+          } else if (data.user && data.token) {
+            // Login direto sem 2FA (contas legadas sem e-mail)
+            const session = {
+              token: data.token,
+              user: data.user,
+              expiresAt: data.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)
+            };
+            localStorage.setItem('conciliacao_fretes_session', JSON.stringify(session));
+            showAuthenticatedUser(data.user, data.token);
+          }
         } else {
           if (loginErrorMsg) {
             loginErrorMsg.textContent = `⚠️ ${data.message || 'Usuário ou senha incorretos.'}`;
@@ -263,8 +429,120 @@ document.addEventListener('DOMContentLoaded', () => {
       } finally {
         if (btnLoginSubmit) {
           btnLoginSubmit.disabled = false;
-          btnLoginSubmit.textContent = '🔐 Entrar no Sistema';
+          btnLoginSubmit.textContent = '🔐 Continuar';
         }
+      }
+    });
+  }
+
+  // Handler de Validação do Formulário 2FA
+  if (twoFactorForm) {
+    twoFactorForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (twoFactorErrorMsg) twoFactorErrorMsg.classList.add('hidden');
+
+      const code = digitInputs.map(d => d ? d.value.trim() : '').join('');
+      if (code.length !== 4) {
+        if (twoFactorErrorMsg) {
+          twoFactorErrorMsg.textContent = '⚠️ Por favor, digite os 4 dígitos do código de segurança.';
+          twoFactorErrorMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (!currentTemp2FAToken) {
+        if (twoFactorErrorMsg) {
+          twoFactorErrorMsg.textContent = '⚠️ Sessão 2FA expirada. Volte ao login e tente novamente.';
+          twoFactorErrorMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (btnVerify2FA) {
+        btnVerify2FA.disabled = true;
+        btnVerify2FA.textContent = 'Validando Código...';
+      }
+
+      try {
+        const res = await fetch('/api/auth/verify-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tempToken: currentTemp2FAToken,
+            code: code
+          })
+        });
+        const data = await res.json();
+
+        if (data.success && data.token && data.user) {
+          if (twoFactorTimerInterval) clearInterval(twoFactorTimerInterval);
+          const session = {
+            token: data.token,
+            user: data.user,
+            expiresAt: data.expiresAt || (Date.now() + 7 * 24 * 60 * 60 * 1000)
+          };
+          localStorage.setItem('conciliacao_fretes_session', JSON.stringify(session));
+          showAuthenticatedUser(data.user, data.token);
+        } else {
+          if (twoFactorErrorMsg) {
+            twoFactorErrorMsg.textContent = `⚠️ ${data.message || 'Código incorreto ou expirado.'}`;
+            twoFactorErrorMsg.classList.remove('hidden');
+          }
+          digitInputs.forEach(d => { if (d) d.value = ''; });
+          if (digitInputs[0]) digitInputs[0].focus();
+        }
+      } catch (err) {
+        if (twoFactorErrorMsg) {
+          twoFactorErrorMsg.textContent = '❌ Erro de comunicação com o servidor ao validar código.';
+          twoFactorErrorMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (btnVerify2FA) {
+          btnVerify2FA.disabled = false;
+          btnVerify2FA.textContent = '🔓 Confirmar e Entrar';
+        }
+      }
+    });
+  }
+
+  // Handler do Botão Voltar ao Login
+  if (btnBackToLogin) {
+    btnBackToLogin.addEventListener('click', resetToLoginForm);
+  }
+
+  // Handler do Botão Reenviar Código 2FA
+  if (btnResend2FA) {
+    btnResend2FA.addEventListener('click', async () => {
+      if (!currentTemp2FAToken) {
+        alert('Sessão expirada. Por favor, volte à tela de login.');
+        resetToLoginForm();
+        return;
+      }
+
+      const originalText = btnResend2FA.textContent;
+      btnResend2FA.disabled = true;
+      btnResend2FA.textContent = 'Enviando...';
+
+      try {
+        const res = await fetch('/api/auth/resend-2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tempToken: currentTemp2FAToken })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`✅ ${data.message || 'Novo código de 4 dígitos enviado para seu e-mail!'}`);
+          start2FACountdown(300);
+          digitInputs.forEach(d => { if (d) d.value = ''; });
+          if (digitInputs[0]) digitInputs[0].focus();
+        } else {
+          alert(`⚠️ ${data.message || 'Erro ao reenviar código.'}`);
+        }
+      } catch (err) {
+        alert('❌ Falha na conexão ao solicitar reenvio de código.');
+      } finally {
+        btnResend2FA.disabled = false;
+        btnResend2FA.textContent = originalText;
       }
     });
   }
@@ -286,12 +564,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseMyPassModal = document.getElementById('btnCloseMyPassModal');
   const btnCancelMyPassModal = document.getElementById('btnCancelMyPassModal');
   const myPassForm = document.getElementById('myPassForm');
+  const currentMyPassword = document.getElementById('currentMyPassword');
   const newMyPassword = document.getElementById('newMyPassword');
   const confirmMyPassword = document.getElementById('confirmMyPassword');
   const myPassMsg = document.getElementById('myPassMsg');
 
   if (btnChangeMyPass) {
     btnChangeMyPass.addEventListener('click', () => {
+      if (currentMyPassword) currentMyPassword.value = '';
       if (newMyPassword) newMyPassword.value = '';
       if (confirmMyPassword) confirmMyPassword.value = '';
       if (myPassMsg) myPassMsg.classList.add('hidden');
@@ -305,12 +585,29 @@ document.addEventListener('DOMContentLoaded', () => {
   if (myPassForm) {
     myPassForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const p1 = newMyPassword.value.trim();
-      const p2 = confirmMyPassword.value.trim();
+      const curr = currentMyPassword ? currentMyPassword.value.trim() : '';
+      const p1 = newMyPassword ? newMyPassword.value.trim() : '';
+      const p2 = confirmMyPassword ? confirmMyPassword.value.trim() : '';
+
+      if (!curr) {
+        if (myPassMsg) {
+          myPassMsg.textContent = '⚠️ Por favor, digite sua senha atual.';
+          myPassMsg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (p1.length < 4) {
+        if (myPassMsg) {
+          myPassMsg.textContent = '⚠️ A nova senha deve possuir no mínimo 4 caracteres.';
+          myPassMsg.classList.remove('hidden');
+        }
+        return;
+      }
 
       if (p1 !== p2) {
         if (myPassMsg) {
-          myPassMsg.textContent = '⚠️ As senhas digitadas não coincidem.';
+          myPassMsg.textContent = '⚠️ As novas senhas digitadas não coincidem.';
           myPassMsg.classList.remove('hidden');
         }
         return;
@@ -319,18 +616,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!currentUser) return;
 
       try {
-        const response = await fetch('/api/admin/users/save', {
+        const response = await fetch('/api/auth/change-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            username: currentUser.username,
-            name: currentUser.name,
-            pass: p1
+            currentPassword: curr,
+            newPassword: p1
           })
         });
         const data = await response.json();
         if (data.success) {
-          if (myPassMsg) myPassMsg.textContent = '✅ Sua senha foi alterada com sucesso!';
+          if (myPassMsg) myPassMsg.textContent = '✅ ' + (data.message || 'Sua senha foi alterada com sucesso!');
           setTimeout(() => {
             if (myPasswordModal) myPasswordModal.classList.add('hidden');
           }, 1200);
@@ -1362,6 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const editUsername = document.getElementById('editUsername');
   const editName = document.getElementById('editName');
+  const editEmail = document.getElementById('editEmail');
   const editPassword = document.getElementById('editPassword');
   const editRole = document.getElementById('editRole');
   const permLogistica = document.getElementById('permLogistica');
@@ -1376,7 +1673,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadUsersTable() {
     if (!usersTableBody) return;
-    usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1rem;">Carregando lista de usuários...</td></tr>';
+    usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 1rem;">Carregando lista de usuários...</td></tr>';
 
     try {
       const response = await fetch('/api/admin/users');
@@ -1385,10 +1682,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUsersData = data.users;
         renderUsersTable(data.users);
       } else {
-        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--accent-rose);">Erro ao carregar usuários.</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--accent-rose);">Erro ao carregar usuários.</td></tr>';
       }
     } catch (err) {
-      usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--accent-rose);">Erro de conexão com o servidor.</td></tr>';
+      usersTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--accent-rose);">Erro de conexão com o servidor.</td></tr>';
     }
   }
 
@@ -1414,15 +1711,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (u.role === 'admin') roleLabel = 'Administrador';
       if (u.role === 'vendedor') roleLabel = 'Vendedor';
 
+      const emailHtml = u.email 
+        ? `<span style="font-size: 0.84rem; color: #38bdf8; font-family: var(--font-mono);">${escapeHtml(u.email)}</span>` 
+        : `<span class="badge" style="background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.75rem;">⚠️ Sem E-mail</span>`;
+
       tr.innerHTML = `
-        <td><strong>${u.username}</strong></td>
-        <td>${u.name}</td>
+        <td><strong>${escapeHtml(u.username)}</strong></td>
+        <td>${escapeHtml(u.name)}</td>
+        <td>${emailHtml}</td>
         <td><span class="status-badge ${u.role === 'admin' ? 'sucesso' : (u.role === 'vendedor' ? 'pendente' : 'neutro')}">${roleLabel}</span></td>
         <td>${permsHtml || '<em style="color: var(--text-muted);">Nenhuma</em>'}</td>
         <td><span class="status-badge ${u.active ? 'sucesso' : 'divergente'}">${u.active ? 'Ativo' : 'Inativo'}</span></td>
         <td style="text-align: right;">
-          <button class="btn btn-outline btn-sm btn-edit-user" data-user="${u.username}" title="Editar Usuário / Permissões">✏️ Editar</button>
-          ${!isMainAdmin ? `<button class="btn btn-outline btn-sm btn-delete-user" data-user="${u.username}" style="color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.3);" title="Excluir Usuário">🗑️</button>` : ''}
+          <button class="btn btn-outline btn-sm btn-edit-user" data-user="${escapeHtml(u.username)}" title="Editar Usuário / Permissões">✏️ Editar</button>
+          ${!isMainAdmin ? `<button class="btn btn-outline btn-sm btn-delete-user" data-user="${escapeHtml(u.username)}" style="color: var(--accent-rose); border-color: rgba(244, 63, 94, 0.3);" title="Excluir Usuário">🗑️</button>` : ''}
         </td>
       `;
 
@@ -1464,6 +1766,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userModalTitle) userModalTitle.textContent = '➕ Cadastrar Novo Usuário';
     if (editUsername) { editUsername.value = ''; editUsername.disabled = false; }
     if (editName) editName.value = '';
+    if (editEmail) editEmail.value = '';
     if (editPassword) editPassword.value = '';
     if (editRole) editRole.value = 'user';
     if (permLogistica) permLogistica.checked = true;
@@ -1479,6 +1782,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userModalTitle) userModalTitle.textContent = `✏️ Editar Usuário: ${userObj.username}`;
     if (editUsername) { editUsername.value = userObj.username; editUsername.disabled = true; }
     if (editName) editName.value = userObj.name;
+    if (editEmail) editEmail.value = userObj.email || '';
     if (editPassword) editPassword.value = '';
     if (editRole) editRole.value = userObj.role || 'user';
 
@@ -1523,6 +1827,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         username: editUsername.value.trim(),
         name: editName.value.trim(),
+        email: editEmail ? editEmail.value.trim() : '',
         pass: editPassword.value.trim(),
         role: editRole.value,
         permissions: selectedPerms,

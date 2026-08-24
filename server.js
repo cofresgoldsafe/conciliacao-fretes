@@ -45,6 +45,9 @@ const {
   deleteUser: deleteUserDB,
   hashPassword,
   verifyPassword,
+  create2FAToken,
+  verify2FAToken,
+  resend2FAToken,
   getHistory: getHistoryDB,
   saveHistoryItem: saveHistoryItemDB,
   logUserActivity,
@@ -54,6 +57,12 @@ const {
   getInterWebhookEvents,
   isPostgresConnected
 } = require('./postgres_db');
+
+const {
+  send2FACodeEmail,
+  maskEmail,
+  isValidEmail
+} = require('./mailer');
 
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
@@ -72,6 +81,34 @@ const authLimiter = rateLimit({
   }
 });
 
+// Rate Limiter para Verificação de Código 2FA
+const verify2FALimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutos
+  max: 20, // máximo 20 tentativas por IP em 5 minutos
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: 'Muitas tentativas de validação 2FA a partir deste IP. Por favor, aguarde alguns instantes.'
+    });
+  }
+});
+
+// Rate Limiter para Reenvio de Código 2FA (anti-flooding de e-mail)
+const resend2FALimiter = rateLimit({
+  windowMs: 45 * 1000, // 45 segundos
+  max: 2, // máximo 2 solicitações por IP em 45 segundos
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: 'Por favor, aguarde 45 segundos antes de solicitar um novo envio de código.'
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
 
@@ -79,7 +116,9 @@ function getUserFromReq(req) {
   if (req.user && req.user.username) {
     return { 
       username: String(req.user.username).toLowerCase().trim(), 
-      name: String(req.user.name || req.user.username).trim() 
+      name: String(req.user.name || req.user.username).trim(),
+      role: req.user.role || 'user',
+      permissions: req.user.permissions || []
     };
   }
   const authHeader = req.headers['authorization'];
@@ -89,16 +128,18 @@ function getUserFromReq(req) {
       if (decoded && decoded.username) {
         return {
           username: String(decoded.username).toLowerCase().trim(),
-          name: String(decoded.name || decoded.username).trim()
+          name: String(decoded.name || decoded.username).trim(),
+          role: decoded.role || 'user',
+          permissions: decoded.permissions || []
         };
       }
     } catch {}
   }
-  const rawUser = req.headers['x-user-username'] || req.query.loggedUser || (req.body && req.body.loggedUser) || '';
-  const rawName = req.headers['x-user-name'] || req.query.loggedName || (req.body && req.body.loggedName) || rawUser;
   return { 
-    username: String(rawUser || 'sistema').toLowerCase().trim(), 
-    name: String(rawName || rawUser || 'Sistema').trim() 
+    username: 'sistema', 
+    name: 'Sistema',
+    role: 'anonymous',
+    permissions: []
   };
 }
 
@@ -109,15 +150,6 @@ function requireAuth(req, res, next) {
     : (req.headers['x-auth-token'] || req.query.token);
 
   if (!token) {
-    const legacyUser = req.headers['x-user-username'];
-    if (legacyUser) {
-      const u = String(legacyUser).toLowerCase().trim();
-      req.user = { 
-        username: u, 
-        role: u === 'alexandre' ? 'admin' : 'user' 
-      };
-      return next();
-    }
     return res.status(401).json({ success: false, message: 'Autenticação necessária. Faça login para continuar.' });
   }
 
@@ -126,22 +158,13 @@ function requireAuth(req, res, next) {
     req.user = decoded;
     next();
   } catch (err) {
-    if (typeof token === 'string' && token.startsWith('auth-token-')) {
-      const parts = token.split('-');
-      const username = (parts[2] || 'usuario').toLowerCase();
-      req.user = { 
-        username: username, 
-        role: username === 'alexandre' ? 'admin' : 'user' 
-      };
-      return next();
-    }
     return res.status(401).json({ success: false, message: 'Sessão expirada ou token inválido.' });
   }
 }
 
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user || !req.user.role || !allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Acesso negado. Privilégios insuficientes.' });
     }
     next();
@@ -375,13 +398,13 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     // Fallback seguro para contas padrão
     if (!authenticatedUser) {
       const defaultSeeds = {
-        'alexandre': { pass: '321654', name: 'Alexandre', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] },
-        'erica': { pass: '1020304050', name: 'Érica', role: 'user', permissions: ['logistica', 'consulta'] },
-        'wallerson': { pass: '10203040', name: 'Wallerson', role: 'user', permissions: ['logistica', 'consulta'] },
-        'juliana': { pass: '102030', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
-        'andrea': { pass: '102030', name: 'Andrea', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] },
-        'figueiredo': { pass: '102030', name: 'Figueiredo', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] },
-        'rubens': { pass: '102030', name: 'Rubens da Silva', role: 'user', permissions: ['financeiro'] }
+        'alexandre': { pass: '321654', name: 'Alexandre', email: 'alexandre@oaco.com.br', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] },
+        'erica': { pass: '1020304050', name: 'Érica', email: 'erica@oaco.com.br', role: 'user', permissions: ['logistica', 'consulta'] },
+        'wallerson': { pass: '10203040', name: 'Wallerson', email: 'wallerson@oaco.com.br', role: 'user', permissions: ['logistica', 'consulta'] },
+        'juliana': { pass: '102030', name: 'Juliana', email: 'juliana@oaco.com.br', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
+        'andrea': { pass: '102030', name: 'Andrea', email: 'andrea@oaco.com.br', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] },
+        'figueiredo': { pass: '102030', name: 'Figueiredo', email: 'figueiredo@oaco.com.br', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] },
+        'rubens': { pass: '102030', name: 'Rubens da Silva', email: 'rubens@oaco.com.br', role: 'user', permissions: ['financeiro'] }
       };
 
       const seed = defaultSeeds[cleanUser];
@@ -389,6 +412,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         authenticatedUser = {
           username: cleanUser,
           name: seed.name,
+          email: seed.email || null,
           role: seed.role,
           vendorCode: seed.vendorCode || null,
           permissions: seed.permissions
@@ -401,6 +425,44 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       return res.status(401).json({ success: false, message: 'Usuário ou senha incorretos ou usuário inativo.' });
     }
 
+    // Identifica e-mail cadastrado para 2FA
+    const targetEmail = (userFound && userFound.email) || authenticatedUser.email || (cleanUser === 'alexandre' ? 'alexandre@oaco.com.br' : null);
+
+    // Se o usuário possui e-mail cadastrado válido, inicia o Desafio 2FA com código de 4 dígitos
+    if (targetEmail && isValidEmail(targetEmail)) {
+      const code4Digits = String(crypto.randomInt(1000, 10000));
+      const { tempToken, expiresAt: tempExpiresAt } = await create2FAToken(authenticatedUser.username, code4Digits, 5);
+
+      // Dispara envio do e-mail de forma assíncrona
+      send2FACodeEmail({
+        to: targetEmail,
+        code: code4Digits,
+        name: authenticatedUser.name,
+        username: authenticatedUser.username,
+        ip: req.ip
+      }).catch(err => {
+        console.error('Erro ao enviar e-mail 2FA no login:', err.message);
+      });
+
+      logUserActivity({
+        username: authenticatedUser.username,
+        userName: authenticatedUser.name,
+        actionType: 'SOLICITACAO_2FA',
+        description: `Código 2FA de 4 dígitos gerado e enviado para ${maskEmail(targetEmail)}`,
+        ip: req.ip
+      }).catch(() => {});
+
+      return res.json({
+        success: true,
+        require2FA: true,
+        tempToken: tempToken,
+        emailMasked: maskEmail(targetEmail),
+        expiresInSeconds: 300,
+        message: `Código de segurança de 4 dígitos enviado para ${maskEmail(targetEmail)}.`
+      });
+    }
+
+    // Fallback para contas legadas sem e-mail cadastrado
     const tokenPayload = {
       username: authenticatedUser.username,
       name: authenticatedUser.name,
@@ -416,12 +478,14 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
       username: authenticatedUser.username,
       userName: authenticatedUser.name,
       actionType: 'LOGIN',
-      description: `Login realizado com sucesso (${authenticatedUser.role})`,
+      description: `Login realizado sem 2FA (e-mail não configurado) (${authenticatedUser.role})`,
       ip: req.ip
     }).catch(() => {});
 
     return res.json({
       success: true,
+      require2FA: false,
+      warnSetupEmail: true,
       token: token,
       user: authenticatedUser,
       expiresAt: expiresAt,
@@ -432,6 +496,189 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   }
 });
 
+// API: Validação do Código 2FA de 4 Dígitos
+app.post('/api/auth/verify-2fa', verify2FALimiter, async (req, res) => {
+  try {
+    const { tempToken, code } = req.body || {};
+
+    if (!tempToken || !code) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Token temporário e código de 4 dígitos são obrigatórios.' 
+      });
+    }
+
+    const verifyResult = await verify2FAToken(tempToken, code);
+    if (!verifyResult.valid) {
+      return res.status(400).json({
+        success: false,
+        reason: verifyResult.reason,
+        message: verifyResult.message,
+        attemptsLeft: verifyResult.attemptsLeft
+      });
+    }
+
+    const cleanUser = String(verifyResult.username).toLowerCase().trim();
+    const allUsers = await getUsersDB();
+    const userFound = allUsers.find(u => String(u.username || '').toLowerCase() === cleanUser && u.active !== false);
+
+    const authenticatedUser = {
+      username: cleanUser,
+      name: userFound ? userFound.name : (cleanUser.charAt(0).toUpperCase() + cleanUser.slice(1)),
+      email: userFound ? userFound.email : null,
+      role: userFound ? (userFound.role || 'user') : (cleanUser === 'alexandre' ? 'admin' : 'user'),
+      vendorCode: userFound ? userFound.vendorCode : null,
+      permissions: userFound ? (userFound.permissions || ['logistica', 'consulta']) : (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
+    };
+
+    const tokenPayload = {
+      username: authenticatedUser.username,
+      name: authenticatedUser.name,
+      role: authenticatedUser.role,
+      vendorCode: authenticatedUser.vendorCode,
+      permissions: authenticatedUser.permissions
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+    logUserActivity({
+      username: authenticatedUser.username,
+      userName: authenticatedUser.name,
+      actionType: 'LOGIN_2FA',
+      description: `Autenticação em dois fatores realizada com sucesso (${authenticatedUser.role})`,
+      ip: req.ip
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      token: token,
+      user: authenticatedUser,
+      expiresAt: expiresAt,
+      message: 'Autenticação em dois fatores realizada com sucesso!'
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao validar código de dois fatores.');
+  }
+});
+
+// API: Reenvio de Código 2FA de 4 Dígitos
+app.post('/api/auth/resend-2fa', resend2FALimiter, async (req, res) => {
+  try {
+    const { tempToken } = req.body || {};
+
+    if (!tempToken) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Token temporário é obrigatório para reenvio de código.' 
+      });
+    }
+
+    const code4Digits = String(crypto.randomInt(1000, 10000));
+    const updateResult = await resend2FAToken(tempToken, code4Digits, 5);
+
+    if (!updateResult.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: updateResult.message || 'Sessão 2FA expirada ou inválida. Faça login novamente.' 
+      });
+    }
+
+    const cleanUser = updateResult.username;
+    const allUsers = await getUsersDB();
+    const userFound = allUsers.find(u => String(u.username || '').toLowerCase() === cleanUser);
+    const userEmail = userFound ? userFound.email : (cleanUser === 'alexandre' ? 'alexandre@oaco.com.br' : null);
+
+    if (userEmail && isValidEmail(userEmail)) {
+      send2FACodeEmail({
+        to: userEmail,
+        code: code4Digits,
+        name: userFound ? userFound.name : cleanUser,
+        username: cleanUser,
+        ip: req.ip
+      }).catch(err => {
+        console.error('Erro ao reenviar e-mail 2FA:', err.message);
+      });
+    }
+
+    logUserActivity({
+      username: cleanUser,
+      userName: userFound ? userFound.name : cleanUser,
+      actionType: 'REENVIO_2FA',
+      description: `Novo código 2FA reenviado para ${maskEmail(userEmail)}`,
+      ip: req.ip
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      emailMasked: maskEmail(userEmail),
+      message: `Novo código de 4 dígitos enviado para ${maskEmail(userEmail)}.`
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao reenviar código 2FA.');
+  }
+});
+
+// API: Alterar Senha do Próprio Usuário Autenticado (Anti-IDOR / Anti-BOLA)
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'A senha atual e a nova senha são obrigatórias.' 
+      });
+    }
+
+    if (String(newPassword).trim().length < 4) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'A nova senha deve possuir no mínimo 4 caracteres.' 
+      });
+    }
+
+    // Identidade derivada ESTRITAMENTE do token JWT validado (Zero IDOR / BOLA)
+    const tokenUsername = String(req.user.username).toLowerCase().trim();
+    const allUsers = await getUsersDB();
+    const userFound = allUsers.find(u => u.username.toLowerCase() === tokenUsername);
+
+    if (!userFound) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado.' });
+    }
+
+    // Validação estrita da senha atual
+    const isCurrentMatch = await verifyPassword(String(currentPassword).trim(), userFound.pass);
+    if (!isCurrentMatch) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Senha atual incorreta. Por favor, verifique e tente novamente.' 
+      });
+    }
+
+    // Salva a nova senha (que será hasheada com bcrypt por saveUserDB)
+    await saveUserDB({
+      ...userFound,
+      pass: String(newPassword).trim()
+    });
+
+    logUserActivity({
+      username: tokenUsername,
+      userName: userFound.name,
+      actionType: 'TROCA_SENHA',
+      description: `Alterou a própria senha com sucesso`,
+      ip: req.ip
+    }).catch(() => {});
+
+    return res.json({ 
+      success: true, 
+      message: 'Sua senha foi alterada com sucesso!' 
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao alterar senha.');
+  }
+});
+
 // API: Listar Usuários (Admin)
 app.get('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) => {
   try {
@@ -439,6 +686,7 @@ app.get('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) 
     const users = allUsers.map(u => ({
       username: u.username,
       name: u.name,
+      email: u.email || '',
       role: u.role || 'user',
       vendorCode: u.vendorCode || '',
       permissions: u.permissions || ['logistica', 'consulta'],
@@ -453,10 +701,14 @@ app.get('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) 
 // API: Salvar / Atualizar Usuário e Permissões (Admin)
 app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const { username, name, pass, role, vendorCode, permissions, active } = req.body || {};
+    const { username, name, email, pass, role, vendorCode, permissions, active } = req.body || {};
 
     if (!username || !name) {
       return res.status(400).json({ success: false, message: 'Usuário e Nome são obrigatórios.' });
+    }
+
+    if (email && !isValidEmail(String(email).trim())) {
+      return res.status(400).json({ success: false, message: 'Por favor, informe um endereço de e-mail válido (ex: nome@empresa.com.br).' });
     }
 
     const allowedTabs = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
@@ -466,9 +718,12 @@ app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req,
     }
 
     const cleanUser = String(username).trim().toLowerCase();
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+
     await saveUserDB({
       username: cleanUser,
       name: String(name).trim(),
+      email: cleanEmail,
       pass: pass ? String(pass).trim() : undefined,
       role: role || 'user',
       vendorCode: vendorCode || null,
@@ -481,7 +736,7 @@ app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req,
       username: curUser.username,
       userName: curUser.name,
       actionType: 'GESTÃO_USUARIO',
-      description: `Salvou configurações do usuário "${cleanUser}"`,
+      description: `Salvou configurações do usuário "${cleanUser}" (${cleanEmail || 'sem email'})`,
       ip: req.ip
     }).catch(() => {});
 

@@ -123,10 +123,18 @@ function getInterCredentials(empresaCodigo) {
       cert = certRaw;
     } else if (typeof certRaw === 'string' && fs.existsSync(certRaw)) {
       cert = fs.readFileSync(certRaw);
-    } else if (typeof certRaw === 'string' && certRaw.includes('BEGIN CERTIFICATE')) {
-      cert = Buffer.from(certRaw, 'utf8');
     } else if (typeof certRaw === 'string') {
-      try { cert = Buffer.from(certRaw, 'base64'); } catch (e) { cert = certRaw; }
+      const normalizedCert = certRaw.replace(/\\n/g, '\n').trim();
+      if (normalizedCert.includes('BEGIN CERTIFICATE')) {
+        cert = Buffer.from(normalizedCert, 'utf8');
+      } else {
+        try { 
+          const b64Buf = Buffer.from(normalizedCert, 'base64');
+          cert = b64Buf.toString('utf8').includes('BEGIN CERTIFICATE') ? b64Buf : Buffer.from(normalizedCert, 'utf8');
+        } catch (e) { 
+          cert = Buffer.from(normalizedCert, 'utf8'); 
+        }
+      }
     }
   }
 
@@ -135,10 +143,18 @@ function getInterCredentials(empresaCodigo) {
       key = keyRaw;
     } else if (typeof keyRaw === 'string' && fs.existsSync(keyRaw)) {
       key = fs.readFileSync(keyRaw);
-    } else if (typeof keyRaw === 'string' && (keyRaw.includes('BEGIN RSA PRIVATE KEY') || keyRaw.includes('BEGIN PRIVATE KEY'))) {
-      key = Buffer.from(keyRaw, 'utf8');
     } else if (typeof keyRaw === 'string') {
-      try { key = Buffer.from(keyRaw, 'base64'); } catch (e) { key = keyRaw; }
+      const normalizedKey = keyRaw.replace(/\\n/g, '\n').trim();
+      if (normalizedKey.includes('BEGIN RSA PRIVATE KEY') || normalizedKey.includes('BEGIN PRIVATE KEY') || normalizedKey.includes('BEGIN EC PRIVATE KEY')) {
+        key = Buffer.from(normalizedKey, 'utf8');
+      } else {
+        try { 
+          const b64Buf = Buffer.from(normalizedKey, 'base64');
+          key = b64Buf.toString('utf8').includes('BEGIN') ? b64Buf : Buffer.from(normalizedKey, 'utf8');
+        } catch (e) { 
+          key = Buffer.from(normalizedKey, 'utf8'); 
+        }
+      }
     }
   }
 

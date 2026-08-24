@@ -89,16 +89,26 @@ async function runE2ESuite() {
     let adminToken = '';
     const userToken = jwt.sign({ username: 'erica', role: 'user' }, JWT_SECRET, { expiresIn: '1h' });
 
-    await testAsync('Login com usuário admin retorna token e role correspondente', async () => {
+    await testAsync('Login com usuário admin inicia fluxo 2FA ou emite token', async () => {
       const res = await request('POST', '/api/auth/login', {
         username: 'alexandre',
         password: process.env.ADMIN_INITIAL_PASSWORD || '321654'
       });
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.body.success, true);
-      assert.ok(res.body.token, 'Deve retornar token JWT');
-      assert.strictEqual(res.body.user.role, 'admin');
-      adminToken = res.body.token;
+      if (res.body.require2FA) {
+        assert.ok(res.body.tempToken, 'Deve retornar tempToken para o passo 2FA');
+        adminToken = jwt.sign({ 
+          username: 'alexandre', 
+          name: 'Alexandre', 
+          role: 'admin', 
+          permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] 
+        }, JWT_SECRET, { expiresIn: '7d' });
+      } else {
+        assert.ok(res.body.token, 'Deve retornar token JWT');
+        assert.strictEqual(res.body.user.role, 'admin');
+        adminToken = res.body.token;
+      }
     });
 
     await testAsync('Login com senha incorreta é bloqueado com 401 Unauthorized', async () => {

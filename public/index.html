@@ -647,12 +647,13 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th style="width: 15%;">Usuário (Login)</th>
-                <th style="width: 20%;">Nome Completo</th>
-                <th style="width: 15%;">Perfil</th>
-                <th style="width: 30%;">Abas Permitidas</th>
-                <th style="width: 10%;">Status</th>
-                <th style="width: 10%; text-align: right;">Ações</th>
+                <th style="width: 12%;">Usuário (Login)</th>
+                <th style="width: 16%;">Nome Completo</th>
+                <th style="width: 20%;">E-mail (2FA)</th>
+                <th style="width: 12%;">Perfil</th>
+                <th style="width: 24%;">Abas Permitidas</th>
+                <th style="width: 8%;">Status</th>
+                <th style="width: 8%; text-align: right;">Ações</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
@@ -992,6 +993,11 @@
           </div>
 
           <div class="form-group">
+            <label for="editEmail">E-mail Corporativo (Autenticação 2FA)</label>
+            <input type="email" id="editEmail" class="input-text" placeholder="ex: joao@oaco.com.br" required />
+          </div>
+
+          <div class="form-group">
             <label for="editPassword">Senha (deixe em branco para manter a atual)</label>
             <input type="password" id="editPassword" class="input-text" placeholder="Digite a senha..." />
           </div>
@@ -1052,8 +1058,13 @@
       <div class="modal-body">
         <form id="myPassForm" style="display: flex; flex-direction: column; gap: 1rem;">
           <div class="form-group">
+            <label for="currentMyPassword">Senha Atual</label>
+            <input type="password" id="currentMyPassword" class="input-text" placeholder="Digite sua senha atual..." required />
+          </div>
+
+          <div class="form-group">
             <label for="newMyPassword">Nova Senha</label>
-            <input type="password" id="newMyPassword" class="input-text" placeholder="Digite sua nova senha..." required />
+            <input type="password" id="newMyPassword" class="input-text" placeholder="Digite sua nova senha (mínimo 4 caracteres)..." required />
           </div>
 
           <div class="form-group">
@@ -1105,6 +1116,7 @@
         <p>Acesso Restrito — Multi-Empresas Protheus</p>
       </div>
 
+      <!-- Etapa 1: Usuário e Senha -->
       <form id="loginForm" class="login-form">
         <div class="form-group">
           <label for="loginUsername">Usuário</label>
@@ -1121,8 +1133,49 @@
         </div>
 
         <button type="submit" id="btnLoginSubmit" class="btn btn-primary btn-large btn-block">
-          🔐 Entrar no Sistema
+          🔐 Continuar
         </button>
+      </form>
+
+      <!-- Etapa 2: Código de Segurança 2FA (4 Dígitos por E-mail) -->
+      <form id="twoFactorForm" class="login-form hidden" style="margin-top: 0.5rem;">
+        <div class="two-factor-info-box" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 12px 14px; margin-bottom: 1rem; text-align: center;">
+          <span style="font-size: 1.6rem; display: block; margin-bottom: 4px;">📬</span>
+          <strong style="color: #38bdf8; font-size: 0.95rem; display: block;">Verificação em Duas Etapas</strong>
+          <p id="twoFactorMsgText" style="margin: 6px 0 0 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
+            Enviamos um código de segurança de 4 dígitos para:
+          </p>
+          <span id="twoFactorEmailMasked" style="display: block; font-weight: 700; color: #f8fafc; font-family: var(--font-mono); margin-top: 4px; font-size: 0.92rem;">al***@oaco.com.br</span>
+        </div>
+
+        <div class="form-group" style="text-align: center;">
+          <label style="margin-bottom: 8px; display: block; font-weight: 600; font-size: 0.9rem;">Digite o código de 4 dígitos:</label>
+          <div class="otp-container" style="display: flex; justify-content: center; gap: 10px; margin: 8px 0 16px 0;">
+            <input type="text" id="digit1" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" autocomplete="one-time-code" style="width: 52px; height: 58px; text-align: center; font-size: 28px; font-weight: 700; font-family: var(--font-mono); border-radius: 8px; border: 2px solid var(--panel-border); background: var(--bg-dark); color: #38bdf8;" />
+            <input type="text" id="digit2" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" style="width: 52px; height: 58px; text-align: center; font-size: 28px; font-weight: 700; font-family: var(--font-mono); border-radius: 8px; border: 2px solid var(--panel-border); background: var(--bg-dark); color: #38bdf8;" />
+            <input type="text" id="digit3" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" style="width: 52px; height: 58px; text-align: center; font-size: 28px; font-weight: 700; font-family: var(--font-mono); border-radius: 8px; border: 2px solid var(--panel-border); background: var(--bg-dark); color: #38bdf8;" />
+            <input type="text" id="digit4" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" style="width: 52px; height: 58px; text-align: center; font-size: 28px; font-weight: 700; font-family: var(--font-mono); border-radius: 8px; border: 2px solid var(--panel-border); background: var(--bg-dark); color: #38bdf8;" />
+          </div>
+        </div>
+
+        <div id="twoFactorErrorMsg" class="login-error-msg hidden" style="margin-bottom: 12px;"></div>
+
+        <button type="submit" id="btnVerify2FA" class="btn btn-primary btn-large btn-block">
+          🔓 Confirmar e Entrar
+        </button>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 0.82rem;">
+          <button type="button" id="btnBackToLogin" style="background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; padding: 0;">
+            ← Voltar ao Login
+          </button>
+
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span id="twoFactorTimer" style="color: var(--text-muted); font-family: var(--font-mono);">05:00</span>
+            <button type="button" id="btnResend2FA" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 3px 8px;" title="Reenviar código por e-mail">
+              🔄 Reenviar
+            </button>
+          </div>
+        </div>
       </form>
 
       <div class="login-footer">

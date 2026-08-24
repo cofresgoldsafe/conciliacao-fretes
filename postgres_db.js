@@ -35,6 +35,9 @@ const dataDir = path.join(__dirname, 'data');
 const usersFile = path.join(dataDir, 'users.json');
 const historyFile = path.join(dataDir, 'history.json');
 
+// Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
+const local2FATokens = new Map();
+
 let pool = null;
 let isConnected = false;
 let lastDbError = null;
@@ -237,14 +240,32 @@ async function initPostgres() {
         );
       `);
 
-      // 5. Garante colunas de rastreamento na tabela users
+      // 5. Garante colunas de rastreamento e e-mail na tabela users
       await client.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS total_actions INTEGER DEFAULT 0;
       `);
 
-      // 6. Cria Tabela de Eventos de Webhook (Banco Inter / Multi-Empresas 14, 15, 16)
+      // 6. Cria Tabela de Controle de Códigos 2FA Temporários
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS user_2fa_tokens (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(100) NOT NULL,
+          temp_token VARCHAR(255) UNIQUE NOT NULL,
+          code_hash VARCHAR(200) NOT NULL,
+          attempts INTEGER DEFAULT 0,
+          max_attempts INTEGER DEFAULT 3,
+          used BOOLEAN DEFAULT FALSE,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_2fa_temp_token ON user_2fa_tokens(temp_token);
+        CREATE INDEX IF NOT EXISTS idx_user_2fa_expires_at ON user_2fa_tokens(expires_at);
+      `);
+
+      // 7. Cria Tabela de Eventos de Webhook (Banco Inter / Multi-Empresas 14, 15, 16)
       await client.query(`
         CREATE TABLE IF NOT EXISTS inter_webhook_events (
           id SERIAL PRIMARY KEY,
@@ -264,7 +285,7 @@ async function initPostgres() {
         `);
       } catch {}
 
-      // 4. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
+      // 8. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
 
@@ -281,24 +302,25 @@ async function initPostgres() {
 
         if (localUsers.length === 0) {
           localUsers = [
-            { username: 'alexandre', name: 'Alexandre', pass: '321654', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'], active: true },
-            { username: 'erica', name: 'Érica', pass: '1020304050', role: 'user', permissions: ['logistica', 'consulta'], active: true },
-            { username: 'wallerson', name: 'Wallerson', pass: '10203040', role: 'user', permissions: ['logistica', 'consulta'], active: true },
-            { username: 'juliana', name: 'Juliana', pass: '102030', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },
-            { username: 'andrea', name: 'Andrea', pass: '102030', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'], active: true },
-            { username: 'figueiredo', name: 'Figueiredo', pass: '102030', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'], active: true }
+            { username: 'alexandre', name: 'Alexandre', email: 'alexandre@oaco.com.br', pass: '321654', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'], active: true },
+            { username: 'erica', name: 'Érica', email: 'erica@oaco.com.br', pass: '1020304050', role: 'user', permissions: ['logistica', 'consulta'], active: true },
+            { username: 'wallerson', name: 'Wallerson', email: 'wallerson@oaco.com.br', pass: '10203040', role: 'user', permissions: ['logistica', 'consulta'], active: true },
+            { username: 'juliana', name: 'Juliana', email: 'juliana@oaco.com.br', pass: '102030', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },
+            { username: 'andrea', name: 'Andrea', email: 'andrea@oaco.com.br', pass: '102030', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'], active: true },
+            { username: 'figueiredo', name: 'Figueiredo', email: 'figueiredo@oaco.com.br', pass: '102030', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'], active: true }
           ];
         }
 
         for (const u of localUsers) {
           const hashedPass = await hashPassword(u.pass || '102030');
           await client.query(`
-            INSERT INTO users (username, name, pass, role, vendor_code, permissions, active)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO users (username, name, email, pass, role, vendor_code, permissions, active)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (username) DO NOTHING;
           `, [
             u.username.toLowerCase().trim(),
             u.name || u.username,
+            u.email ? u.email.toLowerCase().trim() : null,
             hashedPass,
             u.role || 'user',
             u.vendorCode || null,
@@ -328,7 +350,7 @@ async function getUsers() {
   if (p) {
     try {
       const res = await safeQuery(`
-        SELECT username, name, pass, role, vendor_code AS "vendorCode", permissions, active 
+        SELECT username, name, email, pass, role, vendor_code AS "vendorCode", permissions, active 
         FROM users 
         ORDER BY id ASC;
       `);
@@ -360,6 +382,7 @@ async function getUsers() {
 async function saveUser(userData) {
   const cleanUser = String(userData.username || '').trim().toLowerCase();
   const cleanName = String(userData.name || '').trim();
+  const cleanEmail = userData.email ? String(userData.email).trim().toLowerCase() : null;
   const cleanRole = userData.role || 'user';
   const vendorCode = userData.vendorCode || null;
   const permissions = Array.isArray(userData.permissions) ? userData.permissions : ['logistica', 'consulta'];
@@ -375,31 +398,33 @@ async function saveUser(userData) {
     try {
       if (hashedPass) {
         await safeQuery(`
-          INSERT INTO users (username, name, pass, role, vendor_code, permissions, active, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          INSERT INTO users (username, name, email, pass, role, vendor_code, permissions, active, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
           ON CONFLICT (username) DO UPDATE SET
             name = EXCLUDED.name,
+            email = EXCLUDED.email,
             pass = EXCLUDED.pass,
             role = EXCLUDED.role,
             vendor_code = EXCLUDED.vendor_code,
             permissions = EXCLUDED.permissions,
             active = EXCLUDED.active,
             updated_at = NOW();
-        `, [cleanUser, cleanName, hashedPass, cleanRole, vendorCode, JSON.stringify(permissions), active]);
+        `, [cleanUser, cleanName, cleanEmail, hashedPass, cleanRole, vendorCode, JSON.stringify(permissions), active]);
       } else {
         // Atualiza sem mexer na senha
         const defaultHash = await hashPassword('102030');
         await safeQuery(`
-          INSERT INTO users (username, name, pass, role, vendor_code, permissions, active, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          INSERT INTO users (username, name, email, pass, role, vendor_code, permissions, active, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
           ON CONFLICT (username) DO UPDATE SET
             name = EXCLUDED.name,
+            email = EXCLUDED.email,
             role = EXCLUDED.role,
             vendor_code = EXCLUDED.vendor_code,
             permissions = EXCLUDED.permissions,
             active = EXCLUDED.active,
             updated_at = NOW();
-        `, [cleanUser, cleanName, defaultHash, cleanRole, vendorCode, JSON.stringify(permissions), active]);
+        `, [cleanUser, cleanName, cleanEmail, defaultHash, cleanRole, vendorCode, JSON.stringify(permissions), active]);
       }
     } catch (err) {
       console.warn('⚠️ [Postgres] Erro ao salvar usuário no banco:', err.message);
@@ -415,6 +440,7 @@ async function saveUser(userData) {
     const idx = localUsers.findIndex(u => u.username.toLowerCase() === cleanUser);
     if (idx >= 0) {
       localUsers[idx].name = cleanName;
+      if (cleanEmail !== undefined) localUsers[idx].email = cleanEmail;
       if (hashedPass) {
         localUsers[idx].pass = hashedPass;
       }
@@ -427,6 +453,7 @@ async function saveUser(userData) {
       localUsers.push({
         username: cleanUser,
         name: cleanName,
+        email: cleanEmail,
         pass: defaultHash,
         role: cleanRole,
         vendorCode: vendorCode,
@@ -440,6 +467,228 @@ async function saveUser(userData) {
   }
 
   return true;
+}
+
+/**
+ * =========================================================================
+ * MÓDULO 2FA: GERENCIAMENTO DE CÓDIGOS E TOKENS TEMPORÁRIOS DE DOIS FATORES
+ * =========================================================================
+ */
+
+/**
+ * Cria um novo token 2FA temporário para o usuário
+ */
+async function create2FAToken(username, code, expiresInMinutes = 5) {
+  const cleanUser = String(username || '').trim().toLowerCase();
+  const cleanCode = String(code || '').trim();
+  const tempToken = '2fa_' + crypto.randomBytes(24).toString('hex');
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+  const codeHash = await hashPassword(cleanCode);
+
+  // Armazena no PostgreSQL se disponível
+  const p = getPool();
+  if (p) {
+    try {
+      await safeQuery(`
+        INSERT INTO user_2fa_tokens (username, temp_token, code_hash, attempts, max_attempts, used, expires_at)
+        VALUES ($1, $2, $3, 0, 3, FALSE, $4);
+      `, [cleanUser, tempToken, codeHash, expiresAt]);
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao salvar token 2FA no banco:', err.message);
+    }
+  }
+
+  // Armazena também em memória (Cache local / Fallback)
+  local2FATokens.set(tempToken, {
+    username: cleanUser,
+    tempToken,
+    codeHash,
+    plainCode: cleanCode, // Mantido apenas em memória para validação em dev/testes
+    attempts: 0,
+    maxAttempts: 3,
+    used: false,
+    expiresAt: expiresAt.getTime()
+  });
+
+  return {
+    tempToken,
+    expiresAt: expiresAt.getTime()
+  };
+}
+
+/**
+ * Valida o código 2FA de 4 dígitos informado pelo usuário
+ */
+async function verify2FAToken(tempToken, code) {
+  if (!tempToken || !code) {
+    return { valid: false, reason: 'MISSING_DATA', message: 'Token temporário e código são obrigatórios.' };
+  }
+
+  const cleanToken = String(tempToken).trim();
+  const cleanCode = String(code).trim();
+  const now = Date.now();
+
+  // 1. Tenta recuperar do PostgreSQL
+  const p = getPool();
+  let dbRecord = null;
+
+  if (p) {
+    try {
+      const res = await safeQuery(`
+        SELECT id, username, temp_token, code_hash, attempts, max_attempts, used, expires_at
+        FROM user_2fa_tokens
+        WHERE temp_token = $1
+        LIMIT 1;
+      `, [cleanToken]);
+      if (res && res.rows && res.rows.length > 0) {
+        dbRecord = res.rows[0];
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar token 2FA no banco:', err.message);
+    }
+  }
+
+  // 2. Fallback para memória local
+  const localRecord = local2FATokens.get(cleanToken);
+  const record = dbRecord || localRecord;
+
+  if (!record) {
+    return {
+      valid: false,
+      reason: 'NOT_FOUND',
+      message: 'Código de segurança não encontrado ou sessão expirada. Faça login novamente.'
+    };
+  }
+
+  const recordExpiresAt = dbRecord ? new Date(dbRecord.expires_at).getTime() : localRecord.expiresAt;
+  const isUsed = dbRecord ? !!dbRecord.used : !!localRecord.used;
+  let attempts = dbRecord ? parseInt(dbRecord.attempts || 0, 10) : localRecord.attempts;
+  const maxAttempts = dbRecord ? parseInt(dbRecord.max_attempts || 3, 10) : (localRecord.maxAttempts || 3);
+  const username = dbRecord ? dbRecord.username : localRecord.username;
+  const codeHash = dbRecord ? dbRecord.code_hash : localRecord.codeHash;
+
+  if (now > recordExpiresAt) {
+    return {
+      valid: false,
+      reason: 'EXPIRED',
+      message: 'O código de segurança de 4 dígitos expirou (tempo limite de 5 minutos). Solicite um novo código.'
+    };
+  }
+
+  if (attempts >= maxAttempts) {
+    return {
+      valid: false,
+      reason: 'BLOCKED',
+      attemptsLeft: 0,
+      message: 'Limite de tentativas excedido para este código de segurança. Solicite um novo código por e-mail.'
+    };
+  }
+
+  if (isUsed) {
+    return {
+      valid: false,
+      reason: 'ALREADY_USED',
+      message: 'Este código de segurança já foi utilizado. Solicite um novo código.'
+    };
+  }
+
+  // Verifica compatibilidade do código com bcrypt
+  const isMatch = await verifyPassword(cleanCode, codeHash);
+
+  if (isMatch) {
+    // Marca como utilizado
+    if (p) {
+      safeQuery(`UPDATE user_2fa_tokens SET used = TRUE, attempts = attempts + 1 WHERE temp_token = $1;`, [cleanToken]).catch(() => {});
+    }
+    if (localRecord) {
+      localRecord.used = true;
+      localRecord.attempts += 1;
+    }
+
+    return {
+      valid: true,
+      username
+    };
+  }
+
+  // Código Incorreto: Incrementa contador de tentativas
+  attempts += 1;
+  const attemptsLeft = Math.max(0, maxAttempts - attempts);
+  const willBlock = attempts >= maxAttempts;
+
+  if (p) {
+    safeQuery(`UPDATE user_2fa_tokens SET attempts = $1 WHERE temp_token = $2;`, [attempts, cleanToken]).catch(() => {});
+  }
+  if (localRecord) {
+    localRecord.attempts = attempts;
+  }
+
+  if (willBlock) {
+    return {
+      valid: false,
+      reason: 'BLOCKED',
+      attemptsLeft: 0,
+      message: 'Você errou o código 3 vezes. Por segurança, este código foi cancelado. Solicite um novo código por e-mail.'
+    };
+  }
+
+  return {
+    valid: false,
+    reason: 'INVALID_CODE',
+    attemptsLeft,
+    message: `Código incorreto. Você ainda tem ${attemptsLeft} tentativa(s) restante(s).`
+  };
+}
+
+/**
+ * Reenvia / Atualiza código 2FA para um token temporário ativo
+ */
+async function resend2FAToken(tempToken, newCode, expiresInMinutes = 5) {
+  if (!tempToken || !newCode) return { success: false, message: 'Parâmetros inválidos.' };
+
+  const cleanToken = String(tempToken).trim();
+  const cleanCode = String(newCode).trim();
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
+  const codeHash = await hashPassword(cleanCode);
+
+  let username = null;
+
+  const localRecord = local2FATokens.get(cleanToken);
+  if (localRecord) {
+    username = localRecord.username;
+    localRecord.codeHash = codeHash;
+    localRecord.plainCode = cleanCode;
+    localRecord.attempts = 0;
+    localRecord.used = false;
+    localRecord.expiresAt = expiresAt.getTime();
+  }
+
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await safeQuery(`
+        UPDATE user_2fa_tokens
+        SET code_hash = $1, attempts = 0, used = FALSE, expires_at = $2
+        WHERE temp_token = $3
+        RETURNING username;
+      `, [codeHash, expiresAt, cleanToken]);
+      if (res && res.rows && res.rows.length > 0) {
+        username = res.rows[0].username;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao atualizar reenvio de 2FA:', err.message);
+    }
+  }
+
+  if (!username) {
+    return { success: false, message: 'Sessão de 2FA não encontrada. Faça login novamente.' };
+  }
+
+  return {
+    success: true,
+    username,
+    expiresAt: expiresAt.getTime()
+  };
 }
 
 /**
@@ -823,6 +1072,9 @@ module.exports = {
   deleteUser,
   hashPassword,
   verifyPassword,
+  create2FAToken,
+  verify2FAToken,
+  resend2FAToken,
   getHistory,
   saveHistoryItem,
   logUserActivity,

@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 // Importações dos módulos do projeto
-const { hashPassword, verifyPassword, safeQuery } = require('./postgres_db');
+const { hashPassword, verifyPassword, safeQuery, saveUser } = require('./postgres_db');
 const app = require('./server');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
@@ -173,13 +173,18 @@ async function runSecurityTests() {
   }
 
   try {
-    // 4.1 Login com credenciais válidas
-    await testAsync('Endpoint POST /api/auth/login: Sucesso com credenciais válidas retorna JWT', async () => {
+    // 4.1 Login com credenciais válidas (Desafio 2FA quando possui e-mail ou JWT direto)
+    await testAsync('Endpoint POST /api/auth/login: Sucesso com credenciais válidas retorna desafio 2FA ou JWT', async () => {
       const res = await request('POST', '/api/auth/login', {}, { username: 'alexandre', password: '321654' });
       assert.strictEqual(res.status, 200);
       assert.strictEqual(res.data.success, true);
-      assert(res.data.token && res.data.token.length > 20, 'Deve retornar token JWT');
-      assert.strictEqual(res.data.user.role, 'admin');
+      if (res.data.require2FA) {
+        assert.ok(res.data.tempToken, 'Deve retornar tempToken para o passo 2FA');
+        assert.ok(res.data.emailMasked, 'Deve retornar email mascarado');
+      } else {
+        assert(res.data.token && res.data.token.length > 20, 'Deve retornar token JWT');
+        assert.strictEqual(res.data.user.role, 'admin');
+      }
     });
 
     // 4.2 Login com credenciais inválidas
@@ -247,6 +252,62 @@ async function runSecurityTests() {
       const queryResult = await safeQuery('SELECT 1;');
       // Sem DATABASE_URL, safeQuery retorna null graciosamente
       assert(queryResult === null || typeof queryResult === 'object');
+    });
+
+    // 4.10 [SEC-IDOR] Setup e Endpoint POST /api/auth/change-password rejeita senha atual incorreta
+    await saveUser({
+      username: 'erica',
+      name: 'Érica',
+      pass: '1020304050',
+      role: 'user',
+      permissions: ['logistica', 'consulta'],
+      active: true
+    });
+
+    await testAsync('Endpoint POST /api/auth/change-password: Rejeita troca com senha atual errada', async () => {
+      const res = await request('POST', '/api/auth/change-password', {
+        'Authorization': `Bearer ${userToken}`
+      }, {
+        currentPassword: 'senhaErrada999',
+        newPassword: 'novaSenhaValida123'
+      });
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(res.data.success, false);
+    });
+
+    // 4.11 [SEC-IDOR] Endpoint POST /api/auth/change-password atualiza com senha atual correta
+    await testAsync('Endpoint POST /api/auth/change-password: Sucesso com senha atual correta', async () => {
+      const res = await request('POST', '/api/auth/change-password', {
+        'Authorization': `Bearer ${userToken}`
+      }, {
+        currentPassword: '1020304050',
+        newPassword: 'novaSenhaErica2026'
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.data.success, true);
+    });
+
+    // 4.12 [SEC-IDOR] Endpoint POST /api/auth/change-password ignora tentativa de IDOR no payload
+    await testAsync('Endpoint POST /api/auth/change-password: Previne IDOR (opera apenas no token)', async () => {
+      const res = await request('POST', '/api/auth/change-password', {
+        'Authorization': `Bearer ${userToken}`
+      }, {
+        username: 'alexandre', // Tentativa maliciosa de afetar outro usuário
+        currentPassword: 'novaSenhaErica2026',
+        newPassword: 'senhaRestaurada1020304050'
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.data.success, true);
+    });
+
+    // Restaura estado inicial
+    await saveUser({
+      username: 'erica',
+      name: 'Érica',
+      pass: '1020304050',
+      role: 'user',
+      permissions: ['logistica', 'consulta'],
+      active: true
     });
 
   } finally {
