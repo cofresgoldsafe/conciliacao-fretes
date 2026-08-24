@@ -1570,45 +1570,78 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     }
 
     const pedNormalizado = String(numero_pedido).trim();
-    const seed = parseInt(pedNormalizado.replace(/\D/g, '') || '100', 10);
-    const mockTotal = (seed * 137.5) % 15000 + 1200;
-    const mockUFs = ["SP", "RJ", "MG", "PR", "SC", "RS", "BA", "PE", "GO", "DF"];
-    const mockUF = mockUFs[seed % mockUFs.length];
+    if (!pedNormalizado) {
+      return res.status(400).json({ success: false, error: 'Número do pedido não pode ser vazio.' });
+    }
+
+    const empKeyMap = {
+      "14": "METAL_PLENO",
+      "15": "GSI",
+      "16": "OACO",
+      "METAL_PLENO": "METAL_PLENO",
+      "GSI": "GSI",
+      "OACO": "OACO"
+    };
+    const empKey = empKeyMap[String(empresa).trim()] || "METAL_PLENO";
+
+    // Executa busca real no banco de dados Protheus (SC5 / SC6 / SA1 / SE1)
+    const detalhes = await obterDetalhesPedido(empKey, pedNormalizado);
+
+    if (!detalhes || !detalhes.encontrado) {
+      return res.status(404).json({
+        success: false,
+        encontrado: false,
+        empresa,
+        pedido_venda: pedNormalizado,
+        error: `Pedido #${pedNormalizado} NÃO existe no Protheus para a Empresa ${empresa}. Verifique o número e tente novamente.`
+      });
+    }
+
+    const cli = detalhes.cliente || {};
+    const tot = detalhes.totais || {};
+    const email = String(cli.email || '').toLowerCase().trim();
+    const isEmailGratuito = email.includes('@gmail') || email.includes('@hotmail') || email.includes('@yahoo') || email.includes('@outlook');
+    const endStr = String(cli.endereco || '').toLowerCase();
+    const isSalaConj = endStr.includes('sala') || endStr.includes('conj') || endStr.includes('cj') || endStr.includes('apto');
+
+    const totalVal = Number(tot.totalGeral || tot.totalProdutos || 0);
+    const qtdItensTotal = (detalhes.itens || []).reduce((acc, it) => acc + Number(it.qtd || 0), 0);
 
     res.json({
       success: true,
       encontrado: true,
       empresa,
-      pedido_venda: pedNormalizado,
-      cod_web: `${24000 + (seed % 1000)}`,
-      cliente_codigo: `0${(seed * 31) % 90000 + 10000}`,
-      cliente_nome: `EMPRESA COMERCIAL ${pedNormalizado} LTDA`,
-      total_pedido: parseFloat(mockTotal.toFixed(2)),
-      desconto_ped: "OK",
-      faturado: "S",
-      entrada: seed % 3 === 0 ? "S" : "N",
-      quant_grande: seed % 7 === 0 ? "S" : "N",
-      prod_nao_combinam: seed % 9 === 0 ? "S" : "N",
-      armario_cofre_gt_2000: mockTotal > 2000 ? "S" : "N",
-      entrega_igual_cadastro: seed % 5 === 0 ? "N" : "S",
-      uf_cliente: mockUF,
-      cnpj_ativo: "S",
-      pgtos_abertos: seed % 8 === 0 ? "S" : "N",
-      comprou_pagou: seed % 4 === 0 ? "N" : "S",
-      comprou_pagou_5x: seed % 6 === 0 ? "S" : "N",
-      cadastro_igual_receita: seed % 11 === 0 ? "N" : "S",
-      casa_sala_conj_end: seed % 5 === 0 ? "S" : "N",
-      email_corporativo: seed % 7 === 0 ? "N" : "S",
-      existe_mail_financeiro: "S",
-      mail_gratuito: seed % 7 === 0 ? "S" : "N",
-      possui_site: "S",
-      fundacao_matriz: `${1990 + (seed % 30)}-0${(seed % 9) + 1}-15`,
-      empresa_grande_conhecida: seed % 10 === 0 ? "S" : "N",
-      capital_social: (seed % 5 === 0 ? 5000000 : 150000),
-      mensagem: "Dados carregados com sucesso do ERP Protheus."
+      pedido_venda: detalhes.numPedido || pedNormalizado,
+      cod_web: detalhes.codWeb !== '-' ? detalhes.codWeb : '',
+      cliente_codigo: cli.codigo || '',
+      cliente_nome: cli.nome || '',
+      total_pedido: parseFloat(totalVal.toFixed(2)),
+      desconto_ped: tot.totalDesconto > 0 ? `R$ ${tot.totalDesconto.toFixed(2)}` : 'OK',
+      faturado: detalhes.fiscal?.geraFinanceiro === 'S' || (detalhes.faturas && detalhes.faturas.length > 0) ? 'S' : 'N',
+      entrada: 'N',
+      quant_grande: qtdItensTotal > 15 ? 'S' : 'N',
+      prod_nao_combinam: 'N',
+      armario_cofre_gt_2000: totalVal > 2000 ? 'S' : 'N',
+      entrega_igual_cadastro: 'S',
+      uf_cliente: (cli.uf || 'SP').toUpperCase().trim(),
+      cnpj_ativo: 'S',
+      pgtos_abertos: 'N',
+      comprou_pagou: 'S',
+      comprou_pagou_5x: 'N',
+      cadastro_igual_receita: 'S',
+      casa_sala_conj_end: isSalaConj ? 'S' : 'N',
+      email_corporativo: email && !isEmailGratuito ? 'S' : 'N',
+      existe_mail_financeiro: 'S',
+      mail_gratuito: isEmailGratuito ? 'S' : 'N',
+      possui_site: email && !isEmailGratuito ? 'S' : 'N',
+      fundacao_matriz: '',
+      empresa_grande_conhecida: 'N',
+      capital_social: 0,
+      mensagem: `Pedido #${detalhes.numPedido || pedNormalizado} encontrado com sucesso no Protheus.`
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('Erro ao consultar Protheus na analise de credito:', err);
+    res.status(500).json({ success: false, error: 'Erro interno ao consultar o ERP Protheus: ' + err.message });
   }
 });
 

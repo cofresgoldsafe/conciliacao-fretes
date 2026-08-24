@@ -3383,10 +3383,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (creditoProtheusBadge) {
           creditoProtheusBadge.classList.remove('hidden');
+          creditoProtheusBadge.style.background = 'rgba(34, 197, 94, 0.12)';
+          creditoProtheusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+          creditoProtheusBadge.style.color = '#22c55e';
           creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso do Protheus ERP. Complete os campos e clique em Consultar.`;
         }
       } catch (err) {
-        alert('Falha na consulta Protheus: ' + err.message);
+        // Limpa campos para evitar dados falsos/stale
+        if (formAnaliseCreditoCompleto) formAnaliseCreditoCompleto.reset();
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val;
+        };
+        setVal('cr_pedido_venda', numPed);
+        setVal('cr_total_pedido', '');
+        setVal('cr_cliente_nome', '');
+
+        if (creditoProtheusBadge) {
+          creditoProtheusBadge.classList.remove('hidden');
+          creditoProtheusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+          creditoProtheusBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          creditoProtheusBadge.style.color = '#f87171';
+          creditoProtheusBadge.innerHTML = `❌ <strong>Pedido #${escapeHtml(numPed)} NÃO EXISTE no Protheus</strong> para a Empresa ${escapeHtml(emp)}. Verifique o número digitado ou a empresa selecionada.`;
+        }
+        alert(`❌ Pedido #${numPed} NÃO EXISTE no ERP Protheus (Empresa ${emp}).\n\nPor favor, confirme se o número do pedido está correto no Protheus.`);
       } finally {
         btnIniciarConsultaCredito.disabled = false;
         btnIniciarConsultaCredito.innerHTML = '<span>⚡ Iniciar Consulta Protheus</span>';
