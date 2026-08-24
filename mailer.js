@@ -37,7 +37,8 @@ function getTransporter() {
   const port = parseInt(process.env.SMTP_port || process.env.SMTP_PORT || '587', 10);
   const user = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || '').trim();
   const pass = (process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim();
-  const secure = process.env.SMTP_SECURE === 'true' || process.env.SMTP_secure === 'true' || port === 465;
+  const rawSecure = String(process.env.SMTP_SECURE || process.env.SMTP_secure || '').trim().toLowerCase();
+  const secure = ['true', 'ssl', 'tls', '1', 'yes'].includes(rawSecure) || port === 465;
 
   if (!host || !user || !pass) {
     return null; // SMTP não configurado (Modo Dev / Fallback Local)
