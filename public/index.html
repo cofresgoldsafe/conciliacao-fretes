@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.21">
+  <link rel="stylesheet" href="style.css?v=8.22">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 18:48 (feat(credito): integra SE4 condicao pagto, formatacao moeda, consulta CNPJ publico e campos manuais em branco)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 19:29 (feat(credito): adiciona badges de sugestoes de seguranca e ficha completa estatica no historico)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1145,6 +1145,17 @@
             <div class="stat-desc">Cruzamento com Receita Federal</div>
           </div>
         </div>
+
+        <!-- Banner de Sugestões de Segurança Relevantes -->
+        <div id="boxSugestoesSeguranca" style="margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: 10px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(251, 191, 36, 0.3);">
+          <div style="font-size: 0.88rem; font-weight: 700; color: #fbbf24; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between;">
+            <span>🛡️ AÇÕES & SUGESTÕES DE SEGURANÇA RECOMENDADAS:</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Baseado nos critérios de risco</span>
+          </div>
+          <div id="listaBadgesSugestoes" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <!-- Badges injetadas via JS -->
+          </div>
+        </div>
       </section>
 
       <!-- Formulário Completo de 53 Campos -->
@@ -1499,18 +1510,20 @@
             <thead>
               <tr>
                 <th style="width: 130px;">Data / Hora</th>
-                <th style="width: 80px;">Empresa</th>
-                <th style="width: 100px;">Pedido</th>
+                <th style="width: 75px;">Empresa</th>
+                <th style="width: 95px;">Pedido</th>
                 <th>Cliente / Razão Social</th>
-                <th style="width: 120px; text-align: right;">Total Pedido</th>
-                <th style="width: 80px; text-align: center;">Score</th>
-                <th style="width: 130px; text-align: center;">Risco</th>
-                <th style="width: 220px;">Sugestão / Decisão</th>
+                <th style="width: 115px; text-align: right;">Total Pedido</th>
+                <th style="width: 70px; text-align: center;">Score</th>
+                <th style="width: 110px; text-align: center;">Risco</th>
+                <th style="min-width: 220px;">Sugestões de Segurança</th>
+                <th style="width: 110px;">Decisão</th>
+                <th style="width: 85px; text-align: center;">Ações</th>
               </tr>
             </thead>
             <tbody id="historicoCreditoTableBody">
               <tr>
-                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise realizada ainda.</td>
+                <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise realizada ainda.</td>
               </tr>
             </tbody>
           </table>
@@ -1518,6 +1531,37 @@
       </section>
     </div>
   </main>
+
+  <!-- Modal Ficha Completa da Análise de Crédito -->
+  <div id="modalDetalhesAnaliseCredito" class="modal hidden">
+    <div class="modal-content modal-large" style="max-width: 960px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem;">
+        <div>
+          <h3 id="modalCreditoTitulo" style="margin: 0; color: #38bdf8; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋 Ficha Completa de Análise de Crédito</span>
+          </h3>
+          <span id="modalCreditoSubtitulo" style="font-size: 0.8rem; color: var(--text-muted);">Registro permanente da consulta</span>
+        </div>
+        <button id="btnCloseModalDetalhesCredito" class="close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modalDetalhesCreditoCorpo" style="flex: 1; overflow-y: auto; padding: 1rem 0.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- Preenchido dinamicamente via JS -->
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--panel-border); padding-top: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+        <button id="btnImprimirFichaCredito" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.4rem;">
+          🖨️ Imprimir / PDF
+        </button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="btnCarregarNoFormCredito" class="btn btn-secondary" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+            ⚡ Carregar no Formulário
+          </button>
+          <button id="btnFecharModalDetalhesCredito" class="btn btn-primary">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Configuração Credenciais Banco Inter -->
   <div id="interConfigModal" class="modal hidden">
@@ -1821,6 +1865,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.21"></script>
+  <script src="app.js?v=8.22"></script>
 </body>
 </html>

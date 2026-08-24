@@ -3577,6 +3577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const txtRiscoBadge = document.getElementById('txtRiscoBadge');
         const txtSugestaoParecer = document.getElementById('txtSugestaoParecer');
         const scoreBadgeVal = document.getElementById('scoreBadgeVal');
+        const listaBadgesSugestoes = document.getElementById('listaBadgesSugestoes');
 
         if (txtTotalScore) txtTotalScore.textContent = resScore.totalScore;
         if (txtRiscoBadge) {
@@ -3601,8 +3602,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setAlerta('valAlertaPedCompra', resScore.alertaPedCompra, 'SOLICITAR PED. COMPRA');
         setAlerta('valAlertaContrato', resScore.alertaContratoEntrega, 'SOLIC. CONTRATO ENTREGA');
-        setAlerta('valAlertaGolpe', resScore.alertaPerigoGolpe, 'CHECAGEM REVERSA');
+        setAlerta('valAlertaGolpe', resScore.alertaPerigoGolpe, 'PERIGO CHECAGEM REVERSA');
         setAlerta('valAlertaCadReceita', resScore.alertaCadastroReceita, 'CORRIGIR END. DIVERGENTE');
+
+        if (listaBadgesSugestoes) {
+          listaBadgesSugestoes.innerHTML = gerarBadgesSugestoesHtml(resScore.sugestoesLista || []);
+        }
 
         if (creditoResultadoSection) creditoResultadoSection.classList.remove('hidden');
         creditoResultadoSection.scrollIntoView({ behavior: 'smooth' });
@@ -3617,6 +3622,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+  }
+
+  // Helper para renderizar badges de sugestões de segurança
+  function gerarBadgesSugestoesHtml(sugestoesArr) {
+    if (!sugestoesArr || sugestoesArr.length === 0) {
+      return `<span class="badge" style="background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 0.75rem; padding: 3px 8px;">✓ Nenhuma ação crítica (Liberado)</span>`;
+    }
+    return sugestoesArr.map(sug => {
+      const s = String(sug).trim();
+      if (s.includes('CONTRATO DE ENTREGA')) {
+        return `<span class="badge" style="background: rgba(192, 132, 252, 0.2); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.4); font-size: 0.74rem; font-weight: 700; padding: 2px 7px;">📦 SOLIC CONTRATO DE ENTREGA</span>`;
+      }
+      if (s.includes('PED COMPRA')) {
+        return `<span class="badge" style="background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); font-size: 0.74rem; font-weight: 700; padding: 2px 7px;">📋 SOLICITAR PED COMPRA</span>`;
+      }
+      if (s.includes('CHECAGEM REVERSA')) {
+        return `<span class="badge" style="background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.45); font-size: 0.74rem; font-weight: 800; padding: 2px 7px;">🚨 PERIGO CHECAGEM REVERSA</span>`;
+      }
+      if (s.includes('CORRIGIR END DIVERGENTE') || s.includes('PRECISA CORRIGIR')) {
+        return `<span class="badge" style="background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); font-size: 0.74rem; font-weight: 700; padding: 2px 7px;">❗ CORRIGIR END DIVERGENTE</span>`;
+      }
+      return `<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.74rem; font-weight: 600; padding: 2px 7px;">💡 ${escapeHtml(s)}</span>`;
+    }).join(' ');
   }
 
   // Carregar Histórico
@@ -3647,29 +3675,282 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (filtrados.length === 0) {
-      historicoCreditoTableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada.</td></tr>`;
+      historicoCreditoTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada.</td></tr>`;
       return;
     }
 
     historicoCreditoTableBody.innerHTML = filtrados.map(item => {
       const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
       const scoreColor = item.total_score > 5 ? '#22c55e' : '#f87171';
+      
+      let sugestoes = item.sugestoes_lista || [];
+      if (sugestoes.length === 0) {
+        if (item.alerta_contrato_entrega && item.alerta_contrato_entrega !== 'N/A') sugestoes.push('SOLIC CONTRATO DE ENTREGA');
+        if (item.alerta_ped_compra && item.alerta_ped_compra !== 'N/A') sugestoes.push('SOLICITAR PED COMPRA');
+        if (item.alerta_perigo_golpe && item.alerta_perigo_golpe !== 'N/A') sugestoes.push('PERIGO CHECAGEM REVERSA');
+        if (item.alerta_cadastro_receita && item.alerta_cadastro_receita !== 'N/A') sugestoes.push('CORRIGIR END DIVERGENTE');
+        if (item.sugestao && item.sugestao !== 'LIBERADO' && !sugestoes.includes(item.sugestao)) sugestoes.push(item.sugestao);
+      }
+
       return `
         <tr>
           <td style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">${dataStr}</td>
           <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${escapeHtml(item.empresa)}</span></td>
-          <td><strong style="color: #38bdf8; font-family: var(--font-mono);">#${escapeHtml(item.pedido_venda)}</strong></td>
+          <td>
+            <a href="javascript:void(0)" class="btn-abrir-ficha" data-id="${item.id}" style="color: #38bdf8; text-decoration: underline; font-weight: 700; font-family: var(--font-mono); font-size: 0.88rem;">
+              #${escapeHtml(item.pedido_venda)}
+            </a>
+          </td>
           <td><strong>${escapeHtml(item.cliente_nome)}</strong></td>
           <td style="text-align: right; font-weight: 700; font-family: var(--font-mono);">R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
           <td style="text-align: center;"><span class="badge" style="color: ${scoreColor}; font-weight: 800;">${item.total_score}</span></td>
           <td style="text-align: center;"><span class="badge" style="font-size: 0.75rem; font-weight: 700;">${escapeHtml(item.risco)}</span></td>
           <td>
-            <div style="font-size: 0.82rem; color: #38bdf8; font-weight: 600;">${escapeHtml(item.sugestao)}</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted);">Decisão: ${escapeHtml(item.decisao_final || 'Liberado')}</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+              ${gerarBadgesSugestoesHtml(sugestoes)}
+            </div>
+          </td>
+          <td>
+            <span class="badge" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-weight: 600; font-size: 0.75rem;">
+              ${escapeHtml(item.decisao_final || 'Liberado')}
+            </span>
+          </td>
+          <td style="text-align: center;">
+            <button class="btn btn-secondary btn-small btn-abrir-ficha" data-id="${item.id}" style="padding: 3px 8px; font-size: 0.75rem;" title="Abrir Ficha Completa">
+              👁️ Ficha
+            </button>
           </td>
         </tr>
       `;
     }).join('');
+
+    // Adiciona event listeners para os botões de abrir ficha
+    const botoesFicha = historicoCreditoTableBody.querySelectorAll('.btn-abrir-ficha');
+    botoesFicha.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const id = btn.getAttribute('data-id');
+        abrirFichaAnaliseCredito(id);
+      });
+    });
+  }
+
+  // Função para abrir o modal com a Ficha Completa da Análise de Crédito
+  function abrirFichaAnaliseCredito(itemId) {
+    const item = listaHistoricoCredito.find(x => String(x.id) === String(itemId));
+    if (!item) return;
+
+    const modal = document.getElementById('modalDetalhesAnaliseCredito');
+    const titulo = document.getElementById('modalCreditoTitulo');
+    const subtitulo = document.getElementById('modalCreditoSubtitulo');
+    const corpo = document.getElementById('modalDetalhesCreditoCorpo');
+    const btnImprimir = document.getElementById('btnImprimirFichaCredito');
+    const btnCarregar = document.getElementById('btnCarregarNoFormCredito');
+    const btnFechar = document.getElementById('btnFecharModalDetalhesCredito');
+    const btnClose = document.getElementById('btnCloseModalDetalhesCredito');
+
+    if (!modal || !corpo) return;
+
+    const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
+    if (titulo) titulo.innerHTML = `📋 Ficha de Análise de Crédito — Pedido <strong>#${escapeHtml(item.pedido_venda)}</strong>`;
+    if (subtitulo) subtitulo.textContent = `Empresa: ${item.empresa || '-'} | Cliente: ${item.cliente_nome || '-'} | Data: ${dataStr}`;
+
+    let sugestoes = item.sugestoes_lista || [];
+    if (sugestoes.length === 0) {
+      if (item.alerta_contrato_entrega && item.alerta_contrato_entrega !== 'N/A') sugestoes.push('SOLIC CONTRATO DE ENTREGA');
+      if (item.alerta_ped_compra && item.alerta_ped_compra !== 'N/A') sugestoes.push('SOLICITAR PED COMPRA');
+      if (item.alerta_perigo_golpe && item.alerta_perigo_golpe !== 'N/A') sugestoes.push('PERIGO CHECAGEM REVERSA');
+      if (item.alerta_cadastro_receita && item.alerta_cadastro_receita !== 'N/A') sugestoes.push('CORRIGIR END DIVERGENTE');
+      if (item.sugestao && item.sugestao !== 'LIBERADO' && !sugestoes.includes(item.sugestao)) sugestoes.push(item.sugestao);
+    }
+
+    const scoreColor = item.total_score > 5 ? '#22c55e' : '#f87171';
+    const fmtSimNao = (val) => val === 'S' ? '<span style="color:#22c55e; font-weight:700;">Sim</span>' : (val === 'N' ? '<span style="color:#f87171; font-weight:700;">Não</span>' : escapeHtml(val || '-'));
+
+    corpo.innerHTML = `
+      <!-- Top Summary Banner -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Score Obtido</div>
+          <div style="font-size: 1.6rem; font-weight: 900; color: ${scoreColor}; font-family: var(--font-mono);">${item.total_score} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted);">pts</span></div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Grau de Risco</div>
+          <div style="margin-top: 4px;"><span class="badge" style="font-size: 0.9rem; font-weight: 800; padding: 4px 12px;">${escapeHtml(item.risco || '-')}</span></div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Decisão do Analista</div>
+          <div style="font-size: 1.1rem; font-weight: 700; color: #38bdf8; margin-top: 4px;">${escapeHtml(item.decisao_final || 'Liberado')}</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total do Pedido</div>
+          <div style="font-size: 1.2rem; font-weight: 800; color: #f8fafc; font-family: var(--font-mono); margin-top: 4px;">R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        </div>
+      </div>
+
+      <!-- Bloco de Sugestões de Segurança -->
+      <div style="padding: 1rem 1.25rem; border-radius: 10px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(251, 191, 36, 0.3);">
+        <div style="font-size: 0.85rem; font-weight: 700; color: #fbbf24; margin-bottom: 0.5rem;">🛡️ SUGESTÕES & AÇÕES DE SEGURANÇA DETERMINADAS:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem;">
+          ${gerarBadgesSugestoesHtml(sugestoes)}
+        </div>
+        <div style="margin-top: 0.6rem; font-size: 0.85rem; color: #38bdf8; font-weight: 600;">
+          Parecer da Matriz de Risco: <em>${escapeHtml(item.sugestao || 'LIBERADO')}</em>
+        </div>
+      </div>
+
+      <!-- Grid com os 53 Campos Preenchidos -->
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <!-- Bloco 1: Venda & Identificação -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação do Cliente & Pedido</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div><strong style="color:var(--text-muted)">Nº Pedido:</strong> #${escapeHtml(item.pedido_venda)}</div>
+            <div><strong style="color:var(--text-muted)">Cód. Web:</strong> ${escapeHtml(item.cod_web || '-')}</div>
+            <div><strong style="color:var(--text-muted)">Cód. Cliente:</strong> ${escapeHtml(item.cliente_codigo || '-')}</div>
+            <div style="grid-column: span 2;"><strong style="color:var(--text-muted)">Razão Social:</strong> ${escapeHtml(item.cliente_nome)}</div>
+            <div><strong style="color:var(--text-muted)">Total Pedido:</strong> R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div><strong style="color:var(--text-muted)">Desconto:</strong> ${escapeHtml(item.desconto_ped || 'OK')}</div>
+          </div>
+        </div>
+
+        <!-- Bloco 2: Comercial & Pagamento -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Condições Comerciais & Pagamento</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div><strong style="color:var(--text-muted)">Faturado a Prazo:</strong> ${fmtSimNao(item.faturado)}</div>
+            <div><strong style="color:var(--text-muted)">Possui Entrada:</strong> ${fmtSimNao(item.entrada)}</div>
+            <div><strong style="color:var(--text-muted)">Qtd. Grande:</strong> ${fmtSimNao(item.quant_grande)}</div>
+            <div><strong style="color:var(--text-muted)">Prod. Ñ Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)}</div>
+            <div><strong style="color:var(--text-muted)">Armário/Cofre > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
+            <div><strong style="color:var(--text-muted)">UF do Cliente:</strong> ${escapeHtml(item.uf_cliente || '-')}</div>
+          </div>
+        </div>
+
+        <!-- Bloco 3: Endereço & Localização -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Domínio</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)}</div>
+            <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)}</div>
+            <div><strong style="color:var(--text-muted)">Casa/Sala no Endereço:</strong> ${fmtSimNao(item.casa_sala_conj_end)}</div>
+            <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')}</div>
+            <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)}</div>
+            <div><strong style="color:var(--text-muted)">ScamAdvizer Score:</strong> <strong>${item.scamadvizer_score ?? '-'}</strong> / 100</div>
+          </div>
+        </div>
+
+        <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #eab308; font-size: 0.9rem;">4. E-mails, Site & Porte Corporativo</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div><strong style="color:var(--text-muted)">E-mail Corporativo:</strong> ${fmtSimNao(item.email_corporativo)}</div>
+            <div><strong style="color:var(--text-muted)">Mail Finan Diferente:</strong> ${fmtSimNao(item.existe_mail_financeiro)}</div>
+            <div><strong style="color:var(--text-muted)">E-mail Gratuito:</strong> ${fmtSimNao(item.mail_gratuito)}</div>
+            <div><strong style="color:var(--text-muted)">Possui Site Ativo:</strong> ${fmtSimNao(item.possui_site)}</div>
+            <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')}</div>
+            <div><strong style="color:var(--text-muted)">Capital Social:</strong> R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          </div>
+        </div>
+
+        <!-- Bloco 5: Bureau, Serasa & Protestos -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa, Protestos & Histórico de Crédito</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div><strong style="color:var(--text-muted)">Score Serasa:</strong> <strong>${item.score_serasa ?? '-'}</strong> / 1000</div>
+            <div><strong style="color:var(--text-muted)">Possui Protestos:</strong> ${fmtSimNao(item.protestos)}</div>
+            <div><strong style="color:var(--text-muted)">Valor Protestos:</strong> R$ ${Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+            <div><strong style="color:var(--text-muted)">PFIN Sim:</strong> ${fmtSimNao(item.pfin)}</div>
+            <div><strong style="color:var(--text-muted)">Cheques Sem Fundo:</strong> ${fmtSimNao(item.ch_sem_fundo)}</div>
+            <div><strong style="color:var(--text-muted)">CNPJ Ativo na RF:</strong> ${fmtSimNao(item.cnpj_ativo)}</div>
+          </div>
+        </div>
+
+        <!-- Bloco 6: Histórico Interno & FGTS -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS, Certidões & Histórico de Compras</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div><strong style="color:var(--text-muted)">Pgtos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)}</div>
+            <div><strong style="color:var(--text-muted)">Comprou e Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)}</div>
+            <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)}</div>
+            <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'}</div>
+            <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : '<span style="color:#f87171">Divergente</span>'}</div>
+            <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')}</div>
+          </div>
+        </div>
+
+        <!-- Bloco 7: Observações Internas -->
+        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <h4 style="margin: 0 0 0.75rem 0; color: #e2e8f0; font-size: 0.9rem;">7. Observações do Analista</h4>
+          <div style="font-size: 0.88rem; color: var(--text-primary); font-style: italic;">
+            ${escapeHtml(item.obs || 'Nenhuma observação interna cadastrada.')}
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.classList.remove('hidden');
+
+    const fecharModal = () => modal.classList.add('hidden');
+    if (btnClose) btnClose.onclick = fecharModal;
+    if (btnFechar) btnFechar.onclick = fecharModal;
+
+    if (btnCarregar) {
+      btnCarregar.onclick = () => {
+        fecharModal();
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el && val !== undefined && val !== null) el.value = val;
+        };
+        if (creditoEmpresaSelect) creditoEmpresaSelect.value = item.empresa || '14';
+        setVal('cr_pedido_venda', item.pedido_venda);
+        setVal('cr_cod_web', item.cod_web);
+        setVal('cr_cliente_codigo', item.cliente_codigo);
+        setVal('cr_cliente_nome', item.cliente_nome);
+        setVal('cr_total_pedido', Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+        setVal('cr_desconto_ped', item.desconto_ped || 'OK');
+        setVal('cr_faturado', item.faturado || 'S');
+        setVal('cr_entrada', item.entrada || 'N');
+        setVal('cr_quant_grande', item.quant_grande || 'N');
+        setVal('cr_prod_nao_combinam', item.prod_nao_combinam || 'N');
+        setVal('cr_armario_cofre_gt_2000', item.armario_cofre_gt_2000 || 'N');
+        setVal('cr_uf_cliente', item.uf_cliente || 'SP');
+        setVal('cr_entrega_igual_cadastro', item.entrega_igual_cadastro);
+        setVal('cr_cadastro_igual_receita', item.cadastro_igual_receita);
+        setVal('cr_casa_sala_conj_end', item.casa_sala_conj_end);
+        setVal('cr_google_maps', item.google_maps);
+        setVal('cr_registro_br', item.registro_br);
+        setVal('cr_scamadvizer_score', item.scamadvizer_score);
+        setVal('cr_email_corporativo', item.email_corporativo);
+        setVal('cr_existe_mail_financeiro', item.existe_mail_financeiro);
+        setVal('cr_mail_gratuito', item.mail_gratuito);
+        setVal('cr_possui_site', item.possui_site);
+        setVal('cr_fundacao_matriz', item.fundacao_matriz);
+        setVal('cr_capital_social', Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+        setVal('cr_score_serasa', item.score_serasa);
+        setVal('cr_protestos', item.protestos);
+        setVal('cr_valor_protestos', Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+        setVal('cr_pfin', item.pfin);
+        setVal('cr_ch_sem_fundo', item.ch_sem_fundo);
+        setVal('cr_cnpj_ativo', item.cnpj_ativo);
+        setVal('cr_pgtos_abertos', item.pgtos_abertos);
+        setVal('cr_comprou_pagou', item.comprou_pagou);
+        setVal('cr_comprou_pagou_5x', item.comprou_pagou_5x);
+        setVal('cr_fgts_situacao_regular', item.fgts_situacao_regular);
+        setVal('cr_razao_fgts_igual', item.razao_fgts_igual);
+        setVal('cr_tres_nfs_confirmadas', item.tres_nfs_confirmadas);
+        setVal('cr_obs', item.obs || '');
+        setVal('cr_decisao_final', item.decisao_final || 'Liberado');
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    }
+
+    if (btnImprimir) {
+      btnImprimir.onclick = () => {
+        window.print();
+      };
+    }
   }
 
   if (buscaHistoricoCredito) {

@@ -250,8 +250,17 @@ function calcularScore(dados, config = getScoreConfig()) {
 
   const alertaPedCompra = totalPed > config.limite_pedido_compra ? 'SOLICITAR PED COMPRA' : 'N/A';
   const alertaContratoEntrega = dados.armario_cofre_gt_2000 === 'S' ? 'SOLIC CONTRATO DE ENTREGA' : 'N/A';
-  const alertaPerigoGolpe = !entregaIgualCadastro && isFaturado ? 'CHECAGEM REVERSA' : 'N/A';
+  const alertaPerigoGolpe = !entregaIgualCadastro && isFaturado ? 'PERIGO CHECAGEM REVERSA' : 'N/A';
   const alertaCadastroReceita = dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A';
+
+  const sugestoesLista = [];
+  if (alertaContratoEntrega !== 'N/A') sugestoesLista.push('SOLIC CONTRATO DE ENTREGA');
+  if (alertaPedCompra !== 'N/A') sugestoesLista.push('SOLICITAR PED COMPRA');
+  if (alertaPerigoGolpe !== 'N/A') sugestoesLista.push('PERIGO CHECAGEM REVERSA');
+  if (alertaCadastroReceita !== 'N/A') sugestoesLista.push('CORRIGIR END DIVERGENTE');
+  if (sugestao && sugestao !== 'LIBERADO' && !sugestoesLista.includes(sugestao)) {
+    sugestoesLista.push(sugestao);
+  }
 
   return {
     totalScore,
@@ -261,6 +270,7 @@ function calcularScore(dados, config = getScoreConfig()) {
     alertaContratoEntrega,
     alertaPerigoGolpe,
     alertaCadastroReceita,
+    sugestoesLista,
     detalhesPontos: pontos,
   };
 }

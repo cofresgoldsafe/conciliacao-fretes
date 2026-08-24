@@ -1723,6 +1723,7 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', (req, res) => {
       total_score: resultado.totalScore,
       risco: resultado.risco,
       sugestao: resultado.sugestao,
+      sugestoes_lista: resultado.sugestoesLista || [],
       alerta_ped_compra: resultado.alertaPedCompra,
       alerta_contrato_entrega: resultado.alertaContratoEntrega,
       alerta_perigo_golpe: resultado.alertaPerigoGolpe,
