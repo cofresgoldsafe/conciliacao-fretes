@@ -162,6 +162,58 @@ test('De-Para de códigos de vendedor', () => {
   assert.strictEqual(protheusDb.getNomeVendedor('74'), 'Juliana');
 });
 
+// 7. Teste de Ordenação por CodWeb e Ped. Venda
+test('Ordenação de pedidos abertos por CodWeb e Ped. Venda (crescente e decrescente)', () => {
+  function ordenarListaPedidosAbertos(lista, field, direction) {
+    if (!field || !Array.isArray(lista)) return lista;
+    return [...lista].sort((a, b) => {
+      let valA = '';
+      let valB = '';
+      if (field === 'codWeb') {
+        valA = String(a.codWeb || '').trim();
+        valB = String(b.codWeb || '').trim();
+      } else if (field === 'numPed') {
+        valA = String(a.numPed || '').trim();
+        valB = String(b.numPed || '').trim();
+      }
+
+      const numA = parseInt(valA.replace(/\D/g, ''), 10);
+      const numB = parseInt(valB.replace(/\D/g, ''), 10);
+
+      let cmp = 0;
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        cmp = numA - numB;
+      } else {
+        cmp = valA.localeCompare(valB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+      }
+
+      return direction === 'desc' ? -cmp : cmp;
+    });
+  }
+
+  const mock = [
+    { numPed: '000050', codWeb: '100' },
+    { numPed: '000002', codWeb: '20' },
+    { numPed: '000100', codWeb: '5' }
+  ];
+
+  // Ordenação por CodWeb ASC
+  const sortCodWebAsc = ordenarListaPedidosAbertos(mock, 'codWeb', 'asc');
+  assert.deepStrictEqual(sortCodWebAsc.map(x => x.codWeb), ['5', '20', '100'], 'CodWeb ASC deve ordenar numericamente');
+
+  // Ordenação por CodWeb DESC
+  const sortCodWebDesc = ordenarListaPedidosAbertos(mock, 'codWeb', 'desc');
+  assert.deepStrictEqual(sortCodWebDesc.map(x => x.codWeb), ['100', '20', '5'], 'CodWeb DESC deve ordenar numericamente');
+
+  // Ordenação por Ped. Venda ASC
+  const sortPedAsc = ordenarListaPedidosAbertos(mock, 'numPed', 'asc');
+  assert.deepStrictEqual(sortPedAsc.map(x => x.numPed), ['000002', '000050', '000100'], 'Ped. Venda ASC deve ordenar numericamente');
+
+  // Ordenação por Ped. Venda DESC
+  const sortPedDesc = ordenarListaPedidosAbertos(mock, 'numPed', 'desc');
+  assert.deepStrictEqual(sortPedDesc.map(x => x.numPed), ['000100', '000050', '000002'], 'Ped. Venda DESC deve ordenar numericamente');
+});
+
 // Helper para chamadas HTTP
 function makeRequest(options, postData = null) {
   return new Promise((resolve, reject) => {

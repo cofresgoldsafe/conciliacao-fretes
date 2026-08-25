@@ -2693,8 +2693,66 @@ document.addEventListener('DOMContentLoaded', () => {
   const pedidosAbertosCount = document.getElementById('pedidosAbertosCount');
   const pedidosAbertosTableBody = document.getElementById('pedidosAbertosTableBody');
   const pedidosAbertosEmptyState = document.getElementById('pedidosAbertosEmptyState');
+  const thSortCodWeb = document.getElementById('thSortCodWeb');
+  const thSortPedVenda = document.getElementById('thSortPedVenda');
+  const sortIconCodWeb = document.getElementById('sortIconCodWeb');
+  const sortIconPedVenda = document.getElementById('sortIconPedVenda');
 
   let pedidosAbertosCache = [];
+  let pedidosAbertosSortField = null; // 'codWeb' | 'numPed'
+  let pedidosAbertosSortDirection = 'asc'; // 'asc' | 'desc'
+
+  function updatePedidosAbertosSortIcons() {
+    if (sortIconCodWeb) {
+      if (pedidosAbertosSortField === 'codWeb') {
+        sortIconCodWeb.textContent = pedidosAbertosSortDirection === 'asc' ? '▲' : '▼';
+        sortIconCodWeb.style.color = '#38bdf8';
+        sortIconCodWeb.style.fontWeight = '700';
+      } else {
+        sortIconCodWeb.textContent = '↕';
+        sortIconCodWeb.style.color = 'var(--text-muted)';
+        sortIconCodWeb.style.fontWeight = 'normal';
+      }
+    }
+    if (sortIconPedVenda) {
+      if (pedidosAbertosSortField === 'numPed') {
+        sortIconPedVenda.textContent = pedidosAbertosSortDirection === 'asc' ? '▲' : '▼';
+        sortIconPedVenda.style.color = '#38bdf8';
+        sortIconPedVenda.style.fontWeight = '700';
+      } else {
+        sortIconPedVenda.textContent = '↕';
+        sortIconPedVenda.style.color = 'var(--text-muted)';
+        sortIconPedVenda.style.fontWeight = 'normal';
+      }
+    }
+  }
+
+  function ordenarListaPedidosAbertos(lista, field, direction) {
+    if (!field || !Array.isArray(lista)) return lista;
+    return [...lista].sort((a, b) => {
+      let valA = '';
+      let valB = '';
+      if (field === 'codWeb') {
+        valA = String(a.codWeb || '').trim();
+        valB = String(b.codWeb || '').trim();
+      } else if (field === 'numPed') {
+        valA = String(a.numPed || '').trim();
+        valB = String(b.numPed || '').trim();
+      }
+
+      const numA = parseInt(valA.replace(/\D/g, ''), 10);
+      const numB = parseInt(valB.replace(/\D/g, ''), 10);
+
+      let cmp = 0;
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        cmp = numA - numB;
+      } else {
+        cmp = valA.localeCompare(valB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+      }
+
+      return direction === 'desc' ? -cmp : cmp;
+    });
+  }
 
   function formatPipedriveDealLink(codWeb) {
     const raw = String(codWeb || '').trim();
@@ -2765,7 +2823,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pedidosAbertosEmptyState) pedidosAbertosEmptyState.classList.add('hidden');
     if (pedidosAbertosResults) pedidosAbertosResults.classList.remove('hidden');
 
-    filtrados.forEach(p => {
+    const listaFinal = pedidosAbertosSortField 
+      ? ordenarListaPedidosAbertos(filtrados, pedidosAbertosSortField, pedidosAbertosSortDirection)
+      : filtrados;
+
+    listaFinal.forEach(p => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><span class="company-badge ${escapeHtml(p.empresa)}">${escapeHtml(p.empresa)}</span></td>
@@ -2838,6 +2900,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnAtualizarPedidosAbertos) {
     btnAtualizarPedidosAbertos.addEventListener('click', () => carregarPedidosAbertos(true));
+  }
+
+  if (thSortCodWeb) {
+    thSortCodWeb.addEventListener('click', () => {
+      if (pedidosAbertosSortField === 'codWeb') {
+        pedidosAbertosSortDirection = pedidosAbertosSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        pedidosAbertosSortField = 'codWeb';
+        pedidosAbertosSortDirection = 'asc';
+      }
+      updatePedidosAbertosSortIcons();
+      renderPedidosAbertosTable(pedidosAbertosCache);
+    });
+  }
+
+  if (thSortPedVenda) {
+    thSortPedVenda.addEventListener('click', () => {
+      if (pedidosAbertosSortField === 'numPed') {
+        pedidosAbertosSortDirection = pedidosAbertosSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        pedidosAbertosSortField = 'numPed';
+        pedidosAbertosSortDirection = 'asc';
+      }
+      updatePedidosAbertosSortIcons();
+      renderPedidosAbertosTable(pedidosAbertosCache);
+    });
   }
 
   // =========================================================================
