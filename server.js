@@ -2067,7 +2067,8 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => 
       alerta_ped_compra: resultado.alertaPedCompra,
       alerta_contrato_entrega: resultado.alertaContratoEntrega,
       alerta_perigo_golpe: resultado.alertaPerigoGolpe,
-      alerta_cadastro_receita: resultado.alertaCadastroReceita
+      alerta_cadastro_receita: resultado.alertaCadastroReceita,
+      detalhes_pontos: resultado.detalhesPontos
     });
 
     res.json({

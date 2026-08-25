@@ -3571,6 +3571,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  // Helper para formatar badges visuais de pontuação (+X pts / -Y pts / 0 pts)
+  function formatarBadgePontos(pts, label) {
+    if (pts === undefined || pts === null || isNaN(Number(pts))) return '';
+    const n = Number(pts);
+    let cls = 'neutral';
+    let prefix = '';
+    if (n > 0) {
+      cls = 'positive';
+      prefix = '+';
+    } else if (n < 0) {
+      cls = 'negative';
+      prefix = '';
+    }
+    const lblStr = label ? ` <small style="opacity:0.85; font-size:0.68rem;">(${escapeHtml(label)})</small>` : '';
+    return `<span class="badge-pts ${cls}">${prefix}${n} pts${lblStr}</span>`;
+  }
+
   // Motor de cálculo de Score e Regras de Segurança no Frontend (Espelha o backend dinamicamente)
   function calcularScoreClienteFrontend(dados) {
     const cfg = scoreConfigActive || {};
@@ -3644,7 +3661,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = getCfg('peso_mx_inexistente', -4);
     else pontos.servidor_mx = 0;
 
-    pontos.casa_sala_conj_end = dados.casa_sala_conj_end === 'S' ? getCfg('peso_endereco_sala_sim', -5) : (dados.casa_sala_conj_end === 'N' ? getCfg('peso_endereco_sala_nao', 1) : 0);
+    pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? getCfg('peso_endereco_sala_sim', -5) : (dados.casa_sala_conj_end === 'N' ? getCfg('peso_endereco_sala_nao', 1) : 0);
     pontos.email_corporativo = dados.email_corporativo === 'S' ? getCfg('peso_email_corp_sim', 3) : (dados.email_corporativo === 'N' ? getCfg('peso_email_corp_nao', -3) : 0);
     pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'S' ? 0 : (dados.existe_mail_financeiro === 'N' ? getCfg('peso_email_fin_diferente_nao', -7) : 0);
     pontos.mail_gratuito = dados.mail_gratuito === 'S' ? getCfg('peso_email_gratuito_sim', -8) : (dados.mail_gratuito === 'N' ? getCfg('peso_email_gratuito_nao', 2) : 0);
@@ -3664,23 +3681,28 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (dados.fundacao_matriz) pontos.idade_empresa = getCfg('peso_idade_menor5', -6);
     else pontos.idade_empresa = 0;
 
+    pontos.empresa_grande_conhecida = dados.empresa_grande_conhecida === 'S' ? getCfg('peso_grande_conhecida_sim', 5) : 0;
+
     const temProtestos = dados.protestos === 'S';
     const valProtestos = Number(dados.valor_protestos) || 0;
     const capSocial = Number(dados.capital_social) || 0;
 
     if (dados.protestos === 'N') {
       pontos.protestos = getCfg('peso_protestos_nao', 5);
+      pontos.vlr_protestos_vs_ped = 0;
+      pontos.protestos_vs_capital = 0;
     } else if (temProtestos) {
       pontos.protestos = getCfg('peso_protestos_sim', -10);
-      if (totalPed > 0 && valProtestos > (totalPed * 2)) {
-        pontos.protestos += getCfg('peso_protesto_2x_ped', -10);
-      }
+      pontos.vlr_protestos_vs_ped = totalPed > 0 && valProtestos > (totalPed * 2) ? getCfg('peso_protesto_2x_ped', -10) : 0;
       if (capSocial > 0) {
-        if (valProtestos > capSocial) pontos.protestos += getCfg('peso_protesto_maior_capital', -20);
-        else pontos.protestos += getCfg('peso_protesto_menor_capital', 4);
+        pontos.protestos_vs_capital = valProtestos > capSocial ? getCfg('peso_protesto_maior_capital', -20) : getCfg('peso_protesto_menor_capital', 4);
+      } else {
+        pontos.protestos_vs_capital = 0;
       }
     } else {
       pontos.protestos = 0;
+      pontos.vlr_protestos_vs_ped = 0;
+      pontos.protestos_vs_capital = 0;
     }
 
     pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? getCfg('peso_ch_sem_fundo_sim', -6) : 0;
@@ -3704,7 +3726,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (capSocial > 0) pontos.capital_social = getCfg('peso_capital_zero', -7);
     else pontos.capital_social = 0;
 
-    pontos.fgts_situacao_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
+    pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
     pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? getCfg('peso_razao_fgts_igual_nao', -10) : 0;
 
     if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = getCfg('peso_boletos_sim', 3);
@@ -3714,7 +3736,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
 
     const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0);
-    const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_situacao_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0);
+    const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0);
 
     let risco = 'MÉDIO RISCO';
     let sugestao = 'VER E-MAIL CORPORATIVO SITE REFERENC COML NFE 3S ALTO VALOR FATURADO';
@@ -3768,7 +3790,8 @@ document.addEventListener('DOMContentLoaded', () => {
       alertaContratoEntrega,
       alertaPerigoGolpe,
       alertaCadastroReceita,
-      sugestoesLista
+      sugestoesLista,
+      detalhesPontos: pontos
     };
   }
 
@@ -4165,8 +4188,70 @@ document.addEventListener('DOMContentLoaded', () => {
       if (item.sugestao && item.sugestao !== 'LIBERADO' && !sugestoes.includes(item.sugestao)) sugestoes.push(item.sugestao);
     }
 
-    const scoreColor = item.total_score > 5 ? '#22c55e' : '#f87171';
+    let pts = item.detalhes_pontos;
+    if (!pts || typeof pts !== 'object' || Object.keys(pts).length === 0) {
+      if (typeof calcularScoreClienteFrontend === 'function') {
+        const resCalc = calcularScoreClienteFrontend(item);
+        pts = resCalc.detalhesPontos || {};
+      } else {
+        pts = {};
+      }
+    }
+
+    const scoreColor = item.total_score > 5 ? '#22c55e' : (item.total_score >= -3 ? '#fbbf24' : '#f87171');
     const fmtSimNao = (val) => val === 'S' ? '<span style="color:#22c55e; font-weight:700;">Sim</span>' : (val === 'N' ? '<span style="color:#f87171; font-weight:700;">Não</span>' : escapeHtml(val || '-'));
+
+    // Lista de conferência de todos os critérios avaliados
+    const extratoLinhas = [
+      { cat: '1. Limites & Identificação', nome: 'Valor do Pedido (> R$ 21k)', val: item.total_pedido ? `R$ ${Number(item.total_pedido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-', pts: pts.total_pedido },
+      { cat: '1. Limites & Identificação', nome: 'CNPJ Ativo na RF', val: item.cnpj_ativo === 'S' ? 'Ativo' : 'Inativo', pts: pts.cnpj_ativo },
+      { cat: '1. Limites & Identificação', nome: 'Endereço Cadastro = Receita', val: item.cadastro_igual_receita === 'S' ? 'Sim' : 'Não', pts: pts.cadastro_igual_receita },
+      { cat: '1. Limites & Identificação', nome: 'Casa / Sala no Endereço', val: item.casa_sala_conj_end === 'S' ? 'Sim' : 'Não', pts: pts.casa_sala_conj },
+      { cat: '1. Limites & Identificação', nome: 'Fundação Matriz (Idade Empresa)', val: item.fundacao_matriz || '-', pts: pts.idade_empresa },
+      { cat: '1. Limites & Identificação', nome: 'Capital Social Integralizado', val: item.capital_social ? `R$ ${Number(item.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00', pts: pts.capital_social },
+      { cat: '1. Limites & Identificação', nome: 'Empresa Grande / Notória', val: item.empresa_grande_conhecida === 'S' ? 'Sim' : 'Não', pts: pts.empresa_grande_conhecida },
+
+      { cat: '2. Comercial & Pagamentos', nome: 'Condição de Venda (À Vista / Prazo)', val: item.faturado === 'N' ? 'À Vista (+100)' : 'A Prazo (0)', pts: pts.faturado },
+      { cat: '2. Comercial & Pagamentos', nome: 'Possui Entrada', val: item.entrada === 'S' ? 'Sim' : 'Não', pts: pts.entrada },
+      { cat: '2. Comercial & Pagamentos', nome: 'Histórico Protheus (Comprou 2x+)', val: item.comprou_pagou === 'S' ? 'Sim' : 'Não', pts: pts.comprou_pagou },
+      { cat: '2. Comercial & Pagamentos', nome: 'Histórico Protheus (Comprou 5x+)', val: item.comprou_pagou_5x === 'S' ? 'Sim' : 'Não', pts: pts.comprou_pagou_5x },
+      { cat: '2. Comercial & Pagamentos', nome: 'Pagamentos em Aberto', val: item.pgtos_abertos === 'S' ? 'Sim' : 'Não', pts: pts.pgtos_abertos },
+      { cat: '2. Comercial & Pagamentos', nome: 'Quantidade Muito Alta de Itens', val: item.quant_grande === 'S' ? 'Sim' : 'Não', pts: pts.quant_grande },
+      { cat: '2. Comercial & Pagamentos', nome: 'Produtos Variados Sem Afinidade', val: item.prod_nao_combinam === 'S' ? 'Sim' : 'Não', pts: pts.prod_nao_combinam },
+      { cat: '2. Comercial & Pagamentos', nome: 'UF do Cliente (Destino)', val: item.uf_cliente || '-', pts: pts.uf_cliente },
+
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Entrega = Cadastro Principal', val: item.entrega_igual_cadastro === 'S' ? 'Sim' : 'Não', pts: pts.entrega_igual_cadastro },
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Google Maps Fachada', val: item.google_maps || '-', pts: pts.google_maps },
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Registro.br Confere', val: item.registro_br === 'S' ? 'Sim' : (item.entrega_igual_cadastro === 'S' ? 'Dispensado' : 'Não'), pts: pts.registro_br },
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Idade Domínio (RDAP Registro.br)', val: item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? `${item.idade_dominio_rdap} anos` : (item.possui_site === 'N' ? 'Sem Site' : '-'), pts: pts.idade_dominio },
+      { cat: '3. Endereço & Maturidade Digital', nome: '1º Snapshot Archive.org Wayback', val: item.wayback_primeiro_snapshot || '-', pts: pts.wayback },
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Servidor MX de E-mails', val: item.tipo_servidor_mx || item.servidor_mx || '-', pts: pts.servidor_mx },
+
+      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail com Domínio Corporativo', val: item.email_corporativo === 'S' ? 'Sim' : 'Não', pts: pts.email_corporativo },
+      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail do Financeiro Diferente', val: item.existe_mail_financeiro === 'S' ? 'Sim' : 'Não', pts: pts.existe_mail_financeiro },
+      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail Gratuito / Genérico', val: item.mail_gratuito === 'S' ? 'Sim' : 'Não', pts: pts.mail_gratuito },
+      { cat: '4. E-mails & Site Corporativo', nome: 'Possui Site Corporativo Ativo', val: item.possui_site === 'S' ? 'Sim' : 'Não', pts: pts.possui_site },
+
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Score Serasa (Faixa)', val: item.score_serasa !== undefined && item.score_serasa !== '' ? `${item.score_serasa} / 1000` : '-', pts: pts.score_serasa },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Apontamento de Protestos', val: item.protestos === 'S' ? 'Sim' : 'Não', pts: pts.protestos },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos > 2x Pedido', val: item.protestos === 'S' && pts.vlr_protestos_vs_ped !== 0 ? 'Sim (> 2x)' : 'Não / Dispensado', pts: pts.vlr_protestos_vs_ped },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos vs Capital Social', val: item.protestos === 'S' && pts.protestos_vs_capital !== 0 ? (pts.protestos_vs_capital < 0 ? '> Capital' : '<= Capital') : 'Dispensado', pts: pts.protestos_vs_capital },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Financeira (PFIN)', val: item.pfin === 'S' ? 'Sim' : 'Não', pts: pts.pfin },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Cheques Sem Fundo', val: item.ch_sem_fundo === 'S' ? 'Sim' : 'Não', pts: pts.ch_sem_fundo },
+
+      { cat: '6. FGTS & Certidões Comerciais', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : 'Irregular', pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
+      { cat: '6. FGTS & Certidões Comerciais', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : 'Divergente', pts: pts.razao_fgts_igual },
+      { cat: '6. FGTS & Certidões Comerciais', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : 'Não'), pts: pts.tres_nfs }
+    ];
+
+    let totalGanhos = 0;
+    let totalPerdas = 0;
+    extratoLinhas.forEach(l => {
+      const p = Number(l.pts) || 0;
+      if (p > 0) totalGanhos += p;
+      else if (p < 0) totalPerdas += p;
+    });
+    const somaFinalCalculada = totalGanhos + totalPerdas;
 
     corpo.innerHTML = `
       <!-- Top Summary Banner -->
@@ -4200,92 +4285,149 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
 
-        <!-- Bloco 1: Venda & Identificação -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação do Cliente, Pedido e CNPJ Receita</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">Nº Pedido:</strong> #${escapeHtml(item.pedido_venda)}</div>
-            <div><strong style="color:var(--text-muted)">Cód. Web:</strong> ${escapeHtml(item.cod_web || '-')}</div>
-            <div><strong style="color:var(--text-muted)">Cód. Cliente:</strong> ${escapeHtml(item.cliente_codigo || '-')}</div>
-            <div style="grid-column: span 2;"><strong style="color:var(--text-muted)">Razão Social:</strong> ${escapeHtml(item.cliente_nome)}</div>
-            <div><strong style="color:var(--text-muted)">Total Pedido:</strong> R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <div><strong style="color:var(--text-muted)">Desconto:</strong> ${escapeHtml(item.desconto_ped || 'OK')}</div>
-            <div><strong style="color:var(--text-muted)">CNPJ Ativo na RF:</strong> ${fmtSimNao(item.cnpj_ativo)}</div>
-            <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)}</div>
-            <div><strong style="color:var(--text-muted)">Casa/Sala no End.:</strong> ${fmtSimNao(item.casa_sala_conj_end)}</div>
-            <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')}</div>
-            <div><strong style="color:var(--text-muted)">Capital Social:</strong> R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+      <!-- Bloco 1: Venda & Identificação -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação do Cliente, Pedido e CNPJ Receita</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">Nº Pedido:</strong> #${escapeHtml(item.pedido_venda)}</div>
+          <div><strong style="color:var(--text-muted)">Cód. Web:</strong> ${escapeHtml(item.cod_web || '-')}</div>
+          <div><strong style="color:var(--text-muted)">Cód. Cliente:</strong> ${escapeHtml(item.cliente_codigo || '-')}</div>
+          <div style="grid-column: span 2;"><strong style="color:var(--text-muted)">Razão Social:</strong> ${escapeHtml(item.cliente_nome)}</div>
+          <div><strong style="color:var(--text-muted)">Total Pedido:</strong> R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ${formatarBadgePontos(pts.total_pedido)}</div>
+          <div><strong style="color:var(--text-muted)">Desconto:</strong> ${escapeHtml(item.desconto_ped || 'OK')}</div>
+          <div><strong style="color:var(--text-muted)">CNPJ Ativo na RF:</strong> ${fmtSimNao(item.cnpj_ativo)} ${formatarBadgePontos(pts.cnpj_ativo)}</div>
+          <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)} ${formatarBadgePontos(pts.cadastro_igual_receita)}</div>
+          <div><strong style="color:var(--text-muted)">Casa/Sala no End.:</strong> ${fmtSimNao(item.casa_sala_conj_end)} ${formatarBadgePontos(pts.casa_sala_conj)}</div>
+          <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')} ${formatarBadgePontos(pts.idade_empresa)}</div>
+          <div><strong style="color:var(--text-muted)">Capital Social:</strong> R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ${formatarBadgePontos(pts.capital_social)}</div>
+          <div><strong style="color:var(--text-muted)">Empresa Grande / Notória:</strong> ${fmtSimNao(item.empresa_grande_conhecida)} ${formatarBadgePontos(pts.empresa_grande_conhecida)}</div>
+        </div>
+      </div>
+
+      <!-- Bloco 2: Comercial & Pagamento -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Condições Comerciais & Histórico de Pagamentos</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">Faturado a Prazo:</strong> ${item.faturado === 'N' ? '<span style="color:#22c55e;font-weight:700;">Não (À Vista)</span>' : '<span style="color:#38bdf8;font-weight:700;">Sim (A Prazo)</span>'} ${formatarBadgePontos(pts.faturado)}</div>
+          <div><strong style="color:var(--text-muted)">Possui Entrada:</strong> ${fmtSimNao(item.entrada)} ${formatarBadgePontos(pts.entrada)}</div>
+          <div><strong style="color:var(--text-muted)">Pgtos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)} ${formatarBadgePontos(pts.pgtos_abertos)}</div>
+          <div><strong style="color:var(--text-muted)">Comprou e Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)} ${formatarBadgePontos(pts.comprou_pagou)}</div>
+          <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)} ${formatarBadgePontos(pts.comprou_pagou_5x)}</div>
+          <div><strong style="color:var(--text-muted)">Qtd. Grande:</strong> ${fmtSimNao(item.quant_grande)} ${formatarBadgePontos(pts.quant_grande)}</div>
+          <div><strong style="color:var(--text-muted)">Prod. Ñ Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)} ${formatarBadgePontos(pts.prod_nao_combinam)}</div>
+          <div><strong style="color:var(--text-muted)">Item Unitário > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
+          <div><strong style="color:var(--text-muted)">UF do Cliente:</strong> ${escapeHtml(item.uf_cliente || '-')} ${formatarBadgePontos(pts.uf_cliente)}</div>
+        </div>
+      </div>
+
+      <!-- Bloco 3: Endereço, Localização & Maturidade Digital -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Maturidade Digital</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)} ${formatarBadgePontos(pts.entrega_igual_cadastro)}</div>
+          <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')} ${formatarBadgePontos(pts.google_maps)}</div>
+          <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)} ${formatarBadgePontos(pts.registro_br)}</div>
+          <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? item.idade_dominio_rdap + ' anos' : (item.possui_site === 'N' ? 'Sem Site' : (item.dominio_principal || '-'))} ${formatarBadgePontos(pts.idade_dominio)}</div>
+          <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${escapeHtml(item.wayback_primeiro_snapshot || '-')} ${formatarBadgePontos(pts.wayback)}</div>
+          <div><strong style="color:var(--text-muted)">Servidor MX:</strong> ${escapeHtml(item.tipo_servidor_mx || item.servidor_mx || '-')} ${formatarBadgePontos(pts.servidor_mx)}</div>
+        </div>
+      </div>
+
+      <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #eab308; font-size: 0.9rem;">4. E-mails & Site Corporativo</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">E-mail Corporativo:</strong> ${fmtSimNao(item.email_corporativo)} ${formatarBadgePontos(pts.email_corporativo)}</div>
+          <div><strong style="color:var(--text-muted)">Mail Finan Diferente:</strong> ${fmtSimNao(item.existe_mail_financeiro)} ${formatarBadgePontos(pts.existe_mail_financeiro)}</div>
+          <div><strong style="color:var(--text-muted)">E-mail Gratuito/Provedor:</strong> ${fmtSimNao(item.mail_gratuito)} ${formatarBadgePontos(pts.mail_gratuito)}</div>
+          <div><strong style="color:var(--text-muted)">Possui Site Ativo:</strong> ${fmtSimNao(item.possui_site)} ${formatarBadgePontos(pts.possui_site)}</div>
+        </div>
+      </div>
+
+      <!-- Bloco 5: Bureau, Serasa & Protestos -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa & Apontamentos</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">Score Serasa:</strong> <strong>${item.score_serasa ?? '-'}</strong> / 1000 ${formatarBadgePontos(pts.score_serasa)}</div>
+          <div><strong style="color:var(--text-muted)">Possui Protestos:</strong> ${fmtSimNao(item.protestos)} ${formatarBadgePontos(pts.protestos)}</div>
+          <div><strong style="color:var(--text-muted)">Valor Protestos:</strong> R$ ${Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ${item.protestos === 'S' ? (formatarBadgePontos(pts.vlr_protestos_vs_ped, 'vs Pedido') + ' ' + formatarBadgePontos(pts.protestos_vs_capital, 'vs Capital')) : ''}</div>
+          <div><strong style="color:var(--text-muted)">PFIN Sim:</strong> ${fmtSimNao(item.pfin)} ${formatarBadgePontos(pts.pfin)}</div>
+          <div><strong style="color:var(--text-muted)">Cheques Sem Fundo:</strong> ${fmtSimNao(item.ch_sem_fundo)} ${formatarBadgePontos(pts.ch_sem_fundo)}</div>
+        </div>
+      </div>
+
+      <!-- Bloco 6: Histórico Interno & FGTS -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS & Certidões Comerciais</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'} ${formatarBadgePontos(pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular)}</div>
+          <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : '<span style="color:#f87171">Divergente</span>'} ${formatarBadgePontos(pts.razao_fgts_igual)}</div>
+          <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')} ${formatarBadgePontos(pts.tres_nfs)}</div>
+        </div>
+      </div>
+
+      <!-- Bloco 7: Extrato & Conferência Matemática da Pontuação -->
+      <div style="background: rgba(15, 23, 42, 0.5); padding: 1.25rem; border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="margin: 0; color: #38bdf8; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+            <span>📊 Extrato & Conferência Matemática do Score</span>
+          </h4>
+          <span style="font-size: 0.78rem; color: #94a3b8; font-family: var(--font-mono);">Total: <strong>${item.total_score} pts</strong></span>
+        </div>
+
+        <p style="margin: 0 0 0.75rem 0; font-size: 0.8rem; color: var(--text-muted);">
+          Abaixo estão discriminados todos os critérios ponderados no ato da gravação desta consulta. A soma dos ganhos e penalidades confere o Score Final obtido:
+        </p>
+
+        <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--panel-border); border-radius: 6px;">
+          <table class="tabela-extrato-pontos">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Categoria</th>
+                <th style="width: 40%;">Parâmetro / Critério</th>
+                <th style="width: 20%;">Situação Observada</th>
+                <th style="width: 15%; text-align: right;">Pontos</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${extratoLinhas.map(linha => `
+                <tr>
+                  <td style="color: var(--text-muted); font-size: 0.76rem;">${escapeHtml(linha.cat)}</td>
+                  <td style="font-weight: 600; color: var(--text-primary);">${escapeHtml(linha.nome)}</td>
+                  <td style="color: #38bdf8; font-size: 0.78rem;">${escapeHtml(linha.val)}</td>
+                  <td style="text-align: right;">${formatarBadgePontos(linha.pts)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Totais de Auditoria -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; background: rgba(15, 23, 42, 0.7); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--panel-border); margin-top: 0.75rem;">
+          <div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Total Ganhos (+)</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #22c55e; font-family: var(--font-mono);">+${totalGanhos} pts</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Total Penalidades (-)</div>
+            <div style="font-size: 1.1rem; font-weight: 800; color: #f87171; font-family: var(--font-mono);">${totalPerdas} pts</div>
+          </div>
+          <div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Score Final Somado</div>
+            <div style="font-size: 1.25rem; font-weight: 900; color: ${scoreColor}; font-family: var(--font-mono);">${somaFinalCalculada} pts</div>
           </div>
         </div>
 
-        <!-- Bloco 2: Comercial & Pagamento -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Condições Comerciais & Histórico de Pagamentos</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">Faturado a Prazo:</strong> ${fmtSimNao(item.faturado)}</div>
-            <div><strong style="color:var(--text-muted)">Possui Entrada:</strong> ${fmtSimNao(item.entrada)}</div>
-            <div><strong style="color:var(--text-muted)">Pgtos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)}</div>
-            <div><strong style="color:var(--text-muted)">Comprou e Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)}</div>
-            <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)}</div>
-            <div><strong style="color:var(--text-muted)">Qtd. Grande:</strong> ${fmtSimNao(item.quant_grande)}</div>
-            <div><strong style="color:var(--text-muted)">Prod. Ñ Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)}</div>
-            <div><strong style="color:var(--text-muted)">Item Unitário > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
-            <div><strong style="color:var(--text-muted)">UF do Cliente:</strong> ${escapeHtml(item.uf_cliente || '-')}</div>
-          </div>
+        <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #38bdf8; display: flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.1); padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">
+          <span>🔒 <strong>Snapshot Imutável:</strong> Esta pontuação foi gravada permanentemente no ato da consulta em ${dataStr}. Mesmo que os cálculos sejam rebalanceados no futuro para novas análises, o registro histórico deste pedido permanece inalterado.</span>
         </div>
+      </div>
 
-        <!-- Bloco 3: Endereço, Localização & Maturidade Digital -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Maturidade Digital</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)}</div>
-            <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')}</div>
-            <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)}</div>
-            <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null ? item.idade_dominio_rdap + ' anos' : (item.dominio_principal || '-')}</div>
-            <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${escapeHtml(item.wayback_primeiro_snapshot || '-')}</div>
-            <div><strong style="color:var(--text-muted)">Servidor MX:</strong> ${escapeHtml(item.servidor_mx || '-')}</div>
-          </div>
-        </div>
-
-        <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #eab308; font-size: 0.9rem;">4. E-mails & Site Corporativo</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">E-mail Corporativo:</strong> ${fmtSimNao(item.email_corporativo)}</div>
-            <div><strong style="color:var(--text-muted)">Mail Finan Diferente:</strong> ${fmtSimNao(item.existe_mail_financeiro)}</div>
-            <div><strong style="color:var(--text-muted)">E-mail Gratuito/Provedor:</strong> ${fmtSimNao(item.mail_gratuito)}</div>
-            <div><strong style="color:var(--text-muted)">Possui Site Ativo:</strong> ${fmtSimNao(item.possui_site)}</div>
-          </div>
-        </div>
-
-        <!-- Bloco 5: Bureau, Serasa & Protestos -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa & Apontamentos</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">Score Serasa:</strong> <strong>${item.score_serasa ?? '-'}</strong> / 1000</div>
-            <div><strong style="color:var(--text-muted)">Possui Protestos:</strong> ${fmtSimNao(item.protestos)}</div>
-            <div><strong style="color:var(--text-muted)">Valor Protestos:</strong> R$ ${Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-            <div><strong style="color:var(--text-muted)">PFIN Sim:</strong> ${fmtSimNao(item.pfin)}</div>
-            <div><strong style="color:var(--text-muted)">Cheques Sem Fundo:</strong> ${fmtSimNao(item.ch_sem_fundo)}</div>
-          </div>
-        </div>
-
-        <!-- Bloco 6: Histórico Interno & FGTS -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS & Certidões Comerciais</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-            <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'}</div>
-            <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : '<span style="color:#f87171">Divergente</span>'}</div>
-            <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')}</div>
-          </div>
-        </div>
-
-        <!-- Bloco 7: Observações Internas -->
-        <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #e2e8f0; font-size: 0.9rem;">7. Observações do Analista</h4>
-          <div style="font-size: 0.88rem; color: var(--text-primary); font-style: italic;">
-            ${escapeHtml(item.obs || 'Nenhuma observação interna cadastrada.')}
-          </div>
+      <!-- Bloco 8: Observações do Analista -->
+      <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+        <h4 style="margin: 0 0 0.75rem 0; color: #e2e8f0; font-size: 0.9rem;">8. Observações do Analista</h4>
+        <div style="font-size: 0.88rem; color: var(--text-primary); font-style: italic;">
+          ${escapeHtml(item.obs || 'Nenhuma observação interna cadastrada.')}
         </div>
       </div>
     `;

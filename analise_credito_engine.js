@@ -354,9 +354,15 @@ function getHistorico() {
 function salvarAnalise(registro) {
   try {
     const list = getHistorico();
+    const resultado = calcularScore(registro);
     const itemCompleto = {
       id: String(Date.now()),
       ...registro,
+      total_score: registro.total_score !== undefined ? registro.total_score : resultado.totalScore,
+      risco: registro.risco || resultado.risco,
+      sugestao: registro.sugestao || resultado.sugestao,
+      sugestoes_lista: registro.sugestoes_lista || resultado.sugestoesLista || [],
+      detalhes_pontos: registro.detalhes_pontos || resultado.detalhesPontos,
       created_at: new Date().toISOString()
     };
     list.unshift(itemCompleto);

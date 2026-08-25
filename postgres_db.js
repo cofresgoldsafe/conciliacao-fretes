@@ -1189,6 +1189,15 @@ async function getHistoricoCreditoDB(limit = 200) {
             sugLista = typeof r.sugestoes_lista === 'string' ? JSON.parse(r.sugestoes_lista) : (r.sugestoes_lista || []);
           } catch {}
 
+          let detalhesPts = dadosComp.detalhes_pontos || null;
+          if (!detalhesPts) {
+            try {
+              const { calcularScore } = require('./analise_credito_engine');
+              const resCalc = calcularScore(dadosComp);
+              detalhesPts = resCalc.detalhesPontos;
+            } catch {}
+          }
+
           return {
             id: String(r.id),
             ...dadosComp,
@@ -1205,6 +1214,7 @@ async function getHistoricoCreditoDB(limit = 200) {
             decisao_final: r.decisao_final,
             obs: r.obs,
             sugestoes_lista: sugLista,
+            detalhes_pontos: detalhesPts,
             created_at: r.created_at ? new Date(r.created_at).toISOString() : null
           };
         });
@@ -1218,7 +1228,18 @@ async function getHistoricoCreditoDB(limit = 200) {
   try {
     if (fs.existsSync(analiseCreditoHistoryFile)) {
       const localList = JSON.parse(fs.readFileSync(analiseCreditoHistoryFile, 'utf-8'));
-      return Array.isArray(localList) ? localList.slice(0, maxLimit) : [];
+      if (Array.isArray(localList)) {
+        return localList.slice(0, maxLimit).map(item => {
+          let pts = item.detalhes_pontos;
+          if (!pts) {
+            try {
+              const { calcularScore } = require('./analise_credito_engine');
+              pts = calcularScore(item).detalhesPontos;
+            } catch {}
+          }
+          return { ...item, detalhes_pontos: pts };
+        });
+      }
     }
   } catch {}
 
