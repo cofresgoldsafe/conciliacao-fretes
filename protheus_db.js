@@ -482,6 +482,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
             RTRIM(ISNULL(A1_CEP, '')) AS A1_CEP,
             RTRIM(ISNULL(A1_TEL, '')) AS A1_TEL,
             RTRIM(ISNULL(A1_EMAIL, '')) AS A1_EMAIL,
+            RTRIM(ISNULL(A1_HPAGE, '')) AS A1_HPAGE,
             RTRIM(ISNULL(A1_CONTATO, '')) AS A1_CONTATO
           FROM SA1010
           WHERE (A1_COD = '${cleanCodCli}' OR A1_COD = '${paddedCodCli}') 
@@ -531,6 +532,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
           cliInfo.cep = cepFormatado;
           cliInfo.telefone = telFormatado || (a1.A1_TEL ? a1.A1_TEL.trim() : '');
           cliInfo.email = a1.A1_EMAIL ? a1.A1_EMAIL.trim() : '';
+          cliInfo.site = a1.A1_HPAGE ? a1.A1_HPAGE.trim() : '';
           cliInfo.contato = a1.A1_CONTATO ? a1.A1_CONTATO.trim() : '';
         }
       } catch (errSA1) {

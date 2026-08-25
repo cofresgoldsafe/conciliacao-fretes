@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.30">
+  <link rel="stylesheet" href="style.css?v=8.31">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 22:07 (fix(credito): sincronizacao 100% do motor de score backend e frontend eliminando campos legados e divergencias)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 22:43 (feat(credito): modulo de maturidade digital automatica (RDAP/Wayback/MX) e auto-preenchimento de emails e site corporativo)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1305,11 +1305,11 @@
             </div>
           </div>
 
-          <!-- Bloco 3: Endereço & Domínio -->
+          <!-- Bloco 3: Endereço, Localização & Maturidade Digital -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #a855f7; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>3. Endereço, Localização & Domínio</span>
-              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">✍️ Conferência Manual</span>
+              <span>3. Endereço, Localização & Maturidade Digital</span>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">⚡ RDAP + Wayback + MX</span>
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
@@ -1334,23 +1334,38 @@
                 <label>Registro.Br Confere? *</label>
                 <select id="cr_registro_br" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
-                  <option value="N">Não</option>
+                  <option value="N">Não (0 pts)</option>
                   <option value="S">Sim (+6 pts se entrega dif)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>ScamAdvizer *</label>
-                <input type="number" id="cr_scamadvizer_score" class="form-input" placeholder="0 a 100" min="0" max="100" required />
+                <label>Idade Domínio (RDAP/Registro.br)</label>
+                <input type="text" id="cr_idade_dominio_rdap" class="form-input" placeholder="Automático (ex: 15 anos)" readonly style="background: rgba(15, 23, 42, 0.6); color: #38bdf8; font-weight: 600;" />
+                <input type="hidden" id="cr_idade_dominio_val" value="" />
+              </div>
+              <div class="form-group">
+                <label>1º Snapshot Wayback Machine</label>
+                <input type="text" id="cr_wayback_snapshot" class="form-input" placeholder="Automático (ex: Desde 2005)" readonly style="background: rgba(15, 23, 42, 0.6); color: #38bdf8; font-weight: 600;" />
+                <input type="hidden" id="cr_wayback_ano_val" value="" />
+              </div>
+              <div class="form-group">
+                <label>Servidor MX (Infraestrutura E-mail)</label>
+                <input type="text" id="cr_servidor_mx" class="form-input" placeholder="Automático (ex: Google Workspace)" readonly style="background: rgba(15, 23, 42, 0.6); color: #38bdf8; font-weight: 600;" />
+                <input type="hidden" id="cr_tipo_servidor_mx" value="" />
+                <input type="hidden" id="cr_dominio_principal" value="" />
               </div>
             </div>
           </div>
 
           <!-- Bloco 4: E-mails & Site Corporativo -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
               <span>4. E-mails & Site Corporativo</span>
-              <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">✍️ Conferência Manual</span>
+              <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">⚡ Preenchimento Automático Protheus</span>
             </h3>
+            <div id="cr_emails_detectados_badge" style="font-size: 0.76rem; color: #94a3b8; margin-bottom: 0.85rem; padding: 4px 8px; background: rgba(0,0,0,0.25); border-radius: 6px; display: none;">
+              📧 E-mails Protheus (A1_EMAIL): <span id="cr_emails_detectados_txt" style="color: #38bdf8; font-weight: 600;">--</span>
+            </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>E-mail Corporativo? *</label>
@@ -1369,11 +1384,11 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>E-mail Gratuito? *</label>
+                <label>E-mail Gratuito / Provedor? *</label>
                 <select id="cr_mail_gratuito" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+2 pts)</option>
-                  <option value="S">Sim (Gmail/Hotmail -8)</option>
+                  <option value="S">Sim (Gmail/UOL/Terra -8)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1890,6 +1905,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.30"></script>
+  <script src="app.js?v=8.31"></script>
 </body>
 </html>

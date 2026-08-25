@@ -3404,15 +3404,50 @@ document.addEventListener('DOMContentLoaded', () => {
         // Valor Padrão para 3 NFs Confirmadas (Dispensado)
         setVal('cr_tres_nfs_confirmadas', data.tres_nfs_confirmadas || 'D');
 
+        // Maturidade Digital Automática (RDAP, Wayback, Servidor MX)
+        if (data.idade_dominio_rdap !== null && data.idade_dominio_rdap !== undefined) {
+          const anosTxt = `${data.idade_dominio_rdap} anos ${data.ano_criacao_rdap ? '(Desde ' + data.ano_criacao_rdap + ')' : ''}`;
+          setVal('cr_idade_dominio_rdap', anosTxt);
+          setVal('cr_idade_dominio_val', data.idade_dominio_rdap);
+        } else {
+          setVal('cr_idade_dominio_rdap', data.dominio_principal ? 'Domínio Recente / Não BR' : 'Sem Domínio');
+          setVal('cr_idade_dominio_val', '');
+        }
+
+        if (data.wayback_primeiro_snapshot) {
+          setVal('cr_wayback_snapshot', `Histórico desde ${data.wayback_primeiro_snapshot}`);
+          setVal('cr_wayback_ano_val', data.wayback_primeiro_snapshot);
+        } else {
+          setVal('cr_wayback_snapshot', 'Sem histórico no archive');
+          setVal('cr_wayback_ano_val', '');
+        }
+
+        setVal('cr_servidor_mx', data.servidor_mx || 'Sem registro MX');
+        setVal('cr_tipo_servidor_mx', data.tipo_servidor_mx || 'NENHUM');
+        setVal('cr_dominio_principal', data.dominio_principal || '');
+
+        // Preenchimento Automático da Seção 4: E-mails & Site Corporativo
+        setVal('cr_email_corporativo', data.email_corporativo || 'N');
+        setVal('cr_existe_mail_financeiro', data.existe_mail_financeiro || 'N');
+        setVal('cr_mail_gratuito', data.mail_gratuito || 'N');
+        setVal('cr_possui_site', data.possui_site || 'N');
+
+        const emailsBadge = document.getElementById('cr_emails_detectados_badge');
+        const emailsTxt = document.getElementById('cr_emails_detectados_txt');
+        if (emailsBadge && emailsTxt) {
+          if (data.emails_encontrados && data.emails_encontrados.length > 0) {
+            emailsTxt.textContent = data.emails_encontrados.join(' | ');
+            emailsBadge.style.display = 'block';
+          } else {
+            emailsTxt.textContent = 'Nenhum e-mail no cadastro Protheus';
+            emailsBadge.style.display = 'block';
+          }
+        }
+
         // Campos manuais que permanecem para o analista preencher
         setVal('cr_entrega_igual_cadastro', '');
         setVal('cr_google_maps', '');
         setVal('cr_registro_br', '');
-        setVal('cr_scamadvizer_score', '');
-        setVal('cr_email_corporativo', '');
-        setVal('cr_existe_mail_financeiro', '');
-        setVal('cr_mail_gratuito', '');
-        setVal('cr_possui_site', '');
         setVal('cr_score_serasa', '');
         setVal('cr_protestos', '');
         setVal('cr_valor_protestos', '0,00');
@@ -3434,7 +3469,12 @@ document.addEventListener('DOMContentLoaded', () => {
               : ' | Endereço Receita: <strong>Divergente</strong>';
           }
 
-          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong>${endMsg}.`;
+          let domMsg = '';
+          if (data.dominio_principal) {
+            domMsg = ` | Domínio: <strong>${escapeHtml(data.dominio_principal)}</strong> (${data.idade_dominio_rdap !== null ? data.idade_dominio_rdap + ' anos' : 'verificado'})`;
+          }
+
+          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong>${endMsg}${domMsg}.`;
         }
 
         // Atualiza Score em Tempo Real imediatamente após preencher dados
@@ -3499,7 +3539,10 @@ document.addEventListener('DOMContentLoaded', () => {
       casa_sala_conj_end: getVal('cr_casa_sala_conj_end'),
       google_maps: getVal('cr_google_maps'),
       registro_br: getVal('cr_registro_br'),
-      scamadvizer_score: parseFloat(getVal('cr_scamadvizer_score')) || 0,
+      idade_dominio_rdap: getVal('cr_idade_dominio_val'),
+      wayback_primeiro_snapshot: getVal('cr_wayback_ano_val'),
+      tipo_servidor_mx: getVal('cr_tipo_servidor_mx'),
+      dominio_principal: getVal('cr_dominio_principal'),
       email_corporativo: getVal('cr_email_corporativo'),
       existe_mail_financeiro: getVal('cr_existe_mail_financeiro'),
       mail_gratuito: getVal('cr_mail_gratuito'),
@@ -3559,15 +3602,40 @@ document.addEventListener('DOMContentLoaded', () => {
       pontos.registro_br = dados.registro_br === 'S' ? 6 : 0;
     }
 
-    const scam = parseFloat(dados.scamadvizer_score) || 0;
-    if (scam >= 97) pontos.scamadvizer_score = 9;
-    else if (scam >= 75) pontos.scamadvizer_score = 0;
-    else if (dados.scamadvizer_score !== '') pontos.scamadvizer_score = -7;
-    else pontos.scamadvizer_score = 0;
+    // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX)
+    const idadeDominio = dados.idade_dominio_rdap !== undefined && dados.idade_dominio_rdap !== null && dados.idade_dominio_rdap !== '' 
+      ? Number(dados.idade_dominio_rdap) 
+      : null;
+
+    if (idadeDominio !== null && !isNaN(idadeDominio)) {
+      if (idadeDominio >= 10) pontos.idade_dominio = 6;
+      else if (idadeDominio >= 3) pontos.idade_dominio = 3;
+      else if (idadeDominio >= 1) pontos.idade_dominio = 0;
+      else pontos.idade_dominio = -7;
+    } else {
+      pontos.idade_dominio = dados.possui_site === 'N' ? -5 : 0;
+    }
+
+    const waybackAno = dados.wayback_primeiro_snapshot ? parseInt(dados.wayback_primeiro_snapshot, 10) : 0;
+    const anoAtual = new Date().getFullYear();
+    if (waybackAno > 1990) {
+      const anosHistorico = anoAtual - waybackAno;
+      if (anosHistorico >= 5) pontos.wayback = 3;
+      else if (anosHistorico >= 1) pontos.wayback = 1;
+      else pontos.wayback = 0;
+    } else {
+      pontos.wayback = 0;
+    }
+
+    const mxTipo = (dados.tipo_servidor_mx || '').toUpperCase();
+    if (mxTipo === 'PREMIUM') pontos.servidor_mx = 3;
+    else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = 0;
+    else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = -4;
+    else pontos.servidor_mx = 0;
 
     pontos.casa_sala_conj_end = dados.casa_sala_conj_end === 'S' ? -5 : (dados.casa_sala_conj_end === 'N' ? 1 : 0);
     pontos.email_corporativo = dados.email_corporativo === 'S' ? 3 : (dados.email_corporativo === 'N' ? -3 : 0);
-    pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'N' ? -7 : 0;
+    pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'S' ? 0 : (dados.existe_mail_financeiro === 'N' ? -7 : 0);
     pontos.mail_gratuito = dados.mail_gratuito === 'S' ? -8 : (dados.mail_gratuito === 'N' ? 2 : 0);
     pontos.possui_site = dados.possui_site === 'S' ? 1 : (dados.possui_site === 'N' ? -15 : 0);
 
@@ -3627,11 +3695,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pontos.fgts_situacao_regular = dados.fgts_situacao_regular === 'N' ? -6 : 0;
     pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? -10 : 0;
-    pontos.tres_nfs_confirmadas = dados.tres_nfs_confirmadas === 'S' ? 3 : (dados.tres_nfs_confirmadas === 'N' ? -3 : 0);
+
+    if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = 3;
+    else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = -3;
+    else pontos.tres_nfs = 0; // 'D' (Dispensado) = 0 pts
 
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
 
-    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.scamadvizer_score || 0) + (pontos.registro_br || 0);
+    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0);
     const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_situacao_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0);
 
     let risco = 'MÉDIO RISCO';
@@ -3795,7 +3866,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { val: payload.casa_sala_conj_end, id: 'cr_casa_sala_conj_end', label: 'Casa/Sala no Endereço' },
         { val: payload.google_maps, id: 'cr_google_maps', label: 'Google Maps Fachada' },
         { val: payload.registro_br, id: 'cr_registro_br', label: 'Registro.Br Confere' },
-        { val: payload.scamadvizer_score, id: 'cr_scamadvizer_score', label: 'ScamAdvizer' },
         { val: payload.email_corporativo, id: 'cr_email_corporativo', label: 'E-mail Corporativo' },
         { val: payload.existe_mail_financeiro, id: 'cr_existe_mail_financeiro', label: 'Mail Finan Diferente' },
         { val: payload.mail_gratuito, id: 'cr_mail_gratuito', label: 'E-mail Gratuito' },
@@ -4092,14 +4162,16 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Bloco 3: Endereço & Localização -->
+        <!-- Bloco 3: Endereço, Localização & Maturidade Digital -->
         <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Domínio</h4>
+          <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Maturidade Digital</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)}</div>
             <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')}</div>
             <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)}</div>
-            <div><strong style="color:var(--text-muted)">ScamAdvizer:</strong> <strong>${item.scamadvizer_score ?? '-'}</strong> / 100</div>
+            <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null ? item.idade_dominio_rdap + ' anos' : (item.dominio_principal || '-')}</div>
+            <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${escapeHtml(item.wayback_primeiro_snapshot || '-')}</div>
+            <div><strong style="color:var(--text-muted)">Servidor MX:</strong> ${escapeHtml(item.servidor_mx || '-')}</div>
           </div>
         </div>
 
@@ -4109,7 +4181,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">E-mail Corporativo:</strong> ${fmtSimNao(item.email_corporativo)}</div>
             <div><strong style="color:var(--text-muted)">Mail Finan Diferente:</strong> ${fmtSimNao(item.existe_mail_financeiro)}</div>
-            <div><strong style="color:var(--text-muted)">E-mail Gratuito:</strong> ${fmtSimNao(item.mail_gratuito)}</div>
+            <div><strong style="color:var(--text-muted)">E-mail Gratuito/Provedor:</strong> ${fmtSimNao(item.mail_gratuito)}</div>
             <div><strong style="color:var(--text-muted)">Possui Site Ativo:</strong> ${fmtSimNao(item.possui_site)}</div>
           </div>
         </div>

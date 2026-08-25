@@ -1703,6 +1703,150 @@ async function consultarCnpjPublico(cnpjStr) {
   return null;
 }
 
+const dns = require('dns').promises;
+
+const PROVIDERS_GENERICOS = new Set([
+  'gmail.com', 'googlemail.com', 'hotmail.com', 'outlook.com', 'live.com', 'msn.com',
+  'yahoo.com', 'yahoo.com.br', 'ymail.com', 'icloud.com', 'me.com',
+  'uol.com.br', 'bol.com.br', 'terra.com.br', 'ig.com.br', 'globo.com', 'globomail.com',
+  'oi.com.br', 'itelefonica.com.br', 'superig.com.br', 'r7.com', 'zipmail.com.br'
+]);
+
+function analisarEmailsCliente(emailStr, hpageStr) {
+  const raw = String(emailStr || '');
+  const matches = raw.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
+  const emailsUnicos = Array.from(new Set(matches.map(e => e.toLowerCase().trim())));
+
+  const corporativos = [];
+  const genericos = [];
+
+  for (const mail of emailsUnicos) {
+    const domain = mail.split('@')[1];
+    if (PROVIDERS_GENERICOS.has(domain)) {
+      genericos.push(mail);
+    } else {
+      corporativos.push(mail);
+    }
+  }
+
+  const emailCorporativo = corporativos.length > 0 ? 'S' : 'N';
+  const mailFinanDiferente = corporativos.length >= 2 ? 'S' : 'N';
+
+  let mailGratuito = 'N';
+  if (corporativos.length === 0 && genericos.length > 0) {
+    mailGratuito = 'S';
+  }
+
+  let dominioPrincipal = '';
+  if (corporativos.length > 0) {
+    dominioPrincipal = corporativos[0].split('@')[1];
+  } else if (hpageStr) {
+    dominioPrincipal = hpageStr.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
+  }
+
+  const possuiSite = (hpageStr && hpageStr.trim() !== '') || dominioPrincipal !== '' ? 'S' : 'N';
+
+  return {
+    emailCorporativo,
+    mailFinanDiferente,
+    mailGratuito,
+    possuiSite,
+    dominioPrincipal,
+    emailsEncontrados: emailsUnicos,
+    corporativos,
+    genericos
+  };
+}
+
+async function consultarRDAP(dominio) {
+  if (!dominio) return null;
+  const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
+  if (!limpo.endsWith('.br')) return null;
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`https://rdap.registro.br/domain/${limpo}`, { signal: controller.signal });
+    clearTimeout(t);
+    if (res.ok) {
+      const d = await res.json();
+      let dataCriacao = null;
+      if (Array.isArray(d.events)) {
+        const reg = d.events.find(e => e.eventAction === 'registration');
+        if (reg) dataCriacao = reg.eventDate;
+      }
+      let idadeAnos = 0;
+      let anoCriacao = '';
+      if (dataCriacao) {
+        const dCri = new Date(dataCriacao);
+        if (!isNaN(dCri.getTime())) {
+          idadeAnos = Math.floor((Date.now() - dCri.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+          anoCriacao = dCri.getFullYear().toString();
+        }
+      }
+      return {
+        dominio: limpo,
+        dataCriacao,
+        anoCriacao,
+        idadeAnos,
+        titular: d.entities && d.entities[0] ? d.entities[0].handle : '',
+        status: d.status
+      };
+    }
+  } catch (e) {
+    console.warn('RDAP erro:', e.message);
+  }
+  return null;
+}
+
+async function consultarWayback(dominio) {
+  if (!dominio) return null;
+  const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`https://archive.org/wayback/available?url=${limpo}&timestamp=20000101`, { signal: controller.signal });
+    clearTimeout(t);
+    if (res.ok) {
+      const d = await res.json();
+      const snap = d.archived_snapshots && d.archived_snapshots.closest;
+      if (snap && snap.available) {
+        const ts = snap.timestamp;
+        const ano = ts ? ts.substring(0, 4) : '';
+        return {
+          temHistorico: true,
+          anoPrimeiroSnapshot: ano,
+          url: snap.url
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Wayback erro:', e.message);
+  }
+  return { temHistorico: false, anoPrimeiroSnapshot: null };
+}
+
+async function consultarMx(dominio) {
+  if (!dominio) return { tipo: 'NENHUM', provedor: 'Sem domínio / e-mail genérico' };
+  const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
+  try {
+    const mxList = await dns.resolveMx(limpo);
+    if (mxList && mxList.length > 0) {
+      const hosts = mxList.map(m => m.exchange.toLowerCase()).join(' ');
+      if (hosts.includes('google') || hosts.includes('aspmx') || hosts.includes('googlemail')) {
+        return { tipo: 'PREMIUM', provedor: 'Google Workspace' };
+      }
+      if (hosts.includes('outlook') || hosts.includes('microsoft') || hosts.includes('protection.outlook')) {
+        return { tipo: 'PREMIUM', provedor: 'Microsoft 365' };
+      }
+      if (hosts.includes('locaweb') || hosts.includes('kinghost') || hosts.includes('hostgator') || hosts.includes('hostinger') || hosts.includes('cpanel') || hosts.includes('secureserver')) {
+        return { tipo: 'PADRAO', provedor: 'Hospedagem Compartilhada' };
+      }
+      return { tipo: 'PROPRIO', provedor: mxList[0].exchange };
+    }
+  } catch (e) {}
+  return { tipo: 'NENHUM', provedor: 'Sem registro MX ativo' };
+}
+
 // 1. Consulta Protheus para auto-preenchimento
 app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
   try {
@@ -1789,6 +1933,25 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
 
     const histFin = detalhes.historicoFinanceiro || {};
 
+    // Análise Automática de E-mails & Site Corporativo (A1_EMAIL e A1_HPAGE do Protheus)
+    const infoEmails = analisarEmailsCliente(cli.email, cli.site);
+
+    // Consulta de Inteligência Digital Paralela (RDAP Registro.br, Wayback Machine, DNS MX)
+    let infoRDAP = null;
+    let infoWayback = null;
+    let infoMx = null;
+
+    if (infoEmails.dominioPrincipal) {
+      const [resRdap, resWayback, resMx] = await Promise.allSettled([
+        consultarRDAP(infoEmails.dominioPrincipal),
+        consultarWayback(infoEmails.dominioPrincipal),
+        consultarMx(infoEmails.dominioPrincipal)
+      ]);
+      infoRDAP = resRdap.status === 'fulfilled' ? resRdap.value : null;
+      infoWayback = resWayback.status === 'fulfilled' ? resWayback.value : null;
+      infoMx = resMx.status === 'fulfilled' ? resMx.value : null;
+    }
+
     res.json({
       success: true,
       encontrado: true,
@@ -1826,15 +1989,25 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       // Campos com valor padrão pré-definido
       tres_nfs_confirmadas: 'D', // Default: Dispensado
 
+      // Inteligência Digital e E-mails Automatizados (Seções 3 e 4)
+      dominio_principal: infoEmails.dominioPrincipal,
+      idade_dominio_rdap: infoRDAP ? infoRDAP.idadeAnos : (infoEmails.dominioPrincipal ? 0 : null),
+      ano_criacao_rdap: infoRDAP ? infoRDAP.anoCriacao : '',
+      wayback_primeiro_snapshot: infoWayback && infoWayback.anoPrimeiroSnapshot ? infoWayback.anoPrimeiroSnapshot : '',
+      servidor_mx: infoMx ? infoMx.provedor : '',
+      tipo_servidor_mx: infoMx ? infoMx.tipo : 'NENHUM',
+
+      // Preenchimento automático da Seção 4 (E-mails & Site)
+      email_corporativo: infoEmails.emailCorporativo,
+      existe_mail_financeiro: infoEmails.mailFinanDiferente,
+      mail_gratuito: infoEmails.mailGratuito,
+      possui_site: infoEmails.possuiSite,
+      emails_encontrados: infoEmails.emailsEncontrados,
+
       // Campos manuais que permanecem em branco para o analista
       entrega_igual_cadastro: '',
       google_maps: '',
       registro_br: '',
-      scamadvizer_score: '',
-      email_corporativo: '',
-      existe_mail_financeiro: '',
-      mail_gratuito: '',
-      possui_site: '',
       score_serasa: '',
       protestos: '',
       valor_protestos: '',

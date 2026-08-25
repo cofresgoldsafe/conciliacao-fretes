@@ -150,11 +150,36 @@ function calcularScore(dados, config = getScoreConfig()) {
     pontos.registro_br = dados.registro_br === 'S' ? config.peso_registro_br_sim : 0;
   }
 
-  const scamScore = Number(dados.scamadvizer_score) || 0;
-  if (scamScore >= 97) pontos.scamadvizer = config.peso_scamadvizer_97;
-  else if (scamScore >= 75) pontos.scamadvizer = config.peso_scamadvizer_75;
-  else if (dados.scamadvizer_score !== '' && dados.scamadvizer_score !== undefined) pontos.scamadvizer = config.peso_scamadvizer_baixo;
-  else pontos.scamadvizer = 0;
+  // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX)
+  const idadeDominio = dados.idade_dominio_rdap !== undefined && dados.idade_dominio_rdap !== null && dados.idade_dominio_rdap !== '' 
+    ? Number(dados.idade_dominio_rdap) 
+    : null;
+
+  if (idadeDominio !== null && !isNaN(idadeDominio)) {
+    if (idadeDominio >= 10) pontos.idade_dominio = 6;
+    else if (idadeDominio >= 3) pontos.idade_dominio = 3;
+    else if (idadeDominio >= 1) pontos.idade_dominio = 0;
+    else pontos.idade_dominio = -7; // Domínio recente (< 1 ano)
+  } else {
+    pontos.idade_dominio = dados.possui_site === 'N' ? -5 : 0;
+  }
+
+  const waybackAno = dados.wayback_primeiro_snapshot ? parseInt(dados.wayback_primeiro_snapshot, 10) : 0;
+  const anoAtual = new Date().getFullYear();
+  if (waybackAno > 1990) {
+    const anosHistorico = anoAtual - waybackAno;
+    if (anosHistorico >= 5) pontos.wayback = 3;
+    else if (anosHistorico >= 1) pontos.wayback = 1;
+    else pontos.wayback = 0;
+  } else {
+    pontos.wayback = 0;
+  }
+
+  const mxTipo = (dados.tipo_servidor_mx || '').toUpperCase();
+  if (mxTipo === 'PREMIUM') pontos.servidor_mx = 3; // Google Workspace ou Microsoft 365
+  else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = 0;
+  else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = -4;
+  else pontos.servidor_mx = 0;
 
   pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? config.peso_endereco_sala_sim : (dados.casa_sala_conj_end === 'N' ? config.peso_endereco_sala_nao : 0);
   pontos.email_corporativo = dados.email_corporativo === 'S' ? config.peso_email_corp_sim : (dados.email_corporativo === 'N' ? config.peso_email_corp_nao : 0);
