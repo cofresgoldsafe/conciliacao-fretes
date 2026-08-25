@@ -1768,6 +1768,12 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       casaSalaVal = regexCasaSala.test(textoComplementos) ? 'S' : 'N';
     }
 
+    // Detecção se algum item do pedido possui preço/custo unitário maior que R$ 2.000,00
+    const temItemUnitarioGt2k = (detalhes.itens || []).some(it => {
+      const prcUnit = Number(it.prcUnit || (it.qtd > 0 ? it.total / it.qtd : 0) || 0);
+      return prcUnit > 2000;
+    });
+
     const histFin = detalhes.historicoFinanceiro || {};
 
     res.json({
@@ -1784,7 +1790,7 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       entrada: entradaVal,
       quant_grande: qtdItensTotal > 15 ? 'S' : 'N',
       prod_nao_combinam: 'N',
-      armario_cofre_gt_2000: totalVal > 2000 ? 'S' : 'N',
+      armario_cofre_gt_2000: temItemUnitarioGt2k ? 'S' : 'N',
       uf_cliente: (cli.uf || 'SP').toUpperCase().trim(),
       cnpj_ativo: dadosCnpj ? dadosCnpj.cnpjAtivo : '',
       fundacao_matriz: dadosCnpj ? dadosCnpj.fundacao : '',

@@ -3848,7 +3848,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)}</div>
             <div><strong style="color:var(--text-muted)">Qtd. Grande:</strong> ${fmtSimNao(item.quant_grande)}</div>
             <div><strong style="color:var(--text-muted)">Prod. Ñ Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)}</div>
-            <div><strong style="color:var(--text-muted)">Armário/Cofre > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
+            <div><strong style="color:var(--text-muted)">Item Unitário > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
             <div><strong style="color:var(--text-muted)">UF do Cliente:</strong> ${escapeHtml(item.uf_cliente || '-')}</div>
           </div>
         </div>
