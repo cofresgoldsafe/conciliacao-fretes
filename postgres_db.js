@@ -301,10 +301,12 @@ async function initPostgres() {
           sugestao TEXT,
           decisao_final VARCHAR(100),
           obs TEXT,
+          usuario VARCHAR(100) DEFAULT 'Sistema',
           sugestoes_lista JSONB DEFAULT '[]'::jsonb,
           dados_completos JSONB NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
+        ALTER TABLE analise_credito_history ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) DEFAULT 'Sistema';
         CREATE INDEX IF NOT EXISTS idx_analise_credito_pedido ON analise_credito_history(pedido_venda);
         CREATE INDEX IF NOT EXISTS idx_analise_credito_created_at ON analise_credito_history(created_at DESC);
       `);
@@ -1105,6 +1107,7 @@ async function saveAnaliseCreditoDB(registro) {
   const sugestao = String(dados.sugestao || '').trim();
   const decisao = String(dados.decisao_final || 'Liberado').trim();
   const obs = String(dados.obs || '').trim();
+  const usuario = String(dados.usuario || 'Sistema').trim();
   const sugestoesArr = Array.isArray(dados.sugestoes_lista) ? dados.sugestoes_lista : [];
 
   let savedItem = null;
@@ -1115,20 +1118,21 @@ async function saveAnaliseCreditoDB(registro) {
         INSERT INTO analise_credito_history (
           pedido_venda, empresa, cliente_nome, cliente_codigo, cod_web,
           total_pedido, desconto_ped, total_score, risco, sugestao,
-          decisao_final, obs, sugestoes_lista, dados_completos, created_at
+          decisao_final, obs, usuario, sugestoes_lista, dados_completos, created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
         ) RETURNING id, created_at;
       `, [
         ped, emp, cliNome, cliCod, codWeb,
         totalPed, descPed, score, risco, sugestao,
-        decisao, obs, JSON.stringify(sugestoesArr), JSON.stringify(dados)
+        decisao, obs, usuario, JSON.stringify(sugestoesArr), JSON.stringify({ ...dados, usuario })
       ]);
 
       if (res && res.rows && res.rows.length > 0) {
         savedItem = {
           id: String(res.rows[0].id),
           ...dados,
+          usuario,
           created_at: res.rows[0].created_at ? new Date(res.rows[0].created_at).toISOString() : now
         };
       }
@@ -1146,6 +1150,7 @@ async function saveAnaliseCreditoDB(registro) {
     const itemToSave = savedItem || {
       id: String(Date.now()),
       ...dados,
+      usuario,
       created_at: now
     };
     localList.unshift(itemToSave);
@@ -1154,7 +1159,7 @@ async function saveAnaliseCreditoDB(registro) {
     return itemToSave;
   } catch (e) {
     console.warn('Erro ao salvar analise_credito_history.json local:', e.message);
-    return savedItem || { id: String(Date.now()), ...dados, created_at: now };
+    return savedItem || { id: String(Date.now()), ...dados, usuario, created_at: now };
   }
 }
 
@@ -1171,7 +1176,7 @@ async function getHistoricoCreditoDB(limit = 200) {
         SELECT 
           id, pedido_venda, empresa, cliente_nome, cliente_codigo, cod_web,
           total_pedido, desconto_ped, total_score, risco, sugestao,
-          decisao_final, obs, sugestoes_lista, dados_completos, created_at
+          decisao_final, obs, usuario, sugestoes_lista, dados_completos, created_at
         FROM analise_credito_history
         ORDER BY id DESC
         LIMIT $1;
@@ -1213,6 +1218,7 @@ async function getHistoricoCreditoDB(limit = 200) {
             sugestao: r.sugestao,
             decisao_final: r.decisao_final,
             obs: r.obs,
+            usuario: r.usuario || dadosComp.usuario || 'Sistema',
             sugestoes_lista: sugLista,
             detalhes_pontos: detalhesPts,
             created_at: r.created_at ? new Date(r.created_at).toISOString() : null
@@ -1237,7 +1243,7 @@ async function getHistoricoCreditoDB(limit = 200) {
               pts = calcularScore(item).detalhesPontos;
             } catch {}
           }
-          return { ...item, detalhes_pontos: pts };
+          return { ...item, usuario: item.usuario || 'Sistema', detalhes_pontos: pts };
         });
       }
     }

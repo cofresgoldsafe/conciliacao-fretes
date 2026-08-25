@@ -363,6 +363,7 @@ function salvarAnalise(registro) {
       sugestao: registro.sugestao || resultado.sugestao,
       sugestoes_lista: registro.sugestoes_lista || resultado.sugestoesLista || [],
       detalhes_pontos: registro.detalhes_pontos || resultado.detalhesPontos,
+      usuario: registro.usuario || 'Sistema',
       created_at: new Date().toISOString()
     };
     list.unshift(itemCompleto);

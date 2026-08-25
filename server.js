@@ -2062,9 +2062,24 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => 
       return res.status(400).json({ success: false, error: 'Escolha uma decisão antes de gravar.' });
     }
 
+    // Identificação do Usuário Analista (via JWT token ou payload)
+    let usuarioLogado = 'Sistema';
+    const authHeader = req.headers['authorization'];
+    const token = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.slice(7) : null;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        usuarioLogado = decoded.name || decoded.username || 'Sistema';
+      } catch {}
+    }
+    if (dados.usuario && usuarioLogado === 'Sistema') {
+      usuarioLogado = String(dados.usuario).trim();
+    }
+
     const resultado = calcularScore(dados);
     const registroSalvo = await saveAnaliseCreditoDB({
       ...dados,
+      usuario: usuarioLogado,
       total_score: resultado.totalScore,
       risco: resultado.risco,
       sugestao: resultado.sugestao,

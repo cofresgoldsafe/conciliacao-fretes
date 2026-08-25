@@ -170,6 +170,34 @@ runTest('Snapshot de detalhes_pontos gravado permanece inalterado após rebalanc
   resetScoreConfig();
 });
 
+// 3. Testar Persistência do Campo 'usuario'
+runTest('Identidade do usuário analista é gravada e preservada no registro de crédito', async () => {
+  const { saveAnaliseCreditoDB, getHistoricoCreditoDB } = require('./postgres_db');
+  
+  const dados = {
+    pedido_venda: 'TESTE-USUARIO-99',
+    cliente_nome: 'Cliente Teste Auditoria Usuário',
+    total_pedido: 5000,
+    usuario: 'Alexandre QA',
+    faturado: 'S',
+    entrada: 'S',
+    protestos: 'N',
+    score_serasa: '800',
+    cnpj_ativo: 'S'
+  };
+
+  const salvoLocal = salvarAnalise(dados);
+  assert.strictEqual(salvoLocal.usuario, 'Alexandre QA', 'salvarAnalise deve preservar o usuário informado');
+
+  const salvoDb = await saveAnaliseCreditoDB(dados);
+  assert.strictEqual(salvoDb.usuario, 'Alexandre QA', 'saveAnaliseCreditoDB deve persistir o usuário');
+
+  const historicoDb = await getHistoricoCreditoDB(10);
+  const encontrado = historicoDb.find(x => x.pedido_venda === 'TESTE-USUARIO-99');
+  assert(encontrado, 'Registro deve ser recuperado em getHistoricoCreditoDB');
+  assert.strictEqual(encontrado.usuario, 'Alexandre QA', 'getHistoricoCreditoDB deve retornar o nome do usuário');
+});
+
 console.log(`\n====================================================`);
 console.log(`📊 RESULTADOS: ${passedTests}/${totalTests} aprovados (${Math.round((passedTests / totalTests) * 100)}%)`);
 console.log(`====================================================\n`);

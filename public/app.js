@@ -3944,6 +3944,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      // Anexa o usuário logado que está gravando a análise
+      payload.usuario = currentUser ? (currentUser.name || currentUser.username) : 'Sistema';
+
       const btnSubmit = document.getElementById('btnCalcularSalvarCredito');
       if (btnSubmit) {
         btnSubmit.disabled = true;
@@ -4053,7 +4056,8 @@ document.addEventListener('DOMContentLoaded', () => {
         String(item.pedido_venda || '').toLowerCase().includes(termo) ||
         String(item.cliente_nome || '').toLowerCase().includes(termo) ||
         String(item.empresa || '').toLowerCase().includes(termo) ||
-        String(item.risco || '').toLowerCase().includes(termo)
+        String(item.risco || '').toLowerCase().includes(termo) ||
+        String(item.usuario || '').toLowerCase().includes(termo)
       );
       if (!matchTermo) return false;
 
@@ -4189,8 +4193,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!modal || !corpo) return;
 
     const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
+    const usuarioStr = item.usuario || (currentUser ? (currentUser.name || currentUser.username) : 'Sistema');
     if (titulo) titulo.innerHTML = `📋 Ficha de Análise de Crédito — Pedido <strong>#${escapeHtml(item.pedido_venda)}</strong>`;
-    if (subtitulo) subtitulo.textContent = `Empresa: ${item.empresa || '-'} | Cliente: ${item.cliente_nome || '-'} | Data: ${dataStr}`;
+    if (subtitulo) subtitulo.textContent = `Empresa: ${item.empresa || '-'} | Cliente: ${item.cliente_nome || '-'} | Data: ${dataStr} | Usuário: ${usuarioStr}`;
 
     let sugestoes = item.sugestoes_lista || [];
     if (sugestoes.length === 0) {
