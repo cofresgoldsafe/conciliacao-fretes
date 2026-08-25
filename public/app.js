@@ -171,6 +171,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  let sessionHeartbeatTimer = null;
+  function startSessionHeartbeat() {
+    if (sessionHeartbeatTimer) clearInterval(sessionHeartbeatTimer);
+    fetch('/api/auth/session-ping', { method: 'POST' }).catch(() => {});
+    sessionHeartbeatTimer = setInterval(() => {
+      if (currentUser && currentToken) {
+        fetch('/api/auth/session-ping', { method: 'POST' }).catch(() => {});
+      }
+    }, 5 * 60 * 1000);
+  }
+
   function showAuthenticatedUser(user, token) {
     currentUser = user;
     if (token) currentToken = token;
@@ -179,6 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
       loginOverlay.style.display = 'none';
     }
     if (userInfo) userInfo.textContent = user.name || user.username;
+
+    // Dispara Heartbeat para manter último acesso ativo no painel de auditoria
+    startSessionHeartbeat();
 
     // Apply Tab Permissions safely
     try {

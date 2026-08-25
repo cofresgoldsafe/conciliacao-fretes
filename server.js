@@ -51,6 +51,7 @@ const {
   getHistory: getHistoryDB,
   saveHistoryItem: saveHistoryItemDB,
   logUserActivity,
+  touchUserActivity,
   getAuditSummary,
   getDiagnosticInfo,
   saveInterWebhookEvent,
@@ -619,6 +620,20 @@ app.post('/api/auth/resend-2fa', resend2FALimiter, async (req, res) => {
     });
   } catch (err) {
     return handleServerError(res, err, 'Erro ao reenviar código 2FA.');
+  }
+});
+
+// API: Heartbeat de Sessão / Touch de Atividade do Usuário
+app.post('/api/auth/session-ping', async (req, res) => {
+  try {
+    const authUser = getUserFromReq(req);
+    if (authUser && authUser.username && authUser.username !== 'sistema') {
+      await touchUserActivity(authUser.username);
+      return res.json({ success: true, active: true, user: authUser.username });
+    }
+    return res.json({ success: true, active: false });
+  } catch (err) {
+    return res.json({ success: false });
   }
 });
 
@@ -2022,6 +2037,19 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       decisao_final: 'Liberado',
       mensagem: `Pedido #${detalhes.numPedido || pedNormalizado} encontrado com sucesso no Protheus.`
     });
+
+    // Registra atividade do analista no Feed de Auditoria e atualiza Último Acesso Ativo
+    const authUser = getUserFromReq(req);
+    if (authUser && authUser.username && authUser.username !== 'sistema') {
+      logUserActivity({
+        username: authUser.username,
+        userName: authUser.name,
+        actionType: 'CONSULTA_CREDITO',
+        description: `Consultou pedido #${detalhes.numPedido || pedNormalizado} (${empKey}) - Cliente: ${cli.nome || 'N/A'} (R$ ${Number(totalVal).toFixed(2)})`,
+        ip: req.ip,
+        metadata: { empresa: empKey, pedido: pedNormalizado, total: totalVal }
+      }).catch(() => {});
+    }
   } catch (err) {
     console.error('Erro ao consultar Protheus na analise de credito:', err);
     res.status(500).json({ success: false, error: 'Erro interno ao consultar o ERP Protheus: ' + err.message });
@@ -2090,6 +2118,16 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => 
       alerta_cadastro_receita: resultado.alertaCadastroReceita,
       detalhes_pontos: resultado.detalhesPontos
     });
+
+    // Registra atividade do analista no Feed de Auditoria e atualiza Último Acesso Ativo
+    logUserActivity({
+      username: usuarioLogado.toLowerCase(),
+      userName: usuarioLogado,
+      actionType: 'GRAVACAO_CREDITO',
+      description: `Gravou análise de crédito do Pedido #${dados.pedido_venda} (Score: ${resultado.totalScore}, Risco: ${resultado.risco}, Decisão: ${decisao})`,
+      ip: req.ip,
+      metadata: { empresa: dados.empresa, pedido: dados.pedido_venda, score: resultado.totalScore, risco: resultado.risco, decisao }
+    }).catch(() => {});
 
     res.json({
       success: true,

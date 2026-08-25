@@ -100,12 +100,16 @@ function getPool() {
 }
 
 /**
- * Health Check e Reconexão Automática em Background
+ * Health Check, Reconexão Automática e Keep-Alive em Background para Supabase
  */
 let healthCheckTimer = null;
+let lastKeepAliveTime = 0;
+
 function startHealthCheck() {
   if (healthCheckTimer || !process.env.DATABASE_URL) return;
   healthCheckTimer = setInterval(async () => {
+    const now = Date.now();
+    // 1. Se desconectado, tenta reconectar
     if (!isConnected && pool) {
       try {
         const client = await pool.connect();
@@ -113,13 +117,24 @@ function startHealthCheck() {
         client.release();
         isConnected = true;
         lastDbError = null;
+        lastKeepAliveTime = now;
         console.log('🟢 [Postgres Auto-Reconnect] Conexão com Supabase restabelecida com sucesso!');
       } catch (err) {
         lastDbError = err;
         isConnected = false;
       }
+    } 
+    // 2. Se conectado, executa Keep-Alive periódico (a cada 2 horas) para evitar congelamento por inatividade na Supabase
+    else if (isConnected && pool && (now - lastKeepAliveTime) > 2 * 60 * 60 * 1000) {
+      try {
+        await safeQuery('SELECT 1;');
+        lastKeepAliveTime = now;
+        console.log('⚡ [Postgres Keep-Alive] Ping de atividade executado com sucesso no Supabase.');
+      } catch (err) {
+        console.warn('⚠️ [Postgres Keep-Alive] Falha temporária no ping:', err.message);
+      }
     }
-  }, 60000);
+  }, 60000); // Checa a cada 60s
   if (healthCheckTimer && healthCheckTimer.unref) {
     healthCheckTimer.unref(); // Não bloqueia encerramento do processo em testes
   }
@@ -894,6 +909,35 @@ async function logUserActivity({ username, userName, actionType, description, ip
 }
 
 /**
+ * Atualiza o timestamp de último acesso do usuário (Touch / Heartbeat)
+ */
+async function touchUserActivity(username) {
+  if (!username) return;
+  const cleanUser = String(username).trim().toLowerCase();
+  const p = getPool();
+  if (p) {
+    try {
+      await safeQuery(`
+        UPDATE users 
+        SET last_active_at = NOW(), total_actions = COALESCE(total_actions, 0) + 1, updated_at = NOW()
+        WHERE LOWER(username) = $1;
+      `, [cleanUser]);
+    } catch {}
+  }
+  try {
+    if (fs.existsSync(usersFile)) {
+      let localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
+      const uIdx = localUsers.findIndex(u => String(u.username || '').toLowerCase() === cleanUser);
+      if (uIdx >= 0) {
+        localUsers[uIdx].lastActiveAt = new Date().toISOString();
+        localUsers[uIdx].totalActions = (localUsers[uIdx].totalActions || 0) + 1;
+        fs.writeFileSync(usersFile, JSON.stringify(localUsers, null, 2));
+      }
+    }
+  } catch {}
+}
+
+/**
  * Retorna o resumo de auditoria para o Admin
  */
 async function getAuditSummary() {
@@ -1270,6 +1314,7 @@ module.exports = {
   getHistory,
   saveHistoryItem,
   logUserActivity,
+  touchUserActivity,
   getAuditSummary,
   getDiagnosticInfo,
   saveInterWebhookEvent,
