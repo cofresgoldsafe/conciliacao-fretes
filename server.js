@@ -1562,6 +1562,15 @@ const {
 } = require('./analise_credito_engine');
 
 // Funções de Normalização e Comparação Semântica de Endereços (Protheus vs Receita Federal)
+function normalizarNumero(num) {
+  if (!num) return '';
+  const digits = String(num).replace(/\D/g, '');
+  if (!digits) return String(num).trim();
+  // Remove zeros à esquerda (ex: '00099' -> '99')
+  const semZeros = digits.replace(/^0+/, '');
+  return semZeros || '0';
+}
+
 function normalizarTextoEnd(txt) {
   if (!txt) return '';
   return String(txt)
@@ -1591,15 +1600,15 @@ function normalizarTextoEnd(txt) {
 function extrairNumeroEnd(txt) {
   if (!txt) return '';
   const m = String(txt).match(/\b\d+\b/);
-  return m ? m[0] : '';
+  return m ? normalizarNumero(m[0]) : '';
 }
 
-function compararEnderecos(endProtheus, endReceita, numProtheus, numReceita) {
-  const norm1 = normalizarTextoEnd(endProtheus);
-  const norm2 = normalizarTextoEnd(endReceita);
+function compararEnderecos(endProtheus, endReceita, numProtheus, numReceita, compReceita, compProtheus) {
+  const norm1 = normalizarTextoEnd(`${endProtheus} ${compProtheus || ''}`);
+  const norm2 = normalizarTextoEnd(`${endReceita} ${compReceita || ''}`);
 
-  const n1 = numProtheus || extrairNumeroEnd(endProtheus);
-  const n2 = numReceita || extrairNumeroEnd(endReceita);
+  const n1 = normalizarNumero(numProtheus) || extrairNumeroEnd(endProtheus);
+  const n2 = normalizarNumero(numReceita) || extrairNumeroEnd(endReceita);
 
   const tokens1 = new Set(norm1.split(' ').filter(x => x.length > 1));
   const tokens2 = new Set(norm2.split(' ').filter(x => x.length > 1));
@@ -1620,7 +1629,7 @@ function compararEnderecos(endProtheus, endReceita, numProtheus, numReceita) {
     n2,
     similarity,
     numMatch,
-    iguais: similarity >= 0.70 && numMatch
+    iguais: similarity >= 0.65 && numMatch
   };
 }
 
@@ -1645,8 +1654,10 @@ async function consultarCnpjPublico(cnpjStr) {
         fundacao: d.data_inicio_atividade || '',
         capitalSocial: typeof d.capital_social === 'number' ? d.capital_social : parseFloat(d.capital_social) || 0,
         cnpjAtivo: (d.descricao_situacao_cadastral || d.situacao_cadastral || '').toUpperCase().includes('ATIVA') ? 'S' : 'N',
+        descricao_tipo_de_logradouro: d.descricao_tipo_de_logradouro || '',
         logradouro: d.logradouro || '',
         numero: d.numero || '',
+        complemento: d.complemento || '',
         bairro: d.bairro || '',
         municipio: d.municipio || '',
         uf: d.uf || '',
@@ -1674,8 +1685,10 @@ async function consultarCnpjPublico(cnpjStr) {
         fundacao: d2.abertura || '',
         capitalSocial: parseFloat(cap) || 0,
         cnpjAtivo: (d2.situacao || '').toUpperCase().includes('ATIVA') ? 'S' : 'N',
+        descricao_tipo_de_logradouro: '',
         logradouro: d2.logradouro || '',
         numero: d2.numero || '',
+        complemento: d2.complemento || '',
         bairro: d2.bairro || '',
         municipio: d2.municipio || '',
         uf: d2.uf || '',
@@ -1748,8 +1761,8 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
 
     if (dadosCnpj && cli.endereco) {
       const endProtheus = `${cli.endereco} ${cli.bairro || ''} ${cli.cidade || ''} ${cli.uf || ''}`;
-      const endReceita = `${dadosCnpj.logradouro} ${dadosCnpj.numero} ${dadosCnpj.bairro} ${dadosCnpj.municipio} ${dadosCnpj.uf}`;
-      const comp = compararEnderecos(endProtheus, endReceita, extrairNumeroEnd(cli.endereco), dadosCnpj.numero);
+      const endReceita = `${dadosCnpj.descricao_tipo_de_logradouro || ''} ${dadosCnpj.logradouro || ''} ${dadosCnpj.numero || ''} ${dadosCnpj.bairro || ''} ${dadosCnpj.municipio || ''} ${dadosCnpj.uf || ''}`;
+      const comp = compararEnderecos(endProtheus, endReceita, cli.numero || extrairNumeroEnd(cli.endereco), dadosCnpj.numero, dadosCnpj.complemento, cli.complemento);
       
       cadastroIgualReceitaVal = comp.iguais ? 'S' : 'N';
       comparacaoEnderecoInfo = {
