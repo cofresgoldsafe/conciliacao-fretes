@@ -49,8 +49,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Autenticação mTLS Multi-Empresas:** Suporte a credenciais mTLS no Render via `MP_clientId`, `MP_clientSecret`, `MP_cert` e `MP_key` (Empresa 14 - Metal Pleno / S4BW - Conta `3974073-9`).
    - **Decodificação Resiliente de Certificados:** Normalização automática de quebras de linha `\n` escapadas e suporte a certificados codificados em Base64 ou texto puro PEM.
    - **Conciliação e Saldo em Tempo Real:** Consulta ao vivo de saldo (`/banking/v2/saldo`) confrontado com `SE8140` e extrato (`/banking/v2/extrato`) com agrupamento inteligente N:1 e 1:1 contra `SE5140`.
-8. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-9. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+8. [x] **Módulo de Análise de Crédito Comercial & Motor de Risco (`analise_credito_engine.js`, `postgres_db.js`, `server.js`, `public/app.js`):**
+   - **Integração Completa ERP Protheus:** Consulta automática de pedidos de venda (`SC5`/`SC6`), cadastro de clientes (`SA1`), condições de pagamento (`SE4`) e histórico financeiro unificado multi-empresa (`SE1` nas empresas 09, 14, 15 e 16).
+   - **Comparação Inteligente de Endereços:** Algoritmo tolerante a variações Protheus x Receita Federal com limpeza de números com zeros à esquerda (`00099` -> `99`), inclusão de complementos e suporte a logradouros equivalentes.
+   - **Maturidade Digital Automática (Substituição ScamAdviser):** Consulta em tempo real da idade do domínio no RDAP Registro.br, primeiro snapshot histórico no Wayback Machine (Archive.org) e identificação de provedor de e-mail via DNS MX (Google Workspace, Microsoft 365, Servidores Dedicados).
+   - **Automação de E-mails e Site:** Detecção automática de e-mails corporativos, múltiplos e-mails no cadastro (`A1_EMAIL`) para confirmação de contato financeiro, filtragem de provedores genéricos (@gmail, @uol, @terra) e validação de site corporativo.
+   - **Score em Tempo Real & Gravação Permanente:** Exibição do live score reativo e persistência permanente no banco PostgreSQL (`analise_credito_history`) com histórico padrão de 15 análises e expansão para 100 registros com 1 clique.
+9. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+10. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.
