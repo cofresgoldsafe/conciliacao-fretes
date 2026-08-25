@@ -730,6 +730,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-analise-credito') {
         carregarHistoricoCredito();
       }
+      if (targetTab === 'tab-vend-pedidos-abertos') {
+        carregarPedidosAbertos();
+      }
     });
   });
 
@@ -2048,20 +2051,36 @@ document.addEventListener('DOMContentLoaded', () => {
   function ajustarEscopoVendedor(user) {
     const comisVendorSelect = document.getElementById('comisVendorSelect');
     const comisVendorSelectGroup = document.getElementById('comisVendorSelectGroup');
-    if (!comisVendorSelect) return;
+    const pedidosAbertosVendedorFilter = document.getElementById('pedidosAbertosVendedorFilter');
+    const pedidosAbertosVendedorFilterGroup = document.getElementById('pedidosAbertosVendedorFilterGroup');
 
     if (user && user.role === 'vendedor' && VENDEDOR_USERS[user.username.toLowerCase()]) {
       const vendCode = VENDEDOR_USERS[user.username.toLowerCase()];
-      comisVendorSelect.value = vendCode;
-      comisVendorSelect.disabled = true;
+      if (comisVendorSelect) {
+        comisVendorSelect.value = vendCode;
+        comisVendorSelect.disabled = true;
+      }
       if (comisVendorSelectGroup) {
         const label = comisVendorSelectGroup.querySelector('label');
         if (label) label.textContent = `👤 Vendedor: ${user.name || user.username} (Fixo)`;
       }
+      if (pedidosAbertosVendedorFilter) {
+        pedidosAbertosVendedorFilter.value = vendCode;
+        pedidosAbertosVendedorFilter.disabled = true;
+      }
+      if (pedidosAbertosVendedorFilterGroup) {
+        const label = pedidosAbertosVendedorFilterGroup.querySelector('label');
+        if (label) label.textContent = `👤 Vendedor: ${user.name || user.username} (Fixo)`;
+      }
     } else {
-      comisVendorSelect.disabled = false;
+      if (comisVendorSelect) comisVendorSelect.disabled = false;
       if (comisVendorSelectGroup) {
         const label = comisVendorSelectGroup.querySelector('label');
+        if (label) label.textContent = '👤 Vendedor';
+      }
+      if (pedidosAbertosVendedorFilter) pedidosAbertosVendedorFilter.disabled = false;
+      if (pedidosAbertosVendedorFilterGroup) {
+        const label = pedidosAbertosVendedorFilterGroup.querySelector('label');
         if (label) label.textContent = '👤 Vendedor';
       }
     }
@@ -2664,6 +2683,162 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btnBuscarComissoes) btnBuscarComissoes.addEventListener('click', consultarComissoesAction);
+
+  // --- SUB-ABA: VENDEDORES - PEDIDOS ABERTOS ---
+  const pedidosAbertosEmpresaFilter = document.getElementById('pedidosAbertosEmpresaFilter');
+  const pedidosAbertosVendedorFilter = document.getElementById('pedidosAbertosVendedorFilter');
+  const btnAtualizarPedidosAbertos = document.getElementById('btnAtualizarPedidosAbertos');
+  const pedidosAbertosLoading = document.getElementById('pedidosAbertosLoading');
+  const pedidosAbertosResults = document.getElementById('pedidosAbertosResults');
+  const pedidosAbertosCount = document.getElementById('pedidosAbertosCount');
+  const pedidosAbertosTableBody = document.getElementById('pedidosAbertosTableBody');
+  const pedidosAbertosEmptyState = document.getElementById('pedidosAbertosEmptyState');
+
+  let pedidosAbertosCache = [];
+
+  function formatPipedriveDealLink(codWeb) {
+    const raw = String(codWeb || '').trim();
+    const digits = raw.replace(/\D/g, '');
+    if (!digits || digits.length < 3 || /^0+$/.test(digits) || raw === '-' || raw === '0') {
+      return `<span style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">${escapeHtml(raw || '-')}</span>`;
+    }
+    return `
+      <a href="https://benetroncomercial.pipedrive.com/deal/${digits}" target="_blank" rel="noopener noreferrer" 
+         class="link-codweb-pipedrive" title="Abrir oportunidade #${digits} no Pipedrive" 
+         style="color: #38bdf8; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
+        ${escapeHtml(raw)}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+      </a>
+    `;
+  }
+
+  function formatBadgeBloqCredito(bloqCredito) {
+    const txt = String(bloqCredito || '').trim();
+    if (txt === 'BLOQ NO CREDITO' || txt.includes('BLOQ')) {
+      return `<span class="diverg-badge status-danger" style="font-size: 0.76rem; padding: 3px 8px;">🔒 ${escapeHtml(txt)}</span>`;
+    }
+    return `<span class="status-badge sucesso" style="font-size: 0.76rem; padding: 3px 8px; font-weight: 600;">✓ ${escapeHtml(txt || 'SEM BLOQ CREDITO')}</span>`;
+  }
+
+  function formatBadgeBloqEstoque(bloqEstoque) {
+    const txt = String(bloqEstoque || '').trim();
+    if (txt === 'BLOQ POR ESTOQUE' || txt.includes('BLOQ')) {
+      return `<span class="diverg-badge status-warning" style="font-size: 0.76rem; padding: 3px 8px;">⚠️ ${escapeHtml(txt)}</span>`;
+    }
+    return `<span class="status-badge sucesso" style="font-size: 0.76rem; padding: 3px 8px; font-weight: 600;">✓ ${escapeHtml(txt || 'SEM BLOQ ESTOQ')}</span>`;
+  }
+
+  function renderPedidosAbertosTable(pedidos) {
+    if (!pedidosAbertosTableBody) return;
+    pedidosAbertosTableBody.innerHTML = '';
+
+    const empFiltro = (pedidosAbertosEmpresaFilter ? pedidosAbertosEmpresaFilter.value : '').toUpperCase();
+    const vendFiltro = (pedidosAbertosVendedorFilter ? pedidosAbertosVendedorFilter.value : '').trim();
+
+    const filtrados = (pedidos || []).filter(p => {
+      if (empFiltro) {
+        const empSigla = (p.empresa || '').toUpperCase();
+        const empKey = (p.empresaKey || '').toUpperCase();
+        if (empSigla !== empFiltro && empKey !== empFiltro && !(empFiltro === 'MP' && empKey === 'METAL_PLENO')) {
+          return false;
+        }
+      }
+      if (vendFiltro) {
+        const codVend = String(p.codVendedor || '').trim();
+        const paddedVend = codVend.padStart(6, '0');
+        const cleanFiltro = vendFiltro.padStart(6, '0');
+        if (codVend !== vendFiltro && paddedVend !== cleanFiltro) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (pedidosAbertosCount) pedidosAbertosCount.textContent = filtrados.length;
+
+    if (filtrados.length === 0) {
+      if (pedidosAbertosResults) pedidosAbertosResults.classList.add('hidden');
+      if (pedidosAbertosEmptyState) pedidosAbertosEmptyState.classList.remove('hidden');
+      return;
+    }
+
+    if (pedidosAbertosEmptyState) pedidosAbertosEmptyState.classList.add('hidden');
+    if (pedidosAbertosResults) pedidosAbertosResults.classList.remove('hidden');
+
+    filtrados.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="company-badge ${escapeHtml(p.empresa)}">${escapeHtml(p.empresa)}</span></td>
+        <td>${formatPipedriveDealLink(p.codWeb)}</td>
+        <td>
+          <button type="button" class="link-pedido btn-link" data-empresa="${escapeHtml(p.empresaKey || 'OACO')}" data-ped="${escapeHtml(p.numPed)}" 
+                  title="Clique para ver os detalhes completos do Pedido #${escapeHtml(p.numPed)}"
+                  style="background: none; border: none; padding: 0; color: #38bdf8; font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 0.9rem;">
+            ${escapeHtml(p.numPed)}
+          </button>
+        </td>
+        <td>${formatBadgeBloqCredito(p.bloqCredito)}</td>
+        <td>${formatBadgeBloqEstoque(p.bloqEstoque)}</td>
+        <td><strong>${escapeHtml(p.vendedor)}</strong></td>
+        <td>${escapeHtml(p.nomeCli)}</td>
+      `;
+      pedidosAbertosTableBody.appendChild(tr);
+    });
+
+    pedidosAbertosTableBody.querySelectorAll('.link-pedido').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emp = btn.getAttribute('data-empresa') || 'OACO';
+        const ped = btn.getAttribute('data-ped');
+        if (ped) abrirDetalhesPedidoModal(emp, ped);
+      });
+    });
+  }
+
+  async function carregarPedidosAbertos(forceRefresh = false) {
+    if (pedidosAbertosLoading) pedidosAbertosLoading.classList.remove('hidden');
+    if (pedidosAbertosResults) pedidosAbertosResults.classList.add('hidden');
+    if (pedidosAbertosEmptyState) pedidosAbertosEmptyState.classList.add('hidden');
+    if (btnAtualizarPedidosAbertos) {
+      btnAtualizarPedidosAbertos.disabled = true;
+      btnAtualizarPedidosAbertos.textContent = '⏳ Carregando...';
+    }
+
+    try {
+      const response = await fetch('/api/vendedores/pedidos/abertos');
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.data)) {
+        pedidosAbertosCache = data.data;
+        renderPedidosAbertosTable(pedidosAbertosCache);
+      } else {
+        alert(data.message || 'Erro ao carregar lista de pedidos abertos.');
+      }
+    } catch (err) {
+      alert('Erro de comunicação ao carregar pedidos abertos: ' + err.message);
+    } finally {
+      if (pedidosAbertosLoading) pedidosAbertosLoading.classList.add('hidden');
+      if (btnAtualizarPedidosAbertos) {
+        btnAtualizarPedidosAbertos.disabled = false;
+        btnAtualizarPedidosAbertos.textContent = '🔄 Atualizar Pedidos';
+      }
+    }
+  }
+
+  if (pedidosAbertosEmpresaFilter) {
+    pedidosAbertosEmpresaFilter.addEventListener('change', () => {
+      renderPedidosAbertosTable(pedidosAbertosCache);
+    });
+  }
+
+  if (pedidosAbertosVendedorFilter) {
+    pedidosAbertosVendedorFilter.addEventListener('change', () => {
+      renderPedidosAbertosTable(pedidosAbertosCache);
+    });
+  }
+
+  if (btnAtualizarPedidosAbertos) {
+    btnAtualizarPedidosAbertos.addEventListener('click', () => carregarPedidosAbertos(true));
+  }
 
   // =========================================================================
   // MÓDULO ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA INTER (077) X PROTHEUS

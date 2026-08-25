@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.41">
+  <link rel="stylesheet" href="style.css?v=8.44">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 18:36 (Keep-Alive automatico no Supabase e rastreamento continuo de atividade/heartbeat de operadores)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 19:49 (Sub-aba Pedidos Abertos no modulo Vendedores 100% concluida nas 5 fases)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -87,6 +87,10 @@
         <button class="nav-tab-btn active" data-tab="tab-vend-pedidos">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Consulta Pedido</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-vend-pedidos-abertos" id="btnTabVendPedidosAbertos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span>Pedidos Abertos</span>
         </button>
         <button class="nav-tab-btn" data-tab="tab-vend-comissoes">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -543,7 +547,92 @@
       </section>
     </div>
 
-    <!-- ABA VENDEDORES 2: COMISSÕES -->
+    <!-- ABA VENDEDORES 2: PEDIDOS ABERTOS -->
+    <div id="tab-vend-pedidos-abertos" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>⏳ Pedidos de Venda em Aberto (Não Faturados)</h2>
+            <p class="desc">Acompanhamento em tempo real dos pedidos não faturados nas empresas Metal Pleno (14), GSI (15) e OACO (16), com monitoramento de Bloqueio de Crédito e Bloqueio de Estoque (SC9).</p>
+          </div>
+        </div>
+
+        <!-- Filtros dos Pedidos Abertos -->
+        <div class="vend-search-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: flex-end; margin-top: 1rem; background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0;">
+            <label for="pedidosAbertosEmpresaFilter">🏢 Empresa</label>
+            <select id="pedidosAbertosEmpresaFilter" class="form-select">
+              <option value="">Todas as Empresas</option>
+              <option value="MP">MP (Metal Pleno - 14)</option>
+              <option value="GSI">GSI (Empresa 15)</option>
+              <option value="OACO">OACO (Empresa 16)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;" id="pedidosAbertosVendedorFilterGroup">
+            <label for="pedidosAbertosVendedorFilter">👤 Vendedor</label>
+            <select id="pedidosAbertosVendedorFilter" class="form-select">
+              <option value="">Todos os Vendedores</option>
+              <option value="000004">Figueiredo (000004)</option>
+              <option value="000064">Andrea (000064)</option>
+              <option value="000074">Juliana (000074)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btnAtualizarPedidosAbertos" class="btn btn-primary" style="flex: 1; height: 42px;">
+              🔄 Atualizar Pedidos
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="pedidosAbertosLoading" class="hidden" style="text-align: center; padding: 2.5rem 1rem;">
+          <div class="spinner" style="margin: 0 auto 1rem auto; width: 32px; height: 32px; border: 3px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Consultando pedidos em aberto nas empresas...</p>
+        </div>
+
+        <!-- Resultados dos Pedidos Abertos -->
+        <div id="pedidosAbertosResults" class="hidden" style="margin-top: 1.5rem;">
+          <div class="table-header-info flex-between" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-weight: 600; font-size: 0.95rem;">
+              📦 Pedidos em Aberto (<span id="pedidosAbertosCount">0</span>)
+            </div>
+            <div class="badge-tip" style="font-size: 0.8rem; color: var(--text-muted);">
+              💡 Clique no <strong>CodWeb</strong> para abrir no Pipedrive ou no <strong>Ped. Venda</strong> para ver os detalhes completos.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 10%;">Empresa</th>
+                  <th style="width: 13%;">CodWeb</th>
+                  <th style="width: 13%;">Ped. Venda</th>
+                  <th style="width: 16%;">Bloq Crédito</th>
+                  <th style="width: 16%;">Bloq Estoque</th>
+                  <th style="width: 14%;">Vendedor</th>
+                  <th style="width: 18%;">Nome Cliente</th>
+                </tr>
+              </thead>
+              <tbody id="pedidosAbertosTableBody">
+                <!-- Linhas injetadas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="pedidosAbertosEmptyState" class="empty-results-box hidden" style="margin-top: 1.5rem;">
+          <div class="empty-icon">🎉</div>
+          <h4>Nenhum pedido em aberto</h4>
+          <p>Não há pedidos pendentes de faturamento para os filtros selecionados.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA VENDEDORES 3: COMISSÕES -->
     <div id="tab-vend-comissoes" class="tab-pane hidden">
       <section class="card">
         <div class="section-title-row">
@@ -2147,6 +2236,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.41"></script>
+  <script src="app.js?v=8.44"></script>
 </body>
 </html>

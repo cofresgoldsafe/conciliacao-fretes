@@ -340,12 +340,14 @@ function getNomeVendedor(cod) {
  * Consulta Pedidos de Venda para o módulo Vendedores
  * Permite buscar por CodWeb, Número do Pedido ou Nome do Cliente nas 3 empresas
  */
-async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
+async function buscarPedidosVendedores({ codWeb, numPed, nomeCli, codVend } = {}) {
   const cleanCodWeb = sanitizeSqlParam(codWeb);
   const cleanNumPed = sanitizeSqlParam(numPed);
   const cleanNomeCli = sanitizeSqlParam(nomeCli);
+  const cleanVend = sanitizeSqlParam(codVend);
+  const paddedVend6 = cleanVend ? cleanVend.padStart(6, '0') : '';
 
-  if (!cleanCodWeb && !cleanNumPed && !cleanNomeCli) {
+  if (!cleanCodWeb && !cleanNumPed && !cleanNomeCli && !cleanVend) {
     return [];
   }
 
@@ -369,6 +371,9 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
       }
       if (cleanNomeCli) {
         conditions.push(`(C5.C5_NOMECLI LIKE '%${cleanNomeCli}%')`);
+      }
+      if (cleanVend) {
+        conditions.push(`(RTRIM(C5.C5_VEND1) = '${cleanVend}' OR RTRIM(C5.C5_VEND1) = '${paddedVend6}')`);
       }
 
       const sql = `
@@ -408,6 +413,141 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli }) {
       console.warn(`Erro na consulta de pedidos da empresa ${emp.nome}:`, err.message);
     }
   }
+
+  return results;
+}
+
+/**
+ * Determina o status de Bloqueio de Estoque baseado no campo C9_BLEST (Regra Power BI)
+ * Power BI: if [C9_BLEST] = "10" then "SEM BLOQ ESTOQ" else if [C9_BLEST] = "02" then "BLOQ POR ESTOQUE" else if not Text.Contains([C9_BLEST], "0") then "SEM BLOQ ESTOQ" else null
+ */
+function calcularStatusBloqueioEstoque(blest) {
+  const s = String(blest || '').trim();
+  if (!s) return 'SEM BLOQ ESTOQ';
+  if (s === '10') return 'SEM BLOQ ESTOQ';
+  if (s === '02') return 'BLOQ POR ESTOQUE';
+  if (!s.includes('0')) return 'SEM BLOQ ESTOQ';
+  return 'SEM BLOQ ESTOQ';
+}
+
+/**
+ * Determina o status de Bloqueio de Crédito baseado no campo C9_BLCRED (Regra Power BI)
+ * Power BI: if [C9_BLCRED] = "10" then "SEM BLOQ CREDITO" else if [C9_BLCRED] = "01" then "BLOQ NO CREDITO" else if not Text.Contains([C9_BLCRED], "1") then "SEM BLOQ CREDITO" else null
+ */
+function calcularStatusBloqueioCredito(blcred) {
+  const s = String(blcred || '').trim();
+  if (!s) return 'SEM BLOQ CREDITO';
+  if (s === '10') return 'SEM BLOQ CREDITO';
+  if (s === '01') return 'BLOQ NO CREDITO';
+  if (!s.includes('1')) return 'SEM BLOQ CREDITO';
+  return 'SEM BLOQ CREDITO';
+}
+
+/**
+ * Consulta Pedidos de Venda Abertos (não faturados e não cancelados)
+ * Junta SC5 e SC9 nas 3 empresas (OACO, GSI, METAL PLENO)
+ */
+async function buscarPedidosAbertosVendedores({ empresa, codVend } = {}) {
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+  const cleanVend = sanitizeSqlParam(codVend || '');
+  const paddedVend6 = cleanVend ? cleanVend.padStart(6, '0') : '';
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc9: "SC9160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc9: "SC9150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc9: "SC9140" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e => 
+      e.key === cleanEmpresa || 
+      e.sigla === cleanEmpresa || 
+      e.codigo === cleanEmpresa || 
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) {
+      empresasFiltradas = empresasConfig;
+    }
+  }
+
+  const results = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      const conditions = [
+        "C5.D_E_L_E_T_ = ' '",
+        "(C5.C5_NOTA IS NULL OR RTRIM(C5.C5_NOTA) = '' OR RTRIM(C5.C5_NOTA) = '0')",
+        "RTRIM(ISNULL(C5.C5_NOTA, '')) NOT LIKE 'X%'"
+      ];
+
+      if (cleanVend) {
+        conditions.push(`(RTRIM(C5.C5_VEND1) = '${cleanVend}' OR RTRIM(C5.C5_VEND1) = '${paddedVend6}')`);
+      }
+
+      const sql = `
+        SELECT TOP 300
+            RTRIM(C5.C5_FILIAL) AS C5_FILIAL,
+            RTRIM(C5.C5_NUM) AS C5_NUM,
+            RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+            RTRIM(ISNULL(C5.C5_NOTA, '')) AS C5_NOTA,
+            RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI,
+            RTRIM(ISNULL(C5.C5_CLIENTE, '')) AS C5_CLIENTE,
+            RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS C5_LOJACLI,
+            RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS C5_EMISSAO,
+            RTRIM(ISNULL(C5.C5_VEND1, '')) AS C5_VEND1,
+            RTRIM(ISNULL(C9.MAX_BLEST, '')) AS C9_BLEST,
+            RTRIM(ISNULL(C9.MAX_BLCRED, '')) AS C9_BLCRED
+        FROM ${emp.sc5} C5
+        LEFT JOIN (
+            SELECT 
+                C9_FILIAL,
+                C9_PEDIDO,
+                CASE 
+                    WHEN SUM(CASE WHEN RTRIM(C9_BLEST) = '02' THEN 1 ELSE 0 END) > 0 THEN '02'
+                    WHEN SUM(CASE WHEN RTRIM(C9_BLEST) = '10' THEN 1 ELSE 0 END) > 0 THEN '10'
+                    ELSE MAX(RTRIM(C9_BLEST))
+                END AS MAX_BLEST,
+                CASE 
+                    WHEN SUM(CASE WHEN RTRIM(C9_BLCRED) = '01' THEN 1 ELSE 0 END) > 0 THEN '01'
+                    WHEN SUM(CASE WHEN RTRIM(C9_BLCRED) = '10' THEN 1 ELSE 0 END) > 0 THEN '10'
+                    ELSE MAX(RTRIM(C9_BLCRED))
+                END AS MAX_BLCRED
+            FROM ${emp.sc9}
+            WHERE D_E_L_E_T_ = ' '
+            GROUP BY C9_FILIAL, C9_PEDIDO
+        ) C9 ON C9.C9_FILIAL = C5.C5_FILIAL AND C9.C9_PEDIDO = C5.C5_NUM
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY C5.C5_EMISSAO DESC, C5.C5_NUM DESC
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+        for (const row of dbRes.rows) {
+          results.push({
+            empresa: emp.sigla,
+            empresaNome: emp.nome,
+            empresaKey: emp.key,
+            codWeb: row.C5_CODWEB || '-',
+            numPed: row.C5_NUM || '-',
+            bloqCredito: calcularStatusBloqueioCredito(row.C9_BLCRED),
+            bloqEstoque: calcularStatusBloqueioEstoque(row.C9_BLEST),
+            codBlCred: row.C9_BLCRED || '',
+            codBlEst: row.C9_BLEST || '',
+            vendedor: getNomeVendedor(row.C5_VEND1) || row.C5_VEND1 || 'NÃO INFORMADO',
+            codVendedor: row.C5_VEND1 || '',
+            nomeCli: row.C5_NOMECLI || 'CLIENTE NÃO INFORMADO',
+            emissao: row.C5_EMISSAO || ''
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`Erro na consulta de pedidos abertos da empresa ${emp.nome}:`, err.message);
+    }
+  }
+
+  // Ordenação global por data de emissão decrescente
+  results.sort((a, b) => (b.emissao || '').localeCompare(a.emissao || '') || (b.numPed || '').localeCompare(a.numPed || ''));
 
   return results;
 }
@@ -1292,6 +1432,9 @@ module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
+  buscarPedidosAbertosVendedores,
+  calcularStatusBloqueioEstoque,
+  calcularStatusBloqueioCredito,
   obterDetalhesPedido,
   obterHistoricoFinanceiroCliente,
   buscarComissoesPeriodo,

@@ -12,6 +12,7 @@ const {
   consultarProtheusNF, 
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
+  buscarPedidosAbertosVendedores,
   obterDetalhesPedido,
   buscarComissoesPeriodo,
   VENDEDORES_MAP,
@@ -122,7 +123,8 @@ function getUserFromReq(req) {
       username: String(req.user.username).toLowerCase().trim(), 
       name: String(req.user.name || req.user.username).trim(),
       role: req.user.role || 'user',
-      permissions: req.user.permissions || []
+      permissions: req.user.permissions || [],
+      vendorCode: req.user.vendorCode || null
     };
   }
   const authHeader = req.headers['authorization'];
@@ -134,7 +136,8 @@ function getUserFromReq(req) {
           username: String(decoded.username).toLowerCase().trim(),
           name: String(decoded.name || decoded.username).trim(),
           role: decoded.role || 'user',
-          permissions: decoded.permissions || []
+          permissions: decoded.permissions || [],
+          vendorCode: decoded.vendorCode || null
         };
       }
     } catch {}
@@ -143,7 +146,8 @@ function getUserFromReq(req) {
     username: 'sistema', 
     name: 'Sistema',
     role: 'anonymous',
-    permissions: []
+    permissions: [],
+    vendorCode: null
   };
 }
 
@@ -856,15 +860,23 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
 });
 
 // API: Vendedores - Buscar Pedidos Multi-Empresa (CodWeb / NumPed / NomeCli)
-app.post('/api/vendedores/pedidos/search', async (req, res) => {
+app.post('/api/vendedores/pedidos/search', requireAuth, async (req, res) => {
   try {
-    const { codWeb, numPed, nomeCli } = req.body || {};
+    let { codWeb, numPed, nomeCli } = req.body || {};
     if (!codWeb && !numPed && !nomeCli) {
       return res.status(400).json({ success: false, message: 'Informe ao menos um critério de busca (CodWeb, Número do Pedido ou Nome do Cliente).' });
     }
-    const results = await buscarPedidosVendedores({ codWeb, numPed, nomeCli });
-
     const user = getUserFromReq(req);
+    let codVend = null;
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
+      }
+      codVend = user.vendorCode;
+    }
+
+    const results = await buscarPedidosVendedores({ codWeb, numPed, nomeCli, codVend });
+
     const filtros = [codWeb && `Web: ${codWeb}`, numPed && `Ped: ${numPed}`, nomeCli && `Cli: ${nomeCli}`].filter(Boolean).join(' | ');
     logUserActivity({
       username: user.username,
@@ -881,16 +893,68 @@ app.post('/api/vendedores/pedidos/search', async (req, res) => {
   }
 });
 
+// API: Vendedores - Listar Pedidos de Venda Abertos (Não Faturados)
+app.get('/api/vendedores/pedidos/abertos', requireAuth, async (req, res) => {
+  try {
+    let { empresa, codVend } = req.query || {};
+    const user = getUserFromReq(req);
+
+    // Se o usuário logado for vendedor, restringe estritamente ao seu código de vendedor (Fail-Closed)
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
+      }
+      codVend = user.vendorCode;
+    }
+
+    const results = await buscarPedidosAbertosVendedores({ empresa, codVend });
+
+    const filtros = [
+      empresa ? `Empresa: ${empresa}` : 'Todas as Empresas',
+      codVend ? `Vendedor: ${codVend}` : 'Todos os Vendedores'
+    ].join(' | ');
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS_ABERTOS',
+      description: `Consultou pedidos abertos: ${filtros} (${results.length} pedido(s))`,
+      ip: req.ip,
+      metadata: { empresa, codVend, count: results.length }
+    }).catch(() => {});
+
+    res.json({ success: true, count: results.length, data: results });
+  } catch (err) {
+    handleServerError(res, err, 'Erro na busca de pedidos abertos de vendedores.');
+  }
+});
+
 // API: Vendedores - Obter Detalhes Completos do Pedido (Cabeçalho, Endereço, Itens SC6)
-app.get('/api/vendedores/pedidos/detalhes', async (req, res) => {
+app.get('/api/vendedores/pedidos/detalhes', requireAuth, async (req, res) => {
   try {
     const { empresaKey, numPedido } = req.query || {};
     if (!numPedido) {
       return res.status(400).json({ success: false, message: 'Número do Pedido é obrigatório.' });
     }
     const detalhes = await obterDetalhesPedido(empresaKey, numPedido);
+    if (!detalhes) {
+      return res.status(404).json({ success: false, message: 'Pedido não encontrado.' });
+    }
 
     const user = getUserFromReq(req);
+    // Proteção Anti-IDOR / BOLA para usuários com perfil de vendedor (Fail-Closed)
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
+      }
+      const vendPedido = String(detalhes.comercial && detalhes.comercial.codVendedor || '').trim();
+      const paddedVend = vendPedido.padStart(6, '0');
+      const cleanUserVend = String(user.vendorCode).trim().padStart(6, '0');
+      if (paddedVend !== cleanUserVend) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Este pedido pertence a outro vendedor.' });
+      }
+    }
+
     logUserActivity({
       username: user.username,
       userName: user.name,
@@ -907,11 +971,19 @@ app.get('/api/vendedores/pedidos/detalhes', async (req, res) => {
 });
 
 // API: Vendedores - Relatório de Comissões por Período
-app.post('/api/vendedores/comissoes', async (req, res) => {
+app.post('/api/vendedores/comissoes', requireAuth, async (req, res) => {
   try {
-    const { dataIni, dataFim, codVend } = req.body || {};
+    let { dataIni, dataFim, codVend } = req.body || {};
     if (!dataIni || !dataFim) {
       return res.status(400).json({ success: false, message: 'Datas inicial e final são obrigatórias.' });
+    }
+
+    const user = getUserFromReq(req);
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
+      }
+      codVend = user.vendorCode; // Enforce vendor isolation
     }
 
     // Validação de intervalo máximo de 60 dias
@@ -928,7 +1000,6 @@ app.post('/api/vendedores/comissoes', async (req, res) => {
 
     const resultado = await buscarComissoesPeriodo({ dataIni, dataFim, codVend });
 
-    const user = getUserFromReq(req);
     const vendTxt = codVend ? `Vendedor ${codVend}` : 'Todos os Vendedores';
     logUserActivity({
       username: user.username,

@@ -27,11 +27,16 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 * **Painel de Divergências:** Cartões estatísticos de resumo, badges coloridos, chips de filtro rápido por status e tolerância configurável em R$.
 * **Edição Viva de NF (`Doc (NF)`):** Reconsulta instantânea ao Protheus e exportação da tabela em CSV.
 
-### 💼 Módulo 2: Vendedores & Comissões (v1.3)
+### 💼 Módulo 2: Vendedores, Pedidos & Comissões (v1.4)
 * **Sub-aba 1 (Consulta Pedido):**
   * Pesquisa multi-empresa simultânea nas tabelas `SC5160` (OACO), `SC5150` (GSI) e `SC5140` (Metal Pleno).
   * Modal rico com busca de endereço e contato na tabela mestra `SA1010`, máscaras automáticas de CNPJ/CPF/CEP/Telefone e grade de itens `SC6`.
-* **Sub-aba 2 (Comissões & Metas):**
+* **Sub-aba 2 (Pedidos Abertos):**
+  * Visão consolidada de pedidos de venda não faturados (`C5_NOTA = ''` e não cancelados) nas 3 empresas (`SC5`).
+  * Monitoramento de Bloqueio de Estoque (`C9_BLEST`) e Bloqueio de Crédito (`C9_BLCRED`) da tabela `SC9` aderente às regras de negócio oficiais do Power BI.
+  * Integração externa inteligente com o CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/{digits}`) e abertura da modal detalhada do pedido.
+  * Proteção Anti-IDOR/BOLA e isolamento de carteira restrita para vendedores autenticados.
+* **Sub-aba 3 (Comissões & Metas):**
   * Consulta periódica nas tabelas `SE3160` (OACO), `SE3150` (GSI) e `SE3140` (Metal Pleno) com leitura de `E3_BASE`, `E3_PORC` e `E3_COMIS`.
   * **Card "Meta Atingida":** Cálculo dinâmico proporcional de faturamento, substituindo a exibição de comissão a pagar em R$ pela porcentagem atingida de faturamento em relação à meta comercial:
     * **Meta Individual:** R$ 120.000,00 por vendedor (para vendedor selecionado ou perfil de vendedor logado).
