@@ -483,6 +483,9 @@ async function buscarPedidosAbertosVendedores({ empresa, codVend } = {}) {
 
       if (cleanVend) {
         conditions.push(`(RTRIM(C5.C5_VEND1) = '${cleanVend}' OR RTRIM(C5.C5_VEND1) = '${paddedVend6}')`);
+      } else {
+        // Restringe estritamente aos 3 vendedores comerciais oficiais (Figueiredo, Andrea, Juliana), ignorando códigos internos (ex: 000029)
+        conditions.push(`RTRIM(C5.C5_VEND1) IN ('000004', '000064', '000074', '4', '64', '74', '04')`);
       }
 
       const sql = `

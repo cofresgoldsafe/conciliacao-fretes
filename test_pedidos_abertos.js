@@ -214,6 +214,26 @@ test('Ordenação de pedidos abertos por CodWeb e Ped. Venda (crescente e decres
   assert.deepStrictEqual(sortPedDesc.map(x => x.numPed), ['000100', '000050', '000002'], 'Ped. Venda DESC deve ordenar numericamente');
 });
 
+// 8. Teste de Filtragem Restritiva de Vendedores (Apenas 4, 64, 74)
+test('Descarte de pedidos de controle interno ou vendedores fora da equipe comercial (ex: 000029)', () => {
+  const listaMista = [
+    { numPed: '000001', codVendedor: '000064', vendedor: 'Andrea' },
+    { numPed: '000002', codVendedor: '000029', vendedor: 'Controle Interno 29' },
+    { numPed: '000003', codVendedor: '000004', vendedor: 'Figueiredo' },
+    { numPed: '000004', codVendedor: '000001', vendedor: 'Outro Vendedor' },
+    { numPed: '000005', codVendedor: '000074', vendedor: 'Juliana' }
+  ];
+
+  const filtrados = listaMista.filter(p => {
+    const codVend = String(p.codVendedor || '').trim();
+    const paddedVend = codVend.padStart(6, '0');
+    return ['000004', '000064', '000074'].includes(paddedVend) || ['4', '64', '74'].includes(codVend);
+  });
+
+  assert.strictEqual(filtrados.length, 3, 'Deve reter apenas os 3 vendedores autorizados');
+  assert.deepStrictEqual(filtrados.map(x => x.codVendedor), ['000064', '000004', '000074']);
+});
+
 // Helper para chamadas HTTP
 function makeRequest(options, postData = null) {
   return new Promise((resolve, reject) => {

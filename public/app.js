@@ -2794,6 +2794,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const vendFiltro = (pedidosAbertosVendedorFilter ? pedidosAbertosVendedorFilter.value : '').trim();
 
     const filtrados = (pedidos || []).filter(p => {
+      const codVend = String(p.codVendedor || '').trim();
+      const paddedVend = codVend.padStart(6, '0');
+
+      // Descarta qualquer pedido de vendedor que não seja Andrea (000064), Figueiredo (000004) ou Juliana (000074)
+      if (!['000004', '000064', '000074'].includes(paddedVend) && !['4', '64', '74'].includes(codVend)) {
+        return false;
+      }
+
       if (empFiltro) {
         const empSigla = (p.empresa || '').toUpperCase();
         const empKey = (p.empresaKey || '').toUpperCase();
@@ -2802,8 +2810,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
       if (vendFiltro) {
-        const codVend = String(p.codVendedor || '').trim();
-        const paddedVend = codVend.padStart(6, '0');
         const cleanFiltro = vendFiltro.padStart(6, '0');
         if (codVend !== vendFiltro && paddedVend !== cleanFiltro) {
           return false;
