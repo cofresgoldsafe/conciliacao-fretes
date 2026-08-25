@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.27">
+  <link rel="stylesheet" href="style.css?v=8.28">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 21:20 (feat(credito): regra de contrato de entrega por custo/preco unitario do item (> 2k) e nao total)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 21:36 (feat(credito): painel de score em tempo real na Secao 7 antes da Decisao Final e recalculacao reativa)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1463,32 +1463,58 @@
             </div>
           </div>
 
-          <!-- Bloco 7: Observações e Parecer Final -->
+          <!-- Bloco 7: Observações, Score em Tempo Real & Parecer Final -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
-              <div class="form-group">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; align-items: stretch;">
+              
+              <!-- Coluna 1: Observações do Analista -->
+              <div class="form-group" style="display: flex; flex-direction: column;">
                 <label for="cr_obs">Observações Internas do Analista</label>
-                <input type="text" id="cr_obs" class="form-input" placeholder="Anotações sobre transportadora, garantias ou contato com financeiro..." />
+                <textarea id="cr_obs" class="form-input" style="flex: 1; min-height: 80px; resize: vertical;" placeholder="Anotações sobre garantias, transportadora ou contato..."></textarea>
               </div>
-              <div class="form-group">
+
+              <!-- Coluna 2: Card de Score em Tempo Real -->
+              <div id="cardLiveScorePreview" style="background: rgba(30, 41, 59, 0.75); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; padding: 0.85rem 1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #94a3b8; display: flex; justify-content: space-between; align-items: center;">
+                  <span>⚡ SCORE EM TEMPO REAL</span>
+                  <span id="liveScoreRiskBadge" class="badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 0.72rem;">AGUARDANDO DADOS</span>
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 0.4rem; margin: 0.35rem 0 0.15rem 0;">
+                  <span id="liveScoreValue" style="font-size: 1.75rem; font-weight: 800; color: #38bdf8; font-family: var(--font-mono); line-height: 1;">--</span>
+                  <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">/ 100 pts</span>
+                </div>
+                <div id="liveScoreSugestao" style="font-size: 0.75rem; color: #cbd5e1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  Sugestão: <span style="color: #fbbf24;">Preencha os campos para calcular</span>
+                </div>
+                <div id="liveScoreBadgesMini" style="display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem;">
+                  <!-- Badges mini de segurança inseridas dinamicamente -->
+                </div>
+              </div>
+
+              <!-- Coluna 3: Decisão Final -->
+              <div class="form-group" style="display: flex; flex-direction: column;">
                 <label for="cr_decisao_final">Decisão Final do Analista *</label>
-                <select id="cr_decisao_final" class="form-select" style="font-weight: 700;" required>
+                <select id="cr_decisao_final" class="form-select" style="font-weight: 700; height: 42px;" required>
                   <option value="Liberado" selected>Liberado</option>
                   <option value="Entrada">Liberar com Entrada</option>
                   <option value="Só À Vista">Bloquear para Prazo (Só À Vista)</option>
                   <option value="Bloqueado">Bloqueado</option>
                   <option value="Cancelado">Pedido Cancelado</option>
                 </select>
+                <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem;">
+                  💡 Decisão embasada no Score e Alertas de risco ao lado.
+                </div>
               </div>
+
             </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <span style="font-size: 0.8rem; color: var(--text-muted);">
-              ⚠️ Nenhum campo pode estar em branco para gravação definitiva no banco.
+              ⚠️ Todos os campos obrigatórios devem estar selecionados para gravação definitiva.
             </span>
             <button type="submit" id="btnCalcularSalvarCredito" class="btn btn-primary btn-large" style="padding: 0.75rem 2rem; font-weight: 700; background: #059669; border-color: #047857;">
-              🛡️ Consultar & Gravar no Banco
+              🛡️ Gravar Análise no Banco
             </button>
           </div>
         </form>
@@ -1864,6 +1890,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.27"></script>
+  <script src="app.js?v=8.28"></script>
 </body>
 </html>

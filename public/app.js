@@ -3436,6 +3436,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
           creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong>${endMsg}.`;
         }
+
+        // Atualiza Score em Tempo Real imediatamente após preencher dados
+        atualizarScoreEmTempoReal();
       } catch (err) {
         // Limpa campos para evitar dados falsos/stale
         if (formAnaliseCreditoCompleto) formAnaliseCreditoCompleto.reset();
@@ -3455,6 +3458,7 @@ document.addEventListener('DOMContentLoaded', () => {
           creditoProtheusBadge.innerHTML = `❌ <strong>Pedido #${escapeHtml(numPed)} NÃO EXISTE no Protheus</strong> para a Empresa ${escapeHtml(emp)}. Verifique o número digitado ou a empresa selecionada.`;
         }
         alert(`❌ Pedido #${numPed} NÃO EXISTE no ERP Protheus (Empresa ${emp}).\n\nPor favor, confirme se o número do pedido está correto no Protheus.`);
+        atualizarScoreEmTempoReal();
       } finally {
         btnIniciarConsultaCredito.disabled = false;
         btnIniciarConsultaCredito.innerHTML = '<span>⚡ Iniciar Consulta Protheus</span>';
@@ -3462,116 +3466,365 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Submeter Análise de Crédito
+  // Função utilitária para extrair dados do formulário
+  function extrairDadosFormCredito() {
+    const getVal = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
+
+    const parseMoeda = (valStr) => {
+      if (!valStr) return 0;
+      if (typeof valStr === 'number') return valStr;
+      const limpo = String(valStr).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
+      return parseFloat(limpo) || 0;
+    };
+
+    return {
+      empresa: creditoEmpresaSelect ? creditoEmpresaSelect.value : '14',
+      pedido_venda: getVal('cr_pedido_venda'),
+      cod_web: getVal('cr_cod_web'),
+      cliente_codigo: getVal('cr_cliente_codigo'),
+      cliente_nome: getVal('cr_cliente_nome'),
+      total_pedido: parseMoeda(getVal('cr_total_pedido')),
+      desconto_ped: getVal('cr_desconto_ped') || 'OK',
+      faturado: getVal('cr_faturado') || 'S',
+      entrada: getVal('cr_entrada') || 'N',
+      quant_grande: getVal('cr_quant_grande') || 'N',
+      prod_nao_combinam: getVal('cr_prod_nao_combinam') || 'N',
+      armario_cofre_gt_2000: getVal('cr_armario_cofre_gt_2000') || 'N',
+      uf_cliente: getVal('cr_uf_cliente') || 'SP',
+      entrega_igual_cadastro: getVal('cr_entrega_igual_cadastro'),
+      cadastro_igual_receita: getVal('cr_cadastro_igual_receita'),
+      casa_sala_conj_end: getVal('cr_casa_sala_conj_end'),
+      google_maps: getVal('cr_google_maps'),
+      registro_br: getVal('cr_registro_br'),
+      scamadvizer_score: parseFloat(getVal('cr_scamadvizer_score')) || 0,
+      email_corporativo: getVal('cr_email_corporativo'),
+      existe_mail_financeiro: getVal('cr_existe_mail_financeiro'),
+      mail_gratuito: getVal('cr_mail_gratuito'),
+      possui_site: getVal('cr_possui_site'),
+      fundacao_matriz: getVal('cr_fundacao_matriz'),
+      capital_social: parseMoeda(getVal('cr_capital_social')),
+      score_serasa: parseInt(getVal('cr_score_serasa'), 10) || 0,
+      protestos: getVal('cr_protestos'),
+      valor_protestos: parseMoeda(getVal('cr_valor_protestos')),
+      pfin: getVal('cr_pfin'),
+      ch_sem_fundo: getVal('cr_ch_sem_fundo'),
+      cnpj_ativo: getVal('cr_cnpj_ativo'),
+      pgtos_abertos: getVal('cr_pgtos_abertos'),
+      comprou_pagou: getVal('cr_comprou_pagou'),
+      comprou_pagou_5x: getVal('cr_comprou_pagou_5x'),
+      fgts_situacao_regular: getVal('cr_fgts_situacao_regular'),
+      razao_fgts_igual: getVal('cr_razao_fgts_igual'),
+      tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas'),
+      obs: getVal('cr_obs'),
+      decisao_final: getVal('cr_decisao_final') || 'Liberado'
+    };
+  }
+
+  // Motor de cálculo de Score e Regras de Segurança no Frontend (Espelha o backend)
+  function calcularScoreClienteFrontend(dados) {
+    const totalPed = Number(dados.total_pedido) || 0;
+    const isFaturado = dados.faturado === 'S';
+    const entradaSim = dados.entrada === 'S';
+    const entregaIgualCadastro = dados.entrega_igual_cadastro === 'S';
+
+    const pontos = {};
+    pontos.total_pedido = totalPed > 21000 ? -8 : 0;
+    pontos.faturado = !isFaturado ? 100 : 0;
+    pontos.entrada = entradaSim ? 12 : -4;
+    pontos.quant_grande = dados.quant_grande === 'S' ? -13 : 1;
+    pontos.prod_nao_combinam = dados.prod_nao_combinam === 'S' ? -5 : 2;
+    pontos.pgtos_abertos = dados.pgtos_abertos === 'S' ? -3 : 1;
+    pontos.comprou_pagou = dados.comprou_pagou === 'S' ? 9 : -3;
+    pontos.comprou_pagou_5x = dados.comprou_pagou_5x === 'S' ? 23 : 0;
+    pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? 3 : (dados.cadastro_igual_receita === 'N' ? -3 : 0);
+    pontos.cnpj_ativo = dados.cnpj_ativo === 'S' ? 2 : (dados.cnpj_ativo === 'N' ? -100 : 0);
+    pontos.entrega_igual_cadastro = entregaIgualCadastro ? 2 : (dados.entrega_igual_cadastro === 'N' ? -9 : 0);
+
+    const uf = (dados.uf_cliente || '').toUpperCase().trim();
+    pontos.uf_cliente = uf === 'RJ' ? -12 : 0;
+
+    const maps = dados.google_maps || '-';
+    if (maps === '10') pontos.google_maps = 6;
+    else if (maps === '5') pontos.google_maps = 0;
+    else if (maps === '0') pontos.google_maps = -6;
+    else if (maps === '-') pontos.google_maps = -3;
+    else pontos.google_maps = 0;
+
+    if (entregaIgualCadastro) {
+      pontos.registro_br = 0;
+    } else {
+      pontos.registro_br = dados.registro_br === 'S' ? 6 : 0;
+    }
+
+    const scam = parseFloat(dados.scamadvizer_score) || 0;
+    if (scam >= 97) pontos.scamadvizer_score = 9;
+    else if (scam >= 75) pontos.scamadvizer_score = 0;
+    else if (dados.scamadvizer_score !== '') pontos.scamadvizer_score = -7;
+    else pontos.scamadvizer_score = 0;
+
+    pontos.casa_sala_conj_end = dados.casa_sala_conj_end === 'S' ? -5 : (dados.casa_sala_conj_end === 'N' ? 1 : 0);
+    pontos.email_corporativo = dados.email_corporativo === 'S' ? 3 : (dados.email_corporativo === 'N' ? -3 : 0);
+    pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'N' ? -7 : 0;
+    pontos.mail_gratuito = dados.mail_gratuito === 'S' ? -8 : (dados.mail_gratuito === 'N' ? 2 : 0);
+    pontos.possui_site = dados.possui_site === 'S' ? 1 : (dados.possui_site === 'N' ? -15 : 0);
+
+    let idadeAnos = 0;
+    if (dados.fundacao_matriz) {
+      const dataFund = new Date(dados.fundacao_matriz);
+      if (!isNaN(dataFund.getTime())) {
+        const diffMs = Date.now() - dataFund.getTime();
+        idadeAnos = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
+      }
+    }
+    if (idadeAnos >= 30) pontos.idade_empresa = 8;
+    else if (idadeAnos >= 15) pontos.idade_empresa = 4;
+    else if (idadeAnos >= 5) pontos.idade_empresa = 0;
+    else if (dados.fundacao_matriz) pontos.idade_empresa = -6;
+    else pontos.idade_empresa = 0;
+
+    const temProtestos = dados.protestos === 'S';
+    const valProtestos = Number(dados.valor_protestos) || 0;
+    const capSocial = Number(dados.capital_social) || 0;
+
+    if (dados.protestos === 'N') {
+      pontos.protestos = 5;
+    } else if (temProtestos) {
+      pontos.protestos = -10;
+      if (totalPed > 0 && valProtestos > (totalPed * 2)) {
+        pontos.protestos -= 10;
+      }
+      if (capSocial > 0) {
+        if (valProtestos > capSocial) pontos.protestos -= 20;
+        else pontos.protestos += 4;
+      }
+    } else {
+      pontos.protestos = 0;
+    }
+
+    pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? -6 : 0;
+    pontos.pfin = dados.pfin === 'S' ? -5 : (dados.pfin === 'N' ? 1 : 0);
+
+    const serasa = parseInt(dados.score_serasa, 10);
+    if (!isNaN(serasa) && dados.score_serasa !== '') {
+      if (serasa >= 700) pontos.score_serasa = 8;
+      else if (serasa >= 500) pontos.score_serasa = 4;
+      else if (serasa >= 200) pontos.score_serasa = -4;
+      else if (serasa > 0) pontos.score_serasa = -15;
+      else pontos.score_serasa = -20;
+    } else {
+      pontos.score_serasa = 0;
+    }
+
+    if (capSocial >= 10000000) pontos.capital_social = 12;
+    else if (capSocial >= 1000000) pontos.capital_social = 6;
+    else if (capSocial >= 150000) pontos.capital_social = 0;
+    else if (capSocial >= 12000) pontos.capital_social = -3;
+    else if (capSocial > 0) pontos.capital_social = -7;
+    else pontos.capital_social = 0;
+
+    pontos.fgts_situacao_regular = dados.fgts_situacao_regular === 'N' ? -6 : 0;
+    pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? -10 : 0;
+    pontos.tres_nfs_confirmadas = dados.tres_nfs_confirmadas === 'S' ? 3 : (dados.tres_nfs_confirmadas === 'N' ? -3 : 0);
+
+    const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
+
+    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.scamadvizer_score || 0) + (pontos.registro_br || 0);
+    const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_situacao_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0);
+
+    let risco = 'MÉDIO RISCO';
+    let sugestao = 'VER E-MAIL CORPORATIVO SITE REFERENC COML NFE 3S ALTO VALOR FATURADO';
+
+    if (!isFaturado) {
+      risco = 'SEM-RISCO';
+      sugestao = 'LIBERADO';
+    } else if (totalScore > 5) {
+      risco = 'SEM-RISCO';
+      sugestao = 'LIBERADO';
+    } else if (totalScore >= -3) {
+      risco = 'MÉDIO RISCO';
+      sugestao = 'VER E-MAIL CORPORATIVO SITE REFERENC COML NFE 3S ALTO VALOR FATURADO';
+    } else {
+      if (subGolpe < -15) {
+        risco = 'GOLPE';
+        sugestao = 'ENTRADA OU A VISTA';
+      } else if (subEmpresinha < -15) {
+        risco = 'ALTO RISCO';
+        sugestao = 'ENTRADA OU A VISTA';
+      } else {
+        if (subGolpe < subEmpresinha) {
+          risco = 'GOLPE';
+          sugestao = 'ENTRADA OU A VISTA';
+        } else {
+          risco = 'EMPRESINHA';
+          sugestao = 'VER E-MAIL CORPORATIVO SITE REFERENC COML NFE 3S ALTO VALOR FATURADO';
+        }
+      }
+    }
+
+    const alertaPedCompra = totalPed > 5000 ? 'SOLICITAR PED COMPRA' : 'N/A';
+    const alertaContratoEntrega = dados.armario_cofre_gt_2000 === 'S' ? 'SOLIC CONTRATO DE ENTREGA' : 'N/A';
+    const alertaPerigoGolpe = !entregaIgualCadastro && isFaturado && dados.entrega_igual_cadastro ? 'PERIGO CHECAGEM REVERSA' : 'N/A';
+    const alertaCadastroReceita = dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A';
+
+    const sugestoesLista = [];
+    if (alertaContratoEntrega !== 'N/A') sugestoesLista.push('SOLIC CONTRATO DE ENTREGA');
+    if (alertaPedCompra !== 'N/A') sugestoesLista.push('SOLICITAR PED COMPRA');
+    if (alertaPerigoGolpe !== 'N/A') sugestoesLista.push('PERIGO CHECAGEM REVERSA');
+    if (alertaCadastroReceita !== 'N/A') sugestoesLista.push('CORRIGIR END DIVERGENTE');
+    if (sugestao && sugestao !== 'LIBERADO' && !sugestoesLista.includes(sugestao)) {
+      sugestoesLista.push(sugestao);
+    }
+
+    return {
+      totalScore,
+      risco,
+      sugestao,
+      alertaPedCompra,
+      alertaContratoEntrega,
+      alertaPerigoGolpe,
+      alertaCadastroReceita,
+      sugestoesLista
+    };
+  }
+
+  // Atualização em Tempo Real na Interface (Card da Seção 7 e Banners Superiores)
+  function atualizarScoreEmTempoReal() {
+    const dados = extrairDadosFormCredito();
+    
+    // Se ainda não tem pedido ou cliente preenchido, mantém estado inicial
+    if (!dados.pedido_venda && !dados.total_pedido) {
+      const liveVal = document.getElementById('liveScoreValue');
+      const liveRisk = document.getElementById('liveScoreRiskBadge');
+      const liveSug = document.getElementById('liveScoreSugestao');
+      const liveBadges = document.getElementById('liveScoreBadgesMini');
+      if (liveVal) liveVal.textContent = '--';
+      if (liveRisk) {
+        liveRisk.textContent = 'AGUARDANDO DADOS';
+        liveRisk.style.background = 'rgba(56, 189, 248, 0.2)';
+        liveRisk.style.color = '#38bdf8';
+      }
+      if (liveSug) liveSug.innerHTML = 'Sugestão: <span style="color:#fbbf24;">Preencha os campos para calcular</span>';
+      if (liveBadges) liveBadges.innerHTML = '';
+      return;
+    }
+
+    const res = calcularScoreClienteFrontend(dados);
+
+    // 1. Atualiza o Card Live da Seção 7
+    const liveVal = document.getElementById('liveScoreValue');
+    const liveRisk = document.getElementById('liveScoreRiskBadge');
+    const liveSug = document.getElementById('liveScoreSugestao');
+    const liveBadges = document.getElementById('liveScoreBadgesMini');
+
+    if (liveVal) {
+      liveVal.textContent = res.totalScore;
+      liveVal.style.color = res.totalScore > 5 ? '#22c55e' : (res.totalScore >= -3 ? '#fbbf24' : '#f87171');
+    }
+
+    if (liveRisk) {
+      liveRisk.textContent = res.risco;
+      if (res.risco === 'SEM-RISCO') {
+        liveRisk.style.background = 'rgba(34, 197, 94, 0.2)';
+        liveRisk.style.color = '#22c55e';
+      } else if (res.risco === 'GOLPE' || res.risco === 'ALTO RISCO') {
+        liveRisk.style.background = 'rgba(239, 68, 68, 0.25)';
+        liveRisk.style.color = '#f87171';
+      } else {
+        liveRisk.style.background = 'rgba(245, 158, 11, 0.2)';
+        liveRisk.style.color = '#fbbf24';
+      }
+    }
+
+    if (liveSug) {
+      liveSug.innerHTML = `Sugestão: <strong style="color: #38bdf8;">${escapeHtml(res.sugestao)}</strong>`;
+    }
+
+    if (liveBadges) {
+      liveBadges.innerHTML = gerarBadgesSugestoesHtml(res.sugestoesLista);
+    }
+
+    // 2. Atualiza os Banners Superiores de Sugestões de Segurança
+    const listaBadgesSugestoes = document.getElementById('listaBadgesSugestoes');
+    if (listaBadgesSugestoes) {
+      listaBadgesSugestoes.innerHTML = gerarBadgesSugestoesHtml(res.sugestoesLista);
+    }
+
+    const setAlerta = (id, val, text) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = val !== 'N/A' ? text : 'Dispensado / Sem Risco';
+        el.style.color = val !== 'N/A' ? '#f87171' : '#22c55e';
+      }
+    };
+
+    setAlerta('valAlertaPedCompra', res.alertaPedCompra, 'SOLICITAR PED. COMPRA');
+    setAlerta('valAlertaContrato', res.alertaContratoEntrega, 'SOLIC. CONTRATO ENTREGA');
+    setAlerta('valAlertaGolpe', res.alertaPerigoGolpe, 'PERIGO CHECAGEM REVERSA');
+    setAlerta('valAlertaCadReceita', res.alertaCadastroReceita, 'CORRIGIR END. DIVERGENTE');
+  }
+
+  // Conecta escutas reativas em todo o formulário para recálculo instantâneo a cada tecla/seleção
+  if (formAnaliseCreditoCompleto) {
+    formAnaliseCreditoCompleto.addEventListener('input', atualizarScoreEmTempoReal);
+    formAnaliseCreditoCompleto.addEventListener('change', atualizarScoreEmTempoReal);
+  }
+
+  // Submeter e Gravar Análise de Crédito no Banco
   if (formAnaliseCreditoCompleto) {
     formAnaliseCreditoCompleto.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const getVal = (id) => {
-        const el = document.getElementById(id);
-        return el ? el.value.trim() : '';
-      };
-
-      const parseMoeda = (valStr) => {
-        if (!valStr) return 0;
-        const limpo = String(valStr).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
-        return parseFloat(limpo) || 0;
-      };
+      const payload = extrairDadosFormCredito();
 
       // Lista de campos com validação de preenchimento obrigatório
       const camposObrigatorios = [
-        { id: 'cr_pedido_venda', label: 'Nº Pedido' },
-        { id: 'cr_cliente_nome', label: 'Razão Social' },
-        { id: 'cr_total_pedido', label: 'Total do Pedido' },
-        { id: 'cr_faturado', label: 'Faturado a Prazo' },
-        { id: 'cr_entrada', label: 'Possui Entrada' },
-        { id: 'cr_quant_grande', label: 'Qtd. Grande' },
-        { id: 'cr_prod_nao_combinam', label: 'Prod. Ñ Combinam' },
-        { id: 'cr_armario_cofre_gt_2000', label: 'Armário/Cofre > 2k' },
-        { id: 'cr_uf_cliente', label: 'UF do Cliente' },
-        { id: 'cr_entrega_igual_cadastro', label: 'Entrega = Cadastro' },
-        { id: 'cr_cadastro_igual_receita', label: 'Cadastro = Receita' },
-        { id: 'cr_casa_sala_conj_end', label: 'Casa/Sala no Endereço' },
-        { id: 'cr_google_maps', label: 'Google Maps Fachada' },
-        { id: 'cr_registro_br', label: 'Registro.Br Confere' },
-        { id: 'cr_scamadvizer_score', label: 'ScamAdvizer Score' },
-        { id: 'cr_email_corporativo', label: 'E-mail Corporativo' },
-        { id: 'cr_existe_mail_financeiro', label: 'Mail Finan Diferente' },
-        { id: 'cr_mail_gratuito', label: 'E-mail Gratuito' },
-        { id: 'cr_possui_site', label: 'Possui Site Ativo' },
-        { id: 'cr_fundacao_matriz', label: 'Fundação Matriz' },
-        { id: 'cr_capital_social', label: 'Capital Social' },
-        { id: 'cr_score_serasa', label: 'Score Serasa' },
-        { id: 'cr_protestos', label: 'Possui Protestos' },
-        { id: 'cr_pfin', label: 'PFIN Sim' },
-        { id: 'cr_ch_sem_fundo', label: 'Cheques Sem Fundo' },
-        { id: 'cr_cnpj_ativo', label: 'CNPJ Ativo na RF' },
-        { id: 'cr_pgtos_abertos', label: 'Pgtos em Aberto' },
-        { id: 'cr_comprou_pagou', label: 'Comprou e Pagou 2x+' },
-        { id: 'cr_comprou_pagou_5x', label: 'Comprou e Pagou 5x+' },
-        { id: 'cr_fgts_situacao_regular', label: 'FGTS Regular' },
-        { id: 'cr_razao_fgts_igual', label: 'Razão = FGTS' },
-        { id: 'cr_tres_nfs_confirmadas', label: '3 NFs Confirmadas' }
+        { val: payload.pedido_venda, id: 'cr_pedido_venda', label: 'Nº Pedido' },
+        { val: payload.cliente_nome, id: 'cr_cliente_nome', label: 'Razão Social' },
+        { val: payload.total_pedido, id: 'cr_total_pedido', label: 'Total do Pedido' },
+        { val: payload.faturado, id: 'cr_faturado', label: 'Faturado a Prazo' },
+        { val: payload.entrada, id: 'cr_entrada', label: 'Possui Entrada' },
+        { val: payload.quant_grande, id: 'cr_quant_grande', label: 'Qtd. Grande' },
+        { val: payload.prod_nao_combinam, id: 'cr_prod_nao_combinam', label: 'Prod. Ñ Combinam' },
+        { val: payload.armario_cofre_gt_2000, id: 'cr_armario_cofre_gt_2000', label: 'Item Unitário > 2k' },
+        { val: payload.uf_cliente, id: 'cr_uf_cliente', label: 'UF do Cliente' },
+        { val: payload.entrega_igual_cadastro, id: 'cr_entrega_igual_cadastro', label: 'Entrega = Cadastro' },
+        { val: payload.cadastro_igual_receita, id: 'cr_cadastro_igual_receita', label: 'Cadastro = Receita' },
+        { val: payload.casa_sala_conj_end, id: 'cr_casa_sala_conj_end', label: 'Casa/Sala no Endereço' },
+        { val: payload.google_maps, id: 'cr_google_maps', label: 'Google Maps Fachada' },
+        { val: payload.registro_br, id: 'cr_registro_br', label: 'Registro.Br Confere' },
+        { val: payload.scamadvizer_score, id: 'cr_scamadvizer_score', label: 'ScamAdvizer' },
+        { val: payload.email_corporativo, id: 'cr_email_corporativo', label: 'E-mail Corporativo' },
+        { val: payload.existe_mail_financeiro, id: 'cr_existe_mail_financeiro', label: 'Mail Finan Diferente' },
+        { val: payload.mail_gratuito, id: 'cr_mail_gratuito', label: 'E-mail Gratuito' },
+        { val: payload.possui_site, id: 'cr_possui_site', label: 'Possui Site Ativo' },
+        { val: payload.fundacao_matriz, id: 'cr_fundacao_matriz', label: 'Fundação Matriz' },
+        { val: payload.capital_social, id: 'cr_capital_social', label: 'Capital Social' },
+        { val: payload.score_serasa, id: 'cr_score_serasa', label: 'Score Serasa' },
+        { val: payload.protestos, id: 'cr_protestos', label: 'Possui Protestos' },
+        { val: payload.pfin, id: 'cr_pfin', label: 'PFIN Sim' },
+        { val: payload.ch_sem_fundo, id: 'cr_ch_sem_fundo', label: 'Cheques Sem Fundo' },
+        { val: payload.cnpj_ativo, id: 'cr_cnpj_ativo', label: 'CNPJ Ativo na RF' },
+        { val: payload.pgtos_abertos, id: 'cr_pgtos_abertos', label: 'Pgtos em Aberto' },
+        { val: payload.comprou_pagou, id: 'cr_comprou_pagou', label: 'Comprou e Pagou 2x+' },
+        { val: payload.comprou_pagou_5x, id: 'cr_comprou_pagou_5x', label: 'Comprou e Pagou 5x+' },
+        { val: payload.fgts_situacao_regular, id: 'cr_fgts_situacao_regular', label: 'FGTS Regular' },
+        { val: payload.razao_fgts_igual, id: 'cr_razao_fgts_igual', label: 'Razão = FGTS' },
+        { val: payload.tres_nfs_confirmadas, id: 'cr_tres_nfs_confirmadas', label: '3 NFs Confirmadas' }
       ];
 
       for (const item of camposObrigatorios) {
-        const val = getVal(item.id);
-        if (!val) {
+        if (item.val === undefined || item.val === null || item.val === '') {
           const el = document.getElementById(item.id);
           if (el) {
             el.focus();
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-          alert(`⚠️ Campo obrigatório não preenchido: "${item.label}".\n\nNenhum campo pode estar em branco para calcular o Score e registrar no banco.`);
+          alert(`⚠️ Campo obrigatório não preenchido: "${item.label}".\n\nNenhum campo pode estar em branco para registrar a análise definitiva no banco.`);
           return;
         }
-      }
-
-      const payload = {
-        empresa: creditoEmpresaSelect ? creditoEmpresaSelect.value : '14',
-        pedido_venda: getVal('cr_pedido_venda'),
-        cod_web: getVal('cr_cod_web'),
-        cliente_codigo: getVal('cr_cliente_codigo'),
-        cliente_nome: getVal('cr_cliente_nome'),
-        total_pedido: parseMoeda(getVal('cr_total_pedido')),
-        desconto_ped: getVal('cr_desconto_ped') || 'OK',
-        faturado: getVal('cr_faturado') || 'S',
-        entrada: getVal('cr_entrada') || 'N',
-        quant_grande: getVal('cr_quant_grande') || 'N',
-        prod_nao_combinam: getVal('cr_prod_nao_combinam') || 'N',
-        armario_cofre_gt_2000: getVal('cr_armario_cofre_gt_2000') || 'N',
-        uf_cliente: getVal('cr_uf_cliente') || 'SP',
-        entrega_igual_cadastro: getVal('cr_entrega_igual_cadastro'),
-        cadastro_igual_receita: getVal('cr_cadastro_igual_receita'),
-        casa_sala_conj_end: getVal('cr_casa_sala_conj_end'),
-        google_maps: getVal('cr_google_maps'),
-        registro_br: getVal('cr_registro_br'),
-        scamadvizer_score: parseFloat(getVal('cr_scamadvizer_score')) || 0,
-        email_corporativo: getVal('cr_email_corporativo'),
-        existe_mail_financeiro: getVal('cr_existe_mail_financeiro'),
-        mail_gratuito: getVal('cr_mail_gratuito'),
-        possui_site: getVal('cr_possui_site'),
-        fundacao_matriz: getVal('cr_fundacao_matriz'),
-        capital_social: parseMoeda(getVal('cr_capital_social')),
-        score_serasa: parseInt(getVal('cr_score_serasa'), 10) || 0,
-        protestos: getVal('cr_protestos'),
-        valor_protestos: parseMoeda(getVal('cr_valor_protestos')),
-        pfin: getVal('cr_pfin'),
-        ch_sem_fundo: getVal('cr_ch_sem_fundo'),
-        cnpj_ativo: getVal('cr_cnpj_ativo'),
-        pgtos_abertos: getVal('cr_pgtos_abertos'),
-        comprou_pagou: getVal('cr_comprou_pagou'),
-        comprou_pagou_5x: getVal('cr_comprou_pagou_5x'),
-        fgts_situacao_regular: getVal('cr_fgts_situacao_regular'),
-        razao_fgts_igual: getVal('cr_razao_fgts_igual'),
-        tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas'),
-        obs: getVal('cr_obs'),
-        decisao_final: getVal('cr_decisao_final') || 'Liberado'
-      };
-
-      if (!payload.pedido_venda || !payload.cliente_nome || !payload.uf_cliente || !payload.fundacao_matriz) {
-        alert('Atenção: Todos os campos obrigatórios (Pedido, Cliente, UF, Fundação) devem ser preenchidos para registrar no banco.');
-        return;
       }
 
       const btnSubmit = document.getElementById('btnCalcularSalvarCredito');
@@ -3597,7 +3850,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const txtRiscoBadge = document.getElementById('txtRiscoBadge');
         const txtSugestaoParecer = document.getElementById('txtSugestaoParecer');
         const scoreBadgeVal = document.getElementById('scoreBadgeVal');
-        const listaBadgesSugestoes = document.getElementById('listaBadgesSugestoes');
 
         if (txtTotalScore) txtTotalScore.textContent = resScore.totalScore;
         if (txtRiscoBadge) {
@@ -3612,33 +3864,20 @@ document.addEventListener('DOMContentLoaded', () => {
           scoreBadgeVal.style.background = resScore.totalScore > 5 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
         }
 
-        const setAlerta = (id, val, text) => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.textContent = val !== 'N/A' ? text : 'Dispensado / Sem Risco';
-            el.style.color = val !== 'N/A' ? '#f87171' : '#22c55e';
-          }
-        };
-
-        setAlerta('valAlertaPedCompra', resScore.alertaPedCompra, 'SOLICITAR PED. COMPRA');
-        setAlerta('valAlertaContrato', resScore.alertaContratoEntrega, 'SOLIC. CONTRATO ENTREGA');
-        setAlerta('valAlertaGolpe', resScore.alertaPerigoGolpe, 'PERIGO CHECAGEM REVERSA');
-        setAlerta('valAlertaCadReceita', resScore.alertaCadastroReceita, 'CORRIGIR END. DIVERGENTE');
-
-        if (listaBadgesSugestoes) {
-          listaBadgesSugestoes.innerHTML = gerarBadgesSugestoesHtml(resScore.sugestoesLista || []);
-        }
+        atualizarScoreEmTempoReal();
 
         if (creditoResultadoSection) creditoResultadoSection.classList.remove('hidden');
         creditoResultadoSection.scrollIntoView({ behavior: 'smooth' });
 
+        alert(`✓ Análise de Crédito do Pedido #${payload.pedido_venda} GRAVADA COM SUCESSO!\n\nScore Final: ${resScore.totalScore} pts\nRisco: ${resScore.risco}\nDecisão: ${payload.decisao_final}`);
+
         carregarHistoricoCredito();
       } catch (err) {
-        alert('Erro ao calcular e registrar análise: ' + err.message);
+        alert('Erro ao registrar análise no banco: ' + err.message);
       } finally {
         if (btnSubmit) {
           btnSubmit.disabled = false;
-          btnSubmit.innerHTML = '🛡️ Consultar & Gravar no Banco';
+          btnSubmit.innerHTML = '🛡️ Gravar Análise no Banco';
         }
       }
     });
