@@ -4464,11 +4464,14 @@ document.addEventListener('DOMContentLoaded', () => {
           if (el && val !== undefined && val !== null) el.value = val;
         };
         if (creditoEmpresaSelect) creditoEmpresaSelect.value = item.empresa || '14';
+        
+        // Preenche o campo de busca superior e o campo do formulário
+        setVal('creditoNumPedido', item.pedido_venda);
         setVal('cr_pedido_venda', item.pedido_venda);
-        setVal('cr_cod_web', item.cod_web);
-        setVal('cr_cliente_codigo', item.cliente_codigo);
-        setVal('cr_cliente_nome', item.cliente_nome);
-        setVal('cr_total_pedido', Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+        setVal('cr_cod_web', item.cod_web || '');
+        setVal('cr_cliente_codigo', item.cliente_codigo || '');
+        setVal('cr_cliente_nome', item.cliente_nome || '');
+        setVal('cr_total_pedido', Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         setVal('cr_desconto_ped', item.desconto_ped || 'OK');
         setVal('cr_faturado', item.faturado || 'S');
         setVal('cr_entrada', item.entrada || 'N');
@@ -4476,32 +4479,66 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_prod_nao_combinam', item.prod_nao_combinam || 'N');
         setVal('cr_armario_cofre_gt_2000', item.armario_cofre_gt_2000 || 'N');
         setVal('cr_uf_cliente', item.uf_cliente || 'SP');
-        setVal('cr_entrega_igual_cadastro', item.entrega_igual_cadastro);
-        setVal('cr_cadastro_igual_receita', item.cadastro_igual_receita);
-        setVal('cr_casa_sala_conj_end', item.casa_sala_conj_end);
-        setVal('cr_google_maps', item.google_maps);
-        setVal('cr_registro_br', item.registro_br);
-        setVal('cr_scamadvizer_score', item.scamadvizer_score);
-        setVal('cr_email_corporativo', item.email_corporativo);
-        setVal('cr_existe_mail_financeiro', item.existe_mail_financeiro);
-        setVal('cr_mail_gratuito', item.mail_gratuito);
-        setVal('cr_possui_site', item.possui_site);
-        setVal('cr_fundacao_matriz', item.fundacao_matriz);
-        setVal('cr_capital_social', Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
-        setVal('cr_score_serasa', item.score_serasa);
-        setVal('cr_protestos', item.protestos);
-        setVal('cr_valor_protestos', Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
-        setVal('cr_pfin', item.pfin);
-        setVal('cr_ch_sem_fundo', item.ch_sem_fundo);
-        setVal('cr_cnpj_ativo', item.cnpj_ativo);
-        setVal('cr_pgtos_abertos', item.pgtos_abertos);
-        setVal('cr_comprou_pagou', item.comprou_pagou);
-        setVal('cr_comprou_pagou_5x', item.comprou_pagou_5x);
-        setVal('cr_fgts_situacao_regular', item.fgts_situacao_regular);
-        setVal('cr_razao_fgts_igual', item.razao_fgts_igual);
-        setVal('cr_tres_nfs_confirmadas', item.tres_nfs_confirmadas);
+        setVal('cr_entrega_igual_cadastro', item.entrega_igual_cadastro !== undefined ? item.entrega_igual_cadastro : '');
+        setVal('cr_cadastro_igual_receita', item.cadastro_igual_receita !== undefined ? item.cadastro_igual_receita : '');
+        setVal('cr_casa_sala_conj_end', item.casa_sala_conj_end !== undefined ? item.casa_sala_conj_end : 'N');
+        setVal('cr_google_maps', item.google_maps !== undefined ? item.google_maps : '');
+        setVal('cr_registro_br', item.registro_br !== undefined ? item.registro_br : '');
+        
+        // Maturidade Digital Automática (RDAP, Wayback, MX)
+        const idadeDom = item.idade_dominio_rdap !== undefined ? item.idade_dominio_rdap : (item.idade_dominio !== undefined ? item.idade_dominio : null);
+        if (idadeDom !== null && idadeDom !== undefined && idadeDom !== '') {
+          setVal('cr_idade_dominio_rdap', `${idadeDom} anos`);
+          setVal('cr_idade_dominio_val', idadeDom);
+        } else {
+          setVal('cr_idade_dominio_rdap', item.dominio_principal ? 'Domínio Recente / Não BR' : 'Sem Domínio');
+          setVal('cr_idade_dominio_val', '');
+        }
+
+        const wb = item.wayback_primeiro_snapshot || item.wayback;
+        if (wb) {
+          setVal('cr_wayback_snapshot', `Histórico desde ${wb}`);
+          setVal('cr_wayback_ano_val', wb);
+        } else {
+          setVal('cr_wayback_snapshot', 'Sem histórico no archive');
+          setVal('cr_wayback_ano_val', '');
+        }
+
+        setVal('cr_servidor_mx', item.servidor_mx || 'Sem registro MX');
+        setVal('cr_tipo_servidor_mx', item.tipo_servidor_mx || 'NENHUM');
+        setVal('cr_dominio_principal', item.dominio_principal || '');
+
+        setVal('cr_email_corporativo', item.email_corporativo !== undefined ? item.email_corporativo : 'N');
+        setVal('cr_existe_mail_financeiro', item.existe_mail_financeiro !== undefined ? item.existe_mail_financeiro : 'N');
+        setVal('cr_mail_gratuito', item.mail_gratuito !== undefined ? item.mail_gratuito : 'N');
+        setVal('cr_possui_site', item.possui_site !== undefined ? item.possui_site : 'N');
+        setVal('cr_fundacao_matriz', item.fundacao_matriz || '');
+        setVal('cr_capital_social', Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setVal('cr_score_serasa', item.score_serasa !== undefined ? item.score_serasa : '');
+        setVal('cr_protestos', item.protestos !== undefined ? item.protestos : '');
+        setVal('cr_valor_protestos', Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        setVal('cr_pfin', item.pfin !== undefined ? item.pfin : '');
+        setVal('cr_ch_sem_fundo', item.ch_sem_fundo !== undefined ? item.ch_sem_fundo : '');
+        setVal('cr_cnpj_ativo', item.cnpj_ativo || 'S');
+        setVal('cr_pgtos_abertos', item.pgtos_abertos !== undefined ? item.pgtos_abertos : 'N');
+        setVal('cr_comprou_pagou', item.comprou_pagou !== undefined ? item.comprou_pagou : 'N');
+        setVal('cr_comprou_pagou_5x', item.comprou_pagou_5x !== undefined ? item.comprou_pagou_5x : 'N');
+        setVal('cr_fgts_situacao_regular', item.fgts_situacao_regular !== undefined ? item.fgts_situacao_regular : '');
+        setVal('cr_razao_fgts_igual', item.razao_fgts_igual !== undefined ? item.razao_fgts_igual : '');
+        setVal('cr_tres_nfs_confirmadas', item.tres_nfs_confirmadas || 'D');
         setVal('cr_obs', item.obs || '');
-        setVal('cr_decisao_final', item.decisao_final || 'Liberado');
+        setVal('cr_decisao_final', item.decisao_final || 'Decisão (atenção ao gravar)');
+
+        if (creditoProtheusBadge) {
+          creditoProtheusBadge.classList.remove('hidden');
+          creditoProtheusBadge.style.background = 'rgba(56, 189, 248, 0.12)';
+          creditoProtheusBadge.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+          creditoProtheusBadge.style.color = '#38bdf8';
+          creditoProtheusBadge.innerHTML = `📋 Análise do Pedido <strong>#${escapeHtml(item.pedido_venda)}</strong> (${escapeHtml(item.cliente_nome || '')}) carregada no formulário com sucesso.`;
+        }
+
+        // Recalcula o Score em Tempo Real imediatamente após preencher todos os dados
+        atualizarScoreEmTempoReal();
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
       };
