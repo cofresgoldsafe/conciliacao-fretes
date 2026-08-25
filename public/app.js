@@ -3977,6 +3977,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Carregar Histórico
+  let limiteExibicaoHistorico = 15;
+
   async function carregarHistoricoCredito() {
     try {
       const res = await fetch('/api/financeiro/analise-credito/historico');
@@ -4003,12 +4005,32 @@ document.addEventListener('DOMContentLoaded', () => {
       );
     });
 
-    if (filtrados.length === 0) {
+    const badgeQtd = document.getElementById('badgeQtdHistorico');
+    const lblSubtitulo = document.getElementById('lblSubtituloHistorico');
+    const btnToggle = document.getElementById('btnToggleQtdHistorico');
+
+    if (btnToggle) {
+      btnToggle.innerHTML = limiteExibicaoHistorico === 15 ? '📊 Listar Últimos 100' : '⚡ Listar Últimos 15';
+    }
+
+    if (badgeQtd) {
+      badgeQtd.textContent = termo ? `Filtrado (${filtrados.length})` : (limiteExibicaoHistorico === 15 ? 'Últimos 15' : 'Últimos 100');
+    }
+
+    const exibidos = termo ? filtrados.slice(0, 100) : filtrados.slice(0, limiteExibicaoHistorico);
+
+    if (lblSubtitulo) {
+      lblSubtitulo.textContent = termo 
+        ? `Exibindo ${exibidos.length} resultado(s) para "${termo}"`
+        : `Exibindo ${exibidos.length} de ${listaHistoricoCredito.length} análises gravadas no banco`;
+    }
+
+    if (exibidos.length === 0) {
       historicoCreditoTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada.</td></tr>`;
       return;
     }
 
-    historicoCreditoTableBody.innerHTML = filtrados.map(item => {
+    historicoCreditoTableBody.innerHTML = exibidos.map(item => {
       const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
       const scoreColor = item.total_score > 5 ? '#22c55e' : '#f87171';
       
@@ -4061,6 +4083,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = btn.getAttribute('data-id');
         abrirFichaAnaliseCredito(id);
       });
+    });
+  }
+
+  // Conecta o botão de alternar quantidade exibida (15 vs 100)
+  const btnToggleQtdHistorico = document.getElementById('btnToggleQtdHistorico');
+  if (btnToggleQtdHistorico) {
+    btnToggleQtdHistorico.addEventListener('click', () => {
+      limiteExibicaoHistorico = limiteExibicaoHistorico === 15 ? 100 : 15;
+      renderHistoricoCreditoTable();
     });
   }
 

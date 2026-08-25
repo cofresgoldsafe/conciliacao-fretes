@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.31">
+  <link rel="stylesheet" href="style.css?v=8.32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 22:43 (feat(credito): modulo de maturidade digital automatica (RDAP/Wayback/MX) e auto-preenchimento de emails e site corporativo)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 22:56 (feat(credito): historico padrao de 15 ultimas analises com botao para alternar e listar ultimos 100)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1539,10 +1539,18 @@
       <section class="card" style="margin-top: 1.5rem;">
         <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">📜 Histórico de Análises de Crédito Gravadas</h3>
-            <span style="font-size: 0.8rem; color: var(--text-muted);">Consultas armazenadas para conferência permanente</span>
+            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+              <span>📜 Histórico de Análises de Crédito Gravadas</span>
+              <span id="badgeQtdHistorico" class="badge" style="font-size: 0.72rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Últimos 15</span>
+            </h3>
+            <span id="lblSubtituloHistorico" style="font-size: 0.8rem; color: var(--text-muted);">Exibindo as 15 análises mais recentes</span>
           </div>
-          <input type="text" id="buscaHistoricoCredito" placeholder="🔍 Filtrar por pedido, cliente ou risco..." class="form-input" style="width: 280px; height: 36px; font-size: 0.82rem;" />
+          <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="buscaHistoricoCredito" placeholder="🔍 Filtrar por pedido, cliente ou risco..." class="form-input" style="width: 260px; height: 36px; font-size: 0.82rem;" />
+            <button type="button" id="btnToggleQtdHistorico" class="btn btn-secondary" style="height: 36px; font-size: 0.8rem; padding: 0 12px; white-space: nowrap; font-weight: 600;">
+              📊 Listar Últimos 100
+            </button>
+          </div>
         </div>
 
         <div class="table-container">
@@ -1905,6 +1913,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.31"></script>
+  <script src="app.js?v=8.32"></script>
 </body>
 </html>
