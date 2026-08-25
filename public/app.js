@@ -3319,6 +3319,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const formAnaliseCreditoCompleto = document.getElementById('formAnaliseCreditoCompleto');
   const historicoCreditoTableBody = document.getElementById('historicoCreditoTableBody');
   const buscaHistoricoCredito = document.getElementById('buscaHistoricoCredito');
+  const filtroPeriodoHistoricoCredito = document.getElementById('filtroPeriodoHistoricoCredito');
   const btnSaveScoreConfig = document.getElementById('btnSaveScoreConfig');
   const btnResetScoreConfig = document.getElementById('btnResetScoreConfig');
   const scoreConfigForm = document.getElementById('scoreConfigForm');
@@ -3998,14 +3999,32 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderHistoricoCreditoTable() {
     if (!historicoCreditoTableBody) return;
     const termo = buscaHistoricoCredito ? buscaHistoricoCredito.value.toLowerCase().trim() : '';
+    const periodo = filtroPeriodoHistoricoCredito ? filtroPeriodoHistoricoCredito.value : 'todos';
+
+    const agora = Date.now();
+    const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
+    const trintaDiasMs = 30 * 24 * 60 * 60 * 1000;
 
     const filtrados = listaHistoricoCredito.filter(item => {
-      return (
+      const matchTermo = (
         String(item.pedido_venda || '').toLowerCase().includes(termo) ||
         String(item.cliente_nome || '').toLowerCase().includes(termo) ||
         String(item.empresa || '').toLowerCase().includes(termo) ||
         String(item.risco || '').toLowerCase().includes(termo)
       );
+      if (!matchTermo) return false;
+
+      if (periodo === '7d') {
+        if (!item.created_at) return false;
+        const itemTime = new Date(item.created_at).getTime();
+        return (agora - itemTime) <= seteDiasMs;
+      }
+      if (periodo === '30d') {
+        if (!item.created_at) return false;
+        const itemTime = new Date(item.created_at).getTime();
+        return (agora - itemTime) <= trintaDiasMs;
+      }
+      return true;
     });
 
     const badgeQtd = document.getElementById('badgeQtdHistorico');
@@ -4016,20 +4035,32 @@ document.addEventListener('DOMContentLoaded', () => {
       btnToggle.innerHTML = limiteExibicaoHistorico === 15 ? '📊 Listar Últimos 100' : '⚡ Listar Últimos 15';
     }
 
+    const isFiltrado = termo || periodo !== 'todos';
+    const periodoLabel = periodo === '7d' ? 'Últimos 7 dias' : (periodo === '30d' ? 'Últimos 30 dias' : '');
+
     if (badgeQtd) {
-      badgeQtd.textContent = termo ? `Filtrado (${filtrados.length})` : (limiteExibicaoHistorico === 15 ? 'Últimos 15' : 'Últimos 100');
+      if (isFiltrado) {
+        badgeQtd.textContent = `Filtrado (${filtrados.length})`;
+      } else {
+        badgeQtd.textContent = limiteExibicaoHistorico === 15 ? 'Últimos 15' : 'Últimos 100';
+      }
     }
 
-    const exibidos = termo ? filtrados.slice(0, 100) : filtrados.slice(0, limiteExibicaoHistorico);
+    const exibidos = isFiltrado ? filtrados.slice(0, 100) : filtrados.slice(0, limiteExibicaoHistorico);
 
     if (lblSubtitulo) {
-      lblSubtitulo.textContent = termo 
-        ? `Exibindo ${exibidos.length} resultado(s) para "${termo}"`
-        : `Exibindo ${exibidos.length} de ${listaHistoricoCredito.length} análises gravadas no banco`;
+      if (isFiltrado) {
+        let descFiltro = [];
+        if (termo) descFiltro.push(`busca "${termo}"`);
+        if (periodoLabel) descFiltro.push(periodoLabel.toLowerCase());
+        lblSubtitulo.textContent = `Exibindo ${exibidos.length} resultado(s) para ${descFiltro.join(' e ')}`;
+      } else {
+        lblSubtitulo.textContent = `Exibindo ${exibidos.length} de ${listaHistoricoCredito.length} análises gravadas no banco`;
+      }
     }
 
     if (exibidos.length === 0) {
-      historicoCreditoTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada.</td></tr>`;
+      historicoCreditoTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada${periodoLabel ? ` nos ${periodoLabel.toLowerCase()}` : ''}.</td></tr>`;
       return;
     }
 
@@ -4318,6 +4349,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (buscaHistoricoCredito) {
     buscaHistoricoCredito.addEventListener('input', renderHistoricoCreditoTable);
+  }
+
+  if (filtroPeriodoHistoricoCredito) {
+    filtroPeriodoHistoricoCredito.addEventListener('change', renderHistoricoCreditoTable);
   }
 
   // Carregar Configurações do Score

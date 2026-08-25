@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.33">
+  <link rel="stylesheet" href="style.css?v=8.35">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 23:04 (fix(credito): persistencia permanente do historico em PostgreSQL e sincronizacao automatica ao abrir aba)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 08:38 (feat(credito/2fa): aviso latencia 2fa, ux campos manuais e filtro data historico)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1169,7 +1169,7 @@
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>Nº Pedido *</label>
+                <label>Nº Pedido</label>
                 <input type="text" id="cr_pedido_venda" class="form-input" required />
               </div>
               <div class="form-group">
@@ -1181,11 +1181,11 @@
                 <input type="text" id="cr_cliente_codigo" class="form-input" />
               </div>
               <div class="form-group" style="grid-column: span 2;">
-                <label>Razão Social do Cliente *</label>
+                <label>Razão Social do Cliente</label>
                 <input type="text" id="cr_cliente_nome" class="form-input" required />
               </div>
               <div class="form-group">
-                <label>Total do Pedido (R$) *</label>
+                <label>Total do Pedido (R$)</label>
                 <input type="text" id="cr_total_pedido" class="form-input" placeholder="0,00" required style="font-weight: 700; font-family: 'JetBrains Mono', monospace;" />
               </div>
               <div class="form-group">
@@ -1193,7 +1193,7 @@
                 <input type="text" id="cr_desconto_ped" class="form-input" value="OK" />
               </div>
               <div class="form-group">
-                <label>CNPJ Ativo na RF? *</label>
+                <label>CNPJ Ativo na RF?</label>
                 <select id="cr_cnpj_ativo" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+2 pts)</option>
@@ -1201,7 +1201,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Cadastro = Receita? *</label>
+                <label>Cadastro = Receita?</label>
                 <select id="cr_cadastro_igual_receita" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+3 pts)</option>
@@ -1209,7 +1209,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Casa/Sala no Endereço? *</label>
+                <label>Casa/Sala no Endereço?</label>
                 <select id="cr_casa_sala_conj_end" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não / Prédio (+1 pt)</option>
@@ -1217,11 +1217,11 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Fundação Matriz *</label>
+                <label>Fundação Matriz</label>
                 <input type="date" id="cr_fundacao_matriz" class="form-input" required />
               </div>
               <div class="form-group">
-                <label>Capital Social (R$) *</label>
+                <label>Capital Social (R$)</label>
                 <input type="text" id="cr_capital_social" class="form-input" placeholder="0,00" required />
               </div>
             </div>
@@ -1235,7 +1235,7 @@
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>Faturado a Prazo? *</label>
+                <label>Faturado a Prazo?</label>
                 <select id="cr_faturado" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (Faturado)</option>
@@ -1243,7 +1243,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Possui Entrada? *</label>
+                <label>Possui Entrada?</label>
                 <select id="cr_entrada" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (-4 pts)</option>
@@ -1251,7 +1251,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Pgtos em Aberto? *</label>
+                <label>Pgtos em Aberto?</label>
                 <select id="cr_pgtos_abertos" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+1 pt)</option>
@@ -1259,7 +1259,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Comprou e Pagou 2x+? *</label>
+                <label>Comprou e Pagou 2x+?</label>
                 <select id="cr_comprou_pagou" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+9 pts)</option>
@@ -1267,7 +1267,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Comprou e Pagou 5x+? *</label>
+                <label>Comprou e Pagou 5x+?</label>
                 <select id="cr_comprou_pagou_5x" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (0 pts)</option>
@@ -1275,7 +1275,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Qtd. Grande? *</label>
+                <label>Qtd. Grande?</label>
                 <select id="cr_quant_grande" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+1 pt)</option>
@@ -1283,7 +1283,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Prod. Ñ Combinam? *</label>
+                <label>Prod. Ñ Combinam?</label>
                 <select id="cr_prod_nao_combinam" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+2 pts)</option>
@@ -1291,7 +1291,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Item Unitário &gt; 2k? *</label>
+                <label>Item Unitário &gt; 2k?</label>
                 <select id="cr_armario_cofre_gt_2000" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (Unitário &le; 2k)</option>
@@ -1299,7 +1299,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>UF do Cliente *</label>
+                <label>UF do Cliente</label>
                 <input type="text" id="cr_uf_cliente" maxlength="2" class="form-input" placeholder="SP" required style="text-transform: uppercase;" />
               </div>
             </div>
@@ -1368,7 +1368,7 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>E-mail Corporativo? *</label>
+                <label>E-mail Corporativo?</label>
                 <select id="cr_email_corporativo" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+3 pts)</option>
@@ -1376,7 +1376,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Mail Finan Diferente? *</label>
+                <label>Mail Finan Diferente?</label>
                 <select id="cr_existe_mail_financeiro" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (0 pts)</option>
@@ -1384,7 +1384,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>E-mail Gratuito / Provedor? *</label>
+                <label>E-mail Gratuito / Provedor?</label>
                 <select id="cr_mail_gratuito" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+2 pts)</option>
@@ -1392,7 +1392,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Possui Site Ativo? *</label>
+                <label>Possui Site Ativo?</label>
                 <select id="cr_possui_site" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+1 pt)</option>
@@ -1422,7 +1422,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Valor Protestos (R$)</label>
+                <label>Valor Protestos (R$) *</label>
                 <input type="text" id="cr_valor_protestos" class="form-input" placeholder="0,00" value="0,00" />
               </div>
               <div class="form-group">
@@ -1546,6 +1546,11 @@
             <span id="lblSubtituloHistorico" style="font-size: 0.8rem; color: var(--text-muted);">Exibindo as 15 análises mais recentes</span>
           </div>
           <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <select id="filtroPeriodoHistoricoCredito" class="form-select" style="height: 36px; font-size: 0.82rem; font-weight: 600; width: auto; background-color: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 6px; padding: 0 10px;">
+              <option value="todos" selected>📅 Todos os Períodos</option>
+              <option value="7d">📅 Últimos 7 dias</option>
+              <option value="30d">📅 Últimos 30 dias</option>
+            </select>
             <input type="text" id="buscaHistoricoCredito" placeholder="🔍 Filtrar por pedido, cliente ou risco..." class="form-input" style="width: 260px; height: 36px; font-size: 0.82rem;" />
             <button type="button" id="btnToggleQtdHistorico" class="btn btn-secondary" style="height: 36px; font-size: 0.8rem; padding: 0 12px; white-space: nowrap; font-weight: 600;">
               📊 Listar Últimos 100
@@ -1875,6 +1880,10 @@
             Enviamos um código de segurança de 4 dígitos para:
           </p>
           <span id="twoFactorEmailMasked" style="display: block; font-weight: 700; color: #f8fafc; font-family: var(--font-mono); margin-top: 4px; font-size: 0.92rem;">al***@oaco.com.br</span>
+          <div style="margin-top: 10px; padding: 6px 10px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; font-size: 0.78rem; color: #fbbf24; line-height: 1.35; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>⏱️</span>
+            <strong>A mensagem pode demorar até 60 segundos para chegar na sua caixa de e-mails.</strong>
+          </div>
         </div>
 
         <div class="form-group" style="text-align: center;">
@@ -1913,6 +1922,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.33"></script>
+  <script src="app.js?v=8.35"></script>
 </body>
 </html>

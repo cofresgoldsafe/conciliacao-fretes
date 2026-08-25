@@ -13,15 +13,15 @@
       "configuracoes"
     ],
     "active": true,
-    "lastActiveAt": "2026-08-24T19:18:20.696Z",
+    "lastActiveAt": "2026-08-25T11:35:23.586Z",
     "lastLoginAt": "2026-08-24T18:52:40.764Z",
-    "totalActions": 110
+    "totalActions": 132
   },
   {
     "username": "erica",
     "name": "Érica",
     "email": null,
-    "pass": "$2b$10$MOGLCxR.LY5axHTOdTZiBu9ScTD075XBT5MQj0XrNXGS/SMyx5koG",
+    "pass": "$2b$10$75NdKjNfTNkVFLYeciJA1ulIYQtYKvtkGRp9X67NoW0Kh17aTq0C.",
     "role": "user",
     "permissions": [
       "logistica",
@@ -29,8 +29,8 @@
     ],
     "active": true,
     "vendorCode": null,
-    "lastActiveAt": "2026-08-24T19:18:11.854Z",
-    "totalActions": 16
+    "lastActiveAt": "2026-08-25T11:35:09.889Z",
+    "totalActions": 26
   },
   {
     "username": "wallerson",
@@ -95,7 +95,7 @@
     "username": "usuario_2fa_teste",
     "name": "Usuário de Teste 2FA",
     "email": "usuario.2fa@oaco.com.br",
-    "pass": "$2b$10$sEZF3QSYxpTjzPrvHfegPerYVqOGFL3oWQVYprn7E0znTeAJhePQe",
+    "pass": "$2b$10$qCxcKh6AMjXgXzeaD6fYe.YnWytmqLLOXYJ/xsKkPxDw2AaR6p7Vi",
     "role": "user",
     "vendorCode": null,
     "permissions": [
@@ -103,14 +103,14 @@
       "consulta"
     ],
     "active": true,
-    "lastActiveAt": "2026-08-24T19:18:10.103Z",
-    "totalActions": 15
+    "lastActiveAt": "2026-08-25T11:35:08.075Z",
+    "totalActions": 29
   },
   {
     "username": "marcos_logistica",
     "name": "Marcos de Oliveira",
     "email": "marcos@oaco.com.br",
-    "pass": "$2b$10$zi0.Q3gNVOysxyItn/9P7O9HPQOxuKKkBtpTSQ2Gze8gVdcpomxgy",
+    "pass": "$2b$10$tuGmESEIB84fYdg.WCYZt.EEuIZaPoe6ZxfOxQpGNh9I7zFL.rfWG",
     "role": "user",
     "vendorCode": null,
     "permissions": [

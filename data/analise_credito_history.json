@@ -1,0 +1,21 @@
+[
+  {
+    "id": "1787623435919",
+    "pedido_venda": "000638",
+    "empresa": "16",
+    "cliente_nome": "PREVENT SENIOR ATENDIMENTO A SAUDE LTDA.",
+    "cliente_codigo": "144013",
+    "total_pedido": 15400.5,
+    "faturado": "S",
+    "entrada": "N",
+    "total_score": 22,
+    "risco": "SEM-RISCO",
+    "sugestao": "LIBERADO",
+    "decisao_final": "Liberado",
+    "obs": "Cliente tradicional, pontualidade comprovada.",
+    "sugestoes_lista": [
+      "LIBERADO"
+    ],
+    "created_at": "2026-08-25T02:03:55.917Z"
+  }
+]
