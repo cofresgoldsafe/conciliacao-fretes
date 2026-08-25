@@ -555,6 +555,123 @@ async function buscarPedidosAbertosVendedores({ empresa, codVend } = {}) {
   return results;
 }
 
+function formatarDataProtheus(dt) {
+  const s = String(dt || '').trim();
+  if (s.length === 8) {
+    return `${s.slice(6, 8)}/${s.slice(4, 6)}/${s.slice(0, 4)}`;
+  }
+  return s || '-';
+}
+
+/**
+ * Consulta Pedidos de Compras em Aberto (SC7) nas 3 empresas (OACO, GSI, METAL PLENO)
+ * Retorna produtos com saldo pendente a receber (C7_QUANT - C7_QUJE > 0) e previsão de entrega (C7_DATPRF)
+ */
+async function buscarPedidosCompras({ empresa, search } = {}) {
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+  const cleanSearch = sanitizeSqlParam(search || '');
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc7: "SC7160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc7: "SC7150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc7: "SC7140" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e => 
+      e.key === cleanEmpresa || 
+      e.sigla === cleanEmpresa || 
+      e.codigo === cleanEmpresa || 
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) {
+      empresasFiltradas = empresasConfig;
+    }
+  }
+
+  const results = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      const conditions = [
+        "C7.D_E_L_E_T_ = ' '",
+        "(ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0",
+        "(C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')"
+      ];
+
+      if (cleanSearch) {
+        conditions.push(`(
+          C7.C7_DESCRI LIKE '%${cleanSearch}%' OR 
+          C7.C7_PRODUTO LIKE '%${cleanSearch}%' OR 
+          C7.C7_NUM LIKE '%${cleanSearch}%' OR 
+          C7.C7_FORNECE LIKE '%${cleanSearch}%'
+        )`);
+      }
+
+      const sql = `
+        SELECT TOP 500
+            RTRIM(C7.C7_FILIAL) AS C7_FILIAL,
+            RTRIM(C7.C7_NUM) AS C7_NUM,
+            RTRIM(ISNULL(C7.C7_ITEM, '')) AS C7_ITEM,
+            RTRIM(ISNULL(C7.C7_PRODUTO, '')) AS C7_PRODUTO,
+            RTRIM(ISNULL(C7.C7_DESCRI, '')) AS C7_DESCRI,
+            ISNULL(C7.C7_QUANT, 0) AS C7_QUANT,
+            ISNULL(C7.C7_QUJE, 0) AS C7_QUJE,
+            (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) AS SALDO_QUANT,
+            RTRIM(ISNULL(C7.C7_DATPRF, '')) AS C7_DATPRF,
+            RTRIM(ISNULL(C7.C7_EMISSAO, '')) AS C7_EMISSAO,
+            RTRIM(ISNULL(C7.C7_FORNECE, '')) AS C7_FORNECE,
+            ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), ISNULL(C7.C7_FORNECE, '')) AS FORNECEDOR
+        FROM ${emp.sc7} C7
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY C7.C7_DATPRF ASC, C7.C7_DESCRI ASC
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+        for (const row of dbRes.rows) {
+          const pedNum = String(row.C7_NUM || '').trim();
+          const pedCom = `${emp.sigla}${pedNum}`;
+          const saldo = Math.max(0, Number(row.SALDO_QUANT) || (Number(row.C7_QUANT || 0) - Number(row.C7_QUJE || 0)));
+
+          results.push({
+            empresa: emp.sigla,
+            empresaNome: emp.nome,
+            empresaKey: emp.key,
+            pedCom: pedCom,
+            numPed: pedNum,
+            item: row.C7_ITEM || '',
+            codProduto: row.C7_PRODUTO || '',
+            descricao: row.C7_DESCRI || 'PRODUTO SEM DESCRIÇÃO',
+            qtdOriginal: Number(row.C7_QUANT) || 0,
+            qtdEntregue: Number(row.C7_QUJE) || 0,
+            saldoCompras: saldo,
+            previsao: formatarDataProtheus(row.C7_DATPRF),
+            previsaoRaw: row.C7_DATPRF || '',
+            emissao: formatarDataProtheus(row.C7_EMISSAO),
+            emissaoRaw: row.C7_EMISSAO || '',
+            codFornecedor: row.C7_FORNECE || '',
+            fornecedor: row.FORNECEDOR || row.C7_FORNECE || '-'
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`Erro na consulta de pedidos de compras da empresa ${emp.nome}:`, err.message);
+    }
+  }
+
+  // Ordenação global inicial por data de previsão ascendente (mais próximas primeiro)
+  results.sort((a, b) => {
+    if (a.previsaoRaw && b.previsaoRaw) {
+      return a.previsaoRaw.localeCompare(b.previsaoRaw);
+    }
+    return (a.descricao || '').localeCompare(b.descricao || '');
+  });
+
+  return results;
+}
+
 /**
  * Consulta os Detalhes Completos do Pedido de Venda
  * Retorna dados cadastrais, endereço, transporte, condição de pagamento e itens (SC6)
@@ -1436,6 +1553,8 @@ module.exports = {
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
+  buscarPedidosCompras,
+  formatarDataProtheus,
   calcularStatusBloqueioEstoque,
   calcularStatusBloqueioCredito,
   obterDetalhesPedido,

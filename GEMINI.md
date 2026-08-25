@@ -68,8 +68,12 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Segurança Fail-Closed e Proteção Anti-IDOR/BOLA:** Autenticação JWT obrigatória em todos os endpoints de vendedores (`/api/vendedores/pedidos/*`), propagação de `vendorCode` em `getUserFromReq` e bloqueio estrito (403) caso vendedor tente acessar pedidos de terceiros.
    - **Integração Externa Pipedrive e Detalhes:** Coluna `CODWEB` com link inteligente para o CRM Pipedrive (`target="_blank" rel="noopener noreferrer"`) e clique no número do pedido abrindo a modal de detalhes de itens e faturamento (`SC6`/`SF4`).
    - **Filtros Dinâmicos, Ordenação & UX:** Filtros reativos por Empresa (`MP`, `GSI`, `OACO`) e Vendedor (`Figueiredo`, `Andrea`, `Juliana`), ordenação interativa crescente/decrescente com comparação numérica nas colunas `CodWeb` e `Ped. Venda`, badges de status em alto contraste e suíte de testes com 18 asserções automatizadas.
-10. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-11. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+10. [x] **Sub-aba Pedidos Compras no Módulo Vendedores (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_pedidos_compras.js`):**
+   - **Consulta de Compras em Aberto (SC7):** Extração unificada nas tabelas `SC7140` (MP), `SC7150` (GSI) e `SC7160` (OACO) de itens com saldo positivo (`C7_QUANT - C7_QUJE > 0`) e resíduo ativo (`C7_RESIDUO <> 'S'`).
+   - **Mapeamento e Identificadores:** Identificador visual `PedCom` com prefixo da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`), data de previsão `C7_DATPRF` formatada e busca de fornecedor via subselect em `SA2010`.
+   - **Busca Instantânea & Métricas:** Filtro instantâneo conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa, cards de métricas (Itens em aberto, saldo total e previsão mais próxima), ordenação de 4 colunas e 8 testes automatizados.
+11. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+12. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

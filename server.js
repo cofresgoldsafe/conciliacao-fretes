@@ -13,6 +13,7 @@ const {
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
+  buscarPedidosCompras,
   obterDetalhesPedido,
   buscarComissoesPeriodo,
   VENDEDORES_MAP,
@@ -926,6 +927,34 @@ app.get('/api/vendedores/pedidos/abertos', requireAuth, async (req, res) => {
     res.json({ success: true, count: results.length, data: results });
   } catch (err) {
     handleServerError(res, err, 'Erro na busca de pedidos abertos de vendedores.');
+  }
+});
+
+// API: Vendedores - Listar Pedidos de Compras em Aberto (Previsão de Estoque SC7)
+app.get('/api/vendedores/pedidos/compras', requireAuth, async (req, res) => {
+  try {
+    const { empresa, search } = req.query || {};
+    const user = getUserFromReq(req);
+
+    const results = await buscarPedidosCompras({ empresa, search });
+
+    const filtros = [
+      empresa ? `Empresa: ${empresa}` : 'Todas as Empresas',
+      search ? `Busca: ${search}` : 'Sem filtro de busca'
+    ].join(' | ');
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS_COMPRAS',
+      description: `Consultou pedidos de compras: ${filtros} (${results.length} item(ns))`,
+      ip: req.ip,
+      metadata: { empresa, search, count: results.length }
+    }).catch(() => {});
+
+    res.json({ success: true, count: results.length, data: results });
+  } catch (err) {
+    handleServerError(res, err, 'Erro na busca de pedidos de compras de vendedores.');
   }
 });
 

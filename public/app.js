@@ -733,6 +733,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-vend-pedidos-abertos') {
         carregarPedidosAbertos();
       }
+      if (targetTab === 'tab-vend-pedidos-compras') {
+        carregarPedidosCompras();
+      }
     });
   });
 
@@ -2933,6 +2936,256 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPedidosAbertosTable(pedidosAbertosCache);
     });
   }
+
+  // --- SUB-ABA: VENDEDORES - PEDIDOS DE COMPRAS (SC7) ---
+  const pedidosComprasSearchInput = document.getElementById('pedidosComprasSearchInput');
+  const pedidosComprasEmpresaFilter = document.getElementById('pedidosComprasEmpresaFilter');
+  const btnAtualizarPedidosCompras = document.getElementById('btnAtualizarPedidosCompras');
+  const pedidosComprasLoading = document.getElementById('pedidosComprasLoading');
+  const pedidosComprasResults = document.getElementById('pedidosComprasResults');
+  const pedidosComprasCount = document.getElementById('pedidosComprasCount');
+  const pedidosComprasTableBody = document.getElementById('pedidosComprasTableBody');
+  const pedidosComprasEmptyState = document.getElementById('pedidosComprasEmptyState');
+
+  const statComprasTotalItens = document.getElementById('statComprasTotalItens');
+  const statComprasTotalQtd = document.getElementById('statComprasTotalQtd');
+  const statComprasDataProxima = document.getElementById('statComprasDataProxima');
+
+  const thSortComprasDescri = document.getElementById('thSortComprasDescri');
+  const thSortComprasPed = document.getElementById('thSortComprasPed');
+  const thSortComprasSaldo = document.getElementById('thSortComprasSaldo');
+  const thSortComprasPrevisao = document.getElementById('thSortComprasPrevisao');
+
+  const sortIconComprasDescri = document.getElementById('sortIconComprasDescri');
+  const sortIconComprasPed = document.getElementById('sortIconComprasPed');
+  const sortIconComprasSaldo = document.getElementById('sortIconComprasSaldo');
+  const sortIconComprasPrevisao = document.getElementById('sortIconComprasPrevisao');
+
+  let pedidosComprasCache = [];
+  let pedidosComprasSortField = 'previsao'; // 'descricao' | 'pedCom' | 'saldoCompras' | 'previsao'
+  let pedidosComprasSortDirection = 'asc'; // 'asc' | 'desc'
+
+  function updatePedidosComprasSortIcons() {
+    const map = [
+      { field: 'descricao', icon: sortIconComprasDescri },
+      { field: 'pedCom', icon: sortIconComprasPed },
+      { field: 'saldoCompras', icon: sortIconComprasSaldo },
+      { field: 'previsao', icon: sortIconComprasPrevisao }
+    ];
+
+    map.forEach(item => {
+      if (!item.icon) return;
+      if (pedidosComprasSortField === item.field) {
+        item.icon.textContent = pedidosComprasSortDirection === 'asc' ? '▲' : '▼';
+        item.icon.style.color = '#38bdf8';
+        item.icon.style.fontWeight = '700';
+      } else {
+        item.icon.textContent = '↕';
+        item.icon.style.color = 'var(--text-muted)';
+        item.icon.style.fontWeight = 'normal';
+      }
+    });
+  }
+
+  function ordenarListaPedidosCompras(lista, field, direction) {
+    if (!field || !Array.isArray(lista)) return lista;
+    return [...lista].sort((a, b) => {
+      let cmp = 0;
+      if (field === 'saldoCompras') {
+        cmp = (Number(a.saldoCompras) || 0) - (Number(b.saldoCompras) || 0);
+      } else if (field === 'previsao') {
+        const rawA = a.previsaoRaw || '';
+        const rawB = b.previsaoRaw || '';
+        cmp = rawA.localeCompare(rawB);
+      } else if (field === 'pedCom') {
+        const numA = parseInt(String(a.pedCom || '').replace(/\D/g, ''), 10);
+        const numB = parseInt(String(b.pedCom || '').replace(/\D/g, ''), 10);
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+          cmp = numA - numB;
+        } else {
+          cmp = String(a.pedCom || '').localeCompare(String(b.pedCom || ''), 'pt-BR');
+        }
+      } else {
+        // descricao
+        cmp = String(a.descricao || '').localeCompare(String(b.descricao || ''), 'pt-BR', { sensitivity: 'base' });
+      }
+
+      return direction === 'desc' ? -cmp : cmp;
+    });
+  }
+
+  function formatBadgePrevisaoEntrega(previsaoStr, previsaoRaw) {
+    if (!previsaoRaw || previsaoRaw.length !== 8) {
+      return `<span style="color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(previsaoStr || '-')}</span>`;
+    }
+
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const hojeStr = `${ano}${mes}${dia}`;
+
+    if (previsaoRaw < hojeStr) {
+      return `<span class="diverg-badge status-danger" style="font-size: 0.76rem; padding: 2px 7px;" title="Previsão ultrapassada">${escapeHtml(previsaoStr)} (Atrasado)</span>`;
+    } else if (previsaoRaw === hojeStr) {
+      return `<span class="diverg-badge status-warning" style="font-size: 0.76rem; padding: 2px 7px;" title="Previsão de chegada para hoje!">${escapeHtml(previsaoStr)} (Hoje)</span>`;
+    } else {
+      return `<span style="font-weight: 600; color: #38bdf8;">${escapeHtml(previsaoStr)}</span>`;
+    }
+  }
+
+  function renderPedidosComprasTable(pedidos) {
+    if (!pedidosComprasTableBody) return;
+    pedidosComprasTableBody.innerHTML = '';
+
+    const empFiltro = (pedidosComprasEmpresaFilter ? pedidosComprasEmpresaFilter.value : '').toUpperCase();
+    const searchVal = (pedidosComprasSearchInput ? pedidosComprasSearchInput.value : '').toLowerCase().trim();
+
+    const filtrados = (pedidos || []).filter(p => {
+      if (empFiltro) {
+        const empSigla = (p.empresa || '').toUpperCase();
+        const empKey = (p.empresaKey || '').toUpperCase();
+        if (empSigla !== empFiltro && empKey !== empFiltro && !(empFiltro === 'MP' && empKey === 'METAL_PLENO')) {
+          return false;
+        }
+      }
+      if (searchVal) {
+        const desc = (p.descricao || '').toLowerCase();
+        const codProd = (p.codProduto || '').toLowerCase();
+        const ped = (p.pedCom || '').toLowerCase();
+        const numPed = (p.numPed || '').toLowerCase();
+        const forn = (p.fornecedor || '').toLowerCase();
+
+        const match = desc.includes(searchVal) || 
+                      codProd.includes(searchVal) || 
+                      ped.includes(searchVal) || 
+                      numPed.includes(searchVal) || 
+                      forn.includes(searchVal);
+        if (!match) return false;
+      }
+      return true;
+    });
+
+    if (pedidosComprasCount) pedidosComprasCount.textContent = filtrados.length;
+
+    // Atualiza cards de métricas
+    if (statComprasTotalItens) statComprasTotalItens.textContent = filtrados.length;
+    if (statComprasTotalQtd) {
+      const totalQtd = filtrados.reduce((acc, it) => acc + (Number(it.saldoCompras) || 0), 0);
+      statComprasTotalQtd.textContent = totalQtd.toLocaleString('pt-BR');
+    }
+    if (statComprasDataProxima) {
+      const comPrevisao = filtrados.filter(it => it.previsaoRaw && it.previsaoRaw.length === 8);
+      if (comPrevisao.length > 0) {
+        comPrevisao.sort((a, b) => a.previsaoRaw.localeCompare(b.previsaoRaw));
+        statComprasDataProxima.textContent = comPrevisao[0].previsao || '-';
+      } else {
+        statComprasDataProxima.textContent = '-';
+      }
+    }
+
+    if (filtrados.length === 0) {
+      if (pedidosComprasResults) pedidosComprasResults.classList.add('hidden');
+      if (pedidosComprasEmptyState) pedidosComprasEmptyState.classList.remove('hidden');
+      return;
+    }
+
+    if (pedidosComprasEmptyState) pedidosComprasEmptyState.classList.add('hidden');
+    if (pedidosComprasResults) pedidosComprasResults.classList.remove('hidden');
+
+    const listaFinal = pedidosComprasSortField
+      ? ordenarListaPedidosCompras(filtrados, pedidosComprasSortField, pedidosComprasSortDirection)
+      : filtrados;
+
+    listaFinal.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="company-badge ${escapeHtml(p.empresa)}">${escapeHtml(p.empresa)}</span></td>
+        <td>
+          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.88rem;">${escapeHtml(p.descricao)}</div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">Cód: ${escapeHtml(p.codProduto || '-')}</div>
+        </td>
+        <td>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: #38bdf8;">${escapeHtml(p.pedCom)}</span>
+          ${p.item ? `<span style="font-size: 0.75rem; color: var(--text-muted);"> (Item ${escapeHtml(p.item)})</span>` : ''}
+        </td>
+        <td style="text-align: center;">
+          <span class="status-badge sucesso" style="font-size: 0.82rem; font-weight: 700; padding: 3px 9px;">
+            ${Number(p.saldoCompras || 0).toLocaleString('pt-BR')} un
+          </span>
+        </td>
+        <td>${formatBadgePrevisaoEntrega(p.previsao, p.previsaoRaw)}</td>
+        <td style="font-size: 0.84rem; color: var(--text-muted);">${escapeHtml(p.emissao || '-')}</td>
+        <td style="font-size: 0.82rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(p.fornecedor)}">
+          ${escapeHtml(p.fornecedor || '-')}
+        </td>
+      `;
+      pedidosComprasTableBody.appendChild(tr);
+    });
+  }
+
+  async function carregarPedidosCompras(forceRefresh = false) {
+    if (pedidosComprasLoading) pedidosComprasLoading.classList.remove('hidden');
+    if (pedidosComprasResults) pedidosComprasResults.classList.add('hidden');
+    if (pedidosComprasEmptyState) pedidosComprasEmptyState.classList.add('hidden');
+    if (btnAtualizarPedidosCompras) {
+      btnAtualizarPedidosCompras.disabled = true;
+      btnAtualizarPedidosCompras.textContent = '⏳ Carregando...';
+    }
+
+    try {
+      const response = await fetch('/api/vendedores/pedidos/compras');
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.data)) {
+        pedidosComprasCache = data.data;
+        updatePedidosComprasSortIcons();
+        renderPedidosComprasTable(pedidosComprasCache);
+      } else {
+        alert(data.message || 'Erro ao carregar lista de pedidos de compras.');
+      }
+    } catch (err) {
+      alert('Erro de comunicação ao carregar pedidos de compras: ' + err.message);
+    } finally {
+      if (pedidosComprasLoading) pedidosComprasLoading.classList.add('hidden');
+      if (btnAtualizarPedidosCompras) {
+        btnAtualizarPedidosCompras.disabled = false;
+        btnAtualizarPedidosCompras.textContent = '🔄 Atualizar';
+      }
+    }
+  }
+
+  if (pedidosComprasSearchInput) {
+    pedidosComprasSearchInput.addEventListener('input', () => {
+      renderPedidosComprasTable(pedidosComprasCache);
+    });
+  }
+
+  if (pedidosComprasEmpresaFilter) {
+    pedidosComprasEmpresaFilter.addEventListener('change', () => {
+      renderPedidosComprasTable(pedidosComprasCache);
+    });
+  }
+
+  if (btnAtualizarPedidosCompras) {
+    btnAtualizarPedidosCompras.addEventListener('click', () => carregarPedidosCompras(true));
+  }
+
+  function handleComprasSortClick(field) {
+    if (pedidosComprasSortField === field) {
+      pedidosComprasSortDirection = pedidosComprasSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      pedidosComprasSortField = field;
+      pedidosComprasSortDirection = 'asc';
+    }
+    updatePedidosComprasSortIcons();
+    renderPedidosComprasTable(pedidosComprasCache);
+  }
+
+  if (thSortComprasDescri) thSortComprasDescri.addEventListener('click', () => handleComprasSortClick('descricao'));
+  if (thSortComprasPed) thSortComprasPed.addEventListener('click', () => handleComprasSortClick('pedCom'));
+  if (thSortComprasSaldo) thSortComprasSaldo.addEventListener('click', () => handleComprasSortClick('saldoCompras'));
+  if (thSortComprasPrevisao) thSortComprasPrevisao.addEventListener('click', () => handleComprasSortClick('previsao'));
 
   // =========================================================================
   // MÓDULO ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA INTER (077) X PROTHEUS
