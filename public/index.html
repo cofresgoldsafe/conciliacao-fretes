@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.25">
+  <link rel="stylesheet" href="style.css?v=8.26">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 20:49 (feat(credito): normalizacao de enderecos Protheus vs Receita, label ScamAdvizer, Serasa & Apontamentos e default Dispensado em 3 NFs)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/08/2026 21:06 (feat(credito): reestrutura Bloco 1 com CNPJ e Receita Federal e automacao de Casa/Sala)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1161,11 +1161,11 @@
       <!-- Formulário Completo de 53 Campos -->
       <section class="card" style="margin-top: 1.5rem;">
         <form id="formAnaliseCreditoCompleto" style="display: flex; flex-direction: column; gap: 1.5rem;">
-          <!-- Bloco 1: Venda & Cliente -->
+          <!-- Bloco 1: Venda, Cliente & Receita Federal -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>1. Identificação do Cliente & Pedido</span>
-              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">⚡ Protheus ERP</span>
+              <span>1. Identificação do Cliente, Pedido e CNPJ Receita</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">⚡ Protheus ERP & Receita Federal</span>
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
@@ -1191,6 +1191,38 @@
               <div class="form-group">
                 <label>Desconto do Pedido</label>
                 <input type="text" id="cr_desconto_ped" class="form-input" value="OK" />
+              </div>
+              <div class="form-group">
+                <label>CNPJ Ativo na RF? *</label>
+                <select id="cr_cnpj_ativo" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="S">Sim (+2 pts)</option>
+                  <option value="N">Não (-100 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cadastro = Receita? *</label>
+                <select id="cr_cadastro_igual_receita" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="S">Sim (+3 pts)</option>
+                  <option value="N">Não (-3 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Casa/Sala no Endereço? *</label>
+                <select id="cr_casa_sala_conj_end" class="form-select" required>
+                  <option value="" selected disabled>Selecione...</option>
+                  <option value="N">Não / Prédio (+1 pt)</option>
+                  <option value="S">Sim (-5 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Fundação Matriz *</label>
+                <input type="date" id="cr_fundacao_matriz" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label>Capital Social (R$) *</label>
+                <input type="text" id="cr_capital_social" class="form-input" placeholder="0,00" required />
               </div>
             </div>
           </div>
@@ -1279,29 +1311,13 @@
               <span>3. Endereço, Localização & Domínio</span>
               <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">✍️ Conferência Manual</span>
             </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>Entrega = Cadastro? *</label>
                 <select id="cr_entrega_igual_cadastro" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Sim (+2 pts)</option>
                   <option value="N">Não (-9 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Cadastro = Receita? *</label>
-                <select id="cr_cadastro_igual_receita" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="S">Sim (+3 pts)</option>
-                  <option value="N">Não (-3 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Casa/Sala no Endereço? *</label>
-                <select id="cr_casa_sala_conj_end" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="N">Não / Prédio (+1 pt)</option>
-                  <option value="S">Sim (-5 pts)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1329,13 +1345,13 @@
             </div>
           </div>
 
-          <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
+          <!-- Bloco 4: E-mails & Site Corporativo -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>4. E-mails, Site & Porte Corporativo</span>
-              <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">✍️ Manual / Dados Públicos</span>
+              <span>4. E-mails & Site Corporativo</span>
+              <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">✍️ Conferência Manual</span>
             </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>E-mail Corporativo? *</label>
                 <select id="cr_email_corporativo" class="form-select" required>
@@ -1368,14 +1384,6 @@
                   <option value="N">Não (-15 pts)</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Fundação Matriz *</label>
-                <input type="date" id="cr_fundacao_matriz" class="form-input" required />
-              </div>
-              <div class="form-group">
-                <label>Capital Social (R$) *</label>
-                <input type="text" id="cr_capital_social" class="form-input" placeholder="0,00" required />
-              </div>
             </div>
           </div>
 
@@ -1385,7 +1393,7 @@
               <span>5. Serasa & Apontamentos</span>
               <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">✍️ Bureau / Serasa</span>
             </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>Score Serasa (0-1000) *</label>
                 <input type="number" id="cr_score_serasa" class="form-input" placeholder="0 a 1000" min="0" max="1000" required />
@@ -1416,14 +1424,6 @@
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (0 pts)</option>
                   <option value="S">Sim (-6 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>CNPJ Ativo na RF? *</label>
-                <select id="cr_cnpj_ativo" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="S">Sim (+2 pts)</option>
-                  <option value="N">Não (-100 pts)</option>
                 </select>
               </div>
             </div>
@@ -1864,6 +1864,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.25"></script>
+  <script src="app.js?v=8.26"></script>
 </body>
 </html>

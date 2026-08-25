@@ -3377,8 +3377,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_armario_cofre_gt_2000', data.armario_cofre_gt_2000 || '');
         setVal('cr_uf_cliente', data.uf_cliente || '');
         
-        // Campos de dados públicos ou em branco
-        setVal('cr_cnpj_ativo', data.cnpj_ativo || '');
+        // Dados Públicos e Receita Federal
+        setVal('cr_cnpj_ativo', data.cnpj_ativo || 'S');
         setVal('cr_fundacao_matriz', data.fundacao_matriz || '');
         if (data.capital_social) {
           setVal('cr_capital_social', Number(data.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -3386,24 +3386,26 @@ document.addEventListener('DOMContentLoaded', () => {
           setVal('cr_capital_social', '');
         }
 
+        // Comparação de Endereço Protheus vs Receita Federal
+        if (data.cadastro_igual_receita) {
+          setVal('cr_cadastro_igual_receita', data.cadastro_igual_receita);
+        } else {
+          setVal('cr_cadastro_igual_receita', 'S');
+        }
+
+        // Casa / Sala / Conjunto no endereço (automático via Receita e Protheus)
+        setVal('cr_casa_sala_conj_end', data.casa_sala_conj_end || 'N');
+
         // Histórico Financeiro Protheus SE1 (Empresas 09, 14, 15 e 16)
         setVal('cr_pgtos_abertos', data.pgtos_abertos !== undefined ? data.pgtos_abertos : 'N');
         setVal('cr_comprou_pagou', data.comprou_pagou !== undefined ? data.comprou_pagou : 'N');
         setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x !== undefined ? data.comprou_pagou_5x : 'N');
 
-        // Comparação de Endereço Protheus vs Receita Federal
-        if (data.cadastro_igual_receita) {
-          setVal('cr_cadastro_igual_receita', data.cadastro_igual_receita);
-        } else {
-          setVal('cr_cadastro_igual_receita', '');
-        }
-
         // Valor Padrão para 3 NFs Confirmadas (Dispensado)
         setVal('cr_tres_nfs_confirmadas', data.tres_nfs_confirmadas || 'D');
 
-        // Campos manuais em branco para o analista preencher
+        // Campos manuais que permanecem para o analista preencher
         setVal('cr_entrega_igual_cadastro', '');
-        setVal('cr_casa_sala_conj_end', '');
         setVal('cr_google_maps', '');
         setVal('cr_registro_br', '');
         setVal('cr_scamadvizer_score', '');
@@ -3817,11 +3819,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
 
-      <!-- Grid com os 53 Campos Preenchidos -->
-      <div style="display: flex; flex-direction: column; gap: 1rem;">
         <!-- Bloco 1: Venda & Identificação -->
         <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação do Cliente & Pedido</h4>
+          <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação do Cliente, Pedido e CNPJ Receita</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">Nº Pedido:</strong> #${escapeHtml(item.pedido_venda)}</div>
             <div><strong style="color:var(--text-muted)">Cód. Web:</strong> ${escapeHtml(item.cod_web || '-')}</div>
@@ -3829,6 +3829,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="grid-column: span 2;"><strong style="color:var(--text-muted)">Razão Social:</strong> ${escapeHtml(item.cliente_nome)}</div>
             <div><strong style="color:var(--text-muted)">Total Pedido:</strong> R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
             <div><strong style="color:var(--text-muted)">Desconto:</strong> ${escapeHtml(item.desconto_ped || 'OK')}</div>
+            <div><strong style="color:var(--text-muted)">CNPJ Ativo na RF:</strong> ${fmtSimNao(item.cnpj_ativo)}</div>
+            <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)}</div>
+            <div><strong style="color:var(--text-muted)">Casa/Sala no End.:</strong> ${fmtSimNao(item.casa_sala_conj_end)}</div>
+            <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')}</div>
+            <div><strong style="color:var(--text-muted)">Capital Social:</strong> R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
 
@@ -3853,8 +3858,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Domínio</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)}</div>
-            <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)}</div>
-            <div><strong style="color:var(--text-muted)">Casa/Sala no Endereço:</strong> ${fmtSimNao(item.casa_sala_conj_end)}</div>
             <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')}</div>
             <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)}</div>
             <div><strong style="color:var(--text-muted)">ScamAdvizer:</strong> <strong>${item.scamadvizer_score ?? '-'}</strong> / 100</div>
@@ -3863,14 +3866,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <!-- Bloco 4: E-mails, Site & Dados Corporativos -->
         <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-          <h4 style="margin: 0 0 0.75rem 0; color: #eab308; font-size: 0.9rem;">4. E-mails, Site & Porte Corporativo</h4>
+          <h4 style="margin: 0 0 0.75rem 0; color: #eab308; font-size: 0.9rem;">4. E-mails & Site Corporativo</h4>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
             <div><strong style="color:var(--text-muted)">E-mail Corporativo:</strong> ${fmtSimNao(item.email_corporativo)}</div>
             <div><strong style="color:var(--text-muted)">Mail Finan Diferente:</strong> ${fmtSimNao(item.existe_mail_financeiro)}</div>
             <div><strong style="color:var(--text-muted)">E-mail Gratuito:</strong> ${fmtSimNao(item.mail_gratuito)}</div>
             <div><strong style="color:var(--text-muted)">Possui Site Ativo:</strong> ${fmtSimNao(item.possui_site)}</div>
-            <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')}</div>
-            <div><strong style="color:var(--text-muted)">Capital Social:</strong> R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
 
@@ -3883,7 +3884,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div><strong style="color:var(--text-muted)">Valor Protestos:</strong> R$ ${Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
             <div><strong style="color:var(--text-muted)">PFIN Sim:</strong> ${fmtSimNao(item.pfin)}</div>
             <div><strong style="color:var(--text-muted)">Cheques Sem Fundo:</strong> ${fmtSimNao(item.ch_sem_fundo)}</div>
-            <div><strong style="color:var(--text-muted)">CNPJ Ativo na RF:</strong> ${fmtSimNao(item.cnpj_ativo)}</div>
           </div>
         </div>
 

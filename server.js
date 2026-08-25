@@ -1760,6 +1760,14 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       };
     }
 
+    // Detecção automática de Casa / Sala / Conjunto no endereço/complemento da Receita Federal e Protheus
+    let casaSalaVal = 'N';
+    if (dadosCnpj) {
+      const textoComplementos = `${dadosCnpj.complemento || ''} ${dadosCnpj.logradouro || ''} ${cli.endereco || ''}`.toUpperCase();
+      const regexCasaSala = /\b(CASA|SALA|SL|CONJ|CONJUNTO|CJ|APTO|APT|APARTAMENTO)\b/;
+      casaSalaVal = regexCasaSala.test(textoComplementos) ? 'S' : 'N';
+    }
+
     const histFin = detalhes.historicoFinanceiro || {};
 
     res.json({
@@ -1793,12 +1801,14 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       cadastro_igual_receita: cadastroIgualReceitaVal,
       comparacao_endereco: comparacaoEnderecoInfo,
 
+      // Detecção de Casa/Sala/Conjunto no endereço
+      casa_sala_conj_end: casaSalaVal,
+
       // Campos com valor padrão pré-definido
       tres_nfs_confirmadas: 'D', // Default: Dispensado
 
       // Campos manuais que permanecem em branco para o analista
       entrega_igual_cadastro: '',
-      casa_sala_conj_end: '',
       google_maps: '',
       registro_br: '',
       scamadvizer_score: '',
