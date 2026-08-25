@@ -55,6 +55,8 @@ const {
   getDiagnosticInfo,
   saveInterWebhookEvent,
   getInterWebhookEvents,
+  saveAnaliseCreditoDB,
+  getHistoricoCreditoDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -2041,7 +2043,7 @@ app.post('/api/financeiro/analise-credito/config', (req, res) => {
 });
 
 // 4. Calcular e Salvar Análise de Crédito
-app.post('/api/financeiro/analise-credito/calcular-salvar', (req, res) => {
+app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => {
   try {
     const dados = req.body;
     if (!dados.pedido_venda || !dados.cliente_nome || dados.total_pedido === undefined) {
@@ -2049,7 +2051,7 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', (req, res) => {
     }
 
     const resultado = calcularScore(dados);
-    const registroSalvo = salvarAnaliseCredito({
+    const registroSalvo = await saveAnaliseCreditoDB({
       ...dados,
       total_score: resultado.totalScore,
       risco: resultado.risco,
@@ -2072,8 +2074,14 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', (req, res) => {
 });
 
 // 5. Histórico de Análises
-app.get('/api/financeiro/analise-credito/historico', (req, res) => {
-  res.json({ success: true, historico: getHistoricoCredito() });
+app.get('/api/financeiro/analise-credito/historico', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 200;
+    const hist = await getHistoricoCreditoDB(limit);
+    res.json({ success: true, historico: hist });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 if (require.main === module) {

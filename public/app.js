@@ -713,6 +713,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-config-logs') {
         loadAuditDashboard();
       }
+      if (targetTab === 'tab-analise-credito') {
+        carregarHistoricoCredito();
+      }
     });
   });
 

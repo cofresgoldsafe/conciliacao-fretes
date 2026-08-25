@@ -285,7 +285,31 @@ async function initPostgres() {
         `);
       } catch {}
 
-      // 8. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
+      // 8. Cria Tabela de Histórico de Análises de Crédito
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS analise_credito_history (
+          id SERIAL PRIMARY KEY,
+          pedido_venda VARCHAR(100) NOT NULL,
+          empresa VARCHAR(50),
+          cliente_nome VARCHAR(255),
+          cliente_codigo VARCHAR(50),
+          cod_web VARCHAR(50),
+          total_pedido NUMERIC(14,2) DEFAULT 0.00,
+          desconto_ped VARCHAR(100),
+          total_score INTEGER DEFAULT 0,
+          risco VARCHAR(100),
+          sugestao TEXT,
+          decisao_final VARCHAR(100),
+          obs TEXT,
+          sugestoes_lista JSONB DEFAULT '[]'::jsonb,
+          dados_completos JSONB NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_analise_credito_pedido ON analise_credito_history(pedido_venda);
+        CREATE INDEX IF NOT EXISTS idx_analise_credito_created_at ON analise_credito_history(created_at DESC);
+      `);
+
+      // 9. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
 
@@ -1060,6 +1084,147 @@ async function getInterWebhookEvents(empresaCodigo = null, limit = 50) {
   return [];
 }
 
+const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.json');
+
+/**
+ * Salva Análise de Crédito (PostgreSQL + Fallback JSON Local)
+ */
+async function saveAnaliseCreditoDB(registro) {
+  const p = getPool();
+  const now = new Date().toISOString();
+  const dados = { ...registro };
+  const ped = String(dados.pedido_venda || '').trim();
+  const emp = String(dados.empresa || '').trim();
+  const cliNome = String(dados.cliente_nome || '').trim();
+  const cliCod = String(dados.cliente_codigo || '').trim();
+  const codWeb = String(dados.cod_web || '').trim();
+  const totalPed = Number(dados.total_pedido) || 0;
+  const descPed = String(dados.desconto_ped || 'OK').trim();
+  const score = parseInt(dados.total_score, 10) || 0;
+  const risco = String(dados.risco || '').trim();
+  const sugestao = String(dados.sugestao || '').trim();
+  const decisao = String(dados.decisao_final || 'Liberado').trim();
+  const obs = String(dados.obs || '').trim();
+  const sugestoesArr = Array.isArray(dados.sugestoes_lista) ? dados.sugestoes_lista : [];
+
+  let savedItem = null;
+
+  if (p) {
+    try {
+      const res = await safeQuery(`
+        INSERT INTO analise_credito_history (
+          pedido_venda, empresa, cliente_nome, cliente_codigo, cod_web,
+          total_pedido, desconto_ped, total_score, risco, sugestao,
+          decisao_final, obs, sugestoes_lista, dados_completos, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW()
+        ) RETURNING id, created_at;
+      `, [
+        ped, emp, cliNome, cliCod, codWeb,
+        totalPed, descPed, score, risco, sugestao,
+        decisao, obs, JSON.stringify(sugestoesArr), JSON.stringify(dados)
+      ]);
+
+      if (res && res.rows && res.rows.length > 0) {
+        savedItem = {
+          id: String(res.rows[0].id),
+          ...dados,
+          created_at: res.rows[0].created_at ? new Date(res.rows[0].created_at).toISOString() : now
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao salvar análise de crédito no banco:', err.message);
+    }
+  }
+
+  // Backup em JSON local
+  try {
+    let localList = [];
+    if (fs.existsSync(analiseCreditoHistoryFile)) {
+      localList = JSON.parse(fs.readFileSync(analiseCreditoHistoryFile, 'utf-8'));
+    }
+    const itemToSave = savedItem || {
+      id: String(Date.now()),
+      ...dados,
+      created_at: now
+    };
+    localList.unshift(itemToSave);
+    if (localList.length > 500) localList = localList.slice(0, 500);
+    fs.writeFileSync(analiseCreditoHistoryFile, JSON.stringify(localList, null, 2), 'utf-8');
+    return itemToSave;
+  } catch (e) {
+    console.warn('Erro ao salvar analise_credito_history.json local:', e.message);
+    return savedItem || { id: String(Date.now()), ...dados, created_at: now };
+  }
+}
+
+/**
+ * Consulta Histórico de Análises de Crédito (PostgreSQL + Fallback JSON Local)
+ */
+async function getHistoricoCreditoDB(limit = 200) {
+  const p = getPool();
+  const maxLimit = Math.max(1, Math.min(parseInt(limit, 10) || 100, 500));
+
+  if (p) {
+    try {
+      const res = await safeQuery(`
+        SELECT 
+          id, pedido_venda, empresa, cliente_nome, cliente_codigo, cod_web,
+          total_pedido, desconto_ped, total_score, risco, sugestao,
+          decisao_final, obs, sugestoes_lista, dados_completos, created_at
+        FROM analise_credito_history
+        ORDER BY id DESC
+        LIMIT $1;
+      `, [maxLimit]);
+
+      if (res && res.rows && res.rows.length > 0) {
+        return res.rows.map(r => {
+          let dadosComp = {};
+          try {
+            dadosComp = typeof r.dados_completos === 'string' ? JSON.parse(r.dados_completos) : (r.dados_completos || {});
+          } catch {}
+
+          let sugLista = [];
+          try {
+            sugLista = typeof r.sugestoes_lista === 'string' ? JSON.parse(r.sugestoes_lista) : (r.sugestoes_lista || []);
+          } catch {}
+
+          return {
+            id: String(r.id),
+            ...dadosComp,
+            pedido_venda: r.pedido_venda,
+            empresa: r.empresa,
+            cliente_nome: r.cliente_nome,
+            cliente_codigo: r.cliente_codigo,
+            cod_web: r.cod_web,
+            total_pedido: Number(r.total_pedido) || 0,
+            desconto_ped: r.desconto_ped,
+            total_score: r.total_score,
+            risco: r.risco,
+            sugestao: r.sugestao,
+            decisao_final: r.decisao_final,
+            obs: r.obs,
+            sugestoes_lista: sugLista,
+            created_at: r.created_at ? new Date(r.created_at).toISOString() : null
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar histórico de análises de crédito no banco:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  try {
+    if (fs.existsSync(analiseCreditoHistoryFile)) {
+      const localList = JSON.parse(fs.readFileSync(analiseCreditoHistoryFile, 'utf-8'));
+      return Array.isArray(localList) ? localList.slice(0, maxLimit) : [];
+    }
+  } catch {}
+
+  return [];
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -1082,5 +1247,7 @@ module.exports = {
   getDiagnosticInfo,
   saveInterWebhookEvent,
   getInterWebhookEvents,
+  saveAnaliseCreditoDB,
+  getHistoricoCreditoDB,
   isPostgresConnected
 };
