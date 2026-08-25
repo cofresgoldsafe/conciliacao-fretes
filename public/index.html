@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.35">
+  <link rel="stylesheet" href="style.css?v=8.36">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 08:38 (feat(credito/2fa): aviso latencia 2fa, ux campos manuais e filtro data historico)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 09:10 (feat(credito): calibracao completa de pesos incluindo estudo de emails, rdap, wayback e mx)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -774,13 +774,20 @@
         </div>
 
         <form id="scoreConfigForm" style="display: flex; flex-direction: column; gap: 1.5rem;">
-          <!-- 1. Limites Monetários -->
+          <!-- 1. Limites Monetários & Gatilhos Operacionais -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 1rem;">1. Limites Monetários & Gatilhos Operacionais</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>1. 💰 Limites Monetários & Gatilhos Operacionais</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Valores R$</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label for="cfg_limite_pedido_alto">Limite Pedido Alto (-8 pts) (R$)</label>
+                <label for="cfg_limite_pedido_alto">Limite Pedido Alto (R$)</label>
                 <input type="number" id="cfg_limite_pedido_alto" class="form-input" value="21000" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pedido_alto">Penalidade Pedido Alto (-pts)</label>
+                <input type="number" id="cfg_peso_pedido_alto" class="form-input" value="-8" />
               </div>
               <div class="form-group">
                 <label for="cfg_limite_pedido_compra">Gatilho Solicitar Pedido Compra (R$)</label>
@@ -793,9 +800,12 @@
             </div>
           </div>
 
-          <!-- 2. Pesos Comerciais -->
+          <!-- 2. Condições Comerciais, Pagamentos & Histórico Protheus -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem;">2. Pesos Comerciais, Vendas a Prazo e Histórico</h3>
+            <h3 style="font-size: 0.95rem; color: #22c55e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>2. 🤝 Condições Comerciais, Vendas a Prazo e Histórico</span>
+              <span class="badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">Protheus SE1 / SE4</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label for="cfg_peso_faturado_avista">À Vista / Antecipado (+pts)</label>
@@ -814,90 +824,296 @@
                 <input type="number" id="cfg_peso_comprou_2x_sim" class="form-input" value="9" />
               </div>
               <div class="form-group">
+                <label for="cfg_peso_comprou_2x_nao">Comprou &lt; 2x (-pts)</label>
+                <input type="number" id="cfg_peso_comprou_2x_nao" class="form-input" value="-3" />
+              </div>
+              <div class="form-group">
                 <label for="cfg_peso_comprou_5x_sim">Comprou e Pagou 5x+ (+pts)</label>
                 <input type="number" id="cfg_peso_comprou_5x_sim" class="form-input" value="23" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pgtos_abertos_sim">Títulos em Aberto/Atraso (-pts)</label>
+                <input type="number" id="cfg_peso_pgtos_abertos_sim" class="form-input" value="-3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pgtos_abertos_nao">Sem Títulos em Aberto (+pts)</label>
+                <input type="number" id="cfg_peso_pgtos_abertos_nao" class="form-input" value="1" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_muitos_itens_sim">Muitos Itens / Qtd Grande (-pts)</label>
                 <input type="number" id="cfg_peso_muitos_itens_sim" class="form-input" value="-13" />
               </div>
               <div class="form-group">
+                <label for="cfg_peso_muitos_itens_nao">Quantidade Normal (+pts)</label>
+                <input type="number" id="cfg_peso_muitos_itens_nao" class="form-input" value="1" />
+              </div>
+              <div class="form-group">
                 <label for="cfg_peso_prod_variados_sim">Produtos Ñ Combinam (-pts)</label>
                 <input type="number" id="cfg_peso_prod_variados_sim" class="form-input" value="-5" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_pgtos_abertos_sim">Títulos em Atraso / Abertos (-pts)</label>
-                <input type="number" id="cfg_peso_pgtos_abertos_sim" class="form-input" value="-3" />
+                <label for="cfg_peso_prod_variados_nao">Produtos Coerentes (+pts)</label>
+                <input type="number" id="cfg_peso_prod_variados_nao" class="form-input" value="2" />
               </div>
             </div>
           </div>
 
-          <!-- 3. Pesos Cadastrais e Domínio -->
+          <!-- 3. Pesos Cadastrais, Localização & Receita Federal -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #a855f7; margin-bottom: 1rem;">3. Pesos Cadastrais, Localização & Domínio</h3>
+            <h3 style="font-size: 0.95rem; color: #a855f7; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>3. 🏢 Pesos Cadastrais, Localização & Receita Federal</span>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">Receita Federal & Protheus</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_peso_cnpj_ativo_sim">CNPJ Ativo na RF (+pts)</label>
+                <input type="number" id="cfg_peso_cnpj_ativo_sim" class="form-input" value="2" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_cnpj_ativo_nao">CNPJ Inativo / Baixado (-pts)</label>
+                <input type="number" id="cfg_peso_cnpj_ativo_nao" class="form-input" value="-100" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_cadastro_receita_sim">Cadastro = Receita Federal (+pts)</label>
+                <input type="number" id="cfg_peso_cadastro_receita_sim" class="form-input" value="3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_cadastro_receita_nao">Cadastro != Receita Federal (-pts)</label>
+                <input type="number" id="cfg_peso_cadastro_receita_nao" class="form-input" value="-3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_entrega_cadastro_sim">Entrega = Cadastro (+pts)</label>
+                <input type="number" id="cfg_peso_entrega_cadastro_sim" class="form-input" value="2" />
+              </div>
               <div class="form-group">
                 <label for="cfg_peso_entrega_cadastro_nao">Entrega != Cadastro (-pts)</label>
                 <input type="number" id="cfg_peso_entrega_cadastro_nao" class="form-input" value="-9" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_endereco_sala_sim">Casa / Sala / Conjunto (-pts)</label>
+                <input type="number" id="cfg_peso_endereco_sala_sim" class="form-input" value="-5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_endereco_sala_nao">Galpão / Loja / Prédio (+pts)</label>
+                <input type="number" id="cfg_peso_endereco_sala_nao" class="form-input" value="1" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_uf_rj">UF Rio de Janeiro RJ (-pts)</label>
                 <input type="number" id="cfg_peso_uf_rj" class="form-input" value="-12" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_cnpj_ativo_nao">CNPJ Inativo (-pts)</label>
-                <input type="number" id="cfg_peso_cnpj_ativo_nao" class="form-input" value="-100" />
+                <label for="cfg_peso_maps_10">Google Maps 10 - Top (+pts)</label>
+                <input type="number" id="cfg_peso_maps_10" class="form-input" value="6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_maps_5">Google Maps 5 - Compatível (pts)</label>
+                <input type="number" id="cfg_peso_maps_5" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_maps_0">Google Maps 0 - Residencial (-pts)</label>
+                <input type="number" id="cfg_peso_maps_0" class="form-input" value="-6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_maps_traco">Google Maps '-' - Não Visto (-pts)</label>
+                <input type="number" id="cfg_peso_maps_traco" class="form-input" value="-3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_registro_br_sim">Registro.br Confere c/ Entrega (+pts)</label>
+                <input type="number" id="cfg_peso_registro_br_sim" class="form-input" value="6" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Estudo de E-mails & Maturidade Digital -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #eab308; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>4. 📧 Estudo de E-mails & Maturidade Digital (RDAP, Wayback, MX & Site)</span>
+              <span class="badge" style="background: rgba(234, 179, 8, 0.15); color: #eab308;">RDAP + Wayback + MX</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_peso_email_corp_sim">E-mail Corporativo Próprio (+pts)</label>
+                <input type="number" id="cfg_peso_email_corp_sim" class="form-input" value="3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_email_corp_nao">Sem E-mail Corporativo (-pts)</label>
+                <input type="number" id="cfg_peso_email_corp_nao" class="form-input" value="-3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_email_fin_diferente_nao">Sem E-mail Financeiro Diferente (-pts)</label>
+                <input type="number" id="cfg_peso_email_fin_diferente_nao" class="form-input" value="-7" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_email_gratuito_sim">E-mail Gratuito Gmail/Hotmail (-pts)</label>
                 <input type="number" id="cfg_peso_email_gratuito_sim" class="form-input" value="-8" />
               </div>
               <div class="form-group">
+                <label for="cfg_peso_email_gratuito_nao">Sem E-mail Gratuito (+pts)</label>
+                <input type="number" id="cfg_peso_email_gratuito_nao" class="form-input" value="2" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_site_ativo_sim">Possui Site Ativo (+pts)</label>
+                <input type="number" id="cfg_peso_site_ativo_sim" class="form-input" value="1" />
+              </div>
+              <div class="form-group">
                 <label for="cfg_peso_site_ativo_nao">Sem Site Ativo (-pts)</label>
                 <input type="number" id="cfg_peso_site_ativo_nao" class="form-input" value="-15" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_maps_10">Google Maps 10 (+pts)</label>
-                <input type="number" id="cfg_peso_maps_10" class="form-input" value="6" />
+                <label for="cfg_peso_dominio_idade_10">Domínio RDAP &gt;= 10 anos (+pts)</label>
+                <input type="number" id="cfg_peso_dominio_idade_10" class="form-input" value="6" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_maps_0">Google Maps 0 (-pts)</label>
-                <input type="number" id="cfg_peso_maps_0" class="form-input" value="-6" />
+                <label for="cfg_peso_dominio_idade_3">Domínio RDAP &gt;= 3 anos (+pts)</label>
+                <input type="number" id="cfg_peso_dominio_idade_3" class="form-input" value="3" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_endereco_sala_sim">Casa / Sala / Conjunto (-pts)</label>
-                <input type="number" id="cfg_peso_endereco_sala_sim" class="form-input" value="-5" />
+                <label for="cfg_peso_dominio_idade_1">Domínio RDAP &gt;= 1 ano (pts)</label>
+                <input type="number" id="cfg_peso_dominio_idade_1" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_dominio_idade_recente">Domínio Recente &lt; 1 ano (-pts)</label>
+                <input type="number" id="cfg_peso_dominio_idade_recente" class="form-input" value="-7" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_dominio_sem_site">Domínio Não Encontrado (-pts)</label>
+                <input type="number" id="cfg_peso_dominio_sem_site" class="form-input" value="-5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_wayback_5">Wayback Machine &gt;= 5 anos (+pts)</label>
+                <input type="number" id="cfg_peso_wayback_5" class="form-input" value="3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_wayback_1">Wayback Machine 1 a 4 anos (+pts)</label>
+                <input type="number" id="cfg_peso_wayback_1" class="form-input" value="1" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_wayback_zero">Sem Histórico no Wayback (pts)</label>
+                <input type="number" id="cfg_peso_wayback_zero" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_mx_premium">MX Premium Google/M365 (+pts)</label>
+                <input type="number" id="cfg_peso_mx_premium" class="form-input" value="3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_mx_padrao">MX Padrão / Próprio (pts)</label>
+                <input type="number" id="cfg_peso_mx_padrao" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_mx_inexistente">Corp Sem Servidor MX Ativo (-pts)</label>
+                <input type="number" id="cfg_peso_mx_inexistente" class="form-input" value="-4" />
               </div>
             </div>
           </div>
 
-          <!-- 4. Pesos Serasa, Protestos e Certidões -->
+          <!-- 5. Fundação da Empresa & Capital Social -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem;">4. Serasa, Protestos, Cheques & Certidões</h3>
+            <h3 style="font-size: 0.95rem; color: #06b6d4; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>5. 🏛️ Fundação da Empresa & Capital Social</span>
+              <span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #06b6d4;">Maturidade Empresarial</span>
+            </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label for="cfg_peso_protestos_sim">Com Protestos (-pts)</label>
-                <input type="number" id="cfg_peso_protestos_sim" class="form-input" value="-10" />
+                <label for="cfg_peso_idade_30">Fundação Matriz &gt;= 30 anos (+pts)</label>
+                <input type="number" id="cfg_peso_idade_30" class="form-input" value="8" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_idade_15">Fundação Matriz &gt;= 15 anos (+pts)</label>
+                <input type="number" id="cfg_peso_idade_15" class="form-input" value="4" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_idade_5">Fundação Matriz &gt;= 5 anos (pts)</label>
+                <input type="number" id="cfg_peso_idade_5" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_idade_menor5">Fundação Matriz &lt; 5 anos (-pts)</label>
+                <input type="number" id="cfg_peso_idade_menor5" class="form-input" value="-6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_capital_10m">Capital Social &gt;= R$ 10M (+pts)</label>
+                <input type="number" id="cfg_peso_capital_10m" class="form-input" value="12" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_capital_1m">Capital Social &gt;= R$ 1M (+pts)</label>
+                <input type="number" id="cfg_peso_capital_1m" class="form-input" value="6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_capital_150k">Capital Social &gt;= R$ 150k (pts)</label>
+                <input type="number" id="cfg_peso_capital_150k" class="form-input" value="0" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_capital_12k_menor">Capital Social &gt;= R$ 12k (-pts)</label>
+                <input type="number" id="cfg_peso_capital_12k_menor" class="form-input" value="-3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_capital_zero">Capital Social &lt; R$ 12k (-pts)</label>
+                <input type="number" id="cfg_peso_capital_zero" class="form-input" value="-7" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_grande_conhecida_sim">Empresa Notória / Grande (+pts)</label>
+                <input type="number" id="cfg_peso_grande_conhecida_sim" class="form-input" value="5" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Serasa, Protestos, Cheques & Certidões Comerciais -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>6. ⚖️ Serasa, Protestos, Cheques & Certidões</span>
+              <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">Bureau & Restrições</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfg_peso_serasa_700">Score Serasa &gt;= 700 (+pts)</label>
+                <input type="number" id="cfg_peso_serasa_700" class="form-input" value="8" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_serasa_500">Score Serasa 500 a 699 (+pts)</label>
+                <input type="number" id="cfg_peso_serasa_500" class="form-input" value="4" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_serasa_200">Score Serasa 200 a 499 (-pts)</label>
+                <input type="number" id="cfg_peso_serasa_200" class="form-input" value="-4" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_serasa_baixo">Score Serasa 1 a 199 (-pts)</label>
+                <input type="number" id="cfg_peso_serasa_baixo" class="form-input" value="-15" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_serasa_zero">Score Serasa 0 / Sem Score (-pts)</label>
+                <input type="number" id="cfg_peso_serasa_zero" class="form-input" value="-20" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_protestos_nao">Sem Protestos (+pts)</label>
                 <input type="number" id="cfg_peso_protestos_nao" class="form-input" value="5" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_pfin_sim">PFIN Sim (-pts)</label>
-                <input type="number" id="cfg_peso_pfin_sim" class="form-input" value="-5" />
+                <label for="cfg_peso_protestos_sim">Com Protestos (-pts)</label>
+                <input type="number" id="cfg_peso_protestos_sim" class="form-input" value="-10" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_protesto_2x_ped">Protestos &gt; 2x Valor Pedido (-pts)</label>
+                <input type="number" id="cfg_peso_protesto_2x_ped" class="form-input" value="-10" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_protesto_maior_capital">Protestos &gt; Capital Social (-pts)</label>
+                <input type="number" id="cfg_peso_protesto_maior_capital" class="form-input" value="-20" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_protesto_menor_capital">Protestos &lt; Capital Social (+pts)</label>
+                <input type="number" id="cfg_peso_protesto_menor_capital" class="form-input" value="4" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_ch_sem_fundo_sim">Cheques Sem Fundo (-pts)</label>
                 <input type="number" id="cfg_peso_ch_sem_fundo_sim" class="form-input" value="-6" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_serasa_700">Score Serasa > 700 (+pts)</label>
-                <input type="number" id="cfg_peso_serasa_700" class="form-input" value="8" />
+                <label for="cfg_peso_pfin_sim">PFIN Sim (-pts)</label>
+                <input type="number" id="cfg_peso_pfin_sim" class="form-input" value="-5" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_serasa_baixo">Score Serasa <= 200 (-pts)</label>
-                <input type="number" id="cfg_peso_serasa_baixo" class="form-input" value="-15" />
+                <label for="cfg_peso_pfin_nao">PFIN Não (+pts)</label>
+                <input type="number" id="cfg_peso_pfin_nao" class="form-input" value="1" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_fgts_regular_nao">FGTS Irregular (-pts)</label>
@@ -906,6 +1122,14 @@
               <div class="form-group">
                 <label for="cfg_peso_razao_fgts_igual_nao">Razão != FGTS (-pts)</label>
                 <input type="number" id="cfg_peso_razao_fgts_igual_nao" class="form-input" value="-10" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_boletos_sim">3 NFs Confirmadas (+pts)</label>
+                <input type="number" id="cfg_peso_boletos_sim" class="form-input" value="3" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_boletos_nao">3 NFs Não Confirmadas (-pts)</label>
+                <input type="number" id="cfg_peso_boletos_nao" class="form-input" value="-3" />
               </div>
             </div>
           </div>
@@ -1922,6 +2146,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.35"></script>
+  <script src="app.js?v=8.36"></script>
 </body>
 </html>

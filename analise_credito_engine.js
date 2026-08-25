@@ -15,39 +15,43 @@ const configFilePath = path.join(dataDir, 'score_config.json');
 const historyFilePath = path.join(dataDir, 'analise_credito_history.json');
 
 const DEFAULT_CONFIG = {
+  // 1. Limites Monetários & Gatilhos Operacionais
   limite_pedido_alto: 21000.0,
+  peso_pedido_alto: -8.0,
   limite_pedido_compra: 5000.0,
   limite_armario_cofre: 2000.0,
 
+  // 2. Pesos Comerciais, Vendas a Prazo & Histórico Protheus
   peso_faturado_avista: 100.0,
   peso_entrada_sim: 12.0,
   peso_entrada_nao: -4.0,
+  peso_comprou_2x_sim: 9.0,
+  peso_comprou_2x_nao: -3.0,
+  peso_comprou_5x_sim: 23.0,
+  peso_pgtos_abertos_sim: -3.0,
+  peso_pgtos_abertos_nao: 1.0,
   peso_muitos_itens_sim: -13.0,
   peso_muitos_itens_nao: 1.0,
   peso_prod_variados_sim: -5.0,
   peso_prod_variados_nao: 2.0,
-  peso_pgtos_abertos_sim: -3.0,
-  peso_pgtos_abertos_nao: 1.0,
-  peso_comprou_2x_sim: 9.0,
-  peso_comprou_2x_nao: -3.0,
-  peso_comprou_5x_sim: 23.0,
-  peso_cadastro_receita_sim: 3.0,
-  peso_cadastro_receita_nao: -3.0,
+
+  // 3. Pesos Cadastrais, Localização & Receita Federal
   peso_cnpj_ativo_sim: 2.0,
   peso_cnpj_ativo_nao: -100.0,
+  peso_cadastro_receita_sim: 3.0,
+  peso_cadastro_receita_nao: -3.0,
   peso_entrega_cadastro_sim: 2.0,
   peso_entrega_cadastro_nao: -9.0,
+  peso_endereco_sala_sim: -5.0,
+  peso_endereco_sala_nao: 1.0,
   peso_uf_rj: -12.0,
   peso_maps_10: 6.0,
   peso_maps_5: 0.0,
   peso_maps_0: -6.0,
   peso_maps_traco: -3.0,
   peso_registro_br_sim: 6.0,
-  peso_scamadvizer_97: 9.0,
-  peso_scamadvizer_75: 0.0,
-  peso_scamadvizer_baixo: -7.0,
-  peso_endereco_sala_sim: -5.0,
-  peso_endereco_sala_nao: 1.0,
+
+  // 4. Estudo de E-mails & Maturidade Digital (RDAP, Wayback, MX, Site)
   peso_email_corp_sim: 3.0,
   peso_email_corp_nao: -3.0,
   peso_email_fin_diferente_nao: -7.0,
@@ -55,13 +59,31 @@ const DEFAULT_CONFIG = {
   peso_email_gratuito_nao: 2.0,
   peso_site_ativo_sim: 1.0,
   peso_site_ativo_nao: -15.0,
+  peso_dominio_idade_10: 6.0,
+  peso_dominio_idade_3: 3.0,
+  peso_dominio_idade_1: 0.0,
+  peso_dominio_idade_recente: -7.0,
+  peso_dominio_sem_site: -5.0,
+  peso_wayback_5: 3.0,
+  peso_wayback_1: 1.0,
+  peso_wayback_zero: 0.0,
+  peso_mx_premium: 3.0,
+  peso_mx_padrao: 0.0,
+  peso_mx_inexistente: -4.0,
 
+  // 5. Fundação da Empresa & Capital Social
   peso_idade_30: 8.0,
   peso_idade_15: 4.0,
   peso_idade_5: 0.0,
   peso_idade_menor5: -6.0,
-
+  peso_capital_10m: 12.0,
+  peso_capital_1m: 6.0,
+  peso_capital_150k: 0.0,
+  peso_capital_12k_menor: -3.0,
+  peso_capital_zero: -7.0,
   peso_grande_conhecida_sim: 5.0,
+
+  // 6. Serasa, Protestos, Cheques & Certidões Comerciais
   peso_protestos_nao: 5.0,
   peso_protestos_sim: -10.0,
   peso_protesto_2x_ped: -10.0,
@@ -70,27 +92,15 @@ const DEFAULT_CONFIG = {
   peso_ch_sem_fundo_sim: -6.0,
   peso_pfin_sim: -5.0,
   peso_pfin_nao: 1.0,
-
   peso_serasa_700: 8.0,
   peso_serasa_500: 4.0,
   peso_serasa_200: -4.0,
   peso_serasa_baixo: -15.0,
   peso_serasa_zero: -20.0,
-
-  peso_capital_10m: 12.0,
-  peso_capital_1m: 6.0,
-  peso_capital_150k: 0.0,
-  peso_capital_12k_menor: -3.0,
-  peso_capital_zero: -7.0,
-
-  peso_boletos_sim: 3.0,
-  peso_boletos_nao: -3.0,
-  peso_conta_luz_sim: 5.0,
-  peso_conta_luz_nao: -3.0,
   peso_fgts_regular_nao: -6.0,
   peso_razao_fgts_igual_nao: -10.0,
-  peso_certidao_trib_sim: 4.0,
-  peso_certidao_trib_nao: -2.0,
+  peso_boletos_sim: 3.0,
+  peso_boletos_nao: -3.0,
 };
 
 function getScoreConfig() {
@@ -102,12 +112,13 @@ function getScoreConfig() {
       console.warn('Erro ao ler score_config.json, usando padrão', e);
     }
   }
-  return DEFAULT_CONFIG;
+  return { ...DEFAULT_CONFIG };
 }
 
 function saveScoreConfig(cfg) {
   try {
-    fs.writeFileSync(configFilePath, JSON.stringify(cfg, null, 2), 'utf-8');
+    const merged = { ...getScoreConfig(), ...cfg };
+    fs.writeFileSync(configFilePath, JSON.stringify(merged, null, 2), 'utf-8');
     return true;
   } catch (e) {
     console.error('Erro ao salvar score_config.json', e);
@@ -115,11 +126,23 @@ function saveScoreConfig(cfg) {
   }
 }
 
+function resetScoreConfig() {
+  try {
+    if (fs.existsSync(configFilePath)) {
+      fs.unlinkSync(configFilePath);
+    }
+    return { ...DEFAULT_CONFIG };
+  } catch (e) {
+    console.error('Erro ao resetar score_config.json', e);
+    return { ...DEFAULT_CONFIG };
+  }
+}
+
 function calcularScore(dados, config = getScoreConfig()) {
   const pontos = {};
 
   const totalPed = Number(dados.total_pedido) || 0;
-  pontos.total_pedido = totalPed > config.limite_pedido_alto ? -8 : 0;
+  pontos.total_pedido = totalPed > config.limite_pedido_alto ? (config.peso_pedido_alto !== undefined ? config.peso_pedido_alto : -8) : 0;
 
   const isFaturado = dados.faturado === 'S';
   pontos.faturado = !isFaturado ? config.peso_faturado_avista : 0;
@@ -156,29 +179,29 @@ function calcularScore(dados, config = getScoreConfig()) {
     : null;
 
   if (idadeDominio !== null && !isNaN(idadeDominio)) {
-    if (idadeDominio >= 10) pontos.idade_dominio = 6;
-    else if (idadeDominio >= 3) pontos.idade_dominio = 3;
-    else if (idadeDominio >= 1) pontos.idade_dominio = 0;
-    else pontos.idade_dominio = -7; // Domínio recente (< 1 ano)
+    if (idadeDominio >= 10) pontos.idade_dominio = config.peso_dominio_idade_10 !== undefined ? config.peso_dominio_idade_10 : 6;
+    else if (idadeDominio >= 3) pontos.idade_dominio = config.peso_dominio_idade_3 !== undefined ? config.peso_dominio_idade_3 : 3;
+    else if (idadeDominio >= 1) pontos.idade_dominio = config.peso_dominio_idade_1 !== undefined ? config.peso_dominio_idade_1 : 0;
+    else pontos.idade_dominio = config.peso_dominio_idade_recente !== undefined ? config.peso_dominio_idade_recente : -7;
   } else {
-    pontos.idade_dominio = dados.possui_site === 'N' ? -5 : 0;
+    pontos.idade_dominio = dados.possui_site === 'N' ? (config.peso_dominio_sem_site !== undefined ? config.peso_dominio_sem_site : -5) : 0;
   }
 
   const waybackAno = dados.wayback_primeiro_snapshot ? parseInt(dados.wayback_primeiro_snapshot, 10) : 0;
   const anoAtual = new Date().getFullYear();
   if (waybackAno > 1990) {
     const anosHistorico = anoAtual - waybackAno;
-    if (anosHistorico >= 5) pontos.wayback = 3;
-    else if (anosHistorico >= 1) pontos.wayback = 1;
-    else pontos.wayback = 0;
+    if (anosHistorico >= 5) pontos.wayback = config.peso_wayback_5 !== undefined ? config.peso_wayback_5 : 3;
+    else if (anosHistorico >= 1) pontos.wayback = config.peso_wayback_1 !== undefined ? config.peso_wayback_1 : 1;
+    else pontos.wayback = config.peso_wayback_zero !== undefined ? config.peso_wayback_zero : 0;
   } else {
-    pontos.wayback = 0;
+    pontos.wayback = config.peso_wayback_zero !== undefined ? config.peso_wayback_zero : 0;
   }
 
   const mxTipo = (dados.tipo_servidor_mx || '').toUpperCase();
-  if (mxTipo === 'PREMIUM') pontos.servidor_mx = 3; // Google Workspace ou Microsoft 365
-  else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = 0;
-  else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = -4;
+  if (mxTipo === 'PREMIUM') pontos.servidor_mx = config.peso_mx_premium !== undefined ? config.peso_mx_premium : 3;
+  else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = config.peso_mx_padrao !== undefined ? config.peso_mx_padrao : 0;
+  else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = config.peso_mx_inexistente !== undefined ? config.peso_mx_inexistente : -4;
   else pontos.servidor_mx = 0;
 
   pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? config.peso_endereco_sala_sim : (dados.casa_sala_conj_end === 'N' ? config.peso_endereco_sala_nao : 0);
@@ -348,6 +371,8 @@ function salvarAnalise(registro) {
 module.exports = {
   getScoreConfig,
   saveScoreConfig,
+  resetScoreConfig,
+  DEFAULT_CONFIG,
   calcularScore,
   getHistorico,
   salvarAnalise

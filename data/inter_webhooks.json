@@ -2,6 +2,83 @@
   {
     "id": 201,
     "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17876598140934umw_2",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17876598140934umw_2",
+      "valor": "20.00"
+    },
+    "createdAt": "2026-08-25T12:10:14.196Z"
+  },
+  {
+    "id": 201,
+    "empresaCodigo": "14",
+    "eventId": "E_BATCH_R17876598140934umw_1",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_BATCH_R17876598140934umw_1",
+      "valor": "10.00"
+    },
+    "createdAt": "2026-08-25T12:10:14.196Z"
+  },
+  {
+    "id": 201,
+    "empresaCodigo": "14",
+    "eventId": "E_HTTP_R17876598140934umw_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_HTTP_R17876598140934umw_001",
+      "valor": "250.00"
+    },
+    "createdAt": "2026-08-25T12:10:14.176Z"
+  },
+  {
+    "id": 201,
+    "empresaCodigo": "14",
+    "eventId": "evt-46f5676a360084e905f73fba82d82664",
+    "tipo": "BANKING",
+    "payload": {
+      "evento": "Extrato_R17876598140934umw",
+      "valor": 88
+    },
+    "createdAt": "2026-08-25T12:10:14.110Z"
+  },
+  {
+    "id": 201,
+    "empresaCodigo": "16",
+    "eventId": "E_R17876598140934umw_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17876598140934umw_001",
+      "txid": "TX_R17876598140934umw_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE OACO"
+      }
+    },
+    "createdAt": "2026-08-25T12:10:14.104Z"
+  },
+  {
+    "id": 201,
+    "empresaCodigo": "14",
+    "eventId": "E_R17876598140934umw_001",
+    "tipo": "PIX",
+    "payload": {
+      "endToEndId": "E_R17876598140934umw_001",
+      "txid": "TX_R17876598140934umw_001",
+      "valor": "150.00",
+      "horario": "2026-08-20T12:00:00Z",
+      "pagador": {
+        "nome": "CLIENTE TESTE MP",
+        "cpfCnpj": "00000000000"
+      }
+    },
+    "createdAt": "2026-08-25T12:10:14.095Z"
+  },
+  {
+    "id": 201,
+    "empresaCodigo": "14",
     "eventId": "E_BATCH_R1787657710351jw8x_2",
     "tipo": "PIX",
     "payload": {
@@ -2484,82 +2561,5 @@
       "valor": "10.00"
     },
     "createdAt": "2026-08-21T18:35:13.772Z"
-  },
-  {
-    "id": 72,
-    "empresaCodigo": "14",
-    "eventId": "E_HTTP_R1787337313707a1j3_001",
-    "tipo": "PIX",
-    "payload": {
-      "endToEndId": "E_HTTP_R1787337313707a1j3_001",
-      "valor": "250.00"
-    },
-    "createdAt": "2026-08-21T18:35:13.760Z"
-  },
-  {
-    "id": 71,
-    "empresaCodigo": "14",
-    "eventId": "evt-0431636a027572a3625cd52e8ae60f41",
-    "tipo": "BANKING",
-    "payload": {
-      "evento": "Extrato_R1787337313707a1j3",
-      "valor": 88
-    },
-    "createdAt": "2026-08-21T18:35:13.719Z"
-  },
-  {
-    "id": 70,
-    "empresaCodigo": "16",
-    "eventId": "E_R1787337313707a1j3_001",
-    "tipo": "PIX",
-    "payload": {
-      "endToEndId": "E_R1787337313707a1j3_001",
-      "txid": "TX_R1787337313707a1j3_001",
-      "valor": "150.00",
-      "horario": "2026-08-20T12:00:00Z",
-      "pagador": {
-        "nome": "CLIENTE TESTE OACO"
-      }
-    },
-    "createdAt": "2026-08-21T18:35:13.714Z"
-  },
-  {
-    "id": 69,
-    "empresaCodigo": "14",
-    "eventId": "E_R1787337313707a1j3_001",
-    "tipo": "PIX",
-    "payload": {
-      "endToEndId": "E_R1787337313707a1j3_001",
-      "txid": "TX_R1787337313707a1j3_001",
-      "valor": "150.00",
-      "horario": "2026-08-20T12:00:00Z",
-      "pagador": {
-        "nome": "CLIENTE TESTE MP",
-        "cpfCnpj": "00000000000"
-      }
-    },
-    "createdAt": "2026-08-21T18:35:13.708Z"
-  },
-  {
-    "id": 68,
-    "empresaCodigo": "14",
-    "eventId": "E_BATCH_R178733710647448zc_2",
-    "tipo": "PIX",
-    "payload": {
-      "endToEndId": "E_BATCH_R178733710647448zc_2",
-      "valor": "20.00"
-    },
-    "createdAt": "2026-08-21T18:31:46.618Z"
-  },
-  {
-    "id": 67,
-    "empresaCodigo": "14",
-    "eventId": "E_BATCH_R178733710647448zc_1",
-    "tipo": "PIX",
-    "payload": {
-      "endToEndId": "E_BATCH_R178733710647448zc_1",
-      "valor": "10.00"
-    },
-    "createdAt": "2026-08-21T18:31:46.618Z"
   }
 ]

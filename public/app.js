@@ -3325,6 +3325,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const scoreConfigForm = document.getElementById('scoreConfigForm');
 
   let listaHistoricoCredito = [];
+  let scoreConfigActive = null;
 
   // Iniciar Consulta Protheus
   if (btnIniciarConsultaCredito) {
@@ -3570,40 +3571,46 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Motor de cálculo de Score e Regras de Segurança no Frontend (Espelha o backend)
+  // Motor de cálculo de Score e Regras de Segurança no Frontend (Espelha o backend dinamicamente)
   function calcularScoreClienteFrontend(dados) {
+    const cfg = scoreConfigActive || {};
+    const getCfg = (k, def) => (cfg[k] !== undefined && cfg[k] !== null && !isNaN(Number(cfg[k])) ? Number(cfg[k]) : def);
+
     const totalPed = Number(dados.total_pedido) || 0;
     const isFaturado = dados.faturado === 'S';
     const entradaSim = dados.entrada === 'S';
     const entregaIgualCadastro = dados.entrega_igual_cadastro === 'S';
 
+    const limitePedAlto = getCfg('limite_pedido_alto', 21000);
+    const pesoPedAlto = getCfg('peso_pedido_alto', -8);
+
     const pontos = {};
-    pontos.total_pedido = totalPed > 21000 ? -8 : 0;
-    pontos.faturado = !isFaturado ? 100 : 0;
-    pontos.entrada = entradaSim ? 12 : -4;
-    pontos.quant_grande = dados.quant_grande === 'S' ? -13 : 1;
-    pontos.prod_nao_combinam = dados.prod_nao_combinam === 'S' ? -5 : 2;
-    pontos.pgtos_abertos = dados.pgtos_abertos === 'S' ? -3 : 1;
-    pontos.comprou_pagou = dados.comprou_pagou === 'S' ? 9 : -3;
-    pontos.comprou_pagou_5x = dados.comprou_pagou_5x === 'S' ? 23 : 0;
-    pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? 3 : (dados.cadastro_igual_receita === 'N' ? -3 : 0);
-    pontos.cnpj_ativo = dados.cnpj_ativo === 'S' ? 2 : (dados.cnpj_ativo === 'N' ? -100 : 0);
-    pontos.entrega_igual_cadastro = entregaIgualCadastro ? 2 : (dados.entrega_igual_cadastro === 'N' ? -9 : 0);
+    pontos.total_pedido = totalPed > limitePedAlto ? pesoPedAlto : 0;
+    pontos.faturado = !isFaturado ? getCfg('peso_faturado_avista', 100) : 0;
+    pontos.entrada = entradaSim ? getCfg('peso_entrada_sim', 12) : getCfg('peso_entrada_nao', -4);
+    pontos.quant_grande = dados.quant_grande === 'S' ? getCfg('peso_muitos_itens_sim', -13) : getCfg('peso_muitos_itens_nao', 1);
+    pontos.prod_nao_combinam = dados.prod_nao_combinam === 'S' ? getCfg('peso_prod_variados_sim', -5) : getCfg('peso_prod_variados_nao', 2);
+    pontos.pgtos_abertos = dados.pgtos_abertos === 'S' ? getCfg('peso_pgtos_abertos_sim', -3) : getCfg('peso_pgtos_abertos_nao', 1);
+    pontos.comprou_pagou = dados.comprou_pagou === 'S' ? getCfg('peso_comprou_2x_sim', 9) : getCfg('peso_comprou_2x_nao', -3);
+    pontos.comprou_pagou_5x = dados.comprou_pagou_5x === 'S' ? getCfg('peso_comprou_5x_sim', 23) : 0;
+    pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? getCfg('peso_cadastro_receita_sim', 3) : (dados.cadastro_igual_receita === 'N' ? getCfg('peso_cadastro_receita_nao', -3) : 0);
+    pontos.cnpj_ativo = dados.cnpj_ativo === 'S' ? getCfg('peso_cnpj_ativo_sim', 2) : (dados.cnpj_ativo === 'N' ? getCfg('peso_cnpj_ativo_nao', -100) : 0);
+    pontos.entrega_igual_cadastro = entregaIgualCadastro ? getCfg('peso_entrega_cadastro_sim', 2) : (dados.entrega_igual_cadastro === 'N' ? getCfg('peso_entrega_cadastro_nao', -9) : 0);
 
     const uf = (dados.uf_cliente || '').toUpperCase().trim();
-    pontos.uf_cliente = uf === 'RJ' ? -12 : 0;
+    pontos.uf_cliente = uf === 'RJ' ? getCfg('peso_uf_rj', -12) : 0;
 
     const maps = dados.google_maps || '-';
-    if (maps === '10') pontos.google_maps = 6;
-    else if (maps === '5') pontos.google_maps = 0;
-    else if (maps === '0') pontos.google_maps = -6;
-    else if (maps === '-') pontos.google_maps = -3;
+    if (maps === '10') pontos.google_maps = getCfg('peso_maps_10', 6);
+    else if (maps === '5') pontos.google_maps = getCfg('peso_maps_5', 0);
+    else if (maps === '0') pontos.google_maps = getCfg('peso_maps_0', -6);
+    else if (maps === '-') pontos.google_maps = getCfg('peso_maps_traco', -3);
     else pontos.google_maps = 0;
 
     if (entregaIgualCadastro) {
       pontos.registro_br = 0;
     } else {
-      pontos.registro_br = dados.registro_br === 'S' ? 6 : 0;
+      pontos.registro_br = dados.registro_br === 'S' ? getCfg('peso_registro_br_sim', 6) : 0;
     }
 
     // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX)
@@ -3612,36 +3619,36 @@ document.addEventListener('DOMContentLoaded', () => {
       : null;
 
     if (idadeDominio !== null && !isNaN(idadeDominio)) {
-      if (idadeDominio >= 10) pontos.idade_dominio = 6;
-      else if (idadeDominio >= 3) pontos.idade_dominio = 3;
-      else if (idadeDominio >= 1) pontos.idade_dominio = 0;
-      else pontos.idade_dominio = -7;
+      if (idadeDominio >= 10) pontos.idade_dominio = getCfg('peso_dominio_idade_10', 6);
+      else if (idadeDominio >= 3) pontos.idade_dominio = getCfg('peso_dominio_idade_3', 3);
+      else if (idadeDominio >= 1) pontos.idade_dominio = getCfg('peso_dominio_idade_1', 0);
+      else pontos.idade_dominio = getCfg('peso_dominio_idade_recente', -7);
     } else {
-      pontos.idade_dominio = dados.possui_site === 'N' ? -5 : 0;
+      pontos.idade_dominio = dados.possui_site === 'N' ? getCfg('peso_dominio_sem_site', -5) : 0;
     }
 
     const waybackAno = dados.wayback_primeiro_snapshot ? parseInt(dados.wayback_primeiro_snapshot, 10) : 0;
     const anoAtual = new Date().getFullYear();
     if (waybackAno > 1990) {
       const anosHistorico = anoAtual - waybackAno;
-      if (anosHistorico >= 5) pontos.wayback = 3;
-      else if (anosHistorico >= 1) pontos.wayback = 1;
-      else pontos.wayback = 0;
+      if (anosHistorico >= 5) pontos.wayback = getCfg('peso_wayback_5', 3);
+      else if (anosHistorico >= 1) pontos.wayback = getCfg('peso_wayback_1', 1);
+      else pontos.wayback = getCfg('peso_wayback_zero', 0);
     } else {
-      pontos.wayback = 0;
+      pontos.wayback = getCfg('peso_wayback_zero', 0);
     }
 
     const mxTipo = (dados.tipo_servidor_mx || '').toUpperCase();
-    if (mxTipo === 'PREMIUM') pontos.servidor_mx = 3;
-    else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = 0;
-    else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = -4;
+    if (mxTipo === 'PREMIUM') pontos.servidor_mx = getCfg('peso_mx_premium', 3);
+    else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = getCfg('peso_mx_padrao', 0);
+    else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = getCfg('peso_mx_inexistente', -4);
     else pontos.servidor_mx = 0;
 
-    pontos.casa_sala_conj_end = dados.casa_sala_conj_end === 'S' ? -5 : (dados.casa_sala_conj_end === 'N' ? 1 : 0);
-    pontos.email_corporativo = dados.email_corporativo === 'S' ? 3 : (dados.email_corporativo === 'N' ? -3 : 0);
-    pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'S' ? 0 : (dados.existe_mail_financeiro === 'N' ? -7 : 0);
-    pontos.mail_gratuito = dados.mail_gratuito === 'S' ? -8 : (dados.mail_gratuito === 'N' ? 2 : 0);
-    pontos.possui_site = dados.possui_site === 'S' ? 1 : (dados.possui_site === 'N' ? -15 : 0);
+    pontos.casa_sala_conj_end = dados.casa_sala_conj_end === 'S' ? getCfg('peso_endereco_sala_sim', -5) : (dados.casa_sala_conj_end === 'N' ? getCfg('peso_endereco_sala_nao', 1) : 0);
+    pontos.email_corporativo = dados.email_corporativo === 'S' ? getCfg('peso_email_corp_sim', 3) : (dados.email_corporativo === 'N' ? getCfg('peso_email_corp_nao', -3) : 0);
+    pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'S' ? 0 : (dados.existe_mail_financeiro === 'N' ? getCfg('peso_email_fin_diferente_nao', -7) : 0);
+    pontos.mail_gratuito = dados.mail_gratuito === 'S' ? getCfg('peso_email_gratuito_sim', -8) : (dados.mail_gratuito === 'N' ? getCfg('peso_email_gratuito_nao', 2) : 0);
+    pontos.possui_site = dados.possui_site === 'S' ? getCfg('peso_site_ativo_sim', 1) : (dados.possui_site === 'N' ? getCfg('peso_site_ativo_nao', -15) : 0);
 
     let idadeAnos = 0;
     if (dados.fundacao_matriz) {
@@ -3651,10 +3658,10 @@ document.addEventListener('DOMContentLoaded', () => {
         idadeAnos = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
       }
     }
-    if (idadeAnos >= 30) pontos.idade_empresa = 8;
-    else if (idadeAnos >= 15) pontos.idade_empresa = 4;
-    else if (idadeAnos >= 5) pontos.idade_empresa = 0;
-    else if (dados.fundacao_matriz) pontos.idade_empresa = -6;
+    if (idadeAnos >= 30) pontos.idade_empresa = getCfg('peso_idade_30', 8);
+    else if (idadeAnos >= 15) pontos.idade_empresa = getCfg('peso_idade_15', 4);
+    else if (idadeAnos >= 5) pontos.idade_empresa = getCfg('peso_idade_5', 0);
+    else if (dados.fundacao_matriz) pontos.idade_empresa = getCfg('peso_idade_menor5', -6);
     else pontos.idade_empresa = 0;
 
     const temProtestos = dados.protestos === 'S';
@@ -3662,46 +3669,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const capSocial = Number(dados.capital_social) || 0;
 
     if (dados.protestos === 'N') {
-      pontos.protestos = 5;
+      pontos.protestos = getCfg('peso_protestos_nao', 5);
     } else if (temProtestos) {
-      pontos.protestos = -10;
+      pontos.protestos = getCfg('peso_protestos_sim', -10);
       if (totalPed > 0 && valProtestos > (totalPed * 2)) {
-        pontos.protestos -= 10;
+        pontos.protestos += getCfg('peso_protesto_2x_ped', -10);
       }
       if (capSocial > 0) {
-        if (valProtestos > capSocial) pontos.protestos -= 20;
-        else pontos.protestos += 4;
+        if (valProtestos > capSocial) pontos.protestos += getCfg('peso_protesto_maior_capital', -20);
+        else pontos.protestos += getCfg('peso_protesto_menor_capital', 4);
       }
     } else {
       pontos.protestos = 0;
     }
 
-    pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? -6 : 0;
-    pontos.pfin = dados.pfin === 'S' ? -5 : (dados.pfin === 'N' ? 1 : 0);
+    pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? getCfg('peso_ch_sem_fundo_sim', -6) : 0;
+    pontos.pfin = dados.pfin === 'S' ? getCfg('peso_pfin_sim', -5) : (dados.pfin === 'N' ? getCfg('peso_pfin_nao', 1) : 0);
 
     const serasa = parseInt(dados.score_serasa, 10);
     if (!isNaN(serasa) && dados.score_serasa !== '') {
-      if (serasa >= 700) pontos.score_serasa = 8;
-      else if (serasa >= 500) pontos.score_serasa = 4;
-      else if (serasa >= 200) pontos.score_serasa = -4;
-      else if (serasa > 0) pontos.score_serasa = -15;
-      else pontos.score_serasa = -20;
+      if (serasa >= 700) pontos.score_serasa = getCfg('peso_serasa_700', 8);
+      else if (serasa >= 500) pontos.score_serasa = getCfg('peso_serasa_500', 4);
+      else if (serasa >= 200) pontos.score_serasa = getCfg('peso_serasa_200', -4);
+      else if (serasa > 0) pontos.score_serasa = getCfg('peso_serasa_baixo', -15);
+      else pontos.score_serasa = getCfg('peso_serasa_zero', -20);
     } else {
       pontos.score_serasa = 0;
     }
 
-    if (capSocial >= 10000000) pontos.capital_social = 12;
-    else if (capSocial >= 1000000) pontos.capital_social = 6;
-    else if (capSocial >= 150000) pontos.capital_social = 0;
-    else if (capSocial >= 12000) pontos.capital_social = -3;
-    else if (capSocial > 0) pontos.capital_social = -7;
+    if (capSocial >= 10000000) pontos.capital_social = getCfg('peso_capital_10m', 12);
+    else if (capSocial >= 1000000) pontos.capital_social = getCfg('peso_capital_1m', 6);
+    else if (capSocial >= 150000) pontos.capital_social = getCfg('peso_capital_150k', 0);
+    else if (capSocial >= 12000) pontos.capital_social = getCfg('peso_capital_12k_menor', -3);
+    else if (capSocial > 0) pontos.capital_social = getCfg('peso_capital_zero', -7);
     else pontos.capital_social = 0;
 
-    pontos.fgts_situacao_regular = dados.fgts_situacao_regular === 'N' ? -6 : 0;
-    pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? -10 : 0;
+    pontos.fgts_situacao_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
+    pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? getCfg('peso_razao_fgts_igual_nao', -10) : 0;
 
-    if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = 3;
-    else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = -3;
+    if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = getCfg('peso_boletos_sim', 3);
+    else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = getCfg('peso_boletos_nao', -3);
     else pontos.tres_nfs = 0; // 'D' (Dispensado) = 0 pts
 
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
@@ -3739,7 +3746,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    const alertaPedCompra = totalPed > 5000 ? 'SOLICITAR PED COMPRA' : 'N/A';
+    const alertaPedCompra = totalPed > getCfg('limite_pedido_compra', 5000) ? 'SOLICITAR PED COMPRA' : 'N/A';
     const alertaContratoEntrega = dados.armario_cofre_gt_2000 === 'S' ? 'SOLIC CONTRATO DE ENTREGA' : 'N/A';
     const alertaPerigoGolpe = !entregaIgualCadastro && isFaturado && dados.entrega_igual_cadastro ? 'PERIGO CHECAGEM REVERSA' : 'N/A';
     const alertaCadastroReceita = dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A';
@@ -4361,8 +4368,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/financeiro/analise-credito/config');
       const data = await res.json();
       if (data.success && data.config) {
-        const cfg = data.config;
-        for (const [k, v] of Object.entries(cfg)) {
+        scoreConfigActive = data.config;
+        for (const [k, v] of Object.entries(data.config)) {
           const el = document.getElementById(`cfg_${k}`);
           if (el) el.value = v;
         }
@@ -4390,7 +4397,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const d = await res.json();
         if (d.success) {
+          scoreConfigActive = d.config || cfg;
           alert('Parâmetros do Score de Crédito salvos com sucesso!');
+          if (typeof atualizarScoreEmTempoReal === 'function') {
+            atualizarScoreEmTempoReal();
+          }
         } else {
           alert('Erro ao salvar: ' + d.error);
         }
@@ -4400,10 +4411,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (btnSaveScoreConfig && scoreConfigForm) {
+    btnSaveScoreConfig.addEventListener('click', (e) => {
+      e.preventDefault();
+      scoreConfigForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    });
+  }
+
   if (btnResetScoreConfig) {
-    btnResetScoreConfig.addEventListener('click', async () => {
+    btnResetScoreConfig.addEventListener('click', async (e) => {
+      e.preventDefault();
       if (confirm('Deseja restaurar todos os parâmetros para os valores originais da planilha Score 2025?')) {
-        carregarScoreConfigUI();
+        try {
+          const res = await fetch('/api/financeiro/analise-credito/config/reset', { method: 'POST' });
+          const d = await res.json();
+          if (d.success && d.config) {
+            scoreConfigActive = d.config;
+            for (const [k, v] of Object.entries(d.config)) {
+              const el = document.getElementById(`cfg_${k}`);
+              if (el) el.value = v;
+            }
+            alert('Parâmetros restaurados com sucesso para os padrões oficiais da planilha!');
+            if (typeof atualizarScoreEmTempoReal === 'function') {
+              atualizarScoreEmTempoReal();
+            }
+          } else {
+            alert('Erro ao restaurar: ' + (d.error || 'Falha desconhecida'));
+          }
+        } catch (err) {
+          alert('Falha ao restaurar configurações padrão.');
+        }
       }
     });
   }

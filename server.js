@@ -1558,6 +1558,7 @@ app.get('/api/financeiro/webhooks', async (req, res) => {
 const {
   getScoreConfig,
   saveScoreConfig,
+  resetScoreConfig,
   calcularScore,
   getHistorico: getHistoricoCredito,
   salvarAnalise: salvarAnaliseCredito
@@ -2036,10 +2037,16 @@ app.get('/api/financeiro/analise-credito/config', (req, res) => {
 app.post('/api/financeiro/analise-credito/config', (req, res) => {
   const ok = saveScoreConfig(req.body);
   if (ok) {
-    res.json({ success: true, message: 'Configurações de score atualizadas com sucesso.' });
+    res.json({ success: true, message: 'Configurações de score atualizadas com sucesso.', config: getScoreConfig() });
   } else {
     res.status(500).json({ success: false, error: 'Falha ao salvar configurações.' });
   }
+});
+
+// 3.1 Resetar Configurações do Score para Padrão Oficial
+app.post('/api/financeiro/analise-credito/config/reset', (req, res) => {
+  const def = resetScoreConfig();
+  res.json({ success: true, message: 'Parâmetros restaurados com sucesso para os padrões oficiais da planilha.', config: def });
 });
 
 // 4. Calcular e Salvar Análise de Crédito

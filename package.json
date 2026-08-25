@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node test_2fa.js && node test_security.js && node test_webhooks.js && node test_vipp_ftp.js && node test_e2e.js && node test_vendedores_nfe.js",
+    "test": "node test_2fa.js && node test_security.js && node test_webhooks.js && node test_vipp_ftp.js && node test_e2e.js && node test_vendedores_nfe.js && node test_score_config.js",
     "version:bump": "node bump_version.js"
   },
   "dependencies": {
