@@ -2057,6 +2057,11 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => 
       return res.status(400).json({ success: false, error: 'Campos obrigatórios não podem ficar em branco.' });
     }
 
+    const decisao = String(dados.decisao_final || '').trim();
+    if (!decisao || decisao === 'Decisão (atenção ao gravar)') {
+      return res.status(400).json({ success: false, error: 'Escolha uma decisão antes de gravar.' });
+    }
+
     const resultado = calcularScore(dados);
     const registroSalvo = await saveAnaliseCreditoDB({
       ...dados,

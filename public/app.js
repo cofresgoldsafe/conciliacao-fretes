@@ -3460,6 +3460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_ch_sem_fundo', '');
         setVal('cr_fgts_situacao_regular', '');
         setVal('cr_razao_fgts_igual', '');
+        setVal('cr_decisao_final', 'Decisão (atenção ao gravar)');
 
         if (creditoProtheusBadge) {
           creditoProtheusBadge.classList.remove('hidden');
@@ -3567,7 +3568,7 @@ document.addEventListener('DOMContentLoaded', () => {
       razao_fgts_igual: getVal('cr_razao_fgts_igual'),
       tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas'),
       obs: getVal('cr_obs'),
-      decisao_final: getVal('cr_decisao_final') || 'Liberado'
+      decisao_final: getVal('cr_decisao_final')
     };
   }
 
@@ -3929,6 +3930,18 @@ document.addEventListener('DOMContentLoaded', () => {
           alert(`⚠️ Campo obrigatório não preenchido: "${item.label}".\n\nNenhum campo pode estar em branco para registrar a análise definitiva no banco.`);
           return;
         }
+      }
+
+      // Validação da Decisão Final do Analista
+      const decisao = (payload.decisao_final || '').trim();
+      if (!decisao || decisao === 'Decisão (atenção ao gravar)') {
+        const el = document.getElementById('cr_decisao_final');
+        if (el) {
+          el.focus();
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        alert('⚠️ Escolha uma decisão antes de gravar.');
+        return;
       }
 
       const btnSubmit = document.getElementById('btnCalcularSalvarCredito');
