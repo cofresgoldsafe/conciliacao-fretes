@@ -151,66 +151,83 @@ function calcularScore(dados, config = getScoreConfig()) {
   }
 
   const scamScore = Number(dados.scamadvizer_score) || 0;
-  if (scamScore > 97) pontos.scamadvizer = config.peso_scamadvizer_97;
-  else if (scamScore > 75) pontos.scamadvizer = config.peso_scamadvizer_75;
-  else pontos.scamadvizer = config.peso_scamadvizer_baixo;
+  if (scamScore >= 97) pontos.scamadvizer = config.peso_scamadvizer_97;
+  else if (scamScore >= 75) pontos.scamadvizer = config.peso_scamadvizer_75;
+  else if (dados.scamadvizer_score !== '' && dados.scamadvizer_score !== undefined) pontos.scamadvizer = config.peso_scamadvizer_baixo;
+  else pontos.scamadvizer = 0;
 
-  pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? config.peso_endereco_sala_sim : config.peso_endereco_sala_nao;
-  pontos.email_corporativo = dados.email_corporativo === 'S' ? config.peso_email_corp_sim : config.peso_email_corp_nao;
-  pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'S' ? 0 : config.peso_email_fin_diferente_nao;
-  pontos.mail_gratuito = dados.mail_gratuito === 'S' ? config.peso_email_gratuito_sim : config.peso_email_gratuito_nao;
-  pontos.possui_site = dados.possui_site === 'S' ? config.peso_site_ativo_sim : config.peso_site_ativo_nao;
+  pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? config.peso_endereco_sala_sim : (dados.casa_sala_conj_end === 'N' ? config.peso_endereco_sala_nao : 0);
+  pontos.email_corporativo = dados.email_corporativo === 'S' ? config.peso_email_corp_sim : (dados.email_corporativo === 'N' ? config.peso_email_corp_nao : 0);
+  pontos.existe_mail_financeiro = dados.existe_mail_financeiro === 'S' ? 0 : (dados.existe_mail_financeiro === 'N' ? config.peso_email_fin_diferente_nao : 0);
+  pontos.mail_gratuito = dados.mail_gratuito === 'S' ? config.peso_email_gratuito_sim : (dados.mail_gratuito === 'N' ? config.peso_email_gratuito_nao : 0);
+  pontos.possui_site = dados.possui_site === 'S' ? config.peso_site_ativo_sim : (dados.possui_site === 'N' ? config.peso_site_ativo_nao : 0);
 
   let idadeAnos = 0;
   if (dados.fundacao_matriz) {
-    const anoFundacao = new Date(dados.fundacao_matriz).getFullYear();
-    const anoAtual = new Date().getFullYear();
-    if (!isNaN(anoFundacao) && anoFundacao > 1900) {
-      idadeAnos = Math.max(0, anoAtual - anoFundacao);
+    const dataFund = new Date(dados.fundacao_matriz);
+    if (!isNaN(dataFund.getTime())) {
+      const diffMs = Date.now() - dataFund.getTime();
+      idadeAnos = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 365.25));
     }
   }
-  if (idadeAnos > 30) pontos.idade_empresa = config.peso_idade_30;
-  else if (idadeAnos > 15) pontos.idade_empresa = config.peso_idade_15;
-  else if (idadeAnos > 5) pontos.idade_empresa = config.peso_idade_5;
-  else pontos.idade_empresa = config.peso_idade_menor5;
+  if (idadeAnos >= 30) pontos.idade_empresa = config.peso_idade_30;
+  else if (idadeAnos >= 15) pontos.idade_empresa = config.peso_idade_15;
+  else if (idadeAnos >= 5) pontos.idade_empresa = config.peso_idade_5;
+  else if (dados.fundacao_matriz) pontos.idade_empresa = config.peso_idade_menor5;
+  else pontos.idade_empresa = 0;
 
   pontos.empresa_grande_conhecida = dados.empresa_grande_conhecida === 'S' ? config.peso_grande_conhecida_sim : 0;
 
   const temProtestos = dados.protestos === 'S';
-  pontos.protestos = temProtestos ? config.peso_protestos_sim : config.peso_protestos_nao;
+  if (dados.protestos === 'N') {
+    pontos.protestos = config.peso_protestos_nao;
+    pontos.vlr_protestos_vs_ped = 0;
+    pontos.protestos_vs_capital = 0;
+  } else if (temProtestos) {
+    pontos.protestos = config.peso_protestos_sim;
+    const vlrProtestos = Number(dados.valor_protestos) || 0;
+    pontos.vlr_protestos_vs_ped = totalPed > 0 && vlrProtestos > totalPed * 2 ? config.peso_protesto_2x_ped : 0;
 
-  const vlrProtestos = Number(dados.valor_protestos) || 0;
-  pontos.vlr_protestos_vs_ped = vlrProtestos > totalPed * 2 ? config.peso_protesto_2x_ped : 0;
-
-  const capitalSocial = Number(dados.capital_social) || 0;
-  if (capitalSocial > 1) {
-    pontos.protestos_vs_capital = vlrProtestos > capitalSocial ? config.peso_protesto_maior_capital : config.peso_protesto_menor_capital;
+    const capitalSocial = Number(dados.capital_social) || 0;
+    if (capitalSocial > 0) {
+      pontos.protestos_vs_capital = vlrProtestos > capitalSocial ? config.peso_protesto_maior_capital : config.peso_protesto_menor_capital;
+    } else {
+      pontos.protestos_vs_capital = 0;
+    }
   } else {
+    pontos.protestos = 0;
+    pontos.vlr_protestos_vs_ped = 0;
     pontos.protestos_vs_capital = 0;
   }
 
   pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? config.peso_ch_sem_fundo_sim : 0;
-  pontos.pfin = dados.pfin === 'S' ? config.peso_pfin_sim : config.peso_pfin_nao;
+  pontos.pfin = dados.pfin === 'S' ? config.peso_pfin_sim : (dados.pfin === 'N' ? config.peso_pfin_nao : 0);
 
-  const scoreSerasa = Number(dados.score_serasa) || 0;
-  if (scoreSerasa > 700) pontos.score_serasa = config.peso_serasa_700;
-  else if (scoreSerasa > 500) pontos.score_serasa = config.peso_serasa_500;
-  else if (scoreSerasa > 200) pontos.score_serasa = config.peso_serasa_200;
-  else if (scoreSerasa >= 1) pontos.score_serasa = config.peso_serasa_baixo;
-  else pontos.score_serasa = config.peso_serasa_zero;
+  const scoreSerasa = parseInt(dados.score_serasa, 10);
+  if (!isNaN(scoreSerasa) && dados.score_serasa !== '' && dados.score_serasa !== undefined) {
+    if (scoreSerasa >= 700) pontos.score_serasa = config.peso_serasa_700;
+    else if (scoreSerasa >= 500) pontos.score_serasa = config.peso_serasa_500;
+    else if (scoreSerasa >= 200) pontos.score_serasa = config.peso_serasa_200;
+    else if (scoreSerasa > 0) pontos.score_serasa = config.peso_serasa_baixo;
+    else pontos.score_serasa = config.peso_serasa_zero;
+  } else {
+    pontos.score_serasa = 0;
+  }
 
-  if (capitalSocial > 10000000) pontos.capital_social = config.peso_capital_10m;
-  else if (capitalSocial > 999000) pontos.capital_social = config.peso_capital_1m;
-  else if (capitalSocial > 150000) pontos.capital_social = config.peso_capital_150k;
-  else if (capitalSocial > 90000) pontos.capital_social = 0;
-  else if (capitalSocial > 12000) pontos.capital_social = config.peso_capital_12k_menor;
-  else pontos.capital_social = config.peso_capital_zero;
+  const capitalSocial = Number(dados.capital_social) || 0;
+  if (capitalSocial >= 10000000) pontos.capital_social = config.peso_capital_10m;
+  else if (capitalSocial >= 1000000) pontos.capital_social = config.peso_capital_1m;
+  else if (capitalSocial >= 150000) pontos.capital_social = config.peso_capital_150k;
+  else if (capitalSocial >= 12000) pontos.capital_social = config.peso_capital_12k_menor;
+  else if (capitalSocial > 0) pontos.capital_social = config.peso_capital_zero;
+  else pontos.capital_social = 0;
 
-  pontos.tres_nfs = dados.tres_nfs_confirmadas === 'S' ? config.peso_boletos_sim : config.peso_boletos_nao;
-  pontos.conta_luz = dados.conta_luz === 'S' ? config.peso_conta_luz_sim : config.peso_conta_luz_nao;
+  if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = config.peso_boletos_sim;
+  else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = config.peso_boletos_nao;
+  else pontos.tres_nfs = 0; // 'D' (Dispensado) = 0 pts
+
   pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? config.peso_fgts_regular_nao : 0;
   pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? config.peso_razao_fgts_igual_nao : 0;
-  pontos.certidao_trib = dados.certidao_trib_mobiliaria === 'S' ? config.peso_certidao_trib_sim : config.peso_certidao_trib_nao;
 
   const totalScore = Object.values(pontos).reduce((acc, curr) => acc + curr, 0);
 
