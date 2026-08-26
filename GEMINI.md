@@ -127,8 +127,15 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Paleta de Alto Contraste WCAG 2.1 (AA/AAA):** Calibração de tokens claros (`.tab-theme-light`, `.modal-theme-light`) com fundo `#ffffff`, textos `#0f172a`, bordas `#e2e8f0`, saldos positivos em verde esmeralda (`#059669`), compras/totais em azul céu (`#0284c7`) e vendas em âmbar escuro (`#d97706`), eliminando riscos de textos ilegíveis em fundos brancos.
    - **Persistência Perene:** Armazenamento da preferência no `localStorage.setItem('theme_vendedores', mode)` e `theme_saldos_estoque`, restaurado automaticamente sem flash de tela (Zero-FOUC).
    - **Suite de Testes Automatizados:** Script `test_theme_toggle.js` com 5 asserções cobrindo elementos de UI, regras de CSS com escopo, persistência em disco e funções de alternância em JS para as 5 sub-abas e modais.
-15. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-16. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+15. [x] **Regra de Cálculo de Frete no Total do Pedido de Venda (`protheus_db.js`, `server.js`, `public/app.js`, `test_totais_pedido.js`):**
+   - **Causa Raiz & Resolução:** O total do pedido de venda em Análise de Crédito e detalhes de pedidos somava incorretamente o campo de Frete Embutido (`C5_VLR_FRT`). Como o valor de `C5_VLR_FRT` já está embutido/incluído no preço dos produtos (`SC6`), somá-lo causava duplicidade no valor total do pedido (`totalGeral`).
+   - **Regra Estrita Aplicada:**
+     - **Frete Normal (`C5_FRETE`):** Soma normalmente ao total geral do pedido (`totalProdutos + C5_FRETE - C5_DESCONT`).
+     - **Frete Embutido (`C5_VLR_FRT`):** Permanece como campo informativo (`freteEmbutido`) no payload e na interface, mas **NÃO** é somado ao total geral do pedido de venda.
+   - **Ajustes de UI:** Modal de Detalhes do Pedido (`#pedidoDetalhesModal`) agora discrimina *Frete Cobrado* e exibe *Frete Embutido (Incluso)* apenas de forma informativa e contextual quando presente.
+   - **Cobertura de Testes:** Suíte dedicada `test_totais_pedido.js` cobrindo cenários de frete cobrado puro, frete embutido puro, misto com descontos e integração de payload com Análise de Crédito (100% aprovados).
+16. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+17. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

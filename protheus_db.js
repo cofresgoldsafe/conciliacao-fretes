@@ -892,7 +892,9 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
 
     if (head) {
       const totalProdutos = itens.reduce((acc, it) => acc + parseFloat(it.VALOR || 0), 0);
-      const totalFrete = parseFloat(head.FRETE || 0) + parseFloat(head.FRETE_EMBUTIDO || 0);
+      const freteCobrado = parseFloat(head.FRETE || 0); // C5_FRETE (Frete normal cobrado que compõe o total do pedido)
+      const freteEmbutido = parseFloat(head.FRETE_EMBUTIDO || 0); // C5_VLR_FRT (Frete embutido/CIF nos produtos, NÃO soma ao total)
+      const totalFrete = freteCobrado; // Apenas C5_FRETE compõe o total financeiro do pedido
       const totalDesconto = parseFloat(head.DESCONTO || 0);
       const totalGeral = totalProdutos + totalFrete - totalDesconto;
 
@@ -1004,6 +1006,8 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         totais: {
           totalProdutos: roundVal(totalProdutos),
           totalFrete: roundVal(totalFrete),
+          freteCobrado: roundVal(freteCobrado),
+          freteEmbutido: roundVal(freteEmbutido),
           totalDesconto: roundVal(totalDesconto),
           totalGeral: roundVal(totalGeral)
         },

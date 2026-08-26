@@ -2578,9 +2578,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>${formatCurrency(tot.totalProdutos)}</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted);">
-            <span>Frete (Cobrado + Embutido):</span>
-            <span>${formatCurrency(tot.totalFrete)}</span>
+            <span>Frete Cobrado:</span>
+            <span>${formatCurrency(tot.freteCobrado !== undefined ? tot.freteCobrado : tot.totalFrete)}</span>
           </div>
+          ${tot.freteEmbutido > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+            <span>Frete Embutido (Incluso):</span>
+            <span>${formatCurrency(tot.freteEmbutido)}</span>
+          </div>` : ''}
           ${tot.totalDesconto > 0 ? `
           <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--accent-rose);">
             <span>Descontos:</span>
