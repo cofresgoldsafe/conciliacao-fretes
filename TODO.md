@@ -21,7 +21,7 @@
 - [x] [VEND-01] Sub-aba Consulta Pedido: Pesquisa multi-empresa (14, 15, 16) com integração SA1010, máscaras e itens SC6
 - [x] [VEND-02] Sub-aba Pedidos Abertos: Listagem multi-empresa não faturada com regras de bloqueio SC9 e CRM Pipedrive
 - [x] [VEND-03] Sub-aba Pedidos Compras: Consulta de compras em aberto (SC7) de produtos PA com fornecedores SA2010
-- [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação SB1/SB2/SC6/SC7, KPIs e drilldown multi-empresa
+- [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação SB1/SB2/SC6/SC7, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), exclusão de bloqueados (B1_MSBLQL <> '1'), paginação dinâmica e drilldown multi-empresa
 - [x] [VEND-05] Sub-aba Comissões & Metas: Apuração periódica SE3 com cálculo dinâmico de Meta Atingida proporcional
 - [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável
 
@@ -29,5 +29,5 @@
 - [x] [QA-01] Criar suíte de testes de segurança e regressão (test_security.js e test_webhooks.js via npm test)
 - [x] [QA-02] Suíte de testes automatizados para Pedidos Abertos (test_pedidos_abertos.js)
 - [x] [QA-03] Suíte de testes automatizados para Pedidos Compras (test_pedidos_compras.js)
-- [x] [QA-04] Suíte de testes automatizados para Saldos em Estoque e Job Supabase (test_saldos_estoque.js)
+- [x] [QA-04] Suíte de testes automatizados para Saldos em Estoque, Grupos, Bloqueios, Paginação e Job Supabase (test_saldos_estoque.js)
 - [ ] [QA-05] Criar testes E2E com Playwright para fluxos de navegação e conciliação

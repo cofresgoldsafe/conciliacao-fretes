@@ -81,21 +81,35 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Carga inicial inteligente no startup (`JOB_STARTUP`) se a base/cache estiver vazia.
      - Persistência na tabela relacional PostgreSQL / Supabase `produtos_saldo_estoque` e logs de auditoria `estoque_sync_logs` com duração em ms e gatilho (`JOB_AUTO`, `JOB_STARTUP`, `MANUAL`).
      - Fallback gracioso automático para cache JSON em disco (`data/estoque_saldos_cache.json`) em caso de oscilação ou indisponibilidade de conexão com o banco.
-   - **Visual Power BI & Experiência do Usuário (UX):**
-     - 3 Cards KPIs principais no topo: *Itens em Estoque (Saldo > 0)*, *Itens sem Estoque (Saldo = 0)* e *Valor Total em Estoque (R$)*.
+   - **Visual Power BI, Experiência do Usuário (UX) & Paginação:**
+     - 3 Cards KPIs principais no topo: *Itens em Estoque (Saldo > 0)*, *Itens sem Estoque (Saldo = 0)* e *Valor Total em Estoque (R$)* calculados sobre a totalidade da base comercial.
      - Tabela responsiva com 7 colunas (`DESCRIÇÃO`, `PREÇO`, `SALDO`, `SALDO_TOTAL`, `C6 QTD VENDAS`, `QTD COMPRAS`, `PONTO PED`).
      - Ordenação interativa bidirecional em todas as colunas com formatação numérica e monetária BRL.
-     - Filtros instantâneos: busca textual (código/descrição) e select por disponibilidade (*Todos, Somente com Saldo, Somente sem Estoque, Com Vendas SC6, Com Compras SC7*).
+     - **Filtros Comerciais Estritos:**
+       - Catálogo Protheus restrito exclusivamente a Produtos Acabados (`B1_TIPO = 'PA'`), descartando códigos com `X` ou descrições com `XXX`.
+       - Exclusão de itens bloqueados no ERP Protheus (`B1_MSBLQL <> '1'`).
+       - Escopo estrito dos 4 Grupos Comerciais Oficiais: **Grupo 001 - Cofres**, **Grupo 002 - Fragmentadoras**, **Grupo 010 - Plastificação** e **Grupo 018 - Armários & Carrinhos** (eliminando grupos de TI como `017` e o grupo `020`).
+     - **Barra de Filtros Compacta e Reativa:**
+       - Campo de busca instantânea textual por código ou descrição com layout compacto (34px de altura).
+       - Select dropdown dedicado por **Grupo do Produto** (*Todos os Grupos Comerciais, 001, 002, 010, 018*).
+       - Select por **Disponibilidade** (*Todos, Somente com Saldo, Somente sem Estoque, Com Vendas SC6, Com Compras SC7*).
+       - Botão **🧹 Limpar** para reset simultâneo de todos os critérios de busca.
+     - **Paginação Dinâmica Inteligente:**
+       - Resumo visual no rodapé: `Exibindo X a Y de Z produtos`.
+       - Seletor de itens por página configurável (**50 por página** como padrão, com opções para **25**, **100** e **Todos**).
+       - Botões de navegação rápida (`« Primeira`, `‹ Anterior`, `Próxima ›`, `Última »`) e botões numéricos com destaque visual na página ativa.
+       - A paginação atua no client-side garantindo que ordenação e busca reflitam instantaneamente nos 368 produtos ativos sem requisições desnecessárias.
      - Badge de status da sincronização com indicador verde/amarelo, timestamp da última execução e botão de disparo manual com Cooldown de 2 minutos (`429 Too Many Requests`).
    - **Modal Drilldown Multi-Empresa com 3 Guias:**
      - Clique na linha do produto abre modal com 4 mini KPIs (*Preço Unitário, Saldo Físico Total, Valor em Estoque, Ponto de Pedido*).
+     - Subtítulo com identificação clara: `Código Protheus: XXXXX | Grupo: XXX`.
      - Guia 1: *Resumo por Empresa* (saldos, vendas e compras discriminados por Metal Pleno 14, GSI 15 e OACO 16).
      - Guia 2: *Compras em Aberto (SC7)* (pedido com sigla, fornecedor, quantidade comprada, entregue, saldo pendente e data de previsão).
      - Guia 3: *Vendas em Aberto (SC6)* (pedido, CodWeb, cliente, vendedor, quantidade pedida e previsão).
    - **Segurança RBAC, Auditoria & Testes:**
      - Proteção JWT obrigatória nos endpoints `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
      - Registro de auditoria em `user_activities` para ações de consulta (`CONSULTA_SALDOS_ESTOQUE`) e sincronização manual (`SYNC_SALDOS_ESTOQUE`).
-     - Cobertura por suíte automatizada em `test_saldos_estoque.js` validando fórmulas matemáticas, filtros de PA, gravação/leitura no Postgres/JSON e segurança de rotas HTTP.
+     - Cobertura por suíte automatizada em `test_saldos_estoque.js` validando fórmulas matemáticas, filtros de PA, bloqueios `MSBLQL`, grupos comerciais, gravação/leitura no Postgres/JSON e segurança de rotas HTTP com isolamento de testes e restauração de cache.
 12. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
 13. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
