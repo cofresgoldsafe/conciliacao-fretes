@@ -165,8 +165,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Ficha do Pedido, Extrato e Restauração Perfeita:**
      - Exibição de `Capital Social: Não informado / Isento (0 pts)` na Ficha e no Extrato de Auditoria, com suporte completo a recarga no formulário via `⚡ Carregar no Formulário`.
    - **Suíte de Testes:** Script `test_capital_social_isento.js` com 5 testes automatizados aprovados com 100% de sucesso.
-18. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-19. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+18. [x] **Clareza nos Rótulos de Divergência Cadastral e Sincronização Dinâmica de Seletores (`public/index.html`, `public/app.js`, `test_score_config.js`):**
+   - **Eliminação de Ambiguidade de Notação Lógica (`!=`):**
+     - Substituição dos rótulos técnicos nas Configurações de Score (`Razão != FGTS` ➔ `Razão Divergente do FGTS (-pts)`, `Cadastro != Receita Federal` ➔ `Cadastro Divergente da Receita (-pts)`, `Entrega != Cadastro` ➔ `Entrega Divergente do Cadastro (-pts)`), deixando 100% claro que a penalidade se aplica exclusivamente quando houver divergência cadastral.
+   - **Sincronização Dinâmica dos Menus Seletores (`<select>`):**
+     - Implementação da função reativa `atualizarRotulosSelectsCredito(cfg)` em `public/app.js`, atualizando instantaneamente os textos de pontuação (+X pts / -Y pts) de todas as 28 opções de seletores do formulário sempre que as configurações forem salvas, carregadas ou restauradas.
+   - **Suíte de Testes:** Script `test_score_config.js` com 5 asserções automatizadas cobrindo pesos customizados, persistência, clareza textual e sincronização dinâmica.
+19. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+20. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

@@ -120,6 +120,20 @@ runTest('saveScoreConfig e resetScoreConfig gravam e restauram arquivos json', (
   assert.strictEqual(cfg.peso_mx_premium, DEFAULT_CONFIG.peso_mx_premium);
 });
 
+// 5. Testar Clareza de Rótulos e Sincronização Dinâmica de Seletores no HTML/JS
+runTest('Rótulos descritivos no HTML e função de sincronização dinâmica no app.js', () => {
+  const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf-8');
+  const jsContent = fs.readFileSync(path.join(__dirname, 'public', 'app.js'), 'utf-8');
+
+  assert.ok(htmlContent.includes('Razão Divergente do FGTS (-pts)'), 'HTML deve conter Razão Divergente do FGTS');
+  assert.ok(htmlContent.includes('Cadastro Divergente da Receita (-pts)'), 'HTML deve conter Cadastro Divergente da Receita');
+  assert.ok(htmlContent.includes('Entrega Divergente do Cadastro (-pts)'), 'HTML deve conter Entrega Divergente do Cadastro');
+
+  assert.ok(jsContent.includes('function atualizarRotulosSelectsCredito'), 'app.js deve conter a função atualizarRotulosSelectsCredito');
+  assert.ok(jsContent.includes('atualizarRotulosSelectsCredito(data.config)'), 'carregarScoreConfigUI deve sincronizar os selects');
+  assert.ok(jsContent.includes('atualizarRotulosSelectsCredito(scoreConfigActive)'), 'Submit e Reset devem sincronizar os selects');
+});
+
 console.log('\n====================================================');
 console.log(`📊 RESULTADOS: ${passedTests}/${totalTests} aprovados (${Math.round((passedTests / totalTests) * 100)}%)`);
 console.log('====================================================\n');

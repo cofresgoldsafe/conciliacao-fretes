@@ -6007,6 +6007,120 @@ document.addEventListener('DOMContentLoaded', () => {
     filtroPeriodoHistoricoCredito.addEventListener('change', renderHistoricoCreditoTable);
   }
 
+  // Função para atualizar dinamicamente os rótulos com pontos (+X pts / -Y pts) dos selects do formulário de análise de crédito
+  function atualizarRotulosSelectsCredito(cfgParam) {
+    const cfg = cfgParam || scoreConfigActive || {};
+    const getCfg = (k, def) => (cfg[k] !== undefined && cfg[k] !== null && !isNaN(Number(cfg[k])) ? Number(cfg[k]) : def);
+
+    const fmtPts = (num, unitSuffix = 'pts') => {
+      const n = Number(num) || 0;
+      const unit = (Math.abs(n) === 1 && unitSuffix === 'pts') ? 'pt' : unitSuffix;
+      return n > 0 ? `+${n} ${unit}` : (n < 0 ? `${n} ${unit}` : `0 ${unit}`);
+    };
+
+    const setOptionText = (selectId, value, templateFn) => {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const opt = select.querySelector(`option[value="${value}"]`);
+      if (opt) {
+        opt.textContent = templateFn();
+      }
+    };
+
+    // 1. Bloco 1: Limites & Cadastrais
+    setOptionText('cr_cnpj_ativo', 'S', () => `Sim (${fmtPts(getCfg('peso_cnpj_ativo_sim', 2))})`);
+    setOptionText('cr_cnpj_ativo', 'N', () => `Não (${fmtPts(getCfg('peso_cnpj_ativo_nao', -100))})`);
+
+    setOptionText('cr_cadastro_igual_receita', 'S', () => `Sim (${fmtPts(getCfg('peso_cadastro_receita_sim', 3))})`);
+    setOptionText('cr_cadastro_igual_receita', 'N', () => `Não (${fmtPts(getCfg('peso_cadastro_receita_nao', -3))})`);
+
+    setOptionText('cr_casa_sala_conj_end', 'N', () => `Não / Prédio (${fmtPts(getCfg('peso_endereco_sala_nao', 1))})`);
+    setOptionText('cr_casa_sala_conj_end', 'S', () => `Sim (${fmtPts(getCfg('peso_endereco_sala_sim', -5))})`);
+
+    // 2. Bloco 2: Comercial & Pagamento
+    setOptionText('cr_faturado', 'N', () => `Não (À Vista/Antecipado ${fmtPts(getCfg('peso_avista_geral', 100))})`);
+    setOptionText('cr_faturado', 'S', () => `Sim (Faturado 0 pts)`);
+
+    setOptionText('cr_entrada', 'S', () => `Sim (${fmtPts(getCfg('peso_entrada_sim', 12))})`);
+    setOptionText('cr_entrada', 'N', () => `Não (${fmtPts(getCfg('peso_entrada_nao', -4))})`);
+
+    setOptionText('cr_pgtos_abertos', 'N', () => `Não (${fmtPts(getCfg('peso_pgtos_abertos_nao', 1))})`);
+    setOptionText('cr_pgtos_abertos', 'S', () => `Sim (${fmtPts(getCfg('peso_pgtos_abertos_sim', -3))})`);
+
+    setOptionText('cr_comprou_pagou', 'S', () => `Sim (${fmtPts(getCfg('peso_comprou_pagou_sim', 9))})`);
+    setOptionText('cr_comprou_pagou', 'N', () => `Não (${fmtPts(getCfg('peso_comprou_pagou_nao', -3))})`);
+
+    setOptionText('cr_comprou_pagou_5x', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_comprou_pagou_5x', 'S', () => `Sim (${fmtPts(getCfg('peso_comprou_pagou_5x_sim', 23))})`);
+
+    setOptionText('cr_quant_grande', 'N', () => `Não (${fmtPts(getCfg('peso_quant_grande_nao', 1))})`);
+    setOptionText('cr_quant_grande', 'S', () => `Sim (${fmtPts(getCfg('peso_quant_grande_sim', -13))})`);
+
+    setOptionText('cr_prod_nao_combinam', 'N', () => `Não (${fmtPts(getCfg('peso_prod_nao_combinam_nao', 2))})`);
+    setOptionText('cr_prod_nao_combinam', 'S', () => `Sim (${fmtPts(getCfg('peso_prod_nao_combinam_sim', -5))})`);
+
+    // 3. Bloco 3: Endereço & Localização
+    setOptionText('cr_entrega_igual_cadastro', 'S', () => `Sim (${fmtPts(getCfg('peso_entrega_cadastro_sim', 2))})`);
+    setOptionText('cr_entrega_igual_cadastro', 'N', () => `Não (${fmtPts(getCfg('peso_entrega_cadastro_nao', -9))})`);
+
+    setOptionText('cr_google_maps', '10', () => `10 (Top ${fmtPts(getCfg('peso_maps_10', 6))})`);
+    setOptionText('cr_google_maps', '5', () => `5 (Compatível ${fmtPts(getCfg('peso_maps_5', 0))})`);
+    setOptionText('cr_google_maps', '0', () => `0 (Residencial ${fmtPts(getCfg('peso_maps_0', -6))})`);
+    setOptionText('cr_google_maps', '-', () => `- (Não Visto ${fmtPts(getCfg('peso_maps_traco', -3))})`);
+
+    setOptionText('cr_registro_br', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_registro_br', 'S', () => `Sim (${fmtPts(getCfg('peso_registro_br_sim', 6))} se entrega dif)`);
+
+    // 4. Bloco 4: E-mails & Site
+    setOptionText('cr_email_corporativo', 'S', () => `Sim (${fmtPts(getCfg('peso_email_corp_sim', 3))})`);
+    setOptionText('cr_email_corporativo', 'N', () => `Não (${fmtPts(getCfg('peso_email_corp_nao', -3))})`);
+
+    setOptionText('cr_existe_mail_financeiro', 'S', () => `Sim (0 pts)`);
+    setOptionText('cr_existe_mail_financeiro', 'N', () => `Não (${fmtPts(getCfg('peso_email_fin_diferente_nao', -7))})`);
+
+    setOptionText('cr_mail_gratuito', 'N', () => `Não (${fmtPts(getCfg('peso_email_gratuito_nao', 2))})`);
+    setOptionText('cr_mail_gratuito', 'S', () => `Sim (Gmail/UOL/Terra ${fmtPts(getCfg('peso_email_gratuito_sim', -8))})`);
+
+    setOptionText('cr_possui_site', 'S', () => `Sim (${fmtPts(getCfg('peso_site_ativo_sim', 1))})`);
+    setOptionText('cr_possui_site', 'N', () => `Não (${fmtPts(getCfg('peso_site_ativo_nao', -15))})`);
+
+    // 5. Bloco 5: Bureau, Serasa & Protestos
+    setOptionText('cr_protestos', 'N', () => `Não (${fmtPts(getCfg('peso_protestos_nao', 5))})`);
+    setOptionText('cr_protestos', 'S', () => `Sim (${fmtPts(getCfg('peso_protestos_sim', -10))})`);
+
+    setOptionText('cr_pfin', 'N', () => `Não (${fmtPts(getCfg('peso_pfin_nao', 1))})`);
+    setOptionText('cr_pfin', 'S', () => `Sim (${fmtPts(getCfg('peso_pfin_sim', -5))})`);
+
+    setOptionText('cr_refin', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_refin', 'S', () => `Sim (${fmtPts(getCfg('peso_refin_sim', -10))})`);
+
+    setOptionText('cr_dividas_vencidas', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_dividas_vencidas', 'S', () => `Sim (${fmtPts(getCfg('peso_dividas_vencidas_sim', -4))})`);
+
+    setOptionText('cr_ch_sem_fundo', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_ch_sem_fundo', 'S', () => `Sim (${fmtPts(getCfg('peso_ch_sem_fundo_sim', -6))})`);
+
+    setOptionText('cr_socios_anotacao', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_socios_anotacao', 'S', () => `Sim (${fmtPts(getCfg('peso_socios_restricao_sim', -6))})`);
+
+    setOptionText('cr_consultantes_fomento', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_consultantes_fomento', 'S', () => `Sim (${fmtPts(getCfg('peso_consultantes_fomento_sim', -5))})`);
+
+    setOptionText('cr_documentos_extraviados', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_documentos_extraviados', 'S', () => `Sim (${fmtPts(getCfg('peso_doc_extraviado_sim', -25))} / Trava)`);
+
+    // 6. Bloco 6: Histórico Interno & Certidões
+    setOptionText('cr_fgts_situacao_regular', 'S', () => `Regular (0 pts)`);
+    setOptionText('cr_fgts_situacao_regular', 'N', () => `Irregular (${fmtPts(getCfg('peso_fgts_regular_nao', -6))})`);
+
+    setOptionText('cr_razao_fgts_igual', 'S', () => `Igual (0 pts)`);
+    setOptionText('cr_razao_fgts_igual', 'N', () => `Divergente (${fmtPts(getCfg('peso_razao_fgts_igual_nao', -10))})`);
+
+    setOptionText('cr_tres_nfs_confirmadas', 'D', () => `Dispensado`);
+    setOptionText('cr_tres_nfs_confirmadas', 'S', () => `Sim (${fmtPts(getCfg('peso_boletos_sim', 3))})`);
+    setOptionText('cr_tres_nfs_confirmadas', 'N', () => `Não (${fmtPts(getCfg('peso_boletos_nao', -3))})`);
+  }
+
   // Carregar Configurações do Score
   async function carregarScoreConfigUI() {
     try {
@@ -6018,6 +6132,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const el = document.getElementById(`cfg_${k}`);
           if (el) el.value = v;
         }
+        atualizarRotulosSelectsCredito(data.config);
       }
     } catch (e) {
       console.warn('Falha ao carregar score config', e);
@@ -6043,6 +6158,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = await res.json();
         if (d.success) {
           scoreConfigActive = d.config || cfg;
+          atualizarRotulosSelectsCredito(scoreConfigActive);
           alert('Parâmetros do Score de Crédito salvos com sucesso!');
           if (typeof atualizarScoreEmTempoReal === 'function') {
             atualizarScoreEmTempoReal();
@@ -6076,6 +6192,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const el = document.getElementById(`cfg_${k}`);
               if (el) el.value = v;
             }
+            atualizarRotulosSelectsCredito(scoreConfigActive);
             alert('Parâmetros restaurados com sucesso para os padrões oficiais da planilha!');
             if (typeof atualizarScoreEmTempoReal === 'function') {
               atualizarScoreEmTempoReal();
@@ -6092,6 +6209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   carregarHistoricoCredito();
   carregarScoreConfigUI();
+  atualizarRotulosSelectsCredito();
 
   if (btnOpenInterConfig) btnOpenInterConfig.addEventListener('click', abrirModalInterConfig);
   if (btnCloseInterConfigModal) btnCloseInterConfigModal.addEventListener('click', () => interConfigModal.classList.add('hidden'));
