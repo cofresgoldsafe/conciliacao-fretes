@@ -38,8 +38,10 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
   * Proteção Anti-IDOR/BOLA e isolamento de carteira restrita para vendedores comerciais (Figueiredo, Andrea, Juliana).
 * **Sub-aba 3 (Pedidos Compras):**
   * Consulta em tempo real de produtos com pedidos de compras em aberto (`SC7140`, `SC7150`, `SC7160`) com saldo a receber (`C7_QUANT - C7_QUJE > 0`) e previsão de entrega em estoque (`C7_DATPRF`).
+  * Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa exclusiva de Produtos Acabados `PA`).
   * Identificador `PedCom` formatado com sigla da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`) e busca de fornecedores em `SA2010`.
   * Filtro instantâneo em tempo real conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa e ordenação de 4 colunas.
+  * Cards de resumo no topo: **`Ped Compras em Aberto`**, **`Saldo Total a Receber`** e **`Previsão mais Próxima`**.
 * **Sub-aba 4 (Comissões & Metas):**
   * Consulta periódica nas tabelas `SE3160` (OACO), `SE3150` (GSI) e `SE3140` (Metal Pleno) com leitura de `E3_BASE`, `E3_PORC` e `E3_COMIS`.
   * **Card "Meta Atingida":** Cálculo dinâmico proporcional de faturamento, substituindo a exibição de comissão a pagar em R$ pela porcentagem atingida de faturamento em relação à meta comercial:
