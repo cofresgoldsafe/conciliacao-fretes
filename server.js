@@ -969,11 +969,11 @@ const ESTOQUE_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
 // API: Vendedores - Listar Saldos em Estoque e KPIs Consolidados
 app.get('/api/vendedores/estoque/saldos', requireAuth, async (req, res) => {
   try {
-    const { search, filtroEstoque } = req.query || {};
+    const { search, filtroEstoque, filtroGrupo } = req.query || {};
     const user = getUserFromReq(req);
 
-    const produtos = await getSaldosEstoqueDB({ search, filtroEstoque });
-    const todosProdutos = await getSaldosEstoqueDB({ filtroEstoque: 'todos' });
+    const produtos = await getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo });
+    const todosProdutos = await getSaldosEstoqueDB({ filtroEstoque: 'todos', filtroGrupo: 'todos' });
     const ultimoSync = await getUltimoSyncEstoqueLog();
 
     // Cálculos de KPIs consolidados globais (independente do filtro selecionado na tabela)
@@ -988,7 +988,7 @@ app.get('/api/vendedores/estoque/saldos', requireAuth, async (req, res) => {
       actionType: 'CONSULTA_SALDOS_ESTOQUE',
       description: `Consultou saldos em estoque (${produtos.length} produtos carregados)`,
       ip: req.ip,
-      metadata: { search, filtroEstoque, count: produtos.length }
+      metadata: { search, filtroEstoque, filtroGrupo, count: produtos.length }
     }).catch(() => {});
 
     res.json({

@@ -3206,6 +3206,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let estoqueItemSelecionado = null;
 
   const estoqueBuscaInput = document.getElementById('estoqueBuscaInput');
+  const estoqueGrupoSelect = document.getElementById('estoqueGrupoSelect');
   const estoqueFiltroSelect = document.getElementById('estoqueFiltroSelect');
   const btnLimparFiltrosEstoque = document.getElementById('btnLimparFiltrosEstoque');
   const btnSyncEstoqueManual = document.getElementById('btnSyncEstoqueManual');
@@ -3225,10 +3226,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const searchVal = estoqueBuscaInput ? estoqueBuscaInput.value : '';
       const filtroVal = estoqueFiltroSelect ? estoqueFiltroSelect.value : 'todos';
+      const grupoVal = estoqueGrupoSelect ? estoqueGrupoSelect.value : 'todos';
 
       const queryParams = new URLSearchParams({
         search: searchVal,
-        filtroEstoque: filtroVal
+        filtroEstoque: filtroVal,
+        filtroGrupo: grupoVal
       });
 
       const token = localStorage.getItem('token');
@@ -3390,6 +3393,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (estoqueGrupoSelect) {
+    estoqueGrupoSelect.addEventListener('change', () => {
+      carregarSaldosEstoque();
+    });
+  }
+
   if (estoqueFiltroSelect) {
     estoqueFiltroSelect.addEventListener('change', () => {
       carregarSaldosEstoque();
@@ -3399,6 +3408,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLimparFiltrosEstoque) {
     btnLimparFiltrosEstoque.addEventListener('click', () => {
       if (estoqueBuscaInput) estoqueBuscaInput.value = '';
+      if (estoqueGrupoSelect) estoqueGrupoSelect.value = 'todos';
       if (estoqueFiltroSelect) estoqueFiltroSelect.value = 'todos';
       carregarSaldosEstoque();
     });

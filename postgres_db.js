@@ -332,6 +332,7 @@ async function initPostgres() {
         CREATE TABLE IF NOT EXISTS produtos_saldo_estoque (
           codigo VARCHAR(50) PRIMARY KEY,
           descricao VARCHAR(255) NOT NULL,
+          grupo VARCHAR(50) DEFAULT '',
           preco NUMERIC(14,2) DEFAULT 0.00,
           saldo NUMERIC(14,2) DEFAULT 0.00,
           saldo_total NUMERIC(14,2) DEFAULT 0.00,
@@ -341,8 +342,10 @@ async function initPostgres() {
           detalhes_empresas JSONB DEFAULT '{}'::jsonb,
           synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
+        ALTER TABLE produtos_saldo_estoque ADD COLUMN IF NOT EXISTS grupo VARCHAR(50) DEFAULT '';
         CREATE INDEX IF NOT EXISTS idx_produtos_saldo_estoque_desc ON produtos_saldo_estoque(descricao);
         CREATE INDEX IF NOT EXISTS idx_produtos_saldo_estoque_saldo ON produtos_saldo_estoque(saldo);
+        CREATE INDEX IF NOT EXISTS idx_produtos_saldo_estoque_grupo ON produtos_saldo_estoque(grupo);
       `);
 
       // 10. Cria Tabela de Logs de Sincronização de Estoque
@@ -1376,10 +1379,11 @@ async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
           for (const prod of chunk) {
             await client.query(`
               INSERT INTO produtos_saldo_estoque (
-                codigo, descricao, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                codigo, descricao, grupo, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
               ON CONFLICT (codigo) DO UPDATE SET
                 descricao = EXCLUDED.descricao,
+                grupo = EXCLUDED.grupo,
                 preco = EXCLUDED.preco,
                 saldo = EXCLUDED.saldo,
                 saldo_total = EXCLUDED.saldo_total,
@@ -1391,6 +1395,7 @@ async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
             `, [
               String(prod.codigo || '').trim(),
               String(prod.descricao || '').trim(),
+              String(prod.grupo || '').trim(),
               Number(prod.preco || 0),
               Number(prod.saldo || 0),
               Number(prod.saldo_total || 0),
@@ -1435,10 +1440,11 @@ async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
 /**
  * Consulta saldos de estoque (PostgreSQL + Fallback JSON Local)
  */
-async function getSaldosEstoqueDB({ search, filtroEstoque } = {}) {
+async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo } = {}) {
   const p = getPool();
   const cleanSearch = (search || '').toLowerCase().trim();
   const cleanFiltro = (filtroEstoque || 'todos').toLowerCase().trim();
+  const cleanGrupo = (filtroGrupo || 'todos').trim();
 
   // 1. Tenta buscar no PostgreSQL
   if (p) {
@@ -1461,10 +1467,15 @@ async function getSaldosEstoqueDB({ search, filtroEstoque } = {}) {
         whereClauses.push('qtd_compras > 0');
       }
 
+      if (cleanGrupo && cleanGrupo !== 'todos') {
+        params.push(cleanGrupo);
+        whereClauses.push(`grupo = $${params.length}`);
+      }
+
       const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
       const sql = `
         SELECT 
-          codigo, descricao, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
+          codigo, descricao, grupo, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
         FROM produtos_saldo_estoque
         ${whereStr}
         ORDER BY saldo DESC, descricao ASC;
@@ -1475,6 +1486,7 @@ async function getSaldosEstoqueDB({ search, filtroEstoque } = {}) {
         return res.rows.map(r => ({
           codigo: r.codigo,
           descricao: r.descricao,
+          grupo: r.grupo || '',
           preco: Number(r.preco) || 0,
           saldo: Number(r.saldo) || 0,
           saldo_total: Number(r.saldo_total) || 0,
@@ -1511,6 +1523,10 @@ async function getSaldosEstoqueDB({ search, filtroEstoque } = {}) {
         produtos = produtos.filter(p => Number(p.qtd_vendas || 0) > 0);
       } else if (cleanFiltro === 'com_compras') {
         produtos = produtos.filter(p => Number(p.qtd_compras || 0) > 0);
+      }
+
+      if (cleanGrupo && cleanGrupo !== 'todos') {
+        produtos = produtos.filter(p => String(p.grupo || '').trim() === cleanGrupo);
       }
 
       return produtos;

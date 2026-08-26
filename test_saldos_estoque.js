@@ -56,29 +56,37 @@ test('Cálculo de Saldo Total respeita (SALDO * PRECO) com arredondamento', () =
   assert.strictEqual(calcularSaldoTotal(4, 3969.00), 15876.00, '4 unidades a R$ 3.969,00 = R$ 15.876,00');
 });
 
-// 2. Teste de Filtragem de Produtos PA e Exclusão de Itens Inválidos
-test('Filtragem de produtos PA descarta códigos com "X" e descrições com "XXX"', () => {
-  function isProdutoValido(cod, desc, tipo) {
+// 2. Teste de Filtragem de Produtos PA e Exclusão de Itens Inválidos / Bloqueados
+test('Filtragem de produtos PA descarta códigos com "X", "XXX", grupos não comerciais e bloqueados (MSBLQL = 1)', () => {
+  function isProdutoValido(cod, desc, tipo, grupo, msblql) {
     const cleanCod = String(cod || '').trim().toUpperCase();
     const cleanDesc = String(desc || '').trim().toUpperCase();
     const cleanTipo = String(tipo || '').trim().toUpperCase();
+    const cleanGrupo = String(grupo || '').trim();
+    const cleanMsblql = String(msblql || '2').trim();
 
     if (cleanDesc.includes('XXX')) return false;
     if (cleanCod.includes('X')) return false;
     if (!cleanCod.includes('0')) return false;
     if (cleanTipo && cleanTipo !== 'PA') return false;
+    if (cleanMsblql === '1') return false; // Bloqueado no Protheus
+
+    const gruposPermitidos = ['001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020'];
+    if (cleanGrupo && !gruposPermitidos.includes(cleanGrupo)) return false;
 
     return true;
   }
 
-  assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO CORTA FOGO 200X100X45', 'PA'), true, 'Produto PA válido');
-  assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO XXX DESCONTINUADO', 'PA'), false, 'Item com XXX na descrição deve ser descartado');
-  assert.strictEqual(isProdutoValido('001001X00000000', 'ARMARIO TESTE', 'PA'), false, 'Código com X deve ser descartado');
-  assert.strictEqual(isProdutoValido('090001000000000', 'MATERIA PRIMA ACO', 'MP'), false, 'Produto que não é PA deve ser descartado');
+  assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO CORTA FOGO 200X100X45', 'PA', '018', '2'), true, 'Produto PA válido e ativo');
+  assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO CORTA FOGO 200X100X45', 'PA', '018', '1'), false, 'Produto bloqueado (MSBLQL = 1) deve ser descartado');
+  assert.strictEqual(isProdutoValido('001001000000000', 'RACK TI 12U', 'PA', '017', '2'), false, 'Grupo 017 fora do escopo deve ser descartado');
+  assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO XXX DESCONTINUADO', 'PA', '018', '2'), false, 'Item com XXX na descrição deve ser descartado');
+  assert.strictEqual(isProdutoValido('001001X00000000', 'ARMARIO TESTE', 'PA', '018', '2'), false, 'Código com X deve ser descartado');
+  assert.strictEqual(isProdutoValido('090001000000000', 'MATERIA PRIMA ACO', 'MP', '018', '2'), false, 'Produto que não é PA deve ser descartado');
 });
 
 // 3. Teste de Gravação e Leitura no Cache Local / PostgreSQL
-asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB recupera com filtros', async () => {
+asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB recupera com filtros (incluindo filtroGrupo)', async () => {
   const cacheFile = path.join(__dirname, 'data', 'estoque_saldos_cache.json');
   let originalCache = null;
   if (fs.existsSync(cacheFile)) {
@@ -90,6 +98,7 @@ asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB
       {
         codigo: '001001000000001',
         descricao: 'ARMARIO CORTA FOGO 200X100X45 CM - VERMELHO',
+        grupo: '018',
         preco: 6600.00,
         saldo: 15,
         saldo_total: 99000.00,
@@ -104,7 +113,8 @@ asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB
       },
       {
         codigo: '001001000000002',
-        descricao: 'ARMARIO CORTA FOGO 100X100X45 CM - BRANCO',
+        descricao: 'COFRE ELETRONICO DIGITAL GSI 50X40',
+        grupo: '001',
         preco: 4629.00,
         saldo: 0,
         saldo_total: 0.00,
@@ -129,6 +139,16 @@ asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB
     const todos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'todos' });
     assert.ok(Array.isArray(todos), 'Retorna lista de produtos');
     assert.ok(todos.length >= 2, 'Contém ao menos os 2 produtos inseridos');
+
+    // Filtro por grupo 018
+    const grupo018 = await postgresDb.getSaldosEstoqueDB({ filtroGrupo: '018' });
+    assert.strictEqual(grupo018.length, 1, 'Retorna apenas 1 produto do grupo 018');
+    assert.strictEqual(grupo018[0].grupo, '018');
+
+    // Filtro por grupo 001
+    const grupo001 = await postgresDb.getSaldosEstoqueDB({ filtroGrupo: '001' });
+    assert.strictEqual(grupo001.length, 1, 'Retorna apenas 1 produto do grupo 001');
+    assert.strictEqual(grupo001[0].grupo, '001');
 
     // Filtro positivo
     const positivos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'positivo' });

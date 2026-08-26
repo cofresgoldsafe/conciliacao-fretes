@@ -1587,6 +1587,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
           WHERE D_E_L_E_T_ = ' '
             AND RTRIM(B1_TIPO) = 'PA'
             AND RTRIM(B1_GRUPO) IN ('001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020')
+            AND (B1_MSBLQL IS NULL OR RTRIM(B1_MSBLQL) <> '1')
             AND B1_DESC NOT LIKE '%XXX%'
             AND B1_COD NOT LIKE '%X%'
             AND B1_COD LIKE '%0%'
