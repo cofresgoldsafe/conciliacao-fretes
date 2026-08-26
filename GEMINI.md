@@ -116,12 +116,17 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Autocura e DDL Supabase:** Adicionado `ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20)` e rotina DML de autocura no startup (`initDB`) para restaurar códigos de vendedores cadastrados (`juliana: '000074'`, `andrea: '000064'`, `figueiredo: '000004'`).
    - **Fallback Resiliente no Login / 2FA & `getUserFromReq`:** Tratamento transparente na decodificação do JWT e no login tradicional/2FA para associar o código Protheus e salvar correções em background sem quebrar sessões ativas.
    - **Campo no Painel Administrativo:** Inclusão do input `Código do Vendedor no Protheus` no modal de gerenciamento de usuários (`#userModal`) com exibição condicional ao selecionar perfil `Vendedor`, validação e preservação do código anterior em edições.
-14. [x] **Seletor de Tema Claro/Escuro na Sub-aba Saldos em Estoque (`public/style.css`, `public/index.html`, `public/app.js`, `test_theme_toggle.js`):**
-   - **Alternância Dinâmica & UX Comercial:** Botão seletor no cabeçalho da sub-aba (`#btnToggleThemeEstoque`) alternando instantaneamente entre `☀️ Modo Claro` e `🌙 Modo Escuro`.
-   - **Paleta de Cores com Contraste WCAG 2.1 (AA/AAA):** Calibração de tokens claros (`.tab-theme-light`, `.modal-theme-light`) com fundo `#ffffff`, textos `#0f172a`, bordas `#e2e8f0`, saldos positivos em verde esmeralda (`#059669`), compras/totais em azul céu (`#0284c7`) e vendas em âmbar escuro (`#d97706`), eliminando riscos de textos ilegíveis em fundos brancos.
-   - **Persistência Perene:** Armazenamento da preferência no `localStorage.setItem('theme_saldos_estoque', mode)`, restaurado automaticamente sem flash de tela (Zero-FOUC).
-   - **Sincronização com Modal Drilldown:** Aplicação automática do tema claro no modal de 3 abas (`#modalEstoqueDetalhes`), preservando legibilidade no resumo por empresa, compras SC7 e vendas SC6.
-   - **Suite de Testes Automatizados:** Script `test_theme_toggle.js` com 5 asserções cobrindo elementos de UI, regras de CSS com escopo, persistência em disco e funções de alternância em JS.
+14. [x] **Seletor de Tema Claro/Escuro em Todo o Módulo Vendedores & Modais (`public/style.css`, `public/index.html`, `public/app.js`, `test_theme_toggle.js`):**
+   - **Expansão Modular (Fase 2):** Botão seletor no cabeçalho geral das sub-abas dos Vendedores (`#btnToggleThemeVendedores`) e no cabeçalho de estoque (`#btnToggleThemeEstoque`), alternando e sincronizando instantaneamente o tema em todas as 5 sub-abas:
+     1. *Saldos em Estoque* (`#tab-vend-saldos-estoque`)
+     2. *Consulta Pedido* (`#tab-vend-pedidos`)
+     3. *Pedidos Abertos* (`#tab-vend-pedidos-abertos`)
+     4. *Pedidos Compras* (`#tab-vend-pedidos-compras`)
+     5. *Comissões* (`#tab-vend-comissoes`)
+   - **Sincronização com Modais:** Aplicação automática do tema claro nos modais de *Drilldown de Estoque* (`#modalEstoqueDetalhes`) e *Detalhes do Pedido de Venda* (`#pedidoDetalhesModal`), mantendo legibilidade total nos itens de grade SC6, faturas SE1, mini KPIs e dados de entrega.
+   - **Paleta de Alto Contraste WCAG 2.1 (AA/AAA):** Calibração de tokens claros (`.tab-theme-light`, `.modal-theme-light`) com fundo `#ffffff`, textos `#0f172a`, bordas `#e2e8f0`, saldos positivos em verde esmeralda (`#059669`), compras/totais em azul céu (`#0284c7`) e vendas em âmbar escuro (`#d97706`), eliminando riscos de textos ilegíveis em fundos brancos.
+   - **Persistência Perene:** Armazenamento da preferência no `localStorage.setItem('theme_vendedores', mode)` e `theme_saldos_estoque`, restaurado automaticamente sem flash de tela (Zero-FOUC).
+   - **Suite de Testes Automatizados:** Script `test_theme_toggle.js` com 5 asserções cobrindo elementos de UI, regras de CSS com escopo, persistência em disco e funções de alternância em JS para as 5 sub-abas e modais.
 15. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
 16. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 

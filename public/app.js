@@ -730,8 +730,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-analise-credito') {
         carregarHistoricoCredito();
       }
+      if (targetTab === 'tab-vend-saldos-estoque' || 
+          targetTab === 'tab-vend-pedidos' || 
+          targetTab === 'tab-vend-pedidos-abertos' || 
+          targetTab === 'tab-vend-pedidos-compras' || 
+          targetTab === 'tab-vend-comissoes') {
+        if (typeof inicializarTemaVendedores === 'function') inicializarTemaVendedores();
+      }
       if (targetTab === 'tab-vend-saldos-estoque') {
-        if (typeof inicializarTemaEstoque === 'function') inicializarTemaEstoque();
         carregarSaldosEstoque();
       }
       if (targetTab === 'tab-vend-pedidos-abertos') {
@@ -2268,6 +2274,17 @@ document.addEventListener('DOMContentLoaded', () => {
   async function abrirDetalhesPedidoModal(empresaKey, numPedido) {
     if (!pedidoDetalhesModal || !pedidoDetalhesBody) return;
 
+    const isLight = document.getElementById('tab-vend-saldos-estoque')?.classList.contains('tab-theme-light') ||
+                    document.getElementById('tab-vend-pedidos-abertos')?.classList.contains('tab-theme-light') ||
+                    localStorage.getItem('theme_vendedores') === 'light' ||
+                    localStorage.getItem('theme_saldos_estoque') === 'light';
+
+    if (isLight) {
+      pedidoDetalhesModal.classList.add('modal-theme-light');
+    } else {
+      pedidoDetalhesModal.classList.remove('modal-theme-light');
+    }
+
     pedidoDetalhesBody.innerHTML = `
       <div style="text-align: center; padding: 2rem;">
         <div class="spinner" style="margin: 0 auto 1rem auto; width: 32px; height: 32px; border: 3px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
@@ -2403,12 +2420,17 @@ document.addEventListener('DOMContentLoaded', () => {
       ? '<strong style="color: #60a5fa;">Sim (S)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Movimenta Estoque)</span>' 
       : (fiscal.atualizaEstoque === 'N' ? '<strong style="color: #fbbf24;">Não (N)</strong> <span style="color: var(--text-muted); font-size: 0.8rem;">(Sem Movimentação)</span>' : '-');
 
+    const isLight = pedidoDetalhesModal?.classList.contains('modal-theme-light');
+    const numPedColor = isLight ? '#0f172a' : '#f8fafc';
+    const totalColor = isLight ? '#059669' : '#10b981';
+    const borderSepColor = isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)';
+
     pedidoDetalhesBody.innerHTML = `
       <!-- Cabeçalho Rápido do Pedido -->
-      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(30, 41, 59, 0.6); padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); flex-wrap: wrap; gap: 0.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; background: ${isLight ? '#f8fafc' : 'rgba(30, 41, 59, 0.6)'}; padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); flex-wrap: wrap; gap: 0.5rem;">
         <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
           <span class="company-badge" style="font-size: 0.9rem; padding: 4px 10px;">${escapeHtml(det.empresa)}</span>
-          <span style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;">Pedido Nº ${escapeHtml(det.numPedido)}</span>
+          <span style="font-size: 1.15rem; font-weight: 700; color: ${numPedColor};">Pedido Nº ${escapeHtml(det.numPedido)}</span>
           <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">CodWeb: ${escapeHtml(det.codWeb)}</span>
           ${formatNFeBadge(det.notaFiscal)}
           ${badgeGeraFin}
@@ -2497,7 +2519,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <!-- Tabela de Produtos do Pedido -->
-      <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px;">
+      <div style="background: ${isLight ? '#f8fafc' : 'rgba(15, 23, 42, 0.5)'}; border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px;">
         <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">📦 Itens e Produtos do Pedido (Grade SC6 + TES SF4)</h4>
         <div class="table-responsive">
           <table class="data-table" style="font-size: 0.85rem;">
@@ -2522,12 +2544,12 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
 
       <!-- Tabela de Faturas Geradas (SE1) -->
-      <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px; margin-top: 1rem;">
+      <div style="background: ${isLight ? '#f8fafc' : 'rgba(15, 23, 42, 0.5)'}; border: 1px solid var(--panel-border); border-radius: 10px; padding: 14px 16px; margin-top: 1rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 0.5rem;">
           <h4 style="margin: 0; font-size: 0.9rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">
             💳 Faturas & Títulos a Receber (SE1 - Protheus)
           </h4>
-          ${faturas.length > 0 ? `<span style="font-size: 0.8rem; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 2px 8px; border-radius: 4px;">${faturas.length} ${faturas.length === 1 ? 'título / parcela' : 'títulos / parcelas'}</span>` : ''}
+          ${faturas.length > 0 ? `<span style="font-size: 0.8rem; color: ${isLight ? '#0284c7' : '#38bdf8'}; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 2px 8px; border-radius: 4px;">${faturas.length} ${faturas.length === 1 ? 'título / parcela' : 'títulos / parcelas'}</span>` : ''}
         </div>
         <div class="table-responsive">
           <table class="data-table" style="font-size: 0.85rem;">
@@ -2564,7 +2586,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>Descontos:</span>
             <span>- ${formatCurrency(tot.totalDesconto)}</span>
           </div>` : ''}
-          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; color: #10b981; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 4px;">
+          <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; color: ${totalColor}; border-top: 1px solid ${borderSepColor}; padding-top: 6px; margin-top: 4px;">
             <span>Total Geral do Pedido:</span>
             <span>${formatCurrency(tot.totalGeral)}</span>
           </div>
@@ -2790,10 +2812,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!digits || digits.length < 3 || /^0+$/.test(digits) || raw === '-' || raw === '0') {
       return `<span style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">${escapeHtml(raw || '-')}</span>`;
     }
+    const isLight = document.getElementById('tab-vend-pedidos-abertos')?.classList.contains('tab-theme-light') ||
+                    document.getElementById('tab-vend-pedidos')?.classList.contains('tab-theme-light');
+    const linkColor = isLight ? '#0284c7' : '#38bdf8';
+
     return `
       <a href="https://benetroncomercial.pipedrive.com/deal/${digits}" target="_blank" rel="noopener noreferrer" 
          class="link-codweb-pipedrive" title="Abrir oportunidade #${digits} no Pipedrive" 
-         style="color: #38bdf8; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
+         style="color: ${linkColor}; text-decoration: underline; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;">
         ${escapeHtml(raw)}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
       </a>
@@ -2863,6 +2889,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ? ordenarListaPedidosAbertos(filtrados, pedidosAbertosSortField, pedidosAbertosSortDirection)
       : filtrados;
 
+    const isLight = document.getElementById('tab-vend-pedidos-abertos')?.classList.contains('tab-theme-light');
+    const linkPedColor = isLight ? '#0284c7' : '#38bdf8';
+
     listaFinal.forEach(p => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -2871,7 +2900,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>
           <button type="button" class="link-pedido btn-link" data-empresa="${escapeHtml(p.empresaKey || 'OACO')}" data-ped="${escapeHtml(p.numPed)}" 
                   title="Clique para ver os detalhes completos do Pedido #${escapeHtml(p.numPed)}"
-                  style="background: none; border: none; padding: 0; color: #38bdf8; font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 0.9rem;">
+                  style="background: none; border: none; padding: 0; color: ${linkPedColor}; font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 0.9rem;">
             ${escapeHtml(p.numPed)}
           </button>
         </td>
@@ -3052,12 +3081,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const dia = String(hoje.getDate()).padStart(2, '0');
     const hojeStr = `${ano}${mes}${dia}`;
 
+    const isLight = document.getElementById('tab-vend-pedidos-compras')?.classList.contains('tab-theme-light');
+    const normalColor = isLight ? '#0284c7' : '#38bdf8';
+
     if (previsaoRaw < hojeStr) {
       return `<span class="diverg-badge status-danger" style="font-size: 0.76rem; padding: 2px 7px;" title="Previsão ultrapassada">${escapeHtml(previsaoStr)} (Atrasado)</span>`;
     } else if (previsaoRaw === hojeStr) {
       return `<span class="diverg-badge status-warning" style="font-size: 0.76rem; padding: 2px 7px;" title="Previsão de chegada para hoje!">${escapeHtml(previsaoStr)} (Hoje)</span>`;
     } else {
-      return `<span style="font-weight: 600; color: #38bdf8;">${escapeHtml(previsaoStr)}</span>`;
+      return `<span style="font-weight: 600; color: ${normalColor};">${escapeHtml(previsaoStr)}</span>`;
     }
   }
 
@@ -3130,17 +3162,22 @@ document.addEventListener('DOMContentLoaded', () => {
       ? ordenarListaPedidosCompras(filtrados, pedidosComprasSortField, pedidosComprasSortDirection)
       : filtrados;
 
+    const isLight = document.getElementById('tab-vend-pedidos-compras')?.classList.contains('tab-theme-light');
+    const pedComColor = isLight ? '#0284c7' : '#38bdf8';
+    const titleColor = isLight ? '#0f172a' : 'var(--text-primary)';
+    const mutedColor = isLight ? '#64748b' : 'var(--text-muted)';
+
     listaFinal.forEach(p => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><span class="company-badge ${escapeHtml(p.empresa)}">${escapeHtml(p.empresa)}</span></td>
         <td>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.88rem;">${escapeHtml(p.descricao)}</div>
-          <div style="font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">Cód: ${escapeHtml(p.codProduto || '-')}</div>
+          <div style="font-weight: 600; color: ${titleColor}; font-size: 0.88rem;">${escapeHtml(p.descricao)}</div>
+          <div style="font-size: 0.76rem; color: ${mutedColor}; font-family: var(--font-mono); margin-top: 2px;">Cód: ${escapeHtml(p.codProduto || '-')}</div>
         </td>
         <td>
-          <span style="font-family: var(--font-mono); font-weight: 700; color: #38bdf8;">${escapeHtml(p.pedCom)}</span>
-          ${p.item ? `<span style="font-size: 0.75rem; color: var(--text-muted);"> (Item ${escapeHtml(p.item)})</span>` : ''}
+          <span style="font-family: var(--font-mono); font-weight: 700; color: ${pedComColor};">${escapeHtml(p.pedCom)}</span>
+          ${p.item ? `<span style="font-size: 0.75rem; color: ${mutedColor};"> (Item ${escapeHtml(p.item)})</span>` : ''}
         </td>
         <td style="text-align: center;">
           <span class="status-badge sucesso" style="font-size: 0.82rem; font-weight: 700; padding: 3px 9px;">
@@ -3148,7 +3185,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
         </td>
         <td>${formatBadgePrevisaoEntrega(p.previsao, p.previsaoRaw)}</td>
-        <td style="font-size: 0.84rem; color: var(--text-muted);">${escapeHtml(p.emissao || '-')}</td>
+        <td style="font-size: 0.84rem; color: ${mutedColor};">${escapeHtml(p.emissao || '-')}</td>
         <td style="font-size: 0.82rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(p.fornecedor)}">
           ${escapeHtml(p.fornecedor || '-')}
         </td>
@@ -3239,42 +3276,76 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnToggleThemeEstoque = document.getElementById('btnToggleThemeEstoque');
   const themeIconEstoque = document.getElementById('themeIconEstoque');
   const themeLabelEstoque = document.getElementById('themeLabelEstoque');
+  const btnToggleThemeVendedores = document.getElementById('btnToggleThemeVendedores');
+  const themeIconVendedores = document.getElementById('themeIconVendedores');
+  const themeLabelVendedores = document.getElementById('themeLabelVendedores');
   const modalEstoqueDetalhes = document.getElementById('modalEstoqueDetalhes');
   const btnCloseModalEstoque = document.getElementById('btnCloseModalEstoque');
   const btnFecharModalEstoqueDetalhes = document.getElementById('btnFecharModalEstoqueDetalhes');
 
-  function aplicarTemaEstoque(modo) {
-    const container = document.getElementById('tab-vend-saldos-estoque');
-    const modal = document.getElementById('modalEstoqueDetalhes');
-    const icon = document.getElementById('themeIconEstoque');
-    const label = document.getElementById('themeLabelEstoque');
+  const VENDEDORES_SUB_TABS = [
+    'tab-vend-saldos-estoque',
+    'tab-vend-pedidos',
+    'tab-vend-pedidos-abertos',
+    'tab-vend-pedidos-compras',
+    'tab-vend-comissoes'
+  ];
 
-    if (modo === 'light') {
-      if (container) container.classList.add('tab-theme-light');
-      if (modal) modal.classList.add('modal-theme-light');
-      if (icon) icon.textContent = '🌙';
-      if (label) label.textContent = 'Modo Escuro';
-    } else {
-      if (container) container.classList.remove('tab-theme-light');
-      if (modal) modal.classList.remove('modal-theme-light');
-      if (icon) icon.textContent = '☀️';
-      if (label) label.textContent = 'Modo Claro';
+  function aplicarTemaVendedores(modo) {
+    const isLight = (modo === 'light');
+
+    VENDEDORES_SUB_TABS.forEach(tabId => {
+      const pane = document.getElementById(tabId);
+      if (pane) {
+        if (isLight) pane.classList.add('tab-theme-light');
+        else pane.classList.remove('tab-theme-light');
+      }
+    });
+
+    const modalEstoque = document.getElementById('modalEstoqueDetalhes');
+    const modalPedido = document.getElementById('pedidoDetalhesModal');
+    if (modalEstoque) {
+      if (isLight) modalEstoque.classList.add('modal-theme-light');
+      else modalEstoque.classList.remove('modal-theme-light');
     }
+    if (modalPedido) {
+      if (isLight) modalPedido.classList.add('modal-theme-light');
+      else modalPedido.classList.remove('modal-theme-light');
+    }
+
+    if (themeIconEstoque) themeIconEstoque.textContent = isLight ? '🌙' : '☀️';
+    if (themeLabelEstoque) themeLabelEstoque.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
+    if (themeIconVendedores) themeIconVendedores.textContent = isLight ? '🌙' : '☀️';
+    if (themeLabelVendedores) themeLabelVendedores.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
   }
 
-  function toggleEstoqueTheme() {
+  function toggleVendedoresTheme() {
     const container = document.getElementById('tab-vend-saldos-estoque');
     const isCurrentlyLight = container && container.classList.contains('tab-theme-light');
     const novoModo = isCurrentlyLight ? 'dark' : 'light';
     localStorage.setItem('theme_saldos_estoque', novoModo);
-    aplicarTemaEstoque(novoModo);
+    localStorage.setItem('theme_vendedores', novoModo);
+    aplicarTemaVendedores(novoModo);
+
+    // Re-renderiza a tabela de estoque
     renderSaldosEstoqueTable();
+    if (typeof pedidosAbertosCache !== 'undefined' && pedidosAbertosCache && pedidosAbertosCache.length > 0) {
+      renderPedidosAbertosTable(pedidosAbertosCache);
+    }
+    if (typeof pedidosComprasCache !== 'undefined' && pedidosComprasCache && pedidosComprasCache.length > 0) {
+      renderPedidosComprasTable(pedidosComprasCache);
+    }
   }
 
-  function inicializarTemaEstoque() {
-    const temaSalvo = localStorage.getItem('theme_saldos_estoque') || 'dark';
-    aplicarTemaEstoque(temaSalvo);
+  function inicializarTemaVendedores() {
+    const temaSalvo = localStorage.getItem('theme_vendedores') || localStorage.getItem('theme_saldos_estoque') || 'dark';
+    aplicarTemaVendedores(temaSalvo);
   }
+
+  // Compatibilidade com referências antigas
+  const aplicarTemaEstoque = aplicarTemaVendedores;
+  const toggleEstoqueTheme = toggleVendedoresTheme;
+  const inicializarTemaEstoque = inicializarTemaVendedores;
 
   const estoqueItensPorPaginaSelect = document.getElementById('estoqueItensPorPaginaSelect');
   const estoquePaginacaoInfo = document.getElementById('estoquePaginacaoInfo');
@@ -3604,11 +3675,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Alternância de Tema Claro/Escuro na sub-aba Saldos em Estoque
+  // Alternância de Tema Claro/Escuro no Módulo Vendedores
   if (btnToggleThemeEstoque) {
-    btnToggleThemeEstoque.addEventListener('click', toggleEstoqueTheme);
+    btnToggleThemeEstoque.addEventListener('click', toggleVendedoresTheme);
   }
-  inicializarTemaEstoque();
+  if (btnToggleThemeVendedores) {
+    btnToggleThemeVendedores.addEventListener('click', toggleVendedoresTheme);
+  }
+  inicializarTemaVendedores();
 
   // Modal Drilldown por Produto
   window.abrirModalEstoqueDetalhes = function(codigo) {
