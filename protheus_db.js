@@ -1567,9 +1567,9 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
   const produtosMap = new Map();
 
   try {
-    // 1. Extração do Catálogo de Produtos PA dos Grupos Comerciais (001, 002, 010, 018, 020)
+    // 1. Extração do Catálogo de Produtos PA dos Grupos Comerciais (001, 002, 010, 018)
     const sb1Tables = ['SB1090', 'SB1100', 'SB1140', 'SB1150', 'SB1160', 'SB1010'];
-    const GRUPOS_COMERCIAIS = ['001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020', '1', '2', '10', '18', '20'];
+    const GRUPOS_COMERCIAIS = ['001', '002', '010', '018', '0001', '0002', '0010', '0018', '1', '2', '10', '18'];
 
     for (const sb1Table of sb1Tables) {
       try {
@@ -1586,7 +1586,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
           FROM ${sb1Table}
           WHERE D_E_L_E_T_ = ' '
             AND RTRIM(B1_TIPO) = 'PA'
-            AND RTRIM(B1_GRUPO) IN ('001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020')
+            AND RTRIM(B1_GRUPO) IN ('001', '002', '010', '018', '0001', '0002', '0010', '0018')
             AND (B1_MSBLQL IS NULL OR RTRIM(B1_MSBLQL) <> '1')
             AND B1_DESC NOT LIKE '%XXX%'
             AND B1_COD NOT LIKE '%X%'

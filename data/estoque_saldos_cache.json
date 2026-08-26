@@ -1,12 +1,12 @@
 {
   "metadata": {
     "status": "SUCCESS",
-    "synced_at": "2026-08-26T02:47:13.005Z",
+    "synced_at": "2026-08-26T02:55:33.030Z",
     "total_produtos": 368,
     "total_saldo_positivo": 82,
     "total_valor_estoque": 432294.58999999997,
-    "duracao_ms": 17643,
-    "triggered_by": "MSBLQL_SYNC",
+    "duracao_ms": 16504,
+    "triggered_by": "FINAL_SYNC",
     "error_message": null
   },
   "produtos": [

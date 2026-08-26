@@ -71,7 +71,7 @@ test('Filtragem de produtos PA descarta códigos com "X", "XXX", grupos não com
     if (cleanTipo && cleanTipo !== 'PA') return false;
     if (cleanMsblql === '1') return false; // Bloqueado no Protheus
 
-    const gruposPermitidos = ['001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020'];
+    const gruposPermitidos = ['001', '002', '010', '018', '0001', '0002', '0010', '0018'];
     if (cleanGrupo && !gruposPermitidos.includes(cleanGrupo)) return false;
 
     return true;
@@ -79,6 +79,7 @@ test('Filtragem de produtos PA descarta códigos com "X", "XXX", grupos não com
 
   assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO CORTA FOGO 200X100X45', 'PA', '018', '2'), true, 'Produto PA válido e ativo');
   assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO CORTA FOGO 200X100X45', 'PA', '018', '1'), false, 'Produto bloqueado (MSBLQL = 1) deve ser descartado');
+  assert.strictEqual(isProdutoValido('001001000000000', 'COFRE ESPECIAL', 'PA', '020', '2'), false, 'Grupo 020 fora do escopo deve ser descartado');
   assert.strictEqual(isProdutoValido('001001000000000', 'RACK TI 12U', 'PA', '017', '2'), false, 'Grupo 017 fora do escopo deve ser descartado');
   assert.strictEqual(isProdutoValido('001001000000000', 'ARMARIO XXX DESCONTINUADO', 'PA', '018', '2'), false, 'Item com XXX na descrição deve ser descartado');
   assert.strictEqual(isProdutoValido('001001X00000000', 'ARMARIO TESTE', 'PA', '018', '2'), false, 'Código com X deve ser descartado');
