@@ -5077,6 +5077,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isSemCapital = (crSemCapitalSocial && crSemCapitalSocial.checked) || dados.sem_capital_social === 'S';
     const capSocial = isSemCapital ? 0 : (Number(dados.capital_social) || 0);
+    const temProtestos = dados.protestos === 'S';
+    const valProtestos = Number(dados.valor_protestos) || 0;
 
     if (dados.protestos === 'N') {
       pontos.protestos = getCfg('peso_protestos_nao', 5);

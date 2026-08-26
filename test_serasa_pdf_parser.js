@@ -182,6 +182,38 @@ async function runTests() {
   }
 
   // -------------------------------------------------------------
+  // Teste 4C: Laudo Prevent Senior (Score 666, 5 PEFIN R$ 486k, 24 Dívidas Vencidas R$ 54k, 1 Protesto R$ 2.106, Fomento)
+  // -------------------------------------------------------------
+  console.log('\n--- 4C. Teste de Extração: Prevent Senior (Score 666, 5 PEFIN, 24 Dívidas, 1 Protesto) ---');
+  try {
+    const preventPdfPath = path.join(pdfDir, 'PREVENT SENIOR ATENDIMENTO A SAUDE LTDA 2026-07-07.pdf');
+    if (fs.existsSync(preventPdfPath)) {
+      const buffer = fs.readFileSync(preventPdfPath);
+      const result = await parseSerasaBuffer(buffer);
+      
+      assert.strictEqual(result.success, true, 'Laudo deve ter success: true');
+      assert.strictEqual(result.validado, true, 'Laudo deve ser validado: true');
+      assert.strictEqual(result.cnpj, '00.461.479/0001-63', 'CNPJ deve ser 00.461.479/0001-63');
+      assert.ok(result.razao_social.includes('PREVENT SENIOR'), 'Razão Social deve conter PREVENT SENIOR');
+      assert.strictEqual(result.score_serasa, 666, 'Score deve ser 666');
+      assert.strictEqual(result.pefin_qtd, 5, 'PEFIN deve ter 5 registros');
+      assert.strictEqual(result.pefin_valor, 486002.67, 'PEFIN total R$ 486.002,67');
+      assert.strictEqual(result.protestos_qtd, 1, 'Protestos qtd deve ser 1');
+      assert.strictEqual(result.protestos_valor, 2106.19, 'Protestos valor R$ 2.106,19');
+      assert.strictEqual(result.dividas_vencidas_qtd, 24, 'Dívidas vencidas qtd deve ser 24');
+      assert.strictEqual(result.dividas_vencidas_valor, 54672.85, 'Dívidas vencidas valor R$ 54.672,85');
+      assert.strictEqual(result.consultantes_fomento, 'S', 'Deve detectar fomento (REDFACTOR FACTORING)');
+      assert.strictEqual(result.idade_meses, 1.6, 'Idade deve ser 1.6 meses');
+
+      report('Extração Prevent Senior', true);
+    } else {
+      console.log('  ⚠️ Arquivo Prevent Senior não encontrado no diretório.');
+    }
+  } catch (err) {
+    report('Extração Prevent Senior', false, err.message);
+  }
+
+  // -------------------------------------------------------------
   // Teste 5: Rejeição de Laudo Expirado > 4 Meses (Optimus Pharma)
   // -------------------------------------------------------------
   console.log('\n--- 5. Teste de Validação de Validade: Optimus Pharma (Expirado > 4 meses) ---');
