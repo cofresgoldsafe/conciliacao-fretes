@@ -14,6 +14,7 @@ const {
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
+  sincronizarSaldosEstoqueProtheus,
   obterDetalhesPedido,
   buscarComissoesPeriodo,
   VENDEDORES_MAP,
@@ -60,6 +61,9 @@ const {
   getInterWebhookEvents,
   saveAnaliseCreditoDB,
   getHistoricoCreditoDB,
+  saveSaldosEstoqueDB,
+  getSaldosEstoqueDB,
+  getUltimoSyncEstoqueLog,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -955,6 +959,89 @@ app.get('/api/vendedores/pedidos/compras', requireAuth, async (req, res) => {
     res.json({ success: true, count: results.length, data: results });
   } catch (err) {
     handleServerError(res, err, 'Erro na busca de pedidos de compras de vendedores.');
+  }
+});
+
+// Controle de Cooldown em memória para disparo manual de sincronização (2 minutos)
+let lastManualEstoqueSyncTime = 0;
+const ESTOQUE_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
+
+// API: Vendedores - Listar Saldos em Estoque e KPIs Consolidados
+app.get('/api/vendedores/estoque/saldos', requireAuth, async (req, res) => {
+  try {
+    const { search, filtroEstoque } = req.query || {};
+    const user = getUserFromReq(req);
+
+    const produtos = await getSaldosEstoqueDB({ search, filtroEstoque });
+    const ultimoSync = await getUltimoSyncEstoqueLog();
+
+    // Cálculos de KPIs consolidados
+    const totalItensEstoque = produtos.filter(p => Number(p.saldo || 0) > 0).length;
+    const totalItensSemEstoque = produtos.filter(p => Number(p.saldo || 0) <= 0).length;
+    const totalValorEstoque = produtos.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_SALDOS_ESTOQUE',
+      description: `Consultou saldos em estoque (${produtos.length} produtos carregados)`,
+      ip: req.ip,
+      metadata: { search, filtroEstoque, count: produtos.length }
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      count: produtos.length,
+      kpis: {
+        totalItensEstoque,
+        totalItensSemEstoque,
+        totalValorEstoque
+      },
+      lastSync: ultimoSync,
+      data: produtos
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao obter saldos em estoque.');
+  }
+});
+
+// API: Vendedores - Disparo de Sincronização Manual de Estoque (com Cooldown)
+app.post('/api/vendedores/estoque/sync', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const now = Date.now();
+    const elapsed = now - lastManualEstoqueSyncTime;
+
+    if (elapsed < ESTOQUE_SYNC_COOLDOWN_MS) {
+      const waitSec = Math.ceil((ESTOQUE_SYNC_COOLDOWN_MS - elapsed) / 1000);
+      return res.status(429).json({
+        success: false,
+        cooldown: true,
+        message: `Sincronização recente em andamento ou realizada há poucos instantes. Aguarde ${waitSec}s para sincronizar novamente.`
+      });
+    }
+
+    lastManualEstoqueSyncTime = now;
+    const resultado = await sincronizarSaldosEstoqueProtheus({
+      triggeredBy: `MANUAL (${user.name || user.username})`
+    });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'SYNC_SALDOS_ESTOQUE',
+      description: `Disparou sincronização manual de saldos em estoque (${resultado.count || 0} itens)`,
+      ip: req.ip,
+      metadata: { resultado }
+    }).catch(() => {});
+
+    res.json({
+      success: resultado.success,
+      message: resultado.success ? 'Sincronização concluída com sucesso!' : 'Falha na sincronização.',
+      detalhes: resultado
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao disparar sincronização manual de estoque.');
   }
 });
 
@@ -2250,6 +2337,51 @@ app.get('/api/financeiro/analise-credito/historico', async (req, res) => {
   }
 });
 
+/**
+ * Agendador Automático: Sincronização de Saldos em Estoque
+ * Executa de Segunda a Sexta, das 07:00 às 19:00 (Horário de Brasília), a cada 1 hora
+ */
+let estoqueSyncJobInterval = null;
+
+function startEstoqueSyncJob() {
+  if (estoqueSyncJobInterval) return;
+
+  const verificarEExecutarSync = async () => {
+    try {
+      // Converte data/hora para fuso de Brasília (America/Sao_Paulo)
+      const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+      const nowBrasilia = new Date(nowStr);
+      const diaSemana = nowBrasilia.getDay(); // 0 = Dom, 1 = Seg, ..., 5 = Sex, 6 = Sab
+      const hora = nowBrasilia.getHours();
+
+      // Regra: Segunda a Sexta (1 a 5), entre 07h e 19h
+      if (diaSemana >= 1 && diaSemana <= 5 && hora >= 7 && hora <= 19) {
+        console.log(`⏰ [Job Estoque] Executando sincronização programada (Brasília: ${hora}h)...`);
+        await sincronizarSaldosEstoqueProtheus({ triggeredBy: 'JOB_AUTO' });
+      }
+    } catch (e) {
+      console.warn('⚠️ [Job Estoque] Erro na rotina agendada de sincronização:', e.message);
+    }
+  };
+
+  // Checa a cada 60 minutos
+  estoqueSyncJobInterval = setInterval(verificarEExecutarSync, 60 * 60 * 1000);
+  if (estoqueSyncJobInterval.unref) {
+    estoqueSyncJobInterval.unref();
+  }
+
+  // Executa uma sincronização inicial em background após 5 segundos se o cache/tabela não possuir registros
+  setTimeout(async () => {
+    try {
+      const ultimo = await getUltimoSyncEstoqueLog();
+      if (!ultimo) {
+        console.log('📦 [Job Estoque] Nenhum registro de estoque encontrado. Executando carga inicial...');
+        await sincronizarSaldosEstoqueProtheus({ triggeredBy: 'JOB_STARTUP' });
+      }
+    } catch {}
+  }, 5000);
+}
+
 if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`=================================================`);
@@ -2257,6 +2389,7 @@ if (require.main === module) {
     console.log(`👉 Acesse: http://localhost:3000`);
     console.log(`=================================================`);
     await initPostgres();
+    startEstoqueSyncJob();
   });
 }
 

@@ -1555,12 +1555,320 @@ async function obterHistoricoFinanceiroCliente(codCliente) {
   };
 }
 
+/**
+ * Sincronização Completa de Saldos em Estoque Protheus -> Supabase / JSON Cache
+ * Consolida SB1 (Produtos PA), SB2 (Saldos 14/15/16), SC6 (Vendas 14/15/16) e SC7 (Compras 14/15/16)
+ */
+async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
+  const inicioTime = Date.now();
+  console.log(`\n⏳ [Saldos Estoque Sync] Iniciando sincronização do Protheus (Disparado por: ${triggeredBy})...`);
+
+  const { saveSaldosEstoqueDB } = require('./postgres_db');
+  const produtosMap = new Map();
+
+  try {
+    // 1. Extração do Catálogo de Produtos PA (SB1090, SB1100, SB1010)
+    const sb1Tables = ['SB1090', 'SB1100', 'SB1010'];
+    for (const sb1Table of sb1Tables) {
+      try {
+        const sqlSB1 = `
+          SELECT 
+            RTRIM(B1_COD) AS B1_COD,
+            RTRIM(B1_DESC) AS B1_DESC,
+            ISNULL(B1_PRV1, 0) AS B1_PRV1,
+            ISNULL(B1_EMIN, 0) AS B1_EMIN,
+            ISNULL(B1_LE, 0) AS B1_LE,
+            ISNULL(B1_VLUNIT, 0) AS B1_VLUNIT,
+            RTRIM(ISNULL(B1_TIPO, '')) AS B1_TIPO
+          FROM ${sb1Table}
+          WHERE D_E_L_E_T_ = ' '
+            AND (
+              RTRIM(B1_TIPO) = 'PA'
+              OR (RTRIM(B1_COD) >= '001000000000000' AND RTRIM(B1_COD) <= '019999999999999')
+            )
+            AND B1_DESC NOT LIKE '%XXX%'
+            AND B1_COD NOT LIKE '%X%'
+            AND B1_COD LIKE '%0%'
+          ORDER BY B1_DESC ASC;
+        `;
+        const resSB1 = await executeRailwayQuery(sqlSB1);
+        if (resSB1 && resSB1.rows && resSB1.rows.length > 0) {
+          for (const r of resSB1.rows) {
+            const cod = String(r.B1_COD || '').trim();
+            if (!cod) continue;
+
+            if (!produtosMap.has(cod)) {
+              produtosMap.set(cod, {
+                codigo: cod,
+                descricao: String(r.B1_DESC || '').trim() || `PRODUTO ${cod}`,
+                preco: Number(r.B1_PRV1) || 0,
+                saldo: 0,
+                saldo_total: 0,
+                qtd_vendas: 0,
+                qtd_compras: 0,
+                ponto_ped: Number(r.B1_EMIN) || Number(r.B1_LE) || 0,
+                detalhes_empresas: {
+                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
+                }
+              });
+            }
+          }
+        }
+      } catch (errSB1) {
+        console.warn(`Aviso ao consultar produtos em ${sb1Table}:`, errSB1.message);
+      }
+    }
+
+    const empresas = [
+      { cod: "14", sigla: "MP", nome: "Metal Pleno (14)", sb2: "SB2140", sc6: "SC6140", sc5: "SC5140", sc7: "SC7140" },
+      { cod: "15", sigla: "GSI", nome: "GSI (15)", sb2: "SB2150", sc6: "SC6150", sc5: "SC5150", sc7: "SC7150" },
+      { cod: "16", sigla: "OACO", nome: "OACO (16)", sb2: "SB2160", sc6: "SC6160", sc5: "SC5160", sc7: "SC7160" }
+    ];
+
+    // 2. Extração de Saldos Físicos em Estoque SB2 (14, 15, 16)
+    for (const emp of empresas) {
+      try {
+        const sqlSB2 = `
+          SELECT 
+            RTRIM(B2_COD) AS B2_COD,
+            ISNULL(SUM(B2_QATU), 0) AS SALDO_QATU,
+            ISNULL(SUM(B2_QPEDVEN), 0) AS SALDO_PEDVEN
+          FROM ${emp.sb2}
+          WHERE D_E_L_E_T_ = ' '
+            AND B2_COD NOT LIKE '%X%'
+            AND B2_COD LIKE '%0%'
+          GROUP BY B2_COD;
+        `;
+        const resSB2 = await executeRailwayQuery(sqlSB2);
+        if (resSB2 && resSB2.rows) {
+          for (const r of resSB2.rows) {
+            const cod = String(r.B2_COD || '').trim();
+            if (!cod) continue;
+
+            let prod = produtosMap.get(cod);
+            if (!prod) {
+              prod = {
+                codigo: cod,
+                descricao: `PRODUTO ${cod}`,
+                preco: 0,
+                saldo: 0,
+                saldo_total: 0,
+                qtd_vendas: 0,
+                qtd_compras: 0,
+                ponto_ped: 0,
+                detalhes_empresas: {
+                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
+                }
+              };
+              produtosMap.set(cod, prod);
+            }
+
+            const saldoEmp = Number(r.SALDO_QATU) || 0;
+            prod.detalhes_empresas[emp.cod].saldo += saldoEmp;
+            prod.saldo += saldoEmp;
+          }
+        }
+      } catch (errEmpSB2) {
+        console.warn(`Aviso ao consultar saldos em ${emp.sb2}:`, errEmpSB2.message);
+      }
+    }
+
+    // 3. Extração de Vendas Abertas SC6 (14, 15, 16)
+    for (const emp of empresas) {
+      try {
+        const sqlSC6 = `
+          SELECT 
+            RTRIM(C6.C6_NUM) AS NUM_PED,
+            RTRIM(ISNULL(C6.C6_CODWEB, '')) AS COD_WEB,
+            RTRIM(C6.C6_ITEM) AS ITEM,
+            RTRIM(C6.C6_PRODUTO) AS PRODUTO,
+            RTRIM(ISNULL(C6.C6_DESCRI, '')) AS DESCRICAO,
+            ISNULL(C6.C6_QTDVEN, 0) AS QTDVEN,
+            ISNULL(C6.C6_PRCVEN, 0) AS PRCVEN,
+            ISNULL(C6.C6_VALOR, 0) AS VALOR,
+            RTRIM(ISNULL(C6.C6_ENTREG, '')) AS PREV_ENTREGA,
+            RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS CLIENTE,
+            RTRIM(ISNULL(C5.C5_VEND1, '')) AS VEND1
+          FROM ${emp.sc6} C6
+          LEFT JOIN ${emp.sc5} C5 
+            ON C5.C5_FILIAL = C6.C6_FILIAL 
+           AND C5.C5_NUM = C6.C6_NUM 
+           AND C5.D_E_L_E_T_ = ' '
+          WHERE C6.D_E_L_E_T_ = ' '
+            AND (C6.C6_BLQ IS NULL OR RTRIM(C6.C6_BLQ) <> 'R')
+            AND (C5.C5_NOTA IS NULL OR RTRIM(C5.C5_NOTA) = '' OR RTRIM(C5.C5_NOTA) = '0')
+            AND (C6.C6_NOTA IS NULL OR RTRIM(C6.C6_NOTA) = '' OR RTRIM(C6.C6_NOTA) = '0')
+          ORDER BY C6.C6_ENTREG ASC;
+        `;
+        const resSC6 = await executeRailwayQuery(sqlSC6);
+        if (resSC6 && resSC6.rows) {
+          for (const r of resSC6.rows) {
+            const cod = String(r.PRODUTO || '').trim();
+            if (!cod) continue;
+
+            let prod = produtosMap.get(cod);
+            if (!prod) {
+              prod = {
+                codigo: cod,
+                descricao: r.DESCRICAO || `PRODUTO ${cod}`,
+                preco: Number(r.PRCVEN) || 0,
+                saldo: 0,
+                saldo_total: 0,
+                qtd_vendas: 0,
+                qtd_compras: 0,
+                ponto_ped: 0,
+                detalhes_empresas: {
+                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
+                }
+              };
+              produtosMap.set(cod, prod);
+            }
+
+            const qtdVenda = Number(r.QTDVEN) || 0;
+            prod.qtd_vendas += qtdVenda;
+            prod.detalhes_empresas[emp.cod].vendas += qtdVenda;
+            prod.detalhes_empresas[emp.cod].vendasLista.push({
+              pedido: r.NUM_PED,
+              codWeb: r.COD_WEB || '-',
+              item: r.ITEM,
+              empresa: emp.sigla,
+              cliente: r.CLIENTE || 'CLIENTE NÃO INFORMADO',
+              vendedor: getNomeVendedor(r.VEND1) || r.VEND1 || 'NÃO INFORMADO',
+              qtdPedida: qtdVenda,
+              preco: Number(r.PRCVEN) || 0,
+              total: Number(r.VALOR) || 0,
+              previsao: formatarDataProtheus(r.PREV_ENTREGA)
+            });
+          }
+        }
+      } catch (errEmpSC6) {
+        console.warn(`Aviso ao consultar vendas em ${emp.sc6}:`, errEmpSC6.message);
+      }
+    }
+
+    // 4. Extração de Compras Abertas SC7 (14, 15, 16)
+    for (const emp of empresas) {
+      try {
+        const sqlSC7 = `
+          SELECT 
+            RTRIM(C7.C7_NUM) AS NUM_PED,
+            RTRIM(C7.C7_ITEM) AS ITEM,
+            RTRIM(C7.C7_PRODUTO) AS PRODUTO,
+            RTRIM(ISNULL(C7.C7_DESCRI, '')) AS DESCRICAO,
+            ISNULL(C7.C7_QUANT, 0) AS QUANT,
+            ISNULL(C7.C7_QUJE, 0) AS QUJE,
+            (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) AS SALDO_COMPRA,
+            ISNULL(C7.C7_PRECO, 0) AS PRECO,
+            ISNULL(C7.C7_TOTAL, 0) AS TOTAL,
+            RTRIM(ISNULL(C7.C7_DATPRF, '')) AS PREV_ENTREGA,
+            RTRIM(ISNULL(C7.C7_EMISSAO, '')) AS EMISSAO,
+            ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(C7.C7_FORNECE, ''))) AS FORNECEDOR
+          FROM ${emp.sc7} C7
+          WHERE C7.D_E_L_E_T_ = ' '
+            AND (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0
+            AND (C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')
+          ORDER BY C7.C7_DATPRF ASC;
+        `;
+        const resSC7 = await executeRailwayQuery(sqlSC7);
+        if (resSC7 && resSC7.rows) {
+          for (const r of resSC7.rows) {
+            const cod = String(r.PRODUTO || '').trim();
+            if (!cod) continue;
+
+            let prod = produtosMap.get(cod);
+            if (!prod) {
+              prod = {
+                codigo: cod,
+                descricao: r.DESCRICAO || `PRODUTO ${cod}`,
+                preco: 0,
+                saldo: 0,
+                saldo_total: 0,
+                qtd_vendas: 0,
+                qtd_compras: 0,
+                ponto_ped: 0,
+                detalhes_empresas: {
+                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
+                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
+                }
+              };
+              produtosMap.set(cod, prod);
+            }
+
+            const saldoCompra = Math.max(0, Number(r.SALDO_COMPRA) || (Number(r.QUANT || 0) - Number(r.QUJE || 0)));
+            prod.qtd_compras += saldoCompra;
+            prod.detalhes_empresas[emp.cod].compras += saldoCompra;
+            prod.detalhes_empresas[emp.cod].comprasLista.push({
+              pedido: `${emp.sigla}${r.NUM_PED}`,
+              numPed: r.NUM_PED,
+              item: r.ITEM,
+              empresa: emp.sigla,
+              fornecedor: r.FORNECEDOR || 'FORNECEDOR NÃO INFORMADO',
+              qtdComprada: Number(r.QUANT) || 0,
+              qtdEntregue: Number(r.QUJE) || 0,
+              saldoCompra: saldoCompra,
+              preco: Number(r.PRECO) || 0,
+              total: Number(r.TOTAL) || 0,
+              previsao: formatarDataProtheus(r.PREV_ENTREGA)
+            });
+          }
+        }
+      } catch (errEmpSC7) {
+        console.warn(`Aviso ao consultar compras em ${emp.sc7}:`, errEmpSC7.message);
+      }
+    }
+
+    // 5. Calcula Saldo Total = Saldo * Preço e filtra itens válidos
+    const produtosList = Array.from(produtosMap.values()).map(p => {
+      p.saldo_total = roundVal(Number(p.saldo || 0) * Number(p.preco || 0));
+      return p;
+    });
+
+    const duracaoMs = Date.now() - inicioTime;
+    const metaSalvo = await saveSaldosEstoqueDB(produtosList, {
+      status: 'SUCCESS',
+      duracao_ms: duracaoMs,
+      triggered_by: triggeredBy
+    });
+
+    console.log(`✅ [Saldos Estoque Sync] Concluído com sucesso em ${duracaoMs}ms! Total: ${produtosList.length} produtos.`);
+    return {
+      success: true,
+      count: produtosList.length,
+      ...metaSalvo
+    };
+  } catch (err) {
+    const duracaoMs = Date.now() - inicioTime;
+    console.error(`❌ [Saldos Estoque Sync Error]:`, err.message);
+
+    await saveSaldosEstoqueDB([], {
+      status: 'ERROR',
+      duracao_ms: duracaoMs,
+      triggered_by: triggeredBy,
+      error_message: err.message
+    });
+
+    return {
+      success: false,
+      error: err.message,
+      duracao_ms: duracaoMs
+    };
+  }
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
+  sincronizarSaldosEstoqueProtheus,
   formatarDataProtheus,
   calcularStatusBloqueioEstoque,
   calcularStatusBloqueioCredito,

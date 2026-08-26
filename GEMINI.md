@@ -73,8 +73,31 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Filtro Estrito de Produtos PA & Faixa de Códigos:** Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa correspondente aos produtos acabados `PA`), descartando insumos, matérias-primas e serviços (`090...`) tanto na query T-SQL do backend quanto na camada reativa do frontend.
    - **Mapeamento e Identificadores:** Identificador visual `PedCom` com prefixo da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`), data de previsão `C7_DATPRF` formatada e busca de fornecedor via subselect em `SA2010`.
    - **Busca Instantânea & Métricas:** Filtro instantâneo conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa, cards de métricas (**`Ped Compras em Aberto`**, saldo total e previsão mais próxima), ordenação de 4 colunas e 10 testes automatizados.
-11. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-12. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+11. [x] **Sub-aba Saldos em Estoque no Módulo Vendedores com Job Supabase & Visual Power BI (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_saldos_estoque.js`):**
+   - **Consolidação Multi-Empresa e Catálogo PA:** Leitura combinada de catálogo `SB1` (produtos acabados PA, descartando `XXX`, `X` e tipo diferente de PA), saldos físicos `SB2` (`SB2140` Metal Pleno 14, `SB2150` GSI 15, `SB2160` OACO 16), vendas em carteira não faturadas `SC6` (`SC6140`, `SC6150`, `SC6160`) e compras em aberto `SC7` (`SC7140`, `SC7150`, `SC7160`).
+   - **Cálculo Matemático e Fórmulas:** Cálculo em tempo real de `SALDO_TOTAL = (SALDO * PREÇO)` com arredondamento monetário e agregação por empresa.
+   - **Job de Background & Sincronização Agendada (Supabase + Fallback JSON):**
+     - Rotina de execução periódica (cron/timer a cada 60 min no horário comercial: segunda a sexta, 07h às 19h horário de Brasília - `America/Sao_Paulo`).
+     - Carga inicial inteligente no startup (`JOB_STARTUP`) se a base/cache estiver vazia.
+     - Persistência na tabela relacional PostgreSQL / Supabase `produtos_saldo_estoque` e logs de auditoria `estoque_sync_logs` com duração em ms e gatilho (`JOB_AUTO`, `JOB_STARTUP`, `MANUAL`).
+     - Fallback gracioso automático para cache JSON em disco (`data/estoque_saldos_cache.json`) em caso de oscilação ou indisponibilidade de conexão com o banco.
+   - **Visual Power BI & Experiência do Usuário (UX):**
+     - 3 Cards KPIs principais no topo: *Itens em Estoque (Saldo > 0)*, *Itens sem Estoque (Saldo = 0)* e *Valor Total em Estoque (R$)*.
+     - Tabela responsiva com 7 colunas (`DESCRIÇÃO`, `PREÇO`, `SALDO`, `SALDO_TOTAL`, `C6 QTD VENDAS`, `QTD COMPRAS`, `PONTO PED`).
+     - Ordenação interativa bidirecional em todas as colunas com formatação numérica e monetária BRL.
+     - Filtros instantâneos: busca textual (código/descrição) e select por disponibilidade (*Todos, Somente com Saldo, Somente sem Estoque, Com Vendas SC6, Com Compras SC7*).
+     - Badge de status da sincronização com indicador verde/amarelo, timestamp da última execução e botão de disparo manual com Cooldown de 2 minutos (`429 Too Many Requests`).
+   - **Modal Drilldown Multi-Empresa com 3 Guias:**
+     - Clique na linha do produto abre modal com 4 mini KPIs (*Preço Unitário, Saldo Físico Total, Valor em Estoque, Ponto de Pedido*).
+     - Guia 1: *Resumo por Empresa* (saldos, vendas e compras discriminados por Metal Pleno 14, GSI 15 e OACO 16).
+     - Guia 2: *Compras em Aberto (SC7)* (pedido com sigla, fornecedor, quantidade comprada, entregue, saldo pendente e data de previsão).
+     - Guia 3: *Vendas em Aberto (SC6)* (pedido, CodWeb, cliente, vendedor, quantidade pedida e previsão).
+   - **Segurança RBAC, Auditoria & Testes:**
+     - Proteção JWT obrigatória nos endpoints `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
+     - Registro de auditoria em `user_activities` para ações de consulta (`CONSULTA_SALDOS_ESTOQUE`) e sincronização manual (`SYNC_SALDOS_ESTOQUE`).
+     - Cobertura por suíte automatizada em `test_saldos_estoque.js` validando fórmulas matemáticas, filtros de PA, gravação/leitura no Postgres/JSON e segurança de rotas HTTP.
+12. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+13. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

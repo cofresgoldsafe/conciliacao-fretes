@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "status": "SUCCESS",
+    "synced_at": "2026-08-26T01:45:03.218Z",
+    "total_produtos": 2,
+    "total_saldo_positivo": 1,
+    "total_valor_estoque": 99000,
+    "duracao_ms": 120,
+    "triggered_by": "TEST_SUITE",
+    "error_message": null
+  },
+  "produtos": [
+    {
+      "codigo": "001001000000001",
+      "descricao": "ARMARIO CORTA FOGO 200X100X45 CM - VERMELHO",
+      "preco": 6600,
+      "saldo": 15,
+      "saldo_total": 99000,
+      "qtd_vendas": 1,
+      "qtd_compras": 16,
+      "ponto_ped": 25,
+      "detalhes_empresas": {
+        "14": {
+          "saldo": 5,
+          "vendas": 0,
+          "compras": 10
+        },
+        "15": {
+          "saldo": 10,
+          "vendas": 1,
+          "compras": 6
+        },
+        "16": {
+          "saldo": 0,
+          "vendas": 0,
+          "compras": 0
+        }
+      }
+    },
+    {
+      "codigo": "001001000000002",
+      "descricao": "ARMARIO CORTA FOGO 100X100X45 CM - BRANCO",
+      "preco": 4629,
+      "saldo": 0,
+      "saldo_total": 0,
+      "qtd_vendas": 0,
+      "qtd_compras": 0,
+      "ponto_ped": 5,
+      "detalhes_empresas": {
+        "14": {
+          "saldo": 0,
+          "vendas": 0,
+          "compras": 0
+        },
+        "15": {
+          "saldo": 0,
+          "vendas": 0,
+          "compras": 0
+        },
+        "16": {
+          "saldo": 0,
+          "vendas": 0,
+          "compras": 0
+        }
+      }
+    }
+  ]
+}

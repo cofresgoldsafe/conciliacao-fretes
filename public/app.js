@@ -730,6 +730,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-analise-credito') {
         carregarHistoricoCredito();
       }
+      if (targetTab === 'tab-vend-saldos-estoque') {
+        carregarSaldosEstoque();
+      }
       if (targetTab === 'tab-vend-pedidos-abertos') {
         carregarPedidosAbertos();
       }
@@ -3192,6 +3195,376 @@ document.addEventListener('DOMContentLoaded', () => {
   if (thSortComprasPed) thSortComprasPed.addEventListener('click', () => handleComprasSortClick('pedCom'));
   if (thSortComprasSaldo) thSortComprasSaldo.addEventListener('click', () => handleComprasSortClick('saldoCompras'));
   if (thSortComprasPrevisao) thSortComprasPrevisao.addEventListener('click', () => handleComprasSortClick('previsao'));
+
+  // =========================================================================
+  // SUB-ABA VENDEDORES: SALDOS EM ESTOQUE (POWER BI STYLE & DRILLDOWN)
+  // =========================================================================
+
+  let estoqueProdutosData = [];
+  let estoqueSortColumn = 'saldo';
+  let estoqueSortAsc = false;
+  let estoqueItemSelecionado = null;
+
+  const estoqueBuscaInput = document.getElementById('estoqueBuscaInput');
+  const estoqueFiltroSelect = document.getElementById('estoqueFiltroSelect');
+  const btnLimparFiltrosEstoque = document.getElementById('btnLimparFiltrosEstoque');
+  const btnSyncEstoqueManual = document.getElementById('btnSyncEstoqueManual');
+  const modalEstoqueDetalhes = document.getElementById('modalEstoqueDetalhes');
+  const btnCloseModalEstoque = document.getElementById('btnCloseModalEstoque');
+  const btnFecharModalEstoqueDetalhes = document.getElementById('btnFecharModalEstoqueDetalhes');
+
+  async function carregarSaldosEstoque(forceReload = false) {
+    const tbody = document.getElementById('estoqueTableBody');
+    const countSpan = document.getElementById('estoqueProdutosCount');
+    const lastSyncSpan = document.getElementById('estoqueLastSyncTime');
+
+    if (tbody && (forceReload || estoqueProdutosData.length === 0)) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">⏳ Carregando dados consolidados de estoque do Supabase...</td></tr>';
+    }
+
+    try {
+      const searchVal = estoqueBuscaInput ? estoqueBuscaInput.value : '';
+      const filtroVal = estoqueFiltroSelect ? estoqueFiltroSelect.value : 'todos';
+
+      const queryParams = new URLSearchParams({
+        search: searchVal,
+        filtroEstoque: filtroVal
+      });
+
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/vendedores/estoque/saldos?${queryParams.toString()}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const json = await res.json();
+
+      if (!json.success) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444; padding: 2rem;">❌ ${json.message || 'Erro ao carregar estoque.'}</td></tr>`;
+        return;
+      }
+
+      estoqueProdutosData = json.data || [];
+      if (countSpan) countSpan.textContent = estoqueProdutosData.length;
+
+      // Atualiza KPIs do topo
+      if (json.kpis) {
+        const kpiItens = document.getElementById('kpiItensEstoque');
+        const kpiSem = document.getElementById('kpiItensSemEstoque');
+        const kpiVal = document.getElementById('kpiValorEstoque');
+
+        if (kpiItens) kpiItens.textContent = Number(json.kpis.totalItensEstoque || 0).toLocaleString('pt-BR');
+        if (kpiSem) kpiSem.textContent = Number(json.kpis.totalItensSemEstoque || 0).toLocaleString('pt-BR');
+        if (kpiVal) kpiVal.textContent = Number(json.kpis.totalValorEstoque || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      }
+
+      // Atualiza Badge de Sincronização
+      if (lastSyncSpan && json.lastSync) {
+        const syncDate = new Date(json.lastSync.created_at || json.lastSync.synced_at);
+        lastSyncSpan.textContent = isNaN(syncDate.getTime()) ? 'Recente' : syncDate.toLocaleString('pt-BR');
+      }
+
+      updateEstoqueSortIcons();
+      renderSaldosEstoqueTable();
+    } catch (err) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ef4444; padding: 2rem;">❌ Erro de conexão ao buscar saldos de estoque: ${err.message}</td></tr>`;
+    }
+  }
+
+  function renderSaldosEstoqueTable() {
+    const tbody = document.getElementById('estoqueTableBody');
+    if (!tbody) return;
+
+    let lista = [...estoqueProdutosData];
+
+    // Ordenação
+    lista.sort((a, b) => {
+      let valA = a[estoqueSortColumn];
+      let valB = b[estoqueSortColumn];
+
+      if (typeof valA === 'string') {
+        return estoqueSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+      return estoqueSortAsc ? valA - valB : valB - valA;
+    });
+
+    if (lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Nenhum produto encontrado com os filtros aplicados.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = lista.map(p => {
+      const precoFmt = Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const saldoTotalFmt = Number(p.saldo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const saldoNum = Number(p.saldo || 0);
+      const saldoColor = saldoNum > 0 ? '#10b981' : '#ef4444';
+      const saldoBg = saldoNum > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+
+      return `
+        <tr style="cursor: pointer; transition: background 0.15s ease;" onclick="abrirModalEstoqueDetalhes('${p.codigo}')" title="Clique para ver drilldown por empresa e pedidos">
+          <td>
+            <div style="font-weight: 600; color: #f1f5f9;">${p.descricao || 'PRODUTO SEM DESCRIÇÃO'}</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Cód: <code>${p.codigo}</code></div>
+          </td>
+          <td style="text-align: right; font-weight: 500; font-family: monospace;">${precoFmt}</td>
+          <td style="text-align: right;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 700; color: ${saldoColor}; background: ${saldoBg}; font-family: monospace;">
+              ${saldoNum.toLocaleString('pt-BR')}
+            </span>
+          </td>
+          <td style="text-align: right; font-weight: 600; color: #38bdf8; font-family: monospace;">${saldoTotalFmt}</td>
+          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_vendas) > 0 ? '#fbbf24' : 'var(--text-muted)'}; font-family: monospace;">
+            ${Number(p.qtd_vendas || 0) > 0 ? Number(p.qtd_vendas).toLocaleString('pt-BR') : '-'}
+          </td>
+          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_compras) > 0 ? '#38bdf8' : 'var(--text-muted)'}; font-family: monospace;">
+            ${Number(p.qtd_compras || 0) > 0 ? Number(p.qtd_compras).toLocaleString('pt-BR') : '-'}
+          </td>
+          <td style="text-align: right; font-weight: 500; color: var(--text-muted); font-family: monospace;">
+            ${Number(p.ponto_ped || 0) > 0 ? Number(p.ponto_ped).toLocaleString('pt-BR') : '-'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function updateEstoqueSortIcons() {
+    const cols = [
+      { id: 'sortIconEstoqueDescricao', key: 'descricao' },
+      { id: 'sortIconEstoquePreco', key: 'preco' },
+      { id: 'sortIconEstoqueSaldo', key: 'saldo' },
+      { id: 'sortIconEstoqueSaldoTotal', key: 'saldo_total' },
+      { id: 'sortIconEstoqueVendas', key: 'qtd_vendas' },
+      { id: 'sortIconEstoqueCompras', key: 'qtd_compras' },
+      { id: 'sortIconEstoquePontoPed', key: 'ponto_ped' }
+    ];
+
+    cols.forEach(c => {
+      const el = document.getElementById(c.id);
+      if (el) {
+        if (estoqueSortColumn === c.key) {
+          el.textContent = estoqueSortAsc ? '▲' : '▼';
+          el.style.color = '#38bdf8';
+        } else {
+          el.textContent = '↕';
+          el.style.color = 'var(--text-muted)';
+        }
+      }
+    });
+  }
+
+  function handleEstoqueSortClick(colKey) {
+    if (estoqueSortColumn === colKey) {
+      estoqueSortAsc = !estoqueSortAsc;
+    } else {
+      estoqueSortColumn = colKey;
+      estoqueSortAsc = (colKey === 'descricao'); // Texto inicia ASC, numérico inicia DESC
+    }
+    updateEstoqueSortIcons();
+    renderSaldosEstoqueTable();
+  }
+
+  // Listeners de ordenação das colunas da tabela
+  const thDesc = document.getElementById('thEstoqueDescricao');
+  const thPrc = document.getElementById('thEstoquePreco');
+  const thSld = document.getElementById('thEstoqueSaldo');
+  const thTot = document.getElementById('thEstoqueSaldoTotal');
+  const thVen = document.getElementById('thEstoqueVendas');
+  const thCom = document.getElementById('thEstoqueCompras');
+  const thPto = document.getElementById('thEstoquePontoPed');
+
+  if (thDesc) thDesc.addEventListener('click', () => handleEstoqueSortClick('descricao'));
+  if (thPrc) thPrc.addEventListener('click', () => handleEstoqueSortClick('preco'));
+  if (thSld) thSld.addEventListener('click', () => handleEstoqueSortClick('saldo'));
+  if (thTot) thTot.addEventListener('click', () => handleEstoqueSortClick('saldo_total'));
+  if (thVen) thVen.addEventListener('click', () => handleEstoqueSortClick('qtd_vendas'));
+  if (thCom) thCom.addEventListener('click', () => handleEstoqueSortClick('qtd_compras'));
+  if (thPto) thPto.addEventListener('click', () => handleEstoqueSortClick('ponto_ped'));
+
+  // Filtros em tempo real
+  if (estoqueBuscaInput) {
+    estoqueBuscaInput.addEventListener('input', () => {
+      carregarSaldosEstoque();
+    });
+  }
+
+  if (estoqueFiltroSelect) {
+    estoqueFiltroSelect.addEventListener('change', () => {
+      carregarSaldosEstoque();
+    });
+  }
+
+  if (btnLimparFiltrosEstoque) {
+    btnLimparFiltrosEstoque.addEventListener('click', () => {
+      if (estoqueBuscaInput) estoqueBuscaInput.value = '';
+      if (estoqueFiltroSelect) estoqueFiltroSelect.value = 'positivo';
+      carregarSaldosEstoque();
+    });
+  }
+
+  // Disparo manual de sincronização
+  if (btnSyncEstoqueManual) {
+    btnSyncEstoqueManual.addEventListener('click', async () => {
+      btnSyncEstoqueManual.disabled = true;
+      const originalHtml = btnSyncEstoqueManual.innerHTML;
+      btnSyncEstoqueManual.innerHTML = '<span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></span> Sincronizando...';
+
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/vendedores/estoque/sync', {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          alert(`✅ Sincronização concluída com sucesso!\nTotal: ${json.detalhes?.count || 0} produtos sincronizados em ${json.detalhes?.duracao_ms || 0}ms.`);
+          await carregarSaldosEstoque(true);
+        } else {
+          alert(json.message || 'Erro ao sincronizar estoque.');
+        }
+      } catch (e) {
+        alert('Erro ao disparar sincronização: ' + e.message);
+      } finally {
+        btnSyncEstoqueManual.disabled = false;
+        btnSyncEstoqueManual.innerHTML = originalHtml;
+      }
+    });
+  }
+
+  // Modal Drilldown por Produto
+  window.abrirModalEstoqueDetalhes = function(codigo) {
+    const prod = estoqueProdutosData.find(p => p.codigo === codigo);
+    if (!prod || !modalEstoqueDetalhes) return;
+    estoqueItemSelecionado = prod;
+
+    const modalTitulo = document.getElementById('modalEstoqueTitulo');
+    const modalSub = document.getElementById('modalEstoqueSubtitulo');
+    const kpiPrc = document.getElementById('modalKpiPreco');
+    const kpiSld = document.getElementById('modalKpiSaldo');
+    const kpiTot = document.getElementById('modalKpiValorTotal');
+    const kpiPto = document.getElementById('modalKpiPontoPed');
+
+    if (modalTitulo) modalTitulo.textContent = prod.descricao || 'Detalhes do Produto';
+    if (modalSub) modalSub.textContent = `Código Protheus: ${prod.codigo}`;
+    if (kpiPrc) kpiPrc.textContent = Number(prod.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (kpiSld) kpiSld.textContent = `${Number(prod.saldo || 0).toLocaleString('pt-BR')} un`;
+    if (kpiTot) kpiTot.textContent = Number(prod.saldo_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (kpiPto) kpiPto.textContent = `${Number(prod.ponto_ped || 0).toLocaleString('pt-BR')} un`;
+
+    // 1. Preenche Resumo por Empresa
+    const tbodyEmp = document.getElementById('modalTbodyEmpresas');
+    if (tbodyEmp) {
+      const dets = prod.detalhes_empresas || {};
+      const emps = [
+        { cod: "14", nome: "Empresa 14 (Metal Pleno)", data: dets['14'] || {} },
+        { cod: "15", nome: "Empresa 15 (GSI)", data: dets['15'] || {} },
+        { cod: "16", nome: "Empresa 16 (OACO)", data: dets['16'] || {} }
+      ];
+
+      tbodyEmp.innerHTML = emps.map(e => `
+        <tr>
+          <td><strong>${e.nome}</strong></td>
+          <td style="text-align: right; font-weight: 700; color: ${Number(e.data.saldo || 0) > 0 ? '#10b981' : '#ef4444'};">
+            ${Number(e.data.saldo || 0).toLocaleString('pt-BR')} un
+          </td>
+          <td style="text-align: right; font-weight: 600; color: ${Number(e.data.vendas || 0) > 0 ? '#fbbf24' : 'var(--text-muted)'};">
+            ${Number(e.data.vendas || 0).toLocaleString('pt-BR')} un
+          </td>
+          <td style="text-align: right; font-weight: 600; color: ${Number(e.data.compras || 0) > 0 ? '#38bdf8' : 'var(--text-muted)'};">
+            ${Number(e.data.compras || 0).toLocaleString('pt-BR')} un
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // 2. Preenche Lista de Compras Abertas (SC7)
+    const tbodyCom = document.getElementById('modalTbodyCompras');
+    if (tbodyCom) {
+      const dets = prod.detalhes_empresas || {};
+      const todasCompras = [
+        ...(dets['14']?.comprasLista || []),
+        ...(dets['15']?.comprasLista || []),
+        ...(dets['16']?.comprasLista || [])
+      ];
+
+      if (todasCompras.length === 0) {
+        tbodyCom.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum pedido de compra em aberto para este produto.</td></tr>';
+      } else {
+        tbodyCom.innerHTML = todasCompras.map(c => `
+          <tr>
+            <td><strong style="color: #38bdf8;">${c.pedido || '-'}</strong></td>
+            <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">${c.empresa || '-'}</span></td>
+            <td>${c.fornecedor || 'FORNECEDOR NÃO INFORMADO'}</td>
+            <td style="text-align: right;">${Number(c.qtdComprada || 0).toLocaleString('pt-BR')}</td>
+            <td style="text-align: right;">${Number(c.qtdEntregue || 0).toLocaleString('pt-BR')}</td>
+            <td style="text-align: right; font-weight: 700; color: #38bdf8;">${Number(c.saldoCompra || 0).toLocaleString('pt-BR')}</td>
+            <td>📅 ${c.previsao || '-'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 3. Preenche Lista de Vendas Abertas (SC6)
+    const tbodyVen = document.getElementById('modalTbodyVendas');
+    if (tbodyVen) {
+      const dets = prod.detalhes_empresas || {};
+      const todasVendas = [
+        ...(dets['14']?.vendasLista || []),
+        ...(dets['15']?.vendasLista || []),
+        ...(dets['16']?.vendasLista || [])
+      ];
+
+      if (todasVendas.length === 0) {
+        tbodyVen.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum pedido de venda em carteira para este produto.</td></tr>';
+      } else {
+        tbodyVen.innerHTML = todasVendas.map(v => `
+          <tr>
+            <td><strong>#${v.pedido || '-'}</strong></td>
+            <td>${v.codWeb && v.codWeb !== '-' ? `<span style="color: #38bdf8;">${v.codWeb}</span>` : '-'}</td>
+            <td><span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 6px; border-radius: 4px;">${v.empresa || '-'}</span></td>
+            <td>${v.cliente || 'CLIENTE NÃO INFORMADO'}</td>
+            <td>${v.vendedor || 'NÃO INFORMADO'}</td>
+            <td style="text-align: right; font-weight: 700; color: #fbbf24;">${Number(v.qtdPedida || 0).toLocaleString('pt-BR')} un</td>
+            <td>📅 ${v.previsao || '-'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Reseta para a 1ª aba interna da modal
+    document.querySelectorAll('.btn-modal-estoque-tab').forEach((b, idx) => {
+      b.classList.toggle('active', idx === 0);
+    });
+    document.querySelectorAll('.modal-estoque-tab-pane').forEach((p, idx) => {
+      p.classList.toggle('hidden', idx !== 0);
+    });
+
+    modalEstoqueDetalhes.classList.remove('hidden');
+  };
+
+  // Chaveamento de abas dentro da modal de estoque
+  document.querySelectorAll('.btn-modal-estoque-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      document.querySelectorAll('.btn-modal-estoque-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      document.querySelectorAll('.modal-estoque-tab-pane').forEach(p => {
+        p.classList.toggle('hidden', p.id !== targetId);
+      });
+    });
+  });
+
+  const fecharModalEstoque = () => {
+    if (modalEstoqueDetalhes) modalEstoqueDetalhes.classList.add('hidden');
+  };
+  if (btnCloseModalEstoque) btnCloseModalEstoque.addEventListener('click', fecharModalEstoque);
+  if (btnFecharModalEstoqueDetalhes) btnFecharModalEstoqueDetalhes.addEventListener('click', fecharModalEstoque);
+  if (modalEstoqueDetalhes) {
+    modalEstoqueDetalhes.addEventListener('click', (e) => {
+      if (e.target === modalEstoqueDetalhes) fecharModalEstoque();
+    });
+  }
 
   // =========================================================================
   // MÓDULO ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA INTER (077) X PROTHEUS

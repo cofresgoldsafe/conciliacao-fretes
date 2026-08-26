@@ -27,22 +27,27 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 * **Painel de Divergências:** Cartões estatísticos de resumo, badges coloridos, chips de filtro rápido por status e tolerância configurável em R$.
 * **Edição Viva de NF (`Doc (NF)`):** Reconsulta instantânea ao Protheus e exportação da tabela em CSV.
 
-### 💼 Módulo 2: Vendedores, Pedidos, Compras & Comissões (v1.5)
-* **Sub-aba 1 (Consulta Pedido):**
+### 💼 Módulo 2: Vendedores, Pedidos, Compras, Estoque & Comissões (v1.6)
+* **Sub-aba 1 (Saldos em Estoque - Power BI Style):**
+  * Acompanhamento consolidado de catálogo de Produtos Acabados (`PA`), saldos físicos em estoque nas 3 empresas (`SB2140`, `SB2150`, `SB2160`), pedidos de venda em carteira (`SC6`) e pedidos de compra em aberto (`SC7`).
+  * Cálculo em tempo real de Saldo Total (`SALDO * PREÇO`) e 3 Cards de KPIs no topo (*Itens em Estoque*, *Itens sem Estoque*, *Valor Total em Estoque*).
+  * Job automático de sincronização Protheus x Supabase a cada 60 min em horário comercial (07h-19h Brasília de seg a sex) com fallback gracioso para cache local (`data/estoque_saldos_cache.json`) e botão de sincronização manual com Cooldown de 2 min.
+  * Tabela responsiva de 7 colunas com ordenação interativa e Modal Drilldown Multi-Empresa com 3 abas (*Resumo por Empresa*, *Compras em Aberto SC7* e *Vendas em Aberto SC6*).
+* **Sub-aba 2 (Consulta Pedido):**
   * Pesquisa multi-empresa simultânea nas tabelas `SC5160` (OACO), `SC5150` (GSI) e `SC5140` (Metal Pleno).
   * Modal rico com busca de endereço e contato na tabela mestra `SA1010`, máscaras automáticas de CNPJ/CPF/CEP/Telefone e grade de itens `SC6`.
-* **Sub-aba 2 (Pedidos Abertos):**
+* **Sub-aba 3 (Pedidos Abertos):**
   * Visão consolidada de pedidos de venda não faturados (`C5_NOTA = ''` e não cancelados) nas 3 empresas (`SC5`).
   * Monitoramento de Bloqueio de Estoque (`C9_BLEST`) e Bloqueio de Crédito (`C9_BLCRED`) da tabela `SC9` aderente às regras de negócio oficiais do Power BI.
   * Integração externa inteligente com o CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/{digits}`) e abertura da modal detalhada do pedido.
   * Proteção Anti-IDOR/BOLA e isolamento de carteira restrita para vendedores comerciais (Figueiredo, Andrea, Juliana).
-* **Sub-aba 3 (Pedidos Compras):**
+* **Sub-aba 4 (Pedidos Compras):**
   * Consulta em tempo real de produtos com pedidos de compras em aberto (`SC7140`, `SC7150`, `SC7160`) com saldo a receber (`C7_QUANT - C7_QUJE > 0`) e previsão de entrega em estoque (`C7_DATPRF`).
   * Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa exclusiva de Produtos Acabados `PA`).
   * Identificador `PedCom` formatado com sigla da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`) e busca de fornecedores em `SA2010`.
   * Filtro instantâneo em tempo real conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa e ordenação de 4 colunas.
   * Cards de resumo no topo: **`Ped Compras em Aberto`**, **`Saldo Total a Receber`** e **`Previsão mais Próxima`**.
-* **Sub-aba 4 (Comissões & Metas):**
+* **Sub-aba 5 (Comissões & Metas):**
   * Consulta periódica nas tabelas `SE3160` (OACO), `SE3150` (GSI) e `SE3140` (Metal Pleno) com leitura de `E3_BASE`, `E3_PORC` e `E3_COMIS`.
   * **Card "Meta Atingida":** Cálculo dinâmico proporcional de faturamento, substituindo a exibição de comissão a pagar em R$ pela porcentagem atingida de faturamento em relação à meta comercial:
     * **Meta Individual:** R$ 120.000,00 por vendedor (para vendedor selecionado ou perfil de vendedor logado).

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.50">
+  <link rel="stylesheet" href="style.css?v=8.52">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 21:55 (Ajusta label do card para Ped Compras em Aberto)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 22:53 (Sub-aba Saldos em Estoque e Job Supabase)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -84,7 +84,11 @@
 
       <!-- Sub-abas de Vendedores -->
       <div class="sub-tabs-group hidden" id="subGroupVendedores">
-        <button class="nav-tab-btn active" data-tab="tab-vend-pedidos">
+        <button class="nav-tab-btn active" data-tab="tab-vend-saldos-estoque" id="btnTabVendSaldosEstoque">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          <span>Saldos em Estoque</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-vend-pedidos">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Consulta Pedido</span>
         </button>
@@ -476,7 +480,136 @@
       </section>
     </div>
 
-    <!-- ABA VENDEDORES 1: CONSULTA PEDIDO -->
+    <!-- ABA VENDEDORES 1: SALDOS EM ESTOQUE (POWER BI STYLE) -->
+    <div id="tab-vend-saldos-estoque" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2>📦 Saldos em Estoque (Multi-Empresa)</h2>
+            <p class="desc">Acompanhamento consolidado de estoque de Produtos Acabados (PA) nas empresas Metal Pleno (14), GSI (15) e OACO (16), com vendas em aberto (SC6) e compras em aberto (SC7).</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div id="estoqueSyncStatusBadge" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+              <span>Última Sincronização: <strong id="estoqueLastSyncTime">Carregando...</strong></span>
+            </div>
+            <button id="btnSyncEstoqueManual" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; height: 38px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              <span>Sincronizar Agora</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Cards KPI do Power BI -->
+        <div class="kpi-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+          <div class="kpi-card" style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #10b981; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Itens em Estoque (Saldo > 0)</div>
+            <div id="kpiItensEstoque" style="font-size: 1.8rem; font-weight: 700; color: #10b981; margin-top: 0.25rem;">0</div>
+          </div>
+          <div class="kpi-card" style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #ef4444; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Itens sem Estoque (Saldo = 0)</div>
+            <div id="kpiItensSemEstoque" style="font-size: 1.8rem; font-weight: 700; color: #ef4444; margin-top: 0.25rem;">0</div>
+          </div>
+          <div class="kpi-card" style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #38bdf8; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Valor Total em Estoque</div>
+            <div id="kpiValorEstoque" style="font-size: 1.8rem; font-weight: 700; color: #38bdf8; margin-top: 0.25rem;">R$ 0,00</div>
+          </div>
+        </div>
+
+        <!-- Filtros Instantâneos -->
+        <div class="vend-search-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: flex-end; margin-top: 1.25rem; background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0; flex: 2;">
+            <label for="estoqueBuscaInput">🔍 Buscar Produto por Código ou Descrição</label>
+            <input type="text" id="estoqueBuscaInput" class="input-text" placeholder="Digite para filtrar instantaneamente (ex: COFRE, ARMARIO, 001001...)" />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="estoqueFiltroSelect">📊 Filtro de Disponibilidade</label>
+            <select id="estoqueFiltroSelect" class="form-select">
+              <option value="todos">Todos os Produtos</option>
+              <option value="positivo" selected>Somente com Saldo em Estoque</option>
+              <option value="zerado_negativo">Somente sem Estoque (Zerados)</option>
+              <option value="com_vendas">Com Vendas em Aberto (SC6)</option>
+              <option value="com_compras">Com Compras em Aberto (SC7)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btnLimparFiltrosEstoque" class="btn btn-outline" style="height: 42px; width: 100%;" title="Limpar Filtros">
+              🧹 Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabela de Saldos em Estoque com 7 Colunas -->
+        <div style="margin-top: 1.5rem;">
+          <div class="table-header-info flex-between" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-weight: 600; font-size: 0.95rem;">
+              📦 Produtos Listados (<span id="estoqueProdutosCount">0</span>)
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              💡 Clique nas colunas com ↕ para ordenar e clique em uma linha para ver o detalhamento por empresa e pedidos.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="tabelaEstoqueSaldos">
+              <thead>
+                <tr>
+                  <th id="thEstoqueDescricao" style="width: 32%; cursor: pointer; user-select: none;" title="Ordenar por Descrição">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>DESCRIÇÃO</span>
+                      <span id="sortIconEstoqueDescricao" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thEstoquePreco" style="width: 10%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Preço">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>PREÇO</span>
+                      <span id="sortIconEstoquePreco" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thEstoqueSaldo" style="width: 10%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Saldo">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>SALDO</span>
+                      <span id="sortIconEstoqueSaldo" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thEstoqueSaldoTotal" style="width: 12%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Saldo Total">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>SALDO_TOTAL</span>
+                      <span id="sortIconEstoqueSaldoTotal" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thEstoqueVendas" style="width: 12%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Vendas em Carteira">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>C6 QTD VENDAS</span>
+                      <span id="sortIconEstoqueVendas" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thEstoqueCompras" style="width: 12%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Compras Pendentes">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>QTD COMPRAS</span>
+                      <span id="sortIconEstoqueCompras" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thEstoquePontoPed" style="width: 12%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Ponto de Pedido">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>PONTO PED</span>
+                      <span id="sortIconEstoquePontoPed" class="sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="estoqueTableBody">
+                <!-- Linhas injetadas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA VENDEDORES 2: CONSULTA PEDIDO -->
     <div id="tab-vend-pedidos" class="tab-pane hidden">
       <section class="card">
         <div class="section-title-row">
@@ -2060,6 +2193,107 @@
     </div>
   </div>
 
+  <!-- Modal Drilldown: Detalhes de Estoque por Empresa, SC7 e SC6 -->
+  <div id="modalEstoqueDetalhes" class="modal hidden">
+    <div class="modal-content modal-large" style="max-width: 920px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h3 id="modalEstoqueTitulo" style="margin: 0; color: #38bdf8; font-size: 1.15rem;">Detalhes do Produto</h3>
+          <span id="modalEstoqueSubtitulo" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Código: -</span>
+        </div>
+        <button id="btnCloseModalEstoque" class="close-btn">&times;</button>
+      </div>
+
+      <!-- Mini KPIs do Produto -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin: 1rem 0;">
+        <div style="background: rgba(15, 23, 42, 0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Preço Unitário</div>
+          <div id="modalKpiPreco" style="font-weight: 700; color: #f1f5f9; font-size: 1.1rem;">R$ 0,00</div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Saldo Físico Total</div>
+          <div id="modalKpiSaldo" style="font-weight: 700; color: #10b981; font-size: 1.1rem;">0 un</div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Valor em Estoque</div>
+          <div id="modalKpiValorTotal" style="font-weight: 700; color: #38bdf8; font-size: 1.1rem;">R$ 0,00</div>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.5); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Ponto de Pedido</div>
+          <div id="modalKpiPontoPed" style="font-weight: 700; color: #f59e0b; font-size: 1.1rem;">0 un</div>
+        </div>
+      </div>
+
+      <!-- Abas Internas da Modal -->
+      <div style="display: flex; gap: 0.5rem; border-bottom: 1px solid var(--panel-border); margin-bottom: 1rem;">
+        <button class="nav-tab-btn active btn-modal-estoque-tab" data-target="modalTabEmpresas">🏢 Resumo por Empresa</button>
+        <button class="nav-tab-btn btn-modal-estoque-tab" data-target="modalTabCompras">🛒 Compras em Aberto (SC7)</button>
+        <button class="nav-tab-btn btn-modal-estoque-tab" data-target="modalTabVendas">📋 Vendas em Aberto (SC6)</button>
+      </div>
+
+      <!-- Painel 1: Empresas -->
+      <div id="modalTabEmpresas" class="modal-estoque-tab-pane" style="flex: 1; overflow-y: auto;">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th style="text-align: right;">Saldo em Estoque</th>
+                <th style="text-align: right;">Vendas Abertas (SC6)</th>
+                <th style="text-align: right;">Compras Abertas (SC7)</th>
+              </tr>
+            </thead>
+            <tbody id="modalTbodyEmpresas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Painel 2: Compras SC7 -->
+      <div id="modalTabCompras" class="modal-estoque-tab-pane hidden" style="flex: 1; overflow-y: auto;">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Empresa</th>
+                <th>Fornecedor</th>
+                <th style="text-align: right;">Qtd Comprada</th>
+                <th style="text-align: right;">Qtd Entregue</th>
+                <th style="text-align: right;">Saldo Pendente</th>
+                <th>Previsão Entrega</th>
+              </tr>
+            </thead>
+            <tbody id="modalTbodyCompras"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Painel 3: Vendas SC6 -->
+      <div id="modalTabVendas" class="modal-estoque-tab-pane hidden" style="flex: 1; overflow-y: auto;">
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>CodWeb</th>
+                <th>Empresa</th>
+                <th>Cliente</th>
+                <th>Vendedor</th>
+                <th style="text-align: right;">Qtd Pedida</th>
+                <th>Previsão Entrega</th>
+              </tr>
+            </thead>
+            <tbody id="modalTbodyVendas"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; border-top: 1px solid var(--panel-border); padding-top: 0.75rem; margin-top: 1rem;">
+        <button id="btnFecharModalEstoqueDetalhes" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Configuração Credenciais Banco Inter -->
   <div id="interConfigModal" class="modal hidden">
     <div class="modal-content modal-large" style="max-width: 750px;">
@@ -2366,6 +2600,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.50"></script>
+  <script src="app.js?v=8.52"></script>
 </body>
 </html>

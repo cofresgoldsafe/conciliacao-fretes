@@ -34,6 +34,7 @@ async function verifyPassword(plain, stored) {
 const dataDir = path.join(__dirname, 'data');
 const usersFile = path.join(dataDir, 'users.json');
 const historyFile = path.join(dataDir, 'history.json');
+const estoqueCacheFile = path.join(dataDir, 'estoque_saldos_cache.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -326,7 +327,41 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_analise_credito_created_at ON analise_credito_history(created_at DESC);
       `);
 
-      // 9. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
+      // 9. Cria Tabela de Saldos em Estoque de Produtos (Multi-Empresa)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS produtos_saldo_estoque (
+          codigo VARCHAR(50) PRIMARY KEY,
+          descricao VARCHAR(255) NOT NULL,
+          preco NUMERIC(14,2) DEFAULT 0.00,
+          saldo NUMERIC(14,2) DEFAULT 0.00,
+          saldo_total NUMERIC(14,2) DEFAULT 0.00,
+          qtd_vendas NUMERIC(14,2) DEFAULT 0.00,
+          qtd_compras NUMERIC(14,2) DEFAULT 0.00,
+          ponto_ped NUMERIC(14,2) DEFAULT 0.00,
+          detalhes_empresas JSONB DEFAULT '{}'::jsonb,
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_produtos_saldo_estoque_desc ON produtos_saldo_estoque(descricao);
+        CREATE INDEX IF NOT EXISTS idx_produtos_saldo_estoque_saldo ON produtos_saldo_estoque(saldo);
+      `);
+
+      // 10. Cria Tabela de Logs de Sincronização de Estoque
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS estoque_sync_logs (
+          id SERIAL PRIMARY KEY,
+          status VARCHAR(50) NOT NULL,
+          total_produtos INTEGER DEFAULT 0,
+          total_saldo_positivo INTEGER DEFAULT 0,
+          total_valor_estoque NUMERIC(14,2) DEFAULT 0.00,
+          duracao_ms INTEGER DEFAULT 0,
+          triggered_by VARCHAR(100) DEFAULT 'JOB',
+          error_message TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_estoque_sync_logs_created ON estoque_sync_logs(created_at DESC);
+      `);
+
+      // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
 
@@ -1296,6 +1331,245 @@ async function getHistoricoCreditoDB(limit = 200) {
   return [];
 }
 
+/**
+ * Salva a lista de saldos em estoque de produtos (PostgreSQL + Fallback JSON Local)
+ */
+async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
+  const p = getPool();
+  const now = new Date().toISOString();
+  const metaSalvar = {
+    status: metadata.status || 'SUCCESS',
+    synced_at: now,
+    total_produtos: produtosList.length,
+    total_saldo_positivo: produtosList.filter(x => Number(x.saldo || 0) > 0).length,
+    total_valor_estoque: produtosList.reduce((acc, x) => acc + (Number(x.saldo_total || 0)), 0),
+    duracao_ms: metadata.duracao_ms || 0,
+    triggered_by: metadata.triggered_by || 'JOB',
+    error_message: metadata.error_message || null
+  };
+
+  // 1. Grava no cache JSON local garantindo persistência e fallback gracioso
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const payloadCache = {
+      metadata: metaSalvar,
+      produtos: produtosList
+    };
+    fs.writeFileSync(estoqueCacheFile, JSON.stringify(payloadCache, null, 2), 'utf-8');
+  } catch (errCache) {
+    console.warn('⚠️ [Postgres Cache] Erro ao gravar estoque_saldos_cache.json:', errCache.message);
+  }
+
+  // 2. Grava no PostgreSQL / Supabase
+  if (p && produtosList.length > 0) {
+    try {
+      const client = await p.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Upsert em lotes (chunks de 100 itens) para alto desempenho e atomicidade
+        const chunkSize = 100;
+        for (let i = 0; i < produtosList.length; i += chunkSize) {
+          const chunk = produtosList.slice(i, i + chunkSize);
+          for (const prod of chunk) {
+            await client.query(`
+              INSERT INTO produtos_saldo_estoque (
+                codigo, descricao, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+              ON CONFLICT (codigo) DO UPDATE SET
+                descricao = EXCLUDED.descricao,
+                preco = EXCLUDED.preco,
+                saldo = EXCLUDED.saldo,
+                saldo_total = EXCLUDED.saldo_total,
+                qtd_vendas = EXCLUDED.qtd_vendas,
+                qtd_compras = EXCLUDED.qtd_compras,
+                ponto_ped = EXCLUDED.ponto_ped,
+                detalhes_empresas = EXCLUDED.detalhes_empresas,
+                synced_at = EXCLUDED.synced_at;
+            `, [
+              String(prod.codigo || '').trim(),
+              String(prod.descricao || '').trim(),
+              Number(prod.preco || 0),
+              Number(prod.saldo || 0),
+              Number(prod.saldo_total || 0),
+              Number(prod.qtd_vendas || 0),
+              Number(prod.qtd_compras || 0),
+              Number(prod.ponto_ped || 0),
+              JSON.stringify(prod.detalhes_empresas || {})
+            ]);
+          }
+        }
+
+        // Insere registro de log da sincronização
+        await client.query(`
+          INSERT INTO estoque_sync_logs (
+            status, total_produtos, total_saldo_positivo, total_valor_estoque, duracao_ms, triggered_by, error_message, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW());
+        `, [
+          metaSalvar.status,
+          metaSalvar.total_produtos,
+          metaSalvar.total_saldo_positivo,
+          metaSalvar.total_valor_estoque,
+          metaSalvar.duracao_ms,
+          metaSalvar.triggered_by,
+          metaSalvar.error_message
+        ]);
+
+        await client.query('COMMIT');
+      } catch (errTx) {
+        await client.query('ROLLBACK');
+        throw errTx;
+      } finally {
+        client.release();
+      }
+    } catch (errPostgres) {
+      console.warn('⚠️ [Postgres] Falha ao sincronizar saldos de estoque no Supabase (usando fallback JSON):', errPostgres.message);
+    }
+  }
+
+  return metaSalvar;
+}
+
+/**
+ * Consulta saldos de estoque (PostgreSQL + Fallback JSON Local)
+ */
+async function getSaldosEstoqueDB({ search, filtroEstoque } = {}) {
+  const p = getPool();
+  const cleanSearch = (search || '').toLowerCase().trim();
+  const cleanFiltro = (filtroEstoque || 'todos').toLowerCase().trim();
+
+  // 1. Tenta buscar no PostgreSQL
+  if (p) {
+    try {
+      const params = [];
+      const whereClauses = [];
+
+      if (cleanSearch) {
+        params.push(`%${cleanSearch}%`);
+        whereClauses.push(`(LOWER(codigo) LIKE $${params.length} OR LOWER(descricao) LIKE $${params.length})`);
+      }
+
+      if (cleanFiltro === 'positivo') {
+        whereClauses.push('saldo > 0');
+      } else if (cleanFiltro === 'zerado_negativo') {
+        whereClauses.push('saldo <= 0');
+      } else if (cleanFiltro === 'com_vendas') {
+        whereClauses.push('qtd_vendas > 0');
+      } else if (cleanFiltro === 'com_compras') {
+        whereClauses.push('qtd_compras > 0');
+      }
+
+      const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const sql = `
+        SELECT 
+          codigo, descricao, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
+        FROM produtos_saldo_estoque
+        ${whereStr}
+        ORDER BY saldo DESC, descricao ASC;
+      `;
+
+      const res = await safeQuery(sql, params);
+      if (res && res.rows && res.rows.length > 0) {
+        return res.rows.map(r => ({
+          codigo: r.codigo,
+          descricao: r.descricao,
+          preco: Number(r.preco) || 0,
+          saldo: Number(r.saldo) || 0,
+          saldo_total: Number(r.saldo_total) || 0,
+          qtd_vendas: Number(r.qtd_vendas) || 0,
+          qtd_compras: Number(r.qtd_compras) || 0,
+          ponto_ped: Number(r.ponto_ped) || 0,
+          detalhes_empresas: typeof r.detalhes_empresas === 'string' ? JSON.parse(r.detalhes_empresas) : (r.detalhes_empresas || {}),
+          synced_at: r.synced_at ? new Date(r.synced_at).toISOString() : null
+        }));
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro na query de produtos_saldo_estoque, recorrendo ao cache JSON:', err.message);
+    }
+  }
+
+  // 2. Fallback gracioso: Lê de data/estoque_saldos_cache.json
+  try {
+    if (fs.existsSync(estoqueCacheFile)) {
+      const cacheData = JSON.parse(fs.readFileSync(estoqueCacheFile, 'utf-8'));
+      let produtos = Array.isArray(cacheData.produtos) ? cacheData.produtos : [];
+
+      if (cleanSearch) {
+        produtos = produtos.filter(p => 
+          (p.codigo && p.codigo.toLowerCase().includes(cleanSearch)) ||
+          (p.descricao && p.descricao.toLowerCase().includes(cleanSearch))
+        );
+      }
+
+      if (cleanFiltro === 'positivo') {
+        produtos = produtos.filter(p => Number(p.saldo || 0) > 0);
+      } else if (cleanFiltro === 'zerado_negativo') {
+        produtos = produtos.filter(p => Number(p.saldo || 0) <= 0);
+      } else if (cleanFiltro === 'com_vendas') {
+        produtos = produtos.filter(p => Number(p.qtd_vendas || 0) > 0);
+      } else if (cleanFiltro === 'com_compras') {
+        produtos = produtos.filter(p => Number(p.qtd_compras || 0) > 0);
+      }
+
+      return produtos;
+    }
+  } catch (errFallback) {
+    console.warn('⚠️ Erro ao ler estoque_saldos_cache.json:', errFallback.message);
+  }
+
+  return [];
+}
+
+/**
+ * Retorna o último log de sincronização do estoque
+ */
+async function getUltimoSyncEstoqueLog() {
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await safeQuery(`
+        SELECT id, status, total_produtos, total_saldo_positivo, total_valor_estoque, duracao_ms, triggered_by, error_message, created_at
+        FROM estoque_sync_logs
+        ORDER BY id DESC
+        LIMIT 1;
+      `);
+      if (res && res.rows && res.rows.length > 0) {
+        const r = res.rows[0];
+        return {
+          id: r.id,
+          status: r.status,
+          total_produtos: Number(r.total_produtos) || 0,
+          total_saldo_positivo: Number(r.total_saldo_positivo) || 0,
+          total_valor_estoque: Number(r.total_valor_estoque) || 0,
+          duracao_ms: Number(r.duracao_ms) || 0,
+          triggered_by: r.triggered_by,
+          error_message: r.error_message,
+          created_at: r.created_at ? new Date(r.created_at).toISOString() : null
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar último log em estoque_sync_logs:', err.message);
+    }
+  }
+
+  // Fallback cache JSON
+  try {
+    if (fs.existsSync(estoqueCacheFile)) {
+      const cacheData = JSON.parse(fs.readFileSync(estoqueCacheFile, 'utf-8'));
+      if (cacheData.metadata) {
+        return {
+          ...cacheData.metadata,
+          created_at: cacheData.metadata.synced_at || new Date().toISOString()
+        };
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -1321,5 +1595,8 @@ module.exports = {
   getInterWebhookEvents,
   saveAnaliseCreditoDB,
   getHistoricoCreditoDB,
+  saveSaldosEstoqueDB,
+  getSaldosEstoqueDB,
+  getUltimoSyncEstoqueLog,
   isPostgresConnected
 };
