@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements - Tab Navigation
   const navTabBtns = document.querySelectorAll('.nav-tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
+  const mainTabBtns = document.querySelectorAll('.main-tab-btn');
+  const subGroupLogistica = document.getElementById('subGroupLogistica');
+  const subGroupConsulta = document.getElementById('subGroupConsulta');
+  const subGroupVendedores = document.getElementById('subGroupVendedores');
+  const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
+  const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
   // Valida se o destino da requisição é da mesma origem (same-origin) antes de injetar credenciais
   function isSameOriginUrl(targetUrl) {
@@ -654,13 +660,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- SISTEMA DE NAVEGAÇÃO DE 2 CAMADAS (ABAS PRINCIPAIS + SUB-ABAS) ---
-  const mainTabBtns = document.querySelectorAll('.main-tab-btn');
-  const subGroupLogistica = document.getElementById('subGroupLogistica');
-  const subGroupConsulta = document.getElementById('subGroupConsulta');
-  const subGroupVendedores = document.getElementById('subGroupVendedores');
-  const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
-  const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
-
   function switchMainTab(targetMain) {
     mainTabBtns.forEach(b => b.classList.remove('active'));
     
@@ -4827,6 +4826,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data.dominio_principal) {
             domMsg = ` | Domínio: <strong>${escapeHtml(data.dominio_principal)}</strong> (${data.idade_dominio_rdap !== null ? data.idade_dominio_rdap + ' anos' : 'verificado'})`;
           }
+
+          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong>${endMsg}${domMsg}${cnpjMatchMsg}.`;
+        }
 
         // Atualiza Score em Tempo Real imediatamente após preencher dados
         atualizarScoreEmTempoReal();
