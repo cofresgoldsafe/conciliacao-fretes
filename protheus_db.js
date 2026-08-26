@@ -1567,14 +1567,17 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
   const produtosMap = new Map();
 
   try {
-    // 1. Extração do Catálogo de Produtos PA (SB1090, SB1100, SB1140, SB1150, SB1160, SB1010)
+    // 1. Extração do Catálogo de Produtos PA dos Grupos Comerciais (001, 002, 010, 018, 020)
     const sb1Tables = ['SB1090', 'SB1100', 'SB1140', 'SB1150', 'SB1160', 'SB1010'];
+    const GRUPOS_COMERCIAIS = ['001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020', '1', '2', '10', '18', '20'];
+
     for (const sb1Table of sb1Tables) {
       try {
         const sqlSB1 = `
           SELECT 
             RTRIM(B1_COD) AS B1_COD,
             RTRIM(B1_DESC) AS B1_DESC,
+            RTRIM(ISNULL(B1_GRUPO, '')) AS B1_GRUPO,
             ISNULL(B1_PRV1, 0) AS B1_PRV1,
             ISNULL(B1_EMIN, 0) AS B1_EMIN,
             ISNULL(B1_LE, 0) AS B1_LE,
@@ -1583,6 +1586,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
           FROM ${sb1Table}
           WHERE D_E_L_E_T_ = ' '
             AND RTRIM(B1_TIPO) = 'PA'
+            AND RTRIM(B1_GRUPO) IN ('001', '002', '010', '018', '020', '0001', '0002', '0010', '0018', '0020')
             AND B1_DESC NOT LIKE '%XXX%'
             AND B1_COD NOT LIKE '%X%'
             AND B1_COD LIKE '%0%'
@@ -1595,6 +1599,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             if (!cod) continue;
 
             const desc = String(r.B1_DESC || '').trim();
+            const grupo = String(r.B1_GRUPO || '').trim();
             const preco = Number(r.B1_PRV1) || 0;
             const pontoPed = Number(r.B1_EMIN) || Number(r.B1_LE) || 0;
 
@@ -1602,6 +1607,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
               produtosMap.set(cod, {
                 codigo: cod,
                 descricao: desc || `PRODUTO ${cod}`,
+                grupo: grupo,
                 preco: preco,
                 saldo: 0,
                 saldo_total: 0,
@@ -1617,6 +1623,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             } else {
               const existing = produtosMap.get(cod);
               if (!existing.descricao && desc) existing.descricao = desc;
+              if (!existing.grupo && grupo) existing.grupo = grupo;
               if (existing.preco === 0 && preco > 0) existing.preco = preco;
               if (existing.ponto_ped === 0 && pontoPed > 0) existing.ponto_ped = pontoPed;
             }

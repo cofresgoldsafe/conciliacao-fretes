@@ -3304,7 +3304,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr style="cursor: pointer; transition: background 0.15s ease;" onclick="abrirModalEstoqueDetalhes('${p.codigo}')" title="Clique para ver drilldown por empresa e pedidos">
           <td>
             <div style="font-weight: 600; color: #f1f5f9;">${p.descricao || 'PRODUTO SEM DESCRIÇÃO'}</div>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Cód: <code>${p.codigo}</code></div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+              Cód: <code>${p.codigo}</code>
+              ${p.grupo ? `<span style="display:inline-block; font-size:0.7rem; margin-left:6px; background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); border-radius:4px; padding:0 5px; font-weight:600;">Grupo ${p.grupo}</span>` : ''}
+            </div>
           </td>
           <td style="text-align: right; font-weight: 500; font-family: monospace;">${precoFmt}</td>
           <td style="text-align: right;">
@@ -3396,7 +3399,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLimparFiltrosEstoque) {
     btnLimparFiltrosEstoque.addEventListener('click', () => {
       if (estoqueBuscaInput) estoqueBuscaInput.value = '';
-      if (estoqueFiltroSelect) estoqueFiltroSelect.value = 'positivo';
+      if (estoqueFiltroSelect) estoqueFiltroSelect.value = 'todos';
       carregarSaldosEstoque();
     });
   }
@@ -3445,7 +3448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const kpiPto = document.getElementById('modalKpiPontoPed');
 
     if (modalTitulo) modalTitulo.textContent = prod.descricao || 'Detalhes do Produto';
-    if (modalSub) modalSub.textContent = `Código Protheus: ${prod.codigo}`;
+    if (modalSub) modalSub.textContent = `Código Protheus: ${prod.codigo}${prod.grupo ? ' | Grupo: ' + prod.grupo : ''}`;
     if (kpiPrc) kpiPrc.textContent = Number(prod.preco || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     if (kpiSld) kpiSld.textContent = `${Number(prod.saldo || 0).toLocaleString('pt-BR')} un`;
     if (kpiTot) kpiTot.textContent = Number(prod.saldo_total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
