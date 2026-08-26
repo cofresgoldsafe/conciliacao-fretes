@@ -1567,8 +1567,8 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
   const produtosMap = new Map();
 
   try {
-    // 1. Extração do Catálogo de Produtos PA (SB1090, SB1100, SB1010)
-    const sb1Tables = ['SB1090', 'SB1100', 'SB1010'];
+    // 1. Extração do Catálogo de Produtos PA (SB1090, SB1100, SB1140, SB1150, SB1160, SB1010)
+    const sb1Tables = ['SB1090', 'SB1100', 'SB1140', 'SB1150', 'SB1160', 'SB1010'];
     for (const sb1Table of sb1Tables) {
       try {
         const sqlSB1 = `
@@ -1582,10 +1582,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             RTRIM(ISNULL(B1_TIPO, '')) AS B1_TIPO
           FROM ${sb1Table}
           WHERE D_E_L_E_T_ = ' '
-            AND (
-              RTRIM(B1_TIPO) = 'PA'
-              OR (RTRIM(B1_COD) >= '001000000000000' AND RTRIM(B1_COD) <= '019999999999999')
-            )
+            AND RTRIM(B1_TIPO) = 'PA'
             AND B1_DESC NOT LIKE '%XXX%'
             AND B1_COD NOT LIKE '%X%'
             AND B1_COD LIKE '%0%'
@@ -1597,22 +1594,31 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             const cod = String(r.B1_COD || '').trim();
             if (!cod) continue;
 
+            const desc = String(r.B1_DESC || '').trim();
+            const preco = Number(r.B1_PRV1) || 0;
+            const pontoPed = Number(r.B1_EMIN) || Number(r.B1_LE) || 0;
+
             if (!produtosMap.has(cod)) {
               produtosMap.set(cod, {
                 codigo: cod,
-                descricao: String(r.B1_DESC || '').trim() || `PRODUTO ${cod}`,
-                preco: Number(r.B1_PRV1) || 0,
+                descricao: desc || `PRODUTO ${cod}`,
+                preco: preco,
                 saldo: 0,
                 saldo_total: 0,
                 qtd_vendas: 0,
                 qtd_compras: 0,
-                ponto_ped: Number(r.B1_EMIN) || Number(r.B1_LE) || 0,
+                ponto_ped: pontoPed,
                 detalhes_empresas: {
                   "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
                   "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
                   "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
                 }
               });
+            } else {
+              const existing = produtosMap.get(cod);
+              if (!existing.descricao && desc) existing.descricao = desc;
+              if (existing.preco === 0 && preco > 0) existing.preco = preco;
+              if (existing.ponto_ped === 0 && pontoPed > 0) existing.ponto_ped = pontoPed;
             }
           }
         }
@@ -1627,14 +1633,13 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
       { cod: "16", sigla: "OACO", nome: "OACO (16)", sb2: "SB2160", sc6: "SC6160", sc5: "SC5160", sc7: "SC7160" }
     ];
 
-    // 2. Extração de Saldos Físicos em Estoque SB2 (14, 15, 16)
+    // 2. Extração de Saldos Físicos em Estoque SB2 (14, 15, 16) - Estritamente para Produtos PA do Catálogo
     for (const emp of empresas) {
       try {
         const sqlSB2 = `
           SELECT 
             RTRIM(B2_COD) AS B2_COD,
-            ISNULL(SUM(B2_QATU), 0) AS SALDO_QATU,
-            ISNULL(SUM(B2_QPEDVEN), 0) AS SALDO_PEDVEN
+            ISNULL(SUM(B2_QATU), 0) AS SALDO_QATU
           FROM ${emp.sb2}
           WHERE D_E_L_E_T_ = ' '
             AND B2_COD NOT LIKE '%X%'
@@ -1647,25 +1652,8 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             const cod = String(r.B2_COD || '').trim();
             if (!cod) continue;
 
-            let prod = produtosMap.get(cod);
-            if (!prod) {
-              prod = {
-                codigo: cod,
-                descricao: `PRODUTO ${cod}`,
-                preco: 0,
-                saldo: 0,
-                saldo_total: 0,
-                qtd_vendas: 0,
-                qtd_compras: 0,
-                ponto_ped: 0,
-                detalhes_empresas: {
-                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
-                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
-                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
-                }
-              };
-              produtosMap.set(cod, prod);
-            }
+            const prod = produtosMap.get(cod);
+            if (!prod) continue; // Insumos, matérias-primas e componentes não entram no estoque comercial
 
             const saldoEmp = Number(r.SALDO_QATU) || 0;
             prod.detalhes_empresas[emp.cod].saldo += saldoEmp;
@@ -1710,25 +1698,8 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             const cod = String(r.PRODUTO || '').trim();
             if (!cod) continue;
 
-            let prod = produtosMap.get(cod);
-            if (!prod) {
-              prod = {
-                codigo: cod,
-                descricao: r.DESCRICAO || `PRODUTO ${cod}`,
-                preco: Number(r.PRCVEN) || 0,
-                saldo: 0,
-                saldo_total: 0,
-                qtd_vendas: 0,
-                qtd_compras: 0,
-                ponto_ped: 0,
-                detalhes_empresas: {
-                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
-                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
-                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
-                }
-              };
-              produtosMap.set(cod, prod);
-            }
+            const prod = produtosMap.get(cod);
+            if (!prod) continue; // Somente produtos acabados
 
             const qtdVenda = Number(r.QTDVEN) || 0;
             prod.qtd_vendas += qtdVenda;
@@ -1757,22 +1728,25 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
       try {
         const sqlSC7 = `
           SELECT 
-            RTRIM(C7.C7_NUM) AS NUM_PED,
-            RTRIM(C7.C7_ITEM) AS ITEM,
-            RTRIM(C7.C7_PRODUTO) AS PRODUTO,
-            RTRIM(ISNULL(C7.C7_DESCRI, '')) AS DESCRICAO,
-            ISNULL(C7.C7_QUANT, 0) AS QUANT,
-            ISNULL(C7.C7_QUJE, 0) AS QUJE,
-            (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) AS SALDO_COMPRA,
-            ISNULL(C7.C7_PRECO, 0) AS PRECO,
-            ISNULL(C7.C7_TOTAL, 0) AS TOTAL,
-            RTRIM(ISNULL(C7.C7_DATPRF, '')) AS PREV_ENTREGA,
-            RTRIM(ISNULL(C7.C7_EMISSAO, '')) AS EMISSAO,
-            ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(C7.C7_FORNECE, ''))) AS FORNECEDOR
+            RTRIM(C7_NUM) AS NUM_PED,
+            RTRIM(C7_ITEM) AS ITEM,
+            RTRIM(C7_PRODUTO) AS PRODUTO,
+            RTRIM(ISNULL(C7_DESCRI, '')) AS DESCRICAO,
+            ISNULL(C7_QUANT, 0) AS QUANT,
+            ISNULL(C7_QUJE, 0) AS QUJE,
+            ISNULL(C7_PRECO, 0) AS PRECO,
+            ISNULL(C7_TOTAL, 0) AS TOTAL,
+            RTRIM(ISNULL(C7_DATPRF, '')) AS PREV_ENTREGA,
+            RTRIM(ISNULL(C7_FORNECE, '')) AS FORNECE,
+            RTRIM(ISNULL(A2.A2_NOME, '')) AS NOME_FORNECEDOR
           FROM ${emp.sc7} C7
+          LEFT JOIN SA2010 A2 
+            ON A2.A2_COD = C7.C7_FORNECE 
+           AND A2.A2_LOJA = C7.C7_LOJA 
+           AND A2.D_E_L_E_T_ = ' '
           WHERE C7.D_E_L_E_T_ = ' '
-            AND (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0
             AND (C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')
+            AND (C7.C7_QUANT - C7.C7_QUJE) > 0
           ORDER BY C7.C7_DATPRF ASC;
         `;
         const resSC7 = await executeRailwayQuery(sqlSC7);
@@ -1781,27 +1755,13 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
             const cod = String(r.PRODUTO || '').trim();
             if (!cod) continue;
 
-            let prod = produtosMap.get(cod);
-            if (!prod) {
-              prod = {
-                codigo: cod,
-                descricao: r.DESCRICAO || `PRODUTO ${cod}`,
-                preco: 0,
-                saldo: 0,
-                saldo_total: 0,
-                qtd_vendas: 0,
-                qtd_compras: 0,
-                ponto_ped: 0,
-                detalhes_empresas: {
-                  "14": { sigla: "MP", nome: "Metal Pleno (14)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
-                  "15": { sigla: "GSI", nome: "GSI (15)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] },
-                  "16": { sigla: "OACO", nome: "OACO (16)", saldo: 0, vendas: 0, compras: 0, vendasLista: [], comprasLista: [] }
-                }
-              };
-              produtosMap.set(cod, prod);
-            }
+            const prod = produtosMap.get(cod);
+            if (!prod) continue; // Somente produtos acabados
 
-            const saldoCompra = Math.max(0, Number(r.SALDO_COMPRA) || (Number(r.QUANT || 0) - Number(r.QUJE || 0)));
+            const qtdComprada = Number(r.QUANT) || 0;
+            const qtdEntregue = Number(r.QUJE) || 0;
+            const saldoCompra = Math.max(0, qtdComprada - qtdEntregue);
+
             prod.qtd_compras += saldoCompra;
             prod.detalhes_empresas[emp.cod].compras += saldoCompra;
             prod.detalhes_empresas[emp.cod].comprasLista.push({
@@ -1809,9 +1769,9 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
               numPed: r.NUM_PED,
               item: r.ITEM,
               empresa: emp.sigla,
-              fornecedor: r.FORNECEDOR || 'FORNECEDOR NÃO INFORMADO',
-              qtdComprada: Number(r.QUANT) || 0,
-              qtdEntregue: Number(r.QUJE) || 0,
+              fornecedor: r.NOME_FORNECEDOR || r.FORNECE || 'FORNECEDOR NÃO INFORMADO',
+              qtdComprada: qtdComprada,
+              qtdEntregue: qtdEntregue,
               saldoCompra: saldoCompra,
               preco: Number(r.PRECO) || 0,
               total: Number(r.TOTAL) || 0,
