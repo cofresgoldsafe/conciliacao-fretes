@@ -152,9 +152,21 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Calibração Administrativa de Pesos & Ficha Imutável:**
      - Inclusão dos novos parâmetros de calibração na aba Configurações (`#tab-config-score`): `cfg_peso_serasa_default`, `cfg_peso_refin_sim`, `cfg_peso_dividas_vencidas_sim`, `cfg_peso_densidade_consultas_alta`, `cfg_peso_consultantes_fomento_sim`, `cfg_peso_socios_restricao_sim`, `cfg_peso_doc_extraviado_sim`.
      - Extrato e Ficha do Pedido com badges de pontuação auditáveis, conferência matemática e restauração completa no formulário via botão `⚡ Carregar no Formulário`.
-   - **Suíte de Testes Automatizados:** Script `test_serasa_pdf_parser.js` com 8 asserções automatizadas cobrindo laudos reais (WDM, DASS, AP Elettro, EQUIPSEA), laudos expirados (Optimus Pharma), rejeição de não-Serasa, motor de score e endpoint HTTP `POST /api/financeiro/analise-credito/parse-serasa-pdf` (100% de aprovação).
-17. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-18. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+   - **Suíte de Testes Automatizados:** Script `test_serasa_pdf_parser.js` com 9 asserções automatizadas cobrindo laudos reais (WDM, DASS, AP Elettro, EQUIPSEA, Itambé Minas), laudos expirados (Optimus Pharma), rejeição de não-Serasa, motor de score e endpoint HTTP `POST /api/financeiro/analise-credito/parse-serasa-pdf` (100% de aprovação).
+17. [x] **Tratamento de Capital Social Não Informado / Isento (Filiais, S.A., Sem Fins Lucrativos) (`analise_credito_engine.js`, `public/index.html`, `public/app.js`, `server.js`, `postgres_db.js`, `test_capital_social_isento.js`):**
+   - **Checkbox de Seleção Rápida & Desbloqueio de Gravação:**
+     - Inclusão do checkbox `[ ] Não informado / Isento` (`#cr_sem_capital_social`) ao lado do campo Capital Social.
+     - Ao ser marcado, o campo `cr_capital_social` é desabilitado com opacidade e placeholder explicativo, liberando a trava de validação de campos obrigatórios (`camposObrigatorios`) e permitindo o registro da análise no banco sem bloqueios.
+   - **Preenchimento Automático Protheus / Receita:**
+     - Ao consultar pedidos de filiais ou entidades onde a Receita/Protheus não lista capital social (ou vem nulo/zerado), o sistema marca o checkbox e ajusta o formulário automaticamente.
+   - **Pontuação Neutra & Calibração Parametrizada (`0 pts`):**
+     - Empresas sem capital social recebem pontuação neutra (`0 pts`), evitando tanto a bonificação indevida de grandes aportes quanto a penalização injusta de microempresas (`-7 pts`).
+     - Criação do parâmetro `cfg_peso_capital_nao_informado` na aba Configurações de Score (`#tab-config-score`) para customização livre pelo administrador.
+   - **Ficha do Pedido, Extrato e Restauração Perfeita:**
+     - Exibição de `Capital Social: Não informado / Isento (0 pts)` na Ficha e no Extrato de Auditoria, com suporte completo a recarga no formulário via `⚡ Carregar no Formulário`.
+   - **Suíte de Testes:** Script `test_capital_social_isento.js` com 5 testes automatizados aprovados com 100% de sucesso.
+18. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+19. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

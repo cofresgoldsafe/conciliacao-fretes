@@ -4722,10 +4722,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // Dados Públicos e Receita Federal
         setVal('cr_cnpj_ativo', data.cnpj_ativo || 'S');
         setVal('cr_fundacao_matriz', data.fundacao_matriz || '');
-        if (data.capital_social) {
-          setVal('cr_capital_social', Number(data.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        
+        const semCapCheckbox = document.getElementById('cr_sem_capital_social');
+        const capInput = document.getElementById('cr_capital_social');
+        if (data.capital_social && Number(data.capital_social) > 0) {
+          if (semCapCheckbox) semCapCheckbox.checked = false;
+          if (capInput) {
+            capInput.disabled = false;
+            capInput.placeholder = '0,00';
+            capInput.value = Number(data.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
         } else {
-          setVal('cr_capital_social', '');
+          if (semCapCheckbox) semCapCheckbox.checked = true;
+          if (capInput) {
+            capInput.disabled = true;
+            capInput.placeholder = 'Não informado / Isento';
+            capInput.value = '';
+          }
         }
 
         // Comparação de Endereço Protheus vs Receita Federal
@@ -4859,6 +4872,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Listener para o Checkbox de Capital Social Não Informado / Isento
+  const crSemCapitalSocial = document.getElementById('cr_sem_capital_social');
+  const crCapitalSocialInput = document.getElementById('cr_capital_social');
+  if (crSemCapitalSocial && crCapitalSocialInput) {
+    crSemCapitalSocial.addEventListener('change', () => {
+      if (crSemCapitalSocial.checked) {
+        crCapitalSocialInput.disabled = true;
+        crCapitalSocialInput.value = '';
+        crCapitalSocialInput.placeholder = 'Não informado / Isento';
+        crCapitalSocialInput.style.opacity = '0.7';
+      } else {
+        crCapitalSocialInput.disabled = false;
+        crCapitalSocialInput.placeholder = '0,00';
+        crCapitalSocialInput.style.opacity = '1';
+        crCapitalSocialInput.focus();
+      }
+      atualizarScoreEmTempoReal();
+    });
+  }
+
   // Função utilitária para extrair dados do formulário
   function extrairDadosFormCredito() {
     const getVal = (id) => {
@@ -4872,6 +4905,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const limpo = String(valStr).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
       return parseFloat(limpo) || 0;
     };
+
+    const isSemCap = crSemCapitalSocial ? crSemCapitalSocial.checked : false;
 
     return {
       empresa: creditoEmpresaSelect ? creditoEmpresaSelect.value : '14',
@@ -4901,7 +4936,8 @@ document.addEventListener('DOMContentLoaded', () => {
       mail_gratuito: getVal('cr_mail_gratuito'),
       possui_site: getVal('cr_possui_site'),
       fundacao_matriz: getVal('cr_fundacao_matriz'),
-      capital_social: parseMoeda(getVal('cr_capital_social')),
+      sem_capital_social: isSemCap ? 'S' : 'N',
+      capital_social: isSemCap ? null : parseMoeda(getVal('cr_capital_social')),
       score_serasa: getVal('cr_score_serasa'),
       probabilidade_inadimplencia: getVal('cr_probabilidade_inadimplencia'),
       protestos: getVal('cr_protestos'),
@@ -5039,9 +5075,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pontos.empresa_grande_conhecida = dados.empresa_grande_conhecida === 'S' ? getCfg('peso_grande_conhecida_sim', 5) : 0;
 
-    const temProtestos = dados.protestos === 'S';
-    const valProtestos = Number(dados.valor_protestos) || 0;
-    const capSocial = Number(dados.capital_social) || 0;
+    const isSemCapital = (crSemCapitalSocial && crSemCapitalSocial.checked) || dados.sem_capital_social === 'S';
+    const capSocial = isSemCapital ? 0 : (Number(dados.capital_social) || 0);
 
     if (dados.protestos === 'N') {
       pontos.protestos = getCfg('peso_protestos_nao', 5);
@@ -5088,12 +5123,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    if (capSocial >= 10000000) pontos.capital_social = getCfg('peso_capital_10m', 12);
-    else if (capSocial >= 1000000) pontos.capital_social = getCfg('peso_capital_1m', 6);
-    else if (capSocial >= 150000) pontos.capital_social = getCfg('peso_capital_150k', 0);
-    else if (capSocial >= 12000) pontos.capital_social = getCfg('peso_capital_12k_menor', -3);
-    else if (capSocial > 0) pontos.capital_social = getCfg('peso_capital_zero', -7);
-    else pontos.capital_social = 0;
+    if (isSemCapital) {
+      pontos.capital_social = getCfg('peso_capital_nao_informado', 0);
+    } else if (capSocial >= 10000000) {
+      pontos.capital_social = getCfg('peso_capital_10m', 12);
+    } else if (capSocial >= 1000000) {
+      pontos.capital_social = getCfg('peso_capital_1m', 6);
+    } else if (capSocial >= 150000) {
+      pontos.capital_social = getCfg('peso_capital_150k', 0);
+    } else if (capSocial >= 12000) {
+      pontos.capital_social = getCfg('peso_capital_12k_menor', -3);
+    } else if (capSocial > 0) {
+      pontos.capital_social = getCfg('peso_capital_zero', -7);
+    } else {
+      pontos.capital_social = getCfg('peso_capital_nao_informado', 0);
+    }
 
     pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
     pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? getCfg('peso_razao_fgts_igual_nao', -10) : 0;
@@ -5256,6 +5300,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const payload = extrairDadosFormCredito();
 
+      const semCapValido = payload.sem_capital_social === 'S';
+
       // Lista de campos com validação de preenchimento obrigatório
       const camposObrigatorios = [
         { val: payload.pedido_venda, id: 'cr_pedido_venda', label: 'Nº Pedido' },
@@ -5277,7 +5323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { val: payload.mail_gratuito, id: 'cr_mail_gratuito', label: 'E-mail Gratuito' },
         { val: payload.possui_site, id: 'cr_possui_site', label: 'Possui Site Ativo' },
         { val: payload.fundacao_matriz, id: 'cr_fundacao_matriz', label: 'Fundação Matriz' },
-        { val: payload.capital_social, id: 'cr_capital_social', label: 'Capital Social' },
+        { val: semCapValido ? 'ISENTO' : (payload.capital_social !== null && payload.capital_social !== undefined && payload.capital_social !== '' ? payload.capital_social : ''), id: 'cr_capital_social', label: 'Capital Social' },
         { val: payload.score_serasa, id: 'cr_score_serasa', label: 'Score Serasa' },
         { val: payload.protestos, id: 'cr_protestos', label: 'Possui Protestos' },
         { val: payload.pfin, id: 'cr_pfin', label: 'PFIN Sim' },
@@ -5587,8 +5633,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    const scoreColor = item.total_score > 5 ? '#22c55e' : (item.total_score >= -3 ? '#fbbf24' : '#f87171');
-    const fmtSimNao = (val) => val === 'S' ? '<span style="color:#22c55e; font-weight:700;">Sim</span>' : (val === 'N' ? '<span style="color:#f87171; font-weight:700;">Não</span>' : escapeHtml(val || '-'));
+    const isSemCapItem = item.sem_capital_social === 'S' || item.capital_social === null || item.capital_social === undefined || (Number(item.capital_social) === 0 && item.sem_capital_social !== 'N');
+    const capSocialFormatado = isSemCapItem ? 'Não informado / Isento' : `R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 
     // Lista de conferência de todos os critérios avaliados
     const extratoLinhas = [
@@ -5597,7 +5643,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '1. Limites & Identificação', nome: 'Endereço Cadastro = Receita', val: item.cadastro_igual_receita === 'S' ? 'Sim' : 'Não', pts: pts.cadastro_igual_receita },
       { cat: '1. Limites & Identificação', nome: 'Casa / Sala no Endereço', val: item.casa_sala_conj_end === 'S' ? 'Sim' : 'Não', pts: pts.casa_sala_conj },
       { cat: '1. Limites & Identificação', nome: 'Fundação Matriz (Idade Empresa)', val: item.fundacao_matriz || '-', pts: pts.idade_empresa },
-      { cat: '1. Limites & Identificação', nome: 'Capital Social Integralizado', val: item.capital_social ? `R$ ${Number(item.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'R$ 0,00', pts: pts.capital_social },
+      { cat: '1. Limites & Identificação', nome: 'Capital Social Integralizado', val: capSocialFormatado, pts: pts.capital_social },
       { cat: '1. Limites & Identificação', nome: 'Empresa Grande / Notória', val: item.empresa_grande_conhecida === 'S' ? 'Sim' : 'Não', pts: pts.empresa_grande_conhecida },
 
       { cat: '2. Comercial & Pagamentos', nome: 'Condição de Venda (À Vista / Prazo)', val: item.faturado === 'N' ? 'À Vista (+100)' : 'A Prazo (0)', pts: pts.faturado },
@@ -5694,7 +5740,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)} ${formatarBadgePontos(pts.cadastro_igual_receita)}</div>
           <div><strong style="color:var(--text-muted)">Casa/Sala no End.:</strong> ${fmtSimNao(item.casa_sala_conj_end)} ${formatarBadgePontos(pts.casa_sala_conj)}</div>
           <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')} ${formatarBadgePontos(pts.idade_empresa)}</div>
-          <div><strong style="color:var(--text-muted)">Capital Social:</strong> R$ ${Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ${formatarBadgePontos(pts.capital_social)}</div>
+          <div><strong style="color:var(--text-muted)">Capital Social:</strong> ${capSocialFormatado} ${formatarBadgePontos(pts.capital_social)}</div>
           <div><strong style="color:var(--text-muted)">Empresa Grande / Notória:</strong> ${fmtSimNao(item.empresa_grande_conhecida)} ${formatarBadgePontos(pts.empresa_grande_conhecida)}</div>
         </div>
       </div>
@@ -5896,7 +5942,15 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_mail_gratuito', item.mail_gratuito !== undefined ? item.mail_gratuito : 'N');
         setVal('cr_possui_site', item.possui_site !== undefined ? item.possui_site : 'N');
         setVal('cr_fundacao_matriz', item.fundacao_matriz || '');
-        setVal('cr_capital_social', Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        
+        const isSemCapLoad = item.sem_capital_social === 'S' || item.capital_social === null || item.capital_social === undefined;
+        if (crSemCapitalSocial) crSemCapitalSocial.checked = isSemCapLoad;
+        if (crCapitalSocialInput) {
+          crCapitalSocialInput.disabled = isSemCapLoad;
+          crCapitalSocialInput.placeholder = isSemCapLoad ? 'Não informado / Isento' : '0,00';
+          crCapitalSocialInput.style.opacity = isSemCapLoad ? '0.7' : '1';
+          crCapitalSocialInput.value = isSemCapLoad ? '' : Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
         
         // Dados do Serasa & Bureau
         setVal('cr_score_serasa', item.score_serasa !== undefined ? item.score_serasa : '');

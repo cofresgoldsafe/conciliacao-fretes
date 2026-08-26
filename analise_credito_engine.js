@@ -81,6 +81,7 @@ const DEFAULT_CONFIG = {
   peso_capital_150k: 0.0,
   peso_capital_12k_menor: -3.0,
   peso_capital_zero: -7.0,
+  peso_capital_nao_informado: 0.0,
   peso_grande_conhecida_sim: 5.0,
 
   // 6. Serasa, Protestos, Cheques & Certidões Comerciais
@@ -234,6 +235,9 @@ function calcularScore(dados, config = getScoreConfig()) {
 
   pontos.empresa_grande_conhecida = dados.empresa_grande_conhecida === 'S' ? config.peso_grande_conhecida_sim : 0;
 
+  const isSemCapital = dados.sem_capital_social === 'S' || dados.sem_capital_social === true;
+  const capitalSocial = isSemCapital ? 0 : (Number(dados.capital_social) || 0);
+
   const temProtestos = dados.protestos === 'S';
   if (dados.protestos === 'N') {
     pontos.protestos = config.peso_protestos_nao;
@@ -244,7 +248,6 @@ function calcularScore(dados, config = getScoreConfig()) {
     const vlrProtestos = Number(dados.valor_protestos) || 0;
     pontos.vlr_protestos_vs_ped = totalPed > 0 && vlrProtestos > totalPed * 2 ? config.peso_protesto_2x_ped : 0;
 
-    const capitalSocial = Number(dados.capital_social) || 0;
     if (capitalSocial > 0) {
       pontos.protestos_vs_capital = vlrProtestos > capitalSocial ? config.peso_protesto_maior_capital : config.peso_protesto_menor_capital;
     } else {
@@ -285,13 +288,16 @@ function calcularScore(dados, config = getScoreConfig()) {
     }
   }
 
-  const capitalSocial = Number(dados.capital_social) || 0;
-  if (capitalSocial >= 10000000) pontos.capital_social = config.peso_capital_10m;
-  else if (capitalSocial >= 1000000) pontos.capital_social = config.peso_capital_1m;
-  else if (capitalSocial >= 150000) pontos.capital_social = config.peso_capital_150k;
-  else if (capitalSocial >= 12000) pontos.capital_social = config.peso_capital_12k_menor;
-  else if (capitalSocial > 0) pontos.capital_social = config.peso_capital_zero;
-  else pontos.capital_social = 0;
+  if (isSemCapital) {
+    pontos.capital_social = config.peso_capital_nao_informado !== undefined ? config.peso_capital_nao_informado : 0;
+  } else {
+    if (capitalSocial >= 10000000) pontos.capital_social = config.peso_capital_10m;
+    else if (capitalSocial >= 1000000) pontos.capital_social = config.peso_capital_1m;
+    else if (capitalSocial >= 150000) pontos.capital_social = config.peso_capital_150k;
+    else if (capitalSocial >= 12000) pontos.capital_social = config.peso_capital_12k_menor;
+    else if (capitalSocial > 0) pontos.capital_social = config.peso_capital_zero;
+    else pontos.capital_social = config.peso_capital_nao_informado !== undefined ? config.peso_capital_nao_informado : 0;
+  }
 
   if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = config.peso_boletos_sim;
   else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = config.peso_boletos_nao;
