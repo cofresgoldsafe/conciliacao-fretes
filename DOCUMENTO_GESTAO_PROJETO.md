@@ -28,6 +28,11 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 * **Edição Viva de NF (`Doc (NF)`):** Reconsulta instantânea ao Protheus e exportação da tabela em CSV.
 
 ### 💼 Módulo 2: Vendedores, Pedidos, Compras, Estoque & Comissões (v1.6)
+* **Tema Claro / Escuro Unificado (Light/Dark Mode):**
+  * Alternância dinâmica através dos seletores `#btnToggleThemeVendedores` (no cabeçalho das sub-abas) e `#btnToggleThemeEstoque` (no painel de estoque).
+  * Sincronização perene em todas as 5 sub-abas (*Saldos em Estoque*, *Consulta Pedido*, *Pedidos Abertos*, *Pedidos Compras*, *Comissões*) e nos modais (*Drilldown de Estoque* e *Detalhes do Pedido*).
+  * Paleta de Alto Contraste WCAG 2.1 (AA/AAA) com textos `#0f172a`, bordas `#e2e8f0`, saldos `#059669`, compras/totais `#0284c7`, vendas `#d97706` e bloqueios `#dc2626`.
+  * Persistência em `localStorage` (`theme_vendedores` / `theme_saldos_estoque`) sem flash de tela (Zero-FOUC).
 * **Sub-aba 1 (Saldos em Estoque - Power BI Style):**
   * Acompanhamento consolidado de catálogo de Produtos Acabados (`PA`), saldos físicos em estoque nas 3 empresas (`SB2140`, `SB2150`, `SB2160`), pedidos de venda em carteira (`SC6`) e pedidos de compra em aberto (`SC7`).
   * Cálculo em tempo real de Saldo Total (`SALDO * PREÇO`) e 3 Cards de KPIs no topo (*Itens em Estoque*, *Itens sem Estoque*, *Valor Total em Estoque*).
