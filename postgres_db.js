@@ -256,9 +256,10 @@ async function initPostgres() {
         );
       `);
 
-      // 5. Garante colunas de rastreamento e e-mail na tabela users
+      // 5. Garante colunas de rastreamento, vendor_code e e-mail na tabela users
       await client.query(`
         ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS total_actions INTEGER DEFAULT 0;
@@ -408,6 +409,48 @@ async function initPostgres() {
           ]);
         }
         console.log(`✅ [Postgres] Migrados com sucesso ${localUsers.length} usuários para o Supabase PostgreSQL.`);
+      }
+
+      // 11.1. Autocura de Vendedores Homologados (Garante vendor_code caso esteja nulo ou vazio)
+      try {
+        await client.query(`
+          UPDATE users SET vendor_code = '000074', role = 'vendedor' WHERE username = 'juliana' AND (vendor_code IS NULL OR vendor_code = '');
+          UPDATE users SET vendor_code = '000064', role = 'vendedor' WHERE username = 'andrea' AND (vendor_code IS NULL OR vendor_code = '');
+          UPDATE users SET vendor_code = '000004', role = 'vendedor' WHERE username = 'figueiredo' AND (vendor_code IS NULL OR vendor_code = '');
+        `);
+      } catch (errAutoHeal) {
+        console.warn('⚠️ [Postgres] Aviso na autocura de vendedores:', errAutoHeal.message);
+      }
+
+      // 12. Habilita Row-Level Security (RLS) e Políticas de Backend no Supabase (Security Advisor Check 0013 & 0008)
+      const tablesToSecure = [
+        'users',
+        'history',
+        'system_configs',
+        'user_activities',
+        'user_2fa_tokens',
+        'inter_webhook_events',
+        'analise_credito_history',
+        'produtos_saldo_estoque',
+        'estoque_sync_logs'
+      ];
+
+      for (const tbl of tablesToSecure) {
+        try {
+          await client.query(`ALTER TABLE ${tbl} ENABLE ROW LEVEL SECURITY;`);
+          await client.query(`
+            DO $$
+            BEGIN
+              IF NOT EXISTS (
+                SELECT 1 FROM pg_policies WHERE tablename = '${tbl}' AND policyname = 'Acesso exclusivo backend'
+              ) THEN
+                CREATE POLICY "Acesso exclusivo backend" ON public.${tbl} TO service_role USING (true) WITH CHECK (true);
+              END IF;
+            END $$;
+          `);
+        } catch (errRls) {
+          console.warn(`⚠️ [Postgres RLS] Aviso ao configurar RLS/Políticas na tabela ${tbl}:`, errRls.message);
+        }
       }
 
       return true;

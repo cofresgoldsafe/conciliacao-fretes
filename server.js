@@ -122,14 +122,23 @@ const resend2FALimiter = rateLimit({
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
 
+const DEFAULT_VENDOR_CODES = {
+  'juliana': '000074',
+  'andrea': '000064',
+  'figueiredo': '000004'
+};
+
 function getUserFromReq(req) {
   if (req.user && req.user.username) {
+    const uName = String(req.user.username).toLowerCase().trim();
+    const uRole = req.user.role || 'user';
+    const vCode = req.user.vendorCode || (uRole === 'vendedor' ? (DEFAULT_VENDOR_CODES[uName] || null) : null);
     return { 
-      username: String(req.user.username).toLowerCase().trim(), 
+      username: uName, 
       name: String(req.user.name || req.user.username).trim(),
-      role: req.user.role || 'user',
+      role: uRole,
       permissions: req.user.permissions || [],
-      vendorCode: req.user.vendorCode || null
+      vendorCode: vCode
     };
   }
   const authHeader = req.headers['authorization'];
@@ -137,12 +146,15 @@ function getUserFromReq(req) {
     try {
       const decoded = jwt.verify(authHeader.slice(7), JWT_SECRET);
       if (decoded && decoded.username) {
+        const uName = String(decoded.username).toLowerCase().trim();
+        const uRole = decoded.role || 'user';
+        const vCode = decoded.vendorCode || (uRole === 'vendedor' ? (DEFAULT_VENDOR_CODES[uName] || null) : null);
         return {
-          username: String(decoded.username).toLowerCase().trim(),
+          username: uName,
           name: String(decoded.name || decoded.username).trim(),
-          role: decoded.role || 'user',
+          role: uRole,
           permissions: decoded.permissions || [],
-          vendorCode: decoded.vendorCode || null
+          vendorCode: vCode
         };
       }
     } catch {}
@@ -393,11 +405,16 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     if (userFound) {
       const isMatch = await verifyPassword(cleanPass, userFound.pass);
       if (isMatch) {
+        let userVendorCode = userFound.vendorCode || (userFound.role === 'vendedor' || DEFAULT_VENDOR_CODES[cleanUser] ? (DEFAULT_VENDOR_CODES[cleanUser] || null) : null);
+        if (!userFound.vendorCode && userVendorCode) {
+          saveUserDB({ ...userFound, vendorCode: userVendorCode, role: 'vendedor' }).catch(() => {});
+        }
+
         authenticatedUser = {
           username: userFound.username,
           name: userFound.name,
-          role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : 'user'),
-          vendorCode: userFound.vendorCode || null,
+          role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : (DEFAULT_VENDOR_CODES[cleanUser] ? 'vendedor' : 'user')),
+          vendorCode: userVendorCode,
           permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
         };
 
@@ -535,12 +552,17 @@ app.post('/api/auth/verify-2fa', verify2FALimiter, async (req, res) => {
     const allUsers = await getUsersDB();
     const userFound = allUsers.find(u => String(u.username || '').toLowerCase() === cleanUser && u.active !== false);
 
+    let userVendorCode = (userFound ? userFound.vendorCode : null) || (userFound?.role === 'vendedor' || DEFAULT_VENDOR_CODES[cleanUser] ? (DEFAULT_VENDOR_CODES[cleanUser] || null) : null);
+    if (userFound && !userFound.vendorCode && userVendorCode) {
+      saveUserDB({ ...userFound, vendorCode: userVendorCode, role: 'vendedor' }).catch(() => {});
+    }
+
     const authenticatedUser = {
       username: cleanUser,
       name: userFound ? userFound.name : (cleanUser.charAt(0).toUpperCase() + cleanUser.slice(1)),
       email: userFound ? userFound.email : null,
-      role: userFound ? (userFound.role || 'user') : (cleanUser === 'alexandre' ? 'admin' : 'user'),
-      vendorCode: userFound ? userFound.vendorCode : null,
+      role: userFound ? (userFound.role || 'user') : (cleanUser === 'alexandre' ? 'admin' : (DEFAULT_VENDOR_CODES[cleanUser] ? 'vendedor' : 'user')),
+      vendorCode: userVendorCode,
       permissions: userFound ? (userFound.permissions || ['logistica', 'consulta']) : (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
     };
 
@@ -761,13 +783,24 @@ app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req,
     const cleanUser = String(username).trim().toLowerCase();
     const cleanEmail = email ? String(email).trim().toLowerCase() : null;
 
+    const allUsers = await getUsersDB();
+    const existingUser = allUsers.find(u => String(u.username || '').toLowerCase() === cleanUser);
+
+    let finalVendorCode = vendorCode !== undefined && vendorCode !== null && String(vendorCode).trim() !== '' 
+      ? String(vendorCode).trim() 
+      : null;
+
+    if (!finalVendorCode && (role === 'vendedor' || existingUser?.role === 'vendedor')) {
+      finalVendorCode = existingUser?.vendorCode || DEFAULT_VENDOR_CODES[cleanUser] || null;
+    }
+
     await saveUserDB({
       username: cleanUser,
       name: String(name).trim(),
       email: cleanEmail,
       pass: pass ? String(pass).trim() : undefined,
       role: role || 'user',
-      vendorCode: vendorCode || null,
+      vendorCode: finalVendorCode,
       permissions: cleanPerms,
       active: active !== undefined ? !!active : true
     });

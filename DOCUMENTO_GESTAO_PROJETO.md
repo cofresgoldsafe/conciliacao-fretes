@@ -65,13 +65,13 @@ Prover um portal corporativo em nuvem, acessível por operadores, administradore
 ### ⚙️ Módulo 5: Configurações, Controle de Acesso & Auditoria de Uso
 * **Sub-aba 1 (Usuários & Permissões):** Gestão de contas, senhas e permissões granulares para as 5 abas principais (`logistica`, `consulta`, `vendedores`, `financeiro`, `configuracoes`). Blindagem contra arrays vazios e roteamento automático para perfis especializados (ex: operador Rubens com acesso exclusivo a Assist. Financ.).
 * **Sub-aba 2 (Atividades & Auditoria):** Painel administrativo em tempo real com métricas de engajamento (usuários ativos, volume de ações), último acesso ativo relativo e feed detalhado dos últimos eventos de negócio.
-* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência de tabelas `users`, `history` e `user_activities` via `postgres_db.js`, com auto-criação de schema e fallback gracioso local.
+* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência relacional das tabelas `users`, `history`, `system_configs`, `user_activities`, `user_2fa_tokens`, `inter_webhook_events`, `analise_credito_history`, `produtos_saldo_estoque` e `estoque_sync_logs` via `postgres_db.js`, com auto-criação de schema, Row-Level Security (RLS) e políticas ativas com fallback gracioso local.
 * Usuários ativos: `alexandre` (Admin), `erica`, `wallerson`, `rubens` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
 
 ### 🌐 Módulo 6: Implantação 100% Nuvem
 * Container Docker no Render com deploy contínuo integrado ao GitHub.
 * API de banco Protheus no Railway com driver ODBC SQL Server.
-* Banco de dados relacional PostgreSQL no Supabase (Pooler SSL / `DATABASE_URL`).
+* Banco de dados relacional PostgreSQL no Supabase (Pooler SSL / `DATABASE_URL`) com Row-Level Security (RLS) habilitado.
 
 ---
 

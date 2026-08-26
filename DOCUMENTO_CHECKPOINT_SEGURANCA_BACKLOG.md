@@ -17,6 +17,7 @@
 - [x] **[MÉDIO 06]** Incluir o pacote `pypdf` na instalação de dependências Python no `Dockerfile`.
 - [x] **[BAIXO 07]** Configurar política restritiva de CORS para a URL oficial em produção (`https://conciliacao-fretes.onrender.com`).
 - [x] **[BAIXO 08]** Ocultar `err.message` técnicos brutos nas respostas HTTP 500 para evitar *Information Disclosure*.
+- [x] **[CRÍTICO 09]** Habilitação de Row-Level Security (RLS) e criação de políticas formais de `service_role` em todas as 9 tabelas públicas no Supabase PostgreSQL, zerando 100% dos alertas e sugestões do Security Advisor (`Check 0013` e `Check 0008`).
 
 ---
 

@@ -23,11 +23,16 @@
 - [x] [VEND-03] Sub-aba Pedidos Compras: Consulta de compras em aberto (SC7) de produtos PA com fornecedores SA2010
 - [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação SB1/SB2/SC6/SC7, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), exclusão de bloqueados (B1_MSBLQL <> '1'), paginação dinâmica e drilldown multi-empresa
 - [x] [VEND-05] Sub-aba Comissões & Metas: Apuração periódica SE3 com cálculo dinâmico de Meta Atingida proporcional
+- [x] [VEND-06] Autocura de vendorCode, fallback resiliente no login/2FA e campo de código de vendedor no painel administrativo
 - [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável
+
+## 🌐 Infraestrutura & Domínio
+- [ ] [INFRA-01] Configuração de Subdomínio Personalizado no Render (ex: `portal.gsi.com.br` / CNAME para `conciliacao-fretes.onrender.com`, emissão de certificado SSL Let's Encrypt e inclusão explícita no array `allowedOrigins` em `server.js`)
 
 ## 🟢 Testes & Qualidade
 - [x] [QA-01] Criar suíte de testes de segurança e regressão (test_security.js e test_webhooks.js via npm test)
 - [x] [QA-02] Suíte de testes automatizados para Pedidos Abertos (test_pedidos_abertos.js)
 - [x] [QA-03] Suíte de testes automatizados para Pedidos Compras (test_pedidos_compras.js)
 - [x] [QA-04] Suíte de testes automatizados para Saldos em Estoque, Grupos, Bloqueios, Paginação e Job Supabase (test_saldos_estoque.js)
-- [ ] [QA-05] Criar testes E2E com Playwright para fluxos de navegação e conciliação
+- [x] [QA-05] Suíte de testes automatizados para Autocura de Vendedores e Preservação de vendorCode (test_vendor_autoheal.js)
+- [ ] [QA-06] Criar testes E2E com Playwright para fluxos de navegação e conciliação

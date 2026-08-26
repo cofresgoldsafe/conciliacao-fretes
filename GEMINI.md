@@ -110,14 +110,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Proteção JWT obrigatória nos endpoints `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
      - Registro de auditoria em `user_activities` para ações de consulta (`CONSULTA_SALDOS_ESTOQUE`) e sincronização manual (`SYNC_SALDOS_ESTOQUE`).
      - Cobertura por suíte automatizada em `test_saldos_estoque.js` validando fórmulas matemáticas, filtros de PA, bloqueios `MSBLQL`, grupos comerciais, gravação/leitura no Postgres/JSON e segurança de rotas HTTP com isolamento de testes e restauração de cache.
-12. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-13. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+12. [x] **Habilitação de Row-Level Security (RLS) no Supabase (`postgres_db.js`):** Ativação de RLS em todas as tabelas públicas (`users`, `history`, `system_configs`, `user_activities`, `user_2fa_tokens`, `inter_webhook_events`, `analise_credito_history`, `produtos_saldo_estoque`, `estoque_sync_logs`), bloqueando acesso anônimo/não autenticado via PostgREST / Supabase REST API direta sem afetar a conexão direta TCP pooler do backend Node.js.
+13. [x] **Autocura e Gestão de Código de Vendedor no Perfil Comercial (`postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendor_autoheal.js`):**
+   - **Causa Raiz & Resolução:** Correção do bloqueio 403 (*"Acesso negado: Perfil de vendedor sem código de vendedor associado"*) enfrentado por vendedores ao acessar pedidos de venda abertos.
+   - **Autocura e DDL Supabase:** Adicionado `ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20)` e rotina DML de autocura no startup (`initDB`) para restaurar códigos de vendedores cadastrados (`juliana: '000074'`, `andrea: '000064'`, `figueiredo: '000004'`).
+   - **Fallback Resiliente no Login / 2FA & `getUserFromReq`:** Tratamento transparente na decodificação do JWT e no login tradicional/2FA para associar o código Protheus e salvar correções em background sem quebrar sessões ativas.
+   - **Campo no Painel Administrativo:** Inclusão do input `Código do Vendedor no Protheus` no modal de gerenciamento de usuários (`#userModal`) com exibição condicional ao selecionar perfil `Vendedor`, validação e preservação do código anterior em edições.
+   - **Testes Automatizados:** Suíte `test_vendor_autoheal.js` com 12 asserções cobrindo cenários de autocura, tokens legados, segurança fail-closed e persistência administrativa.
+14. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+15. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.
 2. **Resiliencia e Circuit Breaker nas Integracoes Bancarias:** Implementar politica de retries com backoff exponencial, jitter e timeout explicito nas chamadas para a API do Banco Inter e Mercado Pago (`inter_api.js`).
 3. **Tratamento de Exaustao de Memoria no Frontend:** Corrigir acumuladores globais de eventos (`window.addEventListener`) e renderizacao de listas pesadas sem virtualizacao no `app.js`.
 4. [x] **Health Check, Reconexão e Keep-Alive Supabase (`postgres_db.js`):** Implementada rotina automática de Keep-Alive periódico (a cada 2 horas via `SELECT 1;`) e reconexão automática em background, prevenindo congelamento por inatividade de 7 dias no plano gratuito da Supabase.
+5. **Configuração de Subdomínio Personalizado no Render:** Implementar subdomínio próprio (ex: `portal.gsi.com.br` com CNAME para `conciliacao-fretes.onrender.com`), provisionamento automático de certificado SSL/TLS (HTTPS) pelo Render e inclusão explícita no array de `allowedOrigins` em `server.js`.
 
 ### Prioridade 2 (Qualidade & Testes)
 1. **Testes Unitarios para Conciliacao e Regras de Negocio:** Criar suite de testes em Jest para os calculos de juros, multas, conciliacao de Pix e validacao de status bancarios em `inter_api.js`.

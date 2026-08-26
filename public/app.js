@@ -1687,6 +1687,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const editEmail = document.getElementById('editEmail');
   const editPassword = document.getElementById('editPassword');
   const editRole = document.getElementById('editRole');
+  const editVendorCode = document.getElementById('editVendorCode');
+  const editVendorCodeGroup = document.getElementById('editVendorCodeGroup');
   const permLogistica = document.getElementById('permLogistica');
   const permConsulta = document.getElementById('permConsulta');
   const permVendedores = document.getElementById('permVendedores');
@@ -1735,7 +1737,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let roleLabel = 'Operador';
       if (u.role === 'admin') roleLabel = 'Administrador';
-      if (u.role === 'vendedor') roleLabel = 'Vendedor';
+      if (u.role === 'vendedor') roleLabel = `Vendedor (${u.vendorCode || 'S/C'})`;
 
       const emailHtml = u.email 
         ? `<span style="font-size: 0.84rem; color: #38bdf8; font-family: var(--font-mono);">${escapeHtml(u.email)}</span>` 
@@ -1795,6 +1797,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editEmail) editEmail.value = '';
     if (editPassword) editPassword.value = '';
     if (editRole) editRole.value = 'user';
+    if (editVendorCode) editVendorCode.value = '';
+    if (editVendorCodeGroup) editVendorCodeGroup.style.display = 'none';
     if (permLogistica) permLogistica.checked = true;
     if (permConsulta) permConsulta.checked = true;
     if (permVendedores) permVendedores.checked = true;
@@ -1812,6 +1816,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editPassword) editPassword.value = '';
     if (editRole) editRole.value = userObj.role || 'user';
 
+    const vCode = userObj.vendorCode || (VENDEDOR_USERS[userObj.username.toLowerCase()] || '');
+    if (editVendorCode) editVendorCode.value = vCode;
+    if (editVendorCodeGroup) {
+      editVendorCodeGroup.style.display = (userObj.role === 'vendedor') ? 'block' : 'none';
+    }
+
     const perms = userObj.permissions || ['logistica', 'consulta'];
     if (permLogistica) permLogistica.checked = perms.includes('logistica');
     if (permConsulta) permConsulta.checked = perms.includes('consulta');
@@ -1821,6 +1831,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (userModalMsg) userModalMsg.classList.add('hidden');
     if (userModal) userModal.classList.remove('hidden');
+  }
+
+  if (editRole) {
+    editRole.addEventListener('change', () => {
+      if (editVendorCodeGroup) {
+        editVendorCodeGroup.style.display = (editRole.value === 'vendedor') ? 'block' : 'none';
+      }
+      if (editRole.value === 'vendedor' && editUsername && editVendorCode && !editVendorCode.value) {
+        const u = editUsername.value.trim().toLowerCase();
+        if (VENDEDOR_USERS[u]) editVendorCode.value = VENDEDOR_USERS[u];
+      }
+    });
   }
 
   if (btnNewUser) btnNewUser.addEventListener('click', openUserModalForNew);
@@ -1856,6 +1878,7 @@ document.addEventListener('DOMContentLoaded', () => {
         email: editEmail ? editEmail.value.trim() : '',
         pass: editPassword.value.trim(),
         role: editRole.value,
+        vendorCode: (editRole.value === 'vendedor' && editVendorCode) ? editVendorCode.value.trim() : (editVendorCode ? editVendorCode.value.trim() : null),
         permissions: selectedPerms,
         active: true
       };
