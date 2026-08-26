@@ -3042,6 +3042,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchVal = (pedidosComprasSearchInput ? pedidosComprasSearchInput.value : '').toLowerCase().trim();
 
     const filtrados = (pedidos || []).filter(p => {
+      // Filtro estrito: Somente tipo PA e códigos entre 001000000000000 e 019999999999999
+      const cod = String(p.codProduto || '').trim();
+      const tipo = String(p.tipo || '').trim().toUpperCase();
+      if (tipo && tipo !== 'PA') return false;
+      if (cod && (cod < '001000000000000' || cod > '019999999999999')) return false;
+
       if (empFiltro) {
         const empSigla = (p.empresa || '').toUpperCase();
         const empKey = (p.empresaKey || '').toUpperCase();

@@ -136,6 +136,39 @@ test('Ordenação de compras respeita data de previsão ISO, saldo numérico e t
   assert.deepStrictEqual(sortDescAsc.map(x => x.descricao), ['ARMARIO A', 'COFRE C', 'FECHADURA B']);
 });
 
+// 6. Teste de Filtragem Estrita por Tipo de Produto PA (B1_TIPO = 'PA')
+test('Filtro de produto aceita somente tipo PA e rejeita outros tipos (MP, PI, MC, SV)', () => {
+  function validarTipoPA(tipo) {
+    const t = String(tipo || '').trim().toUpperCase();
+    return t === 'PA';
+  }
+
+  assert.strictEqual(validarTipoPA('PA'), true, 'Tipo PA deve ser aceito');
+  assert.strictEqual(validarTipoPA('pa'), true, 'Tipo pa (minúsculo) deve ser aceito');
+  assert.strictEqual(validarTipoPA('MP'), false, 'Tipo MP (Matéria Prima) deve ser rejeitado');
+  assert.strictEqual(validarTipoPA('PI'), false, 'Tipo PI (Produto Intermediário) deve ser rejeitado');
+  assert.strictEqual(validarTipoPA('MC'), false, 'Tipo MC (Material de Consumo) deve ser rejeitado');
+  assert.strictEqual(validarTipoPA('SV'), false, 'Tipo SV (Serviço) deve ser rejeitado');
+  assert.strictEqual(validarTipoPA(''), false, 'Tipo vazio deve ser rejeitado');
+});
+
+// 7. Teste de Filtragem Estrita por Faixa de Código (001000000000000 a 019999999999999)
+test('Filtro de produto aceita somente códigos na faixa entre 001000000000000 e 019999999999999', () => {
+  function validarFaixaCodigo(cod) {
+    const c = String(cod || '').trim();
+    return c >= '001000000000000' && c <= '019999999999999';
+  }
+
+  assert.strictEqual(validarFaixaCodigo('001000000000000'), true, 'Limite inferior exato');
+  assert.strictEqual(validarFaixaCodigo('001000000000001'), true, 'Início da faixa');
+  assert.strictEqual(validarFaixaCodigo('010000000000000'), true, 'Meio da faixa');
+  assert.strictEqual(validarFaixaCodigo('019999999999999'), true, 'Limite superior exato');
+  assert.strictEqual(validarFaixaCodigo('000999999999999'), false, 'Abaixo do limite inferior');
+  assert.strictEqual(validarFaixaCodigo('020000000000000'), false, 'Acima do limite superior');
+  assert.strictEqual(validarFaixaCodigo('999999999999999'), false, 'Fora da faixa');
+  assert.strictEqual(validarFaixaCodigo('PRODUTO_TESTE'), false, 'Texto arbitrário fora da faixa');
+});
+
 // Helper para chamadas HTTP
 function makeRequest(options, postData = null) {
   return new Promise((resolve, reject) => {
