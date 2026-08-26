@@ -597,7 +597,9 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
       const conditions = [
         "C7.D_E_L_E_T_ = ' '",
         "(ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0",
-        "(C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')"
+        "(C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')",
+        "RTRIM(C7.C7_PRODUTO) >= '001000000000000'",
+        "RTRIM(C7.C7_PRODUTO) <= '019999999999999'"
       ];
 
       if (cleanSearch) {
@@ -615,8 +617,7 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
             RTRIM(C7.C7_NUM) AS C7_NUM,
             RTRIM(ISNULL(C7.C7_ITEM, '')) AS C7_ITEM,
             RTRIM(ISNULL(C7.C7_PRODUTO, '')) AS C7_PRODUTO,
-            RTRIM(ISNULL(B1.B1_DESC, ISNULL(C7.C7_DESCRI, ''))) AS C7_DESCRI,
-            RTRIM(ISNULL(B1.B1_TIPO, '')) AS B1_TIPO,
+            RTRIM(ISNULL(C7.C7_DESCRI, '')) AS C7_DESCRI,
             ISNULL(C7.C7_QUANT, 0) AS C7_QUANT,
             ISNULL(C7.C7_QUJE, 0) AS C7_QUJE,
             (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) AS SALDO_QUANT,
@@ -625,11 +626,7 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
             RTRIM(ISNULL(C7.C7_FORNECE, '')) AS C7_FORNECE,
             ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), ISNULL(C7.C7_FORNECE, '')) AS FORNECEDOR
         FROM ${emp.sc7} C7
-        INNER JOIN SB1010 B1 ON B1.B1_COD = C7.C7_PRODUTO AND B1.D_E_L_E_T_ = ' '
         WHERE ${conditions.join(' AND ')}
-          AND RTRIM(B1.B1_TIPO) = 'PA'
-          AND RTRIM(B1.B1_COD) >= '001000000000000'
-          AND RTRIM(B1.B1_COD) <= '019999999999999'
         ORDER BY C7.C7_DATPRF ASC, C7.C7_DESCRI ASC
       `;
 
@@ -640,10 +637,8 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
           const pedCom = `${emp.sigla}${pedNum}`;
           const saldo = Math.max(0, Number(row.SALDO_QUANT) || (Number(row.C7_QUANT || 0) - Number(row.C7_QUJE || 0)));
           const codProd = String(row.C7_PRODUTO || '').trim();
-          const tipoProd = String(row.B1_TIPO || '').trim().toUpperCase();
 
-          // Validação defensiva de Tipo PA e Faixa de Código
-          if (tipoProd && tipoProd !== 'PA') continue;
+          // Validação defensiva da Faixa de Códigos PA (001000000000000 a 019999999999999)
           if (codProd && (codProd < '001000000000000' || codProd > '019999999999999')) continue;
 
           results.push({
@@ -654,7 +649,7 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
             numPed: pedNum,
             item: row.C7_ITEM || '',
             codProduto: codProd,
-            tipo: tipoProd || 'PA',
+            tipo: 'PA',
             descricao: row.C7_DESCRI || 'PRODUTO SEM DESCRIÇÃO',
             qtdOriginal: Number(row.C7_QUANT) || 0,
             qtdEntregue: Number(row.C7_QUJE) || 0,
