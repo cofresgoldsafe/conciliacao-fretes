@@ -116,9 +116,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Autocura e DDL Supabase:** Adicionado `ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20)` e rotina DML de autocura no startup (`initDB`) para restaurar códigos de vendedores cadastrados (`juliana: '000074'`, `andrea: '000064'`, `figueiredo: '000004'`).
    - **Fallback Resiliente no Login / 2FA & `getUserFromReq`:** Tratamento transparente na decodificação do JWT e no login tradicional/2FA para associar o código Protheus e salvar correções em background sem quebrar sessões ativas.
    - **Campo no Painel Administrativo:** Inclusão do input `Código do Vendedor no Protheus` no modal de gerenciamento de usuários (`#userModal`) com exibição condicional ao selecionar perfil `Vendedor`, validação e preservação do código anterior em edições.
-   - **Testes Automatizados:** Suíte `test_vendor_autoheal.js` com 12 asserções cobrindo cenários de autocura, tokens legados, segurança fail-closed e persistência administrativa.
-14. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-15. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+14. [x] **Seletor de Tema Claro/Escuro na Sub-aba Saldos em Estoque (`public/style.css`, `public/index.html`, `public/app.js`, `test_theme_toggle.js`):**
+   - **Alternância Dinâmica & UX Comercial:** Botão seletor no cabeçalho da sub-aba (`#btnToggleThemeEstoque`) alternando instantaneamente entre `☀️ Modo Claro` e `🌙 Modo Escuro`.
+   - **Paleta de Cores com Contraste WCAG 2.1 (AA/AAA):** Calibração de tokens claros (`.tab-theme-light`, `.modal-theme-light`) com fundo `#ffffff`, textos `#0f172a`, bordas `#e2e8f0`, saldos positivos em verde esmeralda (`#059669`), compras/totais em azul céu (`#0284c7`) e vendas em âmbar escuro (`#d97706`), eliminando riscos de textos ilegíveis em fundos brancos.
+   - **Persistência Perene:** Armazenamento da preferência no `localStorage.setItem('theme_saldos_estoque', mode)`, restaurado automaticamente sem flash de tela (Zero-FOUC).
+   - **Sincronização com Modal Drilldown:** Aplicação automática do tema claro no modal de 3 abas (`#modalEstoqueDetalhes`), preservando legibilidade no resumo por empresa, compras SC7 e vendas SC6.
+   - **Suite de Testes Automatizados:** Script `test_theme_toggle.js` com 5 asserções cobrindo elementos de UI, regras de CSS com escopo, persistência em disco e funções de alternância em JS.
+15. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+16. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

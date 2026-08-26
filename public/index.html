@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.62">
+  <link rel="stylesheet" href="style.css?v=8.63">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 26/08/2026 09:22 (Autocura de vendorCode e correcao de perfil de vendedor)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 26/08/2026 10:02 (Seletor de Tema Claro/Escuro na sub-aba Saldos em Estoque)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -493,6 +493,10 @@
               <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
               <span>Última Sincronização: <strong id="estoqueLastSyncTime">Carregando...</strong></span>
             </div>
+            <button id="btnToggleThemeEstoque" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px; font-size: 0.82rem; cursor: pointer; transition: all 0.2s ease;" title="Alternar entre tema Claro e Escuro">
+              <span id="themeIconEstoque">☀️</span>
+              <span id="themeLabelEstoque">Modo Claro</span>
+            </button>
             <button id="btnSyncEstoqueManual" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; height: 38px;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
               <span>Sincronizar Agora</span>
@@ -2641,6 +2645,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.62"></script>
+  <script src="app.js?v=8.63"></script>
 </body>
 </html>

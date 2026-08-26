@@ -731,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
         carregarHistoricoCredito();
       }
       if (targetTab === 'tab-vend-saldos-estoque') {
+        if (typeof inicializarTemaEstoque === 'function') inicializarTemaEstoque();
         carregarSaldosEstoque();
       }
       if (targetTab === 'tab-vend-pedidos-abertos') {
@@ -3235,9 +3236,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const estoqueFiltroSelect = document.getElementById('estoqueFiltroSelect');
   const btnLimparFiltrosEstoque = document.getElementById('btnLimparFiltrosEstoque');
   const btnSyncEstoqueManual = document.getElementById('btnSyncEstoqueManual');
+  const btnToggleThemeEstoque = document.getElementById('btnToggleThemeEstoque');
+  const themeIconEstoque = document.getElementById('themeIconEstoque');
+  const themeLabelEstoque = document.getElementById('themeLabelEstoque');
   const modalEstoqueDetalhes = document.getElementById('modalEstoqueDetalhes');
   const btnCloseModalEstoque = document.getElementById('btnCloseModalEstoque');
   const btnFecharModalEstoqueDetalhes = document.getElementById('btnFecharModalEstoqueDetalhes');
+
+  function aplicarTemaEstoque(modo) {
+    const container = document.getElementById('tab-vend-saldos-estoque');
+    const modal = document.getElementById('modalEstoqueDetalhes');
+    const icon = document.getElementById('themeIconEstoque');
+    const label = document.getElementById('themeLabelEstoque');
+
+    if (modo === 'light') {
+      if (container) container.classList.add('tab-theme-light');
+      if (modal) modal.classList.add('modal-theme-light');
+      if (icon) icon.textContent = '🌙';
+      if (label) label.textContent = 'Modo Escuro';
+    } else {
+      if (container) container.classList.remove('tab-theme-light');
+      if (modal) modal.classList.remove('modal-theme-light');
+      if (icon) icon.textContent = '☀️';
+      if (label) label.textContent = 'Modo Claro';
+    }
+  }
+
+  function toggleEstoqueTheme() {
+    const container = document.getElementById('tab-vend-saldos-estoque');
+    const isCurrentlyLight = container && container.classList.contains('tab-theme-light');
+    const novoModo = isCurrentlyLight ? 'dark' : 'light';
+    localStorage.setItem('theme_saldos_estoque', novoModo);
+    aplicarTemaEstoque(novoModo);
+    renderSaldosEstoqueTable();
+  }
+
+  function inicializarTemaEstoque() {
+    const temaSalvo = localStorage.getItem('theme_saldos_estoque') || 'dark';
+    aplicarTemaEstoque(temaSalvo);
+  }
 
   const estoqueItensPorPaginaSelect = document.getElementById('estoqueItensPorPaginaSelect');
   const estoquePaginacaoInfo = document.getElementById('estoquePaginacaoInfo');
@@ -3342,20 +3379,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const offsetFim = Math.min(offsetInicio + pageSize, totalItens);
     const itensExibidos = (estoqueItensPorPagina === 'todos') ? lista : lista.slice(offsetInicio, offsetFim);
 
+    const isLight = document.getElementById('tab-vend-saldos-estoque')?.classList.contains('tab-theme-light');
+    const descColor = isLight ? '#0f172a' : '#f1f5f9';
+    const totalColor = isLight ? '#0284c7' : '#38bdf8';
+    const vendasActiveColor = isLight ? '#d97706' : '#fbbf24';
+    const comprasActiveColor = isLight ? '#0284c7' : '#38bdf8';
+    const mutedColor = isLight ? '#64748b' : 'var(--text-muted)';
+    const groupBg = isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(56, 189, 248, 0.12)';
+    const groupColor = isLight ? '#0284c7' : '#38bdf8';
+    const groupBorder = isLight ? 'rgba(2, 132, 199, 0.25)' : 'rgba(56, 189, 248, 0.25)';
+
     tbody.innerHTML = itensExibidos.map(p => {
       const precoFmt = Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const saldoTotalFmt = Number(p.saldo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const saldoNum = Number(p.saldo || 0);
-      const saldoColor = saldoNum > 0 ? '#10b981' : '#ef4444';
-      const saldoBg = saldoNum > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+      const saldoColor = saldoNum > 0 ? (isLight ? '#059669' : '#10b981') : (isLight ? '#dc2626' : '#ef4444');
+      const saldoBg = saldoNum > 0 ? (isLight ? 'rgba(5, 150, 105, 0.12)' : 'rgba(16, 185, 129, 0.1)') : (isLight ? 'rgba(220, 38, 38, 0.12)' : 'rgba(239, 68, 68, 0.1)');
 
       return `
         <tr style="cursor: pointer; transition: background 0.15s ease;" onclick="abrirModalEstoqueDetalhes('${p.codigo}')" title="Clique para ver drilldown por empresa e pedidos">
           <td>
-            <div style="font-weight: 600; color: #f1f5f9;">${p.descricao || 'PRODUTO SEM DESCRIÇÃO'}</div>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+            <div style="font-weight: 600; color: ${descColor};">${p.descricao || 'PRODUTO SEM DESCRIÇÃO'}</div>
+            <div style="font-size: 0.78rem; color: ${mutedColor}; margin-top: 2px;">
               Cód: <code>${p.codigo}</code>
-              ${p.grupo ? `<span style="display:inline-block; font-size:0.7rem; margin-left:6px; background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); border-radius:4px; padding:0 5px; font-weight:600;">Grupo ${p.grupo}</span>` : ''}
+              ${p.grupo ? `<span style="display:inline-block; font-size:0.7rem; margin-left:6px; background:${groupBg}; color:${groupColor}; border:1px solid ${groupBorder}; border-radius:4px; padding:0 5px; font-weight:600;">Grupo ${p.grupo}</span>` : ''}
             </div>
           </td>
           <td style="text-align: right; font-weight: 500; font-family: monospace;">${precoFmt}</td>
@@ -3364,14 +3411,14 @@ document.addEventListener('DOMContentLoaded', () => {
               ${saldoNum.toLocaleString('pt-BR')}
             </span>
           </td>
-          <td style="text-align: right; font-weight: 600; color: #38bdf8; font-family: monospace;">${saldoTotalFmt}</td>
-          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_vendas) > 0 ? '#fbbf24' : 'var(--text-muted)'}; font-family: monospace;">
+          <td style="text-align: right; font-weight: 600; color: ${totalColor}; font-family: monospace;">${saldoTotalFmt}</td>
+          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_vendas) > 0 ? vendasActiveColor : mutedColor}; font-family: monospace;">
             ${Number(p.qtd_vendas || 0) > 0 ? Number(p.qtd_vendas).toLocaleString('pt-BR') : '-'}
           </td>
-          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_compras) > 0 ? '#38bdf8' : 'var(--text-muted)'}; font-family: monospace;">
+          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_compras) > 0 ? comprasActiveColor : mutedColor}; font-family: monospace;">
             ${Number(p.qtd_compras || 0) > 0 ? Number(p.qtd_compras).toLocaleString('pt-BR') : '-'}
           </td>
-          <td style="text-align: right; font-weight: 500; color: var(--text-muted); font-family: monospace;">
+          <td style="text-align: right; font-weight: 500; color: ${mutedColor}; font-family: monospace;">
             ${Number(p.ponto_ped || 0) > 0 ? Number(p.ponto_ped).toLocaleString('pt-BR') : '-'}
           </td>
         </tr>
@@ -3557,11 +3604,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Alternância de Tema Claro/Escuro na sub-aba Saldos em Estoque
+  if (btnToggleThemeEstoque) {
+    btnToggleThemeEstoque.addEventListener('click', toggleEstoqueTheme);
+  }
+  inicializarTemaEstoque();
+
   // Modal Drilldown por Produto
   window.abrirModalEstoqueDetalhes = function(codigo) {
     const prod = estoqueProdutosData.find(p => p.codigo === codigo);
     if (!prod || !modalEstoqueDetalhes) return;
     estoqueItemSelecionado = prod;
+
+    const isLight = document.getElementById('tab-vend-saldos-estoque')?.classList.contains('tab-theme-light');
+    if (isLight) {
+      modalEstoqueDetalhes.classList.add('modal-theme-light');
+    } else {
+      modalEstoqueDetalhes.classList.remove('modal-theme-light');
+    }
 
     const modalTitulo = document.getElementById('modalEstoqueTitulo');
     const modalSub = document.getElementById('modalEstoqueSubtitulo');
@@ -3587,20 +3647,27 @@ document.addEventListener('DOMContentLoaded', () => {
         { cod: "16", nome: "Empresa 16 (OACO)", data: dets['16'] || {} }
       ];
 
-      tbodyEmp.innerHTML = emps.map(e => `
-        <tr>
-          <td><strong>${e.nome}</strong></td>
-          <td style="text-align: right; font-weight: 700; color: ${Number(e.data.saldo || 0) > 0 ? '#10b981' : '#ef4444'};">
-            ${Number(e.data.saldo || 0).toLocaleString('pt-BR')} un
-          </td>
-          <td style="text-align: right; font-weight: 600; color: ${Number(e.data.vendas || 0) > 0 ? '#fbbf24' : 'var(--text-muted)'};">
-            ${Number(e.data.vendas || 0).toLocaleString('pt-BR')} un
-          </td>
-          <td style="text-align: right; font-weight: 600; color: ${Number(e.data.compras || 0) > 0 ? '#38bdf8' : 'var(--text-muted)'};">
-            ${Number(e.data.compras || 0).toLocaleString('pt-BR')} un
-          </td>
-        </tr>
-      `).join('');
+      tbodyEmp.innerHTML = emps.map(e => {
+        const saldoNum = Number(e.data.saldo || 0);
+        const saldoColor = saldoNum > 0 ? (isLight ? '#059669' : '#10b981') : (isLight ? '#dc2626' : '#ef4444');
+        const vendasColor = Number(e.data.vendas || 0) > 0 ? (isLight ? '#d97706' : '#fbbf24') : (isLight ? '#64748b' : 'var(--text-muted)');
+        const comprasColor = Number(e.data.compras || 0) > 0 ? (isLight ? '#0284c7' : '#38bdf8') : (isLight ? '#64748b' : 'var(--text-muted)');
+
+        return `
+          <tr>
+            <td><strong>${e.nome}</strong></td>
+            <td style="text-align: right; font-weight: 700; color: ${saldoColor};">
+              ${saldoNum.toLocaleString('pt-BR')} un
+            </td>
+            <td style="text-align: right; font-weight: 600; color: ${vendasColor};">
+              ${Number(e.data.vendas || 0).toLocaleString('pt-BR')} un
+            </td>
+            <td style="text-align: right; font-weight: 600; color: ${comprasColor};">
+              ${Number(e.data.compras || 0).toLocaleString('pt-BR')} un
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     // 2. Preenche Lista de Compras Abertas (SC7)
@@ -3613,17 +3680,21 @@ document.addEventListener('DOMContentLoaded', () => {
         ...(dets['16']?.comprasLista || [])
       ];
 
+      const linkColor = isLight ? '#0284c7' : '#38bdf8';
+      const badgeBg = isLight ? 'rgba(2, 132, 199, 0.1)' : 'rgba(56, 189, 248, 0.15)';
+      const badgeColor = isLight ? '#0284c7' : '#38bdf8';
+
       if (todasCompras.length === 0) {
         tbodyCom.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum pedido de compra em aberto para este produto.</td></tr>';
       } else {
         tbodyCom.innerHTML = todasCompras.map(c => `
           <tr>
-            <td><strong style="color: #38bdf8;">${c.pedido || '-'}</strong></td>
-            <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 6px; border-radius: 4px;">${c.empresa || '-'}</span></td>
+            <td><strong style="color: ${linkColor};">${c.pedido || '-'}</strong></td>
+            <td><span class="badge" style="background: ${badgeBg}; color: ${badgeColor}; padding: 2px 6px; border-radius: 4px;">${c.empresa || '-'}</span></td>
             <td>${c.fornecedor || 'FORNECEDOR NÃO INFORMADO'}</td>
             <td style="text-align: right;">${Number(c.qtdComprada || 0).toLocaleString('pt-BR')}</td>
             <td style="text-align: right;">${Number(c.qtdEntregue || 0).toLocaleString('pt-BR')}</td>
-            <td style="text-align: right; font-weight: 700; color: #38bdf8;">${Number(c.saldoCompra || 0).toLocaleString('pt-BR')}</td>
+            <td style="text-align: right; font-weight: 700; color: ${linkColor};">${Number(c.saldoCompra || 0).toLocaleString('pt-BR')}</td>
             <td>📅 ${c.previsao || '-'}</td>
           </tr>
         `).join('');
@@ -3640,17 +3711,22 @@ document.addEventListener('DOMContentLoaded', () => {
         ...(dets['16']?.vendasLista || [])
       ];
 
+      const linkColor = isLight ? '#0284c7' : '#38bdf8';
+      const badgeBg = isLight ? 'rgba(5, 150, 105, 0.1)' : 'rgba(16, 185, 129, 0.15)';
+      const badgeColor = isLight ? '#059669' : '#10b981';
+      const vendasColor = isLight ? '#d97706' : '#fbbf24';
+
       if (todasVendas.length === 0) {
         tbodyVen.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">Nenhum pedido de venda em carteira para este produto.</td></tr>';
       } else {
         tbodyVen.innerHTML = todasVendas.map(v => `
           <tr>
             <td><strong>#${v.pedido || '-'}</strong></td>
-            <td>${v.codWeb && v.codWeb !== '-' ? `<span style="color: #38bdf8;">${v.codWeb}</span>` : '-'}</td>
-            <td><span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 6px; border-radius: 4px;">${v.empresa || '-'}</span></td>
+            <td>${v.codWeb && v.codWeb !== '-' ? `<span style="color: ${linkColor};">${v.codWeb}</span>` : '-'}</td>
+            <td><span class="badge" style="background: ${badgeBg}; color: ${badgeColor}; padding: 2px 6px; border-radius: 4px;">${v.empresa || '-'}</span></td>
             <td>${v.cliente || 'CLIENTE NÃO INFORMADO'}</td>
             <td>${v.vendedor || 'NÃO INFORMADO'}</td>
-            <td style="text-align: right; font-weight: 700; color: #fbbf24;">${Number(v.qtdPedida || 0).toLocaleString('pt-BR')} un</td>
+            <td style="text-align: right; font-weight: 700; color: ${vendasColor};">${Number(v.qtdPedida || 0).toLocaleString('pt-BR')} un</td>
             <td>📅 ${v.previsao || '-'}</td>
           </tr>
         `).join('');

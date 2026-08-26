@@ -1922,3 +1922,272 @@ body {
     background: #f1f5f9 !important;
   }
 }
+
+/* ==========================================================================
+   TEMA CLARO (LIGHT MODE) - SUB-ABA SALDOS EM ESTOQUE & MODAL DRILLDOWN
+   ========================================================================== */
+
+.tab-theme-light {
+  --panel-bg: #ffffff;
+  --panel-border: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.tab-theme-light .card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+.tab-theme-light .section-title-row h2 {
+  color: #0f172a !important;
+}
+
+.tab-theme-light .desc {
+  color: #64748b !important;
+}
+
+/* Badge de Sincronização & Botão de Tema */
+.tab-theme-light #estoqueSyncStatusBadge {
+  background: rgba(5, 150, 105, 0.08) !important;
+  border-color: rgba(5, 150, 105, 0.25) !important;
+  color: #059669 !important;
+}
+
+.tab-theme-light #btnToggleThemeEstoque {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.tab-theme-light #btnToggleThemeEstoque:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Cards KPI do Power BI no Tema Claro */
+.tab-theme-light .kpi-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.tab-theme-light .kpi-card div:first-child {
+  color: #64748b !important;
+}
+
+.tab-theme-light #kpiItensEstoque {
+  color: #059669 !important;
+}
+
+.tab-theme-light #kpiItensSemEstoque {
+  color: #dc2626 !important;
+}
+
+.tab-theme-light #kpiValorEstoque {
+  color: #0284c7 !important;
+}
+
+/* Barra de Busca & Filtros Compactos */
+.tab-theme-light .vend-search-form {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.tab-theme-light .vend-search-form label {
+  color: #334155 !important;
+}
+
+.tab-theme-light .vend-search-form input,
+.tab-theme-light .vend-search-form select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.tab-theme-light .vend-search-form input:focus,
+.tab-theme-light .vend-search-form select:focus {
+  border-color: #0284c7 !important;
+  outline: none;
+}
+
+.tab-theme-light .vend-search-form input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.tab-theme-light #btnLimparFiltrosEstoque {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.tab-theme-light #btnLimparFiltrosEstoque:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Tabela de Dados no Tema Claro */
+.tab-theme-light .table-header-info {
+  color: #0f172a !important;
+}
+
+.tab-theme-light .table-header-info #estoqueProdutosCount {
+  color: #0284c7 !important;
+}
+
+.tab-theme-light .table-header-info div:last-child {
+  color: #64748b !important;
+}
+
+.tab-theme-light .table-responsive {
+  border-color: #e2e8f0 !important;
+}
+
+.tab-theme-light .data-table {
+  background-color: #ffffff !important;
+}
+
+.tab-theme-light .data-table th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.tab-theme-light .data-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.tab-theme-light .data-table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+.tab-theme-light .data-table code {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* Barra de Paginação no Tema Claro */
+.tab-theme-light #estoquePaginationContainer {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+.tab-theme-light #estoquePaginationContainer strong,
+.tab-theme-light #estoquePaginationContainer #estoquePaginacaoInfo {
+  color: #0f172a !important;
+}
+
+.tab-theme-light #estoquePaginationContainer select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.tab-theme-light #estoquePaginationContainer .btn-outline {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.tab-theme-light #estoquePaginationContainer .btn-outline:hover:not(:disabled) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
+
+.tab-theme-light #estoquePaginationContainer .btn-outline:disabled {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #cbd5e1 !important;
+}
+
+.tab-theme-light #estoquePaginationContainer .btn-primary {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+}
+
+/* Modal Drilldown no Tema Claro */
+#modalEstoqueDetalhes.modal-theme-light .modal-content {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .modal-header,
+#modalEstoqueDetalhes.modal-theme-light .modal-footer {
+  border-color: #e2e8f0 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light #modalEstoqueTitulo {
+  color: #0284c7 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light #modalEstoqueSubtitulo {
+  color: #64748b !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .close-btn {
+  color: #64748b !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .close-btn:hover {
+  color: #0f172a !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .modal-content > div[style*="grid"] > div {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light #modalKpiPreco {
+  color: #0f172a !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light #modalKpiSaldo {
+  color: #059669 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light #modalKpiValorTotal {
+  color: #0284c7 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light #modalKpiPontoPed {
+  color: #d97706 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .btn-modal-estoque-tab {
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .btn-modal-estoque-tab.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .data-table th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .data-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+#modalEstoqueDetalhes.modal-theme-light .data-table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
