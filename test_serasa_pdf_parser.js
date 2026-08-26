@@ -152,6 +152,36 @@ async function runTests() {
   }
 
   // -------------------------------------------------------------
+  // Teste 4B: Laudo Itambé Minas (Score 608, 169 PEFIN, 4 Protestos, 19 Dívidas)
+  // -------------------------------------------------------------
+  console.log('\n--- 4B. Teste de Extração: Itambé Minas (Score 608, 169 PEFIN, 4 Protestos, 19 Dívidas) ---');
+  try {
+    const itambePdfPath = path.join(pdfDir, 'ITAMBE MINAS COMERCIO E DISTRIBUICAO DE ALIMENTOS LTDA 2026-08-07.pdf');
+    if (fs.existsSync(itambePdfPath)) {
+      const buffer = fs.readFileSync(itambePdfPath);
+      const result = await parseSerasaBuffer(buffer);
+      
+      assert.strictEqual(result.success, true, 'Laudo deve ter success: true');
+      assert.strictEqual(result.validado, true, 'Laudo deve ser validado: true');
+      assert.strictEqual(result.cnpj, '16.849.231/0027-43', 'CNPJ deve ser 16.849.231/0027-43');
+      assert.strictEqual(result.score_serasa, 608, 'Score deve ser 608');
+      assert.strictEqual(result.pefin_qtd, 169, 'PEFIN deve ter 169 registros');
+      assert.strictEqual(result.pefin_valor, 182628.08, 'PEFIN total R$ 182.628,08');
+      assert.strictEqual(result.protestos_qtd, 4, 'Protestos qtd deve ser 4');
+      assert.strictEqual(result.protestos_valor, 6133.78, 'Protestos valor R$ 6.133,78');
+      assert.strictEqual(result.dividas_vencidas_qtd, 19, 'Dívidas vencidas qtd deve ser 19');
+      assert.strictEqual(result.consultantes_fomento, 'S', 'Deve detectar fomento (LEAN SECURITIZADORA)');
+      assert.strictEqual(result.idade_meses, 0.6, 'Idade deve ser 0.6 meses');
+
+      report('Extração Itambé Minas', true);
+    } else {
+      console.log('  ⚠️ Arquivo Itambé Minas não encontrado no diretório.');
+    }
+  } catch (err) {
+    report('Extração Itambé Minas', false, err.message);
+  }
+
+  // -------------------------------------------------------------
   // Teste 5: Rejeição de Laudo Expirado > 4 Meses (Optimus Pharma)
   // -------------------------------------------------------------
   console.log('\n--- 5. Teste de Validação de Validade: Optimus Pharma (Expirado > 4 meses) ---');
