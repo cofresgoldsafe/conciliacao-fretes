@@ -92,11 +92,19 @@ const DEFAULT_CONFIG = {
   peso_ch_sem_fundo_sim: -6.0,
   peso_pfin_sim: -5.0,
   peso_pfin_nao: 1.0,
+  peso_refin_sim: -10.0,
+  peso_refin_nao: 0.0,
+  peso_dividas_vencidas_sim: -4.0,
+  peso_densidade_consultas_alta: -8.0,
+  peso_consultantes_fomento_sim: -5.0,
+  peso_socios_restricao_sim: -6.0,
+  peso_doc_extraviado_sim: -25.0,
   peso_serasa_700: 8.0,
   peso_serasa_500: 4.0,
   peso_serasa_200: -4.0,
   peso_serasa_baixo: -15.0,
   peso_serasa_zero: -20.0,
+  peso_serasa_default: -30.0,
   peso_fgts_regular_nao: -6.0,
   peso_razao_fgts_igual_nao: -10.0,
   peso_boletos_sim: 3.0,
@@ -250,16 +258,31 @@ function calcularScore(dados, config = getScoreConfig()) {
 
   pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? config.peso_ch_sem_fundo_sim : 0;
   pontos.pfin = dados.pfin === 'S' ? config.peso_pfin_sim : (dados.pfin === 'N' ? config.peso_pfin_nao : 0);
+  pontos.refin = dados.refin === 'S' ? (config.peso_refin_sim !== undefined ? config.peso_refin_sim : -10) : (config.peso_refin_nao || 0);
+  pontos.dividas_vencidas = dados.dividas_vencidas === 'S' ? (config.peso_dividas_vencidas_sim !== undefined ? config.peso_dividas_vencidas_sim : -4) : 0;
 
-  const scoreSerasa = parseInt(dados.score_serasa, 10);
-  if (!isNaN(scoreSerasa) && dados.score_serasa !== '' && dados.score_serasa !== undefined) {
-    if (scoreSerasa >= 700) pontos.score_serasa = config.peso_serasa_700;
-    else if (scoreSerasa >= 500) pontos.score_serasa = config.peso_serasa_500;
-    else if (scoreSerasa >= 200) pontos.score_serasa = config.peso_serasa_200;
-    else if (scoreSerasa > 0) pontos.score_serasa = config.peso_serasa_baixo;
-    else pontos.score_serasa = config.peso_serasa_zero;
+  // Consultas Recentes & Fomento/Securitizadora
+  const densidade = Number(dados.consultas_densidade_dia) || 0;
+  pontos.densidade_consultas = (densidade >= 4.0) ? (config.peso_densidade_consultas_alta !== undefined ? config.peso_densidade_consultas_alta : -8) : 0;
+  pontos.consultantes_fomento = dados.consultantes_fomento === 'S' ? (config.peso_consultantes_fomento_sim !== undefined ? config.peso_consultantes_fomento_sim : -5) : 0;
+  pontos.socios_anotacao = dados.socios_anotacao === 'S' ? (config.peso_socios_restricao_sim !== undefined ? config.peso_socios_restricao_sim : -6) : 0;
+  pontos.doc_extraviado = dados.documentos_extraviados === 'S' ? (config.peso_doc_extraviado_sim !== undefined ? config.peso_doc_extraviado_sim : -25) : 0;
+
+  // Score Serasa (Numérico ou DEFAULT)
+  const isDefaultSerasa = dados.is_default === true || dados.is_default === 'S' || String(dados.score_serasa || '').toUpperCase().includes('DEFAULT') || String(dados.score_serasa || '').toUpperCase().includes('MÚLTIPLOS') || String(dados.score_serasa || '').toUpperCase().includes('MULTIPLOS');
+  if (isDefaultSerasa) {
+    pontos.score_serasa = config.peso_serasa_default !== undefined ? config.peso_serasa_default : -30;
   } else {
-    pontos.score_serasa = 0;
+    const scoreSerasa = parseInt(dados.score_serasa, 10);
+    if (!isNaN(scoreSerasa) && dados.score_serasa !== '' && dados.score_serasa !== undefined) {
+      if (scoreSerasa >= 700) pontos.score_serasa = config.peso_serasa_700;
+      else if (scoreSerasa >= 500) pontos.score_serasa = config.peso_serasa_500;
+      else if (scoreSerasa >= 200) pontos.score_serasa = config.peso_serasa_200;
+      else if (scoreSerasa > 0) pontos.score_serasa = config.peso_serasa_baixo;
+      else pontos.score_serasa = config.peso_serasa_zero;
+    } else {
+      pontos.score_serasa = 0;
+    }
   }
 
   const capitalSocial = Number(dados.capital_social) || 0;
@@ -295,7 +318,10 @@ function calcularScore(dados, config = getScoreConfig()) {
   let risco = 'SEM-RISCO';
   let sugestao = 'LIBERADO';
 
-  if (totalScore > 5) {
+  if (isDefaultSerasa || pontos.doc_extraviado < 0) {
+    risco = isDefaultSerasa ? 'ALTO-RISCO-DEFAULT' : 'FRAUDE-DOCUMENTO';
+    sugestao = 'SÓ À VISTA / PAGAMENTO ANTECIPADO';
+  } else if (totalScore > 5) {
     risco = 'SEM-RISCO';
     sugestao = 'LIBERADO';
   } else {

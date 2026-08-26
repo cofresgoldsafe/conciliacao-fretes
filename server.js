@@ -288,6 +288,22 @@ const upload = multer({
   }
 });
 
+// Storage em memória para arquivos efêmeros que NÃO são gravados no disco (ex: laudos Serasa PDF)
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // Limite de 10MB
+  },
+  fileFilter: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Formato inválido. Apenas arquivos .pdf são aceitos para leitura do laudo Serasa.'));
+    }
+  }
+});
+
 function runPythonParser(scriptName, filePath) {
   return new Promise((resolve, reject) => {
     const pythonScript = path.join(__dirname, scriptName);
@@ -1800,6 +1816,7 @@ const {
   getHistorico: getHistoricoCredito,
   salvarAnalise: salvarAnaliseCredito
 } = require('./analise_credito_engine');
+const { parseSerasaBuffer } = require('./serasa_pdf_parser');
 
 // Funções de Normalização e Comparação Semântica de Endereços (Protheus vs Receita Federal)
 function normalizarNumero(num) {
@@ -2086,6 +2103,55 @@ async function consultarMx(dominio) {
   } catch (e) {}
   return { tipo: 'NENHUM', provedor: 'Sem registro MX ativo' };
 }
+
+// 0. Leitura e Validação em Memória do Laudo Serasa Experian (PDF)
+app.post('/api/financeiro/analise-credito/parse-serasa-pdf', memoryUpload.single('serasa_pdf'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({
+        success: false,
+        error_type: 'ARQUIVO_NAO_ENVIADO',
+        error: 'Nenhum arquivo PDF foi enviado. Selecione o relatório Serasa (.pdf).'
+      });
+    }
+
+    const resultado = await parseSerasaBuffer(req.file.buffer);
+
+    if (!resultado || !resultado.success) {
+      return res.status(400).json({
+        success: false,
+        error_type: resultado.error_type || 'ERRO_VALIDACAO_SERASA',
+        error: resultado.error || 'Falha na validação do relatório Serasa.',
+        detalhes: resultado
+      });
+    }
+
+    // Registra atividade no Feed de Auditoria (opcional se logado)
+    const authUser = getUserFromReq(req);
+    if (authUser && authUser.username && authUser.username !== 'sistema') {
+      logUserActivity({
+        username: authUser.username,
+        userName: authUser.name,
+        actionType: 'LEITURA_SERASA_PDF',
+        description: `Leu laudo Serasa do CNPJ ${resultado.cnpj || 'N/A'} (${resultado.razao_social || 'N/A'}) - Score: ${resultado.score_serasa_texto || 'N/A'}, Idade: ${resultado.idade_meses} meses`,
+        ip: req.ip,
+        metadata: { cnpj: resultado.cnpj, score: resultado.score_serasa_texto, data_emissao: resultado.data_emissao }
+      }).catch(() => {});
+    }
+
+    return res.json({
+      success: true,
+      data: resultado
+    });
+  } catch (err) {
+    console.error('Erro no endpoint parse-serasa-pdf:', err);
+    return res.status(500).json({
+      success: false,
+      error_type: 'ERRO_INTERNO',
+      error: 'Erro interno ao processar o arquivo PDF do Serasa: ' + err.message
+    });
+  }
+});
 
 // 1. Consulta Protheus para auto-preenchimento
 app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {

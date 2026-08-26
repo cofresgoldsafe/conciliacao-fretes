@@ -4520,12 +4520,154 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnResetScoreConfig = document.getElementById('btnResetScoreConfig');
   const scoreConfigForm = document.getElementById('scoreConfigForm');
 
+  // Elementos do Leitor de Laudo Serasa Experian (PDF)
+  const serasaPdfInput = document.getElementById('serasaPdfInput');
+  const btnSelectSerasaPdf = document.getElementById('btnSelectSerasaPdf');
+  const serasaPdfStatusAlert = document.getElementById('serasaPdfStatusAlert');
+
   let listaHistoricoCredito = [];
   let scoreConfigActive = null;
+  let dadosSerasaAtual = null;
 
-  // Iniciar Consulta Protheus
+  // 0. Leitura e Validação do Laudo Serasa Experian em Memória
+  if (btnSelectSerasaPdf && serasaPdfInput) {
+    btnSelectSerasaPdf.addEventListener('click', () => {
+      serasaPdfInput.click();
+    });
+
+    serasaPdfInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      btnSelectSerasaPdf.disabled = true;
+      btnSelectSerasaPdf.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; display: inline-block;"></div> Lendo PDF em memória...';
+
+      if (serasaPdfStatusAlert) {
+        serasaPdfStatusAlert.classList.remove('hidden');
+        serasaPdfStatusAlert.style.background = 'rgba(56, 189, 248, 0.12)';
+        serasaPdfStatusAlert.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+        serasaPdfStatusAlert.style.color = '#38bdf8';
+        serasaPdfStatusAlert.innerHTML = `⏳ Analisando arquivo <strong>${escapeHtml(file.name)}</strong> em tempo de execução...`;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('serasa_pdf', file);
+
+        const res = await fetch('/api/financeiro/analise-credito/parse-serasa-pdf', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Falha ao processar o relatório Serasa.');
+        }
+
+        const serasa = data.data;
+        dadosSerasaAtual = serasa;
+
+        // Banner Verde de Sucesso
+        if (serasaPdfStatusAlert) {
+          serasaPdfStatusAlert.classList.remove('hidden');
+          serasaPdfStatusAlert.style.background = 'rgba(34, 197, 94, 0.15)';
+          serasaPdfStatusAlert.style.borderColor = 'rgba(34, 197, 94, 0.35)';
+          serasaPdfStatusAlert.style.color = '#22c55e';
+          
+          const scoreDisp = serasa.is_default ? '<span style="color:#f87171; font-weight:800;">DEFAULT / Múltiplos Eventos</span>' : `<strong>${serasa.score_serasa || serasa.score_serasa_texto || '-'}</strong> / 1000`;
+          const pdDisp = serasa.probabilidade_inadimplencia_texto ? ` | PD: <strong>${escapeHtml(serasa.probabilidade_inadimplencia_texto)}</strong>` : '';
+          const protestosDisp = serasa.protestos_qtd > 0 ? `<span style="color:#f87171; font-weight:700;">${serasa.protestos_qtd} reg (R$ ${Number(serasa.protestos_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</span>` : '0';
+          const pefinDisp = serasa.pefin_qtd > 0 ? `<span style="color:#fbbf24;">${serasa.pefin_qtd} reg</span>` : '0';
+          const refinDisp = serasa.refin_qtd > 0 ? `<span style="color:#f87171;">${serasa.refin_qtd} reg</span>` : '0';
+
+          serasaPdfStatusAlert.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                ✓ <strong>Laudo Serasa Validado:</strong> CNPJ <strong>${escapeHtml(serasa.cnpj || 'N/A')}</strong> (${escapeHtml(serasa.razao_social || 'N/A')}) | Emissão: <strong>${escapeHtml(serasa.data_emissao)}</strong> (${serasa.idade_meses} meses)
+              </div>
+              <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; border-color: rgba(34, 197, 94, 0.4); font-size: 0.72rem;">✓ Válido (&le; 4 meses)</span>
+            </div>
+            <div style="margin-top: 0.35rem; font-size: 0.8rem; color: #cbd5e1;">
+              Score: ${scoreDisp}${pdDisp} | Protestos: ${protestosDisp} | PEFIN: ${pefinDisp} | REFIN: ${refinDisp} | Consultas: <strong>${serasa.consultas_total}</strong> (${serasa.consultas_densidade_dia}/dia)
+            </div>
+          `;
+        }
+
+        // Habilita o botão de consulta Protheus
+        if (btnIniciarConsultaCredito) {
+          btnIniciarConsultaCredito.disabled = false;
+          btnIniciarConsultaCredito.style.opacity = '1';
+          btnIniciarConsultaCredito.style.cursor = 'pointer';
+          btnIniciarConsultaCredito.title = 'Pronto para consultar o pedido no Protheus ERP';
+        }
+
+        // Preenche automaticamente o Bloco 5 (Serasa & Apontamentos)
+        const setVal = (id, val) => {
+          const el = document.getElementById(id);
+          if (el && val !== undefined && val !== null) el.value = val;
+        };
+
+        setVal('cr_score_serasa', serasa.score_serasa_texto || serasa.score_serasa || '');
+        setVal('cr_probabilidade_inadimplencia', serasa.probabilidade_inadimplencia_texto || '');
+        setVal('cr_protestos', serasa.protestos_tem);
+        setVal('cr_valor_protestos', serasa.protestos_valor ? Number(serasa.protestos_valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00');
+        setVal('cr_pfin', serasa.pefin_tem);
+        setVal('cr_refin', serasa.refin_tem);
+        setVal('cr_dividas_vencidas', serasa.dividas_vencidas_tem);
+        setVal('cr_ch_sem_fundo', serasa.cheques_tem);
+        setVal('cr_socios_anotacao', serasa.socios_anotacao);
+        setVal('cr_consultas_densidade', `${serasa.consultas_densidade_dia || 0} / dia (${serasa.consultas_total || 0} consultas em ${serasa.consultas_janela_dias || 0} dias)`);
+        setVal('cr_consultas_densidade_val', serasa.consultas_densidade_dia || 0);
+        setVal('cr_consultantes_fomento', serasa.consultantes_fomento);
+        setVal('cr_documentos_extraviados', serasa.documentos_extraviados);
+
+        // Se houver dados cadastrais no Serasa, usa como apoio
+        if (serasa.fundacao && !document.getElementById('cr_fundacao_matriz').value) {
+          setVal('cr_fundacao_matriz', serasa.fundacao);
+        }
+        if (serasa.situacao_rf && !document.getElementById('cr_cnpj_ativo').value) {
+          setVal('cr_cnpj_ativo', serasa.situacao_rf === 'ATIVA' ? 'S' : 'N');
+        }
+
+        // Atualiza Score em Tempo Real
+        atualizarScoreEmTempoReal();
+
+      } catch (err) {
+        dadosSerasaAtual = null;
+        if (serasaPdfStatusAlert) {
+          serasaPdfStatusAlert.classList.remove('hidden');
+          serasaPdfStatusAlert.style.background = 'rgba(239, 68, 68, 0.15)';
+          serasaPdfStatusAlert.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          serasaPdfStatusAlert.style.color = '#f87171';
+          serasaPdfStatusAlert.innerHTML = `❌ <strong>ERRO NA VALIDAÇÃO DO SERASA:</strong> ${escapeHtml(err.message)}`;
+        }
+
+        if (btnIniciarConsultaCredito) {
+          btnIniciarConsultaCredito.disabled = true;
+          btnIniciarConsultaCredito.style.opacity = '0.6';
+          btnIniciarConsultaCredito.style.cursor = 'not-allowed';
+          btnIniciarConsultaCredito.title = 'Faça primeiro a leitura do PDF do Serasa acima para liberar a consulta';
+        }
+
+        alert(`❌ Erro no Laudo Serasa:\n\n${err.message}\n\nPor favor, selecione um laudo oficial Serasa emitido há no máximo 4 meses.`);
+      } finally {
+        btnSelectSerasaPdf.disabled = false;
+        btnSelectSerasaPdf.innerHTML = '<span>📂 Selecionar Laudo Serasa (.pdf)</span>';
+        serasaPdfInput.value = '';
+      }
+    });
+  }
+
+  // Iniciar Consulta Protheus (Passo 2)
   if (btnIniciarConsultaCredito) {
     btnIniciarConsultaCredito.addEventListener('click', async () => {
+      if (!dadosSerasaAtual) {
+        alert('⚠️ ATENÇÃO:\n\nÉ obrigatório realizar primeiro a leitura do relatório PDF do Serasa antes de consultar o Protheus.');
+        if (btnSelectSerasaPdf) btnSelectSerasaPdf.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
       const emp = creditoEmpresaSelect ? creditoEmpresaSelect.value : '14';
       const numPed = creditoNumPedido ? creditoNumPedido.value.trim() : '';
 
@@ -4649,20 +4791,30 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_entrega_igual_cadastro', '');
         setVal('cr_google_maps', '');
         setVal('cr_registro_br', '');
-        setVal('cr_score_serasa', '');
-        setVal('cr_protestos', '');
-        setVal('cr_valor_protestos', '0,00');
-        setVal('cr_pfin', '');
-        setVal('cr_ch_sem_fundo', '');
         setVal('cr_fgts_situacao_regular', '');
         setVal('cr_razao_fgts_igual', '');
         setVal('cr_decisao_final', 'Decisão (atenção ao gravar)');
 
+        // Validação Cruzada: CNPJ Protheus vs CNPJ Serasa
+        const cnpjProtheusDigits = String(data.cliente_codigo || '').replace(/\D/g, '');
+        const cnpjSerasaDigits = String(dadosSerasaAtual.cnpj || '').replace(/\D/g, '');
+        let cnpjMatchMsg = '';
+        let isCnpjDivergent = false;
+
+        if (cnpjProtheusDigits && cnpjSerasaDigits && cnpjProtheusDigits.length >= 8 && cnpjSerasaDigits.length >= 8) {
+          if (cnpjProtheusDigits.slice(0, 8) !== cnpjSerasaDigits.slice(0, 8)) {
+            isCnpjDivergent = true;
+            cnpjMatchMsg = ` | <span style="color:#f87171; font-weight:800;">⚠️ ATENÇÃO: CNPJ Protheus (${escapeHtml(data.cliente_codigo || 'N/A')}) DIFERE do Serasa (${escapeHtml(dadosSerasaAtual.cnpj)})!</span>`;
+          } else {
+            cnpjMatchMsg = ` | <span style="color:#22c55e;">✓ CNPJ Protheus confere com Laudo Serasa</span>`;
+          }
+        }
+
         if (creditoProtheusBadge) {
           creditoProtheusBadge.classList.remove('hidden');
-          creditoProtheusBadge.style.background = 'rgba(34, 197, 94, 0.12)';
-          creditoProtheusBadge.style.borderColor = 'rgba(34, 197, 94, 0.3)';
-          creditoProtheusBadge.style.color = '#22c55e';
+          creditoProtheusBadge.style.background = isCnpjDivergent ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.12)';
+          creditoProtheusBadge.style.borderColor = isCnpjDivergent ? 'rgba(239, 68, 68, 0.4)' : 'rgba(34, 197, 94, 0.3)';
+          creditoProtheusBadge.style.color = isCnpjDivergent ? '#f87171' : '#22c55e';
           
           let endMsg = '';
           if (data.comparacao_endereco) {
@@ -4675,9 +4827,6 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data.dominio_principal) {
             domMsg = ` | Domínio: <strong>${escapeHtml(data.dominio_principal)}</strong> (${data.idade_dominio_rdap !== null ? data.idade_dominio_rdap + ' anos' : 'verificado'})`;
           }
-
-          creditoProtheusBadge.innerHTML = `✓ Pedido <strong>#${data.pedido_venda}</strong> (${escapeHtml(data.cliente_nome)}) importado com sucesso. Condição (SE4): Faturado: <strong>${data.faturado === 'S' ? 'Sim' : 'Não'}</strong> | Entrada: <strong>${data.entrada === 'S' ? 'Sim' : 'Não'}</strong> | Histórico (SE1): <strong>${data.total_compras_pagas || 0} compras pagas</strong>${endMsg}${domMsg}.`;
-        }
 
         // Atualiza Score em Tempo Real imediatamente após preencher dados
         atualizarScoreEmTempoReal();
@@ -4751,11 +4900,19 @@ document.addEventListener('DOMContentLoaded', () => {
       possui_site: getVal('cr_possui_site'),
       fundacao_matriz: getVal('cr_fundacao_matriz'),
       capital_social: parseMoeda(getVal('cr_capital_social')),
-      score_serasa: parseInt(getVal('cr_score_serasa'), 10) || 0,
+      score_serasa: getVal('cr_score_serasa'),
+      probabilidade_inadimplencia: getVal('cr_probabilidade_inadimplencia'),
       protestos: getVal('cr_protestos'),
       valor_protestos: parseMoeda(getVal('cr_valor_protestos')),
       pfin: getVal('cr_pfin'),
+      refin: getVal('cr_refin') || 'N',
+      dividas_vencidas: getVal('cr_dividas_vencidas') || 'N',
       ch_sem_fundo: getVal('cr_ch_sem_fundo'),
+      socios_anotacao: getVal('cr_socios_anotacao') || 'N',
+      consultas_densidade_dia: parseFloat(getVal('cr_consultas_densidade_val')) || 0,
+      consultantes_fomento: getVal('cr_consultantes_fomento') || 'N',
+      documentos_extraviados: getVal('cr_documentos_extraviados') || 'N',
+      serasa_pdf_info: dadosSerasaAtual || null,
       cnpj_ativo: getVal('cr_cnpj_ativo'),
       pgtos_abertos: getVal('cr_pgtos_abertos'),
       comprou_pagou: getVal('cr_comprou_pagou'),
@@ -4904,16 +5061,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pontos.ch_sem_fundo = dados.ch_sem_fundo === 'S' ? getCfg('peso_ch_sem_fundo_sim', -6) : 0;
     pontos.pfin = dados.pfin === 'S' ? getCfg('peso_pfin_sim', -5) : (dados.pfin === 'N' ? getCfg('peso_pfin_nao', 1) : 0);
+    pontos.refin = dados.refin === 'S' ? getCfg('peso_refin_sim', -10) : 0;
+    pontos.dividas_vencidas = dados.dividas_vencidas === 'S' ? getCfg('peso_dividas_vencidas_sim', -4) : 0;
+    
+    const densidade = Number(dados.consultas_densidade_dia) || 0;
+    pontos.densidade_consultas = (densidade >= 4.0) ? getCfg('peso_densidade_consultas_alta', -8) : 0;
+    pontos.consultantes_fomento = dados.consultantes_fomento === 'S' ? getCfg('peso_consultantes_fomento_sim', -5) : 0;
+    pontos.socios_anotacao = dados.socios_anotacao === 'S' ? getCfg('peso_socios_restricao_sim', -6) : 0;
+    pontos.doc_extraviado = dados.documentos_extraviados === 'S' ? getCfg('peso_doc_extraviado_sim', -25) : 0;
 
-    const serasa = parseInt(dados.score_serasa, 10);
-    if (!isNaN(serasa) && dados.score_serasa !== '') {
-      if (serasa >= 700) pontos.score_serasa = getCfg('peso_serasa_700', 8);
-      else if (serasa >= 500) pontos.score_serasa = getCfg('peso_serasa_500', 4);
-      else if (serasa >= 200) pontos.score_serasa = getCfg('peso_serasa_200', -4);
-      else if (serasa > 0) pontos.score_serasa = getCfg('peso_serasa_baixo', -15);
-      else pontos.score_serasa = getCfg('peso_serasa_zero', -20);
+    const isDefaultSerasa = dados.is_default === true || dados.is_default === 'S' || String(dados.score_serasa || '').toUpperCase().includes('DEFAULT') || String(dados.score_serasa || '').toUpperCase().includes('MÚLTIPLOS');
+    if (isDefaultSerasa) {
+      pontos.score_serasa = getCfg('peso_serasa_default', -30);
     } else {
-      pontos.score_serasa = 0;
+      const serasa = parseInt(dados.score_serasa, 10);
+      if (!isNaN(serasa) && dados.score_serasa !== '') {
+        if (serasa >= 700) pontos.score_serasa = getCfg('peso_serasa_700', 8);
+        else if (serasa >= 500) pontos.score_serasa = getCfg('peso_serasa_500', 4);
+        else if (serasa >= 200) pontos.score_serasa = getCfg('peso_serasa_200', -4);
+        else if (serasa > 0) pontos.score_serasa = getCfg('peso_serasa_baixo', -15);
+        else pontos.score_serasa = getCfg('peso_serasa_zero', -20);
+      } else {
+        pontos.score_serasa = 0;
+      }
     }
 
     if (capSocial >= 10000000) pontos.capital_social = getCfg('peso_capital_10m', 12);
@@ -4938,7 +5108,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let risco = 'MÉDIO RISCO';
     let sugestao = 'VER E-MAIL CORPORATIVO SITE REFERENC COML NFE 3S ALTO VALOR FATURADO';
 
-    if (!isFaturado) {
+    if (isDefaultSerasa || pontos.doc_extraviado < 0) {
+      risco = isDefaultSerasa ? 'ALTO-RISCO-DEFAULT' : 'FRAUDE-DOCUMENTO';
+      sugestao = 'SÓ À VISTA / PAGAMENTO ANTECIPADO';
+    } else if (!isFaturado) {
       risco = 'SEM-RISCO';
       sugestao = 'LIBERADO';
     } else if (totalScore > 5) {
@@ -5446,12 +5619,18 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '4. E-mails & Site Corporativo', nome: 'E-mail Gratuito / Genérico', val: item.mail_gratuito === 'S' ? 'Sim' : 'Não', pts: pts.mail_gratuito },
       { cat: '4. E-mails & Site Corporativo', nome: 'Possui Site Corporativo Ativo', val: item.possui_site === 'S' ? 'Sim' : 'Não', pts: pts.possui_site },
 
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Score Serasa (Faixa)', val: item.score_serasa !== undefined && item.score_serasa !== '' ? `${item.score_serasa} / 1000` : '-', pts: pts.score_serasa },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Score Serasa (Faixa / DEFAULT)', val: item.score_serasa !== undefined && item.score_serasa !== '' ? `${item.score_serasa}` : '-', pts: pts.score_serasa },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Apontamento de Protestos', val: item.protestos === 'S' ? 'Sim' : 'Não', pts: pts.protestos },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos > 2x Pedido', val: item.protestos === 'S' && pts.vlr_protestos_vs_ped !== 0 ? 'Sim (> 2x)' : 'Não / Dispensado', pts: pts.vlr_protestos_vs_ped },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos vs Capital Social', val: item.protestos === 'S' && pts.protestos_vs_capital !== 0 ? (pts.protestos_vs_capital < 0 ? '> Capital' : '<= Capital') : 'Dispensado', pts: pts.protestos_vs_capital },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Financeira (PFIN)', val: item.pfin === 'S' ? 'Sim' : 'Não', pts: pts.pfin },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Financeira (PEFIN)', val: item.pfin === 'S' ? 'Sim' : 'Não', pts: pts.pfin },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Bancária (REFIN)', val: item.refin === 'S' ? 'Sim' : 'Não', pts: pts.refin },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Dívidas Vencidas', val: item.dividas_vencidas === 'S' ? 'Sim' : 'Não', pts: pts.dividas_vencidas },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Cheques Sem Fundo', val: item.ch_sem_fundo === 'S' ? 'Sim' : 'Não', pts: pts.ch_sem_fundo },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Densidade Consultas Recentes', val: item.consultas_densidade_dia ? `${item.consultas_densidade_dia}/dia` : '0/dia', pts: pts.densidade_consultas },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Consultas Fomento / Factoring', val: item.consultantes_fomento === 'S' ? 'Sim' : 'Não', pts: pts.consultantes_fomento },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Sócios com Restrição no Bureau', val: item.socios_anotacao === 'S' ? 'Sim' : 'Não', pts: pts.socios_anotacao },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Documento Extraviado / Roubado', val: item.documentos_extraviados === 'S' ? 'Sim (ALERTA)' : 'Não', pts: pts.doc_extraviado },
 
       { cat: '6. FGTS & Certidões Comerciais', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : 'Irregular', pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
       { cat: '6. FGTS & Certidões Comerciais', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : 'Divergente', pts: pts.razao_fgts_igual },
@@ -5558,15 +5737,21 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
 
-      <!-- Bloco 5: Bureau, Serasa & Protestos -->
+      <!-- Bloco 5: Bureau, Serasa & Protestos (Expandido) -->
       <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-        <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa & Apontamentos</h4>
+        <h4 style="margin: 0 0 0.75rem 0; color: #f43f5e; font-size: 0.9rem;">5. Serasa Experian & Apontamentos</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-          <div><strong style="color:var(--text-muted)">Score Serasa:</strong> <strong>${item.score_serasa ?? '-'}</strong> / 1000 ${formatarBadgePontos(pts.score_serasa)}</div>
+          <div><strong style="color:var(--text-muted)">Score Serasa:</strong> <strong>${escapeHtml(String(item.score_serasa ?? '-'))}</strong> ${item.probabilidade_inadimplencia ? `(PD ${escapeHtml(item.probabilidade_inadimplencia)})` : ''} ${formatarBadgePontos(pts.score_serasa)}</div>
           <div><strong style="color:var(--text-muted)">Possui Protestos:</strong> ${fmtSimNao(item.protestos)} ${formatarBadgePontos(pts.protestos)}</div>
           <div><strong style="color:var(--text-muted)">Valor Protestos:</strong> R$ ${Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ${item.protestos === 'S' ? (formatarBadgePontos(pts.vlr_protestos_vs_ped, 'vs Pedido') + ' ' + formatarBadgePontos(pts.protestos_vs_capital, 'vs Capital')) : ''}</div>
-          <div><strong style="color:var(--text-muted)">PFIN Sim:</strong> ${fmtSimNao(item.pfin)} ${formatarBadgePontos(pts.pfin)}</div>
+          <div><strong style="color:var(--text-muted)">PEFIN:</strong> ${fmtSimNao(item.pfin)} ${formatarBadgePontos(pts.pfin)}</div>
+          <div><strong style="color:var(--text-muted)">REFIN (Bancos):</strong> ${fmtSimNao(item.refin)} ${formatarBadgePontos(pts.refin)}</div>
+          <div><strong style="color:var(--text-muted)">Dívidas Vencidas:</strong> ${fmtSimNao(item.dividas_vencidas)} ${formatarBadgePontos(pts.dividas_vencidas)}</div>
           <div><strong style="color:var(--text-muted)">Cheques Sem Fundo:</strong> ${fmtSimNao(item.ch_sem_fundo)} ${formatarBadgePontos(pts.ch_sem_fundo)}</div>
+          <div><strong style="color:var(--text-muted)">Sócios c/ Restrição:</strong> ${fmtSimNao(item.socios_anotacao)} ${formatarBadgePontos(pts.socios_anotacao)}</div>
+          <div><strong style="color:var(--text-muted)">Densidade Consultas:</strong> ${item.consultas_densidade_dia ? `${item.consultas_densidade_dia}/dia` : '0/dia'} ${formatarBadgePontos(pts.densidade_consultas)}</div>
+          <div><strong style="color:var(--text-muted)">Consultas Fomento:</strong> ${fmtSimNao(item.consultantes_fomento)} ${formatarBadgePontos(pts.consultantes_fomento)}</div>
+          <div><strong style="color:var(--text-muted)">Doc. Extraviado:</strong> ${item.documentos_extraviados === 'S' ? '<span style="color:#f87171; font-weight:800;">Sim (ALERTA)</span>' : '<span style="color:#22c55e;">Não</span>'} ${formatarBadgePontos(pts.doc_extraviado)}</div>
         </div>
       </div>
 
@@ -5710,11 +5895,22 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_possui_site', item.possui_site !== undefined ? item.possui_site : 'N');
         setVal('cr_fundacao_matriz', item.fundacao_matriz || '');
         setVal('cr_capital_social', Number(item.capital_social || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        
+        // Dados do Serasa & Bureau
         setVal('cr_score_serasa', item.score_serasa !== undefined ? item.score_serasa : '');
+        setVal('cr_probabilidade_inadimplencia', item.probabilidade_inadimplencia || '');
         setVal('cr_protestos', item.protestos !== undefined ? item.protestos : '');
         setVal('cr_valor_protestos', Number(item.valor_protestos || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         setVal('cr_pfin', item.pfin !== undefined ? item.pfin : '');
+        setVal('cr_refin', item.refin !== undefined ? item.refin : 'N');
+        setVal('cr_dividas_vencidas', item.dividas_vencidas !== undefined ? item.dividas_vencidas : 'N');
         setVal('cr_ch_sem_fundo', item.ch_sem_fundo !== undefined ? item.ch_sem_fundo : '');
+        setVal('cr_socios_anotacao', item.socios_anotacao !== undefined ? item.socios_anotacao : 'N');
+        setVal('cr_consultas_densidade', item.consultas_densidade_dia ? `${item.consultas_densidade_dia}/dia` : '0/dia');
+        setVal('cr_consultas_densidade_val', item.consultas_densidade_dia || 0);
+        setVal('cr_consultantes_fomento', item.consultantes_fomento !== undefined ? item.consultantes_fomento : 'N');
+        setVal('cr_documentos_extraviados', item.documentos_extraviados !== undefined ? item.documentos_extraviados : 'N');
+
         setVal('cr_cnpj_ativo', item.cnpj_ativo || 'S');
         setVal('cr_pgtos_abertos', item.pgtos_abertos !== undefined ? item.pgtos_abertos : 'N');
         setVal('cr_comprou_pagou', item.comprou_pagou !== undefined ? item.comprou_pagou : 'N');

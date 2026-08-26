@@ -134,8 +134,27 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - **Frete Embutido (`C5_VLR_FRT`):** Permanece como campo informativo (`freteEmbutido`) no payload e na interface, mas **NÃO** é somado ao total geral do pedido de venda.
    - **Ajustes de UI:** Modal de Detalhes do Pedido (`#pedidoDetalhesModal`) agora discrimina *Frete Cobrado* e exibe *Frete Embutido (Incluso)* apenas de forma informativa e contextual quando presente.
    - **Cobertura de Testes:** Suíte dedicada `test_totais_pedido.js` cobrindo cenários de frete cobrado puro, frete embutido puro, misto com descontos e integração de payload com Análise de Crédito (100% aprovados).
-16. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-17. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+16. [x] **Leitura Obrigatória de PDF Serasa Experian, Validação de Validade (máx. 4 meses), Trava na Consulta Protheus & Expansão do Bloco 5 (`serasa_pdf_parser.py`, `serasa_pdf_parser.js`, `analise_credito_engine.js`, `server.js`, `public/index.html`, `public/app.js`, `test_serasa_pdf_parser.js`):**
+   - **Processamento Efêmero em Memória (Sem Gravação em Disco):**
+     - O sistema processa o arquivo PDF de análise Serasa em buffer de memória efêmero (`multer.memoryStorage()`) e stream direto via stdin/stdout com o interpretador Python (`pypdf`), garantindo que nenhum documento confidencial seja gravado no disco do servidor.
+   - **Validação Estrita de Modelo & Regra de 4 Meses de Validade:**
+     - **Modelo Serasa Oficial:** Verificação determinística de assinaturas de cabeçalho do Serasa Experian (Relatório Básico). Arquivos não reconhecidos (ex: estudos internos, manuais) são rejeitados com erro `MODELO_INVALIDO`.
+     - **Validade Temporal (&le; 4 meses):** Cálculo da idade do laudo a partir da data de emissão extraída (`data_emissao`). Se o laudo possuir mais de 4 meses (ex: laudo de 2024 contra 2026 = 24.3 meses), o upload é rejeitado com erro `LAUDO_EXPIRADO`, bloqueando consultas com laudos defasados.
+   - **Trava de Segurança na Consulta Protheus (Passo 1 ➔ Passo 2):**
+     - O botão `⚡ Iniciar Consulta Protheus` inicia desabilitado (`disabled="true"`, opacidade 60%, cursor bloqueado).
+     - Só é desbloqueado após a validação e leitura bem-sucedida de um laudo Serasa válido.
+     - **Validação Cruzada de CNPJs:** Ao consultar o Protheus, o sistema confronta o CNPJ da empresa consultada no ERP com o CNPJ extraído do laudo Serasa. Caso divirjam (ex: analista leu o Serasa de uma filial/empresa diferente), um alerta visual destacado em vermelho/âmbar é exibido no cabeçalho.
+   - **Extração Completa de Métricas e Expansão do Bloco 5:**
+     - Preenchimento 100% automático de: Score Numérico, Probabilidade de Inadimplência (`PD %`), Protestos (quantidade e valor total somado), PEFIN (quantidade e valor), REFIN Bancário (quantidade e valor), Dívidas Vencidas, Cheques Sem Fundo, Sócios com Restrição/Anotação no Bureau, Densidade de Consultas Recentes (`consultas/dia`), Consultas de Fomento Mercantil / Securitizadora e Documentos Roubados/Extraviados.
+   - **Rebalanceamento Equilibrado do Score & Prevenção Anti-Golpe:**
+     - O Serasa limpo **não possui sobrepeso excessivo** (+8 a +14 pts), impedindo que empresas antigas adquiridas por estelionatários burlem o motor de risco. Indicadores digitais e comportamentais (divergência de entrega, ausência de site/domínio recente, e-mail gratuito, pedidos anômalos) continuam sobrepondo-se e classificando como `GOLPE`.
+     - **Casos Críticos de Default e Fraude:** Identificação de laudos sem score numérico com estado `DEFAULT / Múltiplos Eventos` (penalidade -30 pts e direcionamento automático para `SÓ À VISTA / ANTECIPADO`) e detecção de `Documento Extraviado/Roubado` (penalidade -25 pts e classificação como `FRAUDE-DOCUMENTO`).
+   - **Calibração Administrativa de Pesos & Ficha Imutável:**
+     - Inclusão dos novos parâmetros de calibração na aba Configurações (`#tab-config-score`): `cfg_peso_serasa_default`, `cfg_peso_refin_sim`, `cfg_peso_dividas_vencidas_sim`, `cfg_peso_densidade_consultas_alta`, `cfg_peso_consultantes_fomento_sim`, `cfg_peso_socios_restricao_sim`, `cfg_peso_doc_extraviado_sim`.
+     - Extrato e Ficha do Pedido com badges de pontuação auditáveis, conferência matemática e restauração completa no formulário via botão `⚡ Carregar no Formulário`.
+   - **Suíte de Testes Automatizados:** Script `test_serasa_pdf_parser.js` com 8 asserções automatizadas cobrindo laudos reais (WDM, DASS, AP Elettro, EQUIPSEA), laudos expirados (Optimus Pharma), rejeição de não-Serasa, motor de score e endpoint HTTP `POST /api/financeiro/analise-credito/parse-serasa-pdf` (100% de aprovação).
+17. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
+18. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.

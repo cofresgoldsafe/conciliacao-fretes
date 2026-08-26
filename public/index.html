@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.65">
+  <link rel="stylesheet" href="style.css?v=8.66">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 26/08/2026 10:55 (Correção da regra de frete no Total do Pedido de Venda - C5_FRETE vs C5_VLR_FRT)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 26/08/2026 11:50 (Leitura obrigatória de PDF Serasa, validação de 4 meses, trava Protheus e expansão do Bloco 5)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1483,6 +1483,10 @@
                 <input type="number" id="cfg_peso_serasa_zero" class="form-input" value="-20" />
               </div>
               <div class="form-group">
+                <label for="cfg_peso_serasa_default">Score DEFAULT / Múltiplos Eventos (-pts)</label>
+                <input type="number" id="cfg_peso_serasa_default" class="form-input" value="-30" />
+              </div>
+              <div class="form-group">
                 <label for="cfg_peso_protestos_nao">Sem Protestos (+pts)</label>
                 <input type="number" id="cfg_peso_protestos_nao" class="form-input" value="5" />
               </div>
@@ -1513,6 +1517,30 @@
               <div class="form-group">
                 <label for="cfg_peso_pfin_nao">PFIN Não (+pts)</label>
                 <input type="number" id="cfg_peso_pfin_nao" class="form-input" value="1" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_refin_sim">REFIN Sim - Dívida Bancária (-pts)</label>
+                <input type="number" id="cfg_peso_refin_sim" class="form-input" value="-10" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_dividas_vencidas_sim">Dívidas Vencidas Sim (-pts)</label>
+                <input type="number" id="cfg_peso_dividas_vencidas_sim" class="form-input" value="-4" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_densidade_consultas_alta">Densidade Consultas &gt;= 4/dia (-pts)</label>
+                <input type="number" id="cfg_peso_densidade_consultas_alta" class="form-input" value="-8" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_consultantes_fomento_sim">Consultas Fomento / Securitizadora (-pts)</label>
+                <input type="number" id="cfg_peso_consultantes_fomento_sim" class="form-input" value="-5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_socios_restricao_sim">Sócios c/ Restrição no Bureau (-pts)</label>
+                <input type="number" id="cfg_peso_socios_restricao_sim" class="form-input" value="-6" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_doc_extraviado_sim">Documento Roubado / Extraviado (-pts)</label>
+                <input type="number" id="cfg_peso_doc_extraviado_sim" class="form-input" value="-25" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_fgts_regular_nao">FGTS Irregular (-pts)</label>
@@ -1687,8 +1715,34 @@
           </div>
         </div>
 
-        <!-- Barra de Consulta Protheus -->
-        <div style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1.25rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.45); border-radius: 10px; border: 1px solid var(--panel-border);">
+        <!-- Card 1: Leitura Obrigatória do Laudo Serasa Experian (PDF) -->
+        <div style="margin-top: 1.25rem; padding: 1.25rem; background: rgba(30, 41, 59, 0.45); border-radius: 10px; border: 1px solid rgba(56, 189, 248, 0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div>
+              <h3 style="margin: 0; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; gap: 0.5rem;">
+                <span>📄 1. Leitura do Relatório Serasa Experian (Obrigatório)</span>
+                <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 0.72rem;">Validade Máxima: 4 Meses</span>
+              </h3>
+              <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-muted);">
+                Faça a leitura do PDF do laudo Serasa para preenchimento automático das anotações e desbloqueio da consulta Protheus.
+              </p>
+            </div>
+            <div>
+              <input type="file" id="serasaPdfInput" accept=".pdf" style="display: none;" />
+              <button type="button" id="btnSelectSerasaPdf" class="btn btn-secondary" style="height: 38px; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">
+                <span>📂 Selecionar Laudo Serasa (.pdf)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Banner Informativo de Status do Laudo Serasa -->
+          <div id="serasaPdfStatusAlert" class="alert-info-box hidden" style="padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.84rem; line-height: 1.4;">
+            <!-- Conteúdo injetado dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- Barra de Consulta Protheus (Passo 2) -->
+        <div style="display: flex; gap: 1.25rem; align-items: flex-end; flex-wrap: wrap; margin-top: 1rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.45); border-radius: 10px; border: 1px solid var(--panel-border);">
           <div class="form-group" style="min-width: 260px; flex: 1;">
             <label for="creditoEmpresaSelect" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">
               🏢 Empresa Ativa Protheus:
@@ -1708,7 +1762,7 @@
           </div>
 
           <div style="align-self: flex-end;">
-            <button id="btnIniciarConsultaCredito" class="btn btn-primary btn-large" style="height: 42px; padding: 0 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);">
+            <button id="btnIniciarConsultaCredito" class="btn btn-primary btn-large" disabled title="Selecione primeiro o arquivo PDF do Serasa acima para liberar a consulta" style="height: 42px; padding: 0 1.5rem; display: flex; align-items: center; gap: 0.5rem; font-weight: 600; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3); opacity: 0.6; cursor: not-allowed;">
               <span>⚡ Iniciar Consulta Protheus</span>
             </button>
           </div>
@@ -2027,41 +2081,85 @@
 
           <!-- Bloco 5: Bureau, Serasa & Protestos -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>5. Serasa & Apontamentos</span>
-              <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">✍️ Bureau / Serasa</span>
+            <h3 style="font-size: 0.95rem; color: #f43f5e; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <span>5. Serasa Experian & Apontamentos de Bureau</span>
+              <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">⚡ Preenchimento Automático via PDF Serasa</span>
             </h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>Score Serasa (0-1000) *</label>
-                <input type="number" id="cr_score_serasa" class="form-input" placeholder="0 a 1000" min="0" max="1000" required />
+                <label>Score Serasa</label>
+                <input type="text" id="cr_score_serasa" class="form-input" placeholder="Ex: 795 ou DEFAULT" style="font-weight: 700;" readonly />
               </div>
               <div class="form-group">
-                <label>Possui Protestos? *</label>
-                <select id="cr_protestos" class="form-select" required>
+                <label>Probabilidade Inadimplência (PD)</label>
+                <input type="text" id="cr_probabilidade_inadimplencia" class="form-input" placeholder="Ex: 0.62%" style="font-weight: 700; color: #38bdf8;" readonly />
+              </div>
+              <div class="form-group">
+                <label>Possui Protestos?</label>
+                <select id="cr_protestos" class="form-select">
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+5 pts)</option>
                   <option value="S">Sim (-10 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Valor Protestos (R$) *</label>
+                <label>Valor Protestos (R$)</label>
                 <input type="text" id="cr_valor_protestos" class="form-input" placeholder="0,00" value="0,00" />
               </div>
               <div class="form-group">
-                <label>PFIN Sim? *</label>
-                <select id="cr_pfin" class="form-select" required>
+                <label>Dívidas Comerciais (PEFIN)</label>
+                <select id="cr_pfin" class="form-select">
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (+1 pt)</option>
                   <option value="S">Sim (-5 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Cheques Sem Fundo? *</label>
-                <select id="cr_ch_sem_fundo" class="form-select" required>
+                <label>Dívidas Bancárias (REFIN)</label>
+                <select id="cr_refin" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-10 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Dívidas Vencidas</label>
+                <select id="cr_dividas_vencidas" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-4 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cheques Sem Fundo?</label>
+                <select id="cr_ch_sem_fundo" class="form-select">
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (0 pts)</option>
                   <option value="S">Sim (-6 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Sócios com Anotação Negativa?</label>
+                <select id="cr_socios_anotacao" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-6 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Densidade de Consultas Recentes</label>
+                <input type="text" id="cr_consultas_densidade" class="form-input" placeholder="Ex: 0.4 / dia" readonly />
+                <input type="hidden" id="cr_consultas_densidade_val" value="0" />
+              </div>
+              <div class="form-group">
+                <label>Consultas Fomento / Securitizadora?</label>
+                <select id="cr_consultantes_fomento" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-5 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Documento Extraviado / Roubado?</label>
+                <select id="cr_documentos_extraviados" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-25 pts / Trava)</option>
                 </select>
               </div>
             </div>
@@ -2653,6 +2751,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.65"></script>
+  <script src="app.js?v=8.66"></script>
 </body>
 </html>
