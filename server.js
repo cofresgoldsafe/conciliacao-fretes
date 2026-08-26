@@ -973,12 +973,14 @@ app.get('/api/vendedores/estoque/saldos', requireAuth, async (req, res) => {
     const user = getUserFromReq(req);
 
     const produtos = await getSaldosEstoqueDB({ search, filtroEstoque });
+    const todosProdutos = await getSaldosEstoqueDB({ filtroEstoque: 'todos' });
     const ultimoSync = await getUltimoSyncEstoqueLog();
 
-    // Cálculos de KPIs consolidados
-    const totalItensEstoque = produtos.filter(p => Number(p.saldo || 0) > 0).length;
-    const totalItensSemEstoque = produtos.filter(p => Number(p.saldo || 0) <= 0).length;
-    const totalValorEstoque = produtos.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
+    // Cálculos de KPIs consolidados globais (independente do filtro selecionado na tabela)
+    const baseKpi = todosProdutos && todosProdutos.length > 0 ? todosProdutos : produtos;
+    const totalItensEstoque = baseKpi.filter(p => Number(p.saldo || 0) > 0).length;
+    const totalItensSemEstoque = baseKpi.filter(p => Number(p.saldo || 0) <= 0).length;
+    const totalValorEstoque = baseKpi.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
 
     logUserActivity({
       username: user.username,
@@ -2370,16 +2372,19 @@ function startEstoqueSyncJob() {
     estoqueSyncJobInterval.unref();
   }
 
-  // Executa uma sincronização inicial em background após 5 segundos se o cache/tabela não possuir registros
+  // Executa uma sincronização inicial em background após 3 segundos se o cache/tabela não possuir dados reais
   setTimeout(async () => {
     try {
       const ultimo = await getUltimoSyncEstoqueLog();
-      if (!ultimo) {
-        console.log('📦 [Job Estoque] Nenhum registro de estoque encontrado. Executando carga inicial...');
+      const needsSync = !ultimo || Number(ultimo.total_produtos || 0) < 10 || ultimo.triggered_by === 'TEST_SUITE';
+      if (needsSync) {
+        console.log('📦 [Job Estoque] Carga inicial necessária. Executando sincronização completa do Protheus...');
         await sincronizarSaldosEstoqueProtheus({ triggeredBy: 'JOB_STARTUP' });
       }
-    } catch {}
-  }, 5000);
+    } catch (e) {
+      console.warn('⚠️ [Job Estoque] Falha na sincronização de startup:', e.message);
+    }
+  }, 3000);
 }
 
 if (require.main === module) {

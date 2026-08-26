@@ -79,62 +79,75 @@ test('Filtragem de produtos PA descarta códigos com "X" e descrições com "XXX
 
 // 3. Teste de Gravação e Leitura no Cache Local / PostgreSQL
 asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB recupera com filtros', async () => {
-  const mockProdutos = [
-    {
-      codigo: '001001000000001',
-      descricao: 'ARMARIO CORTA FOGO 200X100X45 CM - VERMELHO',
-      preco: 6600.00,
-      saldo: 15,
-      saldo_total: 99000.00,
-      qtd_vendas: 1,
-      qtd_compras: 16,
-      ponto_ped: 25,
-      detalhes_empresas: {
-        "14": { saldo: 5, vendas: 0, compras: 10 },
-        "15": { saldo: 10, vendas: 1, compras: 6 },
-        "16": { saldo: 0, vendas: 0, compras: 0 }
+  const cacheFile = path.join(__dirname, 'data', 'estoque_saldos_cache.json');
+  let originalCache = null;
+  if (fs.existsSync(cacheFile)) {
+    originalCache = fs.readFileSync(cacheFile, 'utf-8');
+  }
+
+  try {
+    const mockProdutos = [
+      {
+        codigo: '001001000000001',
+        descricao: 'ARMARIO CORTA FOGO 200X100X45 CM - VERMELHO',
+        preco: 6600.00,
+        saldo: 15,
+        saldo_total: 99000.00,
+        qtd_vendas: 1,
+        qtd_compras: 16,
+        ponto_ped: 25,
+        detalhes_empresas: {
+          "14": { saldo: 5, vendas: 0, compras: 10 },
+          "15": { saldo: 10, vendas: 1, compras: 6 },
+          "16": { saldo: 0, vendas: 0, compras: 0 }
+        }
+      },
+      {
+        codigo: '001001000000002',
+        descricao: 'ARMARIO CORTA FOGO 100X100X45 CM - BRANCO',
+        preco: 4629.00,
+        saldo: 0,
+        saldo_total: 0.00,
+        qtd_vendas: 0,
+        qtd_compras: 0,
+        ponto_ped: 5,
+        detalhes_empresas: {
+          "14": { saldo: 0, vendas: 0, compras: 0 },
+          "15": { saldo: 0, vendas: 0, compras: 0 },
+          "16": { saldo: 0, vendas: 0, compras: 0 }
+        }
       }
-    },
-    {
-      codigo: '001001000000002',
-      descricao: 'ARMARIO CORTA FOGO 100X100X45 CM - BRANCO',
-      preco: 4629.00,
-      saldo: 0,
-      saldo_total: 0.00,
-      qtd_vendas: 0,
-      qtd_compras: 0,
-      ponto_ped: 5,
-      detalhes_empresas: {
-        "14": { saldo: 0, vendas: 0, compras: 0 },
-        "15": { saldo: 0, vendas: 0, compras: 0 },
-        "16": { saldo: 0, vendas: 0, compras: 0 }
-      }
+    ];
+
+    await postgresDb.saveSaldosEstoqueDB(mockProdutos, {
+      status: 'SUCCESS',
+      duracao_ms: 120,
+      triggered_by: 'TEST_SUITE'
+    });
+
+    // Consulta todos
+    const todos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'todos' });
+    assert.ok(Array.isArray(todos), 'Retorna lista de produtos');
+    assert.ok(todos.length >= 2, 'Contém ao menos os 2 produtos inseridos');
+
+    // Filtro positivo
+    const positivos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'positivo' });
+    assert.ok(positivos.every(p => Number(p.saldo) > 0), 'Todos os itens filtrados com positivo têm saldo > 0');
+
+    // Filtro zerado
+    const zerados = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'zerado_negativo' });
+    assert.ok(zerados.every(p => Number(p.saldo) <= 0), 'Todos os itens filtrados com zerado têm saldo <= 0');
+
+    // Filtro de busca textual
+    const busca = await postgresDb.getSaldosEstoqueDB({ search: 'VERMELHO' });
+    assert.ok(busca.length > 0, 'Busca localiza item por descrição');
+    assert.strictEqual(busca[0].codigo, '001001000000001');
+  } finally {
+    // Restaura o cache de produção original
+    if (originalCache) {
+      fs.writeFileSync(cacheFile, originalCache, 'utf-8');
     }
-  ];
-
-  await postgresDb.saveSaldosEstoqueDB(mockProdutos, {
-    status: 'SUCCESS',
-    duracao_ms: 120,
-    triggered_by: 'TEST_SUITE'
-  });
-
-  // Consulta todos
-  const todos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'todos' });
-  assert.ok(Array.isArray(todos), 'Retorna lista de produtos');
-  assert.ok(todos.length >= 2, 'Contém ao menos os 2 produtos inseridos');
-
-  // Filtro positivo
-  const positivos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'positivo' });
-  assert.ok(positivos.every(p => Number(p.saldo) > 0), 'Todos os itens filtrados com positivo têm saldo > 0');
-
-  // Filtro zerado
-  const zerados = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'zerado_negativo' });
-  assert.ok(zerados.every(p => Number(p.saldo) <= 0), 'Todos os itens filtrados com zerado têm saldo <= 0');
-
-  // Filtro de busca textual
-  const busca = await postgresDb.getSaldosEstoqueDB({ search: 'VERMELHO' });
-  assert.ok(busca.length > 0, 'Busca localiza item por descrição');
-  assert.strictEqual(busca[0].codigo, '001001000000001');
+  }
 });
 
 // 4. Teste de Endpoint HTTP: GET /api/vendedores/estoque/saldos
