@@ -3204,6 +3204,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let estoqueSortColumn = 'saldo';
   let estoqueSortAsc = false;
   let estoqueItemSelecionado = null;
+  let estoquePaginaAtual = 1;
+  let estoqueItensPorPagina = 50;
 
   const estoqueBuscaInput = document.getElementById('estoqueBuscaInput');
   const estoqueGrupoSelect = document.getElementById('estoqueGrupoSelect');
@@ -3213,6 +3215,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const modalEstoqueDetalhes = document.getElementById('modalEstoqueDetalhes');
   const btnCloseModalEstoque = document.getElementById('btnCloseModalEstoque');
   const btnFecharModalEstoqueDetalhes = document.getElementById('btnFecharModalEstoqueDetalhes');
+
+  const estoqueItensPorPaginaSelect = document.getElementById('estoqueItensPorPaginaSelect');
+  const estoquePaginacaoInfo = document.getElementById('estoquePaginacaoInfo');
+  const estoquePagNumeros = document.getElementById('estoquePagNumeros');
+  const btnEstoquePagPrimeira = document.getElementById('btnEstoquePagPrimeira');
+  const btnEstoquePagAnterior = document.getElementById('btnEstoquePagAnterior');
+  const btnEstoquePagProxima = document.getElementById('btnEstoquePagProxima');
+  const btnEstoquePagUltima = document.getElementById('btnEstoquePagUltima');
 
   async function carregarSaldosEstoque(forceReload = false) {
     const tbody = document.getElementById('estoqueTableBody');
@@ -3265,6 +3275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastSyncSpan.textContent = isNaN(syncDate.getTime()) ? 'Recente' : syncDate.toLocaleString('pt-BR');
       }
 
+      estoquePaginaAtual = 1;
       updateEstoqueSortIcons();
       renderSaldosEstoqueTable();
     } catch (err) {
@@ -3291,12 +3302,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return estoqueSortAsc ? valA - valB : valB - valA;
     });
 
-    if (lista.length === 0) {
+    const totalItens = lista.length;
+    if (totalItens === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">Nenhum produto encontrado com os filtros aplicados.</td></tr>';
+      renderEstoquePaginacaoControles(0, 0, 0, 1);
       return;
     }
 
-    tbody.innerHTML = lista.map(p => {
+    const pageSize = (estoqueItensPorPagina === 'todos') ? totalItens : parseInt(estoqueItensPorPagina, 10);
+    const totalPaginas = Math.ceil(totalItens / pageSize) || 1;
+
+    if (estoquePaginaAtual > totalPaginas) estoquePaginaAtual = totalPaginas;
+    if (estoquePaginaAtual < 1) estoquePaginaAtual = 1;
+
+    const offsetInicio = (estoquePaginaAtual - 1) * pageSize;
+    const offsetFim = Math.min(offsetInicio + pageSize, totalItens);
+    const itensExibidos = (estoqueItensPorPagina === 'todos') ? lista : lista.slice(offsetInicio, offsetFim);
+
+    tbody.innerHTML = itensExibidos.map(p => {
       const precoFmt = Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const saldoTotalFmt = Number(p.saldo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const saldoNum = Number(p.saldo || 0);
@@ -3331,7 +3354,54 @@ document.addEventListener('DOMContentLoaded', () => {
         </tr>
       `;
     }).join('');
+
+    renderEstoquePaginacaoControles(offsetInicio + 1, offsetFim, totalItens, totalPaginas);
   }
+
+  function renderEstoquePaginacaoControles(inicio, fim, total, totalPaginas) {
+    if (estoquePaginacaoInfo) {
+      estoquePaginacaoInfo.textContent = total > 0 ? `${inicio} a ${fim} de ${total}` : '0 a 0 de 0';
+    }
+
+    if (btnEstoquePagPrimeira) btnEstoquePagPrimeira.disabled = (estoquePaginaAtual <= 1);
+    if (btnEstoquePagAnterior) btnEstoquePagAnterior.disabled = (estoquePaginaAtual <= 1);
+    if (btnEstoquePagProxima) btnEstoquePagProxima.disabled = (estoquePaginaAtual >= totalPaginas);
+    if (btnEstoquePagUltima) btnEstoquePagUltima.disabled = (estoquePaginaAtual >= totalPaginas);
+
+    if (estoquePagNumeros) {
+      if (totalPaginas <= 1) {
+        estoquePagNumeros.innerHTML = '';
+        return;
+      }
+
+      let botoesHtml = '';
+      const maxVisiveis = 5;
+      let startP = Math.max(1, estoquePaginaAtual - 2);
+      let endP = Math.min(totalPaginas, startP + maxVisiveis - 1);
+      if (endP - startP < maxVisiveis - 1) {
+        startP = Math.max(1, endP - maxVisiveis + 1);
+      }
+
+      for (let p = startP; p <= endP; p++) {
+        const isActive = (p === estoquePaginaAtual);
+        botoesHtml += `
+          <button class="btn btn-sm ${isActive ? 'btn-primary' : 'btn-outline'}" 
+                  style="min-width: 28px; height: 28px; padding: 0 6px; font-size: 0.78rem; font-weight: ${isActive ? '700' : '500'}; cursor: pointer;" 
+                  onclick="mudarPaginaEstoque(${p})">
+            ${p}
+          </button>
+        `;
+      }
+      estoquePagNumeros.innerHTML = botoesHtml;
+    }
+  }
+
+  window.mudarPaginaEstoque = function(novaPagina) {
+    estoquePaginaAtual = novaPagina;
+    renderSaldosEstoqueTable();
+    const tabela = document.getElementById('tabelaEstoqueSaldos');
+    if (tabela) tabela.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 
   function updateEstoqueSortIcons() {
     const cols = [
@@ -3365,6 +3435,7 @@ document.addEventListener('DOMContentLoaded', () => {
       estoqueSortColumn = colKey;
       estoqueSortAsc = (colKey === 'descricao'); // Texto inicia ASC, numérico inicia DESC
     }
+    estoquePaginaAtual = 1;
     updateEstoqueSortIcons();
     renderSaldosEstoqueTable();
   }
@@ -3385,6 +3456,25 @@ document.addEventListener('DOMContentLoaded', () => {
   if (thVen) thVen.addEventListener('click', () => handleEstoqueSortClick('qtd_vendas'));
   if (thCom) thCom.addEventListener('click', () => handleEstoqueSortClick('qtd_compras'));
   if (thPto) thPto.addEventListener('click', () => handleEstoqueSortClick('ponto_ped'));
+
+  // Listeners de paginação
+  if (btnEstoquePagPrimeira) btnEstoquePagPrimeira.addEventListener('click', () => mudarPaginaEstoque(1));
+  if (btnEstoquePagAnterior) btnEstoquePagAnterior.addEventListener('click', () => mudarPaginaEstoque(estoquePaginaAtual - 1));
+  if (btnEstoquePagProxima) btnEstoquePagProxima.addEventListener('click', () => mudarPaginaEstoque(estoquePaginaAtual + 1));
+  if (btnEstoquePagUltima) {
+    btnEstoquePagUltima.addEventListener('click', () => {
+      const pageSize = (estoqueItensPorPagina === 'todos') ? estoqueProdutosData.length : parseInt(estoqueItensPorPagina, 10);
+      const totalPaginas = Math.ceil(estoqueProdutosData.length / pageSize) || 1;
+      mudarPaginaEstoque(totalPaginas);
+    });
+  }
+  if (estoqueItensPorPaginaSelect) {
+    estoqueItensPorPaginaSelect.addEventListener('change', (e) => {
+      estoqueItensPorPagina = e.target.value;
+      estoquePaginaAtual = 1;
+      renderSaldosEstoqueTable();
+    });
+  }
 
   // Filtros em tempo real
   if (estoqueBuscaInput) {

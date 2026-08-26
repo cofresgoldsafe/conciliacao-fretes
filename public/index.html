@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.57">
+  <link rel="stylesheet" href="style.css?v=8.58">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/08/2026 23:56 (Ajuste na escrita dos grupos de produtos e remocao do grupo 020)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 26/08/2026 00:02 (Paginacao inteligente de 50 em 50 nos Saldos em Estoque)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -615,6 +615,30 @@
                 <!-- Linhas injetadas via JS -->
               </tbody>
             </table>
+          </div>
+
+          <!-- Barra de Paginação -->
+          <div id="estoquePaginationContainer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 10px;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">
+              <span>Exibindo <strong id="estoquePaginacaoInfo" style="color: #f1f5f9;">0 a 0 de 0</strong> produtos</span>
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-left: 0.5rem;">
+                <label for="estoqueItensPorPaginaSelect" style="font-size: 0.8rem; margin: 0;">Itens por página:</label>
+                <select id="estoqueItensPorPaginaSelect" class="form-select" style="height: 30px; padding: 2px 6px; font-size: 0.8rem; width: auto;">
+                  <option value="25">25</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                  <option value="todos">Todos</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.35rem;">
+              <button id="btnEstoquePagPrimeira" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 0.78rem;" title="Primeira Página">«</button>
+              <button id="btnEstoquePagAnterior" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 0.78rem;" title="Página Anterior">‹ Anterior</button>
+              <div id="estoquePagNumeros" style="display: flex; align-items: center; gap: 0.25rem;"></div>
+              <button id="btnEstoquePagProxima" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 0.78rem;" title="Próxima Página">Próxima ›</button>
+              <button id="btnEstoquePagUltima" class="btn btn-outline btn-sm" style="padding: 4px 8px; font-size: 0.78rem;" title="Última Página">»</button>
+            </div>
           </div>
         </div>
       </section>
@@ -2611,6 +2635,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.57"></script>
+  <script src="app.js?v=8.58"></script>
 </body>
 </html>
