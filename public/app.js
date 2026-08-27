@@ -4699,24 +4699,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Iniciar Consulta Protheus (Passo 2)
-  if (btnIniciarConsultaCredito) {
-    btnIniciarConsultaCredito.addEventListener('click', async () => {
-      if (!dadosSerasaAtual) {
-        alert('⚠️ ATENÇÃO:\n\nÉ obrigatório realizar primeiro a leitura do relatório PDF do Serasa antes de consultar o Protheus.');
-        if (btnSelectSerasaPdf) btnSelectSerasaPdf.scrollIntoView({ behavior: 'smooth' });
-        return;
-      }
-
-      const emp = creditoEmpresaSelect ? creditoEmpresaSelect.value : '14';
-      const numPed = creditoNumPedido ? creditoNumPedido.value.trim() : '';
-
-      if (!numPed) {
-        alert('Por favor, informe o número do Pedido de Venda Protheus.');
-        return;
-      }
-
-      btnIniciarConsultaCredito.disabled = true;
   // Função auxiliar para renderizar os Faróis de Conectividade Externa (SRE / Telemetria)
   function renderFaroisConectividade(statusConexoes) {
     const container = document.getElementById('creditoFaroisConectividade');
