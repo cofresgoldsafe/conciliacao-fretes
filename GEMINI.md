@@ -204,6 +204,19 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Comparação pela Raiz do CNPJ (8 Primeiros Dígitos):** Suporte nativo à compra por Filiais cujo domínio foi registrado pela Matriz (ou vice-versa). O algoritmo confronta os 8 primeiros dígitos numéricos do CNPJ do cliente com o CNPJ do Registro.br (`cnpjClienteRaiz === cnpjRegistroBrRaiz`).
    - **Preenchimento 100% Automático & Feedback Visual:** Campo `cr_registro_br` preenchido automaticamente como `'S'` (Sim) quando a raiz confere e `'N'` (Não) quando diverge ou sob CPF. Remoção do asterisco (`*`) de campo manual na UI, exibição de badge contextual (`✓ Raiz Confere: CNPJ (Titular)` / `⚠️ Divergente`), persistência na Ficha do Pedido e restauração pelo histórico.
    - **Suíte de Testes Automatizados:** Script `test_registro_br_automacao.js` com 8 asserções cobrindo matriz x filial, matriz x matriz, divergências, CPFs, domínios internacionais (.com) e pontuação de score de crédito (100% de aprovação).
+29. [x] **Novos Critérios Antifraude (Alteração Recente de Sócios & Aumento Expressivo de Capital) e Consulta Assistida 1-Clique na Caixa FGTS (`analise_credito_engine.js`, `public/index.html`, `public/app.js`, `server.js`, `postgres_db.js`, `test_novos_criterios_credito.js`):**
+   - **Critérios de Combate à Fraude da Empresa Dorminhoca (*Shelf Company Hijacking*):**
+     - **Alteração Recente de Sócios (`alteracao_recente_socios`):** Penalidade de **-8 pts** (`peso_alteracao_recente_socios_sim`) caso a empresa antiga tenha sofrido alteração de sócios/controle societário recente (indicativo de laranjas assumindo CNPJs inativos).
+     - **Aumento Expressivo de Capital (`aumento_expressivo_capital`):** Penalidade severa de **-20 pts** (`peso_aumento_expressivo_capital_sim`) caso a empresa tenha inflado artificialmente o capital social sem lastro operacional.
+     - **Incorporação na Matriz de Risco:** Ambos os novos pesos são somados no cálculo de detecção de fraudes (`subGolpe`), direcionando imediatamente para `GOLPE` / `ENTRADA OU A VISTA` quando acionados.
+   - **Botão de Consulta Assistida 1-Clique na Caixa Econômica Federal (CRF FGTS):**
+     - Botão destacado no Bloco 6 (`#btnConsultarFgtsCaixa`): `🌐 Consultar FGTS na Caixa (1-Clique)`.
+     - Ao clicar, o sistema copia automaticamente o CNPJ sanitizado (apenas números, ex: `02021647000125`) para a Área de Transferência (`navigator.clipboard.writeText`) com feedback visual e abre a página oficial da Caixa (`https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf`) em nova aba, agilizando o preenchimento para poucos segundos.
+   - **Calibração de Pesos, Ficha Auditável e Sincronização Dinâmica:**
+     - Inclusão dos novos campos na aba de Configurações de Score (`#tab-config-score`) para parametrização livre pelo gestor.
+     - Renderização de badges explicativos na Ficha do Pedido e linhas discriminadas no Extrato de Conferência Matemática do Score.
+     - Sincronização dinâmica de rótulos (`atualizarRotulosSelectsCredito`) e persistência segura tanto no PostgreSQL (`dados_completos JSONB`) quanto no backup local em disco (`analise_credito_history.json`).
+   - **Suíte de Testes Automatizados:** Script `test_novos_criterios_credito.js` com 8 asserções automatizadas cobrindo pesos padrão, cálculos 'N' e 'S', overrides customizados, persistência/reset em disco, elementos de UI e integração com endpoint HTTP `POST /api/financeiro/analise-credito/calcular-salvar` (100% aprovados).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

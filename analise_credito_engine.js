@@ -107,6 +107,8 @@ const DEFAULT_CONFIG = {
   peso_serasa_baixo: -15.0,
   peso_serasa_zero: -20.0,
   peso_serasa_default: -30.0,
+  peso_alteracao_recente_socios_sim: -8.0,
+  peso_aumento_expressivo_capital_sim: -20.0,
   peso_fgts_regular_nao: -6.0,
   peso_razao_fgts_igual_nao: -10.0,
   peso_boletos_sim: 3.0,
@@ -302,6 +304,8 @@ function calcularScore(dados, config = getScoreConfig()) {
 
   pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? config.peso_fgts_regular_nao : 0;
   pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? config.peso_razao_fgts_igual_nao : 0;
+  pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? (config.peso_alteracao_recente_socios_sim !== undefined ? config.peso_alteracao_recente_socios_sim : -8.0) : 0;
+  pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? (config.peso_aumento_expressivo_capital_sim !== undefined ? config.peso_aumento_expressivo_capital_sim : -20.0) : 0;
 
   const totalScore = Object.values(pontos).reduce((acc, curr) => acc + curr, 0);
 
@@ -315,7 +319,9 @@ function calcularScore(dados, config = getScoreConfig()) {
     pontos.mail_gratuito +
     pontos.possui_site +
     pontos.capital_social +
-    pontos.razao_fgts_igual;
+    pontos.razao_fgts_igual +
+    pontos.alteracao_recente_socios +
+    pontos.aumento_expressivo_capital;
   const subGrandeFalindo = pontos.protestos + pontos.empresa_grande_conhecida + pontos.idade_empresa;
 
   let risco = 'SEM-RISCO';

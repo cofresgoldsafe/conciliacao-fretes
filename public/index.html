@@ -1547,6 +1547,14 @@
                 <input type="number" id="cfg_peso_doc_extraviado_sim" class="form-input" value="-25" />
               </div>
               <div class="form-group">
+                <label for="cfg_peso_alteracao_recente_socios_sim">Alteração Recente de Sócios (-pts)</label>
+                <input type="number" id="cfg_peso_alteracao_recente_socios_sim" class="form-input" value="-8" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_aumento_expressivo_capital_sim">Aumento Expressivo de Capital (-pts)</label>
+                <input type="number" id="cfg_peso_aumento_expressivo_capital_sim" class="form-input" value="-20" />
+              </div>
+              <div class="form-group">
                 <label for="cfg_peso_fgts_regular_nao">FGTS Irregular (-pts)</label>
                 <input type="number" id="cfg_peso_fgts_regular_nao" class="form-input" value="-6" />
               </div>
@@ -2179,11 +2187,16 @@
             </div>
           </div>
 
-          <!-- Bloco 6: Histórico Interno & Certidões -->
+          <!-- Bloco 6: FGTS, Sócios & Certidões Comerciais -->
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
-            <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-              <span>6. FGTS & Certidões Comerciais</span>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✍️ Conferência Manual (Caixa)</span>
+            <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+              <span>6. FGTS, Sócios & Certidões Comerciais</span>
+              <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="btnConsultarFgtsCaixa" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.65rem; border-color: #10b981; color: #10b981; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer;" title="Copiar CNPJ para área de transferência e abrir consulta oficial da Caixa Econômica">
+                  🌐 Consultar FGTS na Caixa (1-Clique)
+                </button>
+                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✍️ Conferência Manual</span>
+              </div>
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
@@ -2200,6 +2213,20 @@
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Igual (0 pts)</option>
                   <option value="N">Divergente (-10 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Alteração Recente de Sócios? *</label>
+                <select id="cr_alteracao_recente_socios" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-8 pts)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Aumento Expressivo Capital? *</label>
+                <select id="cr_aumento_expressivo_capital" class="form-select">
+                  <option value="N" selected>Não (0 pts)</option>
+                  <option value="S">Sim (-20 pts)</option>
                 </select>
               </div>
               <div class="form-group">

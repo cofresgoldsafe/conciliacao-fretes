@@ -4895,6 +4895,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_google_maps', '');
         setVal('cr_fgts_situacao_regular', '');
         setVal('cr_razao_fgts_igual', '');
+        setVal('cr_alteracao_recente_socios', 'N');
+        setVal('cr_aumento_expressivo_capital', 'N');
         setVal('cr_decisao_final', 'Decisão (atenção ao gravar)');
 
         // Validação Cruzada: CNPJ Protheus vs CNPJ Serasa
@@ -4986,6 +4988,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Listener para o Botão de Consulta Assistida 1-Clique na Caixa FGTS
+  const btnConsultarFgtsCaixa = document.getElementById('btnConsultarFgtsCaixa');
+  if (btnConsultarFgtsCaixa) {
+    btnConsultarFgtsCaixa.addEventListener('click', () => {
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+      };
+      let cnpj = getVal('cr_cliente_codigo') || (dadosSerasaAtual ? dadosSerasaAtual.cnpj : '');
+      const digits = String(cnpj).replace(/\D/g, '');
+      if (!digits) {
+        alert('⚠️ Nenhum CNPJ identificado na tela. Realize primeiro a consulta do pedido ou laudo Serasa para copiar o CNPJ.');
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(digits).then(() => {
+          alert(`📋 CNPJ ${digits} copiado com sucesso para a Área de Transferência!\n\nCole (Ctrl+V) no campo de Inscrição da Caixa e digite o Captcha.`);
+        }).catch(() => {
+          alert(`🌐 Abrindo portal da Caixa.\n\nCNPJ para consulta: ${digits}`);
+        });
+      } else {
+        alert(`🌐 Abrindo portal da Caixa.\n\nCNPJ para consulta: ${digits}`);
+      }
+      window.open('https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf', '_blank');
+    });
+  }
+
   // Função utilitária para extrair dados do formulário
   function extrairDadosFormCredito() {
     const getVal = (id) => {
@@ -5053,6 +5082,8 @@ document.addEventListener('DOMContentLoaded', () => {
       comprou_pagou_5x: getVal('cr_comprou_pagou_5x'),
       fgts_situacao_regular: getVal('cr_fgts_situacao_regular'),
       razao_fgts_igual: getVal('cr_razao_fgts_igual'),
+      alteracao_recente_socios: getVal('cr_alteracao_recente_socios') || 'N',
+      aumento_expressivo_capital: getVal('cr_aumento_expressivo_capital') || 'N',
       tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas'),
       obs: getVal('cr_obs'),
       decisao_final: getVal('cr_decisao_final')
@@ -5239,6 +5270,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
     pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? getCfg('peso_razao_fgts_igual_nao', -10) : 0;
+    pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? getCfg('peso_alteracao_recente_socios_sim', -8) : 0;
+    pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? getCfg('peso_aumento_expressivo_capital_sim', -20) : 0;
 
     if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = getCfg('peso_boletos_sim', 3);
     else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = getCfg('peso_boletos_nao', -3);
@@ -5246,7 +5279,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
 
-    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0);
+    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0) + (pontos.alteracao_recente_socios || 0) + (pontos.aumento_expressivo_capital || 0);
     const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0);
 
     let risco = 'MÉDIO RISCO';
@@ -5432,6 +5465,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { val: payload.comprou_pagou_5x, id: 'cr_comprou_pagou_5x', label: 'Comprou e Pagou 5x+' },
         { val: payload.fgts_situacao_regular, id: 'cr_fgts_situacao_regular', label: 'FGTS Regular' },
         { val: payload.razao_fgts_igual, id: 'cr_razao_fgts_igual', label: 'Razão = FGTS' },
+        { val: payload.alteracao_recente_socios, id: 'cr_alteracao_recente_socios', label: 'Alteração Recente de Sócios' },
+        { val: payload.aumento_expressivo_capital, id: 'cr_aumento_expressivo_capital', label: 'Aumento Expressivo de Capital' },
         { val: payload.tres_nfs_confirmadas, id: 'cr_tres_nfs_confirmadas', label: '3 NFs Confirmadas' }
       ];
 
@@ -5790,9 +5825,11 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Sócios com Restrição no Bureau', val: item.socios_anotacao === 'S' ? 'Sim' : (item.socios_anotacao === 'N' ? 'Não' : '-'), pts: pts.socios_anotacao },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Documento Extraviado / Roubado', val: item.documentos_extraviados === 'S' ? 'Sim (ALERTA)' : (item.documentos_extraviados === 'N' ? 'Não' : '-'), pts: pts.doc_extraviado },
 
-      { cat: '6. FGTS & Certidões Comerciais', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : '-'), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
-      { cat: '6. FGTS & Certidões Comerciais', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : '-'), pts: pts.razao_fgts_igual },
-      { cat: '6. FGTS & Certidões Comerciais', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : (item.tres_nfs_confirmadas === 'N' ? 'Não' : '-')), pts: pts.tres_nfs }
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : '-'), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : '-'), pts: pts.razao_fgts_igual },
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Alteração Recente de Sócios', val: item.alteracao_recente_socios === 'S' ? 'Sim (Alterado)' : 'Não', pts: pts.alteracao_recente_socios },
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital },
+      { cat: '6. FGTS, Sócios & Certidões', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : (item.tres_nfs_confirmadas === 'N' ? 'Não' : '-')), pts: pts.tres_nfs }
     ];
 
     let totalGanhos = 0;
@@ -5920,12 +5957,14 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
 
-      <!-- Bloco 6: Histórico Interno & FGTS -->
+      <!-- Bloco 6: FGTS, Sócios & Certidões Comerciais -->
       <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-        <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS & Certidões Comerciais</h4>
+        <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS, Sócios & Certidões Comerciais</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
           <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'} ${formatarBadgePontos(pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular)}</div>
           <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : '<span style="color:#f87171">Divergente</span>'} ${formatarBadgePontos(pts.razao_fgts_igual)}</div>
+          <div><strong style="color:var(--text-muted)">Troca Recente Sócios:</strong> ${item.alteracao_recente_socios === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.alteracao_recente_socios)}</div>
+          <div><strong style="color:var(--text-muted)">Aumento Expressivo Cap.:</strong> ${item.aumento_expressivo_capital === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.aumento_expressivo_capital)}</div>
           <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')} ${formatarBadgePontos(pts.tres_nfs)}</div>
         </div>
       </div>
@@ -6113,6 +6152,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_comprou_pagou_5x', item.comprou_pagou_5x !== undefined ? item.comprou_pagou_5x : 'N');
         setVal('cr_fgts_situacao_regular', item.fgts_situacao_regular !== undefined ? item.fgts_situacao_regular : '');
         setVal('cr_razao_fgts_igual', item.razao_fgts_igual !== undefined ? item.razao_fgts_igual : '');
+        setVal('cr_alteracao_recente_socios', item.alteracao_recente_socios !== undefined ? item.alteracao_recente_socios : 'N');
+        setVal('cr_aumento_expressivo_capital', item.aumento_expressivo_capital !== undefined ? item.aumento_expressivo_capital : 'N');
         setVal('cr_tres_nfs_confirmadas', item.tres_nfs_confirmadas || 'D');
         setVal('cr_obs', item.obs || '');
         setVal('cr_decisao_final', item.decisao_final || 'Decisão (atenção ao gravar)');
@@ -6249,12 +6290,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setOptionText('cr_documentos_extraviados', 'N', () => `Não (0 pts)`);
     setOptionText('cr_documentos_extraviados', 'S', () => `Sim (${fmtPts(getCfg('peso_doc_extraviado_sim', -25))} / Trava)`);
 
-    // 6. Bloco 6: Histórico Interno & Certidões
+    // 6. Bloco 6: FGTS, Sócios & Certidões Comerciais
     setOptionText('cr_fgts_situacao_regular', 'S', () => `Regular (0 pts)`);
     setOptionText('cr_fgts_situacao_regular', 'N', () => `Irregular (${fmtPts(getCfg('peso_fgts_regular_nao', -6))})`);
 
     setOptionText('cr_razao_fgts_igual', 'S', () => `Igual (0 pts)`);
     setOptionText('cr_razao_fgts_igual', 'N', () => `Divergente (${fmtPts(getCfg('peso_razao_fgts_igual_nao', -10))})`);
+
+    setOptionText('cr_alteracao_recente_socios', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_alteracao_recente_socios', 'S', () => `Sim (${fmtPts(getCfg('peso_alteracao_recente_socios_sim', -8))})`);
+
+    setOptionText('cr_aumento_expressivo_capital', 'N', () => `Não (0 pts)`);
+    setOptionText('cr_aumento_expressivo_capital', 'S', () => `Sim (${fmtPts(getCfg('peso_aumento_expressivo_capital_sim', -20))})`);
 
     setOptionText('cr_tres_nfs_confirmadas', 'D', () => `Dispensado`);
     setOptionText('cr_tres_nfs_confirmadas', 'S', () => `Sim (${fmtPts(getCfg('peso_boletos_sim', 3))})`);
