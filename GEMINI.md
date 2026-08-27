@@ -232,6 +232,15 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Badge informativo automático com Razão Social histórica retornada pela Caixa, situação cadastral e validade do CRF.
      - Botão assistido 1-Clique na Caixa mantido como contingência operacional.
    - **Suíte de Testes:** Script `test_infosimples_fgts.js` com 8 asserções automatizadas cobrindo todos os cenários de score, persistência de token string e rota HTTP `POST /api/financeiro/analise-credito/consultar-fgts`.
+31. [x] **Aprimoramento Visual e Rastreabilidade na Tabela de Histórico de Crédito (`public/index.html`, `public/app.js`):**
+   - **Compactação e Abreviatura de Empresa:**
+     - Cabeçalho reduzido de `Empresa` para **`Emp`** com alinhamento centralizado e largura otimizada (`55px`).
+   - **Coluna de Operador com Avatar Circular (`👤`):**
+     - Inclusão da coluna **`👤`** com badge circular tipo avatar estilizado em degradê ciano/índigo (`24px`).
+     - Renderização da **primeira letra do usuário em maiúsculo** (ex: `A` para Alexandre, `R` para Rubens, `J` para Juliana), derivado do campo auditável `item.usuario`.
+     - Tooltip nativo informativo (`Registrado por: <Nome>`) ao posicionar o cursor sobre o avatar.
+   - **Ajuste de Colunas e Empty State:**
+     - Atualização do `colspan="11"` para manter o grid perfeitamente balanceado em estados vazios ou filtrados.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
