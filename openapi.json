@@ -1,0 +1,316 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Plataforma de Apoio GSI - API Hub",
+    "description": "Hub de Integrações Financeiras, Logística de Fretes, Análise de Crédito Comercial e ERP TOTVS Protheus.\n\n### Domínios Oficiais em Produção:\n* **Portal Web:** https://portal.gsicofres.com.br\n* **Render Origin:** https://conciliacao-fretes.onrender.com",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Suporte e Engenharia GSI",
+      "email": "alexandre@oaco.com.br"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://portal.gsicofres.com.br",
+      "description": "Servidor de Produção Oficial (Domínio Customizado HTTPS)"
+    },
+    {
+      "url": "https://conciliacao-fretes.onrender.com",
+      "description": "Servidor de Produção Render Origin"
+    },
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor Local de Desenvolvimento"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token JWT emitido após validação com sucesso do fluxo 2FA."
+      },
+      "WebhookSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-webhook-secret",
+        "description": "Segredo criptográfico de autenticação de webhooks bancários."
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "timestamp": { "type": "string", "example": "2026-08-27T13:00:00.000Z" },
+          "postgres": { "type": "string", "example": "connected" },
+          "version": { "type": "string", "example": "8.75 (27/08/2026)" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "example": "alexandre" },
+          "password": { "type": "string", "example": "123456" }
+        }
+      },
+      "Login2FAResponse": {
+        "type": "object",
+        "properties": {
+          "require2FA": { "type": "boolean", "example": true },
+          "tempToken": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
+          "maskedEmail": { "type": "string", "example": "al*******@oaco.com.br" },
+          "message": { "type": "string", "example": "Código 2FA enviado para o seu e-mail cadastrado." }
+        }
+      },
+      "Verify2FARequest": {
+        "type": "object",
+        "required": ["tempToken", "code"],
+        "properties": {
+          "tempToken": { "type": "string" },
+          "code": { "type": "string", "example": "4821", "description": "Código numérico de 4 dígitos." }
+        }
+      },
+      "AuthSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "token": { "type": "string", "description": "Bearer JWT Token" },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "example": "1" },
+              "username": { "type": "string", "example": "alexandre" },
+              "role": { "type": "string", "enum": ["admin", "user", "vendedor"], "example": "admin" },
+              "name": { "type": "string", "example": "Alexandre" },
+              "vendorCode": { "type": "string", "example": "000004" }
+            }
+          }
+        }
+      },
+      "SaldosEstoqueResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "kpis": {
+            "type": "object",
+            "properties": {
+              "itensComSaldo": { "type": "integer", "example": 142 },
+              "itensZerados": { "type": "integer", "example": 226 },
+              "valorTotalEstoque": { "type": "number", "example": 895420.50 }
+            }
+          },
+          "produtos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": { "type": "string", "example": "001000000000001" },
+                "descricao": { "type": "string", "example": "COFRE DIGITAL MOD. 30GSI" },
+                "grupo": { "type": "string", "example": "001" },
+                "preco": { "type": "number", "example": 450.00 },
+                "saldo": { "type": "number", "example": 25 },
+                "saldo_total": { "type": "number", "example": 11250.00 },
+                "qtd_vendas": { "type": "number", "example": 10 },
+                "qtd_compras": { "type": "number", "example": 50 }
+              }
+            }
+          }
+        }
+      },
+      "InterWebhookPixEvent": {
+        "type": "object",
+        "properties": {
+          "endToEndId": { "type": "string", "example": "E00416968202608271234abcd5678efgh" },
+          "txid": { "type": "string", "example": "TX123456789" },
+          "valor": { "type": "number", "example": 350.00 },
+          "horario": { "type": "string", "example": "2026-08-27T10:30:00Z" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health Check do Sistema e Banco de Dados",
+        "description": "Retorna o status operacional do backend, conectividade do PostgreSQL Supabase e versão ativa.",
+        "responses": {
+          "200": {
+            "description": "Sistema Operacional",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Autenticação de Usuário e Desafio 2FA",
+        "description": "Valida credenciais do usuário com bcrypt. Emite código de 4 dígitos via e-mail e retorna tempToken para validação 2FA.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Desafio 2FA disparado ou token emitido",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Login2FAResponse" }
+              }
+            }
+          },
+          "401": { "description": "Credenciais Inválidas" }
+        }
+      }
+    },
+    "/api/auth/verify-2fa": {
+      "post": {
+        "summary": "Verificação de Código 2FA",
+        "description": "Valida o código de 4 dígitos hasheado e emite o Bearer JWT definitivo da sessão.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Verify2FARequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Autenticado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthSuccessResponse" }
+              }
+            }
+          },
+          "400": { "description": "Código incorreto ou expirado" }
+        }
+      }
+    },
+    "/api/vendedores/estoque/saldos": {
+      "get": {
+        "summary": "Consulta de Saldos em Estoque Consolidados",
+        "description": "Retorna catálogo de produtos acabados PA (Grupos 001, 002, 010, 018), saldos físicos SB2, carteira de vendas SC6, compras SC7 e KPIs consolidados.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "busca", "in": "query", "schema": { "type": "string" }, "description": "Filtro textual por código ou descrição" },
+          { "name": "grupo", "in": "query", "schema": { "type": "string" }, "description": "Filtro por grupo comercial (001, 002, 010, 018)" },
+          { "name": "filtroEstoque", "in": "query", "schema": { "type": "string" }, "description": "positivo, zerado_negativo, com_vendas, com_compras" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saldos recuperados com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SaldosEstoqueResponse" }
+              }
+            }
+          },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/vendedores/estoque/sync": {
+      "post": {
+        "summary": "Sincronização Manual de Saldos em Estoque com Protheus",
+        "description": "Dispara recarga sob demanda do catálogo e saldos Protheus com cooldown de 2 minutos.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Sincronização concluída com sucesso" },
+          "429": { "description": "Cooldown ativo (aguarde antes de sincronizar novamente)" }
+        }
+      }
+    },
+    "/api/vendedores/pedidos/abertos": {
+      "get": {
+        "summary": "Consulta Multi-Empresa de Pedidos de Venda em Aberto",
+        "description": "Retorna pedidos não faturados nas empresas 14, 15 e 16 com agregação de regras de bloqueio SC9 e link para CRM Pipedrive.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pedidos em aberto listados com sucesso" },
+          "403": { "description": "Acesso negado para vendedores sem código" }
+        }
+      }
+    },
+    "/api/vendedores/pedidos/compras": {
+      "get": {
+        "summary": "Consulta de Pedidos de Compras Pendentes (SC7)",
+        "description": "Retorna ordens de compras em aberto com saldo a entregar de produtos acabados PA.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pedidos de compras listados" }
+        }
+      }
+    },
+    "/api/financeiro/analise-credito/protheus": {
+      "get": {
+        "summary": "Consulta de Dados de Crédito no ERP Protheus",
+        "description": "Consulta dados do pedido de venda SC5/SC6, cliente SA1, histórico de pagamentos SE1 unificado e maturidade digital RDAP/Wayback/MX.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "pedido", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Número do pedido de venda Protheus" },
+          { "name": "empresa", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Código da empresa (14, 15, 16)" }
+        ],
+        "responses": {
+          "200": { "description": "Dados de crédito importados com sucesso" }
+        }
+      }
+    },
+    "/api/financeiro/analise-credito/parse-serasa-pdf": {
+      "post": {
+        "summary": "Leitura Efêmera de PDF do Serasa Experian",
+        "description": "Processa em memória o laudo Serasa Experian, valida regra de vigência (máx. 4 meses), valida CNPJ e extrai PEFIN, protestos, score e cheques.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "serasaPdf": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Laudo Serasa extraído com sucesso" },
+          "400": { "description": "Modelo inválido, laudo vencido ou documento corrompido" }
+        }
+      }
+    },
+    "/api/financeiro/analise-credito/save": {
+      "post": {
+        "summary": "Persistência da Ficha de Decisão de Crédito",
+        "description": "Grava a análise de crédito com snapshot imutável de pontos, usuário autenticado e decisão operacional obrigatória.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Análise de crédito gravada no banco e JSON de contingência" },
+          "400": { "description": "Decisão operacional pendente" }
+        }
+      }
+    },
+    "/api/webhooks/inter": {
+      "post": {
+        "summary": "Recepção de Webhooks do Banco Inter",
+        "description": "Endpoint de tempo real para recebimento de notificações Pix, Boletos e Banking com validação de schema Zod e idempotência.",
+        "responses": {
+          "200": { "description": "Evento recebido e processado" },
+          "400": { "description": "Payload não adere ao schema Zod esperado" }
+        }
+      }
+    }
+  }
+}

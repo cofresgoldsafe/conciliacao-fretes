@@ -3,6 +3,7 @@
 **Data do Registro:** 13/08/2026  
 **Projeto:** Plataforma de Apoio GSI Multi-Empresas (OACO 16, GSI 15, Metal Pleno 14)  
 **Módulo:** Gestão de Acesso, Autenticação de 7 Dias e Hierarquia de Navegação em 2 Níveis  
+**Nota Arquival:** Este documento registra a entrega histórica inicial da aba de configurações. Para a documentação arquitetural ativa e consolidada com todos os módulos (incluindo 2FA e Score), consulte [`DOCUMENTO_GESTAO_PROJETO.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/DOCUMENTO_GESTAO_PROJETO.md) e [`GEMINI.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/GEMINI.md).  
 
 ---
 

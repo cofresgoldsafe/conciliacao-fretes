@@ -1,10 +1,12 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { CircuitBreaker, CircuitBreakerOpenError, executeWithRetry } = require('./circuit_breaker');
 
 /**
  * Módulo de Integração com a API do Banco Inter (Banking v2)
- * Suporta autenticação mTLS (Certificado X.509 + Chave Privada) e OAuth 2.0
+ * Suporta autenticação mTLS (Certificado X.509 + Chave Privada), OAuth 2.0,
+ * Circuit Breaker e Retries com Backoff Exponencial e Jitter.
  */
 
 const INTER_BASE_URL = 'https://cdpj.partners.bancointer.com.br';
@@ -46,28 +48,34 @@ const CONTAS_INTER = {
   }
 };
 
+// Circuit Breakers isolados por empresa
+const circuitBreakers = {
+  "14": new CircuitBreaker({ name: 'Inter_MetalPleno_14', failureThreshold: 4, recoveryTimeMs: 30000 }),
+  "15": new CircuitBreaker({ name: 'Inter_GSI_15', failureThreshold: 4, recoveryTimeMs: 30000 }),
+  "16": new CircuitBreaker({ name: 'Inter_OACO_16', failureThreshold: 4, recoveryTimeMs: 30000 })
+};
+
+function getInterCircuitBreaker(empresaCodigo) {
+  const code = String(empresaCodigo).trim();
+  if (!circuitBreakers[code]) {
+    circuitBreakers[code] = new CircuitBreaker({ name: `Inter_${code}`, failureThreshold: 4, recoveryTimeMs: 30000 });
+  }
+  return circuitBreakers[code];
+}
+
+function getCircuitBreakersStatus() {
+  const res = {};
+  for (const [code, cb] of Object.entries(circuitBreakers)) {
+    res[code] = cb.getMetrics();
+  }
+  return res;
+}
+
 // Cache de tokens de acesso por empresa
 const tokenCache = {};
 
-// Mapeamento de caminhos locais padrão para certificados
-const LOCAL_CERT_PATHS = {
-  "14": {
-    webhookCa: 'D:\\Backup IA\\Projetos Antigos\\Certificado_Webhook\\ca.crt',
-    cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado METAL_PLENO\\Inter API_Certificado.crt',
-    key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado METAL_PLENO\\Inter API_Chave.key'
-  },
-  "15": {
-    cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado GSI\\Inter API_Certificado.crt',
-    key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado GSI\\Inter API_Chave.key'
-  },
-  "16": {
-    cert: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado OACO\\Inter API_Certificado.crt',
-    key: 'D:\\Backup IA\\Projetos Antigos\\Inter_API-Chave_e_Certificado OACO\\Inter API_Chave.key'
-  }
-};
-
 /**
- * Obtém as credenciais mTLS configuradas para uma empresa
+ * Obtém as credenciais mTLS configuradas para uma empresa a partir de variáveis de ambiente
  */
 function getInterCredentials(empresaCodigo) {
   const code = String(empresaCodigo).trim();
@@ -83,36 +91,33 @@ function getInterCredentials(empresaCodigo) {
     clientSecret = process.env.GSI_clientSecret || process.env.GSI_CLIENT_SECRET || 
                    process.env.INTER_CLIENT_SECRET_15 || process.env.INTER_CLIENT_SECRET_GSI || process.env.INTER_CLIENT_SECRET || '';
     certRaw = process.env.GSI_cert || process.env.GSI_CERT || 
-              process.env.INTER_CERT_15 || process.env.INTER_CERT_GSI || process.env.INTER_CERT || '';
+              process.env.INTER_CERT_15 || process.env.INTER_CERT_GSI || process.env.INTER_CERT ||
+              process.env.INTER_CERT_PATH_15 || '';
     keyRaw = process.env.GSI_key || process.env.GSI_KEY || 
-             process.env.INTER_KEY_15 || process.env.INTER_KEY_GSI || process.env.INTER_KEY || '';
+             process.env.INTER_KEY_15 || process.env.INTER_KEY_GSI || process.env.INTER_KEY ||
+             process.env.INTER_KEY_PATH_15 || '';
   } else if (code === '16') { // OAÇO
     clientId = process.env.OACO_clientId || process.env.OACO_CLIENT_ID || 
                process.env.INTER_CLIENT_ID_16 || process.env.INTER_CLIENT_ID_OACO || process.env.INTER_CLIENT_ID || '';
     clientSecret = process.env.OACO_clientSecret || process.env.OACO_CLIENT_SECRET || 
                    process.env.INTER_CLIENT_SECRET_16 || process.env.INTER_CLIENT_SECRET_OACO || process.env.INTER_CLIENT_SECRET || '';
     certRaw = process.env.OACO_cert || process.env.OACO_CERT || 
-              process.env.INTER_CERT_16 || process.env.INTER_CERT_OACO || process.env.INTER_CERT || '';
+              process.env.INTER_CERT_16 || process.env.INTER_CERT_OACO || process.env.INTER_CERT ||
+              process.env.INTER_CERT_PATH_16 || '';
     keyRaw = process.env.OACO_key || process.env.OACO_KEY || 
-             process.env.INTER_KEY_16 || process.env.INTER_KEY_OACO || process.env.INTER_KEY || '';
+             process.env.INTER_KEY_16 || process.env.INTER_KEY_OACO || process.env.INTER_KEY ||
+             process.env.INTER_KEY_PATH_16 || '';
   } else { // 14 Metal Pleno
     clientId = process.env.MP_clientId || process.env.MP_CLIENT_ID || 
                process.env.INTER_CLIENT_ID_14 || process.env.INTER_CLIENT_ID_METAL_PLENO || process.env.INTER_CLIENT_ID || '';
     clientSecret = process.env.MP_clientSecret || process.env.MP_CLIENT_SECRET || 
                    process.env.INTER_CLIENT_SECRET_14 || process.env.INTER_CLIENT_SECRET_METAL_PLENO || process.env.INTER_CLIENT_SECRET || '';
     certRaw = process.env.MP_cert || process.env.MP_CERT || 
-              process.env.INTER_CERT_14 || process.env.INTER_CERT_METAL_PLENO || process.env.INTER_CERT || '';
+              process.env.INTER_CERT_14 || process.env.INTER_CERT_METAL_PLENO || process.env.INTER_CERT ||
+              process.env.INTER_CERT_PATH_14 || '';
     keyRaw = process.env.MP_key || process.env.MP_KEY || 
-             process.env.INTER_KEY_14 || process.env.INTER_KEY_METAL_PLENO || process.env.INTER_KEY || '';
-  }
-
-  // Fallback para caminhos locais conhecidos no drive D:
-  const localFallbacks = LOCAL_CERT_PATHS[code];
-  if (!certRaw && localFallbacks && fs.existsSync(localFallbacks.cert)) {
-    certRaw = localFallbacks.cert;
-  }
-  if (!keyRaw && localFallbacks && fs.existsSync(localFallbacks.key)) {
-    keyRaw = localFallbacks.key;
+             process.env.INTER_KEY_14 || process.env.INTER_KEY_METAL_PLENO || process.env.INTER_KEY ||
+             process.env.INTER_KEY_PATH_14 || '';
   }
 
   let cert = null;
@@ -228,7 +233,7 @@ async function getInterAccessToken(empresaCodigo) {
   throw lastError || new Error(`Falha ao autenticar no Banco Inter para Empresa ${empresaCodigo}`);
 }
 
-function requestOAuthToken(creds, scope) {
+function rawRequestOAuthToken(creds, scope) {
   return new Promise((resolve, reject) => {
     const params = {
       client_id: creds.clientId,
@@ -287,6 +292,14 @@ function requestOAuthToken(creds, scope) {
   });
 }
 
+function requestOAuthToken(creds, scope) {
+  const cb = getInterCircuitBreaker(creds.empresaCodigo);
+  return cb.execute(() => executeWithRetry(
+    () => rawRequestOAuthToken(creds, scope),
+    { maxRetries: 2, baseDelayMs: 400, operationName: `OAuth_${creds.empresaCodigo}` }
+  ));
+}
+
 /**
  * Consulta o Saldo Bancário no Banco Inter para uma data específica
  * @param {string} empresaCodigo '14', '15' ou '16'
@@ -311,10 +324,12 @@ async function consultarSaldoInter(empresaCodigo, dataIso) {
     };
   }
 
-  try {
+  const cb = getInterCircuitBreaker(empresaCodigo);
+
+  return cb.execute(async () => {
     const token = await getInterAccessToken(empresaCodigo);
 
-    return new Promise((resolve, reject) => {
+    return executeWithRetry(() => new Promise((resolve, reject) => {
       const pathUrl = `/banking/v2/saldo?dataSaldo=${dataIso}`;
       const urlObj = new URL(`${INTER_BASE_URL}${pathUrl}`);
 
@@ -365,10 +380,8 @@ async function consultarSaldoInter(empresaCodigo, dataIso) {
       });
 
       req.end();
-    });
-  } catch (err) {
-    throw err;
-  }
+    }), { maxRetries: 2, baseDelayMs: 500, operationName: `Saldo_${empresaCodigo}` });
+  });
 }
 
 /**
@@ -395,10 +408,12 @@ async function consultarExtratoInter(empresaCodigo, dataInicioIso, dataFimIso) {
     };
   }
 
-  try {
+  const cb = getInterCircuitBreaker(empresaCodigo);
+
+  return cb.execute(async () => {
     const token = await getInterAccessToken(empresaCodigo);
 
-    return new Promise((resolve, reject) => {
+    return executeWithRetry(() => new Promise((resolve, reject) => {
       const pathUrl = `/banking/v2/extrato?dataInicio=${dataInicioIso}&dataFim=${dataFimIso}`;
       const urlObj = new URL(`${INTER_BASE_URL}${pathUrl}`);
 
@@ -458,10 +473,8 @@ async function consultarExtratoInter(empresaCodigo, dataInicioIso, dataFimIso) {
       });
 
       req.end();
-    });
-  } catch (err) {
-    throw err;
-  }
+    }), { maxRetries: 2, baseDelayMs: 500, operationName: `Extrato_${empresaCodigo}` });
+  });
 }
 
 module.exports = {
@@ -470,5 +483,8 @@ module.exports = {
   getInterConfigStatus,
   getInterAccessToken,
   consultarSaldoInter,
-  consultarExtratoInter
+  consultarExtratoInter,
+  getInterCircuitBreaker,
+  getCircuitBreakersStatus,
+  CircuitBreakerOpenError
 };

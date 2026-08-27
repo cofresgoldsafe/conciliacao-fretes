@@ -38,6 +38,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
   const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
+  // Função global de sanitização contra DOM-based XSS
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // Valida se o destino da requisição é da mesma origem (same-origin) antes de injetar credenciais
   function isSameOriginUrl(targetUrl) {
     if (!targetUrl) return false;
@@ -833,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data.success && data.config) {
         if (data.config.hasToken || data.config.ativo) {
           if (vippStatusDot) vippStatusDot.style.backgroundColor = '#10b981'; // Green
-          if (vippStatusText) vippStatusText.innerHTML = `Status API ViPP: <strong>🟢 Token Ativo (${data.config.usuario})</strong> — Automação WebService Conectada`;
+          if (vippStatusText) vippStatusText.innerHTML = `Status API ViPP: <strong>🟢 Token Ativo (${escapeHtml(data.config.usuario)})</strong> — Automação WebService Conectada`;
         } else {
           if (vippStatusDot) vippStatusDot.style.backgroundColor = '#f59e0b'; // Amber
           if (vippStatusText) vippStatusText.innerHTML = `Status API ViPP: <strong>Aguardando Token da API WebService</strong> (Modo Leitura SFE PDF Ativo)`;
@@ -1034,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sumTransp.textContent = currentFatura.transportadora;
     const empCod = currentFatura.empresaCodigo || '16';
     const empNome = currentFatura.pagador || 'OACO PRODUTOS DE ACO LTDA';
-    sumCnpj.innerHTML = `Pagador: <strong>${empNome}</strong> <span class="ped-venda-badge" style="margin-left: 8px;">Protheus Empresa ${empCod} (${currentFatura.empresaKey || 'OACO'})</span>`;
+    sumCnpj.innerHTML = `Pagador: <strong>${escapeHtml(empNome)}</strong> <span class="ped-venda-badge" style="margin-left: 8px;">Protheus Empresa ${escapeHtml(empCod)} (${escapeHtml(currentFatura.empresaKey || 'OACO')})</span>`;
     sumFaturaNum.textContent = currentFatura.numeroFatura;
     const sumVencimentoVal = document.getElementById('sumVencimentoVal');
     const sumEmissao = document.getElementById('sumEmissao');
@@ -1654,14 +1665,14 @@ document.addEventListener('DOMContentLoaded', () => {
           historyModalBody.innerHTML = data.history.map(item => `
             <div class="history-card">
               <div class="history-card-header">
-                <span class="history-card-title">${item.transportadora} — Fatura ${item.faturaNumero}</span>
-                <span class="status-badge sucesso">✓ Integrado na Empresa ${item.empresaCodigo || '16'}</span>
+                <span class="history-card-title">${escapeHtml(item.transportadora)} — Fatura ${escapeHtml(item.faturaNumero)}</span>
+                <span class="status-badge sucesso">✓ Integrado na Empresa ${escapeHtml(item.empresaCodigo || '16')}</span>
               </div>
               <div class="history-card-meta">
-                <span>🏢 Pagador: <strong>${item.pagador || 'OACO'}</strong></span> | 
-                <span>📅 Data Integração: ${item.dataIntegracao}</span> | 
-                <span>⏳ Vencimento: <strong>${item.dataVencimento || '31/07/2026'}</strong></span> | 
-                <span>📦 ${item.totalFretes} CT-es</span> | 
+                <span>🏢 Pagador: <strong>${escapeHtml(item.pagador || 'OACO')}</strong></span> | 
+                <span>📅 Data Integração: ${escapeHtml(item.dataIntegracao)}</span> | 
+                <span>⏳ Vencimento: <strong>${escapeHtml(item.dataVencimento || '31/07/2026')}</strong></span> | 
+                <span>📦 ${escapeHtml(item.totalFretes)} CT-es</span> | 
                 <span>💰 Total: <strong>${formatCurrency(item.valorTotal)}</strong></span>
               </div>
             </div>
@@ -1764,20 +1775,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       usersTableBody.appendChild(tr);
     });
+  }
 
-    // Attach edit handlers
-    document.querySelectorAll('.btn-edit-user').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const uname = btn.getAttribute('data-user');
+  // Event Delegation para ações da tabela de usuários (Prevenção de vazamento de memória)
+  if (usersTableBody) {
+    usersTableBody.addEventListener('click', async (e) => {
+      const btnEdit = e.target.closest('.btn-edit-user');
+      if (btnEdit) {
+        const uname = btnEdit.getAttribute('data-user');
         const userObj = currentUsersData.find(x => x.username.toLowerCase() === uname.toLowerCase());
         if (userObj) openUserModalForEdit(userObj);
-      });
-    });
+        return;
+      }
 
-    // Attach delete handlers
-    document.querySelectorAll('.btn-delete-user').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const uname = btn.getAttribute('data-user');
+      const btnDel = e.target.closest('.btn-delete-user');
+      if (btnDel) {
+        const uname = btnDel.getAttribute('data-user');
         if (confirm(`Tem certeza que deseja excluir o usuário "${uname}"?`)) {
           try {
             const res = await fetch('/api/admin/users/delete', {
@@ -1788,11 +1801,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const d = await res.json();
             alert(d.message);
             loadUsersTable();
-          } catch (e) {
+          } catch (err) {
             alert('Erro ao excluir usuário.');
           }
         }
-      });
+      }
     });
   }
 
@@ -2018,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const roleBadge = u.role === 'admin' 
               ? '<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">Admin</span>'
               : (u.role === 'vendedor' 
-                ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Vendedor (${u.vendorCode || 'S/C'})</span>`
+                ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Vendedor (${escapeHtml(u.vendorCode || 'S/C')})</span>`
                 : '<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">Operador</span>');
 
             const statusBadge = u.active !== false
@@ -2032,11 +2045,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return `
               <tr>
-                <td><strong style="color: var(--text-primary); font-family: monospace;">${u.username}</strong></td>
-                <td>${u.name}</td>
+                <td><strong style="color: var(--text-primary); font-family: monospace;">${escapeHtml(u.username)}</strong></td>
+                <td>${escapeHtml(u.name)}</td>
                 <td>${roleBadge}</td>
                 <td>${statusBadge}</td>
-                <td>${formatTimeAgo(u.lastActiveAt || u.lastLoginAt)}</td>
+                <td>${escapeHtml(formatTimeAgo(u.lastActiveAt || u.lastLoginAt))}</td>
                 <td style="text-align: right;">${countBadge}</td>
               </tr>
             `;
@@ -2054,19 +2067,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return `
               <tr>
-                <td style="color: var(--text-muted); font-size: 0.85rem; font-family: monospace; white-space: nowrap;">${dateStr}</td>
+                <td style="color: var(--text-muted); font-size: 0.85rem; font-family: monospace; white-space: nowrap;">${escapeHtml(dateStr)}</td>
                 <td>
-                  <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${act.userName || act.username}</div>
-                  <small style="color: var(--text-muted); font-family: monospace;">@${act.username}</small>
+                  <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${escapeHtml(act.userName || act.username)}</div>
+                  <small style="color: var(--text-muted); font-family: monospace;">@${escapeHtml(act.username)}</small>
                 </td>
                 <td>${getActionBadge(act.actionType)}</td>
-                <td style="color: var(--text-secondary); font-size: 0.9rem;">${act.description}</td>
+                <td style="color: var(--text-secondary); font-size: 0.9rem;">${escapeHtml(act.description)}</td>
               </tr>
             `;
           }).join('');
         }
       } else {
-        auditUsersTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 1.5rem;">Erro ao carregar dados: ${data.message || 'Desconhecido'}</td></tr>`;
+        auditUsersTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #ef4444; padding: 1.5rem;">Erro ao carregar dados: ${escapeHtml(data.message || 'Desconhecido')}</td></tr>`;
         auditActivitiesTableBody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #ef4444; padding: 1.5rem;">Erro ao carregar feed de atividades.</td></tr>`;
       }
     } catch (err) {
@@ -2260,13 +2273,17 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       vendPedidosTableBody.appendChild(tr);
     });
+  }
 
-    vendPedidosTableBody.querySelectorAll('.link-pedido, .link-codweb, .btn-ver-detalhe').forEach(el => {
-      el.addEventListener('click', () => {
+  // Event Delegation para links e detalhes de pedidos de vendedores
+  if (vendPedidosTableBody) {
+    vendPedidosTableBody.addEventListener('click', (e) => {
+      const el = e.target.closest('.link-pedido, .link-codweb, .btn-ver-detalhe');
+      if (el) {
         const emp = el.getAttribute('data-empresa') || 'OACO';
         const ped = el.getAttribute('data-ped');
         if (ped) abrirDetalhesPedidoModal(emp, ped);
-      });
+      }
     });
   }
 
@@ -2424,6 +2441,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalColor = isLight ? '#059669' : '#10b981';
     const borderSepColor = isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)';
 
+    // Badge de alerta se houver detecção de endereço de entrega diferente
+    const entregaDiferenteBadge = com.entregaDiferenteInfo?.temEnderecoDiferente
+      ? `<div style="margin: 6px 0 10px 0; padding: 6px 10px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; font-size: 0.78rem; font-weight: 600;">
+           🚨 <strong>Endereço de Entrega Alternativo:</strong> ${escapeHtml(com.entregaDiferenteInfo.motivo || 'Verifique C5_MENNOTA')}
+         </div>`
+      : '';
+
     pedidoDetalhesBody.innerHTML = `
       <!-- Cabeçalho Rápido do Pedido -->
       <div style="display: flex; justify-content: space-between; align-items: center; background: ${isLight ? '#f8fafc' : 'rgba(30, 41, 59, 0.6)'}; padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); flex-wrap: wrap; gap: 0.5rem;">
@@ -2482,6 +2506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <!-- Box Comercial & Transporte / Fiscal -->
         <div class="info-box">
           <h4>🚚 Logística, Pagamento & Fiscal</h4>
+          ${entregaDiferenteBadge}
           <div class="info-row">
             <span class="label">Transportadora:</span>
             <span class="val">${escapeHtml(com.transportadora || '-')}</span>
@@ -2915,13 +2940,17 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       pedidosAbertosTableBody.appendChild(tr);
     });
+  }
 
-    pedidosAbertosTableBody.querySelectorAll('.link-pedido').forEach(btn => {
-      btn.addEventListener('click', () => {
+  // Event Delegation para links de pedidos abertos
+  if (pedidosAbertosTableBody) {
+    pedidosAbertosTableBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.link-pedido');
+      if (btn) {
         const emp = btn.getAttribute('data-empresa') || 'OACO';
         const ped = btn.getAttribute('data-ped');
         if (ped) abrirDetalhesPedidoModal(emp, ped);
-      });
+      }
     });
   }
 
@@ -3472,7 +3501,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const saldoBg = saldoNum > 0 ? (isLight ? 'rgba(5, 150, 105, 0.12)' : 'rgba(16, 185, 129, 0.1)') : (isLight ? 'rgba(220, 38, 38, 0.12)' : 'rgba(239, 68, 68, 0.1)');
 
       return `
-        <tr style="cursor: pointer; transition: background 0.15s ease;" onclick="abrirModalEstoqueDetalhes('${p.codigo}')" title="Clique para ver drilldown por empresa e pedidos">
+        <tr class="tr-estoque-item" data-codigo="${escapeHtml(p.codigo)}" style="cursor: pointer; transition: background 0.15s ease;" title="Clique para ver drilldown por empresa e pedidos">
           <td>
             <div style="font-weight: 600; color: ${descColor};">${p.descricao || 'PRODUTO SEM DESCRIÇÃO'}</div>
             <div style="font-size: 0.78rem; color: ${mutedColor}; margin-top: 2px;">
@@ -3687,6 +3716,18 @@ document.addEventListener('DOMContentLoaded', () => {
     btnToggleThemeVendedores.addEventListener('click', toggleVendedoresTheme);
   }
   inicializarTemaVendedores();
+
+  // Event Delegation para drilldown na tabela de saldos de estoque (Prevenção de vazamento de memória)
+  const estoqueTableBody = document.getElementById('estoqueTableBody');
+  if (estoqueTableBody) {
+    estoqueTableBody.addEventListener('click', (e) => {
+      const tr = e.target.closest('tr[data-codigo]');
+      if (tr) {
+        const cod = tr.getAttribute('data-codigo');
+        if (cod) abrirModalEstoqueDetalhes(cod);
+      }
+    });
+  }
 
   // Modal Drilldown por Produto
   window.abrirModalEstoqueDetalhes = function(codigo) {
@@ -4799,8 +4840,28 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
+        // Detecção Automática de Endereço de Entrega Diferente (C5_MENNOTA e C5_TRANSP = 000009)
+        const entregaVal = data.entrega_igual_cadastro || 'S';
+        setVal('cr_entrega_igual_cadastro', entregaVal);
+
+        const entregaBadge = document.getElementById('cr_entrega_diferente_badge');
+        if (entregaBadge) {
+          if (data.entrega_diferente_detectada) {
+            entregaBadge.style.display = 'block';
+            entregaBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            entregaBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+            entregaBadge.style.color = '#f87171';
+            entregaBadge.innerHTML = `🚨 <strong>Endereço de Entrega Diferente:</strong> ${escapeHtml(data.entrega_diferente_motivo || 'Detectado no pedido')}`;
+          } else {
+            entregaBadge.style.display = 'block';
+            entregaBadge.style.background = 'rgba(34, 197, 94, 0.12)';
+            entregaBadge.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+            entregaBadge.style.color = '#22c55e';
+            entregaBadge.innerHTML = `✓ <strong>Entrega Conforme:</strong> Mesmo endereço de cadastro Protheus (SA1)`;
+          }
+        }
+
         // Campos manuais que permanecem para o analista preencher
-        setVal('cr_entrega_igual_cadastro', '');
         setVal('cr_google_maps', '');
         setVal('cr_registro_br', '');
         setVal('cr_fgts_situacao_regular', '');
@@ -4848,6 +4909,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         // Limpa campos para evitar dados falsos/stale
         if (formAnaliseCreditoCompleto) formAnaliseCreditoCompleto.reset();
+        const entregaBadge = document.getElementById('cr_entrega_diferente_badge');
+        if (entregaBadge) entregaBadge.style.display = 'none';
+        const emailsBadge = document.getElementById('cr_emails_detectados_badge');
+        if (emailsBadge) emailsBadge.style.display = 'none';
         const setVal = (id, val) => {
           const el = document.getElementById(id);
           if (el) el.value = val;
@@ -5574,15 +5639,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </tr>
       `;
     }).join('');
+  }
 
-    // Adiciona event listeners para os botões de abrir ficha
-    const botoesFicha = historicoCreditoTableBody.querySelectorAll('.btn-abrir-ficha');
-    botoesFicha.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+  // Event Delegation para abertura da ficha de análise de crédito (Prevenção de vazamentos de memória)
+  if (historicoCreditoTableBody) {
+    historicoCreditoTableBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-abrir-ficha');
+      if (btn) {
         e.preventDefault();
         const id = btn.getAttribute('data-id');
-        abrirFichaAnaliseCredito(id);
-      });
+        if (id) abrirFichaAnaliseCredito(id);
+      }
     });
   }
 

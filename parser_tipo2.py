@@ -27,8 +27,21 @@ def parse_tipo2_file(file_path):
             lines = f.readlines()
             full_text = "".join(lines)
             
+        # Identifica delimitador predominante (;, \t, |, ou ,)
+        sample = "".join(lines[:5])
+        if ';' in sample:
+            delim = ';'
+        elif '\t' in sample:
+            delim = '\t'
+        elif '|' in sample:
+            delim = '|'
+        else:
+            delim = ','
+
         for i, line in enumerate(lines):
-            parts = [p.strip(' "\'\t\r\n') for p in re.split(r'[;,\t|]', line)]
+            if not line.strip():
+                continue
+            parts = [p.strip(' "\'\t\r\n') for p in line.split(delim)]
             if len(parts) >= 4:
                 num_frete = parts[0]
                 doc_orig = parts[1] if len(parts) > 1 else ""

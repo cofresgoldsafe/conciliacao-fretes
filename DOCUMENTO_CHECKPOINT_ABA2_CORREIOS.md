@@ -4,6 +4,7 @@
 > **Módulo:** 2ª Aba — Fatura Correios SFE & Automação de Retorno ViPP VisualSet  
 > **Data do Registro:** 21 de Agosto de 2026  
 > **Status:** 🟢 **INTEGRAÇÃO CONCLUÍDA E HOMOLOGADA (100% OPERACIONAL)**  
+> **Nota Arquival:** Este documento registra o checkpoint técnico histórico desta funcionalidade. Para a visão consolidada e ativa do sistema, consulte [`DOCUMENTO_GESTAO_PROJETO.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/DOCUMENTO_GESTAO_PROJETO.md) e [`GEMINI.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/GEMINI.md).  
 
 ---
 

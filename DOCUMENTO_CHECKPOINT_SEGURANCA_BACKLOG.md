@@ -4,6 +4,7 @@
 > **Diretório:** `C:\Users\Alexandre\Documents\Gemini-Cli`  
 > **Data de Homologação:** 20 de Agosto de 2026  
 > **Status Geral:** 🟢 **100% IMPLEMENTADO E HOMOLOGADO (17/17 TESTES APROVADOS)**  
+> **Nota Arquival:** Este documento registra a homologação técnica inicial do pacote de segurança e hardening. O backlog contínuo e as novas práticas de segurança encontram-se consolidados em [`GEMINI.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/GEMINI.md) e [`TODO.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/TODO.md).  
 
 ---
 

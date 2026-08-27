@@ -8,6 +8,8 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { execFile } = require('child_process');
+const { safeWriteJsonSync, safeReadJsonSync } = require('./safe_json_storage');
+const { validateWebhookPayload } = require('./webhook_validator');
 const { 
   consultarProtheusNF, 
   buscarProtheusMultiEmpresa,
@@ -15,6 +17,10 @@ const {
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
   sincronizarSaldosEstoqueProtheus,
+  formatarDataProtheus,
+  calcularStatusBloqueioEstoque,
+  calcularStatusBloqueioCredito,
+  detectarEnderecoEntregaDiferente,
   obterDetalhesPedido,
   buscarComissoesPeriodo,
   VENDEDORES_MAP,
@@ -205,22 +211,61 @@ function handleServerError(res, err, defaultMsg = 'Ocorreu um erro interno ao pr
   });
 }
 
+// Configuração de Origens Permitidas (CORS) com suporte a Subdomínio Personalizado e Render
+const envCustomDomain = (process.env.CUSTOM_DOMAIN || '').trim();
+const envAllowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   'https://conciliacao-fretes.onrender.com',
+  'https://portal.gsicofres.com.br',
+  'http://portal.gsicofres.com.br',
+  'https://conciliacao.gsicofres.com.br',
+  'https://portal.gsi.com.br',
+  'http://portal.gsi.com.br',
+  'https://conciliacao.gsi.com.br',
+  'https://portal.oaco.com.br',
+  'https://conciliacao.oaco.com.br',
   'http://localhost:3000',
-  'http://127.0.0.1:3000'
+  'http://127.0.0.1:3000',
+  ...(envCustomDomain ? [`https://${envCustomDomain.replace(/^https?:\/\//, '')}`, `http://${envCustomDomain.replace(/^https?:\/\//, '')}`] : []),
+  ...envAllowedOrigins
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.onrender.com')) {
+    if (!origin) return callback(null, true);
+    
+    const isAllowed = 
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.onrender.com') ||
+      origin.endsWith('.gsicofres.com.br') ||
+      origin.endsWith('.gsi.com.br') ||
+      origin.endsWith('.oaco.com.br') ||
+      (envCustomDomain && origin.includes(envCustomDomain.replace(/^https?:\/\//, '')));
+
+    if (isAllowed) {
       return callback(null, true);
     }
-    return callback(null, true);
+    
+    console.warn(`⚠️ [CORS] Origem não explicitamente autorizada: ${origin}`);
+    return callback(null, true); // Fallback permissivo com aviso em log
   },
   credentials: true
 }));
 app.use(express.json());
+
+// Documentação OpenAPI 3.0 & Swagger UI
+try {
+  const swaggerUi = require('swagger-ui-express');
+  const openApiSpec = require('./openapi.json');
+  app.use(['/api-docs', '/api/docs'], swaggerUi.serve, swaggerUi.setup(openApiSpec));
+  app.get('/api/openapi.json', (req, res) => res.json(openApiSpec));
+} catch (errSwagger) {
+  console.warn('⚠️ [Swagger UI] Não foi possível carregar swagger-ui-express:', errSwagger.message);
+}
 
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -244,11 +289,10 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 function getVippConfig() {
-  try {
-    if (fs.existsSync(vippConfigFile)) {
-      return JSON.parse(fs.readFileSync(vippConfigFile, 'utf-8'));
-    }
-  } catch {}
+  const loaded = safeReadJsonSync(vippConfigFile, null);
+  if (loaded && typeof loaded === 'object') {
+    return loaded;
+  }
   return {
     usuario: process.env.VIPP_USUARIO || 'financeiro@oaco.com.br',
     token: process.env.VIPP_TOKEN || '',
@@ -259,7 +303,7 @@ function getVippConfig() {
 }
 
 function saveVippConfig(cfg) {
-  fs.writeFileSync(vippConfigFile, JSON.stringify(cfg, null, 2));
+  safeWriteJsonSync(vippConfigFile, cfg);
 }
 
 const storage = multer.diskStorage({
@@ -438,32 +482,6 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
         if (userFound.pass && !String(userFound.pass).startsWith('$2')) {
           saveUserDB({ ...userFound, pass: cleanPass }).catch(() => {});
         }
-      }
-    }
-
-    // Fallback seguro para contas padrão
-    if (!authenticatedUser) {
-      const defaultSeeds = {
-        'alexandre': { pass: '321654', name: 'Alexandre', email: 'alexandre@oaco.com.br', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] },
-        'erica': { pass: '1020304050', name: 'Érica', email: 'erica@oaco.com.br', role: 'user', permissions: ['logistica', 'consulta'] },
-        'wallerson': { pass: '10203040', name: 'Wallerson', email: 'wallerson@oaco.com.br', role: 'user', permissions: ['logistica', 'consulta'] },
-        'juliana': { pass: '102030', name: 'Juliana', email: 'juliana@oaco.com.br', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] },
-        'andrea': { pass: '102030', name: 'Andrea', email: 'andrea@oaco.com.br', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] },
-        'figueiredo': { pass: '102030', name: 'Figueiredo', email: 'figueiredo@oaco.com.br', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] },
-        'rubens': { pass: '102030', name: 'Rubens da Silva', email: 'rubens@oaco.com.br', role: 'user', permissions: ['financeiro'] }
-      };
-
-      const seed = defaultSeeds[cleanUser];
-      if (seed && seed.pass === cleanPass) {
-        authenticatedUser = {
-          username: cleanUser,
-          name: seed.name,
-          email: seed.email || null,
-          role: seed.role,
-          vendorCode: seed.vendorCode || null,
-          permissions: seed.permissions
-        };
-        saveUserDB({ ...authenticatedUser, pass: cleanPass }).catch(() => {});
       }
     }
 
@@ -1734,17 +1752,30 @@ app.post(['/api/webhooks/inter', '/api/webhooks/inter/:empresa'], async (req, re
 
     const b = req.body || {};
 
-    // 3. Tratamento de Batch Pix (múltiplas transações em um único webhook)
-    if (Array.isArray(b.pix)) {
-      if (b.pix.length === 0) {
+    // 3. Validação Rigorosa de Schema Zod
+    const valResult = validateWebhookPayload(b);
+    if (!valResult.valid) {
+      console.warn('⚠️ [Webhook Inter] Payload inválido ou malformado:', valResult.errors);
+      return res.status(400).json({ 
+        success: false, 
+        received: false, 
+        error: 'Invalid webhook schema', 
+        details: valResult.errors 
+      });
+    }
+
+    // 4. Tratamento de Batch Pix (múltiplas transações em um único webhook)
+    if (valResult.tipo === 'PIX_BATCH') {
+      const pixList = b.pix || [];
+      if (pixList.length === 0) {
         return res.status(200).json({ received: true, totalEvents: 0, empresaCodigo: empCode, message: 'Empty pix array' });
       }
 
       // Responde HTTP 200 rápido ao Inter
-      res.status(200).json({ received: true, totalEvents: b.pix.length, empresaCodigo: empCode, tipo: 'PIX_BATCH' });
+      res.status(200).json({ received: true, totalEvents: pixList.length, empresaCodigo: empCode, tipo: 'PIX_BATCH' });
 
       // Grava cada transação Pix isoladamente de forma determinística
-      for (const pixItem of b.pix) {
+      for (const pixItem of pixList) {
         const evtId = pixItem?.endToEndId || pixItem?.txid || null;
         saveInterWebhookEvent({
           empresaCodigo: empCode,
@@ -1756,9 +1787,9 @@ app.post(['/api/webhooks/inter', '/api/webhooks/inter/:empresa'], async (req, re
       return;
     }
 
-    // 4. Tratamento de Notificações Singulares (Boleto, Cobrança, Pix Único, Banking)
-    const eventId = b.txid || b.nossoNumero || b.idTransacao || b.codigoSolicitacao || b.endToEndId || null;
-    const tipo = b.nossoNumero ? 'BOLETO' : (b.pix || b.txid || b.endToEndId ? 'PIX' : (b.tipoOperacao || b.tipoTransacao ? 'BANKING' : 'EVENTO_INTER'));
+    // 5. Tratamento de Notificações Singulares (Boleto, Cobrança, Pix Único, Banking)
+    const eventId = valResult.eventId || b.txid || b.nossoNumero || b.idTransacao || b.codigoSolicitacao || b.endToEndId || null;
+    const tipo = valResult.tipo;
 
     // Resposta imediata HTTP 200 para o Banco Inter
     res.status(200).json({ received: true, empresaCodigo: empCode, tipo });
@@ -1768,7 +1799,7 @@ app.post(['/api/webhooks/inter', '/api/webhooks/inter/:empresa'], async (req, re
       empresaCodigo: empCode,
       eventId,
       tipo,
-      payload: b
+      payload: valResult.data || b
     }).catch(e => console.warn('⚠️ [Webhook Event Async Save Warning]:', e.message));
 
   } catch (err) {
@@ -2258,6 +2289,10 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       infoMx = resMx.status === 'fulfilled' ? resMx.value : null;
     }
 
+    // Detecção Automática de Endereço de Entrega Diferente (Dupla Regra: C5_MENNOTA ou C5_TRANSP = '000009')
+    const entregaDiferenteInfo = detalhes.comercial?.entregaDiferenteInfo || detectarEnderecoEntregaDiferente(detalhes.comercial?.observacoes, detalhes.comercial?.codTransp || detalhes.comercial?.transportadora);
+    const entregaIgualCadastroVal = entregaDiferenteInfo.temEnderecoDiferente ? 'N' : 'S';
+
     res.json({
       success: true,
       encontrado: true,
@@ -2292,6 +2327,13 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       // Detecção de Casa/Sala/Conjunto no endereço
       casa_sala_conj_end: casaSalaVal,
 
+      // Detecção Automática de Endereço de Entrega Diferente (C5_MENNOTA e C5_TRANSP = 000009)
+      entrega_igual_cadastro: entregaIgualCadastroVal,
+      entrega_diferente_detectada: entregaDiferenteInfo.temEnderecoDiferente,
+      entrega_diferente_motivo: entregaDiferenteInfo.motivo,
+      entrega_diferente_endereco: entregaDiferenteInfo.enderecoExtraido,
+      entrega_diferente_origem: entregaDiferenteInfo.origem,
+
       // Campos com valor padrão pré-definido
       tres_nfs_confirmadas: 'D', // Default: Dispensado
 
@@ -2311,7 +2353,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       emails_encontrados: infoEmails.emailsEncontrados,
 
       // Campos manuais que permanecem em branco para o analista
-      entrega_igual_cadastro: '',
       google_maps: '',
       registro_br: '',
       score_serasa: '',

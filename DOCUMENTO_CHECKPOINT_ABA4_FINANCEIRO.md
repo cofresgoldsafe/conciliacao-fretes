@@ -4,6 +4,7 @@
 > **Módulo:** 4ª Aba Principal — `💰 ASSIST. FINANC.` → 1ª Sub-Aba `🏦 Conciliação Bancária`  
 > **Data de Homologação:** 18 de Agosto de 2026  
 > **Status:** ✅ **100% FUNCIONAL, HOMOLOGADO E PRONTO PARA PRODUÇÃO**  
+> **Nota Arquival:** Este documento registra a entrega histórica inicial da conciliação bancária Inter. Para a documentação consolidada e ativa (incluindo Análise de Crédito Comercial com Serasa PDF), consulte [`DOCUMENTO_GESTAO_PROJETO.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/DOCUMENTO_GESTAO_PROJETO.md) e [`GEMINI.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/GEMINI.md).  
 
 ---
 

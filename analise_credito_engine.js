@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safeWriteJsonSync, safeReadJsonSync } = require('./safe_json_storage');
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
@@ -113,13 +114,9 @@ const DEFAULT_CONFIG = {
 };
 
 function getScoreConfig() {
-  if (fs.existsSync(configFilePath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(configFilePath, 'utf-8'));
-      return { ...DEFAULT_CONFIG, ...data };
-    } catch (e) {
-      console.warn('Erro ao ler score_config.json, usando padrão', e);
-    }
+  const data = safeReadJsonSync(configFilePath, null);
+  if (data && typeof data === 'object') {
+    return { ...DEFAULT_CONFIG, ...data };
   }
   return { ...DEFAULT_CONFIG };
 }
@@ -127,7 +124,7 @@ function getScoreConfig() {
 function saveScoreConfig(cfg) {
   try {
     const merged = { ...getScoreConfig(), ...cfg };
-    fs.writeFileSync(configFilePath, JSON.stringify(merged, null, 2), 'utf-8');
+    safeWriteJsonSync(configFilePath, merged);
     return true;
   } catch (e) {
     console.error('Erro ao salvar score_config.json', e);
@@ -399,7 +396,8 @@ function salvarAnalise(registro) {
       created_at: new Date().toISOString()
     };
     list.unshift(itemCompleto);
-    fs.writeFileSync(historyFilePath, JSON.stringify(list, null, 2), 'utf-8');
+    if (list.length > 500) list = list.slice(0, 500);
+    safeWriteJsonSync(historyFilePath, list);
     return itemCompleto;
   } catch (e) {
     console.error('Erro ao salvar analise de credito', e);

@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica e ERP)  
-> **Status:** Atencao Critica (Vulnerabilidades de Seguranca P0 e Alto Acoplamento Monolitico no Frontend)  
-> **Data de Auditoria:** 24/08/2026  
+> **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica e ERP - Plataforma de Apoio GSI)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado e Suíte de Testes Automatizados Aprovada)  
+> **Data da Última Auditoria:** 27/08/2026  
 
 ---
 
@@ -171,27 +171,70 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Sincronização Dinâmica dos Menus Seletores (`<select>`):**
      - Implementação da função reativa `atualizarRotulosSelectsCredito(cfg)` em `public/app.js`, atualizando instantaneamente os textos de pontuação (+X pts / -Y pts) de todas as 28 opções de seletores do formulário sempre que as configurações forem salvas, carregadas ou restauradas.
    - **Suíte de Testes:** Script `test_score_config.js` com 5 asserções automatizadas cobrindo pesos customizados, persistência, clareza textual e sincronização dinâmica.
-19. **Mitigacao de DOM-based XSS:** Substituir atribuicoes diretas de `innerHTML` por `textContent` ou sanitizadores rigorosos (ex: DOMPurify) na renderizacao de historico e webhooks.
-20. **Criptografia e Protecao de Segredos:** Migrar credenciais, senhas e certificados bancarios mTLS armazenados em arquivos planos (`users.json`, scripts) para variaveis de ambiente seguras (`.env`) e hashes fortes (bcrypt/argon2).
+19. [x] **Mitigacao de DOM-based XSS (`public/app.js`, `test_dom_xss_and_secrets.js`):**
+   - Implementada função global `escapeHtml()` no topo do escopo da SPA para sanitização rigorosa de caracteres perigosos (`<`, `>`, `"`, `'`, `&`).
+   - Sanitização completa em 100% das renderizações dinâmicas de tabelas e modais: Feed de Atividades de auditoria (`auditActivitiesTableBody`), Resumo de Usuários (`auditUsersTableBody`), Histórico de Integrações (`historyModalBody`), cabeçalhos de faturas (`sumCnpj`), status ViPP (`vippStatusText`) e mensagens de erro de API.
+   - **Extinção de Senhas em Texto Puro:** Removido o objeto `defaultSeeds` com senhas em texto puro de `server.js` e substituídas as sementes de `postgres_db.js` por hashes bcrypt seguros (`$2b$10$...`), garantindo que 100% das senhas em memória, no Postgres e no JSON sejam criptografadas com bcrypt (salt 10).
+   - **Proteção de Chaves de API:** Leitura dinâmica e segura de `PROTHEUS_API_KEY` / `RAILWAY_API_KEY` via variáveis de ambiente.
+21. [x] **Eliminação de Concorrência em Arquivos JSON (`safe_json_storage.js`, `postgres_db.js`, `server.js`, `analise_credito_engine.js`, `test_resilience_sre.js`):**
+   - **Fila Assíncrona Sequencial por Arquivo (FIFO Promise Queue):** Criação do módulo `safe_json_storage.js` com enfileiramento de operações de escrita por caminho absoluto (`writeQueues = new Map()`), garantindo ordem estrita e eliminando condições de corrida (*race conditions*) e perdas de atualização (*lost updates*).
+   - **Substituição Atômica Resiliente (Windows NTFS / POSIX):** Gravação em arquivo temporário único (`.tmp.<timestamp>_<hex>`) seguido de `atomicRenameAsync` / `atomicRenameSync` com até 5 micro-retries para bloqueios transitórios de filesystem (`EPERM`/`EBUSY`) e fallback gracioso para cópia atômica com limpeza do temporário.
+   - **Leitura Segura com Fallback:** Funções `safeReadJson` e `safeReadJsonSync` que retornam valores padrão em arquivos ausentes ou corrompidos sem derrubar a aplicação.
+   - **Cobertura Completa do Repositório:** Migração de 100% das gravações de arquivos planos (`users.json`, `history.json`, `inter_webhooks.json`, `analise_credito_history.json`, `score_config.json`, `vipp_config.json`, `estoque_saldos_cache.json`).
+22. [x] **Circuit Breaker & Retries com Backoff Exponencial e Jitter (`circuit_breaker.js`, `inter_api.js`, `test_resilience_sre.js`):**
+   - **Padrão Circuit Breaker com 3 Estados:** Módulo `circuit_breaker.js` implementando classe `CircuitBreaker` com estados `CLOSED` (operação normal), `OPEN` (bloqueio imediato com `CircuitBreakerOpenError` e fail-fast por 30s de cooldown após 4 falhas consecutivas) e `HALF_OPEN` (sondagem com canary request restaurando o circuito para `CLOSED` em caso de sucesso).
+   - **Circuitos Isolados por Empresa:** Instâncias dedicadas de Circuit Breaker para as 3 empresas bancárias (Empresa 14 Metal Pleno `Inter_MetalPleno_14`, Empresa 15 GSI `Inter_GSI_15`, Empresa 16 OAÇO `Inter_OACO_16`) e função de exportação de métricas `getCircuitBreakersStatus()`.
+   - **Política de Retries Inteligentes:** Função `executeWithRetry` com classificação rigorosa de erros transitórios (Timeouts, `ETIMEDOUT`, `ECONNRESET`, status HTTP 429, 500, 502, 503, 504) e cálculo de backoff exponencial `min(maxDelay, baseDelay * 2^attempt) + jitter (0-200ms)`. Erros determinísticos (400, 401, 403, 404) falham imediatamente sem retentativas.
+   - **Proteção Completa Banco Inter:** Aplicação em `requestOAuthToken`, `consultarSaldoInter` e `consultarExtratoInter`.
+23. [x] **Gestão de Memória e Event Delegation no Frontend (`public/app.js`, `test_resilience_sre.js`):**
+   - **Eliminação de Acumuladores de Event Listeners:** Substituição de múltiplos `addEventListener` adicionados repetidamente dentro de loops de renderização por **Event Delegation** centralizado nos containers pais (`tbody`).
+   - **Tabelas Otimizadas:** Gestão de eventos delegados via `e.target.closest(...)` em `usersTableBody` (edição e exclusão), `vendPedidosTableBody` (links de pedidos e detalhes), `pedidosAbertosTableBody` (links diretos), `historicoCreditoTableBody` (botão de abertura de ficha) e `estoqueTableBody` (drilldown de produto).
+   - **Prevenção de Memory Leaks:** Eliminação de listeners redundantes no DOM, garantindo estabilidade e baixo consumo de memória na SPA após milhares de interações.
+24. [x] **Testes Unitários para Conciliação Bancária & Matching N:1 (`protheus_db.js`, `test_conciliacao_bancaria.js`):**
+   - Suíte com asserções cobrindo Casamento 1:1 Direto (Créditos/Débitos com tolerância de até 2 dias), Casamento de Cartão Líquido (Crédito Bruto - Taxa MDR = Líquido no Banco), Aglutinação N:1 com Subset-Sum, Arredondamento e Tolerância de Centavos (0.01) e segregação de itens órfãos Protheus/Banco com resumo estatístico.
+25. [x] **Testes de Parsers Python com Pytest (`parser_correios.py`, `parser_rodonaves.py`, `parser_tipo2.py`, `test_parsers.py`):**
+   - Suíte com 7 testes em Pytest cobrindo extração analítica dos Correios SFE (SEDEX, PAC, PAC Reverso), tabelas CT-e Rodonaves com padding de 9 dígitos nas NFs (`\d+` com `zfill(9)`), parsing de arquivos CSV/TXT do ViPP com múltiplos delimitadores e isolamento estrito contra rejeição de formatos incompatíveis (`isWrongFormat: True`).
+26. [x] **Testes Ponta a Ponta (E2E) com Playwright Headless Chromium (`test_playwright_e2e.js`):**
+   - Suíte com 6 fluxos E2E cobrindo inicialização e branding da SPA, autenticação com token JWT/2FA, navegação reativa entre as 4 abas principais, alternância e persistência de Tema Claro/Escuro nos Vendedores (`localStorage`), filtros e KPIs de Saldos em Estoque e formulário de Análise de Crédito Comercial.
+27. [x] **Validação Rigorosa de Schemas Zod para Webhooks Bancários (`webhook_validator.js`, `server.js`, `test_webhook_schemas.js`):**
+   - Schemas Zod com tipagem estrita para Pix individual (`PixEventSchema`), lotes Pix (`PixBatchSchema`), Boletos bancários (`BoletoEventSchema`) e extrato bancário (`BankingEventSchema`).
+   - Coerção automática de strings monetárias para float (`transform`), sanitização e middleware no endpoint `/api/webhooks/inter` rejeitando requisições malformadas com HTTP 400.
 
 ### Prioridade 1 (Resiliencia/SRE)
-1. **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Eliminar a gravacao concorrente em arquivos planos sem file locking, mitigando risco critico de corrupcao de dados em escritas simultaneas de webhooks.
-2. **Resiliencia e Circuit Breaker nas Integracoes Bancarias:** Implementar politica de retries com backoff exponencial, jitter e timeout explicito nas chamadas para a API do Banco Inter e Mercado Pago (`inter_api.js`).
-3. **Tratamento de Exaustao de Memoria no Frontend:** Corrigir acumuladores globais de eventos (`window.addEventListener`) e renderizacao de listas pesadas sem virtualizacao no `app.js`.
+1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
+2. [x] **Resiliencia e Circuit Breaker nas Integracoes Bancarias:** Circuit Breakers isolados por empresa, retries com backoff exponencial, jitter aleatório e timeouts explícitos em `circuit_breaker.js` e `inter_api.js`.
+3. [x] **Tratamento de Exaustao de Memoria no Frontend:** Event Delegation nos `tbody` de todas as tabelas em `public/app.js`, eliminando acumuladores de eventos no DOM.
 4. [x] **Health Check, Reconexão e Keep-Alive Supabase (`postgres_db.js`):** Implementada rotina automática de Keep-Alive periódico (a cada 2 horas via `SELECT 1;`) e reconexão automática em background, prevenindo congelamento por inatividade de 7 dias no plano gratuito da Supabase.
-5. **Configuração de Subdomínio Personalizado no Render:** Implementar subdomínio próprio (ex: `portal.gsi.com.br` com CNAME para `conciliacao-fretes.onrender.com`), provisionamento automático de certificado SSL/TLS (HTTPS) pelo Render e inclusão explícita no array de `allowedOrigins` em `server.js`.
+5. [x] **Configuração de Subdomínio Personalizado no Render:** Implementado suporte no CORS dinâmico em `server.js` para o subdomínio oficial `portal.gsicofres.com.br`, `conciliacao.gsicofres.com.br`, `portal.gsi.com.br`, `portal.oaco.com.br` e variáveis de ambiente `CUSTOM_DOMAIN` / `ALLOWED_ORIGINS`. CNAME validado e provisionamento automático de certificado SSL Let's Encrypt gerenciado pelo Render.
 
 ### Prioridade 2 (Qualidade & Testes)
-1. **Testes Unitarios para Conciliacao e Regras de Negocio:** Criar suite de testes em Jest para os calculos de juros, multas, conciliacao de Pix e validacao de status bancarios em `inter_api.js`.
-2. **Testes de Parsers Logicos (Python):** Desenvolver testes em `pytest` cobrindo casos limites (*edge cases*) e formatos corrompidos de tabelas dos Correios e Rodonaves.
-3. **Mapeamento de Casos Infelizes (Unhappy Paths):** Cobrir cenarios de queda de rede, retorno de payload incompleto do ERP Protheus e duplicidade de envio de webhooks bancarios (idempotencia).
-4. **Validacao Rigorosa de Schemas:** Implementar validacao de schema (ex: Zod ou Joi) para todas as entradas de webhooks recebidas em `inter_webhooks.json`.
+1. [x] **Testes Unitarios para Conciliacao e Regras de Negocio:** Suíte unitária em `test_conciliacao_bancaria.js` validando cálculos 1:1, cartão líquido, N:1 subset-sum e tolerâncias monetárias.
+2. [x] **Testes de Parsers Logicos (Python):** Suíte em `pytest` (`test_parsers.py`) cobrindo edge cases de layouts dos Correios, Rodonaves e ViPP Tipo 2.
+3. [x] **Mapeamento de Casos Infelizes (Unhappy Paths & E2E):** Cobertura E2E via Playwright (`test_playwright_e2e.js`) e suíte de testes de regressão de segurança, 2FA e conexões offline.
+4. [x] **Validacao Rigorosa de Schemas:** Schemas Zod em `webhook_validator.js` cobrindo 100% dos formatos de eventos de webhook do Banco Inter (Pix, Boleto, Banking).
+
+28. [x] **Modularização ES6 da Arquitetura do Frontend (`public/js/*.js`, `test_frontend_modules.js`):**
+   - Decomposição modular da SPA em 8 submódulos ES6 univalentes: `utils.js` (sanitização XSS, formatação BRL, datas e `apiFetch` same-origin), `auth.js` (sessão, 2FA, RBAC e heartbeat), `vendedores.js` (estoque Power BI, pedidos abertos SC9, compras SC7 e alternância de temas), `credito.js` (análise de crédito, score e Serasa PDF), `financeiro.js` (conciliação bancária e extratos), `logistica.js` (faturas e fretes), `config.js` (auditoria e gestão de usuários) e `index.js` (barrel export central).
+29. [x] **Documentação de Contratos de API OpenAPI 3.0 & Swagger UI (`openapi.json`, `server.js`, `test_frontend_modules.js`):**
+   - Especificação OpenAPI 3.0 completa cobrindo 100% dos contratos das rotas de autenticação, 2FA, vendedores, análise de crédito, conciliação bancária, faturas e webhooks com esquemas de requisição e resposta.
+   - Disponibilização interativa via Swagger UI nos endpoints `/api-docs` e `/api/docs`, e JSON bruto em `/api/openapi.json`.
+30. [x] **Detecção Automática de Endereço de Entrega Diferente (`C5_MENNOTA` e `C5_TRANSP = '000009'`) (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_deteccao_entrega.js`):**
+   - **Dupla Regra Semântica e Transportadora Especial:**
+     - **Regra 1 (`C5_TRANSP = '000009'`):** Detecta pedidos com transportadora `000009` (Cliente Retira / Redespacho Próprio).
+     - **Regra 2 (`C5_MENNOTA`):** Parser semântico com expressões regulares capturando marcadores de endereço de entrega alternativo (`END ENTREGA`, `ENDERECO DE ENTREGA`, `END DE ENTREGA`, `LOCAL DE ENTREGA`, `ENTREGAR EM/NA/NO/PARA`) e descartando falsos positivos operacionais (apenas menção de horários como `8H AS 18H`).
+   - **Automação no Motor de Análise de Crédito & Redução de Esforço Manual:**
+     - Preenchimento automático do seletor `Entrega = Cadastro?` como **"Não"** (aplicando a penalidade de risco `-9.0 pts` e ativando `PERIGO CHECAGEM REVERSA` para pedidos a prazo) se qualquer uma das duas regras for atendida, ou como **"Sim"** (`+2.0 pts`) se o endereço for compatível.
+     - Remoção do asterisco (`*`) do campo `Entrega = Cadastro?` em `public/index.html`, preservando asteriscos exclusivamente nos 11 campos estritamente manuais.
+     - Renderização de badge de alerta inteligente no Bloco 3 (`#cr_entrega_diferente_badge`) informando o motivo e o endereço extraído para auditoria imediata.
+   - **Alerta Visual nos Detalhes do Pedido (`#pedidoDetalhesModal`):**
+     - Exibição de badge destacado em vermelho/âmbar no cabeçalho de logística ao visualizar detalhes de qualquer pedido com entrega diferente, prevenindo erros na expedição/vendas.
+   - **Suíte de Testes Automatizados:** Script `test_deteccao_entrega.js` com 10 asserções automatizadas cobrindo variações de códigos de transportadora, múltiplos padrões de texto em `C5_MENNOTA`, filtragem de falsos positivos e pontuação integrada no motor de crédito.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
-1. **Modularizacao de `public/app.js`:** Decompor o monolitico script de 3.000 linhas em modulos ES6 univalentes (`auth.js`, `dashboard.js`, `inter-service.js`, `freight-ui.js`, `utils.js`).
+1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
 2. **Conclusao da Migracao para PostgreSQL:** Descontinuar leitura/escrita em `data/*.json` e migrar integralmente as entidades (Usuarios, Atividades, Webhooks, Historico) para tabelas relacionais com migrations controladas.
 3. **Padronizacao de Tipagem e Tratamento de Erros:** Adicionar Type Hints nos scripts Python e padronizar o logging estruturado em JSON com codificacao UTF-8 nativa.
-4. **Documentacao de Contratos de API:** Gerar especificacao OpenAPI/Swagger para todas as rotas internas e payloads de webhook.
+4. [x] **Documentacao de Contratos de API:** Especificação OpenAPI 3.0.3 gerada em `openapi.json` e documentação interativa Swagger UI servida em `/api-docs`.
 
 ---
 

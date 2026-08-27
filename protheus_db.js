@@ -3,7 +3,7 @@ const https = require('https');
 
 // Configuração da API do Protheus no Railway
 const RAILWAY_API_URL = 'https://protheus-api-production.up.railway.app/query';
-const RAILWAY_API_KEY = process.env.PROTHEUS_API_KEY || 'ProtheusClaude#2026';
+const RAILWAY_API_KEY = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || (process.env.NODE_ENV === 'production' ? '' : 'ProtheusClaude#2026');
 
 // Mapeamento de Tabelas por Empresa no Protheus
 const TABELAS_EMPRESA = {
@@ -680,6 +680,79 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
 }
 
 /**
+ * Detecta se o pedido possui endereço de entrega diferente do cadastro
+ * Regra Dupla:
+ * 1. C5_TRANSP = '000009' (ou '9', transportadora especial / retira / redespacho)
+ * 2. C5_MENNOTA contém marcadores de endereço de entrega alternativo
+ * 
+ * @param {string} mennota - Texto do campo C5_MENNOTA
+ * @param {string} codTransp - Código da transportadora C5_TRANSP
+ * @returns {{
+ *   temEnderecoDiferente: boolean,
+ *   motivo: string,
+ *   enderecoExtraido: string,
+ *   origem: 'TRANSP_000009' | 'MENNOTA' | 'AMBOS' | 'NENHUM'
+ * }}
+ */
+function detectarEnderecoEntregaDiferente(mennota, codTransp) {
+  const cleanTransp = String(codTransp || '').trim();
+  const digitsTransp = cleanTransp.replace(/\D/g, '');
+  const isTransp09 = cleanTransp.padStart(6, '0') === '000009' || digitsTransp === '9' || cleanTransp === '000009';
+
+  let hasMennotaAddress = false;
+  let enderecoExtraido = '';
+
+  const rawMennota = String(mennota || '').trim();
+  if (rawMennota) {
+    // Regex robusta para capturar padrões de endereço de entrega em C5_MENNOTA
+    const regex = /(?:END(?:ERE[CÇ]O)?(?:\s+DE)?\s+ENTREGA|LOCAL(?:\s+DE)?\s+ENTREGA|ENTREGAR?\s+(?:EM|NA|NO|PARA)|END\.\s*ENTREGA)[:\s]+([\s\S]+?)(?=(?:PED\s+LOJA|FRETE|COT|AC\s|TEL\s|PAGAMENTO|BANCO|HOR[AÁ]RIO|Ped\s+Venda|Cod\s+Web|$))/i;
+    const match = rawMennota.match(regex);
+    if (match && match[1]) {
+      const candidate = match[1].replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      const isApenasHorario = /^(?:[0-2]?[0-9]H|SEG|TER|QUA|QUI|SEX|DAS\s+\d)/i.test(candidate);
+      if (candidate.length > 5 && !isApenasHorario) {
+        hasMennotaAddress = true;
+        enderecoExtraido = candidate;
+      }
+    }
+  }
+
+  if (isTransp09 && hasMennotaAddress) {
+    return {
+      temEnderecoDiferente: true,
+      motivo: `Transportadora 000009 + Endereço em C5_MENNOTA: ${enderecoExtraido}`,
+      enderecoExtraido: enderecoExtraido,
+      origem: 'AMBOS'
+    };
+  }
+
+  if (isTransp09) {
+    return {
+      temEnderecoDiferente: true,
+      motivo: 'Transportadora 000009 (Cliente Retira / Redespacho Próprio)',
+      enderecoExtraido: '',
+      origem: 'TRANSP_000009'
+    };
+  }
+
+  if (hasMennotaAddress) {
+    return {
+      temEnderecoDiferente: true,
+      motivo: `Endereço alternativo em C5_MENNOTA: ${enderecoExtraido}`,
+      enderecoExtraido: enderecoExtraido,
+      origem: 'MENNOTA'
+    };
+  }
+
+  return {
+    temEnderecoDiferente: false,
+    motivo: 'Conforme endereço de cadastro Protheus (SA1)',
+    enderecoExtraido: '',
+    origem: 'NENHUM'
+  };
+}
+
+/**
  * Consulta os Detalhes Completos do Pedido de Venda
  * Retorna dados cadastrais, endereço, transporte, condição de pagamento e itens (SC6)
  */
@@ -997,11 +1070,13 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         historicoFinanceiro: historicoFinanceiro,
         comercial: {
           transportadora: head.TRANSP || 'Transportadora Padrão',
+          codTransp: (head.TRANSP || '').trim(),
           condPagto: head.CONDPAG || 'À Vista / Boleto',
           condPagInfo: condPagInfo,
           vendedor: getNomeVendedor(head.VEND1),
           codVendedor: head.VEND1,
-          observacoes: head.OBS
+          observacoes: head.OBS,
+          entregaDiferenteInfo: detectarEnderecoEntregaDiferente(head.OBS, head.TRANSP)
         },
         totais: {
           totalProdutos: roundVal(totalProdutos),
@@ -1844,6 +1919,7 @@ module.exports = {
   formatarDataProtheus,
   calcularStatusBloqueioEstoque,
   calcularStatusBloqueioCredito,
+  detectarEnderecoEntregaDiferente,
   obterDetalhesPedido,
   obterHistoricoFinanceiroCliente,
   buscarComissoesPeriodo,

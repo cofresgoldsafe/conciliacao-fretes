@@ -1,38 +1,65 @@
-# TODO.md — Lista de Pendências e Próximos Passos
+# TODO.md — Lista de Pendências, Entregas e Próximos Passos
 
-## 🔴 Segurança & Hardening (Prioridade Máxima)
-- [x] [SEC-01] Implementar autenticação via JWT (jsonwebtoken) com RBAC (admin/operador) nas rotas /api/admin/* e /api/vipp/*
-- [x] [SEC-02] Criptografar senhas com bcryptjs e remover senhas em texto puro de postgres_db.js, server.js e data/users.json
-- [x] [SEC-03] Blindar consultas SQL no Protheus contra SQL Injection (sanitização de cleanTerm, codWeb, numNF, numPed, nomeCli)
-- [x] [SEC-04] Extrair segredos e credenciais fixas para variáveis de ambiente (.env)
-- [x] [SEC-05] Limitar uploads no multer (15MB max, whitelist de .pdf, .csv, .txt, .xlsx, .xls)
-- [x] [SEC-06] Incluir pacote pypdf na instalação Python do Dockerfile
-- [x] [SEC-07] Restringir origens no CORS e sanitizar mensagens de erro 500
-- [x] [SEC-08] Implementar autenticação 2FA por e-mail com tokens temporários e rate limiting
+## 🔴 Segurança & Hardening
+- [x] [SEC-01] Implementar autenticação via JWT (`jsonwebtoken`) com RBAC (`admin`, `user`, `vendedor`) nas rotas `/api/admin/*` e `/api/vipp/*`.
+- [x] [SEC-02] Criptografar senhas com `bcryptjs` e remover senhas em texto puro de `postgres_db.js`, `server.js` e `data/users.json`.
+- [x] [SEC-03] Blindar consultas SQL no Protheus contra SQL Injection (sanitização de `cleanTerm`, `codWeb`, `numNF`, `numPed`, `nomeCli`).
+- [x] [SEC-04] Extrair segredos e credenciais fixas para variáveis de ambiente (`.env`).
+- [x] [SEC-05] Limitar uploads no `multer` (15MB max, whitelist de `.pdf`, `.csv`, `.txt`, `.xlsx`, `.xls`).
+- [x] [SEC-06] Incluir pacote `pypdf` na instalação Python do `Dockerfile`.
+- [x] [SEC-07] Restringir origens no CORS e sanitizar mensagens de erro 500.
+- [x] [SEC-08] Implementar autenticação 2FA por e-mail com tokens de 4 dígitos via Mailjet REST API (HTTPS 443) / SMTP e rate limiting.
+- [x] [SEC-09] Habilitar Row-Level Security (RLS) em 100% das 9 tabelas públicas no Supabase PostgreSQL.
+- [x] [SEC-10] Processamento efêmero de relatórios PDF Serasa Experian em memória sem gravação em disco e trava cruzada de CNPJs.
+- [x] [SEC-11] Mitigação de DOM-based XSS: Função global `escapeHtml()` no topo da SPA e sanitização de 100% dos dados dinâmicos em tabelas e modais.
+- [x] [SEC-12] Criptografia e Proteção de Segredos: Eliminação de caminhos fixos de drive em `inter_api.js`, remoção de senhas em texto puro e migração 100% para variáveis de ambiente seguras no Render.
 
-## 🟡 Resiliência & SRE (Média Prioridade)
-- [x] [SRE-01] Adicionar tratamento de reconexão e timeouts no pool PostgreSQL (postgres_db.js)
-- [x] [SRE-02] Implementar idempotência e deduplicação de webhooks do Banco Inter
-- [x] [SRE-03] Configurar express-rate-limit em rotas sensíveis de autenticação
-- [x] [SRE-04] Rotina de Keep-Alive periódico a cada 2h para prevenir congelamento de banco inativo no Supabase
-- [x] [SRE-05] Job agendado de sincronização de estoque Protheus x Supabase com fallback local e cooldown
+## 🟡 Resiliência & SRE
+- [x] [SRE-01] Adicionar tratamento de reconexão e timeouts no pool PostgreSQL (`postgres_db.js`).
+- [x] [SRE-02] Implementar idempotência e deduplicação de webhooks do Banco Inter com chave única composta `(empresa_codigo, event_id)`.
+- [x] [SRE-03] Configurar `express-rate-limit` em rotas sensíveis de autenticação e login/2FA.
+- [x] [SRE-04] Rotina de Keep-Alive periódico a cada 2h para prevenir congelamento de banco inativo no Supabase.
+- [x] [SRE-05] Job agendado de sincronização de estoque Protheus x Supabase a cada 60 min no horário comercial com fallback JSON e cooldown de 2 min.
+- [x] [SRE-06] Implementar política de retries com backoff exponencial, jitter e Circuit Breaker com 3 estados nas chamadas do Banco Inter (`circuit_breaker.js` e `inter_api.js`).
+- [x] [SRE-07] Eliminar concorrência e corrupção em arquivos JSON (`data/*.json`) via serialização assíncrona FIFO e atomicRename (`safe_json_storage.js`).
+- [x] [SRE-08] Prevenir vazamento de memória e acumuladores de eventos no frontend através de Event Delegation nos containers `tbody` (`public/app.js`).
 
 ## 💼 Funcionalidades & Módulos de Negócio
-- [x] [VEND-01] Sub-aba Consulta Pedido: Pesquisa multi-empresa (14, 15, 16) com integração SA1010, máscaras e itens SC6
-- [x] [VEND-02] Sub-aba Pedidos Abertos: Listagem multi-empresa não faturada com regras de bloqueio SC9 e CRM Pipedrive
-- [x] [VEND-03] Sub-aba Pedidos Compras: Consulta de compras em aberto (SC7) de produtos PA com fornecedores SA2010
-- [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação SB1/SB2/SC6/SC7, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), exclusão de bloqueados (B1_MSBLQL <> '1'), paginação dinâmica e drilldown multi-empresa
-- [x] [VEND-05] Sub-aba Comissões & Metas: Apuração periódica SE3 com cálculo dinâmico de Meta Atingida proporcional
-- [x] [VEND-06] Autocura de vendorCode, fallback resiliente no login/2FA e campo de código de vendedor no painel administrativo
-- [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável
+- [x] [VEND-01] Sub-aba Consulta Pedido: Pesquisa multi-empresa (14, 15, 16) com integração `SA1010`, máscaras e itens `SC6`.
+- [x] [VEND-02] Sub-aba Pedidos Abertos: Listagem multi-empresa não faturada com regras de bloqueio `SC9` e CRM Pipedrive.
+- [x] [VEND-03] Sub-aba Pedidos Compras: Consulta de compras em aberto (`SC7`) de produtos `PA` com fornecedores `SA2010`.
+- [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação `SB1`/`SB2`/`SC6`/`SC7`, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), exclusão de bloqueados (`B1_MSBLQL <> '1'`), paginação dinâmica e drilldown multi-empresa.
+- [x] [VEND-05] Sub-aba Comissões & Metas: Apuração periódica `SE3` com cálculo dinâmico de Meta Atingida proporcional (R$ 120k / R$ 360k).
+- [x] [VEND-06] Autocura de `vendorCode`, fallback resiliente no login/2FA e campo de código de vendedor no painel administrativo.
+- [x] [VEND-07] Tema Claro/Escuro unificado para todas as 5 sub-abas dos Vendedores e modais com persistência `localStorage`.
+- [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável.
+- [x] [CRED-02] Leitura de PDF Serasa Experian com validação de validade (&le; 4 meses), trava de consulta e expansão de métricas do Bloco 5.
+- [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
+- [x] [CRED-04] Painel de Calibração de Pesos do Score em 6 blocos com sincronização dinâmica de rótulos dos seletores.
+- [ ] [INT-01] Ativação da gravação contábil direta no ERP Protheus via rotina AdvPL ExecAuto (`REST_AMARFRET.PRW` / `MATA116`) no AppServer TOTVS.
 
 ## 🌐 Infraestrutura & Domínio
-- [ ] [INFRA-01] Configuração de Subdomínio Personalizado no Render (ex: `portal.gsi.com.br` / CNAME para `conciliacao-fretes.onrender.com`, emissão de certificado SSL Let's Encrypt e inclusão explícita no array `allowedOrigins` em `server.js`)
+- [x] [INFRA-01] Configuração de Subdomínio Personalizado no Render (`portal.gsicofres.com.br` / CNAME para `conciliacao-fretes.onrender.com`, provisionamento SSL Let's Encrypt e inclusão explícita no CORS dinâmico em `server.js`).
 
 ## 🟢 Testes & Qualidade
-- [x] [QA-01] Criar suíte de testes de segurança e regressão (test_security.js e test_webhooks.js via npm test)
-- [x] [QA-02] Suíte de testes automatizados para Pedidos Abertos (test_pedidos_abertos.js)
-- [x] [QA-03] Suíte de testes automatizados para Pedidos Compras (test_pedidos_compras.js)
-- [x] [QA-04] Suíte de testes automatizados para Saldos em Estoque, Grupos, Bloqueios, Paginação e Job Supabase (test_saldos_estoque.js)
-- [x] [QA-05] Suíte de testes automatizados para Autocura de Vendedores e Preservação de vendorCode (test_vendor_autoheal.js)
-- [ ] [QA-06] Criar testes E2E com Playwright para fluxos de navegação e conciliação
+- [x] [QA-01] Criar suíte de testes de segurança e regressão (`test_security.js` e `test_webhooks.js` via `npm test`).
+- [x] [QA-02] Suíte de testes automatizados para Pedidos Abertos (`test_pedidos_abertos.js`).
+- [x] [QA-03] Suíte de testes automatizados para Pedidos Compras (`test_pedidos_compras.js`).
+- [x] [QA-04] Suíte de testes automatizados para Saldos em Estoque, Grupos, Bloqueios, Paginação e Job Supabase (`test_saldos_estoque.js`).
+- [x] [QA-05] Suíte de testes automatizados para Autocura de Vendedores e Preservação de `vendorCode` (`test_vendor_autoheal.js`).
+- [x] [QA-06] Suíte de testes automatizados para Tema Claro/Escuro nos Vendedores (`test_theme_toggle.js`).
+- [x] [QA-07] Suíte de testes automatizados para Totais de Pedido de Venda e Frete Embutido (`test_totais_pedido.js`).
+- [x] [QA-08] Suíte de testes automatizados para Parser de PDF Serasa Experian e Validação Temporal (`test_serasa_pdf_parser.js`).
+- [x] [QA-09] Suíte de testes automatizados para Capital Social Isento e Calibração de Score (`test_capital_social_isento.js` e `test_score_config.js`).
+- [x] [QA-10] Suíte de testes automatizados para DOM XSS e Proteção de Segredos (`test_dom_xss_and_secrets.js`).
+- [x] [QA-11] Criar testes E2E com Playwright para fluxos de navegação, 2FA, abas, estoque e crédito (`test_playwright_e2e.js`).
+- [x] [QA-12] Suíte de testes automatizados para Resiliência, SRE, Circuit Breaker, Retries e Concorrência JSON (`test_resilience_sre.js`).
+- [x] [QA-13] Suíte de testes unitários para Conciliação Bancária, Cartão Líquido e Matching N:1 (`test_conciliacao_bancaria.js`).
+- [x] [QA-14] Suíte de testes em Pytest para Parsers de Frete Correios, Rodonaves e ViPP Tipo 2 (`test_parsers.py`).
+- [x] [QA-15] Suíte de validação de Schemas Zod para Webhooks Bancários do Banco Inter (`test_webhook_schemas.js`).
+- [x] [QA-16] Suíte de testes para Arquitetura Modular ES6 e Documentação OpenAPI (`test_frontend_modules.js`).
+
+## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
+- [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).
+- [x] [TECH-02] Especificação de Contratos de API OpenAPI 3.0.3 (`openapi.json`) e Documentação Interativa Swagger UI (`/api-docs`).
+- [ ] [TECH-03] Descontinuação progressiva de arquivos JSON planos após consolidação exclusiva no PostgreSQL Supabase.

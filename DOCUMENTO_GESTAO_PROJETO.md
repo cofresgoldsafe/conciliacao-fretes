@@ -1,110 +1,152 @@
-# 📘 Documento de Gestão, Atualização e Aperfeiçoamento do Projeto
-## Plataforma de Apoio GSI Multi-Empresas (Integração Protheus)
+# 📘 Documento de Gestão, Arquitetura e Aperfeiçoamento do Projeto
+## Plataforma de Apoio GSI Multi-Empresas (Integração Protheus & Nuvem)
 
-> **Status Atual:** Versão 1.3 Publicada e Operacional na Nuvem 24/7  
+> **Status Atual:** Operacional na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA e Sincronização Agendada)  
 > **Link de Produção:** `https://conciliacao-fretes.onrender.com`  
 > **Repositório GitHub:** `https://github.com/cofresgoldsafe/conciliacao-fretes`  
-> **Segurança:** Documento livre de credenciais sensíveis e senhas.
+> **Segurança:** Documento livre de credenciais sensíveis, senhas ou tokens de API.
 
 ---
 
-## 1. 🎯 Objetivos da Plataforma
-Prover um portal corporativo em nuvem, acessível por operadores, administradores e equipe comercial, para:
-1. **Conciliação Inteligente de Faturas:** Ler faturas Rodonaves (PDF) e Correios/VIPP (CSV/TXT/PDF), batendo automaticamente com os fretes cobrados no Protheus (`C5_FRETE + C5_VLR_FRT`).
-2. **Consulta Rápida de Pedidos (Multi-Empresa):** Localizar pedidos em tempo real nas 3 empresas do grupo (OACO 16, GSI 15 e Metal Pleno 14) por `CodWeb`, `Número do Pedido` ou `Nome do Cliente`.
-3. **Drill-Down e Impressão de Pedidos:** Exibir dados cadastrais completos da base mestra `SA1010` (CNPJ/CPF, Endereço com complemento, Bairro, Cidade/UF, CEP, Contato/Tel), logística, condições de pagamento e grade de itens (`SC6`).
-4. **Fechamento de Comissões e Metas:** Apurar faturamento e comissões periódicas nas tabelas `SE3` (ciclo padrão de 26 a 25), com indicador dinâmico de Meta Atingida (% proporcional com base em R$ 120k/vendedor ou R$ 360k global), totalizador de base faturada, trava de 60 dias e isolamento seguro por vendedor logado.
-5. **Governança e Controle de Acesso:** Gerenciar permissões de navegação por perfil e usuário.
+## 1. 🎯 Objetivos e Escopo da Plataforma
+Prover um portal corporativo integrado na nuvem, multi-empresa e multi-perfil (Operadores, Administradores, Controladoria Financeira e Equipe Comercial), centralizando:
+1. **Logística & Conciliação de Fretes:** Leitura de faturas Rodonaves (PDF) e Correios/VIPP (PDF SFE e integração FTP), cruzando automaticamente com fretes cobrados no ERP Protheus (`C5_FRETE + C5_VLR_FRT`) e identificação de Ordens de Serviço (OS) e divergências.
+2. **Consulta Rápida e Unificada de Pedidos & NFs:** Localização instantânea em tempo real nas 3 empresas do grupo (Metal Pleno 14, GSI 15 e OACO 16) por `CodWeb`, `Número do Pedido` ou `Número da Nota Fiscal (Doc)`.
+3. **Módulo Comercial Completo (Vendedores):**
+   - **Saldos em Estoque:** Painel estilo Power BI com consolidação de catálogo de Produtos Acabados (`PA`), saldos físicos `SB2`, pedidos de venda `SC6`, pedidos de compra `SC7`, KPIs de estoque, filtros de grupos comerciais (001, 002, 010, 018), paginação inteligente e sincronização agendada com o Supabase.
+   - **Consulta de Pedidos com SA1010:** Modal detalhado com endereço completo, contatos, condições comerciais, grade de itens `SC6` e impressão.
+   - **Pedidos Abertos (SC5/SC9):** Acompanhamento de pedidos não faturados com regras de bloqueio de estoque e crédito aderentes ao Power BI e links para o CRM Pipedrive.
+   - **Pedidos Compras (SC7):** Acompanhamento de pedidos de compra em aberto de produtos PA com fornecedores `SA2010` e previsões de entrega.
+   - **Comissões & Metas (SE3):** Fechamento de comissões periódico (ciclo 26 a 25) com indicador dinâmico proporcional de Meta Atingida (R$ 120k individual / R$ 360k global).
+4. **Assistente Financeiro & Análise de Crédito:**
+   - **Conciliação Bancária Inter 077:** Batimento de extratos bancários com `SE8` e movimentações `SE5`, compensação automática de taxas de cartão/adquirentes, diagnóstico inteligente de agrupamento N:1 e recepção de webhooks com chave de idempotência.
+   - **Análise de Crédito Comercial com Motor de Score:** Leitura efêmera em memória de relatórios PDF Serasa Experian (com validação estrita de modelo e validade &le; 4 meses), consulta automática de histórico financeiro multi-empresa `SE1`, validação de endereços Protheus x Receita, maturidade digital (RDAP Registro.br, Wayback Machine, DNS MX), extrato auditável e calibração de pesos.
+5. **Governança, Segurança & Auditoria:**
+   - Autenticação JWT com RBAC por perfil e permissões granulares por abas.
+   - Autenticação em Dois Fatores (2FA) por e-mail com códigos de 4 dígitos via Mailjet REST API (HTTPS 443) / SMTP.
+   - Telemetria de atividades em tempo real (`user_activities`), heartbeat de sessão e autocura de códigos de vendedores.
+   - Tema Claro / Escuro (Light/Dark Mode) com paleta de alto contraste WCAG 2.1 e persistência perene.
 
 ---
 
-## 2. ✅ O que foi Desenvolvido (Entregas Concluídas)
+## 2. 🏛️ Arquitetura do Sistema e Topologia em Nuvem
 
-### 📦 Módulo 1: Logística & Conciliação de Fretes
-* **Parsers Python:** `parser_rodonaves.py` (PDF Rodonaves multi-páginas), `parser_tipo2.py` (CSV/TXT) e `parser_correios.py` (Fatura Analítica Correios SFE).
-* **Consulta SQL Protheus em Tempo Real:** Relaciona itens de saída (`SD2`) com pedidos de venda (`SC5`), unificando o frete cobrado em uma coluna única (`C5_FRETE + C5_VLR_FRT`).
-* **Normalização Multi-Formato de NFe (`getDocVariants`):** Compatibilidade total e busca indexada em `SD2` para NFs com 6 dígitos (`000629`), 9 dígitos com zeros à esquerda (`000000629`) e números puros (`629`), garantindo que qualquer fatura (ex: Rodonaves 31-08) localize instantaneamente o Pedido de Venda e o Cliente em tempo real.
-* **Painel de Divergências:** Cartões estatísticos de resumo, badges coloridos, chips de filtro rápido por status e tolerância configurável em R$.
-* **Edição Viva de NF (`Doc (NF)`):** Reconsulta instantânea ao Protheus e exportação da tabela em CSV.
-
-### 💼 Módulo 2: Vendedores, Pedidos, Compras, Estoque & Comissões (v1.6)
-* **Tema Claro / Escuro Unificado (Light/Dark Mode):**
-  * Alternância dinâmica através dos seletores `#btnToggleThemeVendedores` (no cabeçalho das sub-abas) e `#btnToggleThemeEstoque` (no painel de estoque).
-  * Sincronização perene em todas as 5 sub-abas (*Saldos em Estoque*, *Consulta Pedido*, *Pedidos Abertos*, *Pedidos Compras*, *Comissões*) e nos modais (*Drilldown de Estoque* e *Detalhes do Pedido*).
-  * Paleta de Alto Contraste WCAG 2.1 (AA/AAA) com textos `#0f172a`, bordas `#e2e8f0`, saldos `#059669`, compras/totais `#0284c7`, vendas `#d97706` e bloqueios `#dc2626`.
-  * Persistência em `localStorage` (`theme_vendedores` / `theme_saldos_estoque`) sem flash de tela (Zero-FOUC).
-* **Sub-aba 1 (Saldos em Estoque - Power BI Style):**
-  * Acompanhamento consolidado de catálogo de Produtos Acabados (`PA`), saldos físicos em estoque nas 3 empresas (`SB2140`, `SB2150`, `SB2160`), pedidos de venda em carteira (`SC6`) e pedidos de compra em aberto (`SC7`).
-  * Cálculo em tempo real de Saldo Total (`SALDO * PREÇO`) e 3 Cards de KPIs no topo (*Itens em Estoque*, *Itens sem Estoque*, *Valor Total em Estoque*).
-  * Job automático de sincronização Protheus x Supabase a cada 60 min em horário comercial (07h-19h Brasília de seg a sex) com fallback gracioso para cache local (`data/estoque_saldos_cache.json`) e botão de sincronização manual com Cooldown de 2 min.
-  * Tabela responsiva de 7 colunas com ordenação interativa e Modal Drilldown Multi-Empresa com 3 abas (*Resumo por Empresa*, *Compras em Aberto SC7* e *Vendas em Aberto SC6*).
-* **Sub-aba 2 (Consulta Pedido):**
-  * Pesquisa multi-empresa simultânea nas tabelas `SC5160` (OACO), `SC5150` (GSI) e `SC5140` (Metal Pleno).
-  * Modal rico com busca de endereço e contato na tabela mestra `SA1010`, máscaras automáticas de CNPJ/CPF/CEP/Telefone e grade de itens `SC6`.
-* **Sub-aba 3 (Pedidos Abertos):**
-  * Visão consolidada de pedidos de venda não faturados (`C5_NOTA = ''` e não cancelados) nas 3 empresas (`SC5`).
-  * Monitoramento de Bloqueio de Estoque (`C9_BLEST`) e Bloqueio de Crédito (`C9_BLCRED`) da tabela `SC9` aderente às regras de negócio oficiais do Power BI.
-  * Integração externa inteligente com o CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/{digits}`) e abertura da modal detalhada do pedido.
-  * Proteção Anti-IDOR/BOLA e isolamento de carteira restrita para vendedores comerciais (Figueiredo, Andrea, Juliana).
-* **Sub-aba 4 (Pedidos Compras):**
-  * Consulta em tempo real de produtos com pedidos de compras em aberto (`SC7140`, `SC7150`, `SC7160`) com saldo a receber (`C7_QUANT - C7_QUJE > 0`) e previsão de entrega em estoque (`C7_DATPRF`).
-  * Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa exclusiva de Produtos Acabados `PA`).
-  * Identificador `PedCom` formatado com sigla da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`) e busca de fornecedores em `SA2010`.
-  * Filtro instantâneo em tempo real conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa e ordenação de 4 colunas.
-  * Cards de resumo no topo: **`Ped Compras em Aberto`**, **`Saldo Total a Receber`** e **`Previsão mais Próxima`**.
-* **Sub-aba 5 (Comissões & Metas):**
-  * Consulta periódica nas tabelas `SE3160` (OACO), `SE3150` (GSI) e `SE3140` (Metal Pleno) com leitura de `E3_BASE`, `E3_PORC` e `E3_COMIS`.
-  * **Card "Meta Atingida":** Cálculo dinâmico proporcional de faturamento, substituindo a exibição de comissão a pagar em R$ pela porcentagem atingida de faturamento em relação à meta comercial:
-    * **Meta Individual:** R$ 120.000,00 por vendedor (para vendedor selecionado ou perfil de vendedor logado).
-    * **Meta Global:** R$ 360.000,00 para os 3 vendedores do grupo (quando selecionado "Todos os Vendedores").
-    * **Fórmula Proporcional:** `% Meta Atingida = (Total Faturado / Meta Proporcional) * 100`.
-  * Totalizadores de Base Faturada (`E3_BASE`) e Quantidade de Vendas no topo da tela.
-  * Coluna **`Empresa`** com as siglas oficiais: **`MP`**, **`GSI`** e **`OACO`**.
-  * De-Para de vendedores: `000004` (Figueiredo), `000064` (Andrea), `000074` (Juliana).
-  * Trava de intervalo de 60 dias para proteção do banco de dados.
-
-### 💰 Módulo 4: Assistente Financeiro (Conciliação Bancária Inter x Protheus)
-* **Sub-aba 1 (Conciliação Bancária):** Conciliação de extratos da Conta Corrente Banco Inter 077 com títulos financeiros Protheus (`SE1`/`SE2`), filtros por data, cartões de conciliação e exportação.
-* **Webhook & Integração Pix/Boleto:** Monitoramento de eventos e persistência.
-
-### ⚙️ Módulo 5: Configurações, Controle de Acesso & Auditoria de Uso
-* **Sub-aba 1 (Usuários & Permissões):** Gestão de contas, senhas e permissões granulares para as 5 abas principais (`logistica`, `consulta`, `vendedores`, `financeiro`, `configuracoes`). Blindagem contra arrays vazios e roteamento automático para perfis especializados (ex: operador Rubens com acesso exclusivo a Assist. Financ.).
-* **Sub-aba 2 (Atividades & Auditoria):** Painel administrativo em tempo real com métricas de engajamento (usuários ativos, volume de ações), último acesso ativo relativo e feed detalhado dos últimos eventos de negócio.
-* **Banco de Dados em Nuvem (Supabase PostgreSQL):** Persistência relacional das tabelas `users`, `history`, `system_configs`, `user_activities`, `user_2fa_tokens`, `inter_webhook_events`, `analise_credito_history`, `produtos_saldo_estoque` e `estoque_sync_logs` via `postgres_db.js`, com auto-criação de schema, Row-Level Security (RLS) e políticas ativas com fallback gracioso local.
-* Usuários ativos: `alexandre` (Admin), `erica`, `wallerson`, `rubens` (Operadores), `juliana`, `andrea`, `figueiredo` (Vendedores).
-
-### 🌐 Módulo 6: Implantação 100% Nuvem
-* Container Docker no Render com deploy contínuo integrado ao GitHub.
-* API de banco Protheus no Railway com driver ODBC SQL Server.
-* Banco de dados relacional PostgreSQL no Supabase (Pooler SSL / `DATABASE_URL`) com Row-Level Security (RLS) habilitado.
+```
+[ Usuários / Equipe Comercial / Financeiro / Logística ]
+                          │
+                          ▼ (HTTPS / JWT / 2FA)
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Portal Web & Backend Node.js Express (Render)            │
+│    https://conciliacao-fretes.onrender.com                  │
+│    ├─ Single Page Application (HTML5 / Vanilla JS / CSS)    │
+│    ├─ Middlewares JWT, RBAC, Rate Limiting, CORS            │
+│    ├─ Motor de Análise de Crédito & Score Comercial         │
+│    ├─ Sincronizador Agendado de Estoque (Job 60min)         │
+│    ├─ Integração mTLS Banco Inter & Webhooks idempotentes   │
+│    └─ Driver de E-mail 2FA (Mailjet REST API 443 / SMTP)   │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │                               │
+               ▼ (TCP Pooler SSL)              ▼ (REST API / X-API-Key)
+┌──────────────────────────────┐ ┌──────────────────────────────┐
+│ 2. PostgreSQL (Supabase)     │ │ 3. API Protheus (Railway)    │
+│    ├─ users (RBAC, 2FA, vend)│ │    FastAPI + ODBC SQL Server │
+│    ├─ produtos_saldo_estoque │ └──────────────┬───────────────┘
+│    ├─ estoque_sync_logs      │                │
+│    ├─ analise_credito_history│                ▼ (Consultas Otimizadas)
+│    ├─ user_activities        │ ┌──────────────────────────────┐
+│    ├─ user_2fa_tokens        │ │ 4. Banco SQL Server Protheus │
+│    ├─ inter_webhook_events   │ │    Base: CNVYB3_184594_PR_PD │
+│    ├─ system_configs         │ │    Empresas: 14 (MP),        │
+│    └─ history                │ │              15 (GSI),       │
+│    * Row-Level Security (RLS)│ │              16 (OACO)       │
+└──────────────────────────────┘ └──────────────────────────────┘
+```
 
 ---
 
-## 3. 📍 Status Atual dos Módulos
+## 3. 🧭 Estrutura Completa de Navegação (5 Abas Principais & 13 Sub-Abas)
+
+### 📦 1. ABA LOGÍSTICA
+* **`[ Upload Fatura Transp. ]`:** Processamento de Faturas Rodonaves (PDF multi-páginas via `parser_rodonaves.py`) e Faturas em CSV/TXT (`parser_tipo2.py`). Batimento automático com o frete cobrado no pedido (`C5_FRETE + C5_VLR_FRT`), cartões estatísticos de divergência, tolerância configurável em R$, coluna editável `Doc (NF)` e exportação em CSV.
+* **`[ Fatura Correios & ViPP ]`:** Leitura e extração analítica de Faturas PDF Correios SFE (`parser_correios.py`) com identificação de etiquetas (`AD...BR`, `AP...BR`), cruzamento em tempo real com relatórios do servidor FTP ViPP (`vipp_ftp.js`), auto-sync incremental no upload, categorização inteligente de Ordens de Serviço (`🔧 OS (Sem Cobrança)`) e batimento de frete Protheus.
+
+### 🔍 2. ABA CONSULTA PED/NF
+* **`[ Consulta NFe ou Pedido ]`:** Busca tripartite na mesma linha com exclusão mútua (`Código Web Pipe`, `Número do Pedido de Venda` ou `Número da NFe`), consulta simultânea nas tabelas das 3 empresas (14, 15 e 16), retorno com visualização de frete cobrado e link direto para detalhes.
+
+### 💼 3. ABA VENDEDORES
+* **`[ Saldos em Estoque ]` (Visual Power BI):** Acompanhamento consolidado de catálogo de Produtos Acabados (`PA`), saldos físicos `SB2`, vendas em carteira `SC6` e compras em aberto `SC7`. Cálculo de `SALDO_TOTAL = (SALDO * PREÇO)`, KPIs no topo, filtros por grupos comerciais (001, 002, 010, 018), exclusão de bloqueados (`B1_MSBLQL <> '1'`), busca rápida, paginação inteligente (25, 50, 100 itens), modal drilldown multi-empresa com 3 guias e botão de sincronização manual com Cooldown.
+* **`[ Consulta Pedido ]`:** Busca multi-critério por CodWeb, número do pedido ou nome do cliente. Modal completo com dados cadastrais mestres da `SA1010` (CNPJ/CPF, endereço com complemento, CEP, contato, telefone com máscaras), grade de produtos `SC6` e botão para impressão.
+* **`[ Pedidos Abertos ]`:** Listagem multi-empresa de pedidos não faturados (`C5_NOTA = ''` e não cancelados), agregação de bloqueios de estoque (`C9_BLEST`) e crédito (`C9_BLCRED`) padrão Power BI, link para CRM Pipedrive, ordenação interativa e isolamento seguro de carteira para vendedores.
+* **`[ Pedidos Compras ]`:** Consulta em tempo real de pedidos de compra em aberto (`SC7`) de produtos acabados `PA` (`001...` a `019...`), saldo a receber (`C7_QUANT - C7_QUJE > 0`), identificador `PedCom` (ex: `MP000207`, `GSI000150`, `OACO000320`), busca de fornecedores em `SA2010` e cards de resumo.
+* **`[ Comissões & Metas ]`:** Apuração periódica `SE3` (ciclo padrão de 26 a 25), card de **Meta Atingida (%)** dinâmico proporcional (R$ 120.000,00 individual / R$ 360.000,00 global), totalizadores de base faturada e trava de segurança de 60 dias.
+* **Tema Claro/Escuro:** Botão seletor no cabeçalho `#btnToggleThemeVendedores` aplicando instantaneamente a paleta de alto contraste em todas as 5 sub-abas e modais com persistência em `localStorage`.
+
+### 💰 4. ABA ASSIST. FINANC.
+* **`[ Conciliação Bancária ]`:** Conciliação sob demanda do Banco Inter 077 confrontando `SE8` e `SE5` nas contas correntes das 3 empresas (14, 15 e 16). Motor de compensação de taxas de cartão/adquirentes (bruto - taxa = líquido), diagnóstico micro com algoritmo de agrupamento N:1 para lotes de pagamento, identificação de faltantes com *Cliente Provável (Extrato)* e receptor de webhooks com idempotência estrita.
+* **`[ Análise de Crédito ]`:** Motor de Score de Crédito Comercial com:
+  - Leitura obrigatória de PDF Serasa Experian em buffer efêmero na memória (sem gravação em disco) com validação de modelo oficial e validade &le; 4 meses.
+  - Trava no botão de consulta Protheus e validação cruzada de CNPJs.
+  - Consulta automática de pedidos de venda (`SC5`/`SC6`), cadastro `SA1`, condições de pagamento `SE4` e histórico financeiro unificado `SE1` nas empresas 09, 14, 15 e 16.
+  - Comparação tolerante de endereços Protheus x Receita Federal.
+  - Maturidade digital em tempo real (RDAP Registro.br, Wayback Machine, DNS MX de provedor corporativo).
+  - Checkbox para Capital Social Não Informado / Isento (0 pts).
+  - Ficha do Pedido e Extrato Matemático do Score com snapshots imutáveis de pontuação (`detalhes_pontos`), auditoria do usuário analista e botão `⚡ Carregar no Formulário`.
+
+### ⚙️ 5. ABA CONFIGURAÇÕES
+* **`[ Usuários & Permissões ]`:** Gestão completa de operadores, perfis RBAC, permissões granulares por aba, alteração de senhas, campo dedicado de código de vendedor Protheus (`vendor_code`) e autenticação 2FA por e-mail (Mailjet HTTPS 443 / SMTP).
+* **`[ Atividades & Auditoria ]`:** Telemetria e auditoria de engajamento em tempo real, status de *Último Acesso Ativo Relativo* (*Online agora*, *Há X min*), heartbeat de sessão a cada 5 min e feed dos últimos eventos.
+* **`[ Análise de Crédito (Configuração) ]`:** Painel de calibração administrativa em 6 blocos com 100% dos parâmetros e pesos do motor de score, sincronização dinâmica dos rótulos dos seletores e botão de restauração para padrões oficiais.
+
+---
+
+## 4. 🗄️ Estrutura Técnica de Persistência & Bancos de Dados
+
+### Tabelas PostgreSQL (Supabase Nuvem) — `postgres_db.js`
+1. **`users`:** Usuários, perfis (`admin`, `user`, `vendedor`), hashes bcrypt, e-mail, permissões JSON e `vendor_code` Protheus.
+2. **`user_2fa_tokens`:** Tokens numéricos de 4 dígitos para 2FA, hasheados em bcrypt, TTL de 5 min e bloqueio após 3 tentativas.
+3. **`produtos_saldo_estoque`:** Tabela relacional com saldos consolidados de estoque multi-empresa, preços, carteira SC6 e compras SC7.
+4. **`estoque_sync_logs`:** Logs de auditoria do job de sincronização de estoque (duração, contadores e gatilho).
+5. **`analise_credito_history`:** Histórico de análises de crédito com identificação do analista, pontuação, decisão, snapshots imutáveis e payload JSON.
+6. **`user_activities`:** Feed de auditoria de uso com eventos de login, consultas, gravações de crédito e sincronizações.
+7. **`inter_webhook_events`:** Eventos bancários do Banco Inter com chave única composta `(empresa_codigo, event_id)` para idempotência estrita.
+8. **`system_configs`:** Configurações globais persistentes (incluindo calibração de pesos de score).
+9. **`history`:** Histórico de conciliações e operações legadas.
+* **Segurança:** Row-Level Security (RLS) habilitado em 100% das tabelas públicas.
+
+### Tabelas Protheus (SQL Server Nuvem) — `protheus_db.js`
+* **Pedidos de Venda:** `SC5140` (MP), `SC5150` (GSI), `SC5160` (OACO)
+* **Itens do Pedido:** `SC6140` (MP), `SC6150` (GSI), `SC6160` (OACO)
+* **Pedidos de Compras:** `SC7140` (MP), `SC7150` (GSI), `SC7160` (OACO)
+* **Saldos em Estoque:** `SB2140` (MP), `SB2150` (GSI), `SB2160` (OACO)
+* **Catálogo de Produtos:** `SB1010` (Compartilhado)
+* **Liberações / Bloqueios:** `SC9140` (MP), `SC9150` (GSI), `SC9160` (OACO)
+* **Contas a Receber (Histórico Financeiro):** `SE1090`, `SE1140`, `SE1150`, `SE1160`
+* **Comissões:** `SE3140` (MP), `SE3150` (GSI), `SE3160` (OACO)
+* **Movimentações Bancárias:** `SE5140` (MP), `SE5150` (GSI), `SE5160` (OACO)
+* **Saldos Bancários:** `SE8140` (MP), `SE8150` (GSI), `SE8160` (OACO)
+* **Itens de Saída (NFe):** `SD2140` (MP), `SD2150` (GSI), `SD2160` (OACO)
+* **Cabeçalho de NFe:** `SF2140` (MP), `SF2150` (GSI), `SF2160` (OACO)
+* **Cadastro de Clientes:** `SA1010` (Compartilhado)
+* **Cadastro de Fornecedores:** `SA2010` (Compartilhado)
+* **Condições de Pagamento:** `SE4010` (Compartilhado)
+
+---
+
+## 5. 📍 Matriz de Status Atual dos Módulos
 
 | Módulo / Funcionalidade | Status | Observações |
 | :--- | :---: | :--- |
-| **Aba 1 (Logística: Upload Faturas & Conciliação)** | 🟢 100% Concluído | Operacional com regras de divergência e batimento T-SQL. |
-| **Aba 2 (Consulta: Pedidos e NFs Multi-Empresa)** | 🟢 100% Concluído | Operacional com pesquisa unificada em 14, 15 e 16. |
-| **Aba 3 (Vendedores: Consulta Pedido, Comissões & Metas)** | 🟢 100% Concluído | Operacional nas 3 empresas com clientes em `SA1010`, comissões `SE3` e cálculo dinâmico de Meta Atingida. |
-| **Aba 4 (Assist. Financ.: Conciliação Inter x Protheus)** | 🟢 100% Concluído | Operacional com leitura de extratos Inter e batimento financeiro. |
-| **Aba 5 (Configurações: Usuários & Auditoria de Uso)** | 🟢 100% Concluído | Operacional com controle granular para as 5 abas, badges e auditoria de atividades. |
-| **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Fase Final | Classe AdvPL pronta ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)), botão desabilitado aguardando AppServer. |
+| **Aba 1 (Logística: Rodonaves & Correios/ViPP FTP)** | 🟢 100% Concluído | Operacional com auto-sync FTP, regras de OS e batimento T-SQL. |
+| **Aba 2 (Consulta: Pedidos e NFs Multi-Empresa)** | 🟢 100% Concluído | Operacional com busca tripartite unificada nas empresas 14, 15 e 16. |
+| **Aba 3 (Vendedores: Estoque, Pedidos, Compras, Comissões)** | 🟢 100% Concluído | 5 sub-abas operacionais, visual Power BI, job Supabase, CRM Pipedrive e tema claro/escuro. |
+| **Aba 4 (Assist. Financ.: Conciliação Inter & Análise Crédito)** | 🟢 100% Concluído | Conciliação N:1, webhooks, motor de score, Serasa PDF efêmero e extrato auditável. |
+| **Aba 5 (Configurações: Usuários, Auditoria, Score)** | 🟢 100% Concluído | RBAC, 2FA por e-mail, autocura de vendedor, telemetria e calibração de pesos. |
+| **Lançamento Direto no Protheus (ExecAuto)** | 🔵 Pronto / Aguarda AppServer | Rotina AdvPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) pronta, botão aguardando ativação no AppServer TOTVS. |
 
 ---
 
-## 4. 🗄️ Estrutura Técnica de Tabelas Protheus
+## 6. 🛡️ Backlog de Próximos Passos & Infraestrutura
 
-* **Pedidos de Venda:** `SC5160` (OACO 16), `SC5150` (GSI 15), `SC5140` (Metal Pleno 14)
-* **Itens do Pedido:** `SC6160` (OACO 16), `SC6150` (GSI 15), `SC6140` (Metal Pleno 14)
-* **Comissões:** `SE3160` (OACO 16), `SE3150` (GSI 15), `SE3140` (Metal Pleno 14)
-* **Itens de Saída (NF):** `SD2160` (OACO 16), `SD2150` (GSI 15), `SD2140` (Metal Pleno 14)
-* **Cadastro Mestre de Clientes:** `SA1010` (Base compartilhada)
-
----
-
-## 5. 🛡️ Segurança & Backlog de Hardening
-* Nenhuma senha, token ou chave confidencial foi gravada neste documento ou versionada no GitHub.
-* Variáveis sensíveis permanecem restritas ao painel de variáveis de ambiente do Render e Railway.
-* ⚠️ **Backlog de Segurança & Auditoria Técnica:** Consulte o documento detalhado [`DOCUMENTO_CHECKPOINT_SEGURANCA_BACKLOG.md`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/DOCUMENTO_CHECKPOINT_SEGURANCA_BACKLOG.md) para a lista priorizada de correções e checklist de implementação.
-
+1. **Subdomínio Personalizado no Render (`[INFRA-01]`):** Apontamento CNAME (ex: `portal.gsi.com.br`), emissão de SSL e liberação no CORS de [`server.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/server.js).
+2. **Suíte E2E Playwright (`[QA-06]`):** Automação ponta a ponta dos fluxos de autenticação 2FA, filtros de estoque e conciliação de fretes.
+3. **Publicação da Rotina AdvPL no AppServer:** Compilação do `REST_AMARFRET.PRW` para gravação de amarrações contábeis de frete no ERP Protheus.

@@ -39,7 +39,7 @@ def parse_rodonaves_pdf(pdf_path):
                         
                         doc_orig = ""
                         for item in row_clean[2:]:
-                            if re.search(r'\d{6,}', item):
+                            if re.search(r'\d+', item):
                                 doc_orig = item
                                 break
                         

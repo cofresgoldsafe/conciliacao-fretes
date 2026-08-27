@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { safeWriteJson, safeWriteJsonSync, safeReadJson, safeReadJsonSync } = require('./safe_json_storage');
 
 /**
  * Funções de Criptografia e Verificação Segura de Senhas (Bcrypt)
@@ -382,17 +383,18 @@ async function initPostgres() {
 
         if (localUsers.length === 0) {
           localUsers = [
-            { username: 'alexandre', name: 'Alexandre', email: 'alexandre@oaco.com.br', pass: '321654', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'], active: true },
-            { username: 'erica', name: 'Érica', email: 'erica@oaco.com.br', pass: '1020304050', role: 'user', permissions: ['logistica', 'consulta'], active: true },
-            { username: 'wallerson', name: 'Wallerson', email: 'wallerson@oaco.com.br', pass: '10203040', role: 'user', permissions: ['logistica', 'consulta'], active: true },
-            { username: 'juliana', name: 'Juliana', email: 'juliana@oaco.com.br', pass: '102030', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },
-            { username: 'andrea', name: 'Andrea', email: 'andrea@oaco.com.br', pass: '102030', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'], active: true },
-            { username: 'figueiredo', name: 'Figueiredo', email: 'figueiredo@oaco.com.br', pass: '102030', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'], active: true }
+            { username: 'alexandre', name: 'Alexandre', email: 'alexandre@oaco.com.br', pass: '$2b$10$p0RJWNsHaXZhB.OVofss9ekoTYw5/e9fG9McA24vn03Ws.z/KMOUi', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'], active: true },
+            { username: 'erica', name: 'Érica', email: 'erica@oaco.com.br', pass: '$2b$10$tG.0iXqpKLWZrPS3P9bSmO5fIxRlF66sKcPuhrchlpA8A1OgrfEn2', role: 'user', permissions: ['logistica', 'consulta'], active: true },
+            { username: 'wallerson', name: 'Wallerson', email: 'wallerson@oaco.com.br', pass: '$2b$10$4K2LJfNjtIcHjM1Nj8vXiOpZh2esE4jvbE1YRd3brORaQLB4UJCOq', role: 'user', permissions: ['logistica', 'consulta'], active: true },
+            { username: 'juliana', name: 'Juliana', email: 'juliana@oaco.com.br', pass: '$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },
+            { username: 'andrea', name: 'Andrea', email: 'andrea@oaco.com.br', pass: '$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'], active: true },
+            { username: 'figueiredo', name: 'Figueiredo', email: 'figueiredo@oaco.com.br', pass: '$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'], active: true },
+            { username: 'rubens', name: 'Rubens da Silva', email: 'rubens@oaco.com.br', pass: '$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq', role: 'user', permissions: ['financeiro'], active: true }
           ];
         }
 
         for (const u of localUsers) {
-          const hashedPass = await hashPassword(u.pass || '102030');
+          const hashedPass = (u.pass && String(u.pass).startsWith('$2')) ? u.pass : await hashPassword(u.pass || '102030');
           await client.query(`
             INSERT INTO users (username, name, email, pass, role, vendor_code, permissions, active)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -477,10 +479,8 @@ async function getUsers() {
         ORDER BY id ASC;
       `);
       if (res && res.rows && res.rows.length > 0) {
-        // Atualiza cache local
-        try {
-          fs.writeFileSync(usersFile, JSON.stringify(res.rows, null, 2));
-        } catch {}
+        // Atualiza cache local de forma atômica
+        safeWriteJson(usersFile, res.rows).catch(() => {});
         return res.rows;
       }
     } catch (err) {
@@ -488,14 +488,8 @@ async function getUsers() {
     }
   }
 
-  // Fallback Local
-  try {
-    if (fs.existsSync(usersFile)) {
-      return JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-    }
-  } catch {}
-
-  return [];
+  // Fallback Local Seguro
+  return safeReadJsonSync(usersFile, []);
 }
 
 /**
@@ -553,12 +547,9 @@ async function saveUser(userData) {
     }
   }
 
-  // Atualiza também o arquivo local users.json
+  // Atualiza também o arquivo local users.json de forma segura e atômica
   try {
-    let localUsers = [];
-    if (fs.existsSync(usersFile)) {
-      localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-    }
+    let localUsers = safeReadJsonSync(usersFile, []);
     const idx = localUsers.findIndex(u => u.username.toLowerCase() === cleanUser);
     if (idx >= 0) {
       localUsers[idx].name = cleanName;
@@ -583,7 +574,7 @@ async function saveUser(userData) {
         active: active
       });
     }
-    fs.writeFileSync(usersFile, JSON.stringify(localUsers, null, 2));
+    await safeWriteJson(usersFile, localUsers);
   } catch (e) {
     console.warn('Erro ao atualizar cache local de usuários:', e.message);
   }
@@ -827,13 +818,11 @@ async function deleteUser(username) {
     }
   }
 
-  // Atualiza arquivo local
+  // Atualiza arquivo local de forma segura
   try {
-    if (fs.existsSync(usersFile)) {
-      let localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-      localUsers = localUsers.filter(u => u.username.toLowerCase() !== cleanUser);
-      fs.writeFileSync(usersFile, JSON.stringify(localUsers, null, 2));
-    }
+    let localUsers = safeReadJsonSync(usersFile, []);
+    localUsers = localUsers.filter(u => u.username.toLowerCase() !== cleanUser);
+    await safeWriteJson(usersFile, localUsers);
   } catch {}
 }
 
@@ -853,66 +842,63 @@ async function getHistory() {
           empresa,
           valor_total AS "valorTotal",
           qtd_fretes AS "qtdFretes",
-          divergencias,
-          detalhes
+          pagador,
+          data_vencimento AS "dataVencimento",
+          data_integracao AS "dataIntegracao",
+          empresa_codigo AS "empresaCodigo",
+          created_at AS "createdAt"
         FROM history 
         ORDER BY id DESC 
         LIMIT 100;
       `);
       if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
-          ...r,
-          ...(r.detalhes || {})
-        }));
+        return res.rows;
       }
     } catch (err) {
-      console.warn('⚠️ [Postgres] Erro ao buscar histórico no banco:', err.message);
+      console.warn('⚠️ [Postgres] Erro ao buscar histórico no banco, usando arquivo local:', err.message);
     }
   }
 
-  try {
-    if (fs.existsSync(historyFile)) {
-      return JSON.parse(fs.readFileSync(historyFile, 'utf-8'));
-    }
-  } catch {}
-
-  return [];
+  // Fallback Local
+  return safeReadJsonSync(historyFile, []);
 }
 
 /**
- * Salva Item no Histórico
+ * Salva Registro no Histórico de Conciliações
  */
-async function saveHistoryItem(item) {
+async function saveHistory(item) {
   const p = getPool();
   if (p) {
     try {
       await safeQuery(`
         INSERT INTO history (
-          fatura_numero, transportadora, empresa, valor_total, qtd_fretes, divergencias, detalhes
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7);
+          data_conciliacao, fatura_numero, transportadora, empresa, valor_total, 
+          qtd_fretes, pagador, data_vencimento, data_integracao, empresa_codigo
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
       `, [
-        item.numeroFatura || item.faturaNumero || item.protheusDoc || 'S/N',
-        item.transportadora || 'RODONAVES',
-        item.empresa || item.empresaProtheus || 'OACO',
-        parseFloat(item.valorTotal || item.valorCobrado || 0),
-        parseInt(item.qtdFretes || 1, 10),
-        parseInt(item.divergencias || 0, 10),
-        JSON.stringify(item)
+        item.dataConciliacao || new Date().toISOString(),
+        item.faturaNumero || '',
+        item.transportadora || '',
+        item.empresa || '',
+        item.valorTotal || 0,
+        item.qtdFretes || item.totalFretes || 0,
+        item.pagador || '',
+        item.dataVencimento || '',
+        item.dataIntegracao || '',
+        item.empresaCodigo || '16'
       ]);
     } catch (err) {
       console.warn('⚠️ [Postgres] Erro ao salvar histórico no banco:', err.message);
     }
   }
 
-  // Grava também no history.json local
+  // Grava em arquivo local para contingência de forma segura e atômica
   try {
-    let history = [];
-    if (fs.existsSync(historyFile)) {
-      history = JSON.parse(fs.readFileSync(historyFile, 'utf-8'));
-    }
+    let history = safeReadJsonSync(historyFile, []);
     history.unshift(item);
     if (history.length > 100) history = history.slice(0, 100);
-    fs.writeFileSync(historyFile, JSON.stringify(history, null, 2));
+    await safeWriteJson(historyFile, history);
   } catch {}
 }
 
@@ -954,13 +940,10 @@ async function logUserActivity({ username, userName, actionType, description, ip
     }
   }
 
-  // Grava em arquivo local para contingência e atualiza dados do usuário
+  // Grava em arquivo local para contingência e atualiza dados do usuário de forma segura e atômica
   try {
     const activitiesFile = path.join(dataDir, 'activities.json');
-    let acts = [];
-    if (fs.existsSync(activitiesFile)) {
-      acts = JSON.parse(fs.readFileSync(activitiesFile, 'utf-8'));
-    }
+    let acts = safeReadJsonSync(activitiesFile, []);
     const newAct = {
       id: 'ACT-' + Date.now(),
       username: cleanUser,
@@ -973,18 +956,16 @@ async function logUserActivity({ username, userName, actionType, description, ip
     };
     acts.unshift(newAct);
     if (acts.length > 200) acts = acts.slice(0, 200);
-    fs.writeFileSync(activitiesFile, JSON.stringify(acts, null, 2));
+    safeWriteJson(activitiesFile, acts).catch(() => {});
 
     // Atualiza data/users.json local
-    if (fs.existsSync(usersFile)) {
-      let localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-      const uIdx = localUsers.findIndex(u => String(u.username || '').toLowerCase() === cleanUser);
-      if (uIdx >= 0) {
-        localUsers[uIdx].lastActiveAt = newAct.createdAt;
-        if (cleanType === 'LOGIN') localUsers[uIdx].lastLoginAt = newAct.createdAt;
-        localUsers[uIdx].totalActions = (localUsers[uIdx].totalActions || 0) + 1;
-        fs.writeFileSync(usersFile, JSON.stringify(localUsers, null, 2));
-      }
+    let localUsers = safeReadJsonSync(usersFile, []);
+    const uIdx = localUsers.findIndex(u => String(u.username || '').toLowerCase() === cleanUser);
+    if (uIdx >= 0) {
+      localUsers[uIdx].lastActiveAt = newAct.createdAt;
+      if (cleanType === 'LOGIN') localUsers[uIdx].lastLoginAt = newAct.createdAt;
+      localUsers[uIdx].totalActions = (localUsers[uIdx].totalActions || 0) + 1;
+      safeWriteJson(usersFile, localUsers).catch(() => {});
     }
   } catch {}
 }
@@ -1006,14 +987,12 @@ async function touchUserActivity(username) {
     } catch {}
   }
   try {
-    if (fs.existsSync(usersFile)) {
-      let localUsers = JSON.parse(fs.readFileSync(usersFile, 'utf-8'));
-      const uIdx = localUsers.findIndex(u => String(u.username || '').toLowerCase() === cleanUser);
-      if (uIdx >= 0) {
-        localUsers[uIdx].lastActiveAt = new Date().toISOString();
-        localUsers[uIdx].totalActions = (localUsers[uIdx].totalActions || 0) + 1;
-        fs.writeFileSync(usersFile, JSON.stringify(localUsers, null, 2));
-      }
+    let localUsers = safeReadJsonSync(usersFile, []);
+    const uIdx = localUsers.findIndex(u => String(u.username || '').toLowerCase() === cleanUser);
+    if (uIdx >= 0) {
+      localUsers[uIdx].lastActiveAt = new Date().toISOString();
+      localUsers[uIdx].totalActions = (localUsers[uIdx].totalActions || 0) + 1;
+      safeWriteJson(usersFile, localUsers).catch(() => {});
     }
   } catch {}
 }
@@ -1146,30 +1125,22 @@ async function saveInterWebhookEvent({ empresaCodigo = '14', eventId, tipo = 'PI
     }
   }
 
-  // 2. Fallback em arquivo JSON local serializado por fila para evitar race conditions
-  return new Promise((resolve) => {
-    writeQueue = writeQueue.then(async () => {
-      try {
-        let localEvts = [];
-        if (fs.existsSync(webhooksFile)) {
-          localEvts = JSON.parse(fs.readFileSync(webhooksFile, 'utf-8'));
-        }
-        const exists = localEvts.some(e => String(e.empresaCodigo) === emp && String(e.eventId) === evtId);
-        if (!exists) {
-          const newEvt = { id: localEvts.length + 1, empresaCodigo: emp, eventId: evtId, tipo, payload: typeof payload === 'string' ? JSON.parse(payload) : payload, createdAt: now };
-          localEvts.unshift(newEvt);
-          if (localEvts.length > 200) localEvts = localEvts.slice(0, 200);
-          fs.writeFileSync(webhooksFile, JSON.stringify(localEvts, null, 2));
-          resolve({ success: true, savedTo: 'json_fallback', event: newEvt });
-          return;
-        }
-        resolve({ success: true, savedTo: 'json_fallback', duplicate: true, eventId: evtId });
-      } catch (err) {
-        console.error('❌ [Local Webhook Save Error]:', err.message);
-        resolve({ success: false, error: err.message });
-      }
-    });
-  });
+  // 2. Fallback em arquivo JSON local serializado por fila segura para evitar race conditions
+  try {
+    let localEvts = safeReadJsonSync(webhooksFile, []);
+    const exists = localEvts.some(e => String(e.empresaCodigo) === emp && String(e.eventId) === evtId);
+    if (!exists) {
+      const newEvt = { id: localEvts.length + 1, empresaCodigo: emp, eventId: evtId, tipo, payload: typeof payload === 'string' ? JSON.parse(payload) : payload, createdAt: now };
+      localEvts.unshift(newEvt);
+      if (localEvts.length > 200) localEvts = localEvts.slice(0, 200);
+      await safeWriteJson(webhooksFile, localEvts);
+      return { success: true, savedTo: 'json_fallback', event: newEvt };
+    }
+    return { success: true, savedTo: 'json_fallback', duplicate: true, eventId: evtId };
+  } catch (err) {
+    console.error('❌ [Local Webhook Save Error]:', err.message);
+    return { success: false, error: err.message };
+  }
 }
 
 /**
@@ -1199,13 +1170,11 @@ async function getInterWebhookEvents(empresaCodigo = null, limit = 50) {
 
   // Fallback JSON
   try {
-    if (fs.existsSync(webhooksFile)) {
-      let localEvts = JSON.parse(fs.readFileSync(webhooksFile, 'utf-8'));
-      if (empresaCodigo && empresaCodigo !== 'todas') {
-        localEvts = localEvts.filter(e => String(e.empresaCodigo) === String(empresaCodigo));
-      }
-      return localEvts.slice(0, maxLimit);
+    let localEvts = safeReadJsonSync(webhooksFile, []);
+    if (empresaCodigo && empresaCodigo !== 'todas') {
+      localEvts = localEvts.filter(e => String(e.empresaCodigo) === String(empresaCodigo));
     }
+    return localEvts.slice(0, maxLimit);
   } catch {}
 
   return [];
@@ -1214,26 +1183,12 @@ async function getInterWebhookEvents(empresaCodigo = null, limit = 50) {
 const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.json');
 
 /**
- * Salva Análise de Crédito (PostgreSQL + Fallback JSON Local)
+ * Salva Registro de Análise de Crédito (PostgreSQL + Backup JSON Local)
  */
-async function saveAnaliseCreditoDB(registro) {
+async function saveHistoricoCreditoDB(dados) {
   const p = getPool();
   const now = new Date().toISOString();
-  const dados = { ...registro };
-  const ped = String(dados.pedido_venda || '').trim();
-  const emp = String(dados.empresa || '').trim();
-  const cliNome = String(dados.cliente_nome || '').trim();
-  const cliCod = String(dados.cliente_codigo || '').trim();
-  const codWeb = String(dados.cod_web || '').trim();
-  const totalPed = Number(dados.total_pedido) || 0;
-  const descPed = String(dados.desconto_ped || 'OK').trim();
-  const score = parseInt(dados.total_score, 10) || 0;
-  const risco = String(dados.risco || '').trim();
-  const sugestao = String(dados.sugestao || '').trim();
-  const decisao = String(dados.decisao_final || 'Liberado').trim();
-  const obs = String(dados.obs || '').trim();
-  const usuario = String(dados.usuario || 'Sistema').trim();
-  const sugestoesArr = Array.isArray(dados.sugestoes_lista) ? dados.sugestoes_lista : [];
+  const usuario = (dados && dados.usuario && String(dados.usuario).trim()) ? String(dados.usuario).trim() : 'Sistema';
 
   let savedItem = null;
 
@@ -1246,32 +1201,37 @@ async function saveAnaliseCreditoDB(registro) {
           decisao_final, obs, usuario, sugestoes_lista, dados_completos, created_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW()
-        ) RETURNING id, created_at;
+        )
+        RETURNING id, pedido_venda, empresa, cliente_nome, total_score, risco, sugestao, decisao_final, usuario, created_at;
       `, [
-        ped, emp, cliNome, cliCod, codWeb,
-        totalPed, descPed, score, risco, sugestao,
-        decisao, obs, usuario, JSON.stringify(sugestoesArr), JSON.stringify({ ...dados, usuario })
+        dados.pedido_venda || '',
+        dados.empresa || '',
+        dados.cliente_nome || '',
+        dados.cliente_codigo || '',
+        dados.cod_web || '',
+        Number(dados.total_pedido || 0),
+        Number(dados.desconto_ped || 0),
+        Number(dados.total_score || 0),
+        dados.risco || '',
+        dados.sugestao || '',
+        dados.decisao_final || '',
+        dados.obs || '',
+        usuario,
+        JSON.stringify(dados.sugestoes_lista || []),
+        JSON.stringify(dados.dados_completos || {})
       ]);
 
-      if (res && res.rows && res.rows.length > 0) {
-        savedItem = {
-          id: String(res.rows[0].id),
-          ...dados,
-          usuario,
-          created_at: res.rows[0].created_at ? new Date(res.rows[0].created_at).toISOString() : now
-        };
+      if (res && res.rows && res.rows[0]) {
+        savedItem = res.rows[0];
       }
     } catch (err) {
-      console.warn('⚠️ [Postgres] Erro ao salvar análise de crédito no banco:', err.message);
+      console.warn('⚠️ [Postgres] Erro ao salvar analise_credito_history no banco:', err.message);
     }
   }
 
-  // Backup em JSON local
+  // Backup em JSON local de forma segura e atômica
   try {
-    let localList = [];
-    if (fs.existsSync(analiseCreditoHistoryFile)) {
-      localList = JSON.parse(fs.readFileSync(analiseCreditoHistoryFile, 'utf-8'));
-    }
+    let localList = safeReadJsonSync(analiseCreditoHistoryFile, []);
     const itemToSave = savedItem || {
       id: String(Date.now()),
       ...dados,
@@ -1280,7 +1240,7 @@ async function saveAnaliseCreditoDB(registro) {
     };
     localList.unshift(itemToSave);
     if (localList.length > 500) localList = localList.slice(0, 500);
-    fs.writeFileSync(analiseCreditoHistoryFile, JSON.stringify(localList, null, 2), 'utf-8');
+    await safeWriteJson(analiseCreditoHistoryFile, localList);
     return itemToSave;
   } catch (e) {
     console.warn('Erro ao salvar analise_credito_history.json local:', e.message);
@@ -1324,86 +1284,60 @@ async function getHistoricoCreditoDB(limit = 200) {
             try {
               const { calcularScore } = require('./analise_credito_engine');
               const resCalc = calcularScore(dadosComp);
-              detalhesPts = resCalc.detalhesPontos;
+              detalhesPts = resCalc.detalhesPontos || null;
             } catch {}
           }
 
           return {
-            id: String(r.id),
-            ...dadosComp,
-            pedido_venda: r.pedido_venda,
-            empresa: r.empresa,
-            cliente_nome: r.cliente_nome,
-            cliente_codigo: r.cliente_codigo,
-            cod_web: r.cod_web,
-            total_pedido: Number(r.total_pedido) || 0,
-            desconto_ped: r.desconto_ped,
-            total_score: r.total_score,
-            risco: r.risco,
-            sugestao: r.sugestao,
-            decisao_final: r.decisao_final,
-            obs: r.obs,
-            usuario: r.usuario || dadosComp.usuario || 'Sistema',
+            ...r,
+            dados_completos: dadosComp,
             sugestoes_lista: sugLista,
-            detalhes_pontos: detalhesPts,
-            created_at: r.created_at ? new Date(r.created_at).toISOString() : null
+            detalhes_pontos: detalhesPts
           };
         });
       }
     } catch (err) {
-      console.warn('⚠️ [Postgres] Erro ao buscar histórico de análises de crédito no banco:', err.message);
+      console.warn('⚠️ [Postgres] Erro ao buscar analise_credito_history no banco, usando fallback local:', err.message);
     }
   }
 
-  // Fallback JSON local
+  // Fallback em JSON local
   try {
-    if (fs.existsSync(analiseCreditoHistoryFile)) {
-      const localList = JSON.parse(fs.readFileSync(analiseCreditoHistoryFile, 'utf-8'));
-      if (Array.isArray(localList)) {
-        return localList.slice(0, maxLimit).map(item => {
-          let pts = item.detalhes_pontos;
-          if (!pts) {
-            try {
-              const { calcularScore } = require('./analise_credito_engine');
-              pts = calcularScore(item).detalhesPontos;
-            } catch {}
-          }
-          return { ...item, usuario: item.usuario || 'Sistema', detalhes_pontos: pts };
-        });
-      }
-    }
+    let localList = safeReadJsonSync(analiseCreditoHistoryFile, []);
+    return localList.slice(0, maxLimit);
   } catch {}
 
   return [];
 }
 
 /**
- * Salva a lista de saldos em estoque de produtos (PostgreSQL + Fallback JSON Local)
+ * =========================================================================
+ * MÓDULO ESTOQUE: PERSISTÊNCIA & CONSULTA DE SALDOS CONSOLIDADOS
+ * =========================================================================
+ */
+
+/**
+ * Grava a carga consolidada de saldos em estoque no PostgreSQL e Cache JSON
  */
 async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
   const p = getPool();
-  const now = new Date().toISOString();
   const metaSalvar = {
-    status: metadata.status || 'SUCCESS',
-    synced_at: now,
-    total_produtos: produtosList.length,
-    total_saldo_positivo: produtosList.filter(x => Number(x.saldo || 0) > 0).length,
-    total_valor_estoque: produtosList.reduce((acc, x) => acc + (Number(x.saldo_total || 0)), 0),
-    duracao_ms: metadata.duracao_ms || 0,
-    triggered_by: metadata.triggered_by || 'JOB',
-    error_message: metadata.error_message || null
+    totalProdutos: produtosList.length,
+    itensComSaldo: produtosList.filter(p => Number(p.saldo || 0) > 0).length,
+    itensZerados: produtosList.filter(p => Number(p.saldo || 0) === 0).length,
+    valorTotalEstoque: produtosList.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0),
+    syncedAt: new Date().toISOString(),
+    trigger: metadata.trigger || 'MANUAL',
+    durationMs: metadata.durationMs || 0
   };
 
-  // 1. Grava no cache JSON local garantindo persistência e fallback gracioso
+  // 1. Grava no cache JSON local de forma segura e atômica
   try {
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
     const payloadCache = {
       metadata: metaSalvar,
       produtos: produtosList
     };
-    fs.writeFileSync(estoqueCacheFile, JSON.stringify(payloadCache, null, 2), 'utf-8');
+    await safeWriteJson(estoqueCacheFile, payloadCache);
   } catch (errCache) {
     console.warn('⚠️ [Postgres Cache] Erro ao gravar estoque_saldos_cache.json:', errCache.message);
   }
@@ -1633,18 +1567,28 @@ function isPostgresConnected() {
   return isConnected;
 }
 
+const getUsersDB = getUsers;
+const saveUserDB = saveUser;
+const deleteUserDB = deleteUser;
+const saveHistoryItem = saveHistory;
+const saveAnaliseCreditoDB = saveHistoricoCreditoDB;
+
 module.exports = {
   initPostgres,
   safeQuery,
   getUsers,
+  getUsersDB,
   saveUser,
+  saveUserDB,
   deleteUser,
+  deleteUserDB,
   hashPassword,
   verifyPassword,
   create2FAToken,
   verify2FAToken,
   resend2FAToken,
   getHistory,
+  saveHistory,
   saveHistoryItem,
   logUserActivity,
   touchUserActivity,
@@ -1653,6 +1597,7 @@ module.exports = {
   saveInterWebhookEvent,
   getInterWebhookEvents,
   saveAnaliseCreditoDB,
+  saveHistoricoCreditoDB,
   getHistoricoCreditoDB,
   saveSaldosEstoqueDB,
   getSaldosEstoqueDB,
