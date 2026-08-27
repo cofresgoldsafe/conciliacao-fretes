@@ -223,7 +223,10 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Novas Regras de Pontuação Antifraude para o FGTS:**
      - **Empresa Regular com Razão Social Idêntica:** `fgts_situacao_regular = 'S'` (0 pts) e `razao_fgts_igual = 'S'` (**`+3 pts`**).
      - **Empresa Localizada com Razão Social Divergente (Empresa Alterada/Comprada):** `razao_fgts_igual = 'N'` (**`-15 pts`**).
-     - **Empresa Não Localizada no FGTS (Sem Histórico de Empregados / Empresa Fantasma):** `fgts_situacao_regular = 'N'` (`-6 pts`) e `razao_fgts_igual = 'NE'` (**`-5 pts`**), totalizando penalidade de `-11 pts`.
+     - **Empresa Não Localizada no FGTS (Sem Histórico de Empregados / Empresa Fantasma):** `fgts_situacao_regular = 'NE'` (`0 pts`) e `razao_fgts_igual = 'NE'` (**`-5 pts`**), concentrando a penalidade na ausência de registro/divergência.
+   - **Remoção de Campos Descontinuados & Limpeza Estrutural:**
+     - Remoção total do campo **Google Maps Fachada** (`google_maps`) do formulário, motor de cálculo, configurações e extrato/ficha.
+     - Remoção total do campo **3 NFs Confirmadas?** (`tres_nfs_confirmadas` / `peso_boletos`) de todo o fluxo operacional.
    - **Interface Reativa, Badges e Botão Dedicado:**
      - Botão `⚡ Consultar FGTS (InfoSimples)` no Bloco 6 permitindo reconsultas sob demanda sem recarregar o pedido.
      - Badge informativo automático com Razão Social histórica retornada pela Caixa, situação cadastral e validade do CRF.

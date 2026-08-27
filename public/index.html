@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.85">
+  <link rel="stylesheet" href="style.css?v=8.86">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 16:38 (Remocao de asteriscos dos campos automatizados e padronizados do Bloco 6)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 17:15 (Ajuste FGTS Regular Nao Encontrado = 0 pts e remocao de Google Maps e 3 NFs)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1301,22 +1301,6 @@
                 <input type="number" id="cfg_peso_uf_rj" class="form-input" value="-12" />
               </div>
               <div class="form-group">
-                <label for="cfg_peso_maps_10">Google Maps 10 - Top (+pts)</label>
-                <input type="number" id="cfg_peso_maps_10" class="form-input" value="6" />
-              </div>
-              <div class="form-group">
-                <label for="cfg_peso_maps_5">Google Maps 5 - Compatível (pts)</label>
-                <input type="number" id="cfg_peso_maps_5" class="form-input" value="0" />
-              </div>
-              <div class="form-group">
-                <label for="cfg_peso_maps_0">Google Maps 0 - Residencial (-pts)</label>
-                <input type="number" id="cfg_peso_maps_0" class="form-input" value="-6" />
-              </div>
-              <div class="form-group">
-                <label for="cfg_peso_maps_traco">Google Maps '-' - Não Visto (-pts)</label>
-                <input type="number" id="cfg_peso_maps_traco" class="form-input" value="-3" />
-              </div>
-              <div class="form-group">
                 <label for="cfg_peso_registro_br_sim">Registro.br Confere c/ Entrega (+pts)</label>
                 <input type="number" id="cfg_peso_registro_br_sim" class="form-input" value="6" />
               </div>
@@ -1576,14 +1560,6 @@
               <div class="form-group">
                 <label for="cfg_peso_razao_fgts_nao_encontrado">Razão Não Encontrada no FGTS (-pts)</label>
                 <input type="number" id="cfg_peso_razao_fgts_nao_encontrado" class="form-input" value="-5" />
-              </div>
-              <div class="form-group">
-                <label for="cfg_peso_boletos_sim">3 NFs Confirmadas (+pts)</label>
-                <input type="number" id="cfg_peso_boletos_sim" class="form-input" value="3" />
-              </div>
-              <div class="form-group">
-                <label for="cfg_peso_boletos_nao">3 NFs Não Confirmadas (-pts)</label>
-                <input type="number" id="cfg_peso_boletos_nao" class="form-input" value="-3" />
               </div>
             </div>
           </div>
@@ -2032,16 +2008,6 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Google Maps Fachada *</label>
-                <select id="cr_google_maps" class="form-select" required>
-                  <option value="" selected disabled>Selecione...</option>
-                  <option value="10">10 (Top +6 pts)</option>
-                  <option value="5">5 (Compatível 0 pts)</option>
-                  <option value="0">0 (Residencial -6 pts)</option>
-                  <option value="-">- (Não Visto -3 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
                 <label>Registro.Br Confere?</label>
                 <select id="cr_registro_br" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
@@ -2226,6 +2192,7 @@
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Regular (0 pts)</option>
                   <option value="N">Irregular (-6 pts)</option>
+                  <option value="NE">Não Encontrado (0 pts)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -2249,14 +2216,6 @@
                 <select id="cr_aumento_expressivo_capital" class="form-select">
                   <option value="N" selected>Não (0 pts)</option>
                   <option value="S">Sim (-20 pts)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>3 NFs Confirmadas?</label>
-                <select id="cr_tres_nfs_confirmadas" class="form-select" required>
-                  <option value="D" selected>Dispensado</option>
-                  <option value="S">Sim (+3 pts)</option>
-                  <option value="N">Não (-3 pts)</option>
                 </select>
               </div>
             </div>
@@ -2814,6 +2773,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.85"></script>
+  <script src="app.js?v=8.86"></script>
 </body>
 </html>

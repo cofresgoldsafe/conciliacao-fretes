@@ -78,17 +78,26 @@ console.log('================================================================\n'
     assert.strictEqual(res.detalhesPontos.razao_fgts_igual, -15.0, 'Razão Divergente deve ser -15 pts');
   });
 
-  // 4. Cálculo de Score - Empresa Não Encontrada no FGTS (-6 + -5 = -11 pts)
-  test('4. calcularScore pontua -6 pts de irregular e -5 pts de Não Encontrada (NE)', () => {
+  // 4. Cálculo de Score - Empresa Não Encontrada no FGTS (Regular NE = 0 pts, Razão NE = -5 pts)
+  test('4. calcularScore pontua 0 pts de regularidade quando NE e -5 pts de Razão Não Encontrada (NE)', () => {
     const dados = {
       total_pedido: 1000,
       faturado: 'S',
-      fgts_situacao_regular: 'N',
+      fgts_situacao_regular: 'NE',
       razao_fgts_igual: 'NE'
     };
     const res = calcularScore(dados);
-    assert.strictEqual(res.detalhesPontos.fgts_regular, -6.0, 'FGTS Não Regular deve ser -6 pts');
+    assert.strictEqual(res.detalhesPontos.fgts_regular, 0, 'FGTS Não Encontrado (NE) deve ser 0 pts');
     assert.strictEqual(res.detalhesPontos.razao_fgts_igual, -5.0, 'Razão Não Encontrada deve ser -5 pts');
+
+    const dadosIrregular = {
+      total_pedido: 1000,
+      faturado: 'S',
+      fgts_situacao_regular: 'N',
+      razao_fgts_igual: 'S'
+    };
+    const resIrr = calcularScore(dadosIrregular);
+    assert.strictEqual(resIrr.detalhesPontos.fgts_regular, -6.0, 'FGTS Irregular (N) deve ser -6 pts');
   });
 
   // 5. Persistência de Configurações e Token InfoSimples

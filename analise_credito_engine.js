@@ -46,10 +46,6 @@ const DEFAULT_CONFIG = {
   peso_endereco_sala_sim: -5.0,
   peso_endereco_sala_nao: 1.0,
   peso_uf_rj: -12.0,
-  peso_maps_10: 6.0,
-  peso_maps_5: 0.0,
-  peso_maps_0: -6.0,
-  peso_maps_traco: -3.0,
   peso_registro_br_sim: 6.0,
 
   // 4. Estudo de E-mails & Maturidade Digital (RDAP, Wayback, MX, Site)
@@ -113,8 +109,6 @@ const DEFAULT_CONFIG = {
   peso_razao_fgts_igual_sim: 3.0,
   peso_razao_fgts_igual_nao: -15.0,
   peso_razao_fgts_nao_encontrado: -5.0,
-  peso_boletos_sim: 3.0,
-  peso_boletos_nao: -3.0,
   infosimples_token: '',
 };
 
@@ -171,12 +165,6 @@ function calcularScore(dados, config = getScoreConfig()) {
 
   const uf = (dados.uf_cliente || '').toUpperCase().trim();
   pontos.uf_cliente = uf === 'RJ' ? config.peso_uf_rj : 0;
-
-  const maps = dados.google_maps || '-';
-  if (maps === '10') pontos.google_maps = config.peso_maps_10;
-  else if (maps === '5') pontos.google_maps = config.peso_maps_5;
-  else if (maps === '0') pontos.google_maps = config.peso_maps_0;
-  else pontos.google_maps = config.peso_maps_traco;
 
   if (entregaIgualCadastro) {
     pontos.registro_br = 0;
@@ -301,11 +289,13 @@ function calcularScore(dados, config = getScoreConfig()) {
     else pontos.capital_social = config.peso_capital_nao_informado !== undefined ? config.peso_capital_nao_informado : 0;
   }
 
-  if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = config.peso_boletos_sim;
-  else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = config.peso_boletos_nao;
-  else pontos.tres_nfs = 0; // 'D' (Dispensado) = 0 pts
-
-  pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? (config.peso_fgts_regular_nao !== undefined ? config.peso_fgts_regular_nao : -6.0) : 0;
+  if (dados.fgts_situacao_regular === 'N') {
+    pontos.fgts_regular = config.peso_fgts_regular_nao !== undefined ? config.peso_fgts_regular_nao : -6.0;
+  } else if (dados.fgts_situacao_regular === 'NE') {
+    pontos.fgts_regular = 0; // Não Encontrado = 0 pts (penalidade aplicada em Razão = FGTS? -5 pts)
+  } else {
+    pontos.fgts_regular = 0;
+  }
   if (dados.razao_fgts_igual === 'S') {
     pontos.razao_fgts_igual = config.peso_razao_fgts_igual_sim !== undefined ? config.peso_razao_fgts_igual_sim : 3.0;
   } else if (dados.razao_fgts_igual === 'N') {

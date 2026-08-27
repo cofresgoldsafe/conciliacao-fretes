@@ -2339,7 +2339,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
         return {
           executado: true,
           encontrado: false,
-          fgts_situacao_regular: 'N',
+          fgts_situacao_regular: 'NE',
           razao_fgts_igual: 'NE',
           motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
           code,
@@ -2594,9 +2594,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       entrega_diferente_endereco: entregaDiferenteInfo.enderecoExtraido,
       entrega_diferente_origem: entregaDiferenteInfo.origem,
 
-      // Campos com valor padrão pré-definido
-      tres_nfs_confirmadas: 'D', // Default: Dispensado
-
       // Inteligência Digital e E-mails Automatizados (Seções 3 e 4)
       dominio_principal: infoEmails.dominioPrincipal,
       idade_dominio_rdap: infoRDAP ? infoRDAP.idadeAnos : (infoEmails.dominioPrincipal ? 0 : null),
@@ -2625,7 +2622,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       razao_social_caixa: infoFgts && infoFgts.executado ? (infoFgts.razao_social_caixa || '') : '',
 
       // Campos manuais que permanecem em branco para o analista
-      google_maps: '',
       score_serasa: '',
       protestos: '',
       valor_protestos: '',

@@ -4797,9 +4797,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_comprou_pagou', data.comprou_pagou !== undefined ? data.comprou_pagou : 'N');
         setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x !== undefined ? data.comprou_pagou_5x : 'N');
 
-        // Valor Padrão para 3 NFs Confirmadas (Dispensado)
-        setVal('cr_tres_nfs_confirmadas', data.tres_nfs_confirmadas || 'D');
-
         // Maturidade Digital Automática (RDAP, Wayback, Servidor MX)
         if (data.idade_dominio_rdap !== null && data.idade_dominio_rdap !== undefined) {
           const anosTxt = `${data.idade_dominio_rdap} anos ${data.ano_criacao_rdap ? '(Desde ' + data.ano_criacao_rdap + ')' : ''}`;
@@ -4895,7 +4892,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fgtsBadge = document.getElementById('cr_fgts_badge');
         if (data.fgts_info && data.fgts_info.executado) {
           const fInfo = data.fgts_info;
-          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'N');
+          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'NE');
           setVal('cr_razao_fgts_igual', fInfo.razao_fgts_igual || 'NE');
           
           if (fgtsBadge) {
@@ -4926,7 +4923,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Campos manuais que permanecem para o analista preencher
-        setVal('cr_google_maps', '');
         setVal('cr_alteracao_recente_socios', 'N');
         setVal('cr_aumento_expressivo_capital', 'N');
         setVal('cr_decisao_final', 'Decisão (atenção ao gravar)');
@@ -5055,7 +5051,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fgtsBadge = document.getElementById('cr_fgts_badge');
 
         if (fInfo.executado) {
-          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'N');
+          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'NE');
           setVal('cr_razao_fgts_igual', fInfo.razao_fgts_igual || 'NE');
           
           if (fgtsBadge) {
@@ -5155,7 +5151,6 @@ document.addEventListener('DOMContentLoaded', () => {
       entrega_igual_cadastro: getVal('cr_entrega_igual_cadastro'),
       cadastro_igual_receita: getVal('cr_cadastro_igual_receita'),
       casa_sala_conj_end: getVal('cr_casa_sala_conj_end'),
-      google_maps: getVal('cr_google_maps'),
       registro_br: getVal('cr_registro_br'),
       cnpj_registro_br: getVal('cr_cnpj_registro_br'),
       titular_registro_br: getVal('cr_titular_registro_br'),
@@ -5191,7 +5186,6 @@ document.addEventListener('DOMContentLoaded', () => {
       razao_fgts_igual: getVal('cr_razao_fgts_igual'),
       alteracao_recente_socios: getVal('cr_alteracao_recente_socios') || 'N',
       aumento_expressivo_capital: getVal('cr_aumento_expressivo_capital') || 'N',
-      tres_nfs_confirmadas: getVal('cr_tres_nfs_confirmadas'),
       obs: getVal('cr_obs'),
       decisao_final: getVal('cr_decisao_final')
     };
@@ -5242,13 +5236,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const uf = (dados.uf_cliente || '').toUpperCase().trim();
     pontos.uf_cliente = uf === 'RJ' ? getCfg('peso_uf_rj', -12) : 0;
-
-    const maps = dados.google_maps || '-';
-    if (maps === '10') pontos.google_maps = getCfg('peso_maps_10', 6);
-    else if (maps === '5') pontos.google_maps = getCfg('peso_maps_5', 0);
-    else if (maps === '0') pontos.google_maps = getCfg('peso_maps_0', -6);
-    else if (maps === '-') pontos.google_maps = getCfg('peso_maps_traco', -3);
-    else pontos.google_maps = 0;
 
     if (entregaIgualCadastro) {
       pontos.registro_br = 0;
@@ -5375,7 +5362,13 @@ document.addEventListener('DOMContentLoaded', () => {
       pontos.capital_social = getCfg('peso_capital_nao_informado', 0);
     }
 
-    pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
+    if (dados.fgts_situacao_regular === 'N') {
+      pontos.fgts_regular = getCfg('peso_fgts_regular_nao', -6);
+    } else if (dados.fgts_situacao_regular === 'NE') {
+      pontos.fgts_regular = 0; // Não Encontrado = 0 pts (penalidade aplicada em Razão = FGTS? -5 pts)
+    } else {
+      pontos.fgts_regular = 0;
+    }
     if (dados.razao_fgts_igual === 'S') {
       pontos.razao_fgts_igual = getCfg('peso_razao_fgts_igual_sim', 3);
     } else if (dados.razao_fgts_igual === 'N') {
@@ -5387,10 +5380,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? getCfg('peso_alteracao_recente_socios_sim', -8) : 0;
     pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? getCfg('peso_aumento_expressivo_capital_sim', -20) : 0;
-
-    if (dados.tres_nfs_confirmadas === 'S') pontos.tres_nfs = getCfg('peso_boletos_sim', 3);
-    else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = getCfg('peso_boletos_nao', -3);
-    else pontos.tres_nfs = 0; // 'D' (Dispensado) = 0 pts
 
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
 
@@ -5562,7 +5551,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { val: payload.entrega_igual_cadastro, id: 'cr_entrega_igual_cadastro', label: 'Entrega = Cadastro' },
         { val: payload.cadastro_igual_receita, id: 'cr_cadastro_igual_receita', label: 'Cadastro = Receita' },
         { val: payload.casa_sala_conj_end, id: 'cr_casa_sala_conj_end', label: 'Casa/Sala no Endereço' },
-        { val: payload.google_maps, id: 'cr_google_maps', label: 'Google Maps Fachada' },
         { val: payload.registro_br, id: 'cr_registro_br', label: 'Registro.Br Confere' },
         { val: payload.email_corporativo, id: 'cr_email_corporativo', label: 'E-mail Corporativo' },
         { val: payload.existe_mail_financeiro, id: 'cr_existe_mail_financeiro', label: 'Mail Finan Diferente' },
@@ -5581,8 +5569,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { val: payload.fgts_situacao_regular, id: 'cr_fgts_situacao_regular', label: 'FGTS Regular' },
         { val: payload.razao_fgts_igual, id: 'cr_razao_fgts_igual', label: 'Razão = FGTS' },
         { val: payload.alteracao_recente_socios, id: 'cr_alteracao_recente_socios', label: 'Alteração Recente de Sócios' },
-        { val: payload.aumento_expressivo_capital, id: 'cr_aumento_expressivo_capital', label: 'Aumento Expressivo de Capital' },
-        { val: payload.tres_nfs_confirmadas, id: 'cr_tres_nfs_confirmadas', label: '3 NFs Confirmadas' }
+        { val: payload.aumento_expressivo_capital, id: 'cr_aumento_expressivo_capital', label: 'Aumento Expressivo de Capital' }
       ];
 
       for (const item of camposObrigatorios) {
@@ -5916,7 +5903,6 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '2. Comercial & Pagamentos', nome: 'UF do Cliente (Destino)', val: item.uf_cliente || '-', pts: pts.uf_cliente },
 
       { cat: '3. Endereço & Maturidade Digital', nome: 'Entrega = Cadastro Principal', val: item.entrega_igual_cadastro === 'S' ? 'Sim' : (item.entrega_igual_cadastro === 'N' ? 'Não' : '-'), pts: pts.entrega_igual_cadastro },
-      { cat: '3. Endereço & Maturidade Digital', nome: 'Google Maps Fachada', val: item.google_maps || '-', pts: pts.google_maps },
       { cat: '3. Endereço & Maturidade Digital', nome: 'Registro.br Confere', val: item.registro_br === 'S' ? 'Sim' : (item.entrega_igual_cadastro === 'S' ? 'Dispensado' : (item.registro_br === 'N' ? 'Não' : '-')), pts: pts.registro_br },
       { cat: '3. Endereço & Maturidade Digital', nome: 'Idade Domínio (RDAP Registro.br)', val: item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? `${item.idade_dominio_rdap} anos` : (item.possui_site === 'N' ? 'Sem Site' : '-'), pts: pts.idade_dominio },
       { cat: '3. Endereço & Maturidade Digital', nome: '1º Snapshot Archive.org Wayback', val: item.wayback_primeiro_snapshot || '-', pts: pts.wayback },
@@ -5940,11 +5926,10 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Sócios com Restrição no Bureau', val: item.socios_anotacao === 'S' ? 'Sim' : (item.socios_anotacao === 'N' ? 'Não' : '-'), pts: pts.socios_anotacao },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Documento Extraviado / Roubado', val: item.documentos_extraviados === 'S' ? 'Sim (ALERTA)' : (item.documentos_extraviados === 'N' ? 'Não' : '-'), pts: pts.doc_extraviado },
 
-      { cat: '6. FGTS, Sócios & Certidões', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : '-'), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : (item.fgts_situacao_regular === 'NE' ? 'Não Encontrado' : '-')), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : (item.razao_fgts_igual === 'NE' ? 'Não Encontrado' : '-')), pts: pts.razao_fgts_igual },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Alteração Recente de Sócios', val: item.alteracao_recente_socios === 'S' ? 'Sim (Alterado)' : 'Não', pts: pts.alteracao_recente_socios },
-      { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital },
-      { cat: '6. FGTS, Sócios & Certidões', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : (item.tres_nfs_confirmadas === 'N' ? 'Não' : '-')), pts: pts.tres_nfs }
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital }
     ];
 
     let totalGanhos = 0;
@@ -6035,7 +6020,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Maturidade Digital</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
           <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)} ${formatarBadgePontos(pts.entrega_igual_cadastro)}</div>
-          <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')} ${formatarBadgePontos(pts.google_maps)}</div>
           <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)} ${formatarBadgePontos(pts.registro_br)}${item.cnpj_registro_br ? ` <span style="font-size:0.75rem; color:#38bdf8;" title="Titular: ${escapeHtml(item.titular_registro_br || '')}">(${escapeHtml(item.cnpj_registro_br)})</span>` : ''}</div>
           <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? item.idade_dominio_rdap + ' anos' : (item.possui_site === 'N' ? 'Sem Site' : (item.dominio_principal || '-'))} ${formatarBadgePontos(pts.idade_dominio)}</div>
           <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${escapeHtml(item.wayback_primeiro_snapshot || '-')} ${formatarBadgePontos(pts.wayback)}</div>
@@ -6076,11 +6060,10 @@ document.addEventListener('DOMContentLoaded', () => {
       <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
         <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS, Sócios & Certidões Comerciais</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-          <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'} ${formatarBadgePontos(pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular)}</div>
+          <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : (item.fgts_situacao_regular === 'N' ? '<span style="color:#f87171">Irregular</span>' : (item.fgts_situacao_regular === 'NE' ? '<span style="color:#fbbf24">Não Encontrado</span>' : '-'))} ${formatarBadgePontos(pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular)}</div>
           <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : (item.razao_fgts_igual === 'N' ? '<span style="color:#f87171">Divergente</span>' : (item.razao_fgts_igual === 'NE' ? '<span style="color:#fbbf24">Não Encontrado</span>' : '-'))} ${formatarBadgePontos(pts.razao_fgts_igual)}</div>
           <div><strong style="color:var(--text-muted)">Troca Recente Sócios:</strong> ${item.alteracao_recente_socios === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.alteracao_recente_socios)}</div>
           <div><strong style="color:var(--text-muted)">Aumento Expressivo Cap.:</strong> ${item.aumento_expressivo_capital === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.aumento_expressivo_capital)}</div>
-          <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')} ${formatarBadgePontos(pts.tres_nfs)}</div>
         </div>
       </div>
 
@@ -6183,7 +6166,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_entrega_igual_cadastro', item.entrega_igual_cadastro !== undefined ? item.entrega_igual_cadastro : '');
         setVal('cr_cadastro_igual_receita', item.cadastro_igual_receita !== undefined ? item.cadastro_igual_receita : '');
         setVal('cr_casa_sala_conj_end', item.casa_sala_conj_end !== undefined ? item.casa_sala_conj_end : 'N');
-        setVal('cr_google_maps', item.google_maps !== undefined ? item.google_maps : '');
         setVal('cr_registro_br', item.registro_br !== undefined ? item.registro_br : '');
         setVal('cr_cnpj_registro_br', item.cnpj_registro_br || '');
         setVal('cr_titular_registro_br', item.titular_registro_br || '');
@@ -6269,7 +6251,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_razao_fgts_igual', item.razao_fgts_igual !== undefined ? item.razao_fgts_igual : '');
         setVal('cr_alteracao_recente_socios', item.alteracao_recente_socios !== undefined ? item.alteracao_recente_socios : 'N');
         setVal('cr_aumento_expressivo_capital', item.aumento_expressivo_capital !== undefined ? item.aumento_expressivo_capital : 'N');
-        setVal('cr_tres_nfs_confirmadas', item.tres_nfs_confirmadas || 'D');
         setVal('cr_obs', item.obs || '');
         setVal('cr_decisao_final', item.decisao_final || 'Decisão (atenção ao gravar)');
 
@@ -6359,11 +6340,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setOptionText('cr_entrega_igual_cadastro', 'S', () => `Sim (${fmtPts(getCfg('peso_entrega_cadastro_sim', 2))})`);
     setOptionText('cr_entrega_igual_cadastro', 'N', () => `Não (${fmtPts(getCfg('peso_entrega_cadastro_nao', -9))})`);
 
-    setOptionText('cr_google_maps', '10', () => `10 (Top ${fmtPts(getCfg('peso_maps_10', 6))})`);
-    setOptionText('cr_google_maps', '5', () => `5 (Compatível ${fmtPts(getCfg('peso_maps_5', 0))})`);
-    setOptionText('cr_google_maps', '0', () => `0 (Residencial ${fmtPts(getCfg('peso_maps_0', -6))})`);
-    setOptionText('cr_google_maps', '-', () => `- (Não Visto ${fmtPts(getCfg('peso_maps_traco', -3))})`);
-
     setOptionText('cr_registro_br', 'N', () => `Não (0 pts)`);
     setOptionText('cr_registro_br', 'S', () => `Sim (${fmtPts(getCfg('peso_registro_br_sim', 6))} se entrega dif)`);
 
@@ -6408,6 +6384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 6. Bloco 6: FGTS, Sócios & Certidões Comerciais
     setOptionText('cr_fgts_situacao_regular', 'S', () => `Regular (0 pts)`);
     setOptionText('cr_fgts_situacao_regular', 'N', () => `Irregular (${fmtPts(getCfg('peso_fgts_regular_nao', -6))})`);
+    setOptionText('cr_fgts_situacao_regular', 'NE', () => `Não Encontrado (0 pts)`);
 
     setOptionText('cr_razao_fgts_igual', 'S', () => `Igual (${fmtPts(getCfg('peso_razao_fgts_igual_sim', 3))})`);
     setOptionText('cr_razao_fgts_igual', 'N', () => `Divergente (${fmtPts(getCfg('peso_razao_fgts_igual_nao', -15))})`);
@@ -6418,10 +6395,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setOptionText('cr_aumento_expressivo_capital', 'N', () => `Não (0 pts)`);
     setOptionText('cr_aumento_expressivo_capital', 'S', () => `Sim (${fmtPts(getCfg('peso_aumento_expressivo_capital_sim', -20))})`);
-
-    setOptionText('cr_tres_nfs_confirmadas', 'D', () => `Dispensado`);
-    setOptionText('cr_tres_nfs_confirmadas', 'S', () => `Sim (${fmtPts(getCfg('peso_boletos_sim', 3))})`);
-    setOptionText('cr_tres_nfs_confirmadas', 'N', () => `Não (${fmtPts(getCfg('peso_boletos_nao', -3))})`);
   }
 
   // Carregar Configurações do Score
