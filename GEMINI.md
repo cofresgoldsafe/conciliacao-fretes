@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado e Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 27/08/2026  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE & Suíte de Testes Automatizados Aprovada)  
+> **Data da Última Auditoria:** 27/08/2026 (v8.89 - Faróis de Conectividade SRE & Fail-Neutral Engine)  
 
 ---
 
@@ -257,6 +257,10 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - **Diferenciação de Erros no Protheus:** Tratamento refinado no frontend distinguindo `404 - Pedido Inexistente` de `500/504 - Falha de Conexão com o ERP Protheus (Railway SQL)`.
      - **Timeout de Segurança no Parser Serasa:** Inclusão de timer com timeout de 15 segundos no spawn do interpretador Python para proteção contra processos zumbis ou travamentos em PDFs corrompidos.
    - **Suíte de Testes Automatizados:** Script `test_farois_resiliencia_credito.js` com 9 asserções cobrindo regras fail-neutral, payload de telemetria, componentes de interface e proteções de processos (100% de aprovação).
+33. [x] **Hardening do Ciclo de Autenticação Frontend & Salvaguarda contra Regressões de Sintaxe no Monolito SPA (`public/app.js`, `public/index.html`):**
+   - **Causa Raiz & Resolução do Bloqueio de Login:** Identificada declaração duplicada e não fechada de listener de evento no monolito SPA que gerava `SyntaxError: Unexpected end of input`, impedindo a execução de `DOMContentLoaded` e a ocultação do `#loginOverlay`.
+   - **Salvaguarda Preventiva:** Incorporação obrigatória de linting/checagem de sintaxe via `node -c public/app.js` em todos os ciclos de release antes de commits.
+   - **Invalidação Agressiva de Cache (`v=8.89`):** Parâmetros de cache-busting sincronizados em `style.css?v=8.89` e `app.js?v=8.89` com atualização da tag de versão para `27/08/2026 18:00`.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
@@ -296,7 +300,23 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
 
 ---
 
-## 4. Diretrizes Operacionais para Agentes de IA
+## 4. Matriz FMEA de Resiliência das Consultas Externas & Faróis SRE
+
+A tabela abaixo define o comportamento formal de cada serviço externo consumido no módulo de Análise de Crédito, prevenindo falhas silenciosas e distorções matemáticas de pontuação:
+
+| Serviço / Provedor | Timeout Técnico | Comportamento em Falha de Rede / Queda | Pontuação no Score (Fail-Neutral) | Indicador no Farol SRE | Ação Operacional Exigida |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Receita Federal** *(BrasilAPI / ReceitaWS)* | 8.000 ms | Fallback BrasilAPI ➔ ReceitaWS. Se ambas falharem, retorna `receita_offline = true`. | `0 pts` (Não assume `'S'` falso nem penaliza) | 🔴 Vermelho (`farol-error`) | Exibe `RECEITA OFFLINE - CONFERIR ENDEREÇO` no cabeçalho e orienta conferência manual. |
+| **Registro.br (RDAP)** *(NIC.br)* | 6.000 ms | Captura erro de socket/timeout e sinaliza `idade_dominio_rdap_erro = true`. | `0 pts` (Elimina penalidade de `-7 pts`) | 🔴 Vermelho ou 🟡 Alerta | Informa `Indisponível (Registro.br)` no campo de idade do domínio. |
+| **Wayback Machine** *(Archive.org)* | 5.000 ms | Captura erro HTTP/timeout e sinaliza `wayback_offline = true`. | `0 pts` (Neutro) | 🔴 Vermelho ou 🟡 Alerta | Informa `Indisponível (Archive.org)` na maturidade digital. |
+| **Servidor MX** *(DNS Resolution)* | 5.000 ms | Captura `SERVFAIL`/`ETIMEOUT` e sinaliza `servidor_mx_offline = true`. | `0 pts` (Elimina penalidade de `-4 pts`) | 🔴 Vermelho | Informa `Falha DNS` sem taxar o domínio corporativo como inexistente. |
+| **FGTS Caixa** *(InfoSimples REST API)* | 25.000 ms | Retorna `executado = false` com mensagem descritiva do motivo da recusa/latência. | `0 pts` (Neutro) | 🟡 Alerta ou 🔵 Info | Renderiza badge explicativo em amarelo com motivo (`Token não configurado`, `Timeout Caixa`) em vez de ocultar. |
+| **ERP TOTVS Protheus** *(Railway SQL Relay)* | 15.000 ms | Distingue `404` (Pedido não existe) de `500/504` (Instabilidade de infraestrutura). | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Exibe banner informativo de erro de rede sem induzir operador a crer que digitou pedido errado. |
+| **Parser Serasa PDF** *(Python in-memory)* | 15.000 ms | Processo Python cancelado com `SIGKILL` após 15s se PDF travar ou for corrompido. | N/A | N/A | Exibe mensagem de erro orientando reenvio de PDF válido. |
+
+---
+
+## 5. Diretrizes Operacionais para Agentes de IA
 
 Qualquer agente de IA que atue neste repositorio deve seguir estritamente as regras abaixo:
 
@@ -305,4 +325,5 @@ Qualquer agente de IA que atue neste repositorio deve seguir estritamente as reg
 3. **Desacoplamento e YAGNI:** Ao criar novas funcionalidades ou refatorar, nao crie novas dependencias de runtime caso as bibliotecas padrao ou estruturas existentes resolvam o problema.
 4. **Tratamento de Excecoes e Resiliencia:** Toda chamada assincrona ou I/O externo deve conter blocos `try/catch` estruturados, com log contextual e degradacao graciosa (sem interrupcao abrupta do processo pai).
 5. **Preservacao de Memoria e Documentacao:** Todas as alteracoes arquiteturais relevantes ou correcoes no fluxo de integracao bancaria/ERP devem ser registradas neste arquivo (`GEMINI.md`) e nas notas tecnicas de versao.
-6. **Atualizacao Obrigatoria de Versao e Cache Buster (`bump_version.js`):** Toda entrega ou modificacao concluida no sistema DEVE obrigatoriamente atualizar o carimbo de data/hora e a descricao no topo da pagina executando `node bump_version.js "<descricao da mudanca>"` (ou `npm run version:bump`). Isso garante a atualizacao automatica da tag `Última Versão: DD/MM/AAAA HH:mm (<descricao>)` e a invalidacao de cache dos navegadores (`?v=X.XX`) em `public/index.html`.
+6. **Validacao Obrigatoria de Sintaxe JS (`node -c public/app.js`):** Antes de qualquer commit envolvendo o frontend, e compulsorio validar a sintaxe JavaScript de todos os arquivos modificados para evitar quebras silenciosas no ciclo de autenticacao e no carregamento da SPA.
+7. **Atualizacao Obrigatoria de Versao e Cache Buster (`bump_version.js`):** Toda entrega ou modificacao concluida no sistema DEVE obrigatoriamente atualizar o carimbo de data/hora e a descricao no topo da pagina executando `node bump_version.js "<descricao da mudanca>"` (ou `npm run version:bump`). Isso garante a atualizacao automatica da tag `Última Versão: DD/MM/AAAA HH:mm (<descricao>)` e a invalidacao de cache dos navegadores (`?v=X.XX`) em `public/index.html`.
