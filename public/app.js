@@ -5689,6 +5689,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
     const usuarioStr = item.usuario || (currentUser ? (currentUser.name || currentUser.username) : 'Sistema');
+    const scoreColor = (Number(item.total_score) > 5) ? '#22c55e' : '#f87171';
     if (titulo) titulo.innerHTML = `📋 Ficha de Análise de Crédito — Pedido <strong>#${escapeHtml(item.pedido_venda)}</strong>`;
     if (subtitulo) subtitulo.textContent = `Empresa: ${item.empresa || '-'} | Cliente: ${item.cliente_nome || '-'} | Data: ${dataStr} | Usuário: ${usuarioStr}`;
 
@@ -5772,12 +5773,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const somaFinalCalculada = totalGanhos + totalPerdas;
 
+    const totalScoreVal = item.total_score !== undefined ? item.total_score : (item.score !== undefined ? item.score : somaFinalCalculada);
+    const scoreColor = (Number(totalScoreVal) > 5) ? '#22c55e' : '#f87171';
+
     corpo.innerHTML = `
       <!-- Top Summary Banner -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; background: rgba(15, 23, 42, 0.6); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
         <div>
           <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Score Obtido</div>
-          <div style="font-size: 1.6rem; font-weight: 900; color: ${scoreColor}; font-family: var(--font-mono);">${item.total_score} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted);">pts</span></div>
+          <div style="font-size: 1.6rem; font-weight: 900; color: ${scoreColor}; font-family: var(--font-mono);">${totalScoreVal} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted);">pts</span></div>
         </div>
         <div>
           <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Grau de Risco</div>
