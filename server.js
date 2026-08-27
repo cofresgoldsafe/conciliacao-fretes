@@ -2434,7 +2434,7 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => 
     }
 
     const resultado = calcularScore(dados);
-    const registroSalvo = await saveAnaliseCreditoDB({
+    const dadosParaSalvar = {
       ...dados,
       usuario: usuarioLogado,
       total_score: resultado.totalScore,
@@ -2446,7 +2446,9 @@ app.post('/api/financeiro/analise-credito/calcular-salvar', async (req, res) => 
       alerta_perigo_golpe: resultado.alertaPerigoGolpe,
       alerta_cadastro_receita: resultado.alertaCadastroReceita,
       detalhes_pontos: resultado.detalhesPontos
-    });
+    };
+    dadosParaSalvar.dados_completos = { ...dadosParaSalvar };
+    const registroSalvo = await saveAnaliseCreditoDB(dadosParaSalvar);
 
     // Registra atividade do analista no Feed de Auditoria e atualiza Último Acesso Ativo
     logUserActivity({

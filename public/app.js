@@ -5702,8 +5702,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let pts = item.detalhes_pontos;
-    if (!pts || typeof pts !== 'object' || Object.keys(pts).length === 0) {
-      if (typeof calcularScoreClienteFrontend === 'function') {
+    const temPtsSalvos = pts && typeof pts === 'object' && Object.keys(pts).length > 0;
+    if (!temPtsSalvos) {
+      if (typeof calcularScoreClienteFrontend === 'function' && (item.cnpj_ativo !== undefined || item.faturado !== undefined || item.entrada !== undefined)) {
         const resCalc = calcularScoreClienteFrontend(item);
         pts = resCalc.detalhesPontos || {};
       } else {
@@ -5717,62 +5718,66 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lista de conferência de todos os critérios avaliados
     const extratoLinhas = [
       { cat: '1. Limites & Identificação', nome: 'Valor do Pedido (> R$ 21k)', val: item.total_pedido ? `R$ ${Number(item.total_pedido).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-', pts: pts.total_pedido },
-      { cat: '1. Limites & Identificação', nome: 'CNPJ Ativo na RF', val: item.cnpj_ativo === 'S' ? 'Ativo' : 'Inativo', pts: pts.cnpj_ativo },
-      { cat: '1. Limites & Identificação', nome: 'Endereço Cadastro = Receita', val: item.cadastro_igual_receita === 'S' ? 'Sim' : 'Não', pts: pts.cadastro_igual_receita },
-      { cat: '1. Limites & Identificação', nome: 'Casa / Sala no Endereço', val: item.casa_sala_conj_end === 'S' ? 'Sim' : 'Não', pts: pts.casa_sala_conj },
+      { cat: '1. Limites & Identificação', nome: 'CNPJ Ativo na RF', val: item.cnpj_ativo === 'S' ? 'Ativo' : (item.cnpj_ativo === 'N' ? 'Inativo' : '-'), pts: pts.cnpj_ativo },
+      { cat: '1. Limites & Identificação', nome: 'Endereço Cadastro = Receita', val: item.cadastro_igual_receita === 'S' ? 'Sim' : (item.cadastro_igual_receita === 'N' ? 'Não' : '-'), pts: pts.cadastro_igual_receita },
+      { cat: '1. Limites & Identificação', nome: 'Casa / Sala no Endereço', val: item.casa_sala_conj_end === 'S' ? 'Sim' : (item.casa_sala_conj_end === 'N' ? 'Não' : '-'), pts: pts.casa_sala_conj },
       { cat: '1. Limites & Identificação', nome: 'Fundação Matriz (Idade Empresa)', val: item.fundacao_matriz || '-', pts: pts.idade_empresa },
       { cat: '1. Limites & Identificação', nome: 'Capital Social Integralizado', val: capSocialFormatado, pts: pts.capital_social },
-      { cat: '1. Limites & Identificação', nome: 'Empresa Grande / Notória', val: item.empresa_grande_conhecida === 'S' ? 'Sim' : 'Não', pts: pts.empresa_grande_conhecida },
+      { cat: '1. Limites & Identificação', nome: 'Empresa Grande / Notória', val: item.empresa_grande_conhecida === 'S' ? 'Sim' : (item.empresa_grande_conhecida === 'N' ? 'Não' : '-'), pts: pts.empresa_grande_conhecida },
 
-      { cat: '2. Comercial & Pagamentos', nome: 'Condição de Venda (À Vista / Prazo)', val: item.faturado === 'N' ? 'À Vista (+100)' : 'A Prazo (0)', pts: pts.faturado },
-      { cat: '2. Comercial & Pagamentos', nome: 'Possui Entrada', val: item.entrada === 'S' ? 'Sim' : 'Não', pts: pts.entrada },
-      { cat: '2. Comercial & Pagamentos', nome: 'Histórico Protheus (Comprou 2x+)', val: item.comprou_pagou === 'S' ? 'Sim' : 'Não', pts: pts.comprou_pagou },
-      { cat: '2. Comercial & Pagamentos', nome: 'Histórico Protheus (Comprou 5x+)', val: item.comprou_pagou_5x === 'S' ? 'Sim' : 'Não', pts: pts.comprou_pagou_5x },
-      { cat: '2. Comercial & Pagamentos', nome: 'Pagamentos em Aberto', val: item.pgtos_abertos === 'S' ? 'Sim' : 'Não', pts: pts.pgtos_abertos },
-      { cat: '2. Comercial & Pagamentos', nome: 'Quantidade Muito Alta de Itens', val: item.quant_grande === 'S' ? 'Sim' : 'Não', pts: pts.quant_grande },
-      { cat: '2. Comercial & Pagamentos', nome: 'Produtos Variados Sem Afinidade', val: item.prod_nao_combinam === 'S' ? 'Sim' : 'Não', pts: pts.prod_nao_combinam },
+      { cat: '2. Comercial & Pagamentos', nome: 'Condição de Venda (À Vista / Prazo)', val: item.faturado === 'N' ? 'À Vista (+100)' : (item.faturado === 'S' ? 'A Prazo (0)' : '-'), pts: pts.faturado },
+      { cat: '2. Comercial & Pagamentos', nome: 'Possui Entrada', val: item.entrada === 'S' ? 'Sim' : (item.entrada === 'N' ? 'Não' : '-'), pts: pts.entrada },
+      { cat: '2. Comercial & Pagamentos', nome: 'Histórico Protheus (Comprou 2x+)', val: item.comprou_pagou === 'S' ? 'Sim' : (item.comprou_pagou === 'N' ? 'Não' : '-'), pts: pts.comprou_pagou },
+      { cat: '2. Comercial & Pagamentos', nome: 'Histórico Protheus (Comprou 5x+)', val: item.comprou_pagou_5x === 'S' ? 'Sim' : (item.comprou_pagou_5x === 'N' ? 'Não' : '-'), pts: pts.comprou_pagou_5x },
+      { cat: '2. Comercial & Pagamentos', nome: 'Pagamentos em Aberto', val: item.pgtos_abertos === 'S' ? 'Sim' : (item.pgtos_abertos === 'N' ? 'Não' : '-'), pts: pts.pgtos_abertos },
+      { cat: '2. Comercial & Pagamentos', nome: 'Quantidade Muito Alta de Itens', val: item.quant_grande === 'S' ? 'Sim' : (item.quant_grande === 'N' ? 'Não' : '-'), pts: pts.quant_grande },
+      { cat: '2. Comercial & Pagamentos', nome: 'Produtos Variados Sem Afinidade', val: item.prod_nao_combinam === 'S' ? 'Sim' : (item.prod_nao_combinam === 'N' ? 'Não' : '-'), pts: pts.prod_nao_combinam },
       { cat: '2. Comercial & Pagamentos', nome: 'UF do Cliente (Destino)', val: item.uf_cliente || '-', pts: pts.uf_cliente },
 
-      { cat: '3. Endereço & Maturidade Digital', nome: 'Entrega = Cadastro Principal', val: item.entrega_igual_cadastro === 'S' ? 'Sim' : 'Não', pts: pts.entrega_igual_cadastro },
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Entrega = Cadastro Principal', val: item.entrega_igual_cadastro === 'S' ? 'Sim' : (item.entrega_igual_cadastro === 'N' ? 'Não' : '-'), pts: pts.entrega_igual_cadastro },
       { cat: '3. Endereço & Maturidade Digital', nome: 'Google Maps Fachada', val: item.google_maps || '-', pts: pts.google_maps },
-      { cat: '3. Endereço & Maturidade Digital', nome: 'Registro.br Confere', val: item.registro_br === 'S' ? 'Sim' : (item.entrega_igual_cadastro === 'S' ? 'Dispensado' : 'Não'), pts: pts.registro_br },
+      { cat: '3. Endereço & Maturidade Digital', nome: 'Registro.br Confere', val: item.registro_br === 'S' ? 'Sim' : (item.entrega_igual_cadastro === 'S' ? 'Dispensado' : (item.registro_br === 'N' ? 'Não' : '-')), pts: pts.registro_br },
       { cat: '3. Endereço & Maturidade Digital', nome: 'Idade Domínio (RDAP Registro.br)', val: item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? `${item.idade_dominio_rdap} anos` : (item.possui_site === 'N' ? 'Sem Site' : '-'), pts: pts.idade_dominio },
       { cat: '3. Endereço & Maturidade Digital', nome: '1º Snapshot Archive.org Wayback', val: item.wayback_primeiro_snapshot || '-', pts: pts.wayback },
       { cat: '3. Endereço & Maturidade Digital', nome: 'Servidor MX de E-mails', val: item.tipo_servidor_mx || item.servidor_mx || '-', pts: pts.servidor_mx },
 
-      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail com Domínio Corporativo', val: item.email_corporativo === 'S' ? 'Sim' : 'Não', pts: pts.email_corporativo },
-      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail do Financeiro Diferente', val: item.existe_mail_financeiro === 'S' ? 'Sim' : 'Não', pts: pts.existe_mail_financeiro },
-      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail Gratuito / Genérico', val: item.mail_gratuito === 'S' ? 'Sim' : 'Não', pts: pts.mail_gratuito },
-      { cat: '4. E-mails & Site Corporativo', nome: 'Possui Site Corporativo Ativo', val: item.possui_site === 'S' ? 'Sim' : 'Não', pts: pts.possui_site },
+      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail com Domínio Corporativo', val: item.email_corporativo === 'S' ? 'Sim' : (item.email_corporativo === 'N' ? 'Não' : '-'), pts: pts.email_corporativo },
+      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail do Financeiro Diferente', val: item.existe_mail_financeiro === 'S' ? 'Sim' : (item.existe_mail_financeiro === 'N' ? 'Não' : '-'), pts: pts.existe_mail_financeiro },
+      { cat: '4. E-mails & Site Corporativo', nome: 'E-mail Gratuito / Genérico', val: item.mail_gratuito === 'S' ? 'Sim' : (item.mail_gratuito === 'N' ? 'Não' : '-'), pts: pts.mail_gratuito },
+      { cat: '4. E-mails & Site Corporativo', nome: 'Possui Site Corporativo Ativo', val: item.possui_site === 'S' ? 'Sim' : (item.possui_site === 'N' ? 'Não' : '-'), pts: pts.possui_site },
 
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Score Serasa (Faixa / DEFAULT)', val: item.score_serasa !== undefined && item.score_serasa !== '' ? `${item.score_serasa}` : '-', pts: pts.score_serasa },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Apontamento de Protestos', val: item.protestos === 'S' ? 'Sim' : 'Não', pts: pts.protestos },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos > 2x Pedido', val: item.protestos === 'S' && pts.vlr_protestos_vs_ped !== 0 ? 'Sim (> 2x)' : 'Não / Dispensado', pts: pts.vlr_protestos_vs_ped },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos vs Capital Social', val: item.protestos === 'S' && pts.protestos_vs_capital !== 0 ? (pts.protestos_vs_capital < 0 ? '> Capital' : '<= Capital') : 'Dispensado', pts: pts.protestos_vs_capital },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Financeira (PEFIN)', val: item.pfin === 'S' ? 'Sim' : 'Não', pts: pts.pfin },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Bancária (REFIN)', val: item.refin === 'S' ? 'Sim' : 'Não', pts: pts.refin },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Dívidas Vencidas', val: item.dividas_vencidas === 'S' ? 'Sim' : 'Não', pts: pts.dividas_vencidas },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Cheques Sem Fundo', val: item.ch_sem_fundo === 'S' ? 'Sim' : 'Não', pts: pts.ch_sem_fundo },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Apontamento de Protestos', val: item.protestos === 'S' ? 'Sim' : (item.protestos === 'N' ? 'Não' : '-'), pts: pts.protestos },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos > 2x Pedido', val: item.protestos === 'S' && pts.vlr_protestos_vs_ped !== 0 && pts.vlr_protestos_vs_ped !== undefined ? 'Sim (> 2x)' : 'Não / Dispensado', pts: pts.vlr_protestos_vs_ped },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Protestos vs Capital Social', val: item.protestos === 'S' && pts.protestos_vs_capital !== 0 && pts.protestos_vs_capital !== undefined ? (pts.protestos_vs_capital < 0 ? '> Capital' : '<= Capital') : 'Dispensado', pts: pts.protestos_vs_capital },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Financeira (PEFIN)', val: item.pfin === 'S' ? 'Sim' : (item.pfin === 'N' ? 'Não' : '-'), pts: pts.pfin },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Pendência Bancária (REFIN)', val: item.refin === 'S' ? 'Sim' : (item.refin === 'N' ? 'Não' : '-'), pts: pts.refin },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Dívidas Vencidas', val: item.dividas_vencidas === 'S' ? 'Sim' : (item.dividas_vencidas === 'N' ? 'Não' : '-'), pts: pts.dividas_vencidas },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Cheques Sem Fundo', val: item.ch_sem_fundo === 'S' ? 'Sim' : (item.ch_sem_fundo === 'N' ? 'Não' : '-'), pts: pts.ch_sem_fundo },
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Densidade Consultas Recentes', val: item.consultas_densidade_dia ? `${item.consultas_densidade_dia}/dia` : '0/dia', pts: pts.densidade_consultas },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Consultas Fomento / Factoring', val: item.consultantes_fomento === 'S' ? 'Sim' : 'Não', pts: pts.consultantes_fomento },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Sócios com Restrição no Bureau', val: item.socios_anotacao === 'S' ? 'Sim' : 'Não', pts: pts.socios_anotacao },
-      { cat: '5. Bureau, Serasa & Protestos', nome: 'Documento Extraviado / Roubado', val: item.documentos_extraviados === 'S' ? 'Sim (ALERTA)' : 'Não', pts: pts.doc_extraviado },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Consultas Fomento / Factoring', val: item.consultantes_fomento === 'S' ? 'Sim' : (item.consultantes_fomento === 'N' ? 'Não' : '-'), pts: pts.consultantes_fomento },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Sócios com Restrição no Bureau', val: item.socios_anotacao === 'S' ? 'Sim' : (item.socios_anotacao === 'N' ? 'Não' : '-'), pts: pts.socios_anotacao },
+      { cat: '5. Bureau, Serasa & Protestos', nome: 'Documento Extraviado / Roubado', val: item.documentos_extraviados === 'S' ? 'Sim (ALERTA)' : (item.documentos_extraviados === 'N' ? 'Não' : '-'), pts: pts.doc_extraviado },
 
-      { cat: '6. FGTS & Certidões Comerciais', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : 'Irregular', pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
-      { cat: '6. FGTS & Certidões Comerciais', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : 'Divergente', pts: pts.razao_fgts_igual },
-      { cat: '6. FGTS & Certidões Comerciais', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : 'Não'), pts: pts.tres_nfs }
+      { cat: '6. FGTS & Certidões Comerciais', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : '-'), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
+      { cat: '6. FGTS & Certidões Comerciais', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : '-'), pts: pts.razao_fgts_igual },
+      { cat: '6. FGTS & Certidões Comerciais', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : (item.tres_nfs_confirmadas === 'N' ? 'Não' : '-')), pts: pts.tres_nfs }
     ];
 
     let totalGanhos = 0;
     let totalPerdas = 0;
+    let temAlgumPonto = false;
     extratoLinhas.forEach(l => {
-      const p = Number(l.pts) || 0;
-      if (p > 0) totalGanhos += p;
-      else if (p < 0) totalPerdas += p;
+      if (l.pts !== undefined && l.pts !== null && !isNaN(Number(l.pts))) {
+        temAlgumPonto = true;
+        const p = Number(l.pts);
+        if (p > 0) totalGanhos += p;
+        else if (p < 0) totalPerdas += p;
+      }
     });
-    const somaFinalCalculada = totalGanhos + totalPerdas;
 
-    const totalScoreVal = item.total_score !== undefined ? item.total_score : (item.score !== undefined ? item.score : somaFinalCalculada);
+    const totalScoreVal = item.total_score !== undefined ? item.total_score : (item.score !== undefined ? item.score : (temAlgumPonto ? (totalGanhos + totalPerdas) : 0));
+    const somaFinalCalculada = temAlgumPonto ? (totalGanhos + totalPerdas) : Number(totalScoreVal || 0);
     const scoreColor = (Number(totalScoreVal) > 5) ? '#22c55e' : '#f87171';
 
     corpo.innerHTML = `

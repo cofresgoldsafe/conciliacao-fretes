@@ -1218,7 +1218,7 @@ async function saveHistoricoCreditoDB(dados) {
         dados.obs || '',
         usuario,
         JSON.stringify(dados.sugestoes_lista || []),
-        JSON.stringify(dados.dados_completos || {})
+        JSON.stringify(dados.dados_completos || dados)
       ]);
 
       if (res && res.rows && res.rows[0]) {
@@ -1280,7 +1280,7 @@ async function getHistoricoCreditoDB(limit = 200) {
           } catch {}
 
           let detalhesPts = dadosComp.detalhes_pontos || null;
-          if (!detalhesPts) {
+          if (!detalhesPts && dadosComp && (dadosComp.cnpj_ativo !== undefined || dadosComp.faturado !== undefined || dadosComp.entrada !== undefined)) {
             try {
               const { calcularScore } = require('./analise_credito_engine');
               const resCalc = calcularScore(dadosComp);
