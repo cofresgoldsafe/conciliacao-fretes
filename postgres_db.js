@@ -1289,6 +1289,7 @@ async function getHistoricoCreditoDB(limit = 200) {
           }
 
           return {
+            ...dadosComp,
             ...r,
             dados_completos: dadosComp,
             sugestoes_lista: sugLista,

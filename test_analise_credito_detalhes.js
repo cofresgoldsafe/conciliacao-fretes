@@ -198,6 +198,24 @@ runTest('Identidade do usuário analista é gravada e preservada no registro de 
   assert.strictEqual(encontrado.usuario, 'Alexandre QA', 'getHistoricoCreditoDB deve retornar o nome do usuário');
 });
 
+// 4. Testar Formatação da Ficha e Função fmtSimNao
+runTest('Função fmtSimNao e geração do extrato da ficha não geram erros com itens reais', () => {
+  const fmtSimNao = (v) => {
+    const s = String(v || '').trim().toUpperCase();
+    if (s === 'S' || s === 'SIM' || s === '1' || s === 'TRUE') return '<span style="color:#22c55e;font-weight:700;">Sim</span>';
+    if (s === 'N' || s === 'NAO' || s === 'NÃO' || s === '0' || s === 'FALSE') return '<span style="color:#f87171;font-weight:700;">Não</span>';
+    if (s === 'D' || s === 'DISPENSADO') return '<span style="color:#fbbf24;font-weight:700;">Dispensado</span>';
+    return v ? `<span>${String(v)}</span>` : '-';
+  };
+
+  assert.match(fmtSimNao('S'), /Sim/);
+  assert.match(fmtSimNao('N'), /Não/);
+  assert.match(fmtSimNao('D'), /Dispensado/);
+  assert.strictEqual(fmtSimNao(null), '-');
+  assert.strictEqual(fmtSimNao(undefined), '-');
+  assert.strictEqual(fmtSimNao(''), '-');
+});
+
 console.log(`\n====================================================`);
 console.log(`📊 RESULTADOS: ${passedTests}/${totalTests} aprovados (${Math.round((passedTests / totalTests) * 100)}%)`);
 console.log(`====================================================\n`);

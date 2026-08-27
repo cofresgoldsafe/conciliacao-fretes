@@ -5664,8 +5664,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Função para abrir o modal com a Ficha Completa da Análise de Crédito
   function abrirFichaAnaliseCredito(itemId) {
-    const item = listaHistoricoCredito.find(x => String(x.id) === String(itemId));
-    if (!item) return;
+    const rawItem = listaHistoricoCredito.find(x => String(x.id) === String(itemId));
+    if (!rawItem) return;
+    const item = { ...(rawItem.dados_completos || {}), ...rawItem };
+
+    const fmtSimNao = (v) => {
+      const s = String(v || '').trim().toUpperCase();
+      if (s === 'S' || s === 'SIM' || s === '1' || s === 'TRUE') return '<span style="color:#22c55e;font-weight:700;">Sim</span>';
+      if (s === 'N' || s === 'NAO' || s === 'NÃO' || s === '0' || s === 'FALSE') return '<span style="color:#f87171;font-weight:700;">Não</span>';
+      if (s === 'D' || s === 'DISPENSADO') return '<span style="color:#fbbf24;font-weight:700;">Dispensado</span>';
+      return v ? `<span style="color:var(--text-primary);">${escapeHtml(String(v))}</span>` : '-';
+    };
 
     const modal = document.getElementById('modalDetalhesAnaliseCredito');
     const titulo = document.getElementById('modalCreditoTitulo');
@@ -5953,6 +5962,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fecharModal = () => modal.classList.add('hidden');
     if (btnClose) btnClose.onclick = fecharModal;
     if (btnFechar) btnFechar.onclick = fecharModal;
+    if (btnImprimir) btnImprimir.onclick = () => window.print();
 
     if (btnCarregar) {
       btnCarregar.onclick = () => {
