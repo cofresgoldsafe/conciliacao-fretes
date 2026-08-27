@@ -5689,7 +5689,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
     const usuarioStr = item.usuario || (currentUser ? (currentUser.name || currentUser.username) : 'Sistema');
-    const scoreColor = (Number(item.total_score) > 5) ? '#22c55e' : '#f87171';
     if (titulo) titulo.innerHTML = `📋 Ficha de Análise de Crédito — Pedido <strong>#${escapeHtml(item.pedido_venda)}</strong>`;
     if (subtitulo) subtitulo.textContent = `Empresa: ${item.empresa || '-'} | Cliente: ${item.cliente_nome || '-'} | Data: ${dataStr} | Usuário: ${usuarioStr}`;
 
