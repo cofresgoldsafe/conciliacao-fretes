@@ -4822,6 +4822,36 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_tipo_servidor_mx', data.tipo_servidor_mx || 'NENHUM');
         setVal('cr_dominio_principal', data.dominio_principal || '');
 
+        // Automação Registro.Br (Comparação de Raiz de CNPJ)
+        if (data.registro_br) {
+          setVal('cr_registro_br', data.registro_br);
+        } else {
+          setVal('cr_registro_br', '');
+        }
+        setVal('cr_cnpj_registro_br', data.cnpj_registro_br || '');
+        setVal('cr_titular_registro_br', data.titular_registro_br || '');
+
+        const regBrInfoEl = document.getElementById('cr_registro_br_info');
+        if (regBrInfoEl) {
+          if (data.registro_br_detalhes && (data.registro_br_detalhes.cnpjRegistroBr || data.registro_br_detalhes.cpfRegistroBr || data.registro_br_detalhes.dominio)) {
+            const det = data.registro_br_detalhes;
+            regBrInfoEl.style.display = 'block';
+            if (det.confere) {
+              regBrInfoEl.style.background = 'rgba(34, 197, 94, 0.12)';
+              regBrInfoEl.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+              regBrInfoEl.style.color = '#22c55e';
+              regBrInfoEl.innerHTML = `✓ <strong>Raiz Confere:</strong> ${escapeHtml(det.cnpjRegistroBr || '')} ${det.titularRegistroBr ? '(' + escapeHtml(det.titularRegistroBr) + ')' : ''}`;
+            } else {
+              regBrInfoEl.style.background = 'rgba(239, 68, 68, 0.12)';
+              regBrInfoEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+              regBrInfoEl.style.color = '#f87171';
+              regBrInfoEl.innerHTML = `⚠️ <strong>${escapeHtml(det.motivo || 'Divergente')}:</strong> ${escapeHtml(det.cnpjRegistroBr || det.cpfRegistroBr || det.dominio || '')} ${det.titularRegistroBr ? '(' + escapeHtml(det.titularRegistroBr) + ')' : ''}`;
+            }
+          } else {
+            regBrInfoEl.style.display = 'none';
+          }
+        }
+
         // Preenchimento Automático da Seção 4: E-mails & Site Corporativo
         setVal('cr_email_corporativo', data.email_corporativo || 'N');
         setVal('cr_existe_mail_financeiro', data.existe_mail_financeiro || 'N');
@@ -4863,7 +4893,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Campos manuais que permanecem para o analista preencher
         setVal('cr_google_maps', '');
-        setVal('cr_registro_br', '');
         setVal('cr_fgts_situacao_regular', '');
         setVal('cr_razao_fgts_igual', '');
         setVal('cr_decisao_final', 'Decisão (atenção ao gravar)');
@@ -4992,6 +5021,8 @@ document.addEventListener('DOMContentLoaded', () => {
       casa_sala_conj_end: getVal('cr_casa_sala_conj_end'),
       google_maps: getVal('cr_google_maps'),
       registro_br: getVal('cr_registro_br'),
+      cnpj_registro_br: getVal('cr_cnpj_registro_br'),
+      titular_registro_br: getVal('cr_titular_registro_br'),
       idade_dominio_rdap: getVal('cr_idade_dominio_val'),
       wayback_primeiro_snapshot: getVal('cr_wayback_ano_val'),
       tipo_servidor_mx: getVal('cr_tipo_servidor_mx'),
@@ -5853,7 +5884,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
           <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)} ${formatarBadgePontos(pts.entrega_igual_cadastro)}</div>
           <div><strong style="color:var(--text-muted)">Google Maps Fachada:</strong> ${escapeHtml(item.google_maps || '-')} ${formatarBadgePontos(pts.google_maps)}</div>
-          <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)} ${formatarBadgePontos(pts.registro_br)}</div>
+          <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)} ${formatarBadgePontos(pts.registro_br)}${item.cnpj_registro_br ? ` <span style="font-size:0.75rem; color:#38bdf8;" title="Titular: ${escapeHtml(item.titular_registro_br || '')}">(${escapeHtml(item.cnpj_registro_br)})</span>` : ''}</div>
           <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? item.idade_dominio_rdap + ' anos' : (item.possui_site === 'N' ? 'Sem Site' : (item.dominio_principal || '-'))} ${formatarBadgePontos(pts.idade_dominio)}</div>
           <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${escapeHtml(item.wayback_primeiro_snapshot || '-')} ${formatarBadgePontos(pts.wayback)}</div>
           <div><strong style="color:var(--text-muted)">Servidor MX:</strong> ${escapeHtml(item.tipo_servidor_mx || item.servidor_mx || '-')} ${formatarBadgePontos(pts.servidor_mx)}</div>
@@ -6000,6 +6031,28 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_casa_sala_conj_end', item.casa_sala_conj_end !== undefined ? item.casa_sala_conj_end : 'N');
         setVal('cr_google_maps', item.google_maps !== undefined ? item.google_maps : '');
         setVal('cr_registro_br', item.registro_br !== undefined ? item.registro_br : '');
+        setVal('cr_cnpj_registro_br', item.cnpj_registro_br || '');
+        setVal('cr_titular_registro_br', item.titular_registro_br || '');
+
+        const regBrInfoEl = document.getElementById('cr_registro_br_info');
+        if (regBrInfoEl) {
+          if (item.cnpj_registro_br || item.registro_br_detalhes) {
+            regBrInfoEl.style.display = 'block';
+            if (item.registro_br === 'S') {
+              regBrInfoEl.style.background = 'rgba(34, 197, 94, 0.12)';
+              regBrInfoEl.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+              regBrInfoEl.style.color = '#22c55e';
+              regBrInfoEl.innerHTML = `✓ <strong>Raiz Confere:</strong> ${escapeHtml(item.cnpj_registro_br || '')} ${item.titular_registro_br ? '(' + escapeHtml(item.titular_registro_br) + ')' : ''}`;
+            } else {
+              regBrInfoEl.style.background = 'rgba(239, 68, 68, 0.12)';
+              regBrInfoEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+              regBrInfoEl.style.color = '#f87171';
+              regBrInfoEl.innerHTML = `⚠️ <strong>Registro.Br:</strong> ${escapeHtml(item.cnpj_registro_br || 'Divergente / Não Identificado')} ${item.titular_registro_br ? '(' + escapeHtml(item.titular_registro_br) + ')' : ''}`;
+            }
+          } else {
+            regBrInfoEl.style.display = 'none';
+          }
+        }
         
         // Maturidade Digital Automática (RDAP, Wayback, MX)
         const idadeDom = item.idade_dominio_rdap !== undefined ? item.idade_dominio_rdap : (item.idade_dominio !== undefined ? item.idade_dominio : null);

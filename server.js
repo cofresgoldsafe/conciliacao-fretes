@@ -2071,12 +2071,56 @@ async function consultarRDAP(dominio) {
           anoCriacao = dCri.getFullYear().toString();
         }
       }
+
+      let titular = '';
+      let documento = '';
+      let tipoDocumento = '';
+
+      if (Array.isArray(d.entities)) {
+        const regEntity = d.entities.find(e => Array.isArray(e.roles) && e.roles.includes('registrant')) || d.entities[0];
+        if (regEntity) {
+          if (regEntity.legalRepresentative) {
+            titular = String(regEntity.legalRepresentative).trim();
+          }
+          if (Array.isArray(regEntity.vcardArray) && Array.isArray(regEntity.vcardArray[1])) {
+            const fnProp = regEntity.vcardArray[1].find(p => Array.isArray(p) && p[0] === 'fn');
+            if (fnProp && typeof fnProp[3] === 'string' && fnProp[3].trim()) {
+              titular = fnProp[3].trim();
+            }
+          }
+          if (Array.isArray(regEntity.publicIds) && regEntity.publicIds.length > 0) {
+            const pubId = regEntity.publicIds[0];
+            tipoDocumento = (pubId.type || '').toLowerCase();
+            documento = (pubId.identifier || '').trim();
+          }
+          if (!documento && regEntity.handle) {
+            const handleDigits = regEntity.handle.replace(/\D/g, '');
+            if (handleDigits.length === 14) {
+              tipoDocumento = 'cnpj';
+              documento = handleDigits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+            } else if (handleDigits.length === 11) {
+              tipoDocumento = 'cpf';
+              documento = handleDigits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            }
+          }
+        }
+      }
+
+      const docDigits = documento.replace(/\D/g, '');
+      const isCnpj = tipoDocumento === 'cnpj' || docDigits.length === 14;
+      const cnpjDigits = isCnpj ? docDigits : '';
+      const cnpjRaiz = cnpjDigits.length >= 8 ? cnpjDigits.substring(0, 8) : '';
+
       return {
         dominio: limpo,
         dataCriacao,
         anoCriacao,
         idadeAnos,
-        titular: d.entities && d.entities[0] ? d.entities[0].handle : '',
+        titular: titular || (d.entities && d.entities[0] ? d.entities[0].handle : ''),
+        documento,
+        tipoDocumento: tipoDocumento || (docDigits.length === 14 ? 'cnpj' : (docDigits.length === 11 ? 'cpf' : '')),
+        cnpjDigits,
+        cnpjRaiz,
         status: d.status
       };
     }
@@ -2084,6 +2128,74 @@ async function consultarRDAP(dominio) {
     console.warn('RDAP erro:', e.message);
   }
   return null;
+}
+
+function compararRegistroBr(cnpjCliente, infoRDAP, dominioPrincipal) {
+  if (!infoRDAP) {
+    if (dominioPrincipal && !dominioPrincipal.toLowerCase().endsWith('.br')) {
+      return {
+        valor: 'N',
+        confere: false,
+        motivo: 'Domínio internacional (.com/.org) não gerido pelo Registro.br',
+        dominio: dominioPrincipal
+      };
+    }
+    return {
+      valor: 'N',
+      confere: false,
+      motivo: dominioPrincipal ? 'Domínio não encontrado no Registro.br' : 'Cliente sem domínio próprio',
+      dominio: dominioPrincipal || ''
+    };
+  }
+
+  const cnpjCliDigits = String(cnpjCliente || '').replace(/\D/g, '');
+  const cnpjCliRaiz = cnpjCliDigits.length >= 8 ? cnpjCliDigits.substring(0, 8) : '';
+
+  if (infoRDAP.tipoDocumento === 'cnpj' || (infoRDAP.cnpjDigits && infoRDAP.cnpjDigits.length === 14)) {
+    const regDigits = infoRDAP.cnpjDigits || (infoRDAP.documento || '').replace(/\D/g, '');
+    const regRaiz = regDigits.length >= 8 ? regDigits.substring(0, 8) : '';
+
+    if (cnpjCliRaiz && regRaiz) {
+      if (cnpjCliRaiz === regRaiz) {
+        return {
+          valor: 'S',
+          confere: true,
+          motivo: 'CNPJ confere pela raiz (Matriz/Filial)',
+          cnpjCliente: cnpjCliente || '',
+          cnpjRegistroBr: infoRDAP.documento || '',
+          titularRegistroBr: infoRDAP.titular || '',
+          dominio: infoRDAP.dominio || ''
+        };
+      } else {
+        return {
+          valor: 'N',
+          confere: false,
+          motivo: 'CNPJ divergente no Registro.br',
+          cnpjCliente: cnpjCliente || '',
+          cnpjRegistroBr: infoRDAP.documento || '',
+          titularRegistroBr: infoRDAP.titular || '',
+          dominio: infoRDAP.dominio || ''
+        };
+      }
+    }
+  } else if (infoRDAP.tipoDocumento === 'cpf') {
+    return {
+      valor: 'N',
+      confere: false,
+      motivo: 'Domínio registrado por CPF (Pessoa Física)',
+      cnpjCliente: cnpjCliente || '',
+      cpfRegistroBr: infoRDAP.documento || '',
+      titularRegistroBr: infoRDAP.titular || '',
+      dominio: infoRDAP.dominio || ''
+    };
+  }
+
+  return {
+    valor: 'N',
+    confere: false,
+    motivo: 'Documento não identificado no Registro.br',
+    dominio: infoRDAP.dominio || ''
+  };
 }
 
 async function consultarWayback(dominio) {
@@ -2293,6 +2405,10 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     const entregaDiferenteInfo = detalhes.comercial?.entregaDiferenteInfo || detectarEnderecoEntregaDiferente(detalhes.comercial?.observacoes, detalhes.comercial?.codTransp || detalhes.comercial?.transportadora);
     const entregaIgualCadastroVal = entregaDiferenteInfo.temEnderecoDiferente ? 'N' : 'S';
 
+    // Automação Registro.Br (Comparação de Raiz de CNPJ Matriz x Filial)
+    const cnpjParaComparacao = cli.cnpj || (dadosCnpj && dadosCnpj.cnpj) || cli.codigo || '';
+    const regBrInfo = compararRegistroBr(cnpjParaComparacao, infoRDAP, infoEmails.dominioPrincipal);
+
     res.json({
       success: true,
       encontrado: true,
@@ -2345,6 +2461,12 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       servidor_mx: infoMx ? infoMx.provedor : '',
       tipo_servidor_mx: infoMx ? infoMx.tipo : 'NENHUM',
 
+      // Automação Registro.Br (Comparação Raiz CNPJ)
+      registro_br: regBrInfo.valor,
+      registro_br_detalhes: regBrInfo,
+      cnpj_registro_br: regBrInfo.cnpjRegistroBr || regBrInfo.cpfRegistroBr || '',
+      titular_registro_br: regBrInfo.titularRegistroBr || '',
+
       // Preenchimento automático da Seção 4 (E-mails & Site)
       email_corporativo: infoEmails.emailCorporativo,
       existe_mail_financeiro: infoEmails.mailFinanDiferente,
@@ -2354,7 +2476,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
 
       // Campos manuais que permanecem em branco para o analista
       google_maps: '',
-      registro_br: '',
       score_serasa: '',
       protestos: '',
       valor_protestos: '',

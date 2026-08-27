@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.81">
+  <link rel="stylesheet" href="style.css?v=8.82">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 14:54 (Correcao na persistencia de dados_completos no PostgreSQL e extrato de score)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 15:24 (Automacao do campo Registro.Br com comparacao da raiz de CNPJ Matriz x Filial)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -2019,12 +2019,15 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Registro.Br Confere? *</label>
+                <label>Registro.Br Confere?</label>
                 <select id="cr_registro_br" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="N">Não (0 pts)</option>
                   <option value="S">Sim (+6 pts se entrega dif)</option>
                 </select>
+                <div id="cr_registro_br_info" style="display:none; font-size:0.75rem; margin-top:4px; padding:3px 8px; border-radius:4px; line-height:1.3;"></div>
+                <input type="hidden" id="cr_cnpj_registro_br" value="" />
+                <input type="hidden" id="cr_titular_registro_br" value="" />
               </div>
               <div class="form-group">
                 <label>Idade Domínio (RDAP/Registro.br)</label>
@@ -2762,6 +2765,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.81"></script>
+  <script src="app.js?v=8.82"></script>
 </body>
 </html>

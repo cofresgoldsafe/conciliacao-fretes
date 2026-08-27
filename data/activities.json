@@ -1,5 +1,21 @@
 [
   {
+    "id": "ACT-1787854655531",
+    "username": "sistema",
+    "userName": "Sistema",
+    "actionType": "GRAVACAO_CREDITO",
+    "description": "Gravou análise de crédito do Pedido #TESTE-ISENTO-01 (Score: 42, Risco: SEM-RISCO, Decisão: Liberado)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "14",
+      "pedido": "TESTE-ISENTO-01",
+      "score": 42,
+      "risco": "SEM-RISCO",
+      "decisao": "Liberado"
+    },
+    "createdAt": "2026-08-27T18:17:35.531Z"
+  },
+  {
     "id": "ACT-1787848934615",
     "username": "alexandre",
     "userName": "Alexandre",
@@ -2179,18 +2195,5 @@
       "count": 1
     },
     "createdAt": "2026-08-26T17:35:37.517Z"
-  },
-  {
-    "id": "ACT-1787765734558",
-    "username": "andrea",
-    "userName": "Andrea",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000064 (6 pedido(s))",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "codVend": "000064",
-      "count": 6
-    },
-    "createdAt": "2026-08-26T17:35:34.558Z"
   }
 ]

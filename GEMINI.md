@@ -199,6 +199,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
 27. [x] **Validação Rigorosa de Schemas Zod para Webhooks Bancários (`webhook_validator.js`, `server.js`, `test_webhook_schemas.js`):**
    - Schemas Zod com tipagem estrita para Pix individual (`PixEventSchema`), lotes Pix (`PixBatchSchema`), Boletos bancários (`BoletoEventSchema`) e extrato bancário (`BankingEventSchema`).
    - Coerção automática de strings monetárias para float (`transform`), sanitização e middleware no endpoint `/api/webhooks/inter` rejeitando requisições malformadas com HTTP 400.
+28. [x] **Automação do Campo Registro.Br Confere via RDAP & Comparação de Raiz de CNPJ (`server.js`, `public/index.html`, `public/app.js`, `test_registro_br_automacao.js`):**
+   - **Consulta Oficial RDAP do NIC.br:** Consumo da API REST JSON oficial (`https://rdap.registro.br/domain/<dominio>`) com extração determinística do documento do titular (`publicIds` ou `handle`) e razão social/nome (`vcardArray` / `legalRepresentative`).
+   - **Comparação pela Raiz do CNPJ (8 Primeiros Dígitos):** Suporte nativo à compra por Filiais cujo domínio foi registrado pela Matriz (ou vice-versa). O algoritmo confronta os 8 primeiros dígitos numéricos do CNPJ do cliente com o CNPJ do Registro.br (`cnpjClienteRaiz === cnpjRegistroBrRaiz`).
+   - **Preenchimento 100% Automático & Feedback Visual:** Campo `cr_registro_br` preenchido automaticamente como `'S'` (Sim) quando a raiz confere e `'N'` (Não) quando diverge ou sob CPF. Remoção do asterisco (`*`) de campo manual na UI, exibição de badge contextual (`✓ Raiz Confere: CNPJ (Titular)` / `⚠️ Divergente`), persistência na Ficha do Pedido e restauração pelo histórico.
+   - **Suíte de Testes Automatizados:** Script `test_registro_br_automacao.js` com 8 asserções cobrindo matriz x filial, matriz x matriz, divergências, CPFs, domínios internacionais (.com) e pontuação de score de crédito (100% de aprovação).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
