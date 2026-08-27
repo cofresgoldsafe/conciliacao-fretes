@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.84">
+  <link rel="stylesheet" href="style.css?v=8.85">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 16:29 (Automacao FGTS Caixa via InfoSimples API e novos pesos antifraude)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 16:38 (Remocao de asteriscos dos campos automatizados e padronizados do Bloco 6)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -2221,7 +2221,7 @@
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
-                <label>FGTS Regular? *</label>
+                <label>FGTS Regular?</label>
                 <select id="cr_fgts_situacao_regular" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Regular (0 pts)</option>
@@ -2229,7 +2229,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Razão = FGTS? *</label>
+                <label>Razão = FGTS?</label>
                 <select id="cr_razao_fgts_igual" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
                   <option value="S">Igual (+3 pts)</option>
@@ -2238,21 +2238,21 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>Alteração Recente de Sócios? *</label>
+                <label>Alteração Recente de Sócios?</label>
                 <select id="cr_alteracao_recente_socios" class="form-select">
                   <option value="N" selected>Não (0 pts)</option>
                   <option value="S">Sim (-8 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Aumento Expressivo Capital? *</label>
+                <label>Aumento Expressivo Capital?</label>
                 <select id="cr_aumento_expressivo_capital" class="form-select">
                   <option value="N" selected>Não (0 pts)</option>
                   <option value="S">Sim (-20 pts)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>3 NFs Confirmadas? *</label>
+                <label>3 NFs Confirmadas?</label>
                 <select id="cr_tres_nfs_confirmadas" class="form-select" required>
                   <option value="D" selected>Dispensado</option>
                   <option value="S">Sim (+3 pts)</option>
@@ -2814,6 +2814,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.84"></script>
+  <script src="app.js?v=8.85"></script>
 </body>
 </html>
