@@ -152,7 +152,7 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Calibração Administrativa de Pesos & Ficha Imutável:**
      - Inclusão dos novos parâmetros de calibração na aba Configurações (`#tab-config-score`): `cfg_peso_serasa_default`, `cfg_peso_refin_sim`, `cfg_peso_dividas_vencidas_sim`, `cfg_peso_densidade_consultas_alta`, `cfg_peso_consultantes_fomento_sim`, `cfg_peso_socios_restricao_sim`, `cfg_peso_doc_extraviado_sim`.
      - Extrato e Ficha do Pedido com badges de pontuação auditáveis, conferência matemática e restauração completa no formulário via botão `⚡ Carregar no Formulário`.
-   - **Suíte de Testes Automatizados:** Script `test_serasa_pdf_parser.js` com 9 asserções automatizadas cobrindo laudos reais (WDM, DASS, AP Elettro, EQUIPSEA, Itambé Minas), laudos expirados (Optimus Pharma), rejeição de não-Serasa, motor de score e endpoint HTTP `POST /api/financeiro/analise-credito/parse-serasa-pdf` (100% de aprovação).
+   - **Suíte de Testes Automatizados:** Script `test_serasa_pdf_parser.js` com 10 asserções automatizadas cobrindo laudos reais (WDM, DASS, AP Elettro, EQUIPSEA, Itambé Minas, Prevent Senior), laudos expirados (Optimus Pharma), rejeição de não-Serasa, motor de score e endpoint HTTP `POST /api/financeiro/analise-credito/parse-serasa-pdf` (100% de aprovação).
 17. [x] **Tratamento de Capital Social Não Informado / Isento (Filiais, S.A., Sem Fins Lucrativos) (`analise_credito_engine.js`, `public/index.html`, `public/app.js`, `server.js`, `postgres_db.js`, `test_capital_social_isento.js`):**
    - **Checkbox de Seleção Rápida & Desbloqueio de Gravação:**
      - Inclusão do checkbox `[ ] Não informado / Isento` (`#cr_sem_capital_social`) ao lado do campo Capital Social.
