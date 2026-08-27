@@ -2407,4 +2407,173 @@ body {
   background-color: #f8fafc !important;
 }
 
+/* ==========================================================================
+   PAINEL DE FARÓIS DE CONECTIVIDADE EXTERNA (SRE / TELEMETRIA)
+   ========================================================================== */
+
+.farois-container {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 10px;
+  padding: 0.85rem 1.15rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.farois-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.farois-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #38bdf8;
+  letter-spacing: 0.02em;
+}
+
+.farois-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.farol-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(56, 189, 248, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+}
+
+.farois-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.farol-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  cursor: default;
+}
+
+.farol-card:hover {
+  transform: translateY(-1px);
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.farol-led {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+/* Estados dos Faróis (Cores & Efeitos) */
+.farol-led.farol-ok {
+  background-color: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.8), inset 0 0 4px rgba(255, 255, 255, 0.6);
+}
+
+.farol-led.farol-alert {
+  background-color: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.8), inset 0 0 4px rgba(255, 255, 255, 0.6);
+}
+
+.farol-led.farol-error {
+  background-color: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8), inset 0 0 4px rgba(255, 255, 255, 0.6);
+}
+
+.farol-led.farol-info {
+  background-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8), inset 0 0 4px rgba(255, 255, 255, 0.6);
+}
+
+.farol-led.farol-neutral {
+  background-color: #64748b;
+  box-shadow: none;
+}
+
+.farol-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.farol-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.farol-status {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+/* Tema Claro para os Faróis */
+.tab-theme-light .farois-container {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+}
+
+.tab-theme-light .farois-header {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+.tab-theme-light .farois-title {
+  color: #0284c7 !important;
+}
+
+.tab-theme-light .farol-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.tab-theme-light .farol-card:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.tab-theme-light .farol-label {
+  color: #0f172a !important;
+}
+
+.tab-theme-light .farol-status {
+  color: #475569 !important;
+}
+
+
 

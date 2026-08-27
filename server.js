@@ -1926,6 +1926,7 @@ async function consultarCnpjPublico(cnpjStr) {
   if (!cnpjStr) return null;
   const digits = String(cnpjStr).replace(/\D/g, '');
   if (digits.length !== 14) return null;
+  const t0 = Date.now();
 
   try {
     const controller = new AbortController();
@@ -1950,7 +1951,13 @@ async function consultarCnpjPublico(cnpjStr) {
         municipio: d.municipio || '',
         uf: d.uf || '',
         cep: d.cep || '',
-        enderecoCompleto: `${d.descricao_tipo_de_logradouro || ''} ${d.logradouro || ''}, ${d.numero || ''} - ${d.bairro || ''}, ${d.municipio || ''} - ${d.uf || ''}`.trim()
+        enderecoCompleto: `${d.descricao_tipo_de_logradouro || ''} ${d.logradouro || ''}, ${d.numero || ''} - ${d.bairro || ''}, ${d.municipio || ''} - ${d.uf || ''}`.trim(),
+        _status: {
+          status: 'OK',
+          provedor: 'BrasilAPI',
+          tempoMs: Date.now() - t0,
+          mensagem: 'Dados cadastrais e capital obtidos via BrasilAPI'
+        }
       };
     }
   } catch (e) {
@@ -1981,14 +1988,40 @@ async function consultarCnpjPublico(cnpjStr) {
         municipio: d2.municipio || '',
         uf: d2.uf || '',
         cep: d2.cep || '',
-        enderecoCompleto: `${d2.logradouro || ''}, ${d2.numero || ''} - ${d2.bairro || ''}, ${d2.municipio || ''} - ${d2.uf || ''}`.trim()
+        enderecoCompleto: `${d2.logradouro || ''}, ${d2.numero || ''} - ${d2.bairro || ''}, ${d2.municipio || ''} - ${d2.uf || ''}`.trim(),
+        _status: {
+          status: 'OK',
+          provedor: 'ReceitaWS (Fallback)',
+          tempoMs: Date.now() - t0,
+          mensagem: 'Dados cadastrais obtidos via ReceitaWS (Fallback)'
+        }
       };
     }
   } catch (e2) {
     console.warn('Consulta CNPJ fallback ReceitaWS falhou:', e2.message);
   }
 
-  return null;
+  return {
+    fundacao: '',
+    capitalSocial: 0,
+    cnpjAtivo: '',
+    descricao_tipo_de_logradouro: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    municipio: '',
+    uf: '',
+    cep: '',
+    enderecoCompleto: '',
+    _erroTecnico: true,
+    _status: {
+      status: 'ERRO',
+      provedor: 'BrasilAPI / ReceitaWS',
+      tempoMs: Date.now() - t0,
+      mensagem: 'Indisponibilidade nas APIs da Receita Federal (BrasilAPI e ReceitaWS indisponíveis)'
+    }
+  };
 }
 
 const dns = require('dns').promises;
@@ -2049,7 +2082,27 @@ function analisarEmailsCliente(emailStr, hpageStr) {
 async function consultarRDAP(dominio) {
   if (!dominio) return null;
   const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
-  if (!limpo.endsWith('.br')) return null;
+  const t0 = Date.now();
+
+  if (!limpo.endsWith('.br')) {
+    return {
+      dominio: limpo,
+      idadeAnos: null,
+      anoCriacao: '',
+      titular: '',
+      documento: '',
+      tipoDocumento: '',
+      cnpjDigits: '',
+      cnpjRaiz: '',
+      _status: {
+        status: 'INFO',
+        provedor: 'Registro.br (RDAP)',
+        tempoMs: 0,
+        mensagem: 'Domínio internacional (.com/.org) não gerido pelo Registro.br'
+      }
+    };
+  }
+
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 3500);
@@ -2121,17 +2174,66 @@ async function consultarRDAP(dominio) {
         tipoDocumento: tipoDocumento || (docDigits.length === 14 ? 'cnpj' : (docDigits.length === 11 ? 'cpf' : '')),
         cnpjDigits,
         cnpjRaiz,
-        status: d.status
+        status: d.status,
+        _status: {
+          status: 'OK',
+          provedor: 'Registro.br (RDAP)',
+          tempoMs: Date.now() - t0,
+          mensagem: `Domínio registrado há ${idadeAnos} anos (Desde ${anoCriacao || 'N/A'})`
+        }
+      };
+    } else if (res.status === 404) {
+      return {
+        dominio: limpo,
+        idadeAnos: 0,
+        anoCriacao: '',
+        titular: '',
+        documento: '',
+        tipoDocumento: '',
+        cnpjDigits: '',
+        cnpjRaiz: '',
+        _status: {
+          status: 'ALERTA',
+          provedor: 'Registro.br (RDAP)',
+          tempoMs: Date.now() - t0,
+          mensagem: 'Domínio não localizado no Registro.br'
+        }
       };
     }
   } catch (e) {
     console.warn('RDAP erro:', e.message);
   }
-  return null;
+
+  return {
+    dominio: limpo,
+    idadeAnos: null,
+    anoCriacao: '',
+    titular: '',
+    documento: '',
+    tipoDocumento: '',
+    cnpjDigits: '',
+    cnpjRaiz: '',
+    _erroTecnico: true,
+    _status: {
+      status: 'ERRO',
+      provedor: 'Registro.br (RDAP)',
+      tempoMs: Date.now() - t0,
+      mensagem: 'Indisponibilidade / Timeout na consulta do Registro.br'
+    }
+  };
 }
 
 function compararRegistroBr(cnpjCliente, infoRDAP, dominioPrincipal) {
-  if (!infoRDAP) {
+  if (!infoRDAP || infoRDAP._erroTecnico) {
+    if (infoRDAP && infoRDAP._erroTecnico) {
+      return {
+        valor: 'INDISPONIVEL',
+        confere: false,
+        erroTecnico: true,
+        motivo: 'Indisponibilidade técnica no Registro.br (Neutro)',
+        dominio: dominioPrincipal || ''
+      };
+    }
     if (dominioPrincipal && !dominioPrincipal.toLowerCase().endsWith('.br')) {
       return {
         valor: 'N',
@@ -2199,7 +2301,19 @@ function compararRegistroBr(cnpjCliente, infoRDAP, dominioPrincipal) {
 }
 
 async function consultarWayback(dominio) {
-  if (!dominio) return null;
+  const t0 = Date.now();
+  if (!dominio) {
+    return {
+      temHistorico: false,
+      anoPrimeiroSnapshot: null,
+      _status: {
+        status: 'INFO',
+        provedor: 'Archive.org (Wayback)',
+        tempoMs: 0,
+        mensagem: 'Cliente sem domínio/site cadastrado'
+      }
+    };
+  }
   const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
   try {
     const controller = new AbortController();
@@ -2215,36 +2329,123 @@ async function consultarWayback(dominio) {
         return {
           temHistorico: true,
           anoPrimeiroSnapshot: ano,
-          url: snap.url
+          url: snap.url,
+          _status: {
+            status: 'OK',
+            provedor: 'Archive.org (Wayback)',
+            tempoMs: Date.now() - t0,
+            mensagem: `Primeiro snapshot histórico em ${ano}`
+          }
+        };
+      } else {
+        return {
+          temHistorico: false,
+          anoPrimeiroSnapshot: null,
+          _status: {
+            status: 'ALERTA',
+            provedor: 'Archive.org (Wayback)',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Sem histórico arquivado no Wayback Machine'
+          }
         };
       }
     }
   } catch (e) {
     console.warn('Wayback erro:', e.message);
   }
-  return { temHistorico: false, anoPrimeiroSnapshot: null };
+  return {
+    temHistorico: false,
+    anoPrimeiroSnapshot: null,
+    _erroTecnico: true,
+    _status: {
+      status: 'ERRO',
+      provedor: 'Archive.org (Wayback)',
+      tempoMs: Date.now() - t0,
+      mensagem: 'Indisponibilidade / Timeout no Archive.org'
+    }
+  };
 }
 
 async function consultarMx(dominio) {
-  if (!dominio) return { tipo: 'NENHUM', provedor: 'Sem domínio / e-mail genérico' };
+  const t0 = Date.now();
+  if (!dominio) {
+    return {
+      tipo: 'GENERICO',
+      provedor: 'Sem domínio / e-mail genérico',
+      _status: {
+        status: 'INFO',
+        provedor: 'DNS MX',
+        tempoMs: 0,
+        mensagem: 'E-mail genérico (@gmail/@hotmail) ou sem domínio'
+      }
+    };
+  }
   const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
   try {
     const mxList = await dns.resolveMx(limpo);
     if (mxList && mxList.length > 0) {
       const hosts = mxList.map(m => m.exchange.toLowerCase()).join(' ');
+      let tipo = 'PROPRIO';
+      let provedor = mxList[0].exchange;
+
       if (hosts.includes('google') || hosts.includes('aspmx') || hosts.includes('googlemail')) {
-        return { tipo: 'PREMIUM', provedor: 'Google Workspace' };
+        tipo = 'PREMIUM';
+        provedor = 'Google Workspace';
+      } else if (hosts.includes('outlook') || hosts.includes('microsoft') || hosts.includes('protection.outlook')) {
+        tipo = 'PREMIUM';
+        provedor = 'Microsoft 365';
+      } else if (hosts.includes('locaweb') || hosts.includes('kinghost') || hosts.includes('hostgator') || hosts.includes('hostinger') || hosts.includes('cpanel') || hosts.includes('secureserver')) {
+        tipo = 'PADRAO';
+        provedor = 'Hospedagem Compartilhada';
       }
-      if (hosts.includes('outlook') || hosts.includes('microsoft') || hosts.includes('protection.outlook')) {
-        return { tipo: 'PREMIUM', provedor: 'Microsoft 365' };
-      }
-      if (hosts.includes('locaweb') || hosts.includes('kinghost') || hosts.includes('hostgator') || hosts.includes('hostinger') || hosts.includes('cpanel') || hosts.includes('secureserver')) {
-        return { tipo: 'PADRAO', provedor: 'Hospedagem Compartilhada' };
-      }
-      return { tipo: 'PROPRIO', provedor: mxList[0].exchange };
+
+      return {
+        tipo,
+        provedor,
+        _status: {
+          status: 'OK',
+          provedor: `DNS MX (${provedor})`,
+          tempoMs: Date.now() - t0,
+          mensagem: `Servidor MX ${tipo === 'PREMIUM' ? 'Premium (' + provedor + ')' : provedor} verificado`
+        }
+      };
     }
-  } catch (e) {}
-  return { tipo: 'NENHUM', provedor: 'Sem registro MX ativo' };
+  } catch (e) {
+    const isDomainNotFound = ['ENOTFOUND', 'ENODATA', 'NODATA', 'NXDOMAIN'].includes(e.code);
+    if (isDomainNotFound) {
+      return {
+        tipo: 'NENHUM',
+        provedor: 'Sem registro MX ativo',
+        _status: {
+          status: 'ALERTA',
+          provedor: 'DNS MX',
+          tempoMs: Date.now() - t0,
+          mensagem: 'Domínio sem entradas MX de e-mail ativas'
+        }
+      };
+    }
+    return {
+      tipo: 'ERRO_REDE',
+      provedor: 'Falha de Resolução DNS',
+      _erroTecnico: true,
+      _status: {
+        status: 'ERRO',
+        provedor: 'DNS Resolver',
+        tempoMs: Date.now() - t0,
+        mensagem: `Falha na consulta DNS (${e.message})`
+      }
+    };
+  }
+  return {
+    tipo: 'NENHUM',
+    provedor: 'Sem registro MX ativo',
+    _status: {
+      status: 'ALERTA',
+      provedor: 'DNS MX',
+      tempoMs: Date.now() - t0,
+      mensagem: 'Sem registro MX ativo'
+    }
+  };
 }
 
 // Função utilitária para consulta de Regularidade do FGTS (CRF) na Caixa via API InfoSimples
@@ -2252,6 +2453,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
   if (!cnpjStr) return null;
   const digits = String(cnpjStr).replace(/\D/g, '');
   if (digits.length !== 14) return null;
+  const t0 = Date.now();
 
   // Busca token nas variáveis de ambiente ou nas configurações de score do sistema
   const cfg = typeof getScoreConfig === 'function' ? getScoreConfig() : {};
@@ -2260,7 +2462,13 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
   if (!token) {
     return {
       executado: false,
-      motivo: 'Token da API InfoSimples não configurado. Configure em Configurações de Score ou via INFOSIMPLES_TOKEN.'
+      motivo: 'Token da API InfoSimples não configurado. Configure em Configurações de Score ou via INFOSIMPLES_TOKEN.',
+      _status: {
+        status: 'ALERTA',
+        provedor: 'InfoSimples / Caixa',
+        tempoMs: 0,
+        mensagem: 'Token da API InfoSimples não configurado'
+      }
     };
   }
 
@@ -2330,7 +2538,13 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           situacao_caixa: situacao,
           validade_crf: validade,
           endereco_caixa: endereco,
-          similarity
+          similarity,
+          _status: {
+            status: isRegular && razaoFgtsIgual === 'S' ? 'OK' : 'ALERTA',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: isRegular ? (razaoFgtsIgual === 'S' ? `CRF Regular (Validade: ${validade || 'Válido'})` : 'Razão Social divergente na Caixa') : 'Certidão Irregular na Caixa'
+          }
         };
       }
 
@@ -2343,7 +2557,13 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           razao_fgts_igual: 'NE',
           motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
           code,
-          codeMessage
+          codeMessage,
+          _status: {
+            status: 'ALERTA',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Empresa sem funcionários / Nunca recolheu FGTS'
+          }
         };
       }
 
@@ -2351,21 +2571,39 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
         executado: false,
         motivo: `InfoSimples retornou código ${code}: ${codeMessage}`,
         code,
-        codeMessage
+        codeMessage,
+        _status: {
+          status: 'ERRO',
+          provedor: 'InfoSimples / Caixa',
+          tempoMs: Date.now() - t0,
+          mensagem: `InfoSimples código ${code}: ${codeMessage}`
+        }
       };
     } else {
       const errText = await res.text();
       return {
         executado: false,
         motivo: `Erro HTTP ${res.status} ao consultar InfoSimples`,
-        detalhe: errText
+        detalhe: errText,
+        _status: {
+          status: 'ERRO',
+          provedor: 'InfoSimples / Caixa',
+          tempoMs: Date.now() - t0,
+          mensagem: `Erro HTTP ${res.status} na API InfoSimples`
+        }
       };
     }
   } catch (err) {
     console.warn('⚠️ [InfoSimples FGTS] Erro ao consultar API:', err.message);
     return {
       executado: false,
-      motivo: `Falha na requisição InfoSimples: ${err.message}`
+      motivo: `Falha na requisição InfoSimples: ${err.message}`,
+      _status: {
+        status: 'ERRO',
+        provedor: 'InfoSimples / Caixa',
+        tempoMs: Date.now() - t0,
+        mensagem: `Timeout / Falha de conexão (${err.message})`
+      }
     };
   }
 }
@@ -2460,8 +2698,10 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     };
     const empKey = empKeyMap[String(empresa).trim()] || "METAL_PLENO";
 
+    const t0Protheus = Date.now();
     // Executa busca real no banco de dados Protheus (SC5 / SC6 / SA1 / SE1 / SE4)
     const detalhes = await obterDetalhesPedido(empKey, pedNormalizado);
+    const protheusTempoMs = Date.now() - t0Protheus;
 
     if (!detalhes || !detalhes.encontrado) {
       return res.status(404).json({
@@ -2493,7 +2733,7 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     let cadastroIgualReceitaVal = '';
     let comparacaoEnderecoInfo = null;
 
-    if (dadosCnpj && cli.endereco) {
+    if (dadosCnpj && !dadosCnpj._erroTecnico && cli.endereco) {
       const endProtheus = `${cli.endereco} ${cli.bairro || ''} ${cli.cidade || ''} ${cli.uf || ''}`;
       const endReceita = `${dadosCnpj.descricao_tipo_de_logradouro || ''} ${dadosCnpj.logradouro || ''} ${dadosCnpj.numero || ''} ${dadosCnpj.bairro || ''} ${dadosCnpj.municipio || ''} ${dadosCnpj.uf || ''}`;
       const comp = compararEnderecos(endProtheus, endReceita, cli.numero || extrairNumeroEnd(cli.endereco), dadosCnpj.numero, dadosCnpj.complemento, cli.complemento);
@@ -2505,11 +2745,20 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
         endProtheus: cli.endereco,
         endReceita: dadosCnpj.enderecoCompleto || `${dadosCnpj.logradouro}, ${dadosCnpj.numero}`
       };
+    } else if (dadosCnpj && dadosCnpj._erroTecnico) {
+      cadastroIgualReceitaVal = 'INDISPONIVEL';
+      comparacaoEnderecoInfo = {
+        iguais: false,
+        similarity: 0,
+        endProtheus: cli.endereco || '',
+        endReceita: 'Indisponível (Falha nas APIs da Receita)',
+        erroTecnico: true
+      };
     }
 
     // Detecção automática de Casa / Sala / Conjunto no endereço/complemento da Receita Federal e Protheus
     let casaSalaVal = 'N';
-    if (dadosCnpj) {
+    if (dadosCnpj && !dadosCnpj._erroTecnico) {
       const textoComplementos = `${dadosCnpj.complemento || ''} ${dadosCnpj.logradouro || ''} ${cli.endereco || ''}`.toUpperCase();
       const regexCasaSala = /\b(CASA|SALA|SL|CONJ|CONJUNTO|CJ|APTO|APT|APARTAMENTO)\b/;
       casaSalaVal = regexCasaSala.test(textoComplementos) ? 'S' : 'N';
@@ -2532,7 +2781,7 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     let infoMx = null;
     let infoFgts = null;
 
-    const cnpjFgts = cli.cnpj || (dadosCnpj && dadosCnpj.cnpj) || cli.codigo || '';
+    const cnpjFgts = cli.cnpj || (dadosCnpj && !dadosCnpj._erroTecnico && dadosCnpj.cnpj) || cli.codigo || '';
 
     const [resRdap, resWayback, resMx, resFgts] = await Promise.allSettled([
       infoEmails.dominioPrincipal ? consultarRDAP(infoEmails.dominioPrincipal) : Promise.resolve(null),
@@ -2550,8 +2799,48 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     const entregaIgualCadastroVal = entregaDiferenteInfo.temEnderecoDiferente ? 'N' : 'S';
 
     // Automação Registro.Br (Comparação de Raiz de CNPJ Matriz x Filial)
-    const cnpjParaComparacao = cli.cnpj || (dadosCnpj && dadosCnpj.cnpj) || cli.codigo || '';
+    const cnpjParaComparacao = cli.cnpj || (dadosCnpj && !dadosCnpj._erroTecnico && dadosCnpj.cnpj) || cli.codigo || '';
     const regBrInfo = compararRegistroBr(cnpjParaComparacao, infoRDAP, infoEmails.dominioPrincipal);
+
+    // Bloco consolidado de Faróis de Conectividade Externa (SRE)
+    const statusConexoes = {
+      receita: {
+        status: dadosCnpj?._status?.status || (cli.cnpj ? 'ERRO' : 'INFO'),
+        provedor: dadosCnpj?._status?.provedor || 'BrasilAPI / ReceitaWS',
+        tempoMs: dadosCnpj?._status?.tempoMs || 0,
+        mensagem: dadosCnpj?._status?.mensagem || (cli.cnpj ? 'Não foi possível consultar a Receita Federal' : 'Sem CNPJ informado')
+      },
+      registro_br: {
+        status: infoRDAP?._status?.status || (infoEmails.dominioPrincipal ? 'INFO' : 'INFO'),
+        provedor: infoRDAP?._status?.provedor || 'Registro.br (RDAP)',
+        tempoMs: infoRDAP?._status?.tempoMs || 0,
+        mensagem: infoRDAP?._status?.mensagem || (infoEmails.dominioPrincipal ? 'Domínio não consultado no Registro.br' : 'Cliente sem domínio cadastrado')
+      },
+      wayback: {
+        status: infoWayback?._status?.status || 'INFO',
+        provedor: infoWayback?._status?.provedor || 'Archive.org (Wayback)',
+        tempoMs: infoWayback?._status?.tempoMs || 0,
+        mensagem: infoWayback?._status?.mensagem || (infoEmails.dominioPrincipal ? 'Sem consulta ao Archive.org' : 'Cliente sem domínio/site')
+      },
+      dns_mx: {
+        status: infoMx?._status?.status || 'INFO',
+        provedor: infoMx?._status?.provedor || 'DNS Resolver',
+        tempoMs: infoMx?._status?.tempoMs || 0,
+        mensagem: infoMx?._status?.mensagem || 'Sem domínio corporativo para checagem MX'
+      },
+      fgts_caixa: {
+        status: infoFgts?._status?.status || (infoFgts?.executado ? 'OK' : 'ALERTA'),
+        provedor: infoFgts?._status?.provedor || 'InfoSimples / Caixa',
+        tempoMs: infoFgts?._status?.tempoMs || 0,
+        mensagem: infoFgts?._status?.mensagem || (infoFgts?.motivo || 'FGTS não executado')
+      },
+      protheus_db: {
+        status: 'OK',
+        provedor: 'Railway SQL',
+        tempoMs: protheusTempoMs,
+        mensagem: `Pedido #${detalhes.numPedido || pedNormalizado} (${empKey}) e histórico SE1 importados`
+      }
+    };
 
     res.json({
       success: true,
@@ -2569,9 +2858,10 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       prod_nao_combinam: 'N',
       armario_cofre_gt_2000: temItemUnitarioGt2k ? 'S' : 'N',
       uf_cliente: (cli.uf || 'SP').toUpperCase().trim(),
-      cnpj_ativo: dadosCnpj ? dadosCnpj.cnpjAtivo : '',
-      fundacao_matriz: dadosCnpj ? dadosCnpj.fundacao : '',
-      capital_social: dadosCnpj && dadosCnpj.capitalSocial > 0 ? dadosCnpj.capitalSocial : '',
+      cnpj_ativo: (dadosCnpj && !dadosCnpj._erroTecnico) ? dadosCnpj.cnpjAtivo : '',
+      fundacao_matriz: (dadosCnpj && !dadosCnpj._erroTecnico) ? dadosCnpj.fundacao : '',
+      capital_social: (dadosCnpj && !dadosCnpj._erroTecnico && dadosCnpj.capitalSocial > 0) ? dadosCnpj.capitalSocial : '',
+      receita_offline: Boolean(dadosCnpj && dadosCnpj._erroTecnico),
 
       // Histórico Financeiro Consolidado das empresas 09, 14, 15 e 16 (Protheus SE1)
       pgtos_abertos: histFin.temPgtosAbertos || 'N',
@@ -2596,11 +2886,14 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
 
       // Inteligência Digital e E-mails Automatizados (Seções 3 e 4)
       dominio_principal: infoEmails.dominioPrincipal,
-      idade_dominio_rdap: infoRDAP ? infoRDAP.idadeAnos : (infoEmails.dominioPrincipal ? 0 : null),
-      ano_criacao_rdap: infoRDAP ? infoRDAP.anoCriacao : '',
-      wayback_primeiro_snapshot: infoWayback && infoWayback.anoPrimeiroSnapshot ? infoWayback.anoPrimeiroSnapshot : '',
+      idade_dominio_rdap: (infoRDAP && !infoRDAP._erroTecnico) ? infoRDAP.idadeAnos : (infoEmails.dominioPrincipal && (!infoRDAP || !infoRDAP._erroTecnico) ? 0 : null),
+      idade_dominio_rdap_erro: Boolean(infoRDAP && infoRDAP._erroTecnico),
+      ano_criacao_rdap: (infoRDAP && !infoRDAP._erroTecnico) ? infoRDAP.anoCriacao : '',
+      wayback_primeiro_snapshot: (infoWayback && !infoWayback._erroTecnico && infoWayback.anoPrimeiroSnapshot) ? infoWayback.anoPrimeiroSnapshot : '',
+      wayback_offline: Boolean(infoWayback && infoWayback._erroTecnico),
       servidor_mx: infoMx ? infoMx.provedor : '',
       tipo_servidor_mx: infoMx ? infoMx.tipo : 'NENHUM',
+      servidor_mx_offline: Boolean(infoMx && infoMx._erroTecnico),
 
       // Automação Registro.Br (Comparação Raiz CNPJ)
       registro_br: regBrInfo.valor,
@@ -2620,6 +2913,9 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       fgts_situacao_regular: infoFgts && infoFgts.executado ? (infoFgts.fgts_situacao_regular || '') : '',
       razao_fgts_igual: infoFgts && infoFgts.executado ? (infoFgts.razao_fgts_igual || '') : '',
       razao_social_caixa: infoFgts && infoFgts.executado ? (infoFgts.razao_social_caixa || '') : '',
+
+      // Telemetria SRE de Faróis de Conectividade
+      status_conexoes: statusConexoes,
 
       // Campos manuais que permanecem em branco para o analista
       score_serasa: '',

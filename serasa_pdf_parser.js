@@ -53,7 +53,20 @@ function trySpawnPython(bin, pdfBuffer) {
       reject(err);
     });
 
+    // Timeout de segurança de 15 segundos para evitar travamento em PDFs anômalos
+    const procTimeout = setTimeout(() => {
+      try {
+        py.kill('SIGKILL');
+      } catch (_) {}
+      resolve({
+        success: false,
+        error_type: 'TIMEOUT_PROCESSAMENTO',
+        error: 'Tempo limite de 15 segundos excedido ao processar o arquivo PDF do Serasa.'
+      });
+    }, 15000);
+
     py.on('close', (code) => {
+      clearTimeout(procTimeout);
       if (code !== 0 && !stdoutData.trim()) {
         console.error(`Processo python (${bin}) encerrou com código ${code}:`, stderrData);
         return resolve({
@@ -81,6 +94,7 @@ function trySpawnPython(bin, pdfBuffer) {
       py.stdin.write(pdfBuffer);
       py.stdin.end();
     } catch (errWrite) {
+      clearTimeout(procTimeout);
       reject(errWrite);
     }
   });

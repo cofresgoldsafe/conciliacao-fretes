@@ -157,8 +157,12 @@ function calcularScore(dados, config = getScoreConfig()) {
   pontos.pgtos_abertos = dados.pgtos_abertos === 'S' ? config.peso_pgtos_abertos_sim : config.peso_pgtos_abertos_nao;
   pontos.comprou_pagou = dados.comprou_pagou === 'S' ? config.peso_comprou_2x_sim : config.peso_comprou_2x_nao;
   pontos.comprou_pagou_5x = dados.comprou_pagou_5x === 'S' ? config.peso_comprou_5x_sim : 0;
-  pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? config.peso_cadastro_receita_sim : config.peso_cadastro_receita_nao;
-  pontos.cnpj_ativo = dados.cnpj_ativo === 'S' ? config.peso_cnpj_ativo_sim : config.peso_cnpj_ativo_nao;
+  if (dados.cadastro_igual_receita === 'INDISPONIVEL' || dados.receita_offline === true) {
+    pontos.cadastro_igual_receita = 0; // Fail-Neutral: Receita offline não pontua nem desconta
+  } else {
+    pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? config.peso_cadastro_receita_sim : config.peso_cadastro_receita_nao;
+  }
+  pontos.cnpj_ativo = dados.cnpj_ativo === 'S' ? config.peso_cnpj_ativo_sim : (dados.cnpj_ativo === 'N' ? config.peso_cnpj_ativo_nao : 0);
 
   const entregaIgualCadastro = dados.entrega_igual_cadastro === 'S';
   pontos.entrega_igual_cadastro = entregaIgualCadastro ? config.peso_entrega_cadastro_sim : config.peso_entrega_cadastro_nao;
@@ -172,12 +176,15 @@ function calcularScore(dados, config = getScoreConfig()) {
     pontos.registro_br = dados.registro_br === 'S' ? config.peso_registro_br_sim : 0;
   }
 
-  // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX)
+  // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX) - Fail-Neutral
+  const isRdapErro = dados.idade_dominio_rdap_erro === true || dados.status_conexoes?.registro_br?.status === 'ERRO' || dados.registro_br === 'INDISPONIVEL';
   const idadeDominio = dados.idade_dominio_rdap !== undefined && dados.idade_dominio_rdap !== null && dados.idade_dominio_rdap !== '' 
     ? Number(dados.idade_dominio_rdap) 
     : null;
 
-  if (idadeDominio !== null && !isNaN(idadeDominio)) {
+  if (isRdapErro) {
+    pontos.idade_dominio = 0; // Fail-Neutral: Não penaliza o score por falha técnica de conexão no Registro.br
+  } else if (idadeDominio !== null && !isNaN(idadeDominio)) {
     if (idadeDominio >= 10) pontos.idade_dominio = config.peso_dominio_idade_10 !== undefined ? config.peso_dominio_idade_10 : 6;
     else if (idadeDominio >= 3) pontos.idade_dominio = config.peso_dominio_idade_3 !== undefined ? config.peso_dominio_idade_3 : 3;
     else if (idadeDominio >= 1) pontos.idade_dominio = config.peso_dominio_idade_1 !== undefined ? config.peso_dominio_idade_1 : 0;
@@ -198,10 +205,19 @@ function calcularScore(dados, config = getScoreConfig()) {
   }
 
   const mxTipo = (dados.tipo_servidor_mx || '').toUpperCase();
-  if (mxTipo === 'PREMIUM') pontos.servidor_mx = config.peso_mx_premium !== undefined ? config.peso_mx_premium : 3;
-  else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = config.peso_mx_padrao !== undefined ? config.peso_mx_padrao : 0;
-  else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = config.peso_mx_inexistente !== undefined ? config.peso_mx_inexistente : -4;
-  else pontos.servidor_mx = 0;
+  const isMxErro = dados.servidor_mx_offline === true || mxTipo === 'ERRO_REDE' || dados.status_conexoes?.dns_mx?.status === 'ERRO';
+
+  if (isMxErro) {
+    pontos.servidor_mx = 0; // Fail-Neutral: Falha na resolução de DNS não desconta pontos do cliente
+  } else if (mxTipo === 'PREMIUM') {
+    pontos.servidor_mx = config.peso_mx_premium !== undefined ? config.peso_mx_premium : 3;
+  } else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') {
+    pontos.servidor_mx = config.peso_mx_padrao !== undefined ? config.peso_mx_padrao : 0;
+  } else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) {
+    pontos.servidor_mx = config.peso_mx_inexistente !== undefined ? config.peso_mx_inexistente : -4;
+  } else {
+    pontos.servidor_mx = 0;
+  }
 
   pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? config.peso_endereco_sala_sim : (dados.casa_sala_conj_end === 'N' ? config.peso_endereco_sala_nao : 0);
   pontos.email_corporativo = dados.email_corporativo === 'S' ? config.peso_email_corp_sim : (dados.email_corporativo === 'N' ? config.peso_email_corp_nao : 0);
@@ -352,13 +368,15 @@ function calcularScore(dados, config = getScoreConfig()) {
   const alertaPedCompra = totalPed > config.limite_pedido_compra ? 'SOLICITAR PED COMPRA' : 'N/A';
   const alertaContratoEntrega = dados.armario_cofre_gt_2000 === 'S' ? 'SOLIC CONTRATO DE ENTREGA' : 'N/A';
   const alertaPerigoGolpe = !entregaIgualCadastro && isFaturado ? 'PERIGO CHECAGEM REVERSA' : 'N/A';
-  const alertaCadastroReceita = dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A';
+  const alertaCadastroReceita = dados.cadastro_igual_receita === 'INDISPONIVEL' || dados.receita_offline === true
+    ? 'RECEITA OFFLINE - CONFERIR ENDEREÇO'
+    : (dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A');
 
   const sugestoesLista = [];
   if (alertaContratoEntrega !== 'N/A') sugestoesLista.push('SOLIC CONTRATO DE ENTREGA');
   if (alertaPedCompra !== 'N/A') sugestoesLista.push('SOLICITAR PED COMPRA');
   if (alertaPerigoGolpe !== 'N/A') sugestoesLista.push('PERIGO CHECAGEM REVERSA');
-  if (alertaCadastroReceita !== 'N/A') sugestoesLista.push('CORRIGIR END DIVERGENTE');
+  if (alertaCadastroReceita !== 'N/A') sugestoesLista.push(alertaCadastroReceita);
   if (sugestao && sugestao !== 'LIBERADO' && !sugestoesLista.includes(sugestao)) {
     sugestoesLista.push(sugestao);
   }

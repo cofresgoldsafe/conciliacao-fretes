@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.87">
+  <link rel="stylesheet" href="style.css?v=8.88">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 17:27 (Ajuste tabela historico credito coluna Emp e avatar inicial do operador)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 17:55 (Faróis de Conectividade Externa SRE & Eliminação de Falhas Silenciosas no Score)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1774,6 +1774,61 @@
         <div id="creditoProtheusBadge" class="alert-info-box hidden" style="margin-top: 1rem; padding: 0.85rem 1.25rem; border-radius: 8px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3); color: #22c55e;">
           ✓ Dados cadastrais e de venda importados com sucesso do Protheus ERP. Complete os campos abaixo e clique em Consultar.
         </div>
+
+        <!-- Painel Faróis de Conectividade Externa (SRE / Telemetria) -->
+        <div id="creditoFaroisConectividade" class="farois-container hidden" style="margin-top: 1rem;">
+          <div class="farois-header">
+            <div class="farois-title">
+              <span class="farol-pulse-dot"></span>
+              <strong>Faróis de Conectividade & Telemetria Externa</strong>
+            </div>
+            <span class="farois-subtitle" id="faroisTimestamp">Status em tempo real</span>
+          </div>
+          <div class="farois-grid">
+            <div class="farol-card" id="farol_receita" title="Receita Federal / CNPJ">
+              <div class="farol-led farol-neutral" id="farol_led_receita"></div>
+              <div class="farol-info">
+                <div class="farol-label">Receita Federal</div>
+                <div class="farol-status" id="farol_receita_txt">Aguardando consulta...</div>
+              </div>
+            </div>
+            <div class="farol-card" id="farol_registro_br" title="RDAP Registro.br">
+              <div class="farol-led farol-neutral" id="farol_led_registro_br"></div>
+              <div class="farol-info">
+                <div class="farol-label">Registro.br</div>
+                <div class="farol-status" id="farol_registro_br_txt">Aguardando consulta...</div>
+              </div>
+            </div>
+            <div class="farol-card" id="farol_wayback" title="Wayback Machine / Archive.org">
+              <div class="farol-led farol-neutral" id="farol_led_wayback"></div>
+              <div class="farol-info">
+                <div class="farol-label">Wayback Machine</div>
+                <div class="farol-status" id="farol_wayback_txt">Aguardando consulta...</div>
+              </div>
+            </div>
+            <div class="farol-card" id="farol_dns_mx" title="Servidor de E-mail (DNS MX)">
+              <div class="farol-led farol-neutral" id="farol_led_dns_mx"></div>
+              <div class="farol-info">
+                <div class="farol-label">Servidor MX</div>
+                <div class="farol-status" id="farol_dns_mx_txt">Aguardando consulta...</div>
+              </div>
+            </div>
+            <div class="farol-card" id="farol_fgts_caixa" title="Regularidade FGTS Caixa">
+              <div class="farol-led farol-neutral" id="farol_led_fgts_caixa"></div>
+              <div class="farol-info">
+                <div class="farol-label">FGTS Caixa</div>
+                <div class="farol-status" id="farol_fgts_caixa_txt">Aguardando consulta...</div>
+              </div>
+            </div>
+            <div class="farol-card" id="farol_protheus_db" title="ERP TOTVS Protheus">
+              <div class="farol-led farol-neutral" id="farol_led_protheus_db"></div>
+              <div class="farol-info">
+                <div class="farol-label">ERP Protheus</div>
+                <div class="farol-status" id="farol_protheus_db_txt">Aguardando consulta...</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Painel de Resultado do Score (Exibido após Cálculo) -->
@@ -2774,6 +2829,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.87"></script>
+  <script src="app.js?v=8.88"></script>
 </body>
 </html>

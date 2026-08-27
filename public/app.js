@@ -4717,6 +4717,88 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       btnIniciarConsultaCredito.disabled = true;
+  // Função auxiliar para renderizar os Faróis de Conectividade Externa (SRE / Telemetria)
+  function renderFaroisConectividade(statusConexoes) {
+    const container = document.getElementById('creditoFaroisConectividade');
+    if (!container) return;
+    container.classList.remove('hidden');
+
+    const timestampEl = document.getElementById('faroisTimestamp');
+    if (timestampEl) {
+      timestampEl.textContent = `Checagem: ${new Date().toLocaleTimeString('pt-BR')}`;
+    }
+
+    const mapaFarois = {
+      receita: { led: 'farol_led_receita', txt: 'farol_receita_txt', card: 'farol_receita', label: 'Receita Federal' },
+      registro_br: { led: 'farol_led_registro_br', txt: 'farol_registro_br_txt', card: 'farol_registro_br', label: 'Registro.br' },
+      wayback: { led: 'farol_led_wayback', txt: 'farol_wayback_txt', card: 'farol_wayback', label: 'Wayback Machine' },
+      dns_mx: { led: 'farol_led_dns_mx', txt: 'farol_dns_mx_txt', card: 'farol_dns_mx', label: 'Servidor MX' },
+      fgts_caixa: { led: 'farol_led_fgts_caixa', txt: 'farol_fgts_caixa_txt', card: 'farol_fgts_caixa', label: 'FGTS Caixa' },
+      protheus_db: { led: 'farol_led_protheus_db', txt: 'farol_protheus_db_txt', card: 'farol_protheus_db', label: 'ERP Protheus' }
+    };
+
+    if (!statusConexoes || typeof statusConexoes !== 'object') return;
+
+    for (const [key, cfg] of Object.entries(mapaFarois)) {
+      const info = statusConexoes[key];
+      const ledEl = document.getElementById(cfg.led);
+      const txtEl = document.getElementById(cfg.txt);
+      const cardEl = document.getElementById(cfg.card);
+
+      if (!ledEl || !txtEl) continue;
+
+      ledEl.className = 'farol-led';
+
+      if (!info) {
+        ledEl.classList.add('farol-neutral');
+        txtEl.textContent = 'Não consultado';
+        continue;
+      }
+
+      const st = (info.status || '').toUpperCase();
+      const tempoStr = info.tempoMs ? ` (${info.tempoMs}ms)` : '';
+
+      if (st === 'OK') {
+        ledEl.classList.add('farol-ok');
+        txtEl.textContent = `${info.mensagem || 'Conectado'}${tempoStr}`;
+      } else if (st === 'ALERTA') {
+        ledEl.classList.add('farol-alert');
+        txtEl.textContent = `${info.mensagem || 'Atenção'}${tempoStr}`;
+      } else if (st === 'ERRO') {
+        ledEl.classList.add('farol-error');
+        txtEl.textContent = `${info.mensagem || 'Indisponível'}`;
+      } else if (st === 'INFO') {
+        ledEl.classList.add('farol-info');
+        txtEl.textContent = `${info.mensagem || 'Informativo'}`;
+      } else {
+        ledEl.classList.add('farol-neutral');
+        txtEl.textContent = info.mensagem || 'Pendente';
+      }
+
+      if (cardEl) {
+        cardEl.title = `${cfg.label} [${info.provedor || 'Serviço'}]: ${info.mensagem || ''}${tempoStr}`;
+      }
+    }
+  }
+
+  // Iniciar Consulta Protheus (Passo 2)
+  if (btnIniciarConsultaCredito) {
+    btnIniciarConsultaCredito.addEventListener('click', async () => {
+      if (!dadosSerasaAtual) {
+        alert('⚠️ ATENÇÃO:\n\nÉ obrigatório realizar primeiro a leitura do relatório PDF do Serasa antes de consultar o Protheus.');
+        if (btnSelectSerasaPdf) btnSelectSerasaPdf.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
+      const emp = creditoEmpresaSelect ? creditoEmpresaSelect.value : '14';
+      const numPed = creditoNumPedido ? creditoNumPedido.value.trim() : '';
+
+      if (!numPed) {
+        alert('Por favor, informe o número do Pedido de Venda Protheus.');
+        return;
+      }
+
+      btnIniciarConsultaCredito.disabled = true;
       btnIniciarConsultaCredito.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; display: inline-block;"></div> Consultando...';
       if (creditoProtheusBadge) creditoProtheusBadge.classList.add('hidden');
       if (creditoResultadoSection) creditoResultadoSection.classList.add('hidden');
@@ -4730,7 +4812,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.error || 'Erro ao consultar pedido no Protheus.');
+          const err = new Error(data.error || 'Erro ao consultar pedido no Protheus.');
+          err.status = res.status;
+          throw err;
+        }
+
+        // Renderiza instantaneamente os Faróis de Conectividade Externa (SRE)
+        if (data.status_conexoes) {
+          renderFaroisConectividade(data.status_conexoes);
         }
 
         const setVal = (id, val) => {
@@ -4761,7 +4850,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_uf_cliente', data.uf_cliente || '');
         
         // Dados Públicos e Receita Federal
-        setVal('cr_cnpj_ativo', data.cnpj_ativo || 'S');
+        setVal('cr_cnpj_ativo', data.cnpj_ativo || (data.receita_offline ? '' : 'S'));
         setVal('cr_fundacao_matriz', data.fundacao_matriz || '');
         
         const semCapCheckbox = document.getElementById('cr_sem_capital_social');
@@ -4782,11 +4871,13 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
-        // Comparação de Endereço Protheus vs Receita Federal
-        if (data.cadastro_igual_receita) {
+        // Comparação de Endereço Protheus vs Receita Federal (Sem assumir default falso se API falhar)
+        if (data.cadastro_igual_receita === 'INDISPONIVEL' || data.receita_offline) {
+          setVal('cr_cadastro_igual_receita', '');
+        } else if (data.cadastro_igual_receita) {
           setVal('cr_cadastro_igual_receita', data.cadastro_igual_receita);
         } else {
-          setVal('cr_cadastro_igual_receita', 'S');
+          setVal('cr_cadastro_igual_receita', '');
         }
 
         // Casa / Sala / Conjunto no endereço (automático via Receita e Protheus)
@@ -4797,13 +4888,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_comprou_pagou', data.comprou_pagou !== undefined ? data.comprou_pagou : 'N');
         setVal('cr_comprou_pagou_5x', data.comprou_pagou_5x !== undefined ? data.comprou_pagou_5x : 'N');
 
-        // Maturidade Digital Automática (RDAP, Wayback, Servidor MX)
+        // Maturidade Digital Automática (RDAP, Wayback, Servidor MX) - Fail-Neutral
         if (data.idade_dominio_rdap !== null && data.idade_dominio_rdap !== undefined) {
           const anosTxt = `${data.idade_dominio_rdap} anos ${data.ano_criacao_rdap ? '(Desde ' + data.ano_criacao_rdap + ')' : ''}`;
           setVal('cr_idade_dominio_rdap', anosTxt);
           setVal('cr_idade_dominio_val', data.idade_dominio_rdap);
         } else {
-          setVal('cr_idade_dominio_rdap', data.dominio_principal ? 'Domínio Recente / Não BR' : 'Sem Domínio');
+          setVal('cr_idade_dominio_rdap', data.idade_dominio_rdap_erro ? 'Indisponível (Registro.br)' : (data.dominio_principal ? 'Domínio Recente / Não BR' : 'Sem Domínio'));
           setVal('cr_idade_dominio_val', '');
         }
 
@@ -4811,16 +4902,16 @@ document.addEventListener('DOMContentLoaded', () => {
           setVal('cr_wayback_snapshot', `Histórico desde ${data.wayback_primeiro_snapshot}`);
           setVal('cr_wayback_ano_val', data.wayback_primeiro_snapshot);
         } else {
-          setVal('cr_wayback_snapshot', 'Sem histórico no archive');
+          setVal('cr_wayback_snapshot', data.wayback_offline ? 'Indisponível (Archive.org)' : 'Sem histórico no archive');
           setVal('cr_wayback_ano_val', '');
         }
 
-        setVal('cr_servidor_mx', data.servidor_mx || 'Sem registro MX');
+        setVal('cr_servidor_mx', data.servidor_mx || (data.servidor_mx_offline ? 'Falha DNS' : 'Sem registro MX'));
         setVal('cr_tipo_servidor_mx', data.tipo_servidor_mx || 'NENHUM');
         setVal('cr_dominio_principal', data.dominio_principal || '');
 
         // Automação Registro.Br (Comparação de Raiz de CNPJ)
-        if (data.registro_br) {
+        if (data.registro_br && data.registro_br !== 'INDISPONIVEL') {
           setVal('cr_registro_br', data.registro_br);
         } else {
           setVal('cr_registro_br', '');
@@ -4830,7 +4921,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const regBrInfoEl = document.getElementById('cr_registro_br_info');
         if (regBrInfoEl) {
-          if (data.registro_br_detalhes && (data.registro_br_detalhes.cnpjRegistroBr || data.registro_br_detalhes.cpfRegistroBr || data.registro_br_detalhes.dominio)) {
+          if (data.registro_br_detalhes && (data.registro_br_detalhes.cnpjRegistroBr || data.registro_br_detalhes.cpfRegistroBr || data.registro_br_detalhes.dominio || data.registro_br_detalhes.erroTecnico)) {
             const det = data.registro_br_detalhes;
             regBrInfoEl.style.display = 'block';
             if (det.confere) {
@@ -4838,6 +4929,11 @@ document.addEventListener('DOMContentLoaded', () => {
               regBrInfoEl.style.border = '1px solid rgba(34, 197, 94, 0.3)';
               regBrInfoEl.style.color = '#22c55e';
               regBrInfoEl.innerHTML = `✓ <strong>Raiz Confere:</strong> ${escapeHtml(det.cnpjRegistroBr || '')} ${det.titularRegistroBr ? '(' + escapeHtml(det.titularRegistroBr) + ')' : ''}`;
+            } else if (det.erroTecnico) {
+              regBrInfoEl.style.background = 'rgba(245, 158, 11, 0.12)';
+              regBrInfoEl.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+              regBrInfoEl.style.color = '#fbbf24';
+              regBrInfoEl.innerHTML = `ℹ️ <strong>Registro.br Indisponível:</strong> ${escapeHtml(det.motivo || 'Oscilação técnica')} (Pontuação neutra mantida)`;
             } else {
               regBrInfoEl.style.background = 'rgba(239, 68, 68, 0.12)';
               regBrInfoEl.style.border = '1px solid rgba(239, 68, 68, 0.3)';
@@ -4890,30 +4986,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Auto-preenchimento e Renderização de Badge FGTS Caixa via InfoSimples API
         const fgtsBadge = document.getElementById('cr_fgts_badge');
-        if (data.fgts_info && data.fgts_info.executado) {
+        if (data.fgts_info) {
           const fInfo = data.fgts_info;
-          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'NE');
-          setVal('cr_razao_fgts_igual', fInfo.razao_fgts_igual || 'NE');
-          
-          if (fgtsBadge) {
-            fgtsBadge.style.display = 'block';
-            if (fInfo.encontrado) {
-              if (fInfo.razao_fgts_igual === 'S') {
-                fgtsBadge.style.background = 'rgba(34, 197, 94, 0.12)';
-                fgtsBadge.style.border = '1px solid rgba(34, 197, 94, 0.3)';
-                fgtsBadge.style.color = '#22c55e';
-                fgtsBadge.innerHTML = `✓ <strong>FGTS Caixa Confere:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Situação: ${escapeHtml(fInfo.situacao_caixa || 'REGULAR')}${fInfo.validade_crf ? ' | Validade CRF: ' + escapeHtml(fInfo.validade_crf) : ''})`;
+          if (fInfo.executado) {
+            setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'NE');
+            setVal('cr_razao_fgts_igual', fInfo.razao_fgts_igual || 'NE');
+            
+            if (fgtsBadge) {
+              fgtsBadge.style.display = 'block';
+              if (fInfo.encontrado) {
+                if (fInfo.razao_fgts_igual === 'S') {
+                  fgtsBadge.style.background = 'rgba(34, 197, 94, 0.12)';
+                  fgtsBadge.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                  fgtsBadge.style.color = '#22c55e';
+                  fgtsBadge.innerHTML = `✓ <strong>FGTS Caixa Confere:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Situação: ${escapeHtml(fInfo.situacao_caixa || 'REGULAR')}${fInfo.validade_crf ? ' | Validade CRF: ' + escapeHtml(fInfo.validade_crf) : ''})`;
+                } else {
+                  fgtsBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                  fgtsBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                  fgtsBadge.style.color = '#f87171';
+                  fgtsBadge.innerHTML = `🚨 <strong>ATENÇÃO — Razão Social Divergente na Caixa:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Diverge do cadastro atual! Possível empresa alterada)`;
+                }
               } else {
-                fgtsBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-                fgtsBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
-                fgtsBadge.style.color = '#f87171';
-                fgtsBadge.innerHTML = `🚨 <strong>ATENÇÃO — Razão Social Divergente na Caixa:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Diverge do cadastro atual! Possível empresa alterada)`;
+                fgtsBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+                fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.4)';
+                fgtsBadge.style.color = '#fbbf24';
+                fgtsBadge.innerHTML = `⚠️ <strong>Empresa Não Localizada na Caixa:</strong> Nunca registrou funcionários / Sem histórico de recolhimento de FGTS`;
               }
-            } else {
-              fgtsBadge.style.background = 'rgba(245, 158, 11, 0.15)';
-              fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.4)';
+            }
+          } else {
+            // Exibe aviso explícito em vez de ocultar silenciosamente o FGTS
+            setVal('cr_fgts_situacao_regular', '');
+            setVal('cr_razao_fgts_igual', '');
+            if (fgtsBadge) {
+              fgtsBadge.style.display = 'block';
+              fgtsBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+              fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.35)';
               fgtsBadge.style.color = '#fbbf24';
-              fgtsBadge.innerHTML = `⚠️ <strong>Empresa Não Localizada na Caixa:</strong> Nunca registrou funcionários / Sem histórico de recolhimento de FGTS`;
+              fgtsBadge.innerHTML = `ℹ️ <strong>FGTS Caixa Não Consultado:</strong> ${escapeHtml(fInfo.motivo || 'Serviço temporariamente indisponível')}`;
             }
           }
         } else {
@@ -4949,7 +5058,9 @@ document.addEventListener('DOMContentLoaded', () => {
           creditoProtheusBadge.style.color = isCnpjDivergent ? '#f87171' : '#22c55e';
           
           let endMsg = '';
-          if (data.comparacao_endereco) {
+          if (data.receita_offline) {
+            endMsg = ' | Endereço Receita: <strong style="color:#fbbf24;">Receita Offline (Conferir Manualmente)</strong>';
+          } else if (data.comparacao_endereco) {
             endMsg = data.comparacao_endereco.iguais 
               ? ' | Endereço Receita: <strong>Conforme</strong> (variação aceita)' 
               : ' | Endereço Receita: <strong>Divergente</strong>';
@@ -4980,14 +5091,31 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_total_pedido', '');
         setVal('cr_cliente_nome', '');
 
-        if (creditoProtheusBadge) {
-          creditoProtheusBadge.classList.remove('hidden');
-          creditoProtheusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-          creditoProtheusBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-          creditoProtheusBadge.style.color = '#f87171';
-          creditoProtheusBadge.innerHTML = `❌ <strong>Pedido #${escapeHtml(numPed)} NÃO EXISTE no Protheus</strong> para a Empresa ${escapeHtml(emp)}. Verifique o número digitado ou a empresa selecionada.`;
+        const isNotFound = err.status === 404 || (err.message && (err.message.includes('NÃO existe') || err.message.includes('não existe') || err.message.includes('404')));
+
+        if (isNotFound) {
+          if (creditoProtheusBadge) {
+            creditoProtheusBadge.classList.remove('hidden');
+            creditoProtheusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            creditoProtheusBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            creditoProtheusBadge.style.color = '#f87171';
+            creditoProtheusBadge.innerHTML = `❌ <strong>Pedido #${escapeHtml(numPed)} NÃO EXISTE no Protheus</strong> para a Empresa ${escapeHtml(emp)}. Verifique o número digitado ou a empresa selecionada.`;
+          }
+          alert(`❌ Pedido #${numPed} NÃO EXISTE no ERP Protheus (Empresa ${emp}).\n\nPor favor, confirme se o número do pedido está correto no Protheus.`);
+        } else {
+          if (creditoProtheusBadge) {
+            creditoProtheusBadge.classList.remove('hidden');
+            creditoProtheusBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+            creditoProtheusBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            creditoProtheusBadge.style.color = '#f87171';
+            creditoProtheusBadge.innerHTML = `⚠️ <strong>Falha de Conexão com o ERP Protheus (Railway SQL):</strong> ${escapeHtml(err.message)}<br><small style="opacity:0.85;">O pedido #${escapeHtml(numPed)} pode existir, mas a consulta ao banco de dados falhou ou sofreu timeout.</small>`;
+          }
+          alert(`⚠️ Falha de Conexão com o ERP Protheus (Railway SQL):\n\n${err.message}\n\nO pedido pode existir, mas a conexão com o banco Protheus falhou.`);
         }
-        alert(`❌ Pedido #${numPed} NÃO EXISTE no ERP Protheus (Empresa ${emp}).\n\nPor favor, confirme se o número do pedido está correto no Protheus.`);
+
+        renderFaroisConectividade({
+          protheus_db: { status: 'ERRO', provedor: 'Railway SQL', mensagem: err.message || 'Falha de conexão com o banco Protheus' }
+        });
         atualizarScoreEmTempoReal();
       } finally {
         btnIniciarConsultaCredito.disabled = false;
@@ -5230,7 +5358,11 @@ document.addEventListener('DOMContentLoaded', () => {
     pontos.pgtos_abertos = dados.pgtos_abertos === 'S' ? getCfg('peso_pgtos_abertos_sim', -3) : getCfg('peso_pgtos_abertos_nao', 1);
     pontos.comprou_pagou = dados.comprou_pagou === 'S' ? getCfg('peso_comprou_2x_sim', 9) : getCfg('peso_comprou_2x_nao', -3);
     pontos.comprou_pagou_5x = dados.comprou_pagou_5x === 'S' ? getCfg('peso_comprou_5x_sim', 23) : 0;
-    pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? getCfg('peso_cadastro_receita_sim', 3) : (dados.cadastro_igual_receita === 'N' ? getCfg('peso_cadastro_receita_nao', -3) : 0);
+    if (dados.cadastro_igual_receita === 'INDISPONIVEL' || dados.receita_offline === true) {
+      pontos.cadastro_igual_receita = 0; // Fail-Neutral: Receita offline não penaliza nem bonifica
+    } else {
+      pontos.cadastro_igual_receita = dados.cadastro_igual_receita === 'S' ? getCfg('peso_cadastro_receita_sim', 3) : (dados.cadastro_igual_receita === 'N' ? getCfg('peso_cadastro_receita_nao', -3) : 0);
+    }
     pontos.cnpj_ativo = dados.cnpj_ativo === 'S' ? getCfg('peso_cnpj_ativo_sim', 2) : (dados.cnpj_ativo === 'N' ? getCfg('peso_cnpj_ativo_nao', -100) : 0);
     pontos.entrega_igual_cadastro = entregaIgualCadastro ? getCfg('peso_entrega_cadastro_sim', 2) : (dados.entrega_igual_cadastro === 'N' ? getCfg('peso_entrega_cadastro_nao', -9) : 0);
 
@@ -5243,12 +5375,15 @@ document.addEventListener('DOMContentLoaded', () => {
       pontos.registro_br = dados.registro_br === 'S' ? getCfg('peso_registro_br_sim', 6) : 0;
     }
 
-    // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX)
+    // Inteligência Digital Automática (RDAP Registro.br, Wayback Machine, Servidor MX) - Fail-Neutral
+    const isRdapErro = dados.idade_dominio_rdap_erro === true || dados.registro_br === 'INDISPONIVEL';
     const idadeDominio = dados.idade_dominio_rdap !== undefined && dados.idade_dominio_rdap !== null && dados.idade_dominio_rdap !== '' 
       ? Number(dados.idade_dominio_rdap) 
       : null;
 
-    if (idadeDominio !== null && !isNaN(idadeDominio)) {
+    if (isRdapErro) {
+      pontos.idade_dominio = 0; // Fail-Neutral
+    } else if (idadeDominio !== null && !isNaN(idadeDominio)) {
       if (idadeDominio >= 10) pontos.idade_dominio = getCfg('peso_dominio_idade_10', 6);
       else if (idadeDominio >= 3) pontos.idade_dominio = getCfg('peso_dominio_idade_3', 3);
       else if (idadeDominio >= 1) pontos.idade_dominio = getCfg('peso_dominio_idade_1', 0);
@@ -5269,10 +5404,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const mxTipo = (dados.tipo_servidor_mx || '').toUpperCase();
-    if (mxTipo === 'PREMIUM') pontos.servidor_mx = getCfg('peso_mx_premium', 3);
-    else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') pontos.servidor_mx = getCfg('peso_mx_padrao', 0);
-    else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) pontos.servidor_mx = getCfg('peso_mx_inexistente', -4);
-    else pontos.servidor_mx = 0;
+    const isMxErro = dados.servidor_mx_offline === true || mxTipo === 'ERRO_REDE';
+    if (isMxErro) {
+      pontos.servidor_mx = 0; // Fail-Neutral
+    } else if (mxTipo === 'PREMIUM') {
+      pontos.servidor_mx = getCfg('peso_mx_premium', 3);
+    } else if (mxTipo === 'PADRAO' || mxTipo === 'PROPRIO') {
+      pontos.servidor_mx = getCfg('peso_mx_padrao', 0);
+    } else if (dados.email_corporativo === 'S' && (mxTipo === 'NENHUM' || !mxTipo)) {
+      pontos.servidor_mx = getCfg('peso_mx_inexistente', -4);
+    } else {
+      pontos.servidor_mx = 0;
+    }
 
     pontos.casa_sala_conj = dados.casa_sala_conj_end === 'S' ? getCfg('peso_endereco_sala_sim', -5) : (dados.casa_sala_conj_end === 'N' ? getCfg('peso_endereco_sala_nao', 1) : 0);
     pontos.email_corporativo = dados.email_corporativo === 'S' ? getCfg('peso_email_corp_sim', 3) : (dados.email_corporativo === 'N' ? getCfg('peso_email_corp_nao', -3) : 0);
@@ -5422,13 +5565,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const alertaPedCompra = totalPed > getCfg('limite_pedido_compra', 5000) ? 'SOLICITAR PED COMPRA' : 'N/A';
     const alertaContratoEntrega = dados.armario_cofre_gt_2000 === 'S' ? 'SOLIC CONTRATO DE ENTREGA' : 'N/A';
     const alertaPerigoGolpe = !entregaIgualCadastro && isFaturado && dados.entrega_igual_cadastro ? 'PERIGO CHECAGEM REVERSA' : 'N/A';
-    const alertaCadastroReceita = dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A';
+    const alertaCadastroReceita = dados.cadastro_igual_receita === 'INDISPONIVEL' || dados.receita_offline === true
+      ? 'RECEITA OFFLINE - CONFERIR ENDEREÇO'
+      : (dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A');
 
     const sugestoesLista = [];
     if (alertaContratoEntrega !== 'N/A') sugestoesLista.push('SOLIC CONTRATO DE ENTREGA');
     if (alertaPedCompra !== 'N/A') sugestoesLista.push('SOLICITAR PED COMPRA');
     if (alertaPerigoGolpe !== 'N/A') sugestoesLista.push('PERIGO CHECAGEM REVERSA');
-    if (alertaCadastroReceita !== 'N/A') sugestoesLista.push('CORRIGIR END DIVERGENTE');
+    if (alertaCadastroReceita !== 'N/A') sugestoesLista.push(alertaCadastroReceita);
     if (sugestao && sugestao !== 'LIBERADO' && !sugestoesLista.includes(sugestao)) {
       sugestoesLista.push(sugestao);
     }
@@ -5519,7 +5664,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setAlerta('valAlertaPedCompra', res.alertaPedCompra, 'SOLICITAR PED. COMPRA');
     setAlerta('valAlertaContrato', res.alertaContratoEntrega, 'SOLIC. CONTRATO ENTREGA');
     setAlerta('valAlertaGolpe', res.alertaPerigoGolpe, 'PERIGO CHECAGEM REVERSA');
-    setAlerta('valAlertaCadReceita', res.alertaCadastroReceita, 'CORRIGIR END. DIVERGENTE');
+    setAlerta('valAlertaCadReceita', res.alertaCadastroReceita, res.alertaCadastroReceita === 'RECEITA OFFLINE - CONFERIR ENDEREÇO' ? 'CONFERIR END. (RECEITA OFFLINE)' : 'CORRIGIR END. DIVERGENTE');
   }
 
   // Conecta escutas reativas em todo o formulário para recálculo instantâneo a cada tecla/seleção

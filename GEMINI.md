@@ -241,6 +241,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Tooltip nativo informativo (`Registrado por: <Nome>`) ao posicionar o cursor sobre o avatar.
    - **Ajuste de Colunas e Empty State:**
      - Atualização do `colspan="11"` para manter o grid perfeitamente balanceado em estados vazios ou filtrados.
+32. [x] **Painel de Faróis de Conectividade Externa (SRE), Telemetria em Tempo Real & Arquitetura Fail-Neutral na Análise de Crédito (`server.js`, `analise_credito_engine.js`, `serasa_pdf_parser.js`, `public/index.html`, `public/style.css`, `public/app.js`, `test_farois_resiliencia_credito.js`):**
+   - **Painel Visual com 6 Faróis de Status em Tempo Real (`#creditoFaroisConectividade`):**
+     - Indicadores dinâmicos com LEDs luminosos animados (`.farol-pulse-dot`, `.farol-ok`, `.farol-alert`, `.farol-error`, `.farol-info`, `.farol-neutral`) exibidos no topo da Análise de Crédito cobrindo 100% dos serviços externos:
+       1. **Receita Federal / CNPJ:** Status da BrasilAPI e ReceitaWS com latência em ms e detecção de contingência.
+       2. **RDAP Registro.br:** Status da consulta do NIC.br, idade do domínio e confronto de raiz de CNPJ.
+       3. **Wayback Machine:** Primeiro snapshot histórico arquivado no Archive.org ou aviso de ausência de registros.
+       4. **Servidor de E-mail (DNS MX):** Tipo de servidor identificado (Google Workspace, Microsoft 365, Hospedagem) com tempo de resolução.
+       5. **FGTS Caixa Econômica:** Regularidade do CRF e conformidade de Razão Social via InfoSimples com motivo detalhado.
+       6. **ERP TOTVS Protheus:** Status da conexão Railway SQL, tempo de resposta e importação de títulos SE1/pedidos SC5.
+   - **Eliminação de Falhas Silenciosas & Arquitetura Fail-Neutral:**
+     - **Registro.br e DNS MX Fail-Neutral:** Caso o RDAP ou DNS sofram timeout ou erro de rede, o sistema atribui pontuação neutra (`0 pts`) com tag explicativa `[INDISPONÍVEL]`, eliminando penalizações indevidas de **-7 pts** ou **-4 pts** sobre clientes legítimos.
+     - **Fim da Falsa Conformidade de Endereço:** Caso as APIs da Receita Federal estejam offline, o campo `cadastro_igual_receita` não assume falsamente `'S'`; o sistema exibe alerta e exige conferência manual (`RECEITA OFFLINE - CONFERIR ENDEREÇO`).
+     - **Feedback Explícito no FGTS no Auto-Fetch:** Caso a API InfoSimples oscile durante o carregamento do pedido, o badge não desaparece silenciosamente; exibe badge informativo com o motivo retornado pela API.
+     - **Diferenciação de Erros no Protheus:** Tratamento refinado no frontend distinguindo `404 - Pedido Inexistente` de `500/504 - Falha de Conexão com o ERP Protheus (Railway SQL)`.
+     - **Timeout de Segurança no Parser Serasa:** Inclusão de timer com timeout de 15 segundos no spawn do interpretador Python para proteção contra processos zumbis ou travamentos em PDFs corrompidos.
+   - **Suíte de Testes Automatizados:** Script `test_farois_resiliencia_credito.js` com 9 asserções cobrindo regras fail-neutral, payload de telemetria, componentes de interface e proteções de processos (100% de aprovação).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
