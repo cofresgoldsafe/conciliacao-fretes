@@ -2247,6 +2247,129 @@ async function consultarMx(dominio) {
   return { tipo: 'NENHUM', provedor: 'Sem registro MX ativo' };
 }
 
+// Função utilitária para consulta de Regularidade do FGTS (CRF) na Caixa via API InfoSimples
+async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
+  if (!cnpjStr) return null;
+  const digits = String(cnpjStr).replace(/\D/g, '');
+  if (digits.length !== 14) return null;
+
+  // Busca token nas variáveis de ambiente ou nas configurações de score do sistema
+  const cfg = typeof getScoreConfig === 'function' ? getScoreConfig() : {};
+  const token = (process.env.INFOSIMPLES_TOKEN || cfg.infosimples_token || '').trim();
+
+  if (!token) {
+    return {
+      executado: false,
+      motivo: 'Token da API InfoSimples não configurado. Configure em Configurações de Score ou via INFOSIMPLES_TOKEN.'
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    
+    const postBody = {
+      token: token,
+      cnpj: digits,
+      timeout: 30
+    };
+
+    const res = await fetch('https://api.infosimples.com/api/v2/consultas/caixa/crf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Gemini-Cli/1.0'
+      },
+      body: JSON.stringify(postBody),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      const dataJson = await res.json();
+      const code = dataJson.code;
+      const codeMessage = dataJson.code_message || '';
+      const dataList = Array.isArray(dataJson.data) ? dataJson.data : (dataJson.data ? [dataJson.data] : []);
+
+      // Código 200/201: Sucesso na consulta com dados retornados
+      if ((code === 200 || code === 201) && dataList.length > 0 && dataList[0]) {
+        const item = dataList[0];
+        const razaoCaixa = String(item.razao_social || item.nome || '').trim();
+        const situacao = String(item.situacao || '').trim().toUpperCase();
+        const isRegular = situacao.includes('REGULAR') && !situacao.includes('NÃO') && !situacao.includes('IRREGULAR');
+        const validade = item.validade_fim_data || item.validade_fim || '';
+        const endereco = item.endereco || '';
+
+        // Comparação de similaridade entre Razão Social da Caixa e do Protheus/Receita
+        let razaoFgtsIgual = 'N';
+        let similarity = 0;
+        if (razaoClienteProtheus && razaoCaixa) {
+          const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/\b(LTDA|EIRELI|EPP|ME|SA|S\/A|CIA|COMPANHIA|SOCIEDADE|IND|COM|DISTRIBUIDORA)\b/g, '');
+          const n1 = norm(razaoClienteProtheus);
+          const n2 = norm(razaoCaixa);
+          
+          if (n1 === n2 || (n1.length > 3 && n2.length > 3 && (n1.includes(n2) || n2.includes(n1)))) {
+            razaoFgtsIgual = 'S';
+            similarity = 1.0;
+          } else {
+            let matches = 0;
+            const w1 = razaoClienteProtheus.toUpperCase().split(/\s+/).filter(w => w.length > 2);
+            const w2 = razaoCaixa.toUpperCase().split(/\s+/).filter(w => w.length > 2);
+            w1.forEach(w => { if (w2.includes(w)) matches++; });
+            similarity = w1.length > 0 && w2.length > 0 ? (matches / Math.max(w1.length, w2.length)) : 0;
+            razaoFgtsIgual = similarity >= 0.5 ? 'S' : 'N';
+          }
+        }
+
+        return {
+          executado: true,
+          encontrado: true,
+          fgts_situacao_regular: isRegular ? 'S' : 'N',
+          razao_fgts_igual: razaoFgtsIgual,
+          razao_social_caixa: razaoCaixa,
+          situacao_caixa: situacao,
+          validade_crf: validade,
+          endereco_caixa: endereco,
+          similarity
+        };
+      }
+
+      // Código 601 / 602 / "não encontrada": Empresa não possui cadastro no FGTS / Nunca registrou funcionários
+      if (code === 601 || code === 602 || codeMessage.toLowerCase().includes('não encontrada') || codeMessage.toLowerCase().includes('nao encontrada') || dataList.length === 0) {
+        return {
+          executado: true,
+          encontrado: false,
+          fgts_situacao_regular: 'N',
+          razao_fgts_igual: 'NE',
+          motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
+          code,
+          codeMessage
+        };
+      }
+
+      return {
+        executado: false,
+        motivo: `InfoSimples retornou código ${code}: ${codeMessage}`,
+        code,
+        codeMessage
+      };
+    } else {
+      const errText = await res.text();
+      return {
+        executado: false,
+        motivo: `Erro HTTP ${res.status} ao consultar InfoSimples`,
+        detalhe: errText
+      };
+    }
+  } catch (err) {
+    console.warn('⚠️ [InfoSimples FGTS] Erro ao consultar API:', err.message);
+    return {
+      executado: false,
+      motivo: `Falha na requisição InfoSimples: ${err.message}`
+    };
+  }
+}
+
 // 0. Leitura e Validação em Memória do Laudo Serasa Experian (PDF)
 app.post('/api/financeiro/analise-credito/parse-serasa-pdf', memoryUpload.single('serasa_pdf'), async (req, res) => {
   try {
@@ -2293,6 +2416,24 @@ app.post('/api/financeiro/analise-credito/parse-serasa-pdf', memoryUpload.single
       error_type: 'ERRO_INTERNO',
       error: 'Erro interno ao processar o arquivo PDF do Serasa: ' + err.message
     });
+  }
+});
+
+// 1B. Consulta Direta de FGTS na Caixa via API InfoSimples
+app.post('/api/financeiro/analise-credito/consultar-fgts', async (req, res) => {
+  try {
+    const { cnpj, razao_social } = req.body;
+    if (!cnpj) {
+      return res.status(400).json({ success: false, error: 'CNPJ é obrigatório para consultar o FGTS.' });
+    }
+    const resultado = await consultarFgtsInfoSimples(cnpj, razao_social);
+    res.json({
+      success: true,
+      resultado
+    });
+  } catch (err) {
+    console.error('Erro ao consultar FGTS InfoSimples:', err);
+    res.status(500).json({ success: false, error: 'Erro ao consultar FGTS: ' + err.message });
   }
 });
 
@@ -2385,21 +2526,24 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     // Análise Automática de E-mails & Site Corporativo (A1_EMAIL e A1_HPAGE do Protheus)
     const infoEmails = analisarEmailsCliente(cli.email, cli.site);
 
-    // Consulta de Inteligência Digital Paralela (RDAP Registro.br, Wayback Machine, DNS MX)
+    // Consulta de Inteligência Digital Paralela (RDAP Registro.br, Wayback Machine, DNS MX, FGTS InfoSimples)
     let infoRDAP = null;
     let infoWayback = null;
     let infoMx = null;
+    let infoFgts = null;
 
-    if (infoEmails.dominioPrincipal) {
-      const [resRdap, resWayback, resMx] = await Promise.allSettled([
-        consultarRDAP(infoEmails.dominioPrincipal),
-        consultarWayback(infoEmails.dominioPrincipal),
-        consultarMx(infoEmails.dominioPrincipal)
-      ]);
-      infoRDAP = resRdap.status === 'fulfilled' ? resRdap.value : null;
-      infoWayback = resWayback.status === 'fulfilled' ? resWayback.value : null;
-      infoMx = resMx.status === 'fulfilled' ? resMx.value : null;
-    }
+    const cnpjFgts = cli.cnpj || (dadosCnpj && dadosCnpj.cnpj) || cli.codigo || '';
+
+    const [resRdap, resWayback, resMx, resFgts] = await Promise.allSettled([
+      infoEmails.dominioPrincipal ? consultarRDAP(infoEmails.dominioPrincipal) : Promise.resolve(null),
+      infoEmails.dominioPrincipal ? consultarWayback(infoEmails.dominioPrincipal) : Promise.resolve(null),
+      infoEmails.dominioPrincipal ? consultarMx(infoEmails.dominioPrincipal) : Promise.resolve(null),
+      cnpjFgts ? consultarFgtsInfoSimples(cnpjFgts, cli.nome) : Promise.resolve(null)
+    ]);
+    infoRDAP = resRdap.status === 'fulfilled' ? resRdap.value : null;
+    infoWayback = resWayback.status === 'fulfilled' ? resWayback.value : null;
+    infoMx = resMx.status === 'fulfilled' ? resMx.value : null;
+    infoFgts = resFgts.status === 'fulfilled' ? resFgts.value : null;
 
     // Detecção Automática de Endereço de Entrega Diferente (Dupla Regra: C5_MENNOTA ou C5_TRANSP = '000009')
     const entregaDiferenteInfo = detalhes.comercial?.entregaDiferenteInfo || detectarEnderecoEntregaDiferente(detalhes.comercial?.observacoes, detalhes.comercial?.codTransp || detalhes.comercial?.transportadora);
@@ -2474,6 +2618,12 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       possui_site: infoEmails.possuiSite,
       emails_encontrados: infoEmails.emailsEncontrados,
 
+      // FGTS & Regularidade do Empregador (InfoSimples API)
+      fgts_info: infoFgts,
+      fgts_situacao_regular: infoFgts && infoFgts.executado ? (infoFgts.fgts_situacao_regular || '') : '',
+      razao_fgts_igual: infoFgts && infoFgts.executado ? (infoFgts.razao_fgts_igual || '') : '',
+      razao_social_caixa: infoFgts && infoFgts.executado ? (infoFgts.razao_social_caixa || '') : '',
+
       // Campos manuais que permanecem em branco para o analista
       google_maps: '',
       score_serasa: '',
@@ -2481,8 +2631,6 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       valor_protestos: '',
       pfin: '',
       ch_sem_fundo: '',
-      fgts_situacao_regular: '',
-      razao_fgts_igual: '',
       obs: '',
       decisao_final: 'Liberado',
       mensagem: `Pedido #${detalhes.numPedido || pedNormalizado} encontrado com sucesso no Protheus.`

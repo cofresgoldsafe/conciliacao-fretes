@@ -4891,10 +4891,42 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
+        // Auto-preenchimento e Renderização de Badge FGTS Caixa via InfoSimples API
+        const fgtsBadge = document.getElementById('cr_fgts_badge');
+        if (data.fgts_info && data.fgts_info.executado) {
+          const fInfo = data.fgts_info;
+          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'N');
+          setVal('cr_razao_fgts_igual', fInfo.razao_fgts_igual || 'NE');
+          
+          if (fgtsBadge) {
+            fgtsBadge.style.display = 'block';
+            if (fInfo.encontrado) {
+              if (fInfo.razao_fgts_igual === 'S') {
+                fgtsBadge.style.background = 'rgba(34, 197, 94, 0.12)';
+                fgtsBadge.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                fgtsBadge.style.color = '#22c55e';
+                fgtsBadge.innerHTML = `✓ <strong>FGTS Caixa Confere:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Situação: ${escapeHtml(fInfo.situacao_caixa || 'REGULAR')}${fInfo.validade_crf ? ' | Validade CRF: ' + escapeHtml(fInfo.validade_crf) : ''})`;
+              } else {
+                fgtsBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                fgtsBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                fgtsBadge.style.color = '#f87171';
+                fgtsBadge.innerHTML = `🚨 <strong>ATENÇÃO — Razão Social Divergente na Caixa:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Diverge do cadastro atual! Possível empresa alterada)`;
+              }
+            } else {
+              fgtsBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+              fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.4)';
+              fgtsBadge.style.color = '#fbbf24';
+              fgtsBadge.innerHTML = `⚠️ <strong>Empresa Não Localizada na Caixa:</strong> Nunca registrou funcionários / Sem histórico de recolhimento de FGTS`;
+            }
+          }
+        } else {
+          setVal('cr_fgts_situacao_regular', '');
+          setVal('cr_razao_fgts_igual', '');
+          if (fgtsBadge) fgtsBadge.style.display = 'none';
+        }
+
         // Campos manuais que permanecem para o analista preencher
         setVal('cr_google_maps', '');
-        setVal('cr_fgts_situacao_regular', '');
-        setVal('cr_razao_fgts_igual', '');
         setVal('cr_alteracao_recente_socios', 'N');
         setVal('cr_aumento_expressivo_capital', 'N');
         setVal('cr_decisao_final', 'Decisão (atenção ao gravar)');
@@ -4985,6 +5017,81 @@ document.addEventListener('DOMContentLoaded', () => {
         crCapitalSocialInput.focus();
       }
       atualizarScoreEmTempoReal();
+    });
+  }
+
+  // Listener para o Botão de Consulta Automática via API InfoSimples
+  const btnConsultarFgtsInfoSimples = document.getElementById('btnConsultarFgtsInfoSimples');
+  if (btnConsultarFgtsInfoSimples) {
+    btnConsultarFgtsInfoSimples.addEventListener('click', async () => {
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+      };
+      let cnpj = getVal('cr_cliente_codigo') || (dadosSerasaAtual ? dadosSerasaAtual.cnpj : '');
+      const digits = String(cnpj).replace(/\D/g, '');
+      if (!digits) {
+        alert('⚠️ Nenhum CNPJ identificado na tela. Realize primeiro a consulta do pedido ou informe o CNPJ do cliente.');
+        return;
+      }
+
+      const razaoCliente = getVal('cr_cliente_nome');
+      const originalText = btnConsultarFgtsInfoSimples.innerHTML;
+      btnConsultarFgtsInfoSimples.disabled = true;
+      btnConsultarFgtsInfoSimples.innerHTML = '⏳ Consultando InfoSimples...';
+
+      try {
+        const res = await fetch('/api/financeiro/analise-credito/consultar-fgts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cnpj: digits, razao_social: razaoCliente })
+        });
+        const d = await res.json();
+        if (!d.success || !d.resultado) {
+          throw new Error(d.error || 'Falha ao consultar FGTS na InfoSimples.');
+        }
+
+        const fInfo = d.resultado;
+        const fgtsBadge = document.getElementById('cr_fgts_badge');
+
+        if (fInfo.executado) {
+          setVal('cr_fgts_situacao_regular', fInfo.fgts_situacao_regular || 'N');
+          setVal('cr_razao_fgts_igual', fInfo.razao_fgts_igual || 'NE');
+          
+          if (fgtsBadge) {
+            fgtsBadge.style.display = 'block';
+            if (fInfo.encontrado) {
+              if (fInfo.razao_fgts_igual === 'S') {
+                fgtsBadge.style.background = 'rgba(34, 197, 94, 0.12)';
+                fgtsBadge.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+                fgtsBadge.style.color = '#22c55e';
+                fgtsBadge.innerHTML = `✓ <strong>FGTS Caixa Confere:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Situação: ${escapeHtml(fInfo.situacao_caixa || 'REGULAR')}${fInfo.validade_crf ? ' | Validade CRF: ' + escapeHtml(fInfo.validade_crf) : ''})`;
+              } else {
+                fgtsBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                fgtsBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                fgtsBadge.style.color = '#f87171';
+                fgtsBadge.innerHTML = `🚨 <strong>ATENÇÃO — Razão Social Divergente na Caixa:</strong> "${escapeHtml(fInfo.razao_social_caixa)}" (Diverge do cadastro atual! Possível empresa alterada)`;
+              }
+            } else {
+              fgtsBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+              fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.4)';
+              fgtsBadge.style.color = '#fbbf24';
+              fgtsBadge.innerHTML = `⚠️ <strong>Empresa Não Localizada na Caixa:</strong> Nunca registrou funcionários / Sem histórico de recolhimento de FGTS`;
+            }
+          }
+          if (typeof atualizarScoreEmTempoReal === 'function') {
+            atualizarScoreEmTempoReal();
+          }
+          alert('✓ Consulta de FGTS na InfoSimples concluída e preenchida com sucesso!');
+        } else {
+          alert(`⚠️ ${fInfo.motivo || 'Não foi possível consultar o FGTS na InfoSimples.'}`);
+        }
+      } catch (err) {
+        alert('Erro ao consultar FGTS na InfoSimples: ' + err.message);
+      } finally {
+        btnConsultarFgtsInfoSimples.disabled = false;
+        btnConsultarFgtsInfoSimples.innerHTML = originalText;
+      }
     });
   }
 
@@ -5269,7 +5376,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? getCfg('peso_fgts_regular_nao', -6) : 0;
-    pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? getCfg('peso_razao_fgts_igual_nao', -10) : 0;
+    if (dados.razao_fgts_igual === 'S') {
+      pontos.razao_fgts_igual = getCfg('peso_razao_fgts_igual_sim', 3);
+    } else if (dados.razao_fgts_igual === 'N') {
+      pontos.razao_fgts_igual = getCfg('peso_razao_fgts_igual_nao', -15);
+    } else if (dados.razao_fgts_igual === 'NE' || dados.razao_fgts_igual === 'X') {
+      pontos.razao_fgts_igual = getCfg('peso_razao_fgts_nao_encontrado', -5);
+    } else {
+      pontos.razao_fgts_igual = 0;
+    }
     pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? getCfg('peso_alteracao_recente_socios_sim', -8) : 0;
     pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? getCfg('peso_aumento_expressivo_capital_sim', -20) : 0;
 
@@ -5826,7 +5941,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '5. Bureau, Serasa & Protestos', nome: 'Documento Extraviado / Roubado', val: item.documentos_extraviados === 'S' ? 'Sim (ALERTA)' : (item.documentos_extraviados === 'N' ? 'Não' : '-'), pts: pts.doc_extraviado },
 
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : '-'), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
-      { cat: '6. FGTS, Sócios & Certidões', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : '-'), pts: pts.razao_fgts_igual },
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : (item.razao_fgts_igual === 'NE' ? 'Não Encontrado' : '-')), pts: pts.razao_fgts_igual },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Alteração Recente de Sócios', val: item.alteracao_recente_socios === 'S' ? 'Sim (Alterado)' : 'Não', pts: pts.alteracao_recente_socios },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital },
       { cat: '6. FGTS, Sócios & Certidões', nome: '3 NFs com Boletos Pagos', val: item.tres_nfs_confirmadas === 'S' ? 'Confirmado' : (item.tres_nfs_confirmadas === 'D' ? 'Dispensado' : (item.tres_nfs_confirmadas === 'N' ? 'Não' : '-')), pts: pts.tres_nfs }
@@ -5962,7 +6077,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4 style="margin: 0 0 0.75rem 0; color: #10b981; font-size: 0.9rem;">6. FGTS, Sócios & Certidões Comerciais</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
           <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : '<span style="color:#f87171">Irregular</span>'} ${formatarBadgePontos(pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular)}</div>
-          <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : '<span style="color:#f87171">Divergente</span>'} ${formatarBadgePontos(pts.razao_fgts_igual)}</div>
+          <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : (item.razao_fgts_igual === 'N' ? '<span style="color:#f87171">Divergente</span>' : (item.razao_fgts_igual === 'NE' ? '<span style="color:#fbbf24">Não Encontrado</span>' : '-'))} ${formatarBadgePontos(pts.razao_fgts_igual)}</div>
           <div><strong style="color:var(--text-muted)">Troca Recente Sócios:</strong> ${item.alteracao_recente_socios === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.alteracao_recente_socios)}</div>
           <div><strong style="color:var(--text-muted)">Aumento Expressivo Cap.:</strong> ${item.aumento_expressivo_capital === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.aumento_expressivo_capital)}</div>
           <div><strong style="color:var(--text-muted)">3 NFs Confirmadas:</strong> ${item.tres_nfs_confirmadas === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.tres_nfs_confirmadas === 'D' ? '<span style="color:#fbbf24">Dispensado</span>' : '<span style="color:#f87171">Não</span>')} ${formatarBadgePontos(pts.tres_nfs)}</div>
@@ -6294,8 +6409,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setOptionText('cr_fgts_situacao_regular', 'S', () => `Regular (0 pts)`);
     setOptionText('cr_fgts_situacao_regular', 'N', () => `Irregular (${fmtPts(getCfg('peso_fgts_regular_nao', -6))})`);
 
-    setOptionText('cr_razao_fgts_igual', 'S', () => `Igual (0 pts)`);
-    setOptionText('cr_razao_fgts_igual', 'N', () => `Divergente (${fmtPts(getCfg('peso_razao_fgts_igual_nao', -10))})`);
+    setOptionText('cr_razao_fgts_igual', 'S', () => `Igual (${fmtPts(getCfg('peso_razao_fgts_igual_sim', 3))})`);
+    setOptionText('cr_razao_fgts_igual', 'N', () => `Divergente (${fmtPts(getCfg('peso_razao_fgts_igual_nao', -15))})`);
+    setOptionText('cr_razao_fgts_igual', 'NE', () => `Não Encontrado (${fmtPts(getCfg('peso_razao_fgts_nao_encontrado', -5))})`);
 
     setOptionText('cr_alteracao_recente_socios', 'N', () => `Não (0 pts)`);
     setOptionText('cr_alteracao_recente_socios', 'S', () => `Sim (${fmtPts(getCfg('peso_alteracao_recente_socios_sim', -8))})`);
@@ -6333,7 +6449,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const inputs = scoreConfigForm.querySelectorAll('input');
       inputs.forEach(inp => {
         const k = inp.id.replace('cfg_', '');
-        cfg[k] = parseFloat(inp.value) || 0;
+        if (k === 'infosimples_token') {
+          cfg[k] = inp.value.trim();
+        } else {
+          cfg[k] = parseFloat(inp.value) || 0;
+        }
       });
 
       try {

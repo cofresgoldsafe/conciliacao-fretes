@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.83">
+  <link rel="stylesheet" href="style.css?v=8.84">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 16:06 (Novos criterios antifraude e consulta assistida 1-clique Caixa FGTS)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 16:29 (Automacao FGTS Caixa via InfoSimples API e novos pesos antifraude)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1554,13 +1554,28 @@
                 <label for="cfg_peso_aumento_expressivo_capital_sim">Aumento Expressivo de Capital (-pts)</label>
                 <input type="number" id="cfg_peso_aumento_expressivo_capital_sim" class="form-input" value="-20" />
               </div>
+              <div class="form-group" style="grid-column: 1 / -1; background: rgba(15, 23, 42, 0.4); padding: 0.85rem; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
+                <label for="cfg_infosimples_token" style="display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: #38bdf8;">
+                  <span>🔑 Token da API InfoSimples (Automação Consulta FGTS / CRF Caixa)</span>
+                  <a href="https://api.infosimples.com/" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: #38bdf8; text-decoration: underline;">Painel InfoSimples ↗</a>
+                </label>
+                <input type="text" id="cfg_infosimples_token" class="form-input" placeholder="Cole seu token de autenticação da InfoSimples aqui..." style="font-family: var(--font-mono); font-size: 0.85rem;" />
+              </div>
               <div class="form-group">
                 <label for="cfg_peso_fgts_regular_nao">FGTS Irregular (-pts)</label>
                 <input type="number" id="cfg_peso_fgts_regular_nao" class="form-input" value="-6" />
               </div>
               <div class="form-group">
+                <label for="cfg_peso_razao_fgts_igual_sim">Razão Social Igual no FGTS (+pts)</label>
+                <input type="number" id="cfg_peso_razao_fgts_igual_sim" class="form-input" value="3" />
+              </div>
+              <div class="form-group">
                 <label for="cfg_peso_razao_fgts_igual_nao">Razão Divergente do FGTS (-pts)</label>
-                <input type="number" id="cfg_peso_razao_fgts_igual_nao" class="form-input" value="-10" />
+                <input type="number" id="cfg_peso_razao_fgts_igual_nao" class="form-input" value="-15" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_razao_fgts_nao_encontrado">Razão Não Encontrada no FGTS (-pts)</label>
+                <input type="number" id="cfg_peso_razao_fgts_nao_encontrado" class="form-input" value="-5" />
               </div>
               <div class="form-group">
                 <label for="cfg_peso_boletos_sim">3 NFs Confirmadas (+pts)</label>
@@ -2192,12 +2207,18 @@
             <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
               <span>6. FGTS, Sócios & Certidões Comerciais</span>
               <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="btnConsultarFgtsInfoSimples" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.65rem; border-color: #38bdf8; color: #38bdf8; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer;" title="Consultar FGTS automaticamente via API InfoSimples">
+                  ⚡ Consultar FGTS (InfoSimples)
+                </button>
                 <button type="button" id="btnConsultarFgtsCaixa" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.65rem; border-color: #10b981; color: #10b981; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer;" title="Copiar CNPJ para área de transferência e abrir consulta oficial da Caixa Econômica">
                   🌐 Consultar FGTS na Caixa (1-Clique)
                 </button>
-                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">✍️ Conferência Manual</span>
               </div>
             </h3>
+
+            <!-- Badge de Status Automático da Consulta FGTS Caixa -->
+            <div id="cr_fgts_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 1rem;"></div>
+
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
                 <label>FGTS Regular? *</label>
@@ -2211,8 +2232,9 @@
                 <label>Razão = FGTS? *</label>
                 <select id="cr_razao_fgts_igual" class="form-select" required>
                   <option value="" selected disabled>Selecione...</option>
-                  <option value="S">Igual (0 pts)</option>
-                  <option value="N">Divergente (-10 pts)</option>
+                  <option value="S">Igual (+3 pts)</option>
+                  <option value="N">Divergente (-15 pts)</option>
+                  <option value="NE">Não Encontrado (-5 pts)</option>
                 </select>
               </div>
               <div class="form-group">
@@ -2792,6 +2814,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.83"></script>
+  <script src="app.js?v=8.84"></script>
 </body>
 </html>

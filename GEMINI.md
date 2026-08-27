@@ -216,7 +216,19 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Inclusão dos novos campos na aba de Configurações de Score (`#tab-config-score`) para parametrização livre pelo gestor.
      - Renderização de badges explicativos na Ficha do Pedido e linhas discriminadas no Extrato de Conferência Matemática do Score.
      - Sincronização dinâmica de rótulos (`atualizarRotulosSelectsCredito`) e persistência segura tanto no PostgreSQL (`dados_completos JSONB`) quanto no backup local em disco (`analise_credito_history.json`).
-   - **Suíte de Testes Automatizados:** Script `test_novos_criterios_credito.js` com 8 asserções automatizadas cobrindo pesos padrão, cálculos 'N' e 'S', overrides customizados, persistência/reset em disco, elementos de UI e integração com endpoint HTTP `POST /api/financeiro/analise-credito/calcular-salvar` (100% aprovados).
+30. [x] **Automação da Consulta FGTS / CRF Caixa via API InfoSimples (`server.js`, `analise_credito_engine.js`, `public/index.html`, `public/app.js`, `test_infosimples_fgts.js`):**
+   - **Integração REST JSON com API InfoSimples:**
+     - Consumo do endpoint oficial da Caixa CRF (`POST https://api.infosimples.com/api/v2/consultas/caixa/crf`) de forma assíncrona e paralela com as demais consultas de inteligência no Protheus.
+     - Suporte a credencial flexível via `INFOSIMPLES_TOKEN` (variável de ambiente) ou campo dedicado em tela na aba **Configurações de Score (`#tab-config-score`)**.
+   - **Novas Regras de Pontuação Antifraude para o FGTS:**
+     - **Empresa Regular com Razão Social Idêntica:** `fgts_situacao_regular = 'S'` (0 pts) e `razao_fgts_igual = 'S'` (**`+3 pts`**).
+     - **Empresa Localizada com Razão Social Divergente (Empresa Alterada/Comprada):** `razao_fgts_igual = 'N'` (**`-15 pts`**).
+     - **Empresa Não Localizada no FGTS (Sem Histórico de Empregados / Empresa Fantasma):** `fgts_situacao_regular = 'N'` (`-6 pts`) e `razao_fgts_igual = 'NE'` (**`-5 pts`**), totalizando penalidade de `-11 pts`.
+   - **Interface Reativa, Badges e Botão Dedicado:**
+     - Botão `⚡ Consultar FGTS (InfoSimples)` no Bloco 6 permitindo reconsultas sob demanda sem recarregar o pedido.
+     - Badge informativo automático com Razão Social histórica retornada pela Caixa, situação cadastral e validade do CRF.
+     - Botão assistido 1-Clique na Caixa mantido como contingência operacional.
+   - **Suíte de Testes:** Script `test_infosimples_fgts.js` com 8 asserções automatizadas cobrindo todos os cenários de score, persistência de token string e rota HTTP `POST /api/financeiro/analise-credito/consultar-fgts`.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

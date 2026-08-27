@@ -110,9 +110,12 @@ const DEFAULT_CONFIG = {
   peso_alteracao_recente_socios_sim: -8.0,
   peso_aumento_expressivo_capital_sim: -20.0,
   peso_fgts_regular_nao: -6.0,
-  peso_razao_fgts_igual_nao: -10.0,
+  peso_razao_fgts_igual_sim: 3.0,
+  peso_razao_fgts_igual_nao: -15.0,
+  peso_razao_fgts_nao_encontrado: -5.0,
   peso_boletos_sim: 3.0,
   peso_boletos_nao: -3.0,
+  infosimples_token: '',
 };
 
 function getScoreConfig() {
@@ -302,8 +305,16 @@ function calcularScore(dados, config = getScoreConfig()) {
   else if (dados.tres_nfs_confirmadas === 'N') pontos.tres_nfs = config.peso_boletos_nao;
   else pontos.tres_nfs = 0; // 'D' (Dispensado) = 0 pts
 
-  pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? config.peso_fgts_regular_nao : 0;
-  pontos.razao_fgts_igual = dados.razao_fgts_igual === 'N' ? config.peso_razao_fgts_igual_nao : 0;
+  pontos.fgts_regular = dados.fgts_situacao_regular === 'N' ? (config.peso_fgts_regular_nao !== undefined ? config.peso_fgts_regular_nao : -6.0) : 0;
+  if (dados.razao_fgts_igual === 'S') {
+    pontos.razao_fgts_igual = config.peso_razao_fgts_igual_sim !== undefined ? config.peso_razao_fgts_igual_sim : 3.0;
+  } else if (dados.razao_fgts_igual === 'N') {
+    pontos.razao_fgts_igual = config.peso_razao_fgts_igual_nao !== undefined ? config.peso_razao_fgts_igual_nao : -15.0;
+  } else if (dados.razao_fgts_igual === 'NE' || dados.razao_fgts_igual === 'X') {
+    pontos.razao_fgts_igual = config.peso_razao_fgts_nao_encontrado !== undefined ? config.peso_razao_fgts_nao_encontrado : -5.0;
+  } else {
+    pontos.razao_fgts_igual = 0;
+  }
   pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? (config.peso_alteracao_recente_socios_sim !== undefined ? config.peso_alteracao_recente_socios_sim : -8.0) : 0;
   pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? (config.peso_aumento_expressivo_capital_sim !== undefined ? config.peso_aumento_expressivo_capital_sim : -20.0) : 0;
 
