@@ -5759,13 +5759,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (exibidos.length === 0) {
-      historicoCreditoTableBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada${periodoLabel ? ` nos ${periodoLabel.toLowerCase()}` : ''}.</td></tr>`;
+      historicoCreditoTableBody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhuma análise encontrada${periodoLabel ? ` nos ${periodoLabel.toLowerCase()}` : ''}.</td></tr>`;
       return;
     }
 
     historicoCreditoTableBody.innerHTML = exibidos.map(item => {
       const dataStr = item.created_at ? new Date(item.created_at).toLocaleString('pt-BR') : '-';
       const scoreColor = item.total_score > 5 ? '#22c55e' : '#f87171';
+      const rawUser = String(item.usuario || (item.dados_completos && item.dados_completos.usuario) || 'Sistema').trim();
+      const userInitial = rawUser.length > 0 ? rawUser.charAt(0).toUpperCase() : '-';
       
       let sugestoes = item.sugestoes_lista || [];
       if (sugestoes.length === 0) {
@@ -5779,7 +5781,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return `
         <tr>
           <td style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-muted);">${dataStr}</td>
-          <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${escapeHtml(item.empresa)}</span></td>
+          <td style="text-align: center;"><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 700;">${escapeHtml(item.empresa)}</span></td>
+          <td style="text-align: center;">
+            <span class="user-avatar-badge" title="Registrado por: ${escapeHtml(rawUser)}" style="display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(99, 102, 241, 0.25)); color: #38bdf8; font-weight: 700; font-size: 0.78rem; border: 1px solid rgba(56, 189, 248, 0.35); cursor: default; user-select: none;">
+              ${escapeHtml(userInitial)}
+            </span>
+          </td>
           <td>
             <a href="javascript:void(0)" class="btn-abrir-ficha" data-id="${item.id}" style="color: #38bdf8; text-decoration: underline; font-weight: 700; font-family: var(--font-mono); font-size: 0.88rem;">
               #${escapeHtml(item.pedido_venda)}
