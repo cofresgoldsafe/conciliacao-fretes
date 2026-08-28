@@ -48,7 +48,16 @@
   async function loadBIDashboard(forceRefresh = false) {
     if (isBiLoading) return;
 
-    const token = localStorage.getItem('gsi_auth_token');
+    let token = null;
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) token = sess.token;
+      }
+      if (!token) token = localStorage.getItem('gsi_auth_token');
+    } catch {}
+
     const biIframeContainer = document.getElementById('biIframeContainer');
     const biLoadingSpinner = document.getElementById('biLoadingSpinner');
     const biStatusContainer = document.getElementById('biStatusContainer');
