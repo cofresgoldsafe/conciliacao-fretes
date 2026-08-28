@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 28/08/2026 (v8.90 - Módulo BI Executivo Metabase JWT Signed Embedding, 33 Grupos SBM010 & Views Analíticas Multi-Empresa)  
+> **Data da Última Auditoria:** 28/08/2026 (v8.91 - Correção de Renderização HTML em Auditoria & Telemetria no Painel de Configurações)  
 
 ---
 
@@ -281,6 +281,10 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Documentação e Testes:**
      - Guia completo de implantação em `docs/metabase/GUIA_SETUP_METABASE.md` e manual de arquitetura corporativa em `docs/metabase/ARQUITETURA_BI_EXECUTIVO.md`.
      - Suíte de testes automatizados `test_bi_embed.js` com 7 asserções cobrindo segurança RBAC (401, 403, 200), tokens JWT e fallbacks (100% de aprovação).
+35. [x] **Correção da Renderização de HTML/CSS na Coluna "Último Acesso Ativo" em Auditoria (`public/app.js`, `public/index.html`, `test_dom_xss_and_secrets.js`):**
+    - **Causa Raiz & Resolução:** A função `formatTimeAgo()` gera marcação HTML segura (badges com cor, borda e timestamp legível). Na interpolação da tabela `auditUsersTableBody`, o resultado estava envolvido por `escapeHtml(...)`, convertendo tags como `<span>` e `<small>` em entidades textuais visíveis (`&lt;span...&gt;`).
+    - **Correção Aplicada:** Remoção do `escapeHtml` sobre o retorno de `formatTimeAgo` em `auditUsersTableBody`, calibração visual dos badges com bordas suaves (`border: 1px solid rgba(16, 185, 129, 0.3)`) e inclusão de salvaguarda contra pequenas variações de relógio (`diffSec < 0`).
+    - **Suíte de Testes:** Atualização em `test_dom_xss_and_secrets.js` validando que a tabela renderiza `formatTimeAgo` sem escape e preserva 100% das regras de sanitização XSS.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

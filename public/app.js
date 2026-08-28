@@ -1960,14 +1960,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isNaN(date.getTime())) return '<span style="color: var(--text-muted);">Nunca acessou</span>';
 
     const now = new Date();
-    const diffSec = Math.floor((now - date) / 1000);
+    let diffSec = Math.floor((now - date) / 1000);
+    if (diffSec < 0) diffSec = 0;
     
     const formattedDate = date.toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
 
-    if (diffSec < 60) return `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Online agora</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
+    if (diffSec < 60) return `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">Online agora</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
     if (diffSec < 3600) {
       const mins = Math.floor(diffSec / 60);
       return `<span style="color: #38bdf8; font-weight: 600;">Há ${mins} min</span> <small style="color: var(--text-muted); margin-left: 4px;">(${formattedDate})</small>`;
@@ -2059,7 +2060,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${escapeHtml(u.name)}</td>
                 <td>${roleBadge}</td>
                 <td>${statusBadge}</td>
-                <td>${escapeHtml(formatTimeAgo(u.lastActiveAt || u.lastLoginAt))}</td>
+                <td>${formatTimeAgo(u.lastActiveAt || u.lastLoginAt)}</td>
                 <td style="text-align: right;">${countBadge}</td>
               </tr>
             `;

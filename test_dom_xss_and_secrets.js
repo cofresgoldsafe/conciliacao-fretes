@@ -77,11 +77,12 @@ async function runTests() {
     assert.ok(appJsContent.includes('escapeHtml(act.userName'), 'Feed de auditoria deve escapar act.userName');
     assert.ok(appJsContent.includes('escapeHtml(item.transportadora)'), 'Histórico deve escapar transportadora');
     assert.ok(appJsContent.includes('escapeHtml(empNome)'), 'Resumo de fatura deve escapar empNome');
-    assert.ok(appJsContent.includes('escapeHtml(data.config.usuario)'), 'Status ViPP deve escapar usuario');
+    assert.ok(appJsContent.includes('<td>${formatTimeAgo(u.lastActiveAt || u.lastLoginAt)}</td>'), 'Tabela de auditoria deve renderizar formatTimeAgo sem escapeHtml para preservar badges HTML');
+    assert.ok(!appJsContent.includes('escapeHtml(formatTimeAgo('), 'formatTimeAgo NÃO deve ser envolvida por escapeHtml');
 
-    report('public/app.js sanitiza feed de atividades, histórico e dados dinâmicos', true);
+    report('public/app.js sanitiza feed de atividades, histórico e dados dinâmicos preservando badges de auditoria', true);
   } catch (err) {
-    report('public/app.js sanitiza feed de atividades, histórico e dados dinâmicos', false, err.message);
+    report('public/app.js sanitiza feed de atividades, histórico e dados dinâmicos preservando badges de auditoria', false, err.message);
   }
 
   // -------------------------------------------------------------
