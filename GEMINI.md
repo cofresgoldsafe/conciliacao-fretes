@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 27/08/2026 (v8.89 - Faróis de Conectividade SRE & Fail-Neutral Engine)  
+> **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
+> **Data da Última Auditoria:** 28/08/2026 (v8.90 - Módulo BI Executivo Metabase JWT Signed Embedding, 33 Grupos SBM010 & Views Analíticas Multi-Empresa)  
 
 ---
 
@@ -263,18 +263,23 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Invalidação Agressiva de Cache (`v=8.89`):** Parâmetros de cache-busting sincronizados em `style.css?v=8.89` e `app.js?v=8.89` com atualização da tag de versão para `27/08/2026 18:00`.
 34. [x] **Módulo de BI Executivo Embutido — Metabase Embedded Analytics (`services/bi_service.js`, `public/js/bi.js`, `sql/bi/`, `docs/metabase/`, `server.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_bi_embed.js`):**
    - **Arquitetura Modular e Desacoplamento:**
-     - Criação do serviço backend `services/bi_service.js` e do módulo frontend `public/js/bi.js`, mantendo `server.js` e `app.js` limpos com importações mínimas.
+     - Criação do serviço backend `services/bi_service.js` e do módulo frontend `public/js/bi.js`, mantendo `server.js` e `app.js` limpos e desacoplados com importações mínimas.
+   - **Infraestrutura em Nuvem (Render Pro & Supabase Canada):**
+     - Instância dedicada no Render (`bi-gsi.onrender.com`) rodando Metabase `v0.49.13` em container Pro com **2 GB de RAM e 1 CPU dedicada**, garantindo inicialização veloz, zero crash por exaustão de memória e disponibilidade 24/7.
+     - Conexão segura e direta com o banco de dados PostgreSQL no Supabase (Região Canadá `ca-central-1` no host `aws-0-ca-central-1.pooler.supabase.com:5432`).
    - **Segurança RBAC Estrita e Signed JWT Embedding:**
      - Endpoint protegido `/api/bi/dashboard-executivo` restrito a `admin` e usuário master `alexandre` (`requireAuth`, `requireRole('admin')`). Bloqueio 403 para perfis operacionais e vendedores.
-     - Geração de token JWT assinado criptograficamente com `METABASE_SECRET_KEY` e TTL efêmero de 10 minutos para incorporação segura (*Signed Embed*).
+     - Geração de token JWT assinado criptograficamente com `METABASE_SECRET_KEY` (HMAC-SHA256) e TTL efêmero de 10 minutos para incorporação segura (*Signed Embed*).
+     - Integração de Single Sign-On transparente via `conciliacao_fretes_session` sem necessidade de redigitar credenciais.
    - **Interface Seamless & Experiência Centralizada no Portal GSI:**
-     - Nova aba principal `📊 BI EXECUTIVO` exibida exclusivamente para a diretoria.
-     - Container de iframe responsivo em tela cheia (`82vh`), sincronização de temas claro/escuro, botão de tela cheia (`⛶`) e botão de recarregamento (`🔄`).
-     - Assistente visual de configuração (*Setup Guide*) amigável com status das variáveis de ambiente (`METABASE_SITE_URL`, `METABASE_SECRET_KEY`, `METABASE_EXEC_DASHBOARD_ID`).
-   - **Modelagem Analítica SQL & Desacoplamento do TOTVS Cloud:**
-     - Scripts SQL de Views analíticas em `sql/bi/`: `01_vw_produtos_estoque.sql` (Saldos por empresa MP 14/GSI 15/OACO 16, preços e valor total de estoque), `02_vw_analise_credito.sql` (Histórico de crédito, scores, riscos e decisões), `03_vw_atividades_auditoria.sql` (Telemetria de operadores) e `04_vw_demandas_grupos_comerciais.sql` (Cofres, Fragmentadoras, Plastificação, Armários) para execução no Supabase PostgreSQL, blindando o ERP Protheus contra table locks de BI.
+     - Nova aba principal `📊 BI EXECUTIVO` exibida exclusivamente para a diretoria (`#tab-bi-executivo` / `mainTabBi`).
+     - Container de iframe responsivo em tela cheia (`82vh`), sincronização de temas claro/escuro, botão de tela cheia (`⛶`) e botão de recarregamento instantâneo (`🔄`).
+     - Assistente visual de configuração (*Setup Guide*) integrado para monitoramento do status das variáveis de ambiente (`METABASE_SITE_URL`, `METABASE_SECRET_KEY`, `METABASE_EXEC_DASHBOARD_ID`).
+   - **Modelagem Analítica SQL & Cobertura dos 33 Grupos do Protheus (`SBM010`):**
+     - Script DDL e Seeding `sql/bi/00_tabela_grupos_sbm.sql` cobrindo 100% dos **33 Grupos Oficiais do Protheus Empresa 01** (`001 - Cofres` até `091 - Insumos Produção Cofres`), garantindo suporte total a vendas passadas e presentes.
+     - Scripts SQL de Views analíticas em `sql/bi/`: `01_vw_produtos_estoque.sql` (Saldos por empresa MP 14/GSI 15/OACO 16, preços, valor total de estoque, SC6, SC7 e rupturas), `02_vw_analise_credito.sql` (Histórico de crédito, scores, riscos e decisões), `03_vw_atividades_auditoria.sql` (Telemetria de operadores) e `04_vw_demandas_grupos_comerciais.sql` (Demandas e faturamento por grupo comercial).
    - **Documentação e Testes:**
-     - Guia completo de implantação Docker/Render em `docs/metabase/GUIA_SETUP_METABASE.md`.
+     - Guia completo de implantação em `docs/metabase/GUIA_SETUP_METABASE.md` e manual de arquitetura corporativa em `docs/metabase/ARQUITETURA_BI_EXECUTIVO.md`.
      - Suíte de testes automatizados `test_bi_embed.js` com 7 asserções cobrindo segurança RBAC (401, 403, 200), tokens JWT e fallbacks (100% de aprovação).
 
 ### Prioridade 1 (Resiliencia/SRE)
