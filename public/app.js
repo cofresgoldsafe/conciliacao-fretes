@@ -224,11 +224,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTabConsulta = document.getElementById('mainTabConsulta');
     const mainTabVendedores = document.getElementById('mainTabVendedores');
     const mainTabFinanceiro = document.getElementById('mainTabFinanceiro');
+    const mainTabBi = document.getElementById('mainTabBi');
     const mainTabConfig = document.getElementById('mainTabConfig');
     
     // Garante que o usuário Alexandre ou Administrador tenha permissão total mesmo com sessão antiga no localStorage
+    const isAdmin = (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin');
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
-    if (!perms || (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin')) {
+    if (!perms || isAdmin) {
       perms = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
     }
 
@@ -236,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabConsulta) mainTabConsulta.style.display = perms.includes('consulta') ? '' : 'none';
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
     if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
+    if (mainTabBi) mainTabBi.style.display = isAdmin ? '' : 'none';
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
@@ -700,6 +703,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (subGroupFinanceiro) subGroupFinanceiro.classList.remove('hidden');
       firstSubBtn = subGroupFinanceiro ? subGroupFinanceiro.querySelector('.nav-tab-btn') : null;
       initConciliacaoBancaria();
+    } else if (targetMain === 'bi') {
+      tabPanes.forEach(pane => pane.classList.add('hidden'));
+      const targetPane = document.getElementById('tab-bi-executivo');
+      if (targetPane) targetPane.classList.remove('hidden');
+      if (typeof window.initBITab === 'function') {
+        window.initBITab();
+      }
     } else if (targetMain === 'configuracoes') {
       if (subGroupConfiguracoes) subGroupConfiguracoes.classList.remove('hidden');
       firstSubBtn = subGroupConfiguracoes ? subGroupConfiguracoes.querySelector('.nav-tab-btn') : null;

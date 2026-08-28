@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 27/08/2026 18:00 (Faróis de Conectividade Externa SRE & Eliminação de Falhas Silenciosas no Score)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 28/08/2026 12:00 (Módulo BI Executivo Metabase & Views Analíticas Multi-Empresa)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -53,6 +53,9 @@
       </button>
       <button class="main-tab-btn" data-main-tab="financeiro" id="mainTabFinanceiro">
         <span>💰 ASSIST. FINANC.</span>
+      </button>
+      <button class="main-tab-btn" data-main-tab="bi" id="mainTabBi" style="display: none;">
+        <span>📊 BI EXECUTIVO</span>
       </button>
       <button class="main-tab-btn" data-main-tab="configuracoes" id="mainTabConfig">
         <span>⚙️ CONFIGURAÇÕES</span>
@@ -2383,6 +2386,40 @@
         </div>
       </section>
     </div>
+
+    <!-- ABA: BI Executivo Embutido (Metabase) -->
+    <div id="tab-bi-executivo" class="tab-pane hidden">
+      <div class="bi-wrapper" id="biWrapper">
+        <!-- Toolbar do BI -->
+        <div class="bi-toolbar card">
+          <div class="bi-title-group">
+            <h2>📊 Painel de BI Executivo</h2>
+            <p class="desc">Visão Estratégica Consolidada — Vendas, Margens Brutas e Controladoria Financeira</p>
+          </div>
+          <div class="bi-actions">
+            <span id="biLastUpdated" class="bi-last-updated"></span>
+            <button id="btnBiRefresh" class="btn btn-outline btn-sm" title="Recarregar dados do painel">
+              🔄 Atualizar
+            </button>
+            <button id="btnBiFullscreen" class="btn btn-outline btn-sm" title="Alternar modo Tela Cheia">
+              ⛶ Tela Cheia
+            </button>
+          </div>
+        </div>
+
+        <!-- Container de Status / Guia de Configuração (Exibido se Metabase não configurado) -->
+        <div id="biStatusContainer" class="hidden"></div>
+
+        <!-- Container de Carregamento -->
+        <div id="biLoadingSpinner" class="loading-state hidden" style="padding: 3rem; text-align: center;">
+          <div class="spinner"></div>
+          <p style="margin-top: 1rem; color: var(--text-muted);">Carregando painel de BI executivo em tempo real...</p>
+        </div>
+
+        <!-- Container do Iframe -->
+        <div id="biIframeContainer" class="bi-iframe-wrapper hidden"></div>
+      </div>
+    </div>
   </main>
 
   <!-- Modal Ficha Completa da Análise de Crédito -->
@@ -2829,6 +2866,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=8.89"></script>
+  <script src="js/bi.js?v=8.90"></script>
+  <script src="app.js?v=8.90"></script>
 </body>
 </html>

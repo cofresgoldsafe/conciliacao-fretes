@@ -261,6 +261,21 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Causa Raiz & Resolução do Bloqueio de Login:** Identificada declaração duplicada e não fechada de listener de evento no monolito SPA que gerava `SyntaxError: Unexpected end of input`, impedindo a execução de `DOMContentLoaded` e a ocultação do `#loginOverlay`.
    - **Salvaguarda Preventiva:** Incorporação obrigatória de linting/checagem de sintaxe via `node -c public/app.js` em todos os ciclos de release antes de commits.
    - **Invalidação Agressiva de Cache (`v=8.89`):** Parâmetros de cache-busting sincronizados em `style.css?v=8.89` e `app.js?v=8.89` com atualização da tag de versão para `27/08/2026 18:00`.
+34. [x] **Módulo de BI Executivo Embutido — Metabase Embedded Analytics (`services/bi_service.js`, `public/js/bi.js`, `sql/bi/`, `docs/metabase/`, `server.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_bi_embed.js`):**
+   - **Arquitetura Modular e Desacoplamento:**
+     - Criação do serviço backend `services/bi_service.js` e do módulo frontend `public/js/bi.js`, mantendo `server.js` e `app.js` limpos com importações mínimas.
+   - **Segurança RBAC Estrita e Signed JWT Embedding:**
+     - Endpoint protegido `/api/bi/dashboard-executivo` restrito a `admin` e usuário master `alexandre` (`requireAuth`, `requireRole('admin')`). Bloqueio 403 para perfis operacionais e vendedores.
+     - Geração de token JWT assinado criptograficamente com `METABASE_SECRET_KEY` e TTL efêmero de 10 minutos para incorporação segura (*Signed Embed*).
+   - **Interface Seamless & Experiência Centralizada no Portal GSI:**
+     - Nova aba principal `📊 BI EXECUTIVO` exibida exclusivamente para a diretoria.
+     - Container de iframe responsivo em tela cheia (`82vh`), sincronização de temas claro/escuro, botão de tela cheia (`⛶`) e botão de recarregamento (`🔄`).
+     - Assistente visual de configuração (*Setup Guide*) amigável com status das variáveis de ambiente (`METABASE_SITE_URL`, `METABASE_SECRET_KEY`, `METABASE_EXEC_DASHBOARD_ID`).
+   - **Modelagem Analítica SQL & Desacoplamento do TOTVS Cloud:**
+     - Scripts SQL de Views analíticas em `sql/bi/`: `01_vw_produtos_estoque.sql` (Saldos por empresa MP 14/GSI 15/OACO 16, preços e valor total de estoque), `02_vw_analise_credito.sql` (Histórico de crédito, scores, riscos e decisões), `03_vw_atividades_auditoria.sql` (Telemetria de operadores) e `04_vw_demandas_grupos_comerciais.sql` (Cofres, Fragmentadoras, Plastificação, Armários) para execução no Supabase PostgreSQL, blindando o ERP Protheus contra table locks de BI.
+   - **Documentação e Testes:**
+     - Guia completo de implantação Docker/Render em `docs/metabase/GUIA_SETUP_METABASE.md`.
+     - Suíte de testes automatizados `test_bi_embed.js` com 7 asserções cobrindo segurança RBAC (401, 403, 200), tokens JWT e fallbacks (100% de aprovação).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

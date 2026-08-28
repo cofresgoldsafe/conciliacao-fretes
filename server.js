@@ -80,6 +80,11 @@ const {
   testSmtpConnection
 } = require('./mailer');
 
+const {
+  getMetabaseConfigStatus,
+  generateSignedDashboardUrl
+} = require('./services/bi_service');
+
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
 
@@ -3040,6 +3045,33 @@ app.get('/api/financeiro/analise-credito/historico', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// --- MÓDULO DE BI EXECUTIVO EMBUTIDO (METABASE EMBEDDED) ---
+app.get('/api/bi/dashboard-executivo', requireAuth, requireRole('admin'), (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const theme = req.query.theme || 'night';
+    const result = generateSignedDashboardUrl({ theme });
+
+    // Registra auditoria de consulta ao BI no feed de auditoria
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_BI_EXECUTIVO',
+      description: `Acessou o Dashboard Executivo de BI (Configurado: ${result.configured})`,
+      ip: req.ip,
+      metadata: { configured: result.configured, dashboardId: result.dashboardId }
+    }).catch(() => {});
+
+    return res.json(result);
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao obter URL do Dashboard Executivo.');
+  }
+});
+
+app.get('/api/bi/status', requireAuth, requireRole('admin'), (req, res) => {
+  return res.json({ success: true, ...getMetabaseConfigStatus() });
 });
 
 /**
