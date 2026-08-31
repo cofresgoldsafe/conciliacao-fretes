@@ -254,12 +254,10 @@ function makeRequest(options, postData = null) {
   });
 }
 
-// 7. Testes de Segurança HTTP & Proteção RBAC / BOLA
-async function runHttpSecurityTests() {
+// 7. Testes de Segurança HTTP & Acesso Unificado de Vendedores
+async function runHttpSecurityTests(testPort) {
   const adminToken = jwt.sign({ username: 'alexandre', name: 'Alexandre', role: 'admin', permissions: ['vendedores'] }, JWT_SECRET);
   const vendorJulianaToken = jwt.sign({ username: 'juliana', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] }, JWT_SECRET);
-
-  const testPort = 3000;
 
   // 7.1. Requisição não autenticada deve ser rejeitada com 401
   await asyncTest('GET /api/vendedores/pedidos/abertos sem token é bloqueado com 401 Unauthorized', async () => {
@@ -285,7 +283,7 @@ async function runHttpSecurityTests() {
     assert.strictEqual(res.body.success, false);
   });
 
-  // 7.3. Requisição com token de vendedor autenticado tem sucesso
+  // 7.3. Requisição com token de vendedor autenticado tem sucesso e acessa pedidos abertos globais
   await asyncTest('GET /api/vendedores/pedidos/abertos com Bearer JWT responde 200 OK', async () => {
     const res = await makeRequest({
       hostname: '127.0.0.1',
@@ -316,20 +314,20 @@ async function runHttpSecurityTests() {
     assert.strictEqual(res.body.success, true);
   });
 
-  // 7.5. Vendedor sem vendorCode associado deve ser bloqueado com 403 (Fail-Closed)
-  const invalidVendorToken = jwt.sign({ username: 'sem_codigo', name: 'Vendedor Sem Código', role: 'vendedor' }, JWT_SECRET);
-  await asyncTest('Vendedor sem vendorCode recebe 403 Forbidden (Fail-Closed)', async () => {
+  // 7.5. Vendedor pode consultar pedidos abertos de todos os vendedores sem trava restritiva
+  const vendorAndreaToken = jwt.sign({ username: 'andrea', name: 'Andrea', role: 'vendedor', vendorCode: '000064', permissions: ['vendedores'] }, JWT_SECRET);
+  await asyncTest('Vendedor pode consultar pedidos abertos com ou sem filtro de vendedor', async () => {
     const res = await makeRequest({
       hostname: '127.0.0.1',
       port: testPort,
-      path: '/api/vendedores/pedidos/abertos',
+      path: '/api/vendedores/pedidos/abertos?codVend=000004',
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${invalidVendorToken}`
+        'Authorization': `Bearer ${vendorAndreaToken}`
       }
     });
-    assert.strictEqual(res.status, 403);
-    assert.strictEqual(res.body.success, false);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.success, true);
   });
 
   // 7.6. POST /api/vendedores/pedidos/search sem token é bloqueado com 401
@@ -365,12 +363,13 @@ async function runHttpSecurityTests() {
   }
 }
 
-// Inicia servidor temporário para testes HTTP se não estiver ouvindo
-const testApp = server.listen ? server : null;
+// Inicia servidor temporário em porta efêmera para testes HTTP
 const tempServer = http.createServer(server);
-tempServer.listen(3000, () => {
-  runHttpSecurityTests().then(() => {
+tempServer.listen(0, () => {
+  const port = tempServer.address().port;
+  runHttpSecurityTests(port).then(() => {
     tempServer.close();
+    process.exit(failCount > 0 ? 1 : 0);
   }).catch((err) => {
     console.error('Erro nos testes HTTP:', err);
     tempServer.close();

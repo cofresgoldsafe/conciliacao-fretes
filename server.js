@@ -988,14 +988,6 @@ app.get('/api/vendedores/pedidos/abertos', requireAuth, async (req, res) => {
     let { empresa, codVend } = req.query || {};
     const user = getUserFromReq(req);
 
-    // Se o usuário logado for vendedor, restringe estritamente ao seu código de vendedor (Fail-Closed)
-    if (user.role === 'vendedor') {
-      if (!user.vendorCode) {
-        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
-      }
-      codVend = user.vendorCode;
-    }
-
     const results = await buscarPedidosAbertosVendedores({ empresa, codVend });
 
     const filtros = [
@@ -1144,18 +1136,6 @@ app.get('/api/vendedores/pedidos/detalhes', requireAuth, async (req, res) => {
     }
 
     const user = getUserFromReq(req);
-    // Proteção Anti-IDOR / BOLA para usuários com perfil de vendedor (Fail-Closed)
-    if (user.role === 'vendedor') {
-      if (!user.vendorCode) {
-        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
-      }
-      const vendPedido = String(detalhes.comercial && detalhes.comercial.codVendedor || '').trim();
-      const paddedVend = vendPedido.padStart(6, '0');
-      const cleanUserVend = String(user.vendorCode).trim().padStart(6, '0');
-      if (paddedVend !== cleanUserVend) {
-        return res.status(403).json({ success: false, message: 'Acesso negado: Este pedido pertence a outro vendedor.' });
-      }
-    }
 
     logUserActivity({
       username: user.username,
@@ -1181,12 +1161,6 @@ app.post('/api/vendedores/comissoes', requireAuth, async (req, res) => {
     }
 
     const user = getUserFromReq(req);
-    if (user.role === 'vendedor') {
-      if (!user.vendorCode) {
-        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
-      }
-      codVend = user.vendorCode; // Enforce vendor isolation
-    }
 
     // Validação de intervalo máximo de 60 dias
     const s1 = String(dataIni).replace(/\D/g, '');

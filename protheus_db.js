@@ -1143,10 +1143,14 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
           RTRIM(E3.E3_EMISSAO) AS E3_EMISSAO,
           RTRIM(E3.E3_PEDIDO) AS E3_PEDIDO,
           RTRIM(E3.E3_CODCLI) AS E3_CODCLI,
+          RTRIM(ISNULL(A1.A1_NOME, '')) AS NOME_CLIENTE,
           ISNULL(E3.E3_BASE, 0) AS E3_BASE,
           ISNULL(E3.E3_PORC, 0) AS E3_PORC,
           ISNULL(E3.E3_COMIS, 0) AS E3_COMIS
         FROM ${emp.se3} E3
+        LEFT JOIN SA1010 A1
+          ON (A1.A1_COD = E3.E3_CODCLI OR A1.A1_COD = RIGHT('000000' + RTRIM(E3.E3_CODCLI), 6))
+         AND A1.D_E_L_E_T_ = ' '
         WHERE E3.E3_EMISSAO >= '${cleanDataIni}' 
           AND E3.E3_EMISSAO <= '${cleanDataFim}'
           ${vendFilter}
@@ -1160,6 +1164,8 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
           const valorBase = parseFloat(row.E3_BASE || 0);
           const percComis = parseFloat(row.E3_PORC || 0);
           const valorComis = parseFloat(row.E3_COMIS || 0);
+          const rawNome = (row.NOME_CLIENTE || '').trim();
+          const nome20 = rawNome.length > 20 ? rawNome.substring(0, 20) : rawNome;
 
           results.push({
             empresa: emp.nome,
@@ -1170,6 +1176,8 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
             emissao: row.E3_EMISSAO,
             pedido: row.E3_PEDIDO || '-',
             cliente: row.E3_CODCLI || '-',
+            nomeCliente: nome20 || '-',
+            nomeClienteCompleto: rawNome || '-',
             valorBase: roundVal(valorBase),
             percComis: roundVal(percComis),
             valorComis: roundVal(valorComis)

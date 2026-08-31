@@ -326,6 +326,17 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Segurança RBAC e Suíte de Testes:**
       - Endpoints `/api/bi/indices`, `/api/bi/indices/sync`, `/api/bi/indices/drilldown` e `/api/bi/indices/historico` protegidos por JWT e restritos a administradores.
       - Suíte automatizada `test_bi_indices.js` com 18 asserções aprovadas com 100% de sucesso.
+38. [x] **Desbloqueio de Visão Unificada para Vendedores & Coluna Nome em Comissões (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendedores_desbloqueio.js`, `test_pedidos_abertos.js`):**
+    - **Desativação da Trava Restritiva de Vendedores:**
+      - Remoção do bloqueio/override de isolamento (`codVend = user.vendorCode`) nas rotas `/api/vendedores/pedidos/abertos`, `/api/vendedores/comissoes` e `/api/vendedores/pedidos/detalhes`.
+      - Usuários com perfil `vendedor` agora podem consultar e visualizar comissões e pedidos em aberto de todos os vendedores ou filtrar interativamente por qualquer vendedor pelo menu seletor.
+      - Remoção do bloqueio de formulário na função `ajustarEscopoVendedor` no frontend (`public/app.js`), mantendo os seletores `#comisVendorSelect` e `#pedidosAbertosVendedorFilter` habilitados e editáveis por qualquer operador.
+    - **Nova Coluna "Nome" no Relatório de Comissões:**
+      - Consulta Protheus em `protheus_db.js` (`buscarComissoesPeriodo`) atualizada com `LEFT JOIN SA1010 A1` cruzando o código do cliente (`E3_CODCLI` com `A1_COD`).
+      - Extração e truncamento do nome do cliente (`A1_NOME`) nas **primeiras 20 letras (incluindo espaços)** (`nomeCliente: rawNome.substring(0, 20)`), com preservação do nome completo no tooltip (`title="${item.nomeClienteCompleto}"`).
+      - Tabela de Comissões atualizada em `public/index.html` e `public/app.js` com 8 colunas: inserção da coluna `Nome` (22% de largura) imediatamente ao lado de `Cliente` (11%) e redução da coluna `Vendedor` (de 16% para 12%) para distribuição harmônica do layout da tabela. Empty state ajustado para `colspan="8"`.
+    - **Suíte de Testes Automatizados:**
+      - Script `test_vendedores_desbloqueio.js` (8 testes aprovados) e `test_pedidos_abertos.js` (19 testes aprovados) validando truncamento exato, ordem e largura das colunas, renderização no frontend e acesso irrestrito dos vendedores aos dados globais.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

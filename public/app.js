@@ -2127,35 +2127,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const pedidosAbertosVendedorFilter = document.getElementById('pedidosAbertosVendedorFilter');
     const pedidosAbertosVendedorFilterGroup = document.getElementById('pedidosAbertosVendedorFilterGroup');
 
-    if (user && user.role === 'vendedor' && VENDEDOR_USERS[user.username.toLowerCase()]) {
-      const vendCode = VENDEDOR_USERS[user.username.toLowerCase()];
-      if (comisVendorSelect) {
-        comisVendorSelect.value = vendCode;
-        comisVendorSelect.disabled = true;
-      }
-      if (comisVendorSelectGroup) {
-        const label = comisVendorSelectGroup.querySelector('label');
-        if (label) label.textContent = `👤 Vendedor: ${user.name || user.username} (Fixo)`;
-      }
-      if (pedidosAbertosVendedorFilter) {
-        pedidosAbertosVendedorFilter.value = vendCode;
-        pedidosAbertosVendedorFilter.disabled = true;
-      }
-      if (pedidosAbertosVendedorFilterGroup) {
-        const label = pedidosAbertosVendedorFilterGroup.querySelector('label');
-        if (label) label.textContent = `👤 Vendedor: ${user.name || user.username} (Fixo)`;
-      }
-    } else {
-      if (comisVendorSelect) comisVendorSelect.disabled = false;
-      if (comisVendorSelectGroup) {
-        const label = comisVendorSelectGroup.querySelector('label');
-        if (label) label.textContent = '👤 Vendedor';
-      }
-      if (pedidosAbertosVendedorFilter) pedidosAbertosVendedorFilter.disabled = false;
-      if (pedidosAbertosVendedorFilterGroup) {
-        const label = pedidosAbertosVendedorFilterGroup.querySelector('label');
-        if (label) label.textContent = '👤 Vendedor';
-      }
+    if (comisVendorSelect) comisVendorSelect.disabled = false;
+    if (comisVendorSelectGroup) {
+      const label = comisVendorSelectGroup.querySelector('label');
+      if (label) label.textContent = '👤 Vendedor';
+    }
+    if (pedidosAbertosVendedorFilter) pedidosAbertosVendedorFilter.disabled = false;
+    if (pedidosAbertosVendedorFilterGroup) {
+      const label = pedidosAbertosVendedorFilterGroup.querySelector('label');
+      if (label) label.textContent = '👤 Vendedor';
     }
   }
 
@@ -2762,7 +2742,7 @@ document.addEventListener('DOMContentLoaded', () => {
     comissoesTableBody.innerHTML = '';
 
     if (list.length === 0) {
-      comissoesTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
+      comissoesTableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
       return;
     }
 
@@ -2774,6 +2754,8 @@ document.addEventListener('DOMContentLoaded', () => {
     list.forEach(item => {
       const tr = document.createElement('tr');
       const empSigla = item.empresaSigla || (item.empresaKey === 'METAL_PLENO' ? 'MP' : (item.empresaKey === 'GSI' ? 'GSI' : 'OACO'));
+      const rawNome = item.nomeCliente || (item.nomeClienteCompleto ? item.nomeClienteCompleto.substring(0, 20) : '-');
+      const nome20 = rawNome.length > 20 ? rawNome.substring(0, 20) : rawNome;
 
       tr.innerHTML = `
         <td><strong>${escapeHtml(item.nomeVendedor || item.codVend || '-')}</strong></td>
@@ -2781,6 +2763,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${formatEmissao(item.emissao)}</td>
         <td><code>${escapeHtml(item.pedido)}</code></td>
         <td>${escapeHtml(item.cliente)}</td>
+        <td title="${escapeHtml(item.nomeClienteCompleto || item.nomeCliente || '')}">${escapeHtml(nome20)}</td>
         <td style="text-align: right; font-weight: 500;">${formatCurrency(item.valorBase)}</td>
         <td style="text-align: right; font-weight: 700; color: #10b981;">${formatCurrency(item.valorComis)}</td>
       `;
