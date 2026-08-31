@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1788187300163",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 11332,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 100,
+        "contasPagar": 85,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-08-31T14:41:40.163Z"
+  },
+  {
+    "id": "ACT-1788187288747",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-08-31T14:41:28.747Z"
+  },
+  {
     "id": "ACT-1788187063244",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2232,31 +2262,5 @@
       "count": 1
     },
     "createdAt": "2026-08-27T10:46:14.135Z"
-  },
-  {
-    "id": "ACT-1787827571143",
-    "username": "andrea",
-    "userName": "Andrea",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000064 (8 pedido(s))",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "codVend": "000064",
-      "count": 8
-    },
-    "createdAt": "2026-08-27T10:46:11.143Z"
-  },
-  {
-    "id": "ACT-1787827568107",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000074 (10 pedido(s))",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "codVend": "000074",
-      "count": 10
-    },
-    "createdAt": "2026-08-27T10:46:08.107Z"
   }
 ]
