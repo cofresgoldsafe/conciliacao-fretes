@@ -717,6 +717,13 @@ async function initPostgres() {
         LEFT JOIN comp_receber r ON r.empresa_cod = eb.empresa_cod
         LEFT JOIN comp_pagar p ON p.empresa_cod = eb.empresa_cod;
 
+        DELETE FROM indices_liquidez_historico
+        WHERE id NOT IN (
+          SELECT MAX(id)
+          FROM indices_liquidez_historico
+          GROUP BY data_registro, empresa_cod
+        );
+
         CREATE UNIQUE INDEX IF NOT EXISTS uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod);
 
         CREATE OR REPLACE VIEW vw_indices_liquidez_diario AS

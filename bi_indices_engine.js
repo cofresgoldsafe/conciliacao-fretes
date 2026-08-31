@@ -619,6 +619,16 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
     await client.query('ALTER TABLE contas_a_receber DROP CONSTRAINT IF EXISTS uq_contas_a_receber;');
     await client.query('ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS recno BIGINT;');
     await client.query('ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS recno BIGINT;');
+
+    // Limpa duplicatas históricas antigas do mesmo dia mantendo apenas o snapshot mais recente por data/empresa
+    await client.query(`
+      DELETE FROM indices_liquidez_historico
+      WHERE id NOT IN (
+        SELECT MAX(id)
+        FROM indices_liquidez_historico
+        GROUP BY data_registro, empresa_cod
+      );
+    `).catch(() => {});
     await client.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod);');
 
     // 2.0 Limpa as tabelas de estado atual antes de carregar o snapshot íntegro

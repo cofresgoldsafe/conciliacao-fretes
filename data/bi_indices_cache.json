@@ -7925,12 +7925,12 @@
         }
       }
     },
-    "timestamp": "2026-08-31T16:03:36.647Z"
+    "timestamp": "2026-08-31T16:10:08.330Z"
   },
   "historicoSnapshots": [
     {
       "data_registro": "2026-08-31",
-      "timestamp_registro": "2026-08-31T16:03:36.647Z",
+      "timestamp_registro": "2026-08-31T16:10:08.331Z",
       "empresa_cod": "CONSOLIDADO",
       "empresa_sigla": "ALL",
       "empresa_nome": "🌐 Consolidado (3 Empresas)",
@@ -7957,7 +7957,7 @@
     },
     {
       "data_registro": "2026-08-31",
-      "timestamp_registro": "2026-08-31T16:03:36.647Z",
+      "timestamp_registro": "2026-08-31T16:10:08.331Z",
       "empresa_cod": "14",
       "empresa_sigla": "MP",
       "empresa_nome": "Metal Pleno / S4BW",
@@ -7984,7 +7984,7 @@
     },
     {
       "data_registro": "2026-08-31",
-      "timestamp_registro": "2026-08-31T16:03:36.647Z",
+      "timestamp_registro": "2026-08-31T16:10:08.331Z",
       "empresa_cod": "15",
       "empresa_sigla": "GSI",
       "empresa_nome": "GSI Cofres",
@@ -8011,7 +8011,7 @@
     },
     {
       "data_registro": "2026-08-31",
-      "timestamp_registro": "2026-08-31T16:03:36.647Z",
+      "timestamp_registro": "2026-08-31T16:10:08.331Z",
       "empresa_cod": "16",
       "empresa_sigla": "OACO",
       "empresa_nome": "OAÇO Produtos de Aço",
@@ -8037,6 +8037,6 @@
       "triggered_by": "ADMIN_ALEXANDRE"
     }
   ],
-  "syncedAt": "2026-08-31T16:03:36.651Z",
+  "syncedAt": "2026-08-31T16:10:08.340Z",
   "triggeredBy": "ADMIN_ALEXANDRE"
 }

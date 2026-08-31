@@ -272,6 +272,14 @@ ALTER TABLE saldos_bancarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indices_sync_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indices_liquidez_historico ENABLE ROW LEVEL SECURITY;
 
+-- Limpeza de duplicatas históricas legadas antes da criação do índice único
+DELETE FROM indices_liquidez_historico
+WHERE id NOT IN (
+  SELECT MAX(id)
+  FROM indices_liquidez_historico
+  GROUP BY data_registro, empresa_cod
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod);
 
 -- 9. VIEW ANALÍTICA DIÁRIA DE ÍNDICES (1 SNAPSHOT POR DIA POR EMPRESA PARA O METABASE)
