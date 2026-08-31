@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 18:30 (v9.05 - Sub-abas 'Ped. pra Faturar' MATA460A, 'Ped. Bloq Estoque', Isolamento Estrito de Abas e URL Oficial Pipedrive)  
+> **Data da Última Auditoria:** 31/08/2026 19:05 (v9.06 - Sub-aba 'Ped. Lib Estoque' com Fila Sequencial FIFO MATA455/MATA456 e Drilldown de Alocação SB2)  
 
 ---
 
@@ -361,6 +361,35 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Segurança RBAC e Suíte de Testes Automatizados:**
       - Endpoints `/api/logistica/pedidos-faturar` e `/api/logistica/pedidos-bloq-estoque` protegidos por JWT e auditados em `user_activities`.
       - Suíte automatizada `test_pedidos_faturar.js` com 11 asserções aprovadas com 100% de sucesso.
+40. [x] **Sub-aba "Ped. Lib Estoque" com Fila Sequencial FIFO (MATA455 / MATA456) na Aba 📦 LOGÍSTICA (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_pedidos_lib_estoque.js`):**
+    - **Reestruturação da Navegação da Aba Logística (5 Sub-abas):**
+      - Sub-aba 1 (Padrão/Inicial): `🟢 Ped. pra Faturar` (`#tab-pedidos-faturar` / `btnTabPedidosFaturar`).
+      - Sub-aba 2: `📋 Ped. Lib Estoque` (`#tab-pedidos-lib-estoque` / `btnTabPedidosLibEstoque`).
+      - Sub-aba 3: `🔴 Ped. Bloq Estoque` (`#tab-pedidos-bloq-estoque` / `btnTabPedidosBloqEstoque`).
+      - Sub-aba 4: `📄 Upload Fatura Transp.` (`#tab-upload` / `btnTabUploadTransp`).
+      - Sub-aba 5: `📦 Fatura Correios & ViPP` (`#tab-correios` / `btnTabCorreios`).
+    - **Algoritmo de Fila Sequencial FIFO por Produto contra SB2:**
+      - Consulta multi-empresa (`SC9` + `SC5` + `SC6` + `SA4` + `SF2` + `SB2` nas empresas OACO 16, GSI 15 e Metal Pleno 14) filtrando `C9_BLEST = '02'` e pedidos em aberto.
+      - Saldo disponível calculado por filial e produto em `SB2`: `saldoDisponivel = Math.max(0, B2_QATU - B2_RESERVA - B2_QEMP)`.
+      - Ordenação estrita da fila de atendimento por produto:
+        1. **1º Critério:** Data de Liberação (`C9_DATALIB`) mais antiga (formato `YYYYMMDD`, fallback `C5_EMISSAO`).
+        2. **2º Critério (Desempate):** Número do Pedido (`C9_PEDIDO`) menor/mais antigo (ordem numérica crescente).
+        3. **3º Critério:** Sequência do Item (`C9_ITEM` / `C9_SEQUEN`).
+      - Alocação virtual sequencial que deduz o saldo disponível item a item, calculando: `qtdAlocada`, `saldoFaltante`, `posicaoFila` e status do item (`TOTAL`, `PARCIAL`, `SEM_SALDO`).
+    - **Classificação Inteligente do Status do Pedido:**
+      - `🟢 Ped. Pronto pra Ser Liberado` (`badge-lib-pronto`): 100% dos itens do pedido com saldo suficiente em estoque alocado pela fila FIFO (ex: Pedido `000346` na MP 14).
+      - `🟡 Lib Parcial` (`badge-lib-parcial`): Pedido com múltiplos itens (ou item parcial) onde parte possui estoque disponível e parte ainda aguarda entrada de produção/NF (ex: Pedido `000763` na OACO 16, com saldo 6 para demanda de 11).
+      - `🔴 Aguardando Estoque` (`badge-lib-aguardando`): Nenhum item possui saldo disponível no momento.
+    - **Indicação da Rotina Protheus Sugerida:**
+      - `MATA455 (Liberação de Estoque)`: Para pedidos com bloqueio de estoque puro.
+      - `MATA456 (Liberação Crédito e Estoque)`: Para pedidos que também possuem pendência financeira/crédito (`C9_BLCRED = '01'`).
+    - **Interface, KPIs, Ordenação & Modal Drilldown:**
+      - 4 Cards KPIs no topo (*Prontos p/ Liberar*, *Liberação Parcial*, *Aguardando Estoque*, *Total em Fila*).
+      - Barra de filtros com busca textual em tempo real, seletor de empresa, seletor de status e botão de limpeza.
+      - Modal interativo `#modalLibEstoqueItens` detalhando a auditoria da fila FIFO por item: Código, Descrição, Qtd Bloqueada, Saldo Físico `SB2`, Qtd Alocada, Saldo Faltante, Posição na Fila (`#1`, `#2`, `#3`...) e Status do Item.
+    - **Segurança RBAC e Suíte de Testes Automatizados:**
+      - Endpoint `/api/logistica/pedidos-lib-estoque` protegido por JWT e registrado em `user_activities` (`CONSULTA_PEDIDOS_LIB_ESTOQUE`).
+      - Suíte automatizada `test_pedidos_lib_estoque.js` com 8 asserções cobrindo algoritmo FIFO, desempates, cenários parciais, integração HTTP e integridade visual do DOM (100% aprovada).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

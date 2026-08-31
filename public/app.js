@@ -785,6 +785,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-pedidos-faturar') {
         carregarPedidosFaturar();
       }
+      if (targetTab === 'tab-pedidos-lib-estoque') {
+        carregarPedidosLibEstoque();
+      }
       if (targetTab === 'tab-pedidos-bloq-estoque') {
         carregarPedidosBloqEstoque();
       }
@@ -7110,6 +7113,398 @@ document.addEventListener('DOMContentLoaded', () => {
       else { pedidosBloqSortField = 'totalGeral'; pedidosBloqSortDirection = 'desc'; }
       updatePedidosBloqSortIcons();
       renderPedidosBloqEstoqueTable();
+    });
+  }
+
+  // =========================================================================
+  // --- SUB-ABA LOGÍSTICA: FILA & ANÁLISE DE LIBERAÇÃO DE ESTOQUE (MATA455) ---
+  // =========================================================================
+
+  let pedidosLibCache = [];
+  let pedidosLibSortField = 'statusLib';
+  let pedidosLibSortDirection = 'asc';
+
+  const pedidosLibEmpresaFilter = document.getElementById('pedidosLibEmpresaFilter');
+  const pedidosLibStatusFilter = document.getElementById('pedidosLibStatusFilter');
+  const pedidosLibSearchInput = document.getElementById('pedidosLibSearchInput');
+  const btnAtualizarPedidosLib = document.getElementById('btnAtualizarPedidosLib');
+  const btnLimparFiltrosPedidosLib = document.getElementById('btnLimparFiltrosPedidosLib');
+  const pedidosLibLoading = document.getElementById('pedidosLibLoading');
+  const pedidosLibResults = document.getElementById('pedidosLibResults');
+  const pedidosLibEmpty = document.getElementById('pedidosLibEmpty');
+  const pedidosLibCount = document.getElementById('pedidosLibCount');
+  const pedidosLibTableBody = document.getElementById('pedidosLibTableBody');
+
+  const kpiLibProntosCount = document.getElementById('kpiLibProntosCount');
+  const kpiLibProntosTotal = document.getElementById('kpiLibProntosTotal');
+  const kpiLibParcialCount = document.getElementById('kpiLibParcialCount');
+  const kpiLibParcialTotal = document.getElementById('kpiLibParcialTotal');
+  const kpiLibAguardandoCount = document.getElementById('kpiLibAguardandoCount');
+  const kpiLibAguardandoTotal = document.getElementById('kpiLibAguardandoTotal');
+  const kpiLibTotalCount = document.getElementById('kpiLibTotalCount');
+  const kpiLibTotalValor = document.getElementById('kpiLibTotalValor');
+
+  const thSortLibCodWeb = document.getElementById('thSortLibCodWeb');
+  const thSortLibPedVenda = document.getElementById('thSortLibPedVenda');
+  const thSortLibStatus = document.getElementById('thSortLibStatus');
+  const thSortLibDataLib = document.getElementById('thSortLibDataLib');
+  const thSortLibValor = document.getElementById('thSortLibValor');
+  const sortIconLibCodWeb = document.getElementById('sortIconLibCodWeb');
+  const sortIconLibPedVenda = document.getElementById('sortIconLibPedVenda');
+  const sortIconLibStatus = document.getElementById('sortIconLibStatus');
+  const sortIconLibDataLib = document.getElementById('sortIconLibDataLib');
+  const sortIconLibValor = document.getElementById('sortIconLibValor');
+
+  // Modal de Detalhes da Fila FIFO
+  const modalLibEstoqueItens = document.getElementById('modalLibEstoqueItens');
+  const btnCloseModalLibEstoque = document.getElementById('btnCloseModalLibEstoque');
+  const btnFecharModalLibEstoque = document.getElementById('btnFecharModalLibEstoque');
+  const modalLibEstoqueNumPed = document.getElementById('modalLibEstoqueNumPed');
+  const modalLibEstoqueEmpresaBadge = document.getElementById('modalLibEstoqueEmpresaBadge');
+  const modalLibEstoqueCliente = document.getElementById('modalLibEstoqueCliente');
+  const modalLibEstoqueCodWeb = document.getElementById('modalLibEstoqueCodWeb');
+  const modalLibEstoqueVendedor = document.getElementById('modalLibEstoqueVendedor');
+  const modalLibEstoqueDataLib = document.getElementById('modalLibEstoqueDataLib');
+  const modalLibEstoqueStatusBadge = document.getElementById('modalLibEstoqueStatusBadge');
+  const modalLibEstoqueRotina = document.getElementById('modalLibEstoqueRotina');
+  const tbodyModalLibEstoqueItens = document.getElementById('tbodyModalLibEstoqueItens');
+
+  async function carregarPedidosLibEstoque(force = false) {
+    if (pedidosLibCache.length > 0 && !force) {
+      renderPedidosLibEstoqueTable();
+      return;
+    }
+
+    if (pedidosLibLoading) pedidosLibLoading.classList.remove('hidden');
+    if (pedidosLibResults) pedidosLibResults.classList.add('hidden');
+    if (pedidosLibEmpty) pedidosLibEmpty.classList.add('hidden');
+    if (btnAtualizarPedidosLib) {
+      btnAtualizarPedidosLib.disabled = true;
+      btnAtualizarPedidosLib.textContent = '⏳ Analisando...';
+    }
+
+    try {
+      const response = await fetch('/api/logistica/pedidos-lib-estoque');
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        pedidosLibCache = data.data;
+        renderPedidosLibEstoqueTable();
+      } else {
+        alert(data.message || 'Erro ao consultar fila de liberação de estoque.');
+      }
+    } catch (err) {
+      console.error('Erro ao carregar pedidos para liberação de estoque:', err);
+    } finally {
+      if (pedidosLibLoading) pedidosLibLoading.classList.add('hidden');
+      if (btnAtualizarPedidosLib) {
+        btnAtualizarPedidosLib.disabled = false;
+        btnAtualizarPedidosLib.textContent = '🔄 Atualizar';
+      }
+    }
+  }
+
+  function renderPedidosLibEstoqueTable() {
+    if (!pedidosLibTableBody) return;
+    let list = [...pedidosLibCache];
+
+    const selectedEmp = pedidosLibEmpresaFilter ? pedidosLibEmpresaFilter.value : '';
+    if (selectedEmp) {
+      list = list.filter(p => p.empresa === selectedEmp || p.empresaKey === selectedEmp);
+    }
+
+    const selectedStatus = pedidosLibStatusFilter ? pedidosLibStatusFilter.value : '';
+    if (selectedStatus) {
+      list = list.filter(p => p.statusLib === selectedStatus);
+    }
+
+    const searchTerm = pedidosLibSearchInput ? pedidosLibSearchInput.value.trim().toLowerCase() : '';
+    if (searchTerm) {
+      list = list.filter(p => 
+        (p.numPed && p.numPed.toLowerCase().includes(searchTerm)) ||
+        (p.codWeb && p.codWeb.toLowerCase().includes(searchTerm)) ||
+        (p.clienteNome && p.clienteNome.toLowerCase().includes(searchTerm)) ||
+        (p.clienteCod && p.clienteCod.toLowerCase().includes(searchTerm)) ||
+        (p.nomeTransp && p.nomeTransp.toLowerCase().includes(searchTerm)) ||
+        (p.vendedorNome && p.vendedorNome.toLowerCase().includes(searchTerm)) ||
+        (Array.isArray(p.itens) && p.itens.some(i => (i.produto && i.produto.toLowerCase().includes(searchTerm)) || (i.descricao && i.descricao.toLowerCase().includes(searchTerm))))
+      );
+    }
+
+    // Calcular KPIs dos 4 cards
+    let countProntos = 0, valorProntos = 0;
+    let countParcial = 0, valorParcial = 0;
+    let countAguardando = 0, valorAguardando = 0;
+    let totalGeralValor = 0;
+
+    for (const p of list) {
+      const v = p.totalGeral || p.totalValor || 0;
+      totalGeralValor += v;
+      if (p.statusLib === 'PRONTO') {
+        countProntos++;
+        valorProntos += v;
+      } else if (p.statusLib === 'PARCIAL') {
+        countParcial++;
+        valorParcial += v;
+      } else {
+        countAguardando++;
+        valorAguardando += v;
+      }
+    }
+
+    if (kpiLibProntosCount) kpiLibProntosCount.textContent = countProntos;
+    if (kpiLibProntosTotal) kpiLibProntosTotal.textContent = `${formatCurrency(valorProntos)} (100% Saldo)`;
+    if (kpiLibParcialCount) kpiLibParcialCount.textContent = countParcial;
+    if (kpiLibParcialTotal) kpiLibParcialTotal.textContent = `${formatCurrency(valorParcial)} (Itens Parciais)`;
+    if (kpiLibAguardandoCount) kpiLibAguardandoCount.textContent = countAguardando;
+    if (kpiLibAguardandoTotal) kpiLibAguardandoTotal.textContent = `${formatCurrency(valorAguardando)} (Sem Saldo)`;
+    if (kpiLibTotalCount) kpiLibTotalCount.textContent = list.length;
+    if (kpiLibTotalValor) kpiLibTotalValor.textContent = formatCurrency(totalGeralValor);
+    if (pedidosLibCount) pedidosLibCount.textContent = list.length;
+
+    if (list.length === 0) {
+      if (pedidosLibResults) pedidosLibResults.classList.add('hidden');
+      if (pedidosLibEmpty) pedidosLibEmpty.classList.remove('hidden');
+      pedidosLibTableBody.innerHTML = '';
+      return;
+    }
+
+    if (pedidosLibEmpty) pedidosLibEmpty.classList.add('hidden');
+    if (pedidosLibResults) pedidosLibResults.classList.remove('hidden');
+
+    // Ordenação
+    const orderWeight = { 'PRONTO': 1, 'PARCIAL': 2, 'AGUARDANDO': 3 };
+    list.sort((a, b) => {
+      if (pedidosLibSortField === 'statusLib') {
+        const wA = orderWeight[a.statusLib] || 99;
+        const wB = orderWeight[b.statusLib] || 99;
+        if (wA !== wB) return pedidosLibSortDirection === 'asc' ? wA - wB : wB - wA;
+        return (a.dataLib || a.dataEmissao || '').localeCompare(b.dataLib || b.dataEmissao || '');
+      }
+
+      let valA = a[pedidosLibSortField] || '';
+      let valB = b[pedidosLibSortField] || '';
+
+      if (pedidosLibSortField === 'codWeb' || pedidosLibSortField === 'numPed') {
+        const numA = parseInt(String(valA).replace(/\D/g, ''), 10);
+        const numB = parseInt(String(valB).replace(/\D/g, ''), 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return pedidosLibSortDirection === 'asc' ? numA - numB : numB - numA;
+        }
+      }
+
+      if (pedidosLibSortField === 'totalGeral' || pedidosLibSortField === 'totalValor') {
+        const numA = parseFloat(valA || 0);
+        const numB = parseFloat(valB || 0);
+        return pedidosLibSortDirection === 'asc' ? numA - numB : numB - numA;
+      }
+
+      const cmp = String(valA).localeCompare(String(valB));
+      return pedidosLibSortDirection === 'asc' ? cmp : -cmp;
+    });
+
+    pedidosLibTableBody.innerHTML = list.map(p => {
+      let empresaBadge = `<span class="empresa-badge empresa-mp">MP</span>`;
+      if (p.empresa === 'GSI') empresaBadge = `<span class="empresa-badge empresa-gsi">GSI</span>`;
+      if (p.empresa === 'OACO') empresaBadge = `<span class="empresa-badge empresa-oaco">OACO</span>`;
+
+      const codWebCell = typeof formatPipedriveDealLink === 'function' 
+        ? formatPipedriveDealLink(p.codWeb)
+        : (p.codWeb && p.codWeb !== '-' ? `<a href="https://benetroncomercial.pipedrive.com/deal/${String(p.codWeb).replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" class="link-codweb-pipedrive" style="display: inline-flex; align-items: center; gap: 4px; color: #38bdf8; text-decoration: none; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2);"><span style="font-size: 0.8rem;">🔗</span> ${escapeHtml(p.codWeb)}</a>` : '<span style="color: var(--text-muted);">-</span>');
+
+      const pedVendaCell = `
+        <button class="btn-pedvenda-lib" data-empresa="${escapeHtml(p.empresaKey || p.empresa)}" data-pedido="${escapeHtml(p.numPed)}" title="Clique para auditar a fila FIFO e alocação de itens">
+          📋 ${escapeHtml(p.numPed)}
+        </button>
+      `;
+
+      let statusBadge = `<span class="badge-lib-aguardando">🔴 Aguardando Estoque</span>`;
+      if (p.statusLib === 'PRONTO') {
+        statusBadge = `<span class="badge-lib-pronto">🟢 Ped. Pronto pra Ser Liberado</span>`;
+      } else if (p.statusLib === 'PARCIAL') {
+        statusBadge = `<span class="badge-lib-parcial">🟡 Lib Parcial</span>`;
+      }
+
+      const rotinaBadge = p.codBlCred === '01'
+        ? `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.75rem; font-weight: 600;" title="Possui trava de crédito e estoque">MATA456</span>`
+        : `<span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 0.75rem; font-weight: 600;" title="Liberação de estoque pura">MATA455</span>`;
+
+      return `
+        <tr>
+          <td>${empresaBadge}</td>
+          <td>${codWebCell}</td>
+          <td>${pedVendaCell}</td>
+          <td>
+            <div style="font-weight: 600;">${escapeHtml(p.clienteNome)}</div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Cód: ${escapeHtml(p.clienteCod || '-')}</small>
+          </td>
+          <td>${statusBadge}</td>
+          <td>
+            <div style="font-weight: 600;">${escapeHtml(p.dataLibFmt || formatDataProtheusLocal(p.dataLib))}</div>
+            <small style="color: var(--text-muted); font-size: 0.7rem;">Prioridade FIFO</small>
+          </td>
+          <td>${escapeHtml(p.dataPrevisaoFmt || formatDataProtheusLocal(p.dataPrevisao))}</td>
+          <td>
+            <div style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(p.nomeTransp)}</div>
+            <span class="badge" style="font-size: 0.7rem; padding: 1px 4px; background: rgba(59,130,246,0.1); color: #60a5fa;">${escapeHtml(p.tpFrete || '-')}</span>
+          </td>
+          <td style="text-align: center; font-weight: 700;">${p.totalQtd || 1}</td>
+          <td style="text-align: right; font-weight: 700; color: ${p.statusLib === 'PRONTO' ? '#10b981' : (p.statusLib === 'PARCIAL' ? '#f59e0b' : '#ef4444')};">
+            ${formatCurrency(p.totalGeral || p.totalValor)}
+          </td>
+          <td style="text-align: center;">${rotinaBadge}</td>
+        </tr>
+      `;
+    }).join('');
+
+    pedidosLibTableBody.querySelectorAll('.btn-pedvenda-lib').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emp = btn.getAttribute('data-empresa');
+        const ped = btn.getAttribute('data-pedido');
+        abrirModalLibEstoqueDetalhes(emp, ped);
+      });
+    });
+  }
+
+  function abrirModalLibEstoqueDetalhes(empresa, numPed) {
+    if (!modalLibEstoqueItens) return;
+    const ped = pedidosLibCache.find(p => (p.empresa === empresa || p.empresaKey === empresa) && p.numPed === numPed);
+    if (!ped) return;
+
+    if (modalLibEstoqueNumPed) modalLibEstoqueNumPed.textContent = ped.numPed;
+    if (modalLibEstoqueEmpresaBadge) {
+      modalLibEstoqueEmpresaBadge.innerHTML = `<span class="empresa-badge empresa-${ped.empresa.toLowerCase()}">${ped.empresa}</span>`;
+    }
+    if (modalLibEstoqueCliente) modalLibEstoqueCliente.textContent = `${ped.clienteNome} (${ped.clienteCod || '-'})`;
+    if (modalLibEstoqueCodWeb) {
+      modalLibEstoqueCodWeb.innerHTML = typeof formatPipedriveDealLink === 'function'
+        ? formatPipedriveDealLink(ped.codWeb)
+        : (ped.codWeb && ped.codWeb !== '-' ? `<a href="https://benetroncomercial.pipedrive.com/deal/${String(ped.codWeb).replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" class="link-codweb-pipedrive">🔗 ${escapeHtml(ped.codWeb)}</a>` : '-');
+    }
+    if (modalLibEstoqueVendedor) modalLibEstoqueVendedor.textContent = ped.vendedorNome || '-';
+    if (modalLibEstoqueDataLib) modalLibEstoqueDataLib.textContent = ped.dataLibFmt || formatDataProtheusLocal(ped.dataLib);
+    if (modalLibEstoqueStatusBadge) {
+      if (ped.statusLib === 'PRONTO') {
+        modalLibEstoqueStatusBadge.innerHTML = `<span class="badge-lib-pronto">🟢 Ped. Pronto pra Ser Liberado</span>`;
+      } else if (ped.statusLib === 'PARCIAL') {
+        modalLibEstoqueStatusBadge.innerHTML = `<span class="badge-lib-parcial">🟡 Lib Parcial</span>`;
+      } else {
+        modalLibEstoqueStatusBadge.innerHTML = `<span class="badge-lib-aguardando">🔴 Aguardando Estoque</span>`;
+      }
+    }
+    if (modalLibEstoqueRotina) modalLibEstoqueRotina.textContent = ped.rotinaProtheus || 'MATA455';
+
+    if (tbodyModalLibEstoqueItens && Array.isArray(ped.itens)) {
+      tbodyModalLibEstoqueItens.innerHTML = ped.itens.map(it => {
+        let itemBadge = `<span class="badge-lib-aguardando">🔴 Sem Saldo</span>`;
+        if (it.statusItem === 'TOTAL') {
+          itemBadge = `<span class="badge-lib-pronto">🟢 Saldo Suficiente</span>`;
+        } else if (it.statusItem === 'PARCIAL') {
+          itemBadge = `<span class="badge-lib-parcial">🟡 Parcial (${it.qtdAlocada}/${it.qtdLib})</span>`;
+        }
+
+        return `
+          <tr>
+            <td style="text-align: center; font-weight: 600;">${escapeHtml(it.item || '01')}</td>
+            <td style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: #38bdf8;">${escapeHtml(it.produto)}</td>
+            <td>
+              <div style="font-weight: 600; font-size: 0.9rem;">${escapeHtml(it.descricao)}</div>
+              <small style="color: var(--text-muted);">Preço Unit: ${formatCurrency(it.prcVenda)}</small>
+            </td>
+            <td style="text-align: center; font-weight: 700;">${it.qtdLib}</td>
+            <td style="text-align: center; font-weight: 600; color: #38bdf8;">${it.saldoFisicoTotal || 0}</td>
+            <td style="text-align: center; font-weight: 700; color: ${it.qtdAlocada > 0 ? '#10b981' : 'var(--text-muted)'};">${it.qtdAlocada}</td>
+            <td style="text-align: center; font-weight: 600; color: ${it.saldoFaltante > 0 ? '#ef4444' : '#10b981'};">${it.saldoFaltante}</td>
+            <td style="text-align: center;">
+              <span class="badge" style="background: rgba(59,130,246,0.15); color: #60a5fa; font-weight: 700;">#${it.posicaoFila || 1}</span>
+            </td>
+            <td>${itemBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    modalLibEstoqueItens.classList.remove('hidden');
+  }
+
+  function updatePedidosLibSortIcons() {
+    if (sortIconLibCodWeb) sortIconLibCodWeb.textContent = pedidosLibSortField === 'codWeb' ? (pedidosLibSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconLibPedVenda) sortIconLibPedVenda.textContent = pedidosLibSortField === 'numPed' ? (pedidosLibSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconLibStatus) sortIconLibStatus.textContent = pedidosLibSortField === 'statusLib' ? (pedidosLibSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconLibDataLib) sortIconLibDataLib.textContent = pedidosLibSortField === 'dataLib' ? (pedidosLibSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconLibValor) sortIconLibValor.textContent = (pedidosLibSortField === 'totalGeral' || pedidosLibSortField === 'totalValor') ? (pedidosLibSortDirection === 'asc' ? '▲' : '▼') : '↕';
+  }
+
+  if (pedidosLibEmpresaFilter) {
+    pedidosLibEmpresaFilter.addEventListener('change', () => renderPedidosLibEstoqueTable());
+  }
+  if (pedidosLibStatusFilter) {
+    pedidosLibStatusFilter.addEventListener('change', () => renderPedidosLibEstoqueTable());
+  }
+  if (pedidosLibSearchInput) {
+    pedidosLibSearchInput.addEventListener('input', () => renderPedidosLibEstoqueTable());
+  }
+  if (btnAtualizarPedidosLib) {
+    btnAtualizarPedidosLib.addEventListener('click', () => carregarPedidosLibEstoque(true));
+  }
+  if (btnLimparFiltrosPedidosLib) {
+    btnLimparFiltrosPedidosLib.addEventListener('click', () => {
+      if (pedidosLibEmpresaFilter) pedidosLibEmpresaFilter.value = '';
+      if (pedidosLibStatusFilter) pedidosLibStatusFilter.value = '';
+      if (pedidosLibSearchInput) pedidosLibSearchInput.value = '';
+      renderPedidosLibEstoqueTable();
+    });
+  }
+
+  if (thSortLibCodWeb) {
+    thSortLibCodWeb.addEventListener('click', () => {
+      if (pedidosLibSortField === 'codWeb') pedidosLibSortDirection = pedidosLibSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosLibSortField = 'codWeb'; pedidosLibSortDirection = 'asc'; }
+      updatePedidosLibSortIcons();
+      renderPedidosLibEstoqueTable();
+    });
+  }
+  if (thSortLibPedVenda) {
+    thSortLibPedVenda.addEventListener('click', () => {
+      if (pedidosLibSortField === 'numPed') pedidosLibSortDirection = pedidosLibSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosLibSortField = 'numPed'; pedidosLibSortDirection = 'asc'; }
+      updatePedidosLibSortIcons();
+      renderPedidosLibEstoqueTable();
+    });
+  }
+  if (thSortLibStatus) {
+    thSortLibStatus.addEventListener('click', () => {
+      if (pedidosLibSortField === 'statusLib') pedidosLibSortDirection = pedidosLibSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosLibSortField = 'statusLib'; pedidosLibSortDirection = 'asc'; }
+      updatePedidosLibSortIcons();
+      renderPedidosLibEstoqueTable();
+    });
+  }
+  if (thSortLibDataLib) {
+    thSortLibDataLib.addEventListener('click', () => {
+      if (pedidosLibSortField === 'dataLib') pedidosLibSortDirection = pedidosLibSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosLibSortField = 'dataLib'; pedidosLibSortDirection = 'asc'; }
+      updatePedidosLibSortIcons();
+      renderPedidosLibEstoqueTable();
+    });
+  }
+  if (thSortLibValor) {
+    thSortLibValor.addEventListener('click', () => {
+      if (pedidosLibSortField === 'totalGeral') pedidosLibSortDirection = pedidosLibSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosLibSortField = 'totalGeral'; pedidosLibSortDirection = 'desc'; }
+      updatePedidosLibSortIcons();
+      renderPedidosLibEstoqueTable();
+    });
+  }
+
+  if (btnCloseModalLibEstoque) {
+    btnCloseModalLibEstoque.addEventListener('click', () => modalLibEstoqueItens.classList.add('hidden'));
+  }
+  if (btnFecharModalLibEstoque) {
+    btnFecharModalLibEstoque.addEventListener('click', () => modalLibEstoqueItens.classList.add('hidden'));
+  }
+  if (modalLibEstoqueItens) {
+    modalLibEstoqueItens.addEventListener('click', (e) => {
+      if (e.target === modalLibEstoqueItens) modalLibEstoqueItens.classList.add('hidden');
     });
   }
 

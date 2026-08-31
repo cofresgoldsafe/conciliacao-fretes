@@ -2477,6 +2477,342 @@ async function buscarPedidosBloqueadosEstoque({ empresa, search, limit = 500 } =
   return results;
 }
 
+/**
+ * Consulta e Analisa Pedidos com Bloqueio de Estoque (C9_BLEST = '02')
+ * Aplica algoritmo de Fila Sequencial FIFO por Produto contra os saldos de estoque (SB2)
+ * Classifica os pedidos em:
+ *  - PRONTO: 'Ped. Pronto pra Ser Liberado' (100% dos itens atendidos pelo saldo)
+ *  - PARCIAL: 'Lib Parcial' (parte dos itens atendida)
+ *  - AGUARDANDO: 'Aguardando Estoque' (nenhum item possui saldo disponível)
+ */
+async function buscarPedidosAnaliseLibEstoque({ empresa, search, limit = 500 } = {}) {
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+  const cleanSearch = sanitizeSqlParam(search || '').toLowerCase();
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160", sc9: "SC9160", sf2: "SF2160", sb2: "SB2160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150", sc9: "SC9150", sf2: "SF2150", sb2: "SB2150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140", sc9: "SC9140", sf2: "SF2140", sb2: "SB2140" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e => 
+      e.key === cleanEmpresa || 
+      e.sigla === cleanEmpresa || 
+      e.codigo === cleanEmpresa || 
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) empresasFiltradas = empresasConfig;
+  }
+
+  const results = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      // 1. Consulta Saldos SB2 da Empresa (Disponível = B2_QATU - B2_RESERVA - B2_QEMP)
+      const saldoMap = new Map();
+      try {
+        const sqlSB2 = `
+          SELECT 
+            RTRIM(B2_COD) AS B2_COD,
+            ISNULL(SUM(B2_QATU - B2_RESERVA - B2_QEMP), 0) AS SALDO_DISP
+          FROM ${emp.sb2}
+          WHERE D_E_L_E_T_ = ' '
+          GROUP BY B2_COD;
+        `;
+        const resSB2 = await executeRailwayQuery(sqlSB2);
+        if (resSB2 && resSB2.rows) {
+          for (const r of resSB2.rows) {
+            const cod = String(r.B2_COD || '').trim();
+            const saldo = Math.max(0, parseFloat(r.SALDO_DISP || 0));
+            saldoMap.set(cod, saldo);
+          }
+        }
+      } catch (errSB2) {
+        console.warn(`Aviso ao consultar SB2 de ${emp.sigla}:`, errSB2.message);
+      }
+
+      // 2. Consulta Itens em SC9 com Bloqueio de Estoque (C9_BLEST = '02')
+      const sqlSC9 = `
+        SELECT TOP ${parseInt(limit, 10) || 500}
+          RTRIM(C9.C9_FILIAL) AS FILIAL,
+          RTRIM(C9.C9_PEDIDO) AS PEDIDO,
+          RTRIM(C9.C9_ITEM) AS ITEM,
+          RTRIM(C9.C9_SEQUEN) AS SEQUEN,
+          RTRIM(C9.C9_CLIENTE) AS CLIENTE,
+          RTRIM(C9.C9_LOJA) AS LOJA,
+          RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS NOMECLI,
+          RTRIM(C9.C9_PRODUTO) AS PRODUTO,
+          RTRIM(ISNULL(C6.C6_DESCRI, C9.C9_PRODUTO)) AS PROD_DESC,
+          C9.C9_QTDLIB AS QTDLIB,
+          C9.C9_PRCVEN AS PRCVEN,
+          (C9.C9_QTDLIB * C9.C9_PRCVEN) AS VALOR_ITEM,
+          RTRIM(C9.C9_BLCRED) AS BLCRED,
+          RTRIM(C9.C9_BLEST) AS BLEST,
+          RTRIM(C9.C9_BLOQUEI) AS BLOQUEI,
+          RTRIM(C9.C9_NFISCAL) AS NFISCAL,
+          RTRIM(C9.C9_SERIENF) AS SERIENF,
+          RTRIM(C9.C9_DATALIB) AS DATALIB,
+          RTRIM(C9.C9_DATENT) AS DATENT,
+          RTRIM(ISNULL(C5.C5_CODWEB, '')) AS CODWEB,
+          RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS EMISSAO,
+          RTRIM(ISNULL(C5.C5_TRANSP, '')) AS COD_TRANSP,
+          RTRIM(ISNULL(A4.A4_NOME, '')) AS NOME_TRANSP,
+          RTRIM(ISNULL(C5.C5_VEND1, '')) AS VEND1,
+          ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
+          ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+          RTRIM(ISNULL(C5.C5_TPFRETE, '')) AS TPFRETE
+        FROM ${emp.sc9} C9
+        INNER JOIN ${emp.sc5} C5
+          ON C5.C5_FILIAL = C9.C9_FILIAL
+         AND C5.C5_NUM = C9.C9_PEDIDO
+         AND C5.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sc6} C6
+          ON C6.C6_FILIAL = C9.C9_FILIAL
+         AND C6.C6_NUM = C9.C9_PEDIDO
+         AND C6.C6_ITEM = C9.C9_ITEM
+         AND C6.D_E_L_E_T_ = ' '
+        LEFT JOIN SA4010 A4
+          ON A4.A4_COD = C5.C5_TRANSP
+         AND A4.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sf2} F2
+          ON F2.F2_FILIAL = C9.C9_FILIAL
+         AND F2.F2_DOC = C9.C9_NFISCAL
+         AND F2.F2_SERIE = C9.C9_SERIENF
+         AND F2.D_E_L_E_T_ = ' '
+        WHERE C9.D_E_L_E_T_ = ' '
+          AND RTRIM(C9.C9_BLEST) = '02'
+          AND C9.C9_QTDLIB > 0
+          AND (
+            C9.C9_NFISCAL IS NULL 
+            OR RTRIM(C9.C9_NFISCAL) = '' 
+            OR F2.F2_DOC IS NULL
+          )
+          AND (
+            C5.C5_NOTA IS NULL 
+            OR RTRIM(C5.C5_NOTA) = '' 
+            OR RTRIM(C5.C5_NOTA) = 'XXXXXXXXX' 
+            OR RTRIM(C5.C5_NOTA) = '0'
+          )
+          AND (C5.C5_MSBLQL IS NULL OR RTRIM(C5.C5_MSBLQL) <> '1')
+        ORDER BY C9.C9_DATALIB ASC, C9.C9_PEDIDO ASC, C9.C9_ITEM ASC;
+      `;
+
+      const dbRes = await executeRailwayQuery(sqlSC9);
+      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+        // Agrupar itens por PRODUTO para a Fila FIFO
+        const itensPorProduto = new Map();
+        const rawItems = [];
+
+        for (const r of dbRes.rows) {
+          const itemObj = {
+            empresa: emp.sigla,
+            empresaKey: emp.key,
+            empresaNome: emp.nome,
+            numPed: r.PEDIDO,
+            codWeb: r.CODWEB || '-',
+            item: r.ITEM,
+            sequen: r.SEQUEN,
+            produto: r.PRODUTO,
+            descricao: r.PROD_DESC || r.PRODUTO,
+            qtdLib: parseFloat(r.QTDLIB || 0),
+            prcVenda: parseFloat(r.PRCVEN || 0),
+            valorItem: parseFloat(r.VALOR_ITEM || (parseFloat(r.QTDLIB || 0) * parseFloat(r.PRCVEN || 0))),
+            blEst: r.BLEST || '02',
+            blCred: r.BLCRED || '',
+            dataLib: r.DATALIB,
+            dataEmissao: r.EMISSAO,
+            dataPrevisao: r.DATENT || r.DATALIB,
+            clienteCod: r.CLIENTE,
+            clienteLoja: r.LOJA,
+            clienteNome: r.NOMECLI || 'CLIENTE NÃO INFORMADO',
+            codTransp: r.COD_TRANSP,
+            nomeTransp: r.NOME_TRANSP || (r.COD_TRANSP ? `Transp. ${r.COD_TRANSP}` : 'NÃO INFORMADA'),
+            tpFrete: r.TPFRETE === 'C' ? 'CIF' : (r.TPFRETE === 'F' ? 'FOB' : (r.TPFRETE || '-')),
+            freteCobrado: parseFloat(r.C5_FRETE || 0),
+            freteEmbutido: parseFloat(r.C5_VLR_FRT || 0),
+            vendedorCod: r.VEND1,
+            vendedorNome: getNomeVendedor(r.VEND1) || r.VEND1 || 'NÃO INFORMADO'
+          };
+
+          rawItems.push(itemObj);
+
+          if (!itensPorProduto.has(itemObj.produto)) {
+            itensPorProduto.set(itemObj.produto, []);
+          }
+          itensPorProduto.get(itemObj.produto).push(itemObj);
+        }
+
+        // Executar Fila FIFO por Produto
+        for (const [prodCod, listaItens] of itensPorProduto.entries()) {
+          // 1º critério: DataLib ASC (fallback Emissão); 2º critério: NumPed ASC; 3º critério: Item ASC
+          listaItens.sort((a, b) => {
+            const dtA = a.dataLib || a.dataEmissao || '99999999';
+            const dtB = b.dataLib || b.dataEmissao || '99999999';
+            if (dtA !== dtB) return dtA.localeCompare(dtB);
+
+            const numA = parseInt(String(a.numPed).replace(/\D/g, ''), 10);
+            const numB = parseInt(String(b.numPed).replace(/\D/g, ''), 10);
+            if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+
+            return String(a.item || '').localeCompare(String(b.item || ''));
+          });
+
+          let saldoDisponivel = saldoMap.get(prodCod) || 0;
+          const saldoTotalFisico = saldoDisponivel;
+
+          for (let i = 0; i < listaItens.length; i++) {
+            const it = listaItens[i];
+            it.posicaoFila = i + 1;
+            it.saldoFisicoTotal = saldoTotalFisico;
+            const necessita = it.qtdLib;
+
+            if (saldoDisponivel >= necessita) {
+              it.qtdAlocada = necessita;
+              it.saldoFaltante = 0;
+              it.statusItem = 'TOTAL';
+              it.statusItemBadge = '🟢 Saldo Suficiente';
+              saldoDisponivel -= necessita;
+            } else if (saldoDisponivel > 0) {
+              it.qtdAlocada = saldoDisponivel;
+              it.saldoFaltante = necessita - saldoDisponivel;
+              it.statusItem = 'PARCIAL';
+              it.statusItemBadge = `🟡 Parcial (${saldoDisponivel}/${necessita})`;
+              saldoDisponivel = 0;
+            } else {
+              it.qtdAlocada = 0;
+              it.saldoFaltante = necessita;
+              it.statusItem = 'SEM_SALDO';
+              it.statusItemBadge = '🔴 Sem Saldo';
+            }
+          }
+        }
+
+        // Agrupar itens por Pedido
+        const pedidosMap = new Map();
+        for (const it of rawItems) {
+          const key = `${emp.sigla}_${it.numPed}`;
+          if (!pedidosMap.has(key)) {
+            pedidosMap.set(key, {
+              empresa: emp.sigla,
+              empresaKey: emp.key,
+              empresaNome: emp.nome,
+              numPed: it.numPed,
+              codWeb: it.codWeb,
+              clienteCod: it.clienteCod,
+              clienteLoja: it.clienteLoja,
+              clienteNome: it.clienteNome,
+              dataEmissao: it.dataEmissao,
+              dataEmissaoFmt: formatarDataProtheus(it.dataEmissao),
+              dataLib: it.dataLib,
+              dataLibFmt: formatarDataProtheus(it.dataLib),
+              dataPrevisao: it.dataPrevisao,
+              dataPrevisaoFmt: formatarDataProtheus(it.dataPrevisao),
+              codTransp: it.codTransp,
+              nomeTransp: it.nomeTransp,
+              tpFrete: it.tpFrete,
+              freteCobrado: it.freteCobrado,
+              freteEmbutido: it.freteEmbutido,
+              vendedorCod: it.vendedorCod,
+              vendedorNome: it.vendedorNome,
+              codBlEst: it.blEst,
+              codBlCred: it.blCred,
+              totalQtd: 0,
+              totalQtdAlocada: 0,
+              totalValor: 0,
+              totalGeral: 0,
+              itens: []
+            });
+          }
+
+          const ped = pedidosMap.get(key);
+          ped.totalQtd += it.qtdLib;
+          ped.totalQtdAlocada += it.qtdAlocada;
+          ped.totalValor += it.valorItem;
+          if (it.blCred === '01') ped.codBlCred = '01';
+
+          ped.itens.push({
+            item: it.item,
+            sequen: it.sequen,
+            produto: it.produto,
+            descricao: it.descricao,
+            qtdLib: it.qtdLib,
+            qtdAlocada: it.qtdAlocada,
+            saldoFaltante: it.saldoFaltante,
+            saldoFisicoTotal: it.saldoFisicoTotal,
+            posicaoFila: it.posicaoFila,
+            statusItem: it.statusItem,
+            statusItemBadge: it.statusItemBadge,
+            prcVenda: it.prcVenda,
+            valorItem: it.valorItem
+          });
+        }
+
+        // Consolidar status final de cada pedido
+        for (const p of pedidosMap.values()) {
+          p.totalValor = Math.round((p.totalValor + Number.EPSILON) * 100) / 100;
+          p.totalGeral = Math.round(((p.totalValor + p.freteCobrado) + Number.EPSILON) * 100) / 100;
+
+          const totalItens = p.itens.length;
+          const itensTotal = p.itens.filter(i => i.statusItem === 'TOTAL').length;
+          const itensParcial = p.itens.filter(i => i.statusItem === 'PARCIAL').length;
+
+          if (itensTotal === totalItens) {
+            p.statusLib = 'PRONTO';
+            p.statusBadge = 'Ped. Pronto pra Ser Liberado';
+            p.statusBadgeClass = 'badge-lib-pronto';
+            p.statusIcon = '🟢';
+            p.statusDesc = 'Todos os itens possuem saldo em estoque disponível para liberação imediata';
+          } else if (itensTotal > 0 || itensParcial > 0) {
+            p.statusLib = 'PARCIAL';
+            p.statusBadge = 'Lib Parcial';
+            p.statusBadgeClass = 'badge-lib-parcial';
+            p.statusIcon = '🟡';
+            p.statusDesc = 'Parte dos itens possui saldo em estoque disponível para liberação parcial';
+          } else {
+            p.statusLib = 'AGUARDANDO';
+            p.statusBadge = 'Aguardando Estoque';
+            p.statusBadgeClass = 'badge-lib-aguardando';
+            p.statusIcon = '🔴';
+            p.statusDesc = 'Aguardando entrada de estoque/produção';
+          }
+
+          p.rotinaProtheus = p.codBlCred === '01' 
+            ? 'MATA456 (Liberação Crédito e Estoque)' 
+            : 'MATA455 (Liberação de Estoque)';
+
+          if (cleanSearch) {
+            const matches = 
+              (p.numPed && p.numPed.toLowerCase().includes(cleanSearch)) ||
+              (p.codWeb && p.codWeb.toLowerCase().includes(cleanSearch)) ||
+              (p.clienteNome && p.clienteNome.toLowerCase().includes(cleanSearch)) ||
+              (p.nomeTransp && p.nomeTransp.toLowerCase().includes(cleanSearch)) ||
+              (p.vendedorNome && p.vendedorNome.toLowerCase().includes(cleanSearch)) ||
+              p.itens.some(i => (i.produto && i.produto.toLowerCase().includes(cleanSearch)) || (i.descricao && i.descricao.toLowerCase().includes(cleanSearch)));
+            if (!matches) continue;
+          }
+
+          results.push(p);
+        }
+      }
+    } catch (err) {
+      console.warn(`Aviso: Erro ao analisar liberação de estoque em ${emp.nome}:`, err.message);
+    }
+  }
+
+  // Ordenação padrão: Prontos primeiro, depois Parciais, depois Aguardando; secundário Data Lib ASC
+  const orderWeight = { 'PRONTO': 1, 'PARCIAL': 2, 'AGUARDANDO': 3 };
+  results.sort((a, b) => {
+    const wA = orderWeight[a.statusLib] || 99;
+    const wB = orderWeight[b.statusLib] || 99;
+    if (wA !== wB) return wA - wB;
+    return (a.dataLib || a.dataEmissao || '').localeCompare(b.dataLib || b.dataEmissao || '') || (a.numPed || '').localeCompare(b.numPed || '');
+  });
+
+  return results;
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
@@ -2485,6 +2821,7 @@ module.exports = {
   buscarPedidosCompras,
   buscarPedidosProntosFaturar,
   buscarPedidosBloqueadosEstoque,
+  buscarPedidosAnaliseLibEstoque,
   sincronizarSaldosEstoqueProtheus,
   consultarFaturamentoHistorico,
   sincronizarFaturamentoConsolidado,

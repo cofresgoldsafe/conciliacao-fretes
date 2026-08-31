@@ -18,6 +18,7 @@ const {
   buscarPedidosCompras,
   buscarPedidosProntosFaturar,
   buscarPedidosBloqueadosEstoque,
+  buscarPedidosAnaliseLibEstoque,
   sincronizarSaldosEstoqueProtheus,
   consultarFaturamentoHistorico,
   sincronizarFaturamentoConsolidado,
@@ -1235,6 +1236,28 @@ app.get('/api/logistica/pedidos-bloq-estoque', requireAuth, async (req, res) => 
     res.json({ success: true, count: pedidos.length, data: pedidos });
   } catch (err) {
     handleServerError(res, err, 'Erro ao consultar pedidos bloqueados por estoque.');
+  }
+});
+
+// API: Logística - Análise e Fila Sequencial FIFO de Liberação de Estoque (MATA455 / MATA456)
+app.get('/api/logistica/pedidos-lib-estoque', requireAuth, async (req, res) => {
+  try {
+    const { empresa, search } = req.query || {};
+    const pedidos = await buscarPedidosAnaliseLibEstoque({ empresa, search });
+    const user = getUserFromReq(req);
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS_LIB_ESTOQUE',
+      description: `Consultou fila de liberação de estoque (${pedidos ? pedidos.length : 0} pedidos)`,
+      ip: req.ip,
+      metadata: { empresa, search, total: pedidos ? pedidos.length : 0 }
+    }).catch(() => {});
+
+    res.json({ success: true, count: pedidos.length, data: pedidos });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao analisar liberação de estoque.');
   }
 });
 

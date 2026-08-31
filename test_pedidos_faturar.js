@@ -58,19 +58,22 @@ async function runTests() {
   }
 
   // TESTES DE ESTRUTURA HTML / DOM
-  await test('HTML: subGroupLogistica possui as 4 sub-abas na ordem correta', async () => {
+  await test('HTML: subGroupLogistica possui as 5 sub-abas na ordem correta', async () => {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     assert(html.includes('id="btnTabPedidosFaturar"'), 'Botão btnTabPedidosFaturar não encontrado');
+    assert(html.includes('id="btnTabPedidosLibEstoque"'), 'Botão btnTabPedidosLibEstoque não encontrado');
     assert(html.includes('id="btnTabPedidosBloqEstoque"'), 'Botão btnTabPedidosBloqEstoque não encontrado');
     assert(html.includes('id="btnTabUploadTransp"'), 'Botão btnTabUploadTransp não encontrado');
     assert(html.includes('id="btnTabCorreios"'), 'Botão btnTabCorreios não encontrado');
 
     const idxFaturar = html.indexOf('id="btnTabPedidosFaturar"');
+    const idxLib = html.indexOf('id="btnTabPedidosLibEstoque"');
     const idxBloq = html.indexOf('id="btnTabPedidosBloqEstoque"');
     const idxUpload = html.indexOf('id="btnTabUploadTransp"');
     const idxCorreios = html.indexOf('id="btnTabCorreios"');
 
-    assert(idxFaturar < idxBloq, 'Ped. pra Faturar deve vir antes de Ped. Bloq Estoque');
+    assert(idxFaturar < idxLib, 'Ped. pra Faturar deve vir antes de Ped. Lib Estoque');
+    assert(idxLib < idxBloq, 'Ped. Lib Estoque deve vir antes de Ped. Bloq Estoque');
     assert(idxBloq < idxUpload, 'Ped. Bloq Estoque deve vir antes de Upload Transp');
     assert(idxUpload < idxCorreios, 'Upload Transp deve vir antes de Correios');
   });
