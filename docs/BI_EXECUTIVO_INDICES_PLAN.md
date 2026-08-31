@@ -317,3 +317,16 @@ Criaremos uma nova suíte de testes com asserções rigorosas:
 3. Alternar entre as empresas no seletor (`Consolidado`, `MP`, `GSI`, `OAÇO`) e verificar atualização instantânea dos índices.
 4. Clicar na sub-aba **📈 Metabase Analytics** e verificar carregamento íntegro do dashboard do Metabase.
 5. Clicar no botão `🔄 Sincronizar Protheus` e validar feedback de sucesso e atualização de dados.
+
+---
+
+## 6. Status de Conclusão & Entregas Homologadas (v8.94)
+
+* [x] **Sub-abas no BI Executivo:** Sub-aba 1 (`#tab-bi-indices`) como padrão e Sub-aba 2 (`#tab-bi-metabase`) para o Metabase.
+* [x] **Cálculo Matemático Auditável:** LC, LS e LI com regras contábeis estritas (Custo `B1_VLUNIT`, SE8 último saldo, SE1 $\le 5$d e SE2 com PR).
+* [x] **Banco de Dados & Supabase:** Tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e `indices_liquidez_historico` com RLS.
+* [x] **Série Temporal & Snapshots Históricos:** Gravação de 4 snapshots cronológicos por ciclo (Consolidado, 14, 15, 16) para gráficos de tendência no Metabase e portal.
+* [x] **Job em Background:** Execução periódica a cada 180 min (07h às 19h de seg a sex) e no startup.
+* [x] **Modal Drilldown:** 5 guias internas com extrato matemático detalhado e busca instantânea.
+* [x] **Testes Automatizados:** Suíte `test_bi_indices.js` com 17 asserções 100% aprovadas.
+

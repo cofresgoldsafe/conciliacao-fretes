@@ -12,10 +12,13 @@ O módulo de **BI Executivo** é um hub de inteligência estratégica integrado 
 1. **Saldos Físicos e Financeiros de Estoque Multi-Empresa** (Metal Pleno 14, GSI 15 e OACO 16).
 2. **Vendas em Carteira (SC6) vs. Compras em Aberto (SC7)** com detecção de rupturas e ponto de pedido.
 3. **Concentração e Demanda por Grupos de Produtos** cobrindo 100% dos 33 Grupos do Protheus (`SBM010`).
-4. **Histórico de Análise de Crédito Comercial & Motor de Risco** (Scores, limites monetários e decisões).
-5. **Trilhas de Auditoria, Segurança e Telemetria de Operadores** (Logins, 2FA, consultas).
+4. **Índices Financeiros de Liquidez & Solvência (LC, LS, LI)** com acompanhamento diário e snapshots de série temporal.
+5. **Histórico de Análise de Crédito Comercial & Motor de Risco** (Scores, limites monetários e decisões).
+6. **Trilhas de Auditoria, Segurança e Telemetria de Operadores** (Logins, 2FA, consultas).
 
-A integração utiliza o padrão **JWT Signed Embedding** do Metabase, permitindo que o painel seja renderizado dentro da aba `📊 BI EXECUTIVO` do portal sem exigir nova digitação de usuário ou senha, com segurança ponta a ponta.
+O módulo conta com **2 sub-abas integradas**:
+* **Sub-aba 1 (Default):** `📊 Índices` — Indicadores de Liquidez Corrente, Seca e Imediata com cards interativos, fórmulas auditáveis, comparativo multi-empresa e modal de drilldown.
+* **Sub-aba 2:** `📈 Metabase Analytics` — Painéis analíticos completos via **JWT Signed Embedding** do Metabase.
 
 ---
 
@@ -25,17 +28,19 @@ A integração utiliza o padrão **JWT Signed Embedding** do Metabase, permitind
 graph TD
     User["👨‍💼 CEO / CFO (Navegador)"]
     Portal["🌐 Portal GSI (conciliacao-fretes.onrender.com)"]
-    BackendNode["⚙️ Backend Node.js (services/bi_service.js)"]
+    BackendNode["⚙️ Backend Node.js (bi_indices_engine.js / services/bi_service.js)"]
     MetabaseApp["📊 Metabase BI (bi-gsi.onrender.com - 2GB RAM / 1 CPU)"]
     SupabaseDB["🐘 Supabase PostgreSQL (ca-central-1 Canadá)"]
     ProtheusERP["🏢 TOTVS Protheus ERP (SQL Server Cloud)"]
 
     User -->|"1. Acessa Aba BI Executivo"| Portal
-    Portal -->|"2. GET /api/bi/dashboard-executivo (JWT Auth)"| BackendNode
-    BackendNode -->|"3. Gera URL com Token HMAC-SHA256 (exp: 10 min)"| Portal
-    Portal -->|"4. Renderiza iFrame Seguro"| MetabaseApp
-    MetabaseApp -->|"5. Executa Consultas SQL Analíticas"| SupabaseDB
-    SupabaseDB <-->|"Sincronização Periódica de Vendas/Estoque/Compras"| ProtheusERP
+    Portal -->|"2. GET /api/bi/indices (Sub-aba 1: Índices)"| BackendNode
+    Portal -->|"3. GET /api/bi/dashboard-executivo (Sub-aba 2: Metabase)"| BackendNode
+    BackendNode -->|"4. Gera URL com Token HMAC-SHA256 (exp: 10 min)"| Portal
+    Portal -->|"5. Renderiza iFrame Seguro Metabase"| MetabaseApp
+    MetabaseApp -->|"6. Executa Consultas SQL Analíticas"| SupabaseDB
+    BackendNode <-->|"Sincronização Periódica a cada 180 min (SE8, SE1, SE2, SB2)"| ProtheusERP
+    BackendNode -->|"Persistência em Lote + Snapshots Históricos"| SupabaseDB
 ```
 
 ### Componentes de Nuvem
@@ -56,26 +61,33 @@ O código do módulo de BI foi desenvolvido de forma 100% desacoplada para não 
 
 ```text
 Gemini-Cli/
+├── bi_indices_engine.js            # Motor backend: Extração Protheus, cálculo de LC/LS/LI, persistência e snapshots
 ├── services/
 │   └── bi_service.js               # Serviço backend: Geração de URLs assinadas JWT (HMAC-SHA256)
 ├── public/
 │   ├── js/
-│   │   └── bi.js                   # Controlador frontend do BI (iFrame, loading, fullscreen, SSO)
-│   ├── index.html                  # Botão 'mainTabBi' e container da aba '#tab-bi-executivo'
+│   │   ├── bi_indices.js           # Sub-aba 1: Índices de liquidez, cards, fórmulas, filtros e modal drilldown
+│   │   └── bi.js                   # Sub-aba 2: Controlador Metabase (iFrame, fullscreen, SSO)
+│   ├── index.html                  # Estrutura HTML das sub-abas, cards e modais
 │   ├── app.js                      # Roteamento de abas e controle de permissões RBAC
-│   └── style.css                   # Estilos com escopo isolado (.bi-wrapper, .bi-iframe-wrapper, etc.)
+│   └── style.css                   # Estilos visuais dos cards de índices e painel Metabase
 ├── sql/
 │   └── bi/
 │       ├── 00_tabela_grupos_sbm.sql                 # Tabela e seeding dos 33 grupos do Protheus SBM010
 │       ├── 01_vw_produtos_estoque.sql               # View multi-empresa de saldos, SC6, SC7 e rupturas
 │       ├── 02_vw_analise_credito.sql                # View de histórico de análise de crédito e scores
 │       ├── 03_vw_atividades_auditoria.sql           # View de telemetria, segurança e logs de operadores
-│       └── 04_vw_demandas_grupos_comerciais.sql     # View agregada por grupos comerciais (001 a 091)
+│       ├── 04_vw_demandas_grupos_comerciais.sql     # View agregada por grupos comerciais (001 a 091)
+│       ├── 05_tabela_e_views_faturamento.sql        # Data Warehouse e views de faturamento mês a mês
+│       └── 06_tabelas_indices_liquidez.sql          # Tabelas estoque, contas, bancos, histórico e view
 ├── docs/
 │   └── metabase/
 │       ├── GUIA_SETUP_METABASE.md                   # Guia passo a passo de deploy e setup
-│       └── ARQUITETURA_BI_EXECUTIVO.md              # Este documento de arquitetura consolidada
-└── test_bi_embed.js                # Suíte de testes automatizados com 7 asserções
+│       ├── ARQUITETURA_BI_EXECUTIVO.md              # Este documento de arquitetura consolidada
+│       └── INDICES_LIQUIDEZ_HISTORICO.md            # Manual de índices de liquidez e série temporal
+├── test_bi_indices.js              # Suíte de testes dos índices e série temporal (17 asserções)
+├── test_bi_faturamento.js          # Suíte de testes de faturamento e vendas (11 asserções)
+└── test_bi_embed.js                # Suíte de testes do embed Metabase (7 asserções)
 ```
 
 ---
