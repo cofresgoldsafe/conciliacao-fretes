@@ -692,6 +692,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (subGroupBi) subGroupBi.classList.add('hidden');
     if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
 
+    tabPanes.forEach(pane => pane.classList.add('hidden'));
+
     const activeMainBtn = document.querySelector(`.main-tab-btn[data-main-tab="${targetMain}"]`);
     if (activeMainBtn) activeMainBtn.classList.add('active');
 
@@ -6803,11 +6805,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (p.empresa === 'GSI') empresaBadge = `<span class="empresa-badge empresa-gsi">GSI</span>`;
       if (p.empresa === 'OACO') empresaBadge = `<span class="empresa-badge empresa-oaco">OACO</span>`;
 
-      const codWebCell = (p.codWeb && p.codWeb !== '-')
-        ? `<a href="https://app.pipedrive.com/deals?selected_deal_id=${escapeHtml(p.codWeb)}" target="_blank" rel="noopener noreferrer" class="link-pipedrive" title="Abrir negócio no Pipedrive">
-            <span class="pipedrive-icon">🔗</span> ${escapeHtml(p.codWeb)}
-          </a>`
-        : `<span style="color: var(--text-muted);">-</span>`;
+      const codWebCell = typeof formatPipedriveDealLink === 'function' 
+        ? formatPipedriveDealLink(p.codWeb)
+        : (p.codWeb && p.codWeb !== '-' ? `<a href="https://benetroncomercial.pipedrive.com/deal/${String(p.codWeb).replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" class="link-codweb-pipedrive" style="display: inline-flex; align-items: center; gap: 4px; color: #38bdf8; text-decoration: none; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2);"><span style="font-size: 0.8rem;">🔗</span> ${escapeHtml(p.codWeb)}</a>` : '<span style="color: var(--text-muted);">-</span>');
 
       const pedVendaCell = `
         <button class="btn-link-pedvenda btn-pedvenda-faturar" data-empresa="${escapeHtml(p.empresaKey || p.empresa)}" data-pedido="${escapeHtml(p.numPed)}" title="Clique para abrir os detalhes completos">
@@ -7010,11 +7010,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (p.empresa === 'GSI') empresaBadge = `<span class="empresa-badge empresa-gsi">GSI</span>`;
       if (p.empresa === 'OACO') empresaBadge = `<span class="empresa-badge empresa-oaco">OACO</span>`;
 
-      const codWebCell = (p.codWeb && p.codWeb !== '-')
-        ? `<a href="https://app.pipedrive.com/deals?selected_deal_id=${escapeHtml(p.codWeb)}" target="_blank" rel="noopener noreferrer" class="link-pipedrive" title="Abrir negócio no Pipedrive">
-            <span class="pipedrive-icon">🔗</span> ${escapeHtml(p.codWeb)}
-          </a>`
-        : `<span style="color: var(--text-muted);">-</span>`;
+      const codWebCell = typeof formatPipedriveDealLink === 'function' 
+        ? formatPipedriveDealLink(p.codWeb)
+        : (p.codWeb && p.codWeb !== '-' ? `<a href="https://benetroncomercial.pipedrive.com/deal/${String(p.codWeb).replace(/\D/g, '')}" target="_blank" rel="noopener noreferrer" class="link-codweb-pipedrive" style="display: inline-flex; align-items: center; gap: 4px; color: #38bdf8; text-decoration: none; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2);"><span style="font-size: 0.8rem;">🔗</span> ${escapeHtml(p.codWeb)}</a>` : '<span style="color: var(--text-muted);">-</span>');
 
       const pedVendaCell = `
         <button class="btn-link-pedvenda btn-pedvenda-bloq" data-empresa="${escapeHtml(p.empresaKey || p.empresa)}" data-pedido="${escapeHtml(p.numPed)}" title="Clique para abrir os detalhes completos">
@@ -7114,6 +7112,13 @@ document.addEventListener('DOMContentLoaded', () => {
       renderPedidosBloqEstoqueTable();
     });
   }
+
+  // Garantir isolamento estrito de abas no startup
+  tabPanes.forEach(pane => {
+    if (pane.id !== 'tab-pedidos-faturar') {
+      pane.classList.add('hidden');
+    }
+  });
 
   // Carregamento inicial de pedidos pra faturar se a aba inicial for tab-pedidos-faturar
   if (document.getElementById('tab-pedidos-faturar') && !document.getElementById('tab-pedidos-faturar').classList.contains('hidden')) {

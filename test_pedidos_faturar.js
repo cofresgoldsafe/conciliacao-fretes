@@ -85,6 +85,20 @@ async function runTests() {
     assert(html.includes('id="pedidosBloqTableBody"'), 'TBody pedidosBloqTableBody não encontrado');
   });
 
+  await test('HTML: tab-conciliacao-bancaria e abas inativas possuem a classe "hidden" para isolamento estrito', async () => {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    assert(html.includes('id="tab-conciliacao-bancaria" class="tab-pane hidden"'), 'tab-conciliacao-bancaria DEVE possuir class="tab-pane hidden"');
+    assert(html.includes('id="tab-analise-credito" class="tab-pane hidden"'), 'tab-analise-credito DEVE possuir class="tab-pane hidden"');
+    assert(html.includes('id="tab-bi-indices" class="tab-pane hidden"'), 'tab-bi-indices DEVE possuir class="tab-pane hidden"');
+    assert(html.includes('id="tab-bi-metabase" class="tab-pane hidden"'), 'tab-bi-metabase DEVE possuir class="tab-pane hidden"');
+  });
+
+  await test('Frontend JS: Links do Pipedrive utilizam URL oficial https://benetroncomercial.pipedrive.com/deal/', async () => {
+    const js = fs.readFileSync(path.join(__dirname, 'public', 'app.js'), 'utf8');
+    assert(js.includes('https://benetroncomercial.pipedrive.com/deal/'), 'Link do Pipedrive deve apontar para https://benetroncomercial.pipedrive.com/deal/');
+    assert(!js.includes('app.pipedrive.com/deals?selected_deal_id'), 'Links legados app.pipedrive.com devem ser extintos');
+  });
+
   // TESTES DE FUNÇÕES DE BANCO T-SQL (PROTHEUS_DB)
   await test('Protheus T-SQL: buscarPedidosProntosFaturar na OACO (16) retorna apenas pedido 000221', async () => {
     const pedidos = await buscarPedidosProntosFaturar({ empresa: 'OACO' });
