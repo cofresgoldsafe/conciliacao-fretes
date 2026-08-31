@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 (v9.02 - Deduplicação Automática e Criação Segura de Índice Único Diário)  
+> **Data da Última Auditoria:** 31/08/2026 15:28 (v9.03 - Desbloqueio de Visão Unificada e Coluna Nome em Comissões)  
 
 ---
 
