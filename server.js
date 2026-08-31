@@ -93,7 +93,8 @@ const {
 const {
   obterDadosIndicesCalculados,
   sincronizarIndicesCompleto,
-  obterDetalhesIndicesDrilldown
+  obterDetalhesIndicesDrilldown,
+  obterHistoricoIndices
 } = require('./bi_indices_engine');
 
 const app = express();
@@ -3231,6 +3232,23 @@ app.get('/api/bi/indices/drilldown', requireAuth, requireRole('admin'), async (r
     });
   } catch (err) {
     return handleServerError(res, err, 'Erro ao obter detalhes de drilldown dos índices.');
+  }
+});
+
+app.get('/api/bi/indices/historico', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const empresa = req.query.empresa || 'ALL';
+    const dias = parseInt(req.query.dias, 10) || 30;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+
+    const hist = await obterHistoricoIndices({ empresa, dias, limit });
+
+    return res.json({
+      success: true,
+      ...hist
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao consultar série temporal histórica dos índices.');
   }
 });
 

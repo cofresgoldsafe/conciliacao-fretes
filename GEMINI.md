@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 (v8.93 - Sub-abas no BI Executivo & Módulo de Índices Financeiros de Liquidez)  
+> **Data da Última Auditoria:** 31/08/2026 (v8.94 - Tabela e Snapshots Históricos de Série Temporal dos Índices de Liquidez)  
 
 ---
 
@@ -311,15 +311,15 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Contas a Receber (SE1):** Exclusão automática de títulos inadimplentes com vencimento superior a 5 dias de atraso (`dias_vencido > 5`).
       - **Contas a Pagar (SE2):** Inclusão integral de provisórios do tipo `PR` no passivo circulante.
     - **Tabelas Relacionais no Supabase & RLS:**
-      - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e view `vw_bi_indices_liquidez` com Row-Level Security (RLS) habilitado.
+      - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e `indices_liquidez_historico` (gravação automática de 4 snapshots por execução: Consolidado, 14, 15 e 16 para gráficos de tendência e histórico) com Row-Level Security (RLS) habilitado.
     - **UX e Drilldown Interativo:**
       - 3 Cards principais de Liquidez com badges de saúde financeira (*Excelente*, *Saudável*, *Atenção*) e fórmulas matemáticas exibidas.
       - 4 Cards de componentes (Estoque PA, Bancos SE8, Contas a Receber, Contas a Pagar).
       - Tabela comparativa multi-empresa (Metal Pleno 14, GSI 15, OAÇO 16 e Consolidado).
       - Modal de Drilldown com 5 guias internas (Extrato Matemático passo a passo, Saldos Bancários, Títulos a Receber, Títulos a Pagar, Estoques PA) e busca instantânea.
     - **Segurança RBAC e Suíte de Testes:**
-      - Endpoints `/api/bi/indices`, `/api/bi/indices/sync` e `/api/bi/indices/drilldown` protegidos por JWT e restritos a administradores.
-      - Suíte automatizada `test_bi_indices.js` com 16 asserções aprovadas com 100% de sucesso.
+      - Endpoints `/api/bi/indices`, `/api/bi/indices/sync`, `/api/bi/indices/drilldown` e `/api/bi/indices/historico` protegidos por JWT e restritos a administradores.
+      - Suíte automatizada `test_bi_indices.js` com 17 asserções aprovadas com 100% de sucesso.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

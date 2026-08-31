@@ -320,6 +320,16 @@ async function runAllTests() {
       assert.ok(Array.isArray(res.body.itens));
     });
 
+    await runAsyncAssertion('GET /api/bi/indices/historico com Admin retorna 200 OK com array de histórico', async () => {
+      const res = await makeRequest(server, {
+        path: '/api/bi/indices/historico?empresa=ALL&dias=30',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.success, true);
+      assert.ok(Array.isArray(res.body.historico), 'Deve retornar array de histórico');
+    });
+
     await runAsyncAssertion('POST /api/bi/indices/sync com Admin dispara sincronização Protheus', async () => {
       const res = await makeRequest(server, {
         path: '/api/bi/indices/sync',

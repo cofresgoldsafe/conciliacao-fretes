@@ -420,21 +420,126 @@ function calcularIndicesLiquidez(dados) {
 }
 
 /**
+ * Helper: Cria os 4 registros de snapshot histórico para Consolidado e empresas individuais
+ */
+function criarSnapshotsHistoricos(metrics, triggeredBy = 'JOB') {
+  const snapshots = [];
+  const now = new Date();
+  const dataRegistro = now.toISOString().slice(0, 10);
+  const tsRegistro = now.toISOString();
+
+  // 1. Consolidado
+  const cons = metrics.consolidado;
+  if (cons) {
+    const compC = cons.componentes || {};
+    snapshots.push({
+      data_registro: dataRegistro,
+      timestamp_registro: tsRegistro,
+      empresa_cod: 'CONSOLIDADO',
+      empresa_sigla: 'ALL',
+      empresa_nome: '🌐 Consolidado (3 Empresas)',
+      liquidez_corrente: cons.liquidezCorrente,
+      liquidez_seca: cons.liquidezSeca,
+      liquidez_imediata: cons.liquidezImediata,
+      ativo_circulante: cons.ativoCirculante,
+      ativo_seco: cons.ativoSeco,
+      passivo_circulante: cons.passivoCirculante,
+      estoque_custo: compC.estoque?.custoTotal || 0,
+      estoque_venda: compC.estoque?.vendaTotal || 0,
+      total_itens_estoque: compC.estoque?.totalItens || 0,
+      disponibilidades: compC.disponibilidades?.saldoTotal || 0,
+      total_contas_bancarias: compC.disponibilidades?.totalContas || 0,
+      receber_valido: compC.contasReceber?.validoIndice || 0,
+      receber_inadimplente: compC.contasReceber?.inadimplente5d || 0,
+      receber_total: compC.contasReceber?.totalAberto || 0,
+      total_titulos_receber: compC.contasReceber?.totalTitulos || 0,
+      pagar_total: compC.contasPagar?.totalAberto || 0,
+      pagar_provisorios_pr: compC.contasPagar?.provisoriosPR || 0,
+      pagar_definitivos: compC.contasPagar?.definitivos || 0,
+      total_titulos_pagar: compC.contasPagar?.totalTitulos || 0,
+      triggered_by: triggeredBy
+    });
+  }
+
+  // 2. Empresas 14, 15, 16
+  const empInfo = {
+    '14': { sigla: 'MP', nome: 'Metal Pleno / S4BW' },
+    '15': { sigla: 'GSI', nome: 'GSI Cofres' },
+    '16': { sigla: 'OACO', nome: 'OAÇO Produtos de Aço' }
+  };
+
+  ['14', '15', '16'].forEach(cod => {
+    const d = metrics.porEmpresa?.[cod];
+    if (d) {
+      const comp = d.componentes || {};
+      snapshots.push({
+        data_registro: dataRegistro,
+        timestamp_registro: tsRegistro,
+        empresa_cod: cod,
+        empresa_sigla: empInfo[cod]?.sigla || cod,
+        empresa_nome: empInfo[cod]?.nome || `Empresa ${cod}`,
+        liquidez_corrente: d.liquidezCorrente,
+        liquidez_seca: d.liquidezSeca,
+        liquidez_imediata: d.liquidezImediata,
+        ativo_circulante: d.ativoCirculante,
+        ativo_seco: d.ativoSeco,
+        passivo_circulante: d.passivoCirculante,
+        estoque_custo: comp.estoque?.custoTotal || 0,
+        estoque_venda: comp.estoque?.vendaTotal || 0,
+        total_itens_estoque: comp.estoque?.totalItens || 0,
+        disponibilidades: comp.disponibilidades?.saldoTotal || 0,
+        total_contas_bancarias: comp.disponibilidades?.totalContas || 0,
+        receber_valido: comp.contasReceber?.validoIndice || 0,
+        receber_inadimplente: comp.contasReceber?.inadimplente5d || 0,
+        receber_total: comp.contasReceber?.totalAberto || 0,
+        total_titulos_receber: comp.contasReceber?.totalTitulos || 0,
+        pagar_total: comp.contasPagar?.totalAberto || 0,
+        pagar_provisorios_pr: comp.contasPagar?.provisoriosPR || 0,
+        pagar_definitivos: comp.contasPagar?.definitivos || 0,
+        total_titulos_pagar: comp.contasPagar?.totalTitulos || 0,
+        triggered_by: triggeredBy
+      });
+    }
+  });
+
+  return snapshots;
+}
+
+/**
  * 3. PERSISTÊNCIA EM LOTE NO SUPABASE (POSTGRESQL) COM FALLBACK JSON
  */
 async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs = 0 } = {}) {
   const { saldosBancarios = [], contasReceber = [], contasPagar = [], estoque = [] } = dados;
   const metrics = calcularIndicesLiquidez(dados);
+  const snapshots = criarSnapshotsHistoricos(metrics, triggeredBy);
 
-  // 1. Sempre grava o cache local JSON para redundância e resiliência offline
+  // 1. Sempre grava o cache local JSON para redundância e resiliência offline (mantendo histórico acumulado)
   try {
+    let historicoAcumulado = [];
+    if (fs.existsSync(indicesCacheFile)) {
+      try {
+        const rawPrev = await fs.promises.readFile(indicesCacheFile, 'utf-8');
+        const prev = JSON.parse(rawPrev);
+        if (Array.isArray(prev.historicoSnapshots)) {
+          historicoAcumulado = prev.historicoSnapshots;
+        }
+      } catch {}
+    }
+
+    // Adiciona os novos snapshots e mantém os últimos 1000 registros
+    historicoAcumulado.push(...snapshots);
+    if (historicoAcumulado.length > 1000) {
+      historicoAcumulado = historicoAcumulado.slice(-1000);
+    }
+
     await safeWriteJson(indicesCacheFile, {
       ...dados,
       metricasCalculadas: metrics,
+      historicoSnapshots: historicoAcumulado,
       syncedAt: new Date().toISOString(),
       triggeredBy
     });
-    console.log('📁 [BI Índices] Cache JSON atualizado com sucesso em data/bi_indices_cache.json');
+    console.log('📁 [BI Índices] Cache JSON e histórico de snapshots atualizados em data/bi_indices_cache.json');
   } catch (errCache) {
     console.warn('⚠️ [BI Índices] Falha ao gravar cache local JSON:', errCache.message);
   }
@@ -454,17 +559,25 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
     for (let i = 0; i < estoque.length; i += 100) {
       const chunk = estoque.slice(i, i + 100);
       const values = [];
-      const placeholders = chunk.map((item, idx) => {
-        const offset = idx * 11;
+      const placeholders = chunk.map((r, idx) => {
+        const o = idx * 11;
         values.push(
-          item.empresa_cod, item.empresa_sigla, item.codigo, item.descricao,
-          item.tipo || 'PA', item.grupo_cod || '', item.quantidade,
-          item.custo_unitario, item.preco_venda, item.custo_total, item.valor_total_venda
+          r.empresa_cod,
+          r.empresa_sigla,
+          r.codigo,
+          r.descricao,
+          r.tipo || 'PA',
+          r.grupo_cod || '',
+          r.quantidade || 0,
+          r.custo_unitario || 0,
+          r.preco_venda || 0,
+          r.custo_total || 0,
+          r.valor_total_venda || 0
         );
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, NOW())`;
+        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, NOW())`;
       }).join(', ');
 
-      const sqlEst = `
+      const sqlEstoque = `
         INSERT INTO estoque (
           empresa_cod, empresa_sigla, codigo, descricao, tipo, grupo_cod,
           quantidade, custo_unitario, preco_venda, custo_total, valor_total_venda, synced_at
@@ -480,38 +593,50 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
           valor_total_venda = EXCLUDED.valor_total_venda,
           synced_at = NOW();
       `;
-      await client.query(sqlEst, values);
+      await client.query(sqlEstoque, values);
     }
 
-    // 2.2 Salva Tabela contas_a_receber
+    // 2.2 Salva Tabela contas_a_receber (Upsert em lotes de 100)
     for (let i = 0; i < contasReceber.length; i += 100) {
       const chunk = contasReceber.slice(i, i + 100);
       const values = [];
-      const placeholders = chunk.map((item, idx) => {
-        const offset = idx * 18;
+      const placeholders = chunk.map((r, idx) => {
+        const o = idx * 17;
         values.push(
-          item.empresa_cod, item.empresa_sigla, item.filial, item.prefixo,
-          item.numero_titulo, item.parcela, item.tipo, item.cliente_cod,
-          item.cliente_loja, item.cliente_nome, item.natureza_cod, item.data_emissao,
-          item.data_vencimento, item.data_vencimento_real, item.valor_original,
-          item.saldo, item.dias_vencido, item.valido_indice
+          r.empresa_cod,
+          r.empresa_sigla,
+          r.filial || '01',
+          r.prefixo || '',
+          r.numero_titulo,
+          r.parcela || '',
+          r.tipo || 'NF',
+          r.cliente_cod,
+          r.cliente_loja,
+          r.cliente_nome,
+          r.natureza_cod,
+          r.data_emissao,
+          r.data_vencimento,
+          r.data_vencimento_real,
+          r.valor_original || 0,
+          r.saldo || 0,
+          r.dias_vencido || 0,
+          r.valido_indice !== false
         );
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14}, $${offset + 15}, $${offset + 16}, $${offset + 17}, $${offset + 18}, 'ABERTO', NOW())`;
+        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, $${o + 12}, $${o + 13}, $${o + 14}, $${o + 15}, $${o + 16}, $${o + 17}, $${o + 18}, 'ABERTO', NOW())`;
       }).join(', ');
 
       const sqlCR = `
         INSERT INTO contas_a_receber (
           empresa_cod, empresa_sigla, filial, prefixo, numero_titulo, parcela, tipo,
-          cliente_cod, cliente_loja, cliente_nome, natureza_cod, data_emissao,
-          data_vencimento, data_vencimento_real, valor_original, saldo, dias_vencido,
-          valido_indice, status, synced_at
+          cliente_cod, cliente_loja, cliente_nome, natureza_cod,
+          data_emissao, data_vencimento, data_vencimento_real,
+          valor_original, saldo, dias_vencido, valido_indice, status, synced_at
         ) VALUES ${placeholders}
         ON CONFLICT (empresa_cod, prefixo, numero_titulo, parcela, tipo) DO UPDATE SET
           cliente_nome = EXCLUDED.cliente_nome,
           natureza_cod = EXCLUDED.natureza_cod,
           data_vencimento = EXCLUDED.data_vencimento,
           data_vencimento_real = EXCLUDED.data_vencimento_real,
-          valor_original = EXCLUDED.valor_original,
           saldo = EXCLUDED.saldo,
           dias_vencido = EXCLUDED.dias_vencido,
           valido_indice = EXCLUDED.valido_indice,
@@ -521,35 +646,46 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       await client.query(sqlCR, values);
     }
 
-    // 2.3 Salva Tabela contas_a_pagar
+    // 2.3 Salva Tabela contas_a_pagar (Upsert em lotes de 100)
     for (let i = 0; i < contasPagar.length; i += 100) {
       const chunk = contasPagar.slice(i, i + 100);
       const values = [];
-      const placeholders = chunk.map((item, idx) => {
-        const offset = idx * 17;
+      const placeholders = chunk.map((r, idx) => {
+        const o = idx * 16;
         values.push(
-          item.empresa_cod, item.empresa_sigla, item.filial, item.prefixo,
-          item.numero_titulo, item.parcela, item.tipo, item.fornecedor_cod,
-          item.fornecedor_loja, item.fornecedor_nome, item.natureza_cod, item.data_emissao,
-          item.data_vencimento, item.data_vencimento_real, item.valor_original,
-          item.saldo, item.is_provisorio
+          r.empresa_cod,
+          r.empresa_sigla,
+          r.filial || '01',
+          r.prefixo || '',
+          r.numero_titulo,
+          r.parcela || '',
+          r.tipo || 'NF',
+          r.fornecedor_cod,
+          r.fornecedor_loja,
+          r.fornecedor_nome,
+          r.natureza_cod,
+          r.data_emissao,
+          r.data_vencimento,
+          r.data_vencimento_real,
+          r.valor_original || 0,
+          r.saldo || 0,
+          r.is_provisorio === true
         );
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14}, $${offset + 15}, $${offset + 16}, $${offset + 17}, 'ABERTO', NOW())`;
+        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, $${o + 12}, $${o + 13}, $${o + 14}, $${o + 15}, $${o + 16}, $${o + 17}, 'ABERTO', NOW())`;
       }).join(', ');
 
       const sqlCP = `
         INSERT INTO contas_a_pagar (
           empresa_cod, empresa_sigla, filial, prefixo, numero_titulo, parcela, tipo,
-          fornecedor_cod, fornecedor_loja, fornecedor_nome, natureza_cod, data_emissao,
-          data_vencimento, data_vencimento_real, valor_original, saldo, is_provisorio,
-          status, synced_at
+          fornecedor_cod, fornecedor_loja, fornecedor_nome, natureza_cod,
+          data_emissao, data_vencimento, data_vencimento_real,
+          valor_original, saldo, is_provisorio, status, synced_at
         ) VALUES ${placeholders}
         ON CONFLICT (empresa_cod, prefixo, numero_titulo, parcela, tipo) DO UPDATE SET
           fornecedor_nome = EXCLUDED.fornecedor_nome,
           natureza_cod = EXCLUDED.natureza_cod,
           data_vencimento = EXCLUDED.data_vencimento,
           data_vencimento_real = EXCLUDED.data_vencimento_real,
-          valor_original = EXCLUDED.valor_original,
           saldo = EXCLUDED.saldo,
           is_provisorio = EXCLUDED.is_provisorio,
           status = EXCLUDED.status,
@@ -558,24 +694,29 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       await client.query(sqlCP, values);
     }
 
-    // 2.4 Salva Tabela saldos_bancarios
+    // 2.4 Salva Tabela saldos_bancarios (Upsert em lotes de 100)
     for (let i = 0; i < saldosBancarios.length; i += 100) {
       const chunk = saldosBancarios.slice(i, i + 100);
       const values = [];
-      const placeholders = chunk.map((item, idx) => {
-        const offset = idx * 7;
+      const placeholders = chunk.map((r, idx) => {
+        const o = idx * 8;
         values.push(
-          item.empresa_cod, item.empresa_sigla, item.banco_cod,
-          item.agencia || '', item.conta, item.conta_nome || '',
-          item.data_saldo, item.saldo_atual
+          r.empresa_cod,
+          r.empresa_sigla,
+          r.banco_cod,
+          r.agencia || '',
+          r.conta,
+          r.conta_nome || '',
+          r.data_saldo,
+          r.saldo_atual || 0
         );
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, NOW())`;
+        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, NOW())`;
       }).join(', ');
 
       const sqlSB = `
         INSERT INTO saldos_bancarios (
-          empresa_cod, empresa_sigla, banco_cod, agencia, conta, conta_nome,
-          data_saldo, saldo_atual, synced_at
+          empresa_cod, empresa_sigla, banco_cod, agencia, conta,
+          conta_nome, data_saldo, saldo_atual, synced_at
         ) VALUES ${placeholders}
         ON CONFLICT (empresa_cod, banco_cod, agencia, conta) DO UPDATE SET
           conta_nome = EXCLUDED.conta_nome,
@@ -586,7 +727,58 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       await client.query(sqlSB, values);
     }
 
-    // 2.5 Grava Log de Auditoria
+    // 2.5 Salva Tabela Histórica de Série Temporal (Snapshots de LC, LS, LI)
+    for (const snap of snapshots) {
+      await client.query(`
+        INSERT INTO indices_liquidez_historico (
+          data_registro, timestamp_registro, empresa_cod, empresa_sigla, empresa_nome,
+          liquidez_corrente, liquidez_seca, liquidez_imediata,
+          ativo_circulante, ativo_seco, passivo_circulante,
+          estoque_custo, estoque_venda, total_itens_estoque,
+          disponibilidades, total_contas_bancarias,
+          receber_valido, receber_inadimplente, receber_total, total_titulos_receber,
+          pagar_total, pagar_provisorios_pr, pagar_definitivos, total_titulos_pagar,
+          triggered_by, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5,
+          $6, $7, $8,
+          $9, $10, $11,
+          $12, $13, $14,
+          $15, $16,
+          $17, $18, $19, $20,
+          $21, $22, $23, $24,
+          $25, NOW()
+        );
+      `, [
+        snap.data_registro,
+        snap.timestamp_registro,
+        snap.empresa_cod,
+        snap.empresa_sigla,
+        snap.empresa_nome,
+        snap.liquidez_corrente,
+        snap.liquidez_seca,
+        snap.liquidez_imediata,
+        snap.ativo_circulante,
+        snap.ativo_seco,
+        snap.passivo_circulante,
+        snap.estoque_custo,
+        snap.estoque_venda,
+        snap.total_itens_estoque,
+        snap.disponibilidades,
+        snap.total_contas_bancarias,
+        snap.receber_valido,
+        snap.receber_inadimplente,
+        snap.receber_total,
+        snap.total_titulos_receber,
+        snap.pagar_total,
+        snap.pagar_provisorios_pr,
+        snap.pagar_definitivos,
+        snap.total_titulos_pagar,
+        snap.triggered_by
+      ]);
+    }
+
+    // 2.6 Grava Log de Auditoria
     await client.query(`
       INSERT INTO indices_sync_logs (
         status, total_estoque, total_receber, total_pagar, total_bancos,
@@ -607,7 +799,7 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
     ]);
 
     await client.query('COMMIT');
-    console.log('✅ [BI Índices] Todos os registros foram persistidos no Supabase PostgreSQL com sucesso!');
+    console.log('✅ [BI Índices] Todos os registros e snapshots históricos foram persistidos no Supabase com sucesso!');
   } catch (errDB) {
     await client.query('ROLLBACK');
     console.error('❌ [BI Índices] Erro ao persistir dados no Supabase PostgreSQL:', errDB.message);
@@ -806,6 +998,75 @@ async function obterDetalhesIndicesDrilldown({ tipo = 'bancos', empresa = 'ALL',
   };
 }
 
+/**
+ * 7. CONSULTA DE HISTÓRICO DE SÉRIE TEMPORAL DOS ÍNDICES (PARA GRÁFICOS E BI)
+ */
+async function obterHistoricoIndices({ empresa = 'ALL', dias = 30, limit = 100 } = {}) {
+  const pool = getPool();
+  if (isPostgresConnected() && pool) {
+    try {
+      let query = `
+        SELECT * FROM indices_liquidez_historico
+        WHERE data_registro >= CURRENT_DATE - ($1 || ' days')::INTERVAL
+      `;
+      const params = [dias];
+
+      if (empresa && empresa !== 'ALL') {
+        params.push(empresa);
+        query += ` AND (empresa_cod = $${params.length} OR empresa_sigla = $${params.length})`;
+      } else if (empresa === 'ALL') {
+        params.push('CONSOLIDADO');
+        query += ` AND empresa_cod = $${params.length}`;
+      }
+
+      query += ` ORDER BY timestamp_registro ASC LIMIT $${params.length + 1};`;
+      params.push(limit);
+
+      const res = await pool.query(query, params);
+      return {
+        source: 'POSTGRES',
+        empresa,
+        dias,
+        total: res.rows.length,
+        historico: res.rows
+      };
+    } catch (err) {
+      console.warn('⚠️ [BI Índices] Falha ao consultar histórico no Postgres, recorrendo ao cache local:', err.message);
+    }
+  }
+
+  // Fallback para cache local JSON
+  try {
+    if (fs.existsSync(indicesCacheFile)) {
+      const raw = await fs.promises.readFile(indicesCacheFile, 'utf-8');
+      const cache = JSON.parse(raw);
+      let list = cache.historicoSnapshots || [];
+      if (empresa && empresa !== 'ALL') {
+        list = list.filter(r => r.empresa_cod === empresa || r.empresa_sigla === empresa);
+      } else if (empresa === 'ALL') {
+        list = list.filter(r => r.empresa_cod === 'CONSOLIDADO');
+      }
+      return {
+        source: 'CACHE_JSON',
+        empresa,
+        dias,
+        total: list.length,
+        historico: list.slice(-limit)
+      };
+    }
+  } catch (errJson) {
+    console.warn('⚠️ [BI Índices] Falha ao ler histórico no cache JSON:', errJson.message);
+  }
+
+  return {
+    source: 'EMPTY',
+    empresa,
+    dias,
+    total: 0,
+    historico: []
+  };
+}
+
 module.exports = {
   extrairDadosIndicesProtheus,
   calcularIndicesLiquidez,
@@ -813,6 +1074,7 @@ module.exports = {
   sincronizarIndicesCompleto,
   obterDadosIndicesCalculados,
   obterDetalhesIndicesDrilldown,
+  obterHistoricoIndices,
   roundVal,
   roundIndex,
   calcularDiasVencido

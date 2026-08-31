@@ -593,6 +593,39 @@ async function initPostgres() {
         );
         CREATE INDEX IF NOT EXISTS idx_indices_sync_logs_created ON indices_sync_logs(created_at DESC);
 
+        CREATE TABLE IF NOT EXISTS indices_liquidez_historico (
+          id BIGSERIAL PRIMARY KEY,
+          data_registro DATE NOT NULL DEFAULT CURRENT_DATE,
+          timestamp_registro TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          empresa_cod VARCHAR(20) NOT NULL,
+          empresa_sigla VARCHAR(10),
+          empresa_nome VARCHAR(100),
+          liquidez_corrente NUMERIC(10, 4) NOT NULL DEFAULT 0,
+          liquidez_seca NUMERIC(10, 4) NOT NULL DEFAULT 0,
+          liquidez_imediata NUMERIC(10, 4) NOT NULL DEFAULT 0,
+          ativo_circulante NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          ativo_seco NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          passivo_circulante NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          estoque_custo NUMERIC(15, 2) DEFAULT 0,
+          estoque_venda NUMERIC(15, 2) DEFAULT 0,
+          total_itens_estoque INTEGER DEFAULT 0,
+          disponibilidades NUMERIC(15, 2) DEFAULT 0,
+          total_contas_bancarias INTEGER DEFAULT 0,
+          receber_valido NUMERIC(15, 2) DEFAULT 0,
+          receber_inadimplente NUMERIC(15, 2) DEFAULT 0,
+          receber_total NUMERIC(15, 2) DEFAULT 0,
+          total_titulos_receber INTEGER DEFAULT 0,
+          pagar_total NUMERIC(15, 2) DEFAULT 0,
+          pagar_provisorios_pr NUMERIC(15, 2) DEFAULT 0,
+          pagar_definitivos NUMERIC(15, 2) DEFAULT 0,
+          total_titulos_pagar INTEGER DEFAULT 0,
+          triggered_by VARCHAR(50) DEFAULT 'JOB',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_indices_hist_data ON indices_liquidez_historico(data_registro DESC);
+        CREATE INDEX IF NOT EXISTS idx_indices_hist_empresa ON indices_liquidez_historico(empresa_cod, data_registro DESC);
+        CREATE INDEX IF NOT EXISTS idx_indices_hist_ts ON indices_liquidez_historico(timestamp_registro DESC);
+
         CREATE OR REPLACE VIEW vw_bi_indices_liquidez AS
         WITH comp_estoque AS (
           SELECT 
@@ -756,7 +789,8 @@ async function initPostgres() {
         'contas_a_receber',
         'contas_a_pagar',
         'saldos_bancarios',
-        'indices_sync_logs'
+        'indices_sync_logs',
+        'indices_liquidez_historico'
       ];
 
       for (const tbl of tablesToSecure) {
