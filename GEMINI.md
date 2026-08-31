@@ -297,7 +297,7 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Segurança RBAC, Endpoints & Testes Automatizados:**
       - Endpoints `/api/bi/sync-faturamento` e `/api/bi/faturamento-stats` protegidos por autenticação JWT e restritos a administradores.
       - Suíte automatizada `test_bi_faturamento.js` com 11 asserções cobrindo mapeamento de grupos, persistência com fallback em cache JSON, DDLs e controle de acesso RBAC (100% de aprovação).
-37. [x] **Sub-abas no BI Executivo & Módulo de Índices Financeiros de Liquidez (`sql/bi/06_tabelas_indices_liquidez.sql`, `bi_indices_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_indices.js`, `public/style.css`, `test_bi_indices.js`):**
+37. [x] **Sub-abas no BI Executivo, Módulo de Índices Financeiros de Liquidez & Integração Metabase (`sql/bi/06_tabelas_indices_liquidez.sql`, `bi_indices_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_indices.js`, `public/style.css`, `test_bi_indices.js`):**
     - **Navegação de 2 Sub-abas no BI Executivo:**
       - Sub-aba 1 (Default): `📊 Índices` (`#tab-bi-indices` / `btnTabBiIndices`) exibindo os índices de liquidez, cartões de componentes e tabela comparativa multi-empresa.
       - Sub-aba 2: `📈 Metabase Analytics` (`#tab-bi-metabase` / `btnTabBiMetabase`) mantendo a integração embedded do painel analítico Metabase.
@@ -307,11 +307,17 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Liquidez Imediata ($LI$):** $\frac{\text{Disponibilidades Bancárias (SE8)}}{\text{Passivo Circulante (SE2 com PR)}}$.
     - **Regras Contábeis & Fiscais Estritas:**
       - **Estoque PA:** Leitura combinada de `SB2` com `SB1` usando custo unitário (`B1_VLUNIT`) de produtos tipo `PA` com quantidade $> 0$.
-      - **Saldos Bancários (SE8):** Extração particionada por banco/agência/conta com `ROW_NUMBER() OVER (PARTITION BY E8_BANCO, E8_AGENCIA, E8_CONTA ORDER BY E8_DTSALAT DESC)` para obter o último saldo real disponível.
+      - **Saldos Bancários (SE8):** Extração particionada por banco/agência/conta com `ROW_NUMBER() OVER (PARTITION BY E8_BANCO, E8_AGENCIA, E8_CONTA ORDER BY E8_DTSALAT DESC)` para obter o último saldo real disponível de cada uma das 22 contas bancárias.
       - **Contas a Receber (SE1):** Considera títulos em aberto com saldo $> \text{R\$\ 0,01}$ e exclusão automática de títulos inadimplentes com vencimento superior a 5 dias de atraso (`dias_vencido > 5`).
       - **Contas a Pagar (SE2):** Considera títulos com saldo pendente $> \text{R\$\ 0,01}$ (suportando títulos com baixa parcial considerando o saldo residual real), inclusão integral de provisórios do tipo `PR` e **exclusão expressa de pagamentos antecipados `PA`** (pois o valor já foi desembolsado e não constitui passivo futuro).
+    - **Preservação de Títulos Provisórios (`PR`) via `RECNO` Físico Protheus:**
+      - Títulos provisórios (`PR`) não possuem número de nota (`E2_NUM = '000000000'`). Para evitar colisões e perda de títulos, a extração e o banco utilizam a coluna física `recno` (`R_E_C_N_O_`), preservando 100% dos 141 títulos reais (39 MP + 46 GSI + 56 OAÇO, totalizando `R$ 475.747,40`).
+      - Remoção das constraints únicas legadas conflitantes `uq_contas_a_pagar` e `uq_contas_a_receber` no PostgreSQL.
+    - **Snapshot Diário por Upsert & View Analítica para o Metabase (`vw_indices_liquidez_diario`):**
+      - Índice único `uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod)` com `ON CONFLICT DO UPDATE` e deduplicação diária no cache JSON, assegurando exatamente 1 snapshot consolidado por dia por empresa (evitando dentes de serra e repetições intraday).
+      - View SQL `vw_indices_liquidez_diario` particionada por `ROW_NUMBER() OVER (PARTITION BY data_registro, empresa_cod ORDER BY timestamp_registro DESC)` para visualização limpa e linear nos gráficos e dashboards do Metabase.
     - **Tabelas Relacionais no Supabase & RLS:**
-      - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e `indices_liquidez_historico` (gravação automática de 4 snapshots por execução: Consolidado, 14, 15 e 16 para gráficos de tendência e histórico) com Row-Level Security (RLS) habilitado.
+      - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e `indices_liquidez_historico` com Row-Level Security (RLS) habilitado.
     - **UX e Drilldown Interativo:**
       - 3 Cards principais de Liquidez com badges de saúde financeira (*Excelente*, *Saudável*, *Atenção*) e fórmulas matemáticas exibidas.
       - 4 Cards de componentes (Estoque PA, Bancos SE8, Contas a Receber, Contas a Pagar).
