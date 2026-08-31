@@ -716,6 +716,17 @@ async function initPostgres() {
         LEFT JOIN comp_bancos b ON b.empresa_cod = eb.empresa_cod
         LEFT JOIN comp_receber r ON r.empresa_cod = eb.empresa_cod
         LEFT JOIN comp_pagar p ON p.empresa_cod = eb.empresa_cod;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod);
+
+        CREATE OR REPLACE VIEW vw_indices_liquidez_diario AS
+        SELECT *
+        FROM (
+          SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY data_registro, empresa_cod ORDER BY timestamp_registro DESC) as rn
+          FROM indices_liquidez_historico
+        ) sub
+        WHERE rn = 1;
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco

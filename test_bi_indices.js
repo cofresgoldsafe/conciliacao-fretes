@@ -224,6 +224,8 @@ async function runAllTests() {
     assert.ok(content.includes('CREATE TABLE IF NOT EXISTS contas_a_pagar'), 'Deve conter DDL de contas_a_pagar');
     assert.ok(content.includes('CREATE TABLE IF NOT EXISTS saldos_bancarios'), 'Deve conter DDL de saldos_bancarios');
     assert.ok(content.includes('CREATE OR REPLACE VIEW vw_bi_indices_liquidez'), 'Deve conter view analítica');
+    assert.ok(content.includes('CREATE OR REPLACE VIEW vw_indices_liquidez_diario'), 'Deve conter view analítica diária');
+    assert.ok(content.includes('uq_indices_hist_dia_empresa'), 'Deve conter índice único de dia e empresa');
   });
 
   runSyncAssertion('Existência do Script Frontend bi_indices.js', () => {

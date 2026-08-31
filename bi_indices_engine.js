@@ -577,8 +577,16 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       } catch {}
     }
 
-    // Adiciona os novos snapshots e mantém os últimos 1000 registros
-    historicoAcumulado.push(...snapshots);
+    // 1.1 Atualiza ou insere por (data_registro, empresa_cod) garantindo 1 snapshot limpo por dia por empresa
+    const mapHist = new Map();
+    for (const h of historicoAcumulado) {
+      mapHist.set(`${h.data_registro}__${h.empresa_cod}`, h);
+    }
+    for (const s of snapshots) {
+      mapHist.set(`${s.data_registro}__${s.empresa_cod}`, s);
+    }
+    historicoAcumulado = Array.from(mapHist.values());
+
     if (historicoAcumulado.length > 1000) {
       historicoAcumulado = historicoAcumulado.slice(-1000);
     }
@@ -611,6 +619,7 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
     await client.query('ALTER TABLE contas_a_receber DROP CONSTRAINT IF EXISTS uq_contas_a_receber;');
     await client.query('ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS recno BIGINT;');
     await client.query('ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS recno BIGINT;');
+    await client.query('CREATE UNIQUE INDEX IF NOT EXISTS uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod);');
 
     // 2.0 Limpa as tabelas de estado atual antes de carregar o snapshot íntegro
     await client.query('DELETE FROM estoque;');
@@ -758,7 +767,7 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       await client.query(sqlSB, values);
     }
 
-    // 2.5 Salva Tabela Histórica de Série Temporal (Snapshots de LC, LS, LI)
+    // 2.5 Salva Tabela Histórica de Série Temporal com Upsert Diário por Empresa
     for (const snap of snapshots) {
       await client.query(`
         INSERT INTO indices_liquidez_historico (
@@ -779,7 +788,31 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
           $17, $18, $19, $20,
           $21, $22, $23, $24,
           $25, NOW()
-        );
+        )
+        ON CONFLICT (data_registro, empresa_cod) DO UPDATE SET
+          timestamp_registro = EXCLUDED.timestamp_registro,
+          empresa_sigla = EXCLUDED.empresa_sigla,
+          empresa_nome = EXCLUDED.empresa_nome,
+          liquidez_corrente = EXCLUDED.liquidez_corrente,
+          liquidez_seca = EXCLUDED.liquidez_seca,
+          liquidez_imediata = EXCLUDED.liquidez_imediata,
+          ativo_circulante = EXCLUDED.ativo_circulante,
+          ativo_seco = EXCLUDED.ativo_seco,
+          passivo_circulante = EXCLUDED.passivo_circulante,
+          estoque_custo = EXCLUDED.estoque_custo,
+          estoque_venda = EXCLUDED.estoque_venda,
+          total_itens_estoque = EXCLUDED.total_itens_estoque,
+          disponibilidades = EXCLUDED.disponibilidades,
+          total_contas_bancarias = EXCLUDED.total_contas_bancarias,
+          receber_valido = EXCLUDED.receber_valido,
+          receber_inadimplente = EXCLUDED.receber_inadimplente,
+          receber_total = EXCLUDED.receber_total,
+          total_titulos_receber = EXCLUDED.total_titulos_receber,
+          pagar_total = EXCLUDED.pagar_total,
+          pagar_provisorios_pr = EXCLUDED.pagar_provisorios_pr,
+          pagar_definitivos = EXCLUDED.pagar_definitivos,
+          total_titulos_pagar = EXCLUDED.total_titulos_pagar,
+          triggered_by = EXCLUDED.triggered_by;
       `, [
         snap.data_registro,
         snap.timestamp_registro,

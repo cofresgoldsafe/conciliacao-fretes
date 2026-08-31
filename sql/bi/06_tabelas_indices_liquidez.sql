@@ -272,3 +272,16 @@ ALTER TABLE saldos_bancarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indices_sync_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE indices_liquidez_historico ENABLE ROW LEVEL SECURITY;
 
+CREATE UNIQUE INDEX IF NOT EXISTS uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod);
+
+-- 9. VIEW ANALÍTICA DIÁRIA DE ÍNDICES (1 SNAPSHOT POR DIA POR EMPRESA PARA O METABASE)
+CREATE OR REPLACE VIEW vw_indices_liquidez_diario AS
+SELECT *
+FROM (
+  SELECT *,
+    ROW_NUMBER() OVER (PARTITION BY data_registro, empresa_cod ORDER BY timestamp_registro DESC) as rn
+  FROM indices_liquidez_historico
+) sub
+WHERE rn = 1;
+
+

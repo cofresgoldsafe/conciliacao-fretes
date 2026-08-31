@@ -198,6 +198,19 @@ CREATE INDEX IF NOT EXISTS idx_indices_hist_empresa ON indices_liquidez_historic
 CREATE INDEX IF NOT EXISTS idx_indices_hist_ts ON indices_liquidez_historico(timestamp_registro DESC);
 ```
 
+### 3.7. View Analítica Diária (`vw_indices_liquidez_diario`)
+Garante exatamente **1 ponto por dia para cada empresa** no Metabase, selecionando automaticamente o fechamento mais recente de cada data:
+```sql
+CREATE OR REPLACE VIEW vw_indices_liquidez_diario AS
+SELECT *
+FROM (
+  SELECT *,
+    ROW_NUMBER() OVER (PARTITION BY data_registro, empresa_cod ORDER BY timestamp_registro DESC) as rn
+  FROM indices_liquidez_historico
+) sub
+WHERE rn = 1;
+```
+
 ---
 
 ## 4. Endpoints da API REST (Backend Node.js)
@@ -220,6 +233,8 @@ CREATE INDEX IF NOT EXISTS idx_indices_hist_ts ON indices_liquidez_historico(tim
    * Disparada 5 segundos após a inicialização do servidor Node.js.
 3. **Disparo Manual (`MANUAL`):**
    * Acionado via botão `🔄 Sincronizar Protheus` no portal.
+4. **Mecanismo de Upsert Diário:**
+   * Múltiplas sincronizações no mesmo dia atualizam o registro daquela data, mantendo a série temporal limpa e sem dentes de serra.
 
 ---
 
@@ -228,12 +243,12 @@ CREATE INDEX IF NOT EXISTS idx_indices_hist_ts ON indices_liquidez_historico(tim
 ### Gráfico de Linha: Evolução da Liquidez Corrente nos Últimos 90 Dias
 ```sql
 SELECT 
-  data_registro,
-  empresa_nome,
-  liquidez_corrente,
-  liquidez_seca,
-  liquidez_imediata
-FROM indices_liquidez_historico
+  data_registro AS "Data",
+  empresa_nome AS "Empresa",
+  liquidez_corrente AS "Liquidez Corrente",
+  liquidez_seca AS "Liquidez Seca",
+  liquidez_imediata AS "Liquidez Imediata"
+FROM vw_indices_liquidez_diario
 WHERE data_registro >= CURRENT_DATE - INTERVAL '90 days'
   AND empresa_cod = 'CONSOLIDADO'
 ORDER BY data_registro ASC;
@@ -242,12 +257,12 @@ ORDER BY data_registro ASC;
 ### Gráfico de Comparação: Ativo Circulante vs. Passivo Circulante
 ```sql
 SELECT 
-  data_registro,
+  data_registro AS "Data",
   ativo_circulante AS "Ativo Circulante (R$)",
   passivo_circulante AS "Passivo Circulante (R$)",
   disponibilidades AS "Bancos (R$)",
   estoque_custo AS "Estoque Custo (R$)"
-FROM indices_liquidez_historico
+FROM vw_indices_liquidez_diario
 WHERE data_registro >= CURRENT_DATE - INTERVAL '30 days'
   AND empresa_cod = 'CONSOLIDADO'
 ORDER BY data_registro ASC;
