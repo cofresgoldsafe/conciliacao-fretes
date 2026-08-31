@@ -263,6 +263,20 @@
         }
       }
     },
+    "/api/logistica/pedidos-lib-estoque": {
+      "get": {
+        "summary": "Análise e Fila Sequencial FIFO de Liberação de Estoque (MATA455 / MATA456)",
+        "description": "Retorna pedidos bloqueados por estoque com alocação virtual sequencial FIFO contra o saldo SB2, classificando em PRONTO, PARCIAL ou AGUARDANDO.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "empresa", "in": "query", "schema": { "type": "string" }, "description": "Filtro por empresa (MP, GSI, OACO)" },
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Busca textual por pedido, cliente, produto ou vendedor" }
+        ],
+        "responses": {
+          "200": { "description": "Pedidos analisados com status FIFO retornados com sucesso" }
+        }
+      }
+    },
     "/api/logistica/pedidos-bloq-estoque": {
       "get": {
         "summary": "Consulta de Pedidos Bloqueados por Falta de Estoque (C9_BLEST = 02)",
