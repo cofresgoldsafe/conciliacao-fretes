@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1788191117670",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 14712,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 101,
+        "contasPagar": 141,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-08-31T15:45:17.670Z"
+  },
+  {
+    "id": "ACT-1788191102827",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-08-31T15:45:02.827Z"
+  },
+  {
     "id": "ACT-1788189682134",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2243,31 +2273,5 @@
     "ip": "127.0.0.1",
     "metadata": {},
     "createdAt": "2026-08-27T10:47:22.318Z"
-  },
-  {
-    "id": "ACT-1787827574840",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE-ISENTO-01 (Score: 42, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE-ISENTO-01",
-      "score": 42,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-08-27T10:46:14.840Z"
-  },
-  {
-    "id": "ACT-1787827574176",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"novo_vendedor_teste\" (teste.vend@oaco.com.br)",
-    "ip": "127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T10:46:14.176Z"
   }
 ]

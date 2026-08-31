@@ -139,6 +139,7 @@ async function extrairDadosIndicesProtheus() {
     try {
       const sqlSE1 = `
         SELECT 
+          R_E_C_N_O_ AS RECNO,
           RTRIM(ISNULL(E1_FILIAL, '01')) AS FILIAL,
           RTRIM(ISNULL(E1_PREFIXO, '')) AS PREFIXO,
           RTRIM(E1_NUM) AS NUMERO_TITULO,
@@ -167,11 +168,12 @@ async function extrairDadosIndicesProtheus() {
 
         const venctoEff = String(r.DATA_VENCREA || r.DATA_VENCTO || '').trim();
         const diasVencido = calcularDiasVencido(venctoEff);
-        const validoIndice = diasVencido <= 5; // Regra: Não contar com vencidos a mais de 5 dias
+        const validoIndice = diasVencido <= 5;
 
         resultado.contasReceber.push({
           empresa_cod: emp.cod,
           empresa_sigla: emp.sigla,
+          recno: r.RECNO,
           filial: r.FILIAL || '01',
           prefixo: r.PREFIXO || '',
           numero_titulo: String(r.NUMERO_TITULO || '').trim(),
@@ -201,6 +203,7 @@ async function extrairDadosIndicesProtheus() {
     try {
       const sqlSE2 = `
         SELECT 
+          R_E_C_N_O_ AS RECNO,
           RTRIM(ISNULL(E2_FILIAL, '01')) AS FILIAL,
           RTRIM(ISNULL(E2_PREFIXO, '')) AS PREFIXO,
           RTRIM(E2_NUM) AS NUMERO_TITULO,
@@ -226,16 +229,17 @@ async function extrairDadosIndicesProtheus() {
 
       for (const r of rowsSE2) {
         const tipoLimpo = String(r.TIPO || 'NF').trim().toUpperCase();
-        if (tipoLimpo === 'PA') continue; // Pagamento antecipado já realizado / aguardando NF (não é passivo)
+        if (tipoLimpo === 'PA') continue;
 
         const saldoVal = roundVal(parseFloat(r.SALDO || 0));
-        if (saldoVal <= 0.01) continue; // Desconsidera títulos já quitados ou com resíduo irrelevante
+        if (saldoVal <= 0.01) continue;
 
         const isProvisorio = (tipoLimpo === 'PR');
 
         resultado.contasPagar.push({
           empresa_cod: emp.cod,
           empresa_sigla: emp.sigla,
+          recno: r.RECNO,
           filial: r.FILIAL || '01',
           prefixo: r.PREFIXO || '',
           numero_titulo: String(r.NUMERO_TITULO || '').trim(),
@@ -280,13 +284,14 @@ async function extrairDadosIndicesProtheus() {
           AND B2.B2_QATU > 0
           AND COALESCE(B19.B1_TIPO, B16.B1_TIPO, B10.B1_TIPO, B11.B1_TIPO, 'PA') = 'PA'
         GROUP BY RTRIM(B2.B2_COD)
+        HAVING SUM(B2.B2_QATU) > 0
         ORDER BY CODIGO ASC;
       `;
-      const resEstoque = await executeRailwayQuery(sqlEstoque);
-      const rowsEstoque = resEstoque.rows || resEstoque || [];
+      const resEst = await executeRailwayQuery(sqlEstoque);
+      const rowsEst = resEst.rows || resEst || [];
 
-      for (const r of rowsEstoque) {
-        const qtd = roundVal(parseFloat(r.QUANTIDADE || 0));
+      for (const r of rowsEst) {
+        const qtd = parseFloat(r.QUANTIDADE || 0);
         const custoUnit = parseFloat(r.CUSTO_UNITARIO || 0);
         const precoVenda = parseFloat(r.PRECO_VENDA || 0);
         const custoTotal = roundVal(qtd * custoUnit);
@@ -311,7 +316,7 @@ async function extrairDadosIndicesProtheus() {
     }
   }
 
-  // Deduplicação estrita em memória para garantir unicidade por chave composta
+  // Deduplicação estrita em memória
   const mapEst = new Map();
   for (const item of resultado.estoque) {
     const k = `${item.empresa_cod}__${item.codigo}`;
@@ -328,14 +333,14 @@ async function extrairDadosIndicesProtheus() {
 
   const mapCR = new Map();
   for (const item of resultado.contasReceber) {
-    const k = `${item.empresa_cod}__${item.prefixo}__${item.numero_titulo}__${item.parcela}__${item.tipo}`;
+    const k = `${item.empresa_cod}__${item.recno || `${item.filial}_${item.prefixo}_${item.numero_titulo}_${item.parcela}_${item.tipo}_${item.cliente_cod}`}`;
     mapCR.set(k, item);
   }
   resultado.contasReceber = Array.from(mapCR.values());
 
   const mapCP = new Map();
   for (const item of resultado.contasPagar) {
-    const k = `${item.empresa_cod}__${item.prefixo}__${item.numero_titulo}__${item.parcela}__${item.tipo}`;
+    const k = `${item.empresa_cod}__${item.recno || `${item.filial}_${item.prefixo}_${item.numero_titulo}_${item.parcela}_${item.tipo}_${item.fornecedor_cod}_${item.fornecedor_loja}`}`;
     mapCP.set(k, item);
   }
   resultado.contasPagar = Array.from(mapCP.values());
