@@ -36,6 +36,7 @@ const dataDir = path.join(__dirname, 'data');
 const usersFile = path.join(dataDir, 'users.json');
 const historyFile = path.join(dataDir, 'history.json');
 const estoqueCacheFile = path.join(dataDir, 'estoque_saldos_cache.json');
+const faturamentoCacheFile = path.join(dataDir, 'faturamento_historico_cache.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -366,6 +367,320 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_estoque_sync_logs_created ON estoque_sync_logs(created_at DESC);
       `);
 
+      // 10.1 Cria Tabela de Histórico de Faturamento (Itens Faturados Multi-Empresa)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS faturamento_itens_historico (
+          id BIGSERIAL PRIMARY KEY,
+          empresa_cod VARCHAR(10) NOT NULL,
+          empresa_sigla VARCHAR(10) NOT NULL,
+          nota_doc VARCHAR(20) NOT NULL,
+          nota_serie VARCHAR(10) NOT NULL,
+          item_num VARCHAR(10) NOT NULL,
+          pedido_venda VARCHAR(20),
+          cliente_cod VARCHAR(20),
+          cliente_nome VARCHAR(200),
+          vendedor_cod VARCHAR(20),
+          vendedor_nome VARCHAR(100),
+          produto_cod VARCHAR(50) NOT NULL,
+          produto_descricao VARCHAR(255),
+          grupo_cod VARCHAR(10),
+          grupo_descricao VARCHAR(100),
+          quantidade NUMERIC(15, 4) NOT NULL DEFAULT 0,
+          preco_unitario NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          valor_total_item NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          valor_total_nota NUMERIC(15, 2) DEFAULT 0,
+          cfop VARCHAR(10),
+          tipo_nota VARCHAR(5) DEFAULT 'N',
+          data_emissao DATE NOT NULL,
+          mes_ano VARCHAR(7) NOT NULL,
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_faturamento_item UNIQUE (empresa_cod, nota_doc, nota_serie, item_num)
+        );
+        CREATE INDEX IF NOT EXISTS idx_fat_data_emissao ON faturamento_itens_historico(data_emissao);
+        CREATE INDEX IF NOT EXISTS idx_fat_mes_ano ON faturamento_itens_historico(mes_ano);
+        CREATE INDEX IF NOT EXISTS idx_fat_grupo ON faturamento_itens_historico(grupo_descricao);
+        CREATE INDEX IF NOT EXISTS idx_fat_empresa ON faturamento_itens_historico(empresa_sigla);
+        CREATE INDEX IF NOT EXISTS idx_fat_vendedor ON faturamento_itens_historico(vendedor_nome);
+      `);
+
+      // 10.2 Cria Views Analíticas de Faturamento para o Metabase
+      await client.query(`
+        CREATE OR REPLACE VIEW vw_bi_faturamento_mensal AS
+        SELECT
+          DATE_TRUNC('month', data_emissao)::DATE AS data_mes,
+          mes_ano,
+          EXTRACT(YEAR FROM data_emissao)::INTEGER AS ano,
+          EXTRACT(MONTH FROM data_emissao)::INTEGER AS mes,
+          empresa_sigla,
+          SUM(valor_total_item) AS valor_faturamento_mercadorias,
+          COUNT(DISTINCT (empresa_cod || '-' || nota_doc || '-' || nota_serie)) AS total_notas_emitidas,
+          COUNT(DISTINCT cliente_cod) AS total_clientes_atendidos,
+          COUNT(DISTINCT produto_cod) AS total_produtos_distintos_faturados,
+          SUM(quantidade) AS total_unidades_faturadas,
+          ROUND(SUM(valor_total_item) / NULLIF(COUNT(DISTINCT (empresa_cod || '-' || nota_doc || '-' || nota_serie)), 0), 2) AS ticket_medio_por_nota
+        FROM faturamento_itens_historico
+        GROUP BY 
+          DATE_TRUNC('month', data_emissao)::DATE,
+          mes_ano,
+          EXTRACT(YEAR FROM data_emissao),
+          EXTRACT(MONTH FROM data_emissao),
+          empresa_sigla;
+
+        CREATE OR REPLACE VIEW vw_bi_faturamento_grupo_mes AS
+        SELECT
+          DATE_TRUNC('month', data_emissao)::DATE AS data_mes,
+          mes_ano,
+          EXTRACT(YEAR FROM data_emissao)::INTEGER AS ano,
+          EXTRACT(MONTH FROM data_emissao)::INTEGER AS mes,
+          empresa_sigla,
+          grupo_cod,
+          grupo_descricao,
+          SUM(valor_total_item) AS valor_total_faturado,
+          SUM(quantidade) AS total_unidades_faturadas,
+          COUNT(DISTINCT produto_cod) AS total_produtos_distintos,
+          COUNT(DISTINCT (empresa_cod || '-' || nota_doc || '-' || nota_serie)) AS total_pedidos_notas
+        FROM faturamento_itens_historico
+        GROUP BY
+          DATE_TRUNC('month', data_emissao)::DATE,
+          mes_ano,
+          EXTRACT(YEAR FROM data_emissao),
+          EXTRACT(MONTH FROM data_emissao),
+          empresa_sigla,
+          grupo_cod,
+          grupo_descricao;
+
+        CREATE OR REPLACE VIEW vw_bi_faturamento_vendedor_mes AS
+        SELECT
+          DATE_TRUNC('month', data_emissao)::DATE AS data_mes,
+          mes_ano,
+          EXTRACT(YEAR FROM data_emissao)::INTEGER AS ano,
+          EXTRACT(MONTH FROM data_emissao)::INTEGER AS mes,
+          empresa_sigla,
+          vendedor_cod,
+          vendedor_nome,
+          SUM(valor_total_item) AS valor_total_faturado,
+          SUM(quantidade) AS total_unidades_faturadas,
+          COUNT(DISTINCT (empresa_cod || '-' || nota_doc || '-' || nota_serie)) AS total_notas_emitidas,
+          COUNT(DISTINCT cliente_cod) AS total_clientes_atendidos,
+          ROUND(SUM(valor_total_item) / NULLIF(COUNT(DISTINCT (empresa_cod || '-' || nota_doc || '-' || nota_serie)), 0), 2) AS ticket_medio_vendedor
+        FROM faturamento_itens_historico
+        GROUP BY
+          DATE_TRUNC('month', data_emissao)::DATE,
+          mes_ano,
+          EXTRACT(YEAR FROM data_emissao),
+          EXTRACT(MONTH FROM data_emissao),
+          empresa_sigla,
+          vendedor_cod,
+          vendedor_nome;
+      `);
+
+      // 10.4 Cria Tabelas de Índices Financeiros de Liquidez (estoque, contas_a_receber, contas_a_pagar, saldos_bancarios, indices_sync_logs)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS estoque (
+          id BIGSERIAL PRIMARY KEY,
+          empresa_cod VARCHAR(10) NOT NULL,
+          empresa_sigla VARCHAR(10) NOT NULL,
+          codigo VARCHAR(50) NOT NULL,
+          descricao VARCHAR(255) NOT NULL,
+          tipo VARCHAR(10) DEFAULT 'PA',
+          grupo_cod VARCHAR(10) DEFAULT '',
+          quantidade NUMERIC(15, 4) NOT NULL DEFAULT 0,
+          custo_unitario NUMERIC(15, 4) NOT NULL DEFAULT 0,
+          preco_venda NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          custo_total NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          valor_total_venda NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_estoque_empresa_codigo UNIQUE (empresa_cod, codigo)
+        );
+        CREATE INDEX IF NOT EXISTS idx_estoque_empresa ON estoque(empresa_cod);
+        CREATE INDEX IF NOT EXISTS idx_estoque_tipo ON estoque(tipo);
+        CREATE INDEX IF NOT EXISTS idx_estoque_codigo ON estoque(codigo);
+        CREATE INDEX IF NOT EXISTS idx_estoque_qtd ON estoque(quantidade);
+        CREATE INDEX IF NOT EXISTS idx_estoque_grupo ON estoque(grupo_cod);
+
+        CREATE TABLE IF NOT EXISTS contas_a_receber (
+          id BIGSERIAL PRIMARY KEY,
+          empresa_cod VARCHAR(10) NOT NULL,
+          empresa_sigla VARCHAR(10) NOT NULL,
+          filial VARCHAR(10) DEFAULT '01',
+          prefixo VARCHAR(10) DEFAULT '',
+          numero_titulo VARCHAR(20) NOT NULL,
+          parcela VARCHAR(10) DEFAULT '',
+          tipo VARCHAR(10) DEFAULT 'NF',
+          cliente_cod VARCHAR(20),
+          cliente_loja VARCHAR(10),
+          cliente_nome VARCHAR(200),
+          natureza_cod VARCHAR(20),
+          data_emissao DATE,
+          data_vencimento DATE NOT NULL,
+          data_vencimento_real DATE,
+          valor_original NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          saldo NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          dias_vencido INTEGER DEFAULT 0,
+          valido_indice BOOLEAN DEFAULT TRUE,
+          status VARCHAR(20) DEFAULT 'ABERTO',
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_contas_a_receber UNIQUE (empresa_cod, prefixo, numero_titulo, parcela, tipo)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cr_empresa ON contas_a_receber(empresa_cod);
+        CREATE INDEX IF NOT EXISTS idx_cr_vencto ON contas_a_receber(data_vencimento);
+        CREATE INDEX IF NOT EXISTS idx_cr_natureza ON contas_a_receber(natureza_cod);
+        CREATE INDEX IF NOT EXISTS idx_cr_saldo ON contas_a_receber(saldo);
+        CREATE INDEX IF NOT EXISTS idx_cr_valido_indice ON contas_a_receber(valido_indice);
+        CREATE INDEX IF NOT EXISTS idx_cr_cliente ON contas_a_receber(cliente_nome);
+
+        CREATE TABLE IF NOT EXISTS contas_a_pagar (
+          id BIGSERIAL PRIMARY KEY,
+          empresa_cod VARCHAR(10) NOT NULL,
+          empresa_sigla VARCHAR(10) NOT NULL,
+          filial VARCHAR(10) DEFAULT '01',
+          prefixo VARCHAR(10) DEFAULT '',
+          numero_titulo VARCHAR(20) NOT NULL,
+          parcela VARCHAR(10) DEFAULT '',
+          tipo VARCHAR(10) DEFAULT 'NF',
+          fornecedor_cod VARCHAR(20),
+          fornecedor_loja VARCHAR(10),
+          fornecedor_nome VARCHAR(200),
+          natureza_cod VARCHAR(20),
+          data_emissao DATE,
+          data_vencimento DATE NOT NULL,
+          data_vencimento_real DATE,
+          valor_original NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          saldo NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          is_provisorio BOOLEAN DEFAULT FALSE,
+          status VARCHAR(20) DEFAULT 'ABERTO',
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_contas_a_pagar UNIQUE (empresa_cod, prefixo, numero_titulo, parcela, tipo)
+        );
+        CREATE INDEX IF NOT EXISTS idx_cp_empresa ON contas_a_pagar(empresa_cod);
+        CREATE INDEX IF NOT EXISTS idx_cp_vencto ON contas_a_pagar(data_vencimento);
+        CREATE INDEX IF NOT EXISTS idx_cp_natureza ON contas_a_pagar(natureza_cod);
+        CREATE INDEX IF NOT EXISTS idx_cp_tipo ON contas_a_pagar(tipo);
+        CREATE INDEX IF NOT EXISTS idx_cp_saldo ON contas_a_pagar(saldo);
+        CREATE INDEX IF NOT EXISTS idx_cp_is_provisorio ON contas_a_pagar(is_provisorio);
+        CREATE INDEX IF NOT EXISTS idx_cp_fornecedor ON contas_a_pagar(fornecedor_nome);
+
+        CREATE TABLE IF NOT EXISTS saldos_bancarios (
+          id BIGSERIAL PRIMARY KEY,
+          empresa_cod VARCHAR(10) NOT NULL,
+          empresa_sigla VARCHAR(10) NOT NULL,
+          banco_cod VARCHAR(10) NOT NULL,
+          agencia VARCHAR(10) DEFAULT '',
+          conta VARCHAR(20) NOT NULL,
+          conta_nome VARCHAR(100) DEFAULT '',
+          data_saldo DATE NOT NULL,
+          saldo_atual NUMERIC(15, 2) NOT NULL DEFAULT 0,
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_saldos_bancarios UNIQUE (empresa_cod, banco_cod, agencia, conta)
+        );
+        CREATE INDEX IF NOT EXISTS idx_sb_empresa ON saldos_bancarios(empresa_cod);
+        CREATE INDEX IF NOT EXISTS idx_sb_banco ON saldos_bancarios(banco_cod);
+
+        CREATE TABLE IF NOT EXISTS indices_sync_logs (
+          id BIGSERIAL PRIMARY KEY,
+          status VARCHAR(50) NOT NULL,
+          total_estoque INTEGER DEFAULT 0,
+          total_receber INTEGER DEFAULT 0,
+          total_pagar INTEGER DEFAULT 0,
+          total_bancos INTEGER DEFAULT 0,
+          valor_ativo_circulante NUMERIC(15, 2) DEFAULT 0,
+          valor_passivo_circulante NUMERIC(15, 2) DEFAULT 0,
+          liquidez_corrente_consolidada NUMERIC(10, 4) DEFAULT 0,
+          duracao_ms INTEGER DEFAULT 0,
+          triggered_by VARCHAR(100) DEFAULT 'JOB',
+          error_message TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_indices_sync_logs_created ON indices_sync_logs(created_at DESC);
+
+        CREATE OR REPLACE VIEW vw_bi_indices_liquidez AS
+        WITH comp_estoque AS (
+          SELECT 
+            empresa_cod,
+            empresa_sigla,
+            COALESCE(SUM(custo_total), 0) AS total_estoque_custo,
+            COALESCE(SUM(valor_total_venda), 0) AS total_estoque_venda,
+            COUNT(*) AS total_itens_estoque
+          FROM estoque
+          WHERE quantidade > 0 AND tipo = 'PA'
+          GROUP BY empresa_cod, empresa_sigla
+        ),
+        comp_bancos AS (
+          SELECT 
+            empresa_cod,
+            empresa_sigla,
+            COALESCE(SUM(saldo_atual), 0) AS total_saldos_bancarios,
+            COUNT(*) AS total_contas_bancarias
+          FROM saldos_bancarios
+          GROUP BY empresa_cod, empresa_sigla
+        ),
+        comp_receber AS (
+          SELECT 
+            empresa_cod,
+            empresa_sigla,
+            COALESCE(SUM(saldo), 0) AS total_receber_aberto,
+            COALESCE(SUM(CASE WHEN valido_indice THEN saldo ELSE 0 END), 0) AS total_receber_valido_indice,
+            COALESCE(SUM(CASE WHEN NOT valido_indice THEN saldo ELSE 0 END), 0) AS total_receber_inadimplente_mais_5d,
+            COUNT(*) AS total_titulos_receber
+          FROM contas_a_receber
+          WHERE saldo > 0
+          GROUP BY empresa_cod, empresa_sigla
+        ),
+        comp_pagar AS (
+          SELECT 
+            empresa_cod,
+            empresa_sigla,
+            COALESCE(SUM(saldo), 0) AS total_pagar_aberto,
+            COALESCE(SUM(CASE WHEN is_provisorio THEN saldo ELSE 0 END), 0) AS total_pagar_provisorios_pr,
+            COALESCE(SUM(CASE WHEN NOT is_provisorio THEN saldo ELSE 0 END), 0) AS total_pagar_definitivos,
+            COUNT(*) AS total_titulos_pagar
+          FROM contas_a_pagar
+          WHERE saldo > 0
+          GROUP BY empresa_cod, empresa_sigla
+        ),
+        empresas_base AS (
+          SELECT '14' AS empresa_cod, 'MP' AS empresa_sigla, 'Metal Pleno' AS empresa_nome
+          UNION ALL
+          SELECT '15' AS empresa_cod, 'GSI' AS empresa_sigla, 'GSI Cofres' AS empresa_nome
+          UNION ALL
+          SELECT '16' AS empresa_cod, 'OACO' AS empresa_sigla, 'OAÇO' AS empresa_nome
+        )
+        SELECT 
+          eb.empresa_cod,
+          eb.empresa_sigla,
+          eb.empresa_nome,
+          COALESCE(e.total_estoque_custo, 0) AS estoque_custo,
+          COALESCE(e.total_estoque_venda, 0) AS estoque_venda,
+          COALESCE(e.total_itens_estoque, 0) AS total_itens_estoque,
+          COALESCE(b.total_saldos_bancarios, 0) AS disponibilidades_bancarias,
+          COALESCE(b.total_contas_bancarias, 0) AS total_contas_bancarias,
+          COALESCE(r.total_receber_aberto, 0) AS contas_receber_total,
+          COALESCE(r.total_receber_valido_indice, 0) AS contas_receber_valido,
+          COALESCE(r.total_receber_inadimplente_mais_5d, 0) AS contas_receber_inadimplente_5d,
+          COALESCE(p.total_pagar_aberto, 0) AS contas_pagar_total,
+          COALESCE(p.total_pagar_provisorios_pr, 0) AS contas_pagar_provisorios_pr,
+          COALESCE(p.total_pagar_definitivos, 0) AS contas_pagar_definitivos,
+          ROUND(COALESCE(e.total_estoque_custo, 0) + COALESCE(b.total_saldos_bancarios, 0) + COALESCE(r.total_receber_valido_indice, 0), 2) AS ativo_circulante,
+          ROUND(COALESCE(p.total_pagar_aberto, 0), 2) AS passivo_circulante,
+          ROUND(
+            (COALESCE(e.total_estoque_custo, 0) + COALESCE(b.total_saldos_bancarios, 0) + COALESCE(r.total_receber_valido_indice, 0)) / 
+            NULLIF(COALESCE(p.total_pagar_aberto, 0), 0), 4
+          ) AS liquidez_corrente,
+          ROUND(
+            (COALESCE(b.total_saldos_bancarios, 0) + COALESCE(r.total_receber_valido_indice, 0)) / 
+            NULLIF(COALESCE(p.total_pagar_aberto, 0), 0), 4
+          ) AS liquidez_seca,
+          ROUND(
+            COALESCE(b.total_saldos_bancarios, 0) / 
+            NULLIF(COALESCE(p.total_pagar_aberto, 0), 0), 4
+          ) AS liquidez_imediata
+        FROM empresas_base eb
+        LEFT JOIN comp_estoque e ON e.empresa_cod = eb.empresa_cod
+        LEFT JOIN comp_bancos b ON b.empresa_cod = eb.empresa_cod
+        LEFT JOIN comp_receber r ON r.empresa_cod = eb.empresa_cod
+        LEFT JOIN comp_pagar p ON p.empresa_cod = eb.empresa_cod;
+      `);
+
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
@@ -434,7 +749,14 @@ async function initPostgres() {
         'inter_webhook_events',
         'analise_credito_history',
         'produtos_saldo_estoque',
-        'estoque_sync_logs'
+        'estoque_sync_logs',
+        'faturamento_itens_historico',
+        'faturamento_sync_logs',
+        'estoque',
+        'contas_a_receber',
+        'contas_a_pagar',
+        'saldos_bancarios',
+        'indices_sync_logs'
       ];
 
       for (const tbl of tablesToSecure) {
@@ -1564,6 +1886,222 @@ async function getUltimoSyncEstoqueLog() {
   return null;
 }
 
+/**
+ * Persiste ou atualiza itens de faturamento histórico em lotes no Supabase/Postgres
+ */
+async function saveFaturamentoHistoricoDB(itensList = [], metadata = {}) {
+  const p = getPool();
+  const summary = {
+    totalItens: itensList.length,
+    totalValor: itensList.reduce((acc, it) => acc + Number(it.valor_total_item || 0), 0)
+  };
+
+  // Cache em JSON local como fallback resiliente
+  try {
+    const cacheDir = path.dirname(faturamentoCacheFile);
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    await safeWriteJson(faturamentoCacheFile, {
+      metadata: {
+        ...metadata,
+        ...summary,
+        synced_at: new Date().toISOString()
+      },
+      itens: itensList
+    });
+  } catch (errCache) {
+    console.warn('⚠️ [Postgres] Falha ao gravar cache local de faturamento:', errCache.message);
+  }
+
+  if (p && itensList.length > 0) {
+    const client = await p.connect();
+    try {
+      await client.query('BEGIN');
+
+      const chunkSize = 100;
+      for (let i = 0; i < itensList.length; i += chunkSize) {
+        const chunk = itensList.slice(i, i + chunkSize);
+        for (const item of chunk) {
+          await client.query(`
+            INSERT INTO faturamento_itens_historico (
+              empresa_cod, empresa_sigla, nota_doc, nota_serie, item_num,
+              pedido_venda, cliente_cod, cliente_nome, vendedor_cod, vendedor_nome,
+              produto_cod, produto_descricao, grupo_cod, grupo_descricao,
+              quantidade, preco_unitario, valor_total_item, valor_total_nota,
+              cfop, tipo_nota, data_emissao, mes_ano, synced_at
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, NOW()
+            )
+            ON CONFLICT (empresa_cod, nota_doc, nota_serie, item_num) DO UPDATE SET
+              pedido_venda = EXCLUDED.pedido_venda,
+              cliente_cod = EXCLUDED.cliente_cod,
+              cliente_nome = EXCLUDED.cliente_nome,
+              vendedor_cod = EXCLUDED.vendedor_cod,
+              vendedor_nome = EXCLUDED.vendedor_nome,
+              produto_descricao = EXCLUDED.produto_descricao,
+              grupo_cod = EXCLUDED.grupo_cod,
+              grupo_descricao = EXCLUDED.grupo_descricao,
+              quantidade = EXCLUDED.quantidade,
+              preco_unitario = EXCLUDED.preco_unitario,
+              valor_total_item = EXCLUDED.valor_total_item,
+              valor_total_nota = EXCLUDED.valor_total_nota,
+              cfop = EXCLUDED.cfop,
+              tipo_nota = EXCLUDED.tipo_nota,
+              data_emissao = EXCLUDED.data_emissao,
+              mes_ano = EXCLUDED.mes_ano,
+              synced_at = EXCLUDED.synced_at;
+          `, [
+            String(item.empresa_cod || '').trim(),
+            String(item.empresa_sigla || '').trim(),
+            String(item.nota_doc || '').trim(),
+            String(item.nota_serie || '').trim(),
+            String(item.item_num || '').trim(),
+            String(item.pedido_venda || '').trim(),
+            String(item.cliente_cod || '').trim(),
+            String(item.cliente_nome || '').trim(),
+            String(item.vendedor_cod || '').trim(),
+            String(item.vendedor_nome || '').trim(),
+            String(item.produto_cod || '').trim(),
+            String(item.produto_descricao || '').trim(),
+            String(item.grupo_cod || '').trim(),
+            String(item.grupo_descricao || '').trim(),
+            Number(item.quantidade || 0),
+            Number(item.preco_unitario || 0),
+            Number(item.valor_total_item || 0),
+            Number(item.valor_total_nota || 0),
+            String(item.cfop || '').trim(),
+            String(item.tipo_nota || 'N').trim(),
+            item.data_emissao,
+            String(item.mes_ano || '').trim()
+          ]);
+        }
+      }
+
+      await client.query(`
+        INSERT INTO faturamento_sync_logs (
+          status, total_itens, total_valor_faturado, duracao_ms, triggered_by, error_message
+        ) VALUES ($1, $2, $3, $4, $5, $6);
+      `, [
+        metadata.status || 'SUCCESS',
+        summary.totalItens,
+        summary.totalValor,
+        metadata.duracao_ms || 0,
+        metadata.triggered_by || 'MANUAL',
+        metadata.error_message || null
+      ]);
+
+      await client.query('COMMIT');
+    } catch (errDb) {
+      await client.query('ROLLBACK');
+      console.error('❌ [Postgres] Erro ao salvar faturamento no banco:', errDb.message);
+      throw errDb;
+    } finally {
+      client.release();
+    }
+  }
+
+  return summary;
+}
+
+/**
+ * Consulta estatísticas e totais gerais de faturamento persistidos
+ */
+async function getFaturamentoHistoricoStats() {
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await p.query(`
+        SELECT 
+          COUNT(*) AS total_itens,
+          COUNT(DISTINCT (empresa_cod || '-' || nota_doc || '-' || nota_serie)) AS total_notas,
+          COUNT(DISTINCT mes_ano) AS total_meses,
+          COALESCE(SUM(valor_total_item), 0) AS total_faturado,
+          MIN(data_emissao) AS primeira_emissao,
+          MAX(data_emissao) AS ultima_emissao
+        FROM faturamento_itens_historico;
+      `);
+      if (res.rows && res.rows[0]) {
+        return {
+          total_itens: Number(res.rows[0].total_itens) || 0,
+          total_notas: Number(res.rows[0].total_notas) || 0,
+          total_meses: Number(res.rows[0].total_meses) || 0,
+          total_faturado: Number(res.rows[0].total_faturado) || 0,
+          primeira_emissao: res.rows[0].primeira_emissao,
+          ultima_emissao: res.rows[0].ultima_emissao
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar stats de faturamento:', err.message);
+    }
+  }
+
+  // Fallback cache JSON
+  try {
+    if (fs.existsSync(faturamentoCacheFile)) {
+      const cacheData = JSON.parse(fs.readFileSync(faturamentoCacheFile, 'utf-8'));
+      const itens = cacheData.itens || [];
+      const distinctNotas = new Set(itens.map(i => `${i.empresa_cod}-${i.nota_doc}-${i.nota_serie}`));
+      const distinctMeses = new Set(itens.map(i => i.mes_ano));
+      return {
+        total_itens: itens.length,
+        total_notas: distinctNotas.size,
+        total_meses: distinctMeses.size,
+        total_faturado: itens.reduce((acc, it) => acc + Number(it.valor_total_item || 0), 0),
+        primeira_emissao: itens.length > 0 ? itens[itens.length - 1].data_emissao : null,
+        ultima_emissao: itens.length > 0 ? itens[0].data_emissao : null
+      };
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Retorna o último registro de log da sincronização de faturamento
+ */
+async function getUltimoSyncFaturamentoLog() {
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await p.query(`
+        SELECT id, status, total_itens, total_valor_faturado, duracao_ms, triggered_by, error_message, created_at
+        FROM faturamento_sync_logs
+        ORDER BY id DESC
+        LIMIT 1;
+      `);
+      if (res.rows && res.rows.length > 0) {
+        const r = res.rows[0];
+        return {
+          id: r.id,
+          status: r.status,
+          total_itens: Number(r.total_itens) || 0,
+          total_valor_faturado: Number(r.total_valor_faturado) || 0,
+          duracao_ms: Number(r.duracao_ms) || 0,
+          triggered_by: r.triggered_by,
+          error_message: r.error_message,
+          created_at: r.created_at ? new Date(r.created_at).toISOString() : null
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar último log em faturamento_sync_logs:', err.message);
+    }
+  }
+
+  // Fallback cache JSON
+  try {
+    if (fs.existsSync(faturamentoCacheFile)) {
+      const cacheData = JSON.parse(fs.readFileSync(faturamentoCacheFile, 'utf-8'));
+      if (cacheData.metadata) {
+        return {
+          ...cacheData.metadata,
+          created_at: cacheData.metadata.synced_at || new Date().toISOString()
+        };
+      }
+    }
+  } catch {}
+
+  return null;
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -1603,5 +2141,9 @@ module.exports = {
   saveSaldosEstoqueDB,
   getSaldosEstoqueDB,
   getUltimoSyncEstoqueLog,
-  isPostgresConnected
+  saveFaturamentoHistoricoDB,
+  getFaturamentoHistoricoStats,
+  getUltimoSyncFaturamentoLog,
+  isPostgresConnected,
+  getPool
 };

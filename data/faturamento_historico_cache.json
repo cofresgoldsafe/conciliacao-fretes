@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "status": "SUCCESS",
+    "duracao_ms": 150,
+    "triggered_by": "TEST",
+    "totalItens": 2,
+    "totalValor": 5200,
+    "synced_at": "2026-08-31T13:36:32.439Z"
+  },
+  "itens": [
+    {
+      "empresa_cod": "14",
+      "empresa_sigla": "MP",
+      "nota_doc": "000100",
+      "nota_serie": "1",
+      "item_num": "01",
+      "pedido_venda": "001234",
+      "cliente_cod": "CLI001",
+      "cliente_nome": "EMPRESA TESTE LTDA",
+      "vendedor_cod": "000004",
+      "vendedor_nome": "Figueiredo",
+      "produto_cod": "001000000000001",
+      "produto_descricao": "COFRE DIGITAL 30X30",
+      "grupo_cod": "001",
+      "grupo_descricao": "001 - Cofres",
+      "quantidade": 2,
+      "preco_unitario": 1500,
+      "valor_total_item": 3000,
+      "valor_total_nota": 3000,
+      "cfop": "5102",
+      "tipo_nota": "N",
+      "data_emissao": "2026-01-15",
+      "mes_ano": "2026-01"
+    },
+    {
+      "empresa_cod": "15",
+      "empresa_sigla": "GSI",
+      "nota_doc": "000200",
+      "nota_serie": "1",
+      "item_num": "01",
+      "pedido_venda": "001235",
+      "cliente_cod": "CLI002",
+      "cliente_nome": "COMERCIO TESTE SA",
+      "vendedor_cod": "000064",
+      "vendedor_nome": "Andrea",
+      "produto_cod": "002000000000001",
+      "produto_descricao": "FRAGMENTADORA DE PAPEL",
+      "grupo_cod": "002",
+      "grupo_descricao": "002 - Fragmentadoras",
+      "quantidade": 1,
+      "preco_unitario": 2200,
+      "valor_total_item": 2200,
+      "valor_total_nota": 2200,
+      "cfop": "5102",
+      "tipo_nota": "N",
+      "data_emissao": "2026-02-10",
+      "mes_ano": "2026-02"
+    }
+  ]
+}

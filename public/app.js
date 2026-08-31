@@ -677,11 +677,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function switchMainTab(targetMain) {
     mainTabBtns.forEach(b => b.classList.remove('active'));
     
+    const subGroupLogistica = document.getElementById('subGroupLogistica');
+    const subGroupConsulta = document.getElementById('subGroupConsulta');
+    const subGroupVendedores = document.getElementById('subGroupVendedores');
+    const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
+    const subGroupBi = document.getElementById('subGroupBi');
+    const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
+
     // Hide all sub groups
     if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
     if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
     if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
     if (subGroupFinanceiro) subGroupFinanceiro.classList.add('hidden');
+    if (subGroupBi) subGroupBi.classList.add('hidden');
     if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
 
     const activeMainBtn = document.querySelector(`.main-tab-btn[data-main-tab="${targetMain}"]`);
@@ -704,12 +712,8 @@ document.addEventListener('DOMContentLoaded', () => {
       firstSubBtn = subGroupFinanceiro ? subGroupFinanceiro.querySelector('.nav-tab-btn') : null;
       initConciliacaoBancaria();
     } else if (targetMain === 'bi') {
-      tabPanes.forEach(pane => pane.classList.add('hidden'));
-      const targetPane = document.getElementById('tab-bi-executivo');
-      if (targetPane) targetPane.classList.remove('hidden');
-      if (typeof window.initBITab === 'function') {
-        window.initBITab();
-      }
+      if (subGroupBi) subGroupBi.classList.remove('hidden');
+      firstSubBtn = subGroupBi ? subGroupBi.querySelector('.nav-tab-btn') : null;
     } else if (targetMain === 'configuracoes') {
       if (subGroupConfiguracoes) subGroupConfiguracoes.classList.remove('hidden');
       firstSubBtn = subGroupConfiguracoes ? subGroupConfiguracoes.querySelector('.nav-tab-btn') : null;
@@ -744,6 +748,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetPane = document.getElementById(targetTab);
       if (targetPane) targetPane.classList.remove('hidden');
 
+      if (targetTab === 'tab-bi-indices') {
+        if (typeof window.initBIIndicesTab === 'function') {
+          window.initBIIndicesTab();
+        }
+      }
+      if (targetTab === 'tab-bi-metabase') {
+        if (typeof window.initBITab === 'function') {
+          window.initBITab();
+        }
+      }
       if (targetTab === 'tab-config-logs') {
         loadAuditDashboard();
       }

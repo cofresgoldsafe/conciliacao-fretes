@@ -17,6 +17,8 @@ const {
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
   sincronizarSaldosEstoqueProtheus,
+  consultarFaturamentoHistorico,
+  sincronizarFaturamentoConsolidado,
   formatarDataProtheus,
   calcularStatusBloqueioEstoque,
   calcularStatusBloqueioCredito,
@@ -70,6 +72,9 @@ const {
   saveSaldosEstoqueDB,
   getSaldosEstoqueDB,
   getUltimoSyncEstoqueLog,
+  saveFaturamentoHistoricoDB,
+  getFaturamentoHistoricoStats,
+  getUltimoSyncFaturamentoLog,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -84,6 +89,12 @@ const {
   getMetabaseConfigStatus,
   generateSignedDashboardUrl
 } = require('./services/bi_service');
+
+const {
+  obterDadosIndicesCalculados,
+  sincronizarIndicesCompleto,
+  obterDetalhesIndicesDrilldown
+} = require('./bi_indices_engine');
 
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
@@ -3074,6 +3085,155 @@ app.get('/api/bi/status', requireAuth, requireRole('admin'), (req, res) => {
   return res.json({ success: true, ...getMetabaseConfigStatus() });
 });
 
+app.post('/api/bi/sync-faturamento', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { dataIni, dataFim } = req.body || {};
+
+    const resultado = await sincronizarFaturamentoConsolidado({
+      dataIni,
+      dataFim,
+      triggeredBy: `ADMIN_${user.username.toUpperCase()}`
+    });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'SYNC_FATURAMENTO_BI',
+      description: `Disparou sincronização de faturamento para o BI (Total: ${resultado.count || 0} itens)`,
+      ip: req.ip,
+      metadata: { count: resultado.count, duracao_ms: resultado.duracao_ms, success: resultado.success }
+    }).catch(() => {});
+
+    if (resultado.success) {
+      return res.json({
+        success: true,
+        message: 'Faturamento sincronizado com sucesso para o Metabase!',
+        data: resultado
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: 'Erro durante a sincronização de faturamento: ' + (resultado.error || 'Falha desconhecida'),
+        data: resultado
+      });
+    }
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao sincronizar faturamento.');
+  }
+});
+
+app.get('/api/bi/faturamento-stats', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const stats = await getFaturamentoHistoricoStats();
+    const ultimoLog = await getUltimoSyncFaturamentoLog();
+    return res.json({
+      success: true,
+      stats,
+      ultimoLog
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao obter estatísticas de faturamento.');
+  }
+});
+
+// --- ROTAS DO MÓDULO DE ÍNDICES FINANCEIROS DE LIQUIDEZ (BI EXECUTIVO) ---
+let lastIndicesSyncTimestamp = 0;
+const INDICES_SYNC_COOLDOWN_MS = 60 * 1000; // 1 minuto entre sincronizações manuais
+
+app.get('/api/bi/indices', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const dados = await obterDadosIndicesCalculados();
+    
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_INDICES_LIQUIDEZ',
+      description: 'Consultou os Índices Financeiros de Liquidez (LC, LS, LI)',
+      ip: req.ip,
+      metadata: { source: dados.source }
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      ...dados
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao consultar índices financeiros de liquidez.');
+  }
+});
+
+app.post('/api/bi/indices/sync', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const now = Date.now();
+
+    if (now - lastIndicesSyncTimestamp < INDICES_SYNC_COOLDOWN_MS) {
+      const waitSec = Math.ceil((INDICES_SYNC_COOLDOWN_MS - (now - lastIndicesSyncTimestamp)) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Sincronização em cooldown. Por favor, aguarde ${waitSec} segundos para nova requisição.`
+      });
+    }
+
+    lastIndicesSyncTimestamp = now;
+    const resultado = await sincronizarIndicesCompleto({
+      triggeredBy: `ADMIN_${user.username.toUpperCase()}`
+    });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'SYNC_INDICES_LIQUIDEZ',
+      description: `Disparou sincronização manual dos Índices de Liquidez (Sucesso: ${resultado.success})`,
+      ip: req.ip,
+      metadata: { duracaoMs: resultado.duracaoMs, totais: resultado.totais }
+    }).catch(() => {});
+
+    if (resultado.success) {
+      return res.json({
+        success: true,
+        message: 'Índices financeiros sincronizados com sucesso a partir do Protheus!',
+        data: resultado
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: 'Erro durante a sincronização de índices: ' + (resultado.error || 'Falha desconhecida'),
+        data: resultado
+      });
+    }
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao sincronizar índices financeiros.');
+  }
+});
+
+app.get('/api/bi/indices/drilldown', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const tipo = req.query.tipo || 'bancos';
+    const empresa = req.query.empresa || 'ALL';
+    const search = req.query.search || '';
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+    const offset = parseInt(req.query.offset, 10) || 0;
+
+    const detalhes = await obterDetalhesIndicesDrilldown({
+      tipo,
+      empresa,
+      search,
+      limit,
+      offset
+    });
+
+    return res.json({
+      success: true,
+      ...detalhes
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao obter detalhes de drilldown dos índices.');
+  }
+});
+
 /**
  * Agendador Automático: Sincronização de Saldos em Estoque
  * Executa de Segunda a Sexta, das 07:00 às 19:00 (Horário de Brasília), a cada 1 hora
@@ -3101,8 +3261,8 @@ function startEstoqueSyncJob() {
     }
   };
 
-  // Checa a cada 60 minutos
-  estoqueSyncJobInterval = setInterval(verificarEExecutarSync, 60 * 60 * 1000);
+  // Checa a cada 180 minutos (3 horas)
+  estoqueSyncJobInterval = setInterval(verificarEExecutarSync, 180 * 60 * 1000);
   if (estoqueSyncJobInterval.unref) {
     estoqueSyncJobInterval.unref();
   }
@@ -3122,6 +3282,50 @@ function startEstoqueSyncJob() {
   }, 3000);
 }
 
+/**
+ * ----------------------------------------------------------------------------
+ * JOB DE SINCRONIZAÇÃO PERIÓDICA DOS ÍNDICES FINANCEIROS DE LIQUIDEZ (SUPABASE / CACHE)
+ * ----------------------------------------------------------------------------
+ */
+let indicesSyncJobInterval = null;
+
+function startIndicesSyncJob() {
+  if (indicesSyncJobInterval) return;
+
+  const verificarEExecutarSyncIndices = async () => {
+    try {
+      const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+      const nowBrasilia = new Date(nowStr);
+      const diaSemana = nowBrasilia.getDay(); // 1 a 5 (Seg a Sex)
+      const hora = nowBrasilia.getHours();
+
+      // Executa de Segunda a Sexta, entre 07h e 19h no horário de Brasília
+      if (diaSemana >= 1 && diaSemana <= 5 && hora >= 7 && hora <= 19) {
+        console.log(`⏰ [Job Índices] Executando sincronização programada de índices (Brasília: ${hora}h)...`);
+        await sincronizarIndicesCompleto({ triggeredBy: 'JOB_AUTO' });
+      }
+    } catch (e) {
+      console.warn('⚠️ [Job Índices] Erro na rotina agendada de sincronização de índices:', e.message);
+    }
+  };
+
+  // Checa a cada 180 minutos (3 horas)
+  indicesSyncJobInterval = setInterval(verificarEExecutarSyncIndices, 180 * 60 * 1000);
+  if (indicesSyncJobInterval.unref) {
+    indicesSyncJobInterval.unref();
+  }
+
+  // Executa uma sincronização inicial em background após 5 segundos no startup
+  setTimeout(async () => {
+    try {
+      console.log('📊 [Job Índices] Verificando dados de índices financeiros no startup...');
+      await sincronizarIndicesCompleto({ triggeredBy: 'JOB_STARTUP' });
+    } catch (e) {
+      console.warn('⚠️ [Job Índices] Falha na sincronização de startup dos índices:', e.message);
+    }
+  }, 5000);
+}
+
 if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`=================================================`);
@@ -3130,6 +3334,7 @@ if (require.main === module) {
     console.log(`=================================================`);
     await initPostgres();
     startEstoqueSyncJob();
+    startIndicesSyncJob();
   });
 }
 

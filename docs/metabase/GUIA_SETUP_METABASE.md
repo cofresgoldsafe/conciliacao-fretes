@@ -42,10 +42,13 @@ Acesse: `http://localhost:3001`
    * **Senha:** Sua senha do Supabase
    * **SSL:** Habilitado (*Require*)
 3. O Metabase sincronizará as tabelas e as views criadas na pasta `sql/bi/`:
+   * `vw_bi_faturamento_mensal` (Faturamento consolidado mês a mês, ticket médio, clientes e volume de notas)
+   * `vw_bi_faturamento_grupo_mes` (Vendas e faturamento mês a mês categorizados pelos 33 Grupos do Protheus)
+   * `vw_bi_faturamento_vendedor_mes` (Ranking e evolução de vendas mês a mês por Consultor Comercial)
    * `vw_bi_produtos_estoque` (Saldos por empresa MP/GSI/OACO, preços, valores totais e pontos de pedido)
+   * `vw_bi_demandas_grupos_comerciais` (Resumo consolidado por grupos comerciais: Cofres, Fragmentadoras, etc.)
    * `vw_bi_analise_credito` (Histórico de crédito, scores, riscos, decisões e CNPJs)
    * `vw_bi_atividades_auditoria` (Telemetria, acessos e auditoria de ações dos operadores)
-   * `vw_bi_demandas_grupos_comerciais` (Resumo consolidado por grupos comerciais: Cofres, Fragmentadoras, etc.)
 
 ---
 

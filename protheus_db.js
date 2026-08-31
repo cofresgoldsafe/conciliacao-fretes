@@ -1909,6 +1909,218 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
   }
 }
 
+// Mapa Oficial dos 33 Grupos de Produtos do Protheus (SBM010)
+const GRUPOS_PRODUTOS_MAP = {
+  '001': '001 - Cofres',
+  '002': '002 - Fragmentadoras',
+  '003': '003 - Contadoras',
+  '004': '004 - Desumidificadores',
+  '005': '005 - Detectores de Metal',
+  '006': '006 - Encadernação',
+  '007': '007 - Guilhotinas',
+  '008': '008 - Guarda Volumes',
+  '009': '009 - Lixeiras',
+  '010': '010 - Plastificação',
+  '011': '011 - Porta Chaves',
+  '012': '012 - Refiladoras',
+  '013': '013 - Seladoras',
+  '014': '014 - Ergonômicos',
+  '015': '015 - Suportes p/ Pasta Suspensa',
+  '016': '016 - Ventiladores e Climatizadores',
+  '017': '017 - Racks',
+  '018': '018 - Mobiliário / Armários',
+  '019': '019 - Armazenamento Storage',
+  '020': '020 - Carrinhos de Carga',
+  '021': '021 - Portas Blindadas',
+  '022': '022 - Filme Plástico p/ Embalagem',
+  '023': '023 - Organização e Transp. Valores',
+  '024': '024 - Caça e Camping',
+  '025': '025 - Acessórios para Veículos',
+  '026': '026 - Esporte e Lazer',
+  '027': '027 - Material de Escritório',
+  '028': '028 - Bebedouros',
+  '029': '029 - Limpeza Máq. e Suprimentos',
+  '030': '030 - Indústria Alimentícia',
+  '044': '044 - Informática',
+  '090': '090 - Insumos em Geral',
+  '091': '091 - Insumos Produção Cofres'
+};
+
+/**
+ * Retorna a descrição amigável oficial do grupo de produtos Protheus
+ */
+function getGrupoDescricao(cod) {
+  if (!cod) return 'Outros / Sem Grupo';
+  const clean = String(cod).trim().replace(/^0+/, '');
+  const padded3 = clean.padStart(3, '0');
+  if (GRUPOS_PRODUTOS_MAP[padded3]) {
+    return GRUPOS_PRODUTOS_MAP[padded3];
+  }
+  return `Grupo ${String(cod).trim()}`;
+}
+
+/**
+ * Consulta itens faturados (SD2 + SF2) no Protheus nas empresas MP (14), GSI (15) e OACO (16)
+ */
+async function consultarFaturamentoHistorico({ dataIni, dataFim, empresa } = {}) {
+  const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
+  const cleanDataFim = String(dataFim || '').replace(/\D/g, '');
+
+  const empresas = [
+    { cod: "14", sigla: "MP", nome: "Metal Pleno (14)", sd2: "SD2140", sf2: "SF2140" },
+    { cod: "15", sigla: "GSI", nome: "GSI (15)", sd2: "SD2150", sf2: "SF2150" },
+    { cod: "16", sigla: "OACO", nome: "OACO (16)", sd2: "SD2160", sf2: "SF2160" }
+  ];
+
+  const empresasFiltradas = empresa 
+    ? empresas.filter(e => e.cod === String(empresa) || e.sigla.toUpperCase() === String(empresa).toUpperCase())
+    : empresas;
+
+  const itensResultados = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      let filtroData = '';
+      if (cleanDataIni && cleanDataFim) {
+        filtroData = `AND D2.D2_EMISSAO >= '${cleanDataIni}' AND D2.D2_EMISSAO <= '${cleanDataFim}'`;
+      } else if (cleanDataIni) {
+        filtroData = `AND D2.D2_EMISSAO >= '${cleanDataIni}'`;
+      } else if (cleanDataFim) {
+        filtroData = `AND D2.D2_EMISSAO <= '${cleanDataFim}'`;
+      }
+
+      const sql = `
+        SELECT
+          '${emp.cod}' AS EMPRESA_COD,
+          '${emp.sigla}' AS EMPRESA_SIGLA,
+          RTRIM(D2.D2_DOC) AS NOTA_DOC,
+          RTRIM(D2.D2_SERIE) AS NOTA_SERIE,
+          RTRIM(D2.D2_ITEM) AS ITEM_NUM,
+          RTRIM(ISNULL(D2.D2_PEDIDO, '')) AS PEDIDO_VENDA,
+          RTRIM(ISNULL(D2.D2_CLIENTE, '')) AS CLIENTE_COD,
+          RTRIM(ISNULL(A1.A1_NOME, '')) AS CLIENTE_NOME,
+          RTRIM(ISNULL(F2.F2_VEND1, '')) AS VENDEDOR_COD,
+          RTRIM(D2.D2_COD) AS PRODUTO_COD,
+          RTRIM(ISNULL(B1.B1_DESC, '')) AS PRODUTO_DESC,
+          RTRIM(ISNULL(D2.D2_GRUPO, ISNULL(B1.B1_GRUPO, ''))) AS GRUPO_COD,
+          ISNULL(D2.D2_QUANT, 0) AS QUANTIDADE,
+          ISNULL(D2.D2_PRCVEN, 0) AS PRECO_UNITARIO,
+          ISNULL(D2.D2_TOTAL, 0) AS VALOR_TOTAL_ITEM,
+          ISNULL(F2.F2_VALBRUT, 0) AS VALOR_TOTAL_NOTA,
+          RTRIM(ISNULL(D2.D2_CF, '')) AS CFOP,
+          RTRIM(ISNULL(D2.D2_TIPO, ISNULL(F2.F2_TIPO, 'N'))) AS TIPO_NOTA,
+          RTRIM(D2.D2_EMISSAO) AS DATA_EMISSAO
+        FROM ${emp.sd2} D2
+        LEFT JOIN ${emp.sf2} F2
+          ON F2.F2_FILIAL = D2.D2_FILIAL
+         AND F2.F2_DOC = D2.D2_DOC
+         AND F2.F2_SERIE = D2.D2_SERIE
+         AND F2.D_E_L_E_T_ = ' '
+        LEFT JOIN SB1010 B1
+          ON B1.B1_COD = D2.D2_COD
+         AND B1.D_E_L_E_T_ = ' '
+        LEFT JOIN SA1010 A1
+          ON A1.A1_COD = D2.D2_CLIENTE
+         AND A1.A1_LOJA = D2.D2_LOJA
+         AND A1.D_E_L_E_T_ = ' '
+        WHERE D2.D_E_L_E_T_ = ' '
+          AND (D2.D2_TIPO IS NULL OR D2.D2_TIPO IN ('N', 'C'))
+          ${filtroData}
+        ORDER BY D2.D2_EMISSAO DESC, D2.D2_DOC DESC, D2.D2_ITEM ASC;
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && dbRes.rows) {
+        for (const r of dbRes.rows) {
+          const rawEmissao = String(r.DATA_EMISSAO || '').trim();
+          let dataFormatada = '';
+          let mesAno = '';
+          if (rawEmissao.length === 8) {
+            const ano = rawEmissao.substring(0, 4);
+            const mes = rawEmissao.substring(4, 6);
+            const dia = rawEmissao.substring(6, 8);
+            dataFormatada = `${ano}-${mes}-${dia}`;
+            mesAno = `${ano}-${mes}`;
+          } else {
+            dataFormatada = new Date().toISOString().split('T')[0];
+            mesAno = dataFormatada.substring(0, 7);
+          }
+
+          const vendCod = String(r.VENDEDOR_COD || '').trim();
+          const vendNome = getNomeVendedor(vendCod) || (vendCod ? `Vendedor ${vendCod}` : 'Vendedor Não Identificado');
+          const grupoCod = String(r.GRUPO_COD || '').trim();
+          const grupoDesc = getGrupoDescricao(grupoCod);
+
+          itensResultados.push({
+            empresa_cod: emp.cod,
+            empresa_sigla: emp.sigla,
+            nota_doc: String(r.NOTA_DOC || '').trim(),
+            nota_serie: String(r.NOTA_SERIE || '').trim(),
+            item_num: String(r.ITEM_NUM || '').trim(),
+            pedido_venda: String(r.PEDIDO_VENDA || '').trim(),
+            cliente_cod: String(r.CLIENTE_COD || '').trim(),
+            cliente_nome: String(r.CLIENTE_NOME || '').trim() || 'CLIENTE NÃO INFORMADO',
+            vendedor_cod: vendCod,
+            vendedor_nome: vendNome,
+            produto_cod: String(r.PRODUTO_COD || '').trim(),
+            produto_descricao: String(r.PRODUTO_DESC || '').trim() || 'PRODUTO NÃO INFORMADO',
+            grupo_cod: grupoCod,
+            grupo_descricao: grupoDesc,
+            quantidade: Number(r.QUANTIDADE || 0),
+            preco_unitario: Number(r.PRECO_UNITARIO || 0),
+            valor_total_item: Number(r.VALOR_TOTAL_ITEM || 0),
+            valor_total_nota: Number(r.VALOR_TOTAL_NOTA || 0),
+            cfop: String(r.CFOP || '').trim(),
+            tipo_nota: String(r.TIPO_NOTA || 'N').trim(),
+            data_emissao: dataFormatada,
+            mes_ano: mesAno
+          });
+        }
+      }
+    } catch (errEmp) {
+      console.warn(`Aviso ao consultar faturamento em ${emp.nome}:`, errEmp.message);
+    }
+  }
+
+  return itensResultados;
+}
+
+/**
+ * Executa a sincronização completa de faturamento do Protheus para o Supabase
+ */
+async function sincronizarFaturamentoConsolidado({ dataIni, dataFim, triggeredBy = 'MANUAL' } = {}) {
+  const inicioTime = Date.now();
+  console.log(`⏳ [Faturamento Sync] Iniciando sincronização (${triggeredBy})...`);
+
+  try {
+    const { saveFaturamentoHistoricoDB } = require('./postgres_db');
+    const itens = await consultarFaturamentoHistorico({ dataIni, dataFim });
+    const duracaoMs = Date.now() - inicioTime;
+
+    const resultado = await saveFaturamentoHistoricoDB(itens, {
+      status: 'SUCCESS',
+      duracao_ms: duracaoMs,
+      triggered_by: triggeredBy
+    });
+
+    console.log(`✅ [Faturamento Sync] Concluído com sucesso em ${duracaoMs}ms! Total: ${itens.length} itens.`);
+    return {
+      success: true,
+      count: itens.length,
+      duracao_ms: duracaoMs,
+      ...resultado
+    };
+  } catch (err) {
+    const duracaoMs = Date.now() - inicioTime;
+    console.error(`❌ [Faturamento Sync Error]:`, err.message);
+    return {
+      success: false,
+      error: err.message,
+      duracao_ms: duracaoMs
+    };
+  }
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
@@ -1916,6 +2128,10 @@ module.exports = {
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
   sincronizarSaldosEstoqueProtheus,
+  consultarFaturamentoHistorico,
+  sincronizarFaturamentoConsolidado,
+  getGrupoDescricao,
+  GRUPOS_PRODUTOS_MAP,
   formatarDataProtheus,
   calcularStatusBloqueioEstoque,
   calcularStatusBloqueioCredito,

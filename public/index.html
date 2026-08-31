@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.91">
+  <link rel="stylesheet" href="style.css?v=8.92">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 28/08/2026 12:35 (v8.91 - Correção de Renderização HTML em Auditoria & Telemetria)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 28/08/2026 15:15 (Diretrizes Arquiteturais Mandatorias: Paginacao, Indices e Modularizacao)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -143,6 +143,20 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Análise de Crédito (Configuração)</span>
         </button>
+      </div>
+
+      <!-- Sub-abas de BI Executivo -->
+      <div class="sub-tabs-group hidden" id="subGroupBi" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <button class="nav-tab-btn active" data-tab="tab-bi-indices" id="btnTabBiIndices">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>📊 Índices Financeiros</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-bi-metabase" id="btnTabBiMetabase">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span>📈 Metabase Analytics</span>
+          </button>
+        </div>
       </div>
     </nav>
 
@@ -2387,13 +2401,259 @@
       </section>
     </div>
 
-    <!-- ABA: BI Executivo Embutido (Metabase) -->
-    <div id="tab-bi-executivo" class="tab-pane hidden">
-      <div class="bi-wrapper" id="biWrapper">
-        <!-- Toolbar do BI -->
+    <!-- ABA 1 BI: Índices Financeiros de Liquidez -->
+    <div id="tab-bi-indices" class="tab-pane hidden">
+      <div class="bi-wrapper" id="biIndicesWrapper">
+        <!-- Toolbar dos Índices -->
         <div class="bi-toolbar card">
           <div class="bi-title-group">
-            <h2>📊 Painel de BI Executivo</h2>
+            <h2>📊 Índices Financeiros de Liquidez</h2>
+            <p class="desc">Solvência & Capacidade de Pagamento de Curto Prazo — Protheus ERP / Supabase</p>
+          </div>
+          <div class="bi-actions">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label for="selEmpresaBiIndices" style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">Empresa:</label>
+              <select id="selEmpresaBiIndices" class="form-select" style="height: 34px; padding: 0 10px; font-size: 0.82rem; min-width: 170px;">
+                <option value="ALL" selected>🌐 Consolidado (3 Empresas)</option>
+                <option value="14">🏢 14 - Metal Pleno / S4BW</option>
+                <option value="15">🏢 15 - GSI Cofres</option>
+                <option value="16">🏢 16 - OAÇO Produtos de Aço</option>
+              </select>
+            </div>
+            <span id="biIndicesLastUpdated" class="bi-last-updated" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+            <button id="btnSyncBiIndices" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px;" title="Sincronizar dados do Protheus (TOTVS Cloud) para o Supabase">
+              🔄 Sincronizar Protheus
+            </button>
+          </div>
+        </div>
+
+        <!-- Container de Carregamento dos Índices -->
+        <div id="biIndicesLoading" class="loading-state hidden" style="padding: 3rem; text-align: center;">
+          <div class="spinner"></div>
+          <p style="margin-top: 1rem; color: var(--text-muted);">Calculando índices de liquidez e consultando Supabase/Protheus...</p>
+        </div>
+
+        <!-- Conteúdo Principal dos Índices -->
+        <div id="biIndicesContent" style="display: flex; flex-direction: column; gap: 1.25rem;">
+          <!-- 1. GRID DOS 3 CARDS PRINCIPAIS DE LIQUIDEZ (Clicáveis para Drilldown) -->
+          <div class="indices-main-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+            
+            <!-- CARD 1: LIQUIDEZ CORRENTE -->
+            <div class="card index-kpi-card" id="cardLiquidezCorrente" style="cursor: pointer; position: relative; transition: all 0.2s ease; border-left: 4px solid #38bdf8;" title="Clique para ver o extrato detalhado de conferência">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                  <span style="font-size: 0.85rem; font-weight: 700; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                    <span>💧</span> Liquidez Corrente (LC)
+                  </span>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Capacidade Geral de Pagamento</div>
+                </div>
+                <span id="badgeLC" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 700;">-</span>
+              </div>
+
+              <div style="display: flex; align-items: baseline; gap: 8px; margin: 0.75rem 0;">
+                <span id="valLC" style="font-size: 2.2rem; font-weight: 800; color: #f8fafc; font-family: var(--font-mono);">0,00</span>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">índice</span>
+              </div>
+
+              <!-- Fórmula e Valores Componentes -->
+              <div style="background: rgba(15, 23, 42, 0.6); padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid var(--panel-border); font-size: 0.78rem; display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">Ativo Circulante (AC):</span>
+                  <strong id="valLC_AC" style="color: #38bdf8;">R$ 0,00</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">Passivo Circulante (PC):</span>
+                  <strong id="valLC_PC" style="color: #f87171;">R$ 0,00</strong>
+                </div>
+                <div style="border-top: 1px dashed var(--panel-border); padding-top: 4px; font-size: 0.72rem; color: var(--text-muted);">
+                  $$LC = \frac{\text{Estoque} + \text{Bancos} + \text{Receber Válido}}{\text{Passivo Circulante}}$$
+                </div>
+              </div>
+
+              <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted);">
+                <span>Ideal: &gt; 1,00</span>
+                <span style="color: #38bdf8; font-weight: 600; display: flex; align-items: center; gap: 3px;">🔍 Ver Detalhes &rarr;</span>
+              </div>
+            </div>
+
+            <!-- CARD 2: LIQUIDEZ SECA -->
+            <div class="card index-kpi-card" id="cardLiquidezSeca" style="cursor: pointer; position: relative; transition: all 0.2s ease; border-left: 4px solid #10b981;" title="Clique para ver a composição sem estoques">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                  <span style="font-size: 0.85rem; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                    <span>🧪</span> Liquidez Seca (LS)
+                  </span>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Solvência sem Venda de Estoque</div>
+                </div>
+                <span id="badgeLS" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700;">-</span>
+              </div>
+
+              <div style="display: flex; align-items: baseline; gap: 8px; margin: 0.75rem 0;">
+                <span id="valLS" style="font-size: 2.2rem; font-weight: 800; color: #f8fafc; font-family: var(--font-mono);">0,00</span>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">índice</span>
+              </div>
+
+              <!-- Fórmula e Valores Componentes -->
+              <div style="background: rgba(15, 23, 42, 0.6); padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid var(--panel-border); font-size: 0.78rem; display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">Ativo Seco (AC - Estoques):</span>
+                  <strong id="valLS_AS" style="color: #10b981;">R$ 0,00</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">Passivo Circulante (PC):</span>
+                  <strong id="valLS_PC" style="color: #f87171;">R$ 0,00</strong>
+                </div>
+                <div style="border-top: 1px dashed var(--panel-border); padding-top: 4px; font-size: 0.72rem; color: var(--text-muted);">
+                  $$LS = \frac{\text{Bancos} + \text{Receber Válido}}{\text{Passivo Circulante}}$$
+                </div>
+              </div>
+
+              <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted);">
+                <span>Ideal: &ge; 1,00</span>
+                <span style="color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 3px;">🔍 Ver Detalhes &rarr;</span>
+              </div>
+            </div>
+
+            <!-- CARD 3: LIQUIDEZ IMEDIATA -->
+            <div class="card index-kpi-card" id="cardLiquidezImediata" style="cursor: pointer; position: relative; transition: all 0.2s ease; border-left: 4px solid #f59e0b;" title="Clique para ver todas as disponibilidades bancárias">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                  <span style="font-size: 0.85rem; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                    <span>⚡</span> Liquidez Imediata (LI)
+                  </span>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Capacidade Instantânea (Bancos)</div>
+                </div>
+                <span id="badgeLI" class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 700;">-</span>
+              </div>
+
+              <div style="display: flex; align-items: baseline; gap: 8px; margin: 0.75rem 0;">
+                <span id="valLI" style="font-size: 2.2rem; font-weight: 800; color: #f8fafc; font-family: var(--font-mono);">0,00</span>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">índice</span>
+              </div>
+
+              <!-- Fórmula e Valores Componentes -->
+              <div style="background: rgba(15, 23, 42, 0.6); padding: 0.6rem 0.8rem; border-radius: 6px; border: 1px solid var(--panel-border); font-size: 0.78rem; display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">Disponibilidades (SE8):</span>
+                  <strong id="valLI_Disp" style="color: #f59e0b;">R$ 0,00</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-muted);">Passivo Circulante (PC):</span>
+                  <strong id="valLI_PC" style="color: #f87171;">R$ 0,00</strong>
+                </div>
+                <div style="border-top: 1px dashed var(--panel-border); padding-top: 4px; font-size: 0.72rem; color: var(--text-muted);">
+                  $$LI = \frac{\text{Saldos Bancários}}{\text{Passivo Circulante}}$$
+                </div>
+              </div>
+
+              <div style="margin-top: 0.75rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted);">
+                <span>Ideal: &ge; 0,20 - 0,50</span>
+                <span style="color: #f59e0b; font-weight: 600; display: flex; align-items: center; gap: 3px;">🔍 Ver Detalhes &rarr;</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 2. GRID DE 4 COMPONENTES DETALHADOS (Clicáveis individualmente para Drilldown) -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.85rem;">
+            
+            <!-- COMPONENTE A: ESTOQUE PA -->
+            <div class="card index-sub-card" id="cardCompEstoque" style="cursor: pointer; padding: 1rem; transition: all 0.2s ease;" title="Clique para abrir tabela detalhada de estoque">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">📦 Estoques PA (Custo)</span>
+                <span id="compEstoqueQtd" class="badge" style="font-size: 0.75rem;">0 itens</span>
+              </div>
+              <div id="compEstoqueCusto" style="font-size: 1.35rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono);">R$ 0,00</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between;">
+                <span>Venda Total: <strong id="compEstoqueVenda" style="color: #38bdf8;">R$ 0,00</strong></span>
+                <span style="color: #38bdf8;">Ver tabela &rarr;</span>
+              </div>
+            </div>
+
+            <!-- COMPONENTE B: BANCOS SE8 -->
+            <div class="card index-sub-card" id="cardCompBancos" style="cursor: pointer; padding: 1rem; transition: all 0.2s ease;" title="Clique para abrir lista de contas bancárias">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">🏦 Saldos Bancários (SE8)</span>
+                <span id="compBancosQtd" class="badge" style="font-size: 0.75rem;">0 contas</span>
+              </div>
+              <div id="compBancosTotal" style="font-size: 1.35rem; font-weight: 700; color: #10b981; font-family: var(--font-mono);">R$ 0,00</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between;">
+                <span>Último fechamento disponível</span>
+                <span style="color: #10b981;">Ver contas &rarr;</span>
+              </div>
+            </div>
+
+            <!-- COMPONENTE C: CONTAS A RECEBER -->
+            <div class="card index-sub-card" id="cardCompReceber" style="cursor: pointer; padding: 1rem; transition: all 0.2s ease;" title="Clique para abrir títulos a receber">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">📥 A Receber Válido (&le;5d)</span>
+                <span id="compReceberQtd" class="badge" style="font-size: 0.75rem;">0 títulos</span>
+              </div>
+              <div id="compReceberValido" style="font-size: 1.35rem; font-weight: 700; color: #38bdf8; font-family: var(--font-mono);">R$ 0,00</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between;">
+                <span>Total Aberto: <strong id="compReceberTotal">R$ 0,00</strong></span>
+                <span style="color: #38bdf8;">Ver títulos &rarr;</span>
+              </div>
+            </div>
+
+            <!-- COMPONENTE D: CONTAS A PAGAR -->
+            <div class="card index-sub-card" id="cardCompPagar" style="cursor: pointer; padding: 1rem; transition: all 0.2s ease;" title="Clique para abrir títulos a pagar">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">📤 Contas a Pagar (Total)</span>
+                <span id="compPagarQtd" class="badge" style="font-size: 0.75rem;">0 títulos</span>
+              </div>
+              <div id="compPagarTotal" style="font-size: 1.35rem; font-weight: 700; color: #f87171; font-family: var(--font-mono);">R$ 0,00</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between;">
+                <span>Provisórios (PR): <strong id="compPagarPR" style="color: #fbbf24;">R$ 0,00</strong></span>
+                <span style="color: #f87171;">Ver títulos &rarr;</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 3. TABELA COMPARATIVA RESUMO POR EMPRESA -->
+          <div class="card" style="padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+              <h3 style="margin: 0; font-size: 1.05rem; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+                <span>🏢</span> Comparativo Multi-Empresa de Índices & Componentes
+              </h3>
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Metal Pleno (14), GSI (15) e OAÇO (16)</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="data-table" id="tableComparativoIndices">
+                <thead>
+                  <tr>
+                    <th>Empresa</th>
+                    <th style="text-align: right;">📦 Estoque Custo</th>
+                    <th style="text-align: right;">🏦 Disponibilidades</th>
+                    <th style="text-align: right;">📥 A Receber Válido</th>
+                    <th style="text-align: right;">📤 Passivo (A Pagar)</th>
+                    <th style="text-align: right;">Ativo Circulante</th>
+                    <th style="text-align: center;">💧 LC</th>
+                    <th style="text-align: center;">🧪 LS</th>
+                    <th style="text-align: center;">⚡ LI</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyComparativoIndices">
+                  <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Carregando comparativo multi-empresa...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABA 2 BI: Metabase Embedded Analytics -->
+    <div id="tab-bi-metabase" class="tab-pane hidden">
+      <div class="bi-wrapper" id="biWrapper">
+        <!-- Toolbar do Metabase -->
+        <div class="bi-toolbar card">
+          <div class="bi-title-group">
+            <h2>📈 Painel Executivo Metabase</h2>
             <p class="desc">Visão Estratégica Consolidada — Vendas, Margens Brutas e Controladoria Financeira</p>
           </div>
           <div class="bi-actions">
@@ -2866,7 +3126,191 @@
     </div>
   </div>
 
+  <!-- Modal Drilldown dos Índices Financeiros de Liquidez -->
+  <div id="modalIndicesDrilldown" class="modal hidden">
+    <div class="modal-content modal-large" style="max-width: 1060px; max-height: 92vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h3 id="modalIndicesTitulo" style="margin: 0; color: #38bdf8; font-size: 1.18rem; display: flex; align-items: center; gap: 8px;">
+            <span>🔍</span> <span id="modalIndicesTituloTexto">Extrato de Conferência & Detalhamento dos Índices</span>
+          </h3>
+          <span id="modalIndicesSubtitulo" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; display: block;">
+            Visualização auditável das variáveis de Ativo Circulante, Passivo e Estoques
+          </span>
+        </div>
+        <button id="btnCloseModalIndices" class="close-btn">&times;</button>
+      </div>
+
+      <!-- Abas Internas da Modal -->
+      <div style="display: flex; gap: 0.4rem; border-bottom: 1px solid var(--panel-border); padding: 0.75rem 0.5rem 0 0.5rem; flex-wrap: wrap; background: rgba(15, 23, 42, 0.4);">
+        <button class="nav-tab-btn active btn-modal-indices-tab" data-target="modalTabIndicesExtrato">
+          📊 Extrato Matemático
+        </button>
+        <button class="nav-tab-btn btn-modal-indices-tab" data-target="modalTabIndicesBancos">
+          🏦 Saldos Bancários (SE8)
+        </button>
+        <button class="nav-tab-btn btn-modal-indices-tab" data-target="modalTabIndicesReceber">
+          📥 Contas a Receber (SE1)
+        </button>
+        <button class="nav-tab-btn btn-modal-indices-tab" data-target="modalTabIndicesPagar">
+          📤 Contas a Pagar (SE2)
+        </button>
+        <button class="nav-tab-btn btn-modal-indices-tab" data-target="modalTabIndicesEstoque">
+          📦 Estoques PA (SB2/SB1)
+        </button>
+      </div>
+
+      <!-- Corpo da Modal (Conteúdo com rolagem) -->
+      <div class="modal-body" style="flex: 1; overflow-y: auto; padding: 1rem;">
+        
+        <!-- PAINEL 1: EXTRATO MATEMÁTICO & CONFERÊNCIA AUDITÁVEL -->
+        <div id="modalTabIndicesExtrato" class="modal-indices-tab-pane">
+          <div id="modalExtratoMatematicoCorpo" style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Preenchido dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- PAINEL 2: SALDOS BANCÁRIOS (SE8) -->
+        <div id="modalTabIndicesBancos" class="modal-indices-tab-pane hidden">
+          <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">
+              Saldos das contas correntes ativas no Protheus (tabela <code>SE8</code>) utilizando o último fechamento registrado.
+            </p>
+            <span id="modalBancosTotalBadge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 700; font-size: 0.85rem;">Total: R$ 0,00</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Banco</th>
+                  <th>Agência</th>
+                  <th>Conta Corrente</th>
+                  <th>Nome da Conta</th>
+                  <th>Último Fechamento</th>
+                  <th style="text-align: right;">Saldo Atual (R$)</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyModalBancos">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PAINEL 3: CONTAS A RECEBER (SE1) -->
+        <div id="modalTabIndicesReceber" class="modal-indices-tab-pane hidden">
+          <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; max-width: 380px;">
+              <input type="text" id="inputBuscaReceberModal" class="input-text" placeholder="Filtrar por título, cliente ou natureza..." style="height: 32px; font-size: 0.8rem;" />
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span id="modalReceberValidoBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-size: 0.8rem;">Válido Índice: R$ 0,00</span>
+              <span id="modalReceberTotalBadge" class="badge" style="font-size: 0.8rem;">Total: R$ 0,00</span>
+            </div>
+          </div>
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Título</th>
+                  <th>Parc</th>
+                  <th>Tipo</th>
+                  <th>Cliente</th>
+                  <th>Natureza</th>
+                  <th>Emissão</th>
+                  <th>Vencimento</th>
+                  <th>Atraso</th>
+                  <th>Status Índice</th>
+                  <th style="text-align: right;">Saldo (R$)</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyModalReceber">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PAINEL 4: CONTAS A PAGAR (SE2) -->
+        <div id="modalTabIndicesPagar" class="modal-indices-tab-pane hidden">
+          <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; max-width: 380px;">
+              <input type="text" id="inputBuscaPagarModal" class="input-text" placeholder="Filtrar por título, fornecedor, tipo ou natureza..." style="height: 32px; font-size: 0.8rem;" />
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span id="modalPagarPRBadge" class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-size: 0.8rem;">Provisórios (PR): R$ 0,00</span>
+              <span id="modalPagarTotalBadge" class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-weight: 700; font-size: 0.8rem;">Passivo Total: R$ 0,00</span>
+            </div>
+          </div>
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Título</th>
+                  <th>Parc</th>
+                  <th>Tipo</th>
+                  <th>Fornecedor</th>
+                  <th>Natureza</th>
+                  <th>Emissão</th>
+                  <th>Vencimento</th>
+                  <th style="text-align: right;">Saldo (R$)</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyModalPagar">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PAINEL 5: ESTOQUES PA (SB2/SB1) -->
+        <div id="modalTabIndicesEstoque" class="modal-indices-tab-pane hidden">
+          <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; max-width: 380px;">
+              <input type="text" id="inputBuscaEstoqueModal" class="input-text" placeholder="Filtrar por código, descrição ou grupo..." style="height: 32px; font-size: 0.8rem;" />
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span id="modalEstoqueCustoBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 700; font-size: 0.8rem;">Custo Total: R$ 0,00</span>
+              <span id="modalEstoqueVendaBadge" class="badge" style="font-size: 0.8rem;">Venda Total: R$ 0,00</span>
+            </div>
+          </div>
+          <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Código</th>
+                  <th>Descrição</th>
+                  <th>Grupo</th>
+                  <th style="text-align: right;">Quantidade</th>
+                  <th style="text-align: right;">Custo Unit (B1_VLUNIT)</th>
+                  <th style="text-align: right;">Custo Total</th>
+                  <th style="text-align: right;">Preço Venda</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyModalEstoque">
+                <!-- Preenchido via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--panel-border); padding-top: 0.75rem;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          Dados extraídos de <code>SE8</code>, <code>SE1</code>, <code>SE2</code>, <code>SB2</code> e <code>SB1</code>
+        </span>
+        <button id="btnFecharModalIndices" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/bi.js?v=8.91"></script>
-  <script src="app.js?v=8.91"></script>
+  <script src="js/bi_indices.js?v=8.93"></script>
+  <script src="app.js?v=8.93"></script>
 </body>
 </html>

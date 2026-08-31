@@ -4,3 +4,5 @@ uploads/*
 .env
 *.log
 .DS_Store
+data/*.tmp*
+data/.*.tmp*

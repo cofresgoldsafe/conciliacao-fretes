@@ -61,5 +61,6 @@
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).
-- [x] [TECH-02] Especificação de Contratos de API OpenAPI 3.0.3 (`openapi.json`) e Documentação Interativa Swagger UI (`/api-docs`).
 - [ ] [TECH-03] Descontinuação progressiva de arquivos JSON planos após consolidação exclusiva no PostgreSQL Supabase.
+- [ ] [TECH-04] Separação da Autenticação em Página Dedicada (`public/login.html` e `public/js/login-page.js` isolados), removendo o `#loginOverlay` do `index.html` e eliminando travamentos de tela causados por erros em scripts de outras views.
+

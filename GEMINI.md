@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 28/08/2026 (v8.91 - Correção de Renderização HTML em Auditoria & Telemetria no Painel de Configurações)  
+> **Data da Última Auditoria:** 28/08/2026 (v8.92 - Diretrizes Arquiteturais Mandatórias: Paginação, Índices e Modularização)  
 
 ---
 
@@ -285,6 +285,41 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Causa Raiz & Resolução:** A função `formatTimeAgo()` gera marcação HTML segura (badges com cor, borda e timestamp legível). Na interpolação da tabela `auditUsersTableBody`, o resultado estava envolvido por `escapeHtml(...)`, convertendo tags como `<span>` e `<small>` em entidades textuais visíveis (`&lt;span...&gt;`).
     - **Correção Aplicada:** Remoção do `escapeHtml` sobre o retorno de `formatTimeAgo` em `auditUsersTableBody`, calibração visual dos badges com bordas suaves (`border: 1px solid rgba(16, 185, 129, 0.3)`) e inclusão de salvaguarda contra pequenas variações de relógio (`diffSec < 0`).
     - **Suíte de Testes:** Atualização em `test_dom_xss_and_secrets.js` validando que a tabela renderiza `formatTimeAgo` sem escape e preserva 100% das regras de sanitização XSS.
+36. [x] **Módulo de Faturamento Mês a Mês & Vendas por Grupo de Produto no BI Executivo (`sql/bi/05_tabela_e_views_faturamento.sql`, `protheus_db.js`, `postgres_db.js`, `server.js`, `test_bi_faturamento.js`):**
+    - **Extração Histórica Multi-Empresa Protheus:**
+      - Consulta unificada e limpa de itens de notas fiscais faturadas (`SD2140` / `SF2140` Metal Pleno 14, `SD2150` / `SF2150` GSI 15 e `SD2160` / `SF2160` OACO 16), cruzando com `SB1010` (catálogo) e `SA1010` (clientes).
+      - Filtros de integridade fiscal: exclusão estrita de canceladas e devoluções (`F2_TIPO IN ('N', 'C')`, `D_E_L_E_T_ = ' '`).
+    - **Data Warehouse Analítico & Views no Supabase:**
+      - Tabela `faturamento_itens_historico` com chave primária e constraint única determinística (`empresa_cod, nota_doc, nota_serie, item_num`), datas nativas (`data_emissao DATE`, `mes_ano VARCHAR(7)`), índices B-Tree e RLS ativo.
+      - **View `vw_bi_faturamento_mensal`:** Faturamento bruto de mercadorias, volume de notas fiscais, clientes atendidos, total de unidades e cálculo de ticket médio por nota mês a mês.
+      - **View `vw_bi_faturamento_grupo_mes`:** Vendas e faturamento discriminados mês a mês por cada um dos 33 Grupos de Produtos do Protheus (`SBM010` — Cofres, Fragmentadoras, Plastificação, Armários, etc.).
+      - **View `vw_bi_faturamento_vendedor_mes`:** Desempenho e volume faturado mensal por consultor comercial.
+    - **Segurança RBAC, Endpoints & Testes Automatizados:**
+      - Endpoints `/api/bi/sync-faturamento` e `/api/bi/faturamento-stats` protegidos por autenticação JWT e restritos a administradores.
+      - Suíte automatizada `test_bi_faturamento.js` com 11 asserções cobrindo mapeamento de grupos, persistência com fallback em cache JSON, DDLs e controle de acesso RBAC (100% de aprovação).
+37. [x] **Sub-abas no BI Executivo & Módulo de Índices Financeiros de Liquidez (`sql/bi/06_tabelas_indices_liquidez.sql`, `bi_indices_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_indices.js`, `public/style.css`, `test_bi_indices.js`):**
+    - **Navegação de 2 Sub-abas no BI Executivo:**
+      - Sub-aba 1 (Default): `📊 Índices` (`#tab-bi-indices` / `btnTabBiIndices`) exibindo os índices de liquidez, cartões de componentes e tabela comparativa multi-empresa.
+      - Sub-aba 2: `📈 Metabase Analytics` (`#tab-bi-metabase` / `btnTabBiMetabase`) mantendo a integração embedded do painel analítico Metabase.
+    - **Fórmulas Matemáticas Oficiais de Liquidez Auditáveis:**
+      - **Liquidez Corrente ($LC$):** $\frac{\text{Ativo Circulante}}{\text{Passivo Circulante}} = \frac{\text{Estoque (Custo PA)} + \text{Disponibilidades Bancárias (SE8)} + \text{Receber Válido (}\le\text{5d)}}{\text{Passivo Circulante (SE2 com PR)}}$.
+      - **Liquidez Seca ($LS$):** $\frac{\text{Ativo Circulante} - \text{Estoque}}{\text{Passivo Circulante}} = \frac{\text{Disponibilidades Bancárias (SE8)} + \text{Receber Válido (}\le\text{5d)}}{\text{Passivo Circulante (SE2 com PR)}}$.
+      - **Liquidez Imediata ($LI$):** $\frac{\text{Disponibilidades Bancárias (SE8)}}{\text{Passivo Circulante (SE2 com PR)}}$.
+    - **Regras Contábeis & Fiscais Estritas:**
+      - **Estoque PA:** Leitura combinada de `SB2` com `SB1` usando custo unitário (`B1_VLUNIT`) de produtos tipo `PA` com quantidade $> 0$.
+      - **Saldos Bancários (SE8):** Extração particionada por banco/agência/conta com `ROW_NUMBER() OVER (PARTITION BY E8_BANCO, E8_AGENCIA, E8_CONTA ORDER BY E8_DTSALAT DESC)` para obter o último saldo real disponível.
+      - **Contas a Receber (SE1):** Exclusão automática de títulos inadimplentes com vencimento superior a 5 dias de atraso (`dias_vencido > 5`).
+      - **Contas a Pagar (SE2):** Inclusão integral de provisórios do tipo `PR` no passivo circulante.
+    - **Tabelas Relacionais no Supabase & RLS:**
+      - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e view `vw_bi_indices_liquidez` com Row-Level Security (RLS) habilitado.
+    - **UX e Drilldown Interativo:**
+      - 3 Cards principais de Liquidez com badges de saúde financeira (*Excelente*, *Saudável*, *Atenção*) e fórmulas matemáticas exibidas.
+      - 4 Cards de componentes (Estoque PA, Bancos SE8, Contas a Receber, Contas a Pagar).
+      - Tabela comparativa multi-empresa (Metal Pleno 14, GSI 15, OAÇO 16 e Consolidado).
+      - Modal de Drilldown com 5 guias internas (Extrato Matemático passo a passo, Saldos Bancários, Títulos a Receber, Títulos a Pagar, Estoques PA) e busca instantânea.
+    - **Segurança RBAC e Suíte de Testes:**
+      - Endpoints `/api/bi/indices`, `/api/bi/indices/sync` e `/api/bi/indices/drilldown` protegidos por JWT e restritos a administradores.
+      - Suíte automatizada `test_bi_indices.js` com 16 asserções aprovadas com 100% de sucesso.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
@@ -321,6 +356,8 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
 2. **Conclusao da Migracao para PostgreSQL:** Descontinuar leitura/escrita em `data/*.json` e migrar integralmente as entidades (Usuarios, Atividades, Webhooks, Historico) para tabelas relacionais com migrations controladas.
 3. **Padronizacao de Tipagem e Tratamento de Erros:** Adicionar Type Hints nos scripts Python e padronizar o logging estruturado em JSON com codificacao UTF-8 nativa.
 4. [x] **Documentacao de Contratos de API:** Especificação OpenAPI 3.0.3 gerada em `openapi.json` e documentação interativa Swagger UI servida em `/api-docs`.
+5. **Separação da Autenticação em Página Dedicada (`public/login.html`):** Isolar o fluxo de login e 2FA em uma página HTML/JS própria (~80 linhas), eliminando o elemento `#loginOverlay` do `index.html` e garantindo que erros de renderização ou scripts em outras views nunca congelem o modal de login.
+
 
 ---
 
@@ -351,3 +388,63 @@ Qualquer agente de IA que atue neste repositorio deve seguir estritamente as reg
 5. **Preservacao de Memoria e Documentacao:** Todas as alteracoes arquiteturais relevantes ou correcoes no fluxo de integracao bancaria/ERP devem ser registradas neste arquivo (`GEMINI.md`) e nas notas tecnicas de versao.
 6. **Validacao Obrigatoria de Sintaxe JS (`node -c public/app.js`):** Antes de qualquer commit envolvendo o frontend, e compulsorio validar a sintaxe JavaScript de todos os arquivos modificados para evitar quebras silenciosas no ciclo de autenticacao e no carregamento da SPA.
 7. **Atualizacao Obrigatoria de Versao e Cache Buster (`bump_version.js`):** Toda entrega ou modificacao concluida no sistema DEVE obrigatoriamente atualizar o carimbo de data/hora e a descricao no topo da pagina executando `node bump_version.js "<descricao da mudanca>"` (ou `npm run version:bump`). Isso garante a atualizacao automatica da tag `Última Versão: DD/MM/AAAA HH:mm (<descricao>)` e a invalidacao de cache dos navegadores (`?v=X.XX`) em `public/index.html`.
+
+---
+
+## 6. Diretrizes Mandatórias de Arquitetura para Novos Projetos e Expansões (Portal GSI & Novos Módulos)
+
+Todo novo projeto, módulo ou expansão arquitetural desenvolvido no ecossistema **Portal GSI / Gemini-Cli** deve obrigatoriamente aderir aos três pilares de engenharia abaixo:
+
+### Pilar 1: Paginação Compulsória em Todas as Consultas e Buscas
+1. **Sem Buscas Irrestritas:** Nenhuma consulta de listagem ou busca em banco de dados (PostgreSQL, Supabase, ERP TOTVS Protheus MSSQL/Oracle ou APIs externas) pode retornar conjuntos de dados sem limite e paginação definidos no backend.
+2. **Envelope Padrão de Resposta REST:**
+   ```json
+   {
+     "items": [ ... ],
+     "pagination": {
+       "page": 1,
+       "limit": 50,
+       "total": 1240,
+       "totalPages": 25,
+       "hasNext": true
+     }
+   }
+   ```
+3. **Estratégia Offset vs Cursor (Keyset):**
+   - Para tabelas de catálogo ou listagens administrativas com navegação direta por página, utilizar paginação com `LIMIT` e `OFFSET` padronizada (padrão de 50 registros por página).
+   - Para tabelas de alto volume ou registros sequenciais/históricos (extratos bancários, logs de auditoria, faturamento `faturamento_itens_historico`, títulos `SE1`/`SD2`), utilizar **Keyset/Cursor Pagination** (`WHERE id < :ultimo_id ORDER BY id DESC LIMIT 50`) para garantir tempo de resposta constante $O(1)$ sem degradação em páginas profundas.
+4. **Prevenção da Armadilha de `COUNT(*)`:** Em tabelas gigantes do ERP Protheus, desacoplar a contagem total da query principal de registros ou usar contagem estimada/sob demanda para não atrasar a resposta da primeira página.
+5. **Componentização no Frontend:** Interfaces de listagem devem incorporar controles reutilizáveis de paginação (resumo `Exibindo X a Y de Z`, navegação `Primeira`, `Anterior`, `Próxima`, `Última`, páginas numéricas e seletor configurável de itens por página).
+
+### Pilar 2: Indexação Estratégica Obrigatória em Banco de Dados
+1. **Índices Planejados por Padrão de Acesso:** Nenhuma tabela em banco relacional pode entrar em produção sem índices B-Tree estrategicamente criados para as colunas presentes em cláusulas `WHERE`, `ORDER BY`, `JOIN` e chaves estrangeiras (`FOREIGN KEY`).
+2. **Índices Compostos Direcionados:** A ordem das colunas em índices compostos deve seguir rigorosamente a seletividade e a frequência dos filtros de negócio (ex: `(empresa_cod, data_emissao, status)`).
+3. **Índices Parciais no PostgreSQL / Supabase:** Em tabelas com grande volume de dados inativos, finalizados ou históricos, priorizar índices parciais com filtro condicional (ex: `CREATE INDEX idx_pedidos_abertos ON pedidos (empresa, emissao) WHERE status <> 'FATURADO'`), economizando memória RAM e cache do banco.
+4. **Harmonização com ERP TOTVS Protheus:**
+   - Respeitar estritamente os índices nativos do Protheus mantidos pelo dicionário de dados (`SIX`) e as chaves primárias de recno (`R_E_C_N_O_`).
+   - Não criar índices diretos em tabelas padrão do Protheus que possam ser removidos ou entrar em colisão durante migrações de release (`APSRDU`/`UPDISTR`). Consultas customizadas devem se alinhar à ordem das chaves do `SIX`.
+5. **Contenção de Sobrecarga de Escrita:** Evitar criação redundante de índices em tabelas de alto volume transacional de escrita (`INSERT`/`UPDATE`) para não degradar a taxa de processamento (IOPS).
+
+### Pilar 3: Modularização e Separação de Código (>1 View / Telas Complexas)
+1. **Fim dos Arquivos Monolíticos:** É estritamente proibido concentrar múltiplas telas, fluxos de regras de negócio ou lógicas de visualização em arquivos únicos com milhares de linhas. Sempre que um projeto possuir mais de uma view/sub-aba, o código deve ser decomposto em submódulos independentes.
+2. **Padrão de Fatias Verticais (Feature-Based / Vertical Slice):**
+   - Organização de arquivos segregada por domínio funcional:
+     ```text
+     public/
+     ├── app.js                   (Router, Auth e inicialização geral)
+     ├── core/
+     │   ├── api.js               (Cliente HTTP Same-Origin com Bearer token)
+     │   ├── ui.js                (Modais, Toasts, Paginador compartilhado)
+     │   └── theme.js             (Controle unificado de Tema Claro/Escuro)
+     └── modules/
+         ├── credito/             (View, regras e renderização de Análise de Crédito)
+         ├── vendedores/          (Saldos de estoque, pedidos abertos, compras)
+         ├── financeiro/          (Conciliação bancária, extratos e webhooks)
+         └── logistica/           (Importação de faturas e cálculo de fretes)
+     ```
+3. **Uso de ES Modules Nativos (`import` / `export`):** No frontend, utilizar módulos nativos JavaScript (`<script type="module">`) para garantir isolamento de escopo e eliminar poluição de variáveis globais no objeto `window`.
+4. **Ciclo de Vida Limpo e Desacoplado:** Cada submódulo de view deve exportar métodos explícitos de ciclo de vida:
+   - `initView()`: Inicializa listeners de eventos, busca dados iniciais e monta o estado local.
+   - `destroyView()`: Limpa timers/intervals, desassina observadores e libera memória para evitar vazamentos (*memory leaks*).
+5. **Comunicação Inter-Módulos sem Acoplamento:** A troca de dados e sinalizações entre módulos distintos deve ocorrer por eventos desacoplados (ex: `EventTarget` nativo ou padrão Pub/Sub customizado), nunca por mutação direta de variáveis globais de outros módulos.
+6. **Backend Modularizado:** Rotas e serviços do servidor Node.js/Express devem residir em controllers e rotas dedicadas por domínio (`routes/vendedores.js`, `routes/credito.js`, `routes/financeiro.js`), mantendo `server.js` apenas como orquestrador de middlewares e bootstrap.

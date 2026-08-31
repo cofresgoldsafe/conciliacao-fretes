@@ -130,6 +130,12 @@ Gemini-Cli/
    * Extrai o histórico imutável das análises de crédito: número do pedido, cliente, CNPJ, valor total do pedido, score final (0 a 100), classificação de risco (*Risco Mínimo, Baixo, Médio, Alto, Crítico*), decisão operacional do analista (*Liberado, Liberar com Entrada, Bloqueado, etc.*), identificação do analista e flags Serasa/Receita/FGTS.
 4. **`vw_bi_atividades_auditoria`:**
    * Consolida a telemetria operacional dos operadores: logins, 2FA, consultas de crédito, gravações e sincronizações manuais com data e hora.
+5. **`vw_bi_faturamento_mensal`:**
+   * Evolução temporal do faturamento mês a mês: receita de mercadorias (R$), volume de notas fiscais emitidas, total de clientes atendidos, total de unidades faturadas e cálculo de ticket médio por NF.
+6. **`vw_bi_faturamento_grupo_mes`:**
+   * Faturamento e vendas mês a mês categorizado pelos 33 Grupos de Produtos do Protheus (`SBM010` — Cofres, Fragmentadoras, etc.), volume de peças e pedidos faturados.
+7. **`vw_bi_faturamento_vendedor_mes`:**
+   * Faturamento mês a mês aberto por consultor comercial (vendedor), total de pedidos e ticket médio individual.
 
 ---
 
