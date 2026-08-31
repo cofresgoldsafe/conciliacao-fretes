@@ -601,7 +601,7 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       const chunk = contasReceber.slice(i, i + 100);
       const values = [];
       const placeholders = chunk.map((r, idx) => {
-        const o = idx * 17;
+        const o = idx * 18;
         values.push(
           r.empresa_cod,
           r.empresa_sigla,
@@ -651,7 +651,7 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       const chunk = contasPagar.slice(i, i + 100);
       const values = [];
       const placeholders = chunk.map((r, idx) => {
-        const o = idx * 16;
+        const o = idx * 17;
         values.push(
           r.empresa_cod,
           r.empresa_sigla,

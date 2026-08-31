@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1788186678471",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 15029,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 100,
+        "contasPagar": 147,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-08-31T14:31:18.471Z"
+  },
+  {
+    "id": "ACT-1788186663337",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-08-31T14:31:03.337Z"
+  },
+  {
     "id": "ACT-1788185477179",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2221,29 +2251,5 @@
       "count": 6
     },
     "createdAt": "2026-08-27T10:45:43.106Z"
-  },
-  {
-    "id": "ACT-1787827541317",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 14
-    },
-    "createdAt": "2026-08-27T10:45:41.317Z"
-  },
-  {
-    "id": "ACT-1787827537237",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (19 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 19
-    },
-    "createdAt": "2026-08-27T10:45:37.237Z"
   }
 ]
