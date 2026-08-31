@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1788187063244",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 13439,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 100,
+        "contasPagar": 85,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-08-31T14:37:43.244Z"
+  },
+  {
+    "id": "ACT-1788187049656",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-08-31T14:37:29.656Z"
+  },
+  {
     "id": "ACT-1788186678471",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2228,28 +2258,5 @@
       "count": 10
     },
     "createdAt": "2026-08-27T10:46:08.107Z"
-  },
-  {
-    "id": "ACT-1787827563680",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para ju*****@oaco.com.br",
-    "ip": "127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T10:46:03.680Z"
-  },
-  {
-    "id": "ACT-1787827543106",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (6 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "MP",
-      "count": 6
-    },
-    "createdAt": "2026-08-27T10:45:43.106Z"
   }
 ]

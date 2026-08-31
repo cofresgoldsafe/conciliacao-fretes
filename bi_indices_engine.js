@@ -256,12 +256,12 @@ async function extrairDadosIndicesProtheus() {
       const sqlEstoque = `
         SELECT 
           RTRIM(B2.B2_COD) AS CODIGO,
-          RTRIM(COALESCE(B19.B1_DESC, B16.B1_DESC, B10.B1_DESC, B11.B1_DESC, '')) AS DESCRICAO,
-          RTRIM(COALESCE(B19.B1_TIPO, B16.B1_TIPO, B10.B1_TIPO, B11.B1_TIPO, 'PA')) AS TIPO,
-          RTRIM(COALESCE(B19.B1_GRUPO, B16.B1_GRUPO, B10.B1_GRUPO, B11.B1_GRUPO, '')) AS GRUPO_COD,
-          B2.B2_QATU AS QUANTIDADE,
-          COALESCE(NULLIF(B19.B1_VLUNIT, 0), NULLIF(B16.B1_VLUNIT, 0), NULLIF(B10.B1_VLUNIT, 0), NULLIF(B11.B1_VLUNIT, 0), 0) AS CUSTO_UNITARIO,
-          COALESCE(NULLIF(B19.B1_PRV1, 0), NULLIF(B16.B1_PRV1, 0), NULLIF(B10.B1_PRV1, 0), NULLIF(B11.B1_PRV1, 0), 0) AS PRECO_VENDA
+          RTRIM(COALESCE(MAX(B19.B1_DESC), MAX(B16.B1_DESC), MAX(B10.B1_DESC), MAX(B11.B1_DESC), '')) AS DESCRICAO,
+          RTRIM(COALESCE(MAX(B19.B1_TIPO), MAX(B16.B1_TIPO), MAX(B10.B1_TIPO), MAX(B11.B1_TIPO), 'PA')) AS TIPO,
+          RTRIM(COALESCE(MAX(B19.B1_GRUPO), MAX(B16.B1_GRUPO), MAX(B10.B1_GRUPO), MAX(B11.B1_GRUPO), '')) AS GRUPO_COD,
+          SUM(B2.B2_QATU) AS QUANTIDADE,
+          COALESCE(NULLIF(MAX(B19.B1_VLUNIT), 0), NULLIF(MAX(B16.B1_VLUNIT), 0), NULLIF(MAX(B10.B1_VLUNIT), 0), NULLIF(MAX(B11.B1_VLUNIT), 0), 0) AS CUSTO_UNITARIO,
+          COALESCE(NULLIF(MAX(B19.B1_PRV1), 0), NULLIF(MAX(B16.B1_PRV1), 0), NULLIF(MAX(B10.B1_PRV1), 0), NULLIF(MAX(B11.B1_PRV1), 0), 0) AS PRECO_VENDA
         FROM ${emp.sb2} B2
         LEFT JOIN SB1090 B19 ON RTRIM(B19.B1_COD) = RTRIM(B2.B2_COD) AND B19.D_E_L_E_T_ = ' '
         LEFT JOIN SB1160 B16 ON RTRIM(B16.B1_COD) = RTRIM(B2.B2_COD) AND B16.D_E_L_E_T_ = ' '
@@ -270,7 +270,8 @@ async function extrairDadosIndicesProtheus() {
         WHERE B2.D_E_L_E_T_ = ' '
           AND B2.B2_QATU > 0
           AND COALESCE(B19.B1_TIPO, B16.B1_TIPO, B10.B1_TIPO, B11.B1_TIPO, 'PA') = 'PA'
-        ORDER BY B2.B2_COD ASC;
+        GROUP BY RTRIM(B2.B2_COD)
+        ORDER BY CODIGO ASC;
       `;
       const resEstoque = await executeRailwayQuery(sqlEstoque);
       const rowsEstoque = resEstoque.rows || resEstoque || [];
@@ -300,6 +301,42 @@ async function extrairDadosIndicesProtheus() {
       console.warn(`⚠️ [BI Índices] Erro ao extrair estoque da empresa ${emp.sigla}:`, errEst.message);
     }
   }
+
+  // Deduplicação estrita em memória para garantir unicidade por chave composta
+  const mapEst = new Map();
+  for (const item of resultado.estoque) {
+    const k = `${item.empresa_cod}__${item.codigo}`;
+    if (mapEst.has(k)) {
+      const prev = mapEst.get(k);
+      prev.quantidade = roundVal(prev.quantidade + item.quantidade);
+      prev.custo_total = roundVal(prev.custo_total + item.custo_total);
+      prev.valor_total_venda = roundVal(prev.valor_total_venda + item.valor_total_venda);
+    } else {
+      mapEst.set(k, { ...item });
+    }
+  }
+  resultado.estoque = Array.from(mapEst.values());
+
+  const mapCR = new Map();
+  for (const item of resultado.contasReceber) {
+    const k = `${item.empresa_cod}__${item.prefixo}__${item.numero_titulo}__${item.parcela}__${item.tipo}`;
+    mapCR.set(k, item);
+  }
+  resultado.contasReceber = Array.from(mapCR.values());
+
+  const mapCP = new Map();
+  for (const item of resultado.contasPagar) {
+    const k = `${item.empresa_cod}__${item.prefixo}__${item.numero_titulo}__${item.parcela}__${item.tipo}`;
+    mapCP.set(k, item);
+  }
+  resultado.contasPagar = Array.from(mapCP.values());
+
+  const mapSB = new Map();
+  for (const item of resultado.saldosBancarios) {
+    const k = `${item.empresa_cod}__${item.banco_cod}__${item.agencia}__${item.conta}`;
+    mapSB.set(k, item);
+  }
+  resultado.saldosBancarios = Array.from(mapSB.values());
 
   console.log(`✅ [BI Índices] Extração concluída com sucesso: ${resultado.saldosBancarios.length} contas bancárias, ${resultado.contasReceber.length} títulos a receber, ${resultado.contasPagar.length} títulos a pagar, ${resultado.estoque.length} produtos PA em estoque.`);
   return resultado;
@@ -555,7 +592,13 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
   try {
     await client.query('BEGIN');
 
-    // 2.1 Salva Tabela estoque (Upsert em lotes de 100)
+    // 2.0 Limpa as tabelas de estado atual antes de carregar o snapshot íntegro
+    await client.query('DELETE FROM estoque;');
+    await client.query('DELETE FROM contas_a_receber;');
+    await client.query('DELETE FROM contas_a_pagar;');
+    await client.query('DELETE FROM saldos_bancarios;');
+
+    // 2.1 Salva Tabela estoque (em lotes de 100)
     for (let i = 0; i < estoque.length; i += 100) {
       const chunk = estoque.slice(i, i + 100);
       const values = [];
@@ -581,22 +624,12 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
         INSERT INTO estoque (
           empresa_cod, empresa_sigla, codigo, descricao, tipo, grupo_cod,
           quantidade, custo_unitario, preco_venda, custo_total, valor_total_venda, synced_at
-        ) VALUES ${placeholders}
-        ON CONFLICT (empresa_cod, codigo) DO UPDATE SET
-          descricao = EXCLUDED.descricao,
-          tipo = EXCLUDED.tipo,
-          grupo_cod = EXCLUDED.grupo_cod,
-          quantidade = EXCLUDED.quantidade,
-          custo_unitario = EXCLUDED.custo_unitario,
-          preco_venda = EXCLUDED.preco_venda,
-          custo_total = EXCLUDED.custo_total,
-          valor_total_venda = EXCLUDED.valor_total_venda,
-          synced_at = NOW();
+        ) VALUES ${placeholders};
       `;
       await client.query(sqlEstoque, values);
     }
 
-    // 2.2 Salva Tabela contas_a_receber (Upsert em lotes de 100)
+    // 2.2 Salva Tabela contas_a_receber (em lotes de 100)
     for (let i = 0; i < contasReceber.length; i += 100) {
       const chunk = contasReceber.slice(i, i + 100);
       const values = [];
@@ -631,22 +664,12 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
           cliente_cod, cliente_loja, cliente_nome, natureza_cod,
           data_emissao, data_vencimento, data_vencimento_real,
           valor_original, saldo, dias_vencido, valido_indice, status, synced_at
-        ) VALUES ${placeholders}
-        ON CONFLICT (empresa_cod, prefixo, numero_titulo, parcela, tipo) DO UPDATE SET
-          cliente_nome = EXCLUDED.cliente_nome,
-          natureza_cod = EXCLUDED.natureza_cod,
-          data_vencimento = EXCLUDED.data_vencimento,
-          data_vencimento_real = EXCLUDED.data_vencimento_real,
-          saldo = EXCLUDED.saldo,
-          dias_vencido = EXCLUDED.dias_vencido,
-          valido_indice = EXCLUDED.valido_indice,
-          status = EXCLUDED.status,
-          synced_at = NOW();
+        ) VALUES ${placeholders};
       `;
       await client.query(sqlCR, values);
     }
 
-    // 2.3 Salva Tabela contas_a_pagar (Upsert em lotes de 100)
+    // 2.3 Salva Tabela contas_a_pagar (em lotes de 100)
     for (let i = 0; i < contasPagar.length; i += 100) {
       const chunk = contasPagar.slice(i, i + 100);
       const values = [];
@@ -680,21 +703,12 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
           fornecedor_cod, fornecedor_loja, fornecedor_nome, natureza_cod,
           data_emissao, data_vencimento, data_vencimento_real,
           valor_original, saldo, is_provisorio, status, synced_at
-        ) VALUES ${placeholders}
-        ON CONFLICT (empresa_cod, prefixo, numero_titulo, parcela, tipo) DO UPDATE SET
-          fornecedor_nome = EXCLUDED.fornecedor_nome,
-          natureza_cod = EXCLUDED.natureza_cod,
-          data_vencimento = EXCLUDED.data_vencimento,
-          data_vencimento_real = EXCLUDED.data_vencimento_real,
-          saldo = EXCLUDED.saldo,
-          is_provisorio = EXCLUDED.is_provisorio,
-          status = EXCLUDED.status,
-          synced_at = NOW();
+        ) VALUES ${placeholders};
       `;
       await client.query(sqlCP, values);
     }
 
-    // 2.4 Salva Tabela saldos_bancarios (Upsert em lotes de 100)
+    // 2.4 Salva Tabela saldos_bancarios (em lotes de 100)
     for (let i = 0; i < saldosBancarios.length; i += 100) {
       const chunk = saldosBancarios.slice(i, i + 100);
       const values = [];
@@ -717,12 +731,7 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
         INSERT INTO saldos_bancarios (
           empresa_cod, empresa_sigla, banco_cod, agencia, conta,
           conta_nome, data_saldo, saldo_atual, synced_at
-        ) VALUES ${placeholders}
-        ON CONFLICT (empresa_cod, banco_cod, agencia, conta) DO UPDATE SET
-          conta_nome = EXCLUDED.conta_nome,
-          data_saldo = EXCLUDED.data_saldo,
-          saldo_atual = EXCLUDED.saldo_atual,
-          synced_at = NOW();
+        ) VALUES ${placeholders};
       `;
       await client.query(sqlSB, values);
     }
