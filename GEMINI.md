@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 18:20 (v9.04 - Sub-abas 'Ped. pra Faturar' MATA460A e 'Ped. Bloq Estoque' na Aba Logística)  
+> **Data da Última Auditoria:** 31/08/2026 18:30 (v9.05 - Sub-abas 'Ped. pra Faturar' MATA460A, 'Ped. Bloq Estoque', Isolamento Estrito de Abas e URL Oficial Pipedrive)  
 
 ---
 
@@ -352,13 +352,15 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Na **OACO (16)**: Lista com precisão os **8 pedidos** bloqueados (`000723`, `000729`, `000736`, `000754`, `000755`, `000762`, `000763`, `000764`).
       - Na **MP (14)**: 4 pedidos bloqueados (`000338`, `000354`, `000346`, `000200`).
       - Na **GSI (15)**: 0 pedidos bloqueados.
-    - **Interface, KPIs, Ordenação e Drilldown:**
+    - **Interface, KPIs, Ordenação, Isolamento Estrito & Links Pipedrive:**
       - 3 Cards KPIs por sub-aba (*Pedidos Prontos/Bloqueados*, *Total de Peças*, *Valor Total R$*).
       - Barra de filtros com busca instantânea textual, seletor de empresa e botão de limpeza.
-      - Integração seamless com o modal `#pedidoDetalhesModal` via clique no Pedido de Venda e links Pipedrive no `CodWeb`.
+      - **Isolamento Estrito de Abas:** Classe `hidden` aplicada na tag `#tab-conciliacao-bancaria` e salvaguarda no startup em `public/app.js` e em `switchMainTab` para ocultar 100% dos painéis inativos, eliminando vazamento visual de abas não selecionadas.
+      - **URL Oficial do CRM Pipedrive:** Links de `CodWeb` gerados via helper `formatPipedriveDealLink` apontando para o subdomínio oficial `https://benetroncomercial.pipedrive.com/deal/${digits}`.
+      - Integração seamless com o modal `#pedidoDetalhesModal` via clique no Pedido de Venda.
     - **Segurança RBAC e Suíte de Testes Automatizados:**
       - Endpoints `/api/logistica/pedidos-faturar` e `/api/logistica/pedidos-bloq-estoque` protegidos por JWT e auditados em `user_activities`.
-      - Suíte automatizada `test_pedidos_faturar.js` com 9 asserções aprovadas com 100% de sucesso.
+      - Suíte automatizada `test_pedidos_faturar.js` com 11 asserções aprovadas com 100% de sucesso.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

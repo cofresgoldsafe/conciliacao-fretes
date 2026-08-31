@@ -64,9 +64,11 @@ Prover um portal corporativo integrado na nuvem, multi-empresa e multi-perfil (O
 
 ---
 
-## 3. 🧭 Estrutura Completa de Navegação (5 Abas Principais & 13 Sub-Abas)
+## 3. 🧭 Estrutura Completa de Navegação (6 Abas Principais & 16 Sub-Abas)
 
 ### 📦 1. ABA LOGÍSTICA
+* **`[ Ped. pra Faturar ]` (Página Inicial / Padrão):** Listagem em tempo real de pedidos liberados para faturamento no Protheus aderente às regras oficiais da rotina **MATA460A (Legenda Verde)** (`SC9` liberado sem bloqueio de estoque/crédito, sem nota fiscal ativa em `SF2` e `C5_NOTA` em aberto/reaberto). Multi-empresa (MP 14, GSI 15, OACO 16 com pedido `000221`), KPIs de pedidos, peças e valor total, link oficial para CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/...`) e clique no pedido com modal de detalhes completos.
+* **`[ Ped. Bloq Estoque ]`:** Listagem de pedidos de venda retidos no Protheus por pendência física de saldo em estoque (`C9_BLEST = '02'`). Identifica com exatidão os 8 pedidos de OACO 16 (`000723`..`000764`) e 4 pedidos de MP 14, com KPIs, filtros e ordenação bidirecional.
 * **`[ Upload Fatura Transp. ]`:** Processamento de Faturas Rodonaves (PDF multi-páginas via `parser_rodonaves.py`) e Faturas em CSV/TXT (`parser_tipo2.py`). Batimento automático com o frete cobrado no pedido (`C5_FRETE + C5_VLR_FRT`), cartões estatísticos de divergência, tolerância configurável em R$, coluna editável `Doc (NF)` e exportação em CSV.
 * **`[ Fatura Correios & ViPP ]`:** Leitura e extração analítica de Faturas PDF Correios SFE (`parser_correios.py`) com identificação de etiquetas (`AD...BR`, `AP...BR`), cruzamento em tempo real com relatórios do servidor FTP ViPP (`vipp_ftp.js`), auto-sync incremental no upload, categorização inteligente de Ordens de Serviço (`🔧 OS (Sem Cobrança)`) e batimento de frete Protheus.
 

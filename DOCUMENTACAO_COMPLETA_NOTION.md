@@ -58,11 +58,17 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 
 ---
 
-## 🧭 2. Estrutura de Navegação da Plataforma (5 Abas Principais & 13 Sub-Abas)
+## 🧭 2. Estrutura de Navegação da Plataforma (6 Abas Principais & 16 Sub-Abas)
 
 ---
 
 ### 📦 1. ABA LOGÍSTICA
+* **Sub-aba `[ Ped. pra Faturar ]` (Página Inicial / Padrão):**
+  * Listagem em tempo real de pedidos liberados para faturamento no Protheus aderente às regras oficiais da rotina **MATA460A (Legenda Verde)** (`SC9` liberado sem bloqueio de estoque/crédito, sem nota fiscal ativa em `SF2` e `C5_NOTA` em aberto/reaberto).
+  * Multi-empresa (MP 14, GSI 15, OACO 16 com pedido `000221`), KPIs de pedidos, peças e valor total, link oficial para CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/...`) e clique no pedido com modal de detalhes completos.
+* **Sub-aba `[ Ped. Bloq Estoque ]`:**
+  * Listagem de pedidos de venda retidos no Protheus por pendência física de saldo em estoque (`C9_BLEST = '02'`).
+  * Identifica com exatidão os 8 pedidos de OACO 16 (`000723`..`000764`) e 4 pedidos de MP 14, com KPIs, filtros e ordenação bidirecional.
 * **Sub-aba `[ Upload Fatura Transp. ]`:**
   * Processamento de Faturas Rodonaves (PDF multi-páginas via `parser_rodonaves.py`) e Faturas em CSV/TXT (`parser_tipo2.py`).
   * Batimento automático T-SQL no Protheus somando **Frete Cobrado no Pedido (`C5_FRETE`)** + **Frete Embutido (`C5_VLR_FRT`)**.
