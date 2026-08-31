@@ -780,6 +780,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-vend-pedidos-compras') {
         carregarPedidosCompras();
       }
+      if (targetTab === 'tab-pedidos-faturar') {
+        carregarPedidosFaturar();
+      }
+      if (targetTab === 'tab-pedidos-bloq-estoque') {
+        carregarPedidosBloqEstoque();
+      }
     });
   });
 
@@ -6627,6 +6633,491 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+  }
+
+  // =========================================================================
+  // --- SUB-ABAS LOGÍSTICA: PEDIDOS PRA FATURAR & PEDIDOS BLOQ ESTOQUE ---
+  // =========================================================================
+
+  let pedidosFaturarCache = [];
+  let pedidosFaturarSortField = 'dataLib';
+  let pedidosFaturarSortDirection = 'desc';
+
+  let pedidosBloqCache = [];
+  let pedidosBloqSortField = 'dataLib';
+  let pedidosBloqSortDirection = 'desc';
+
+  const pedidosFaturarEmpresaFilter = document.getElementById('pedidosFaturarEmpresaFilter');
+  const pedidosFaturarSearchInput = document.getElementById('pedidosFaturarSearchInput');
+  const btnAtualizarPedidosFaturar = document.getElementById('btnAtualizarPedidosFaturar');
+  const btnLimparFiltrosPedidosFaturar = document.getElementById('btnLimparFiltrosPedidosFaturar');
+  const pedidosFaturarLoading = document.getElementById('pedidosFaturarLoading');
+  const pedidosFaturarResults = document.getElementById('pedidosFaturarResults');
+  const pedidosFaturarEmpty = document.getElementById('pedidosFaturarEmpty');
+  const pedidosFaturarCount = document.getElementById('pedidosFaturarCount');
+  const pedidosFaturarTableBody = document.getElementById('pedidosFaturarTableBody');
+  const kpiPedidosFaturarCount = document.getElementById('kpiPedidosFaturarCount');
+  const kpiPedidosFaturarQtd = document.getElementById('kpiPedidosFaturarQtd');
+  const kpiPedidosFaturarTotal = document.getElementById('kpiPedidosFaturarTotal');
+
+  const thSortFaturarCodWeb = document.getElementById('thSortFaturarCodWeb');
+  const thSortFaturarPedVenda = document.getElementById('thSortFaturarPedVenda');
+  const thSortFaturarDataLib = document.getElementById('thSortFaturarDataLib');
+  const thSortFaturarValor = document.getElementById('thSortFaturarValor');
+  const sortIconFaturarCodWeb = document.getElementById('sortIconFaturarCodWeb');
+  const sortIconFaturarPedVenda = document.getElementById('sortIconFaturarPedVenda');
+  const sortIconFaturarDataLib = document.getElementById('sortIconFaturarDataLib');
+  const sortIconFaturarValor = document.getElementById('sortIconFaturarValor');
+
+  const pedidosBloqEmpresaFilter = document.getElementById('pedidosBloqEmpresaFilter');
+  const pedidosBloqSearchInput = document.getElementById('pedidosBloqSearchInput');
+  const btnAtualizarPedidosBloq = document.getElementById('btnAtualizarPedidosBloq');
+  const btnLimparFiltrosPedidosBloq = document.getElementById('btnLimparFiltrosPedidosBloq');
+  const pedidosBloqLoading = document.getElementById('pedidosBloqLoading');
+  const pedidosBloqResults = document.getElementById('pedidosBloqResults');
+  const pedidosBloqEmpty = document.getElementById('pedidosBloqEmpty');
+  const pedidosBloqCount = document.getElementById('pedidosBloqCount');
+  const pedidosBloqTableBody = document.getElementById('pedidosBloqTableBody');
+  const kpiPedidosBloqCount = document.getElementById('kpiPedidosBloqCount');
+  const kpiPedidosBloqQtd = document.getElementById('kpiPedidosBloqQtd');
+  const kpiPedidosBloqTotal = document.getElementById('kpiPedidosBloqTotal');
+
+  const thSortBloqCodWeb = document.getElementById('thSortBloqCodWeb');
+  const thSortBloqPedVenda = document.getElementById('thSortBloqPedVenda');
+  const thSortBloqDataLib = document.getElementById('thSortBloqDataLib');
+  const thSortBloqValor = document.getElementById('thSortBloqValor');
+  const sortIconBloqCodWeb = document.getElementById('sortIconBloqCodWeb');
+  const sortIconBloqPedVenda = document.getElementById('sortIconBloqPedVenda');
+  const sortIconBloqDataLib = document.getElementById('sortIconBloqDataLib');
+  const sortIconBloqValor = document.getElementById('sortIconBloqValor');
+
+  function formatDataProtheusLocal(dt) {
+    if (!dt || String(dt).trim().length !== 8) return dt ? String(dt).trim() : '-';
+    const s = String(dt).trim();
+    return `${s.slice(6,8)}/${s.slice(4,6)}/${s.slice(0,4)}`;
+  }
+
+  async function carregarPedidosFaturar(force = false) {
+    if (pedidosFaturarCache.length > 0 && !force) {
+      renderPedidosFaturarTable(pedidosFaturarCache);
+      return;
+    }
+
+    if (pedidosFaturarLoading) pedidosFaturarLoading.classList.remove('hidden');
+    if (pedidosFaturarResults) pedidosFaturarResults.classList.add('hidden');
+    if (pedidosFaturarEmpty) pedidosFaturarEmpty.classList.add('hidden');
+    if (btnAtualizarPedidosFaturar) {
+      btnAtualizarPedidosFaturar.disabled = true;
+      btnAtualizarPedidosFaturar.textContent = '⏳ Carregando...';
+    }
+
+    try {
+      const response = await fetch('/api/logistica/pedidos-faturar');
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        pedidosFaturarCache = data.data;
+        renderPedidosFaturarTable(pedidosFaturarCache);
+      } else {
+        alert(data.message || 'Erro ao consultar pedidos prontos para faturar.');
+      }
+    } catch (err) {
+      console.error('Erro ao carregar pedidos para faturar:', err);
+    } finally {
+      if (pedidosFaturarLoading) pedidosFaturarLoading.classList.add('hidden');
+      if (btnAtualizarPedidosFaturar) {
+        btnAtualizarPedidosFaturar.disabled = false;
+        btnAtualizarPedidosFaturar.textContent = '🔄 Atualizar';
+      }
+    }
+  }
+
+  function renderPedidosFaturarTable(items) {
+    if (!pedidosFaturarTableBody) return;
+    let list = Array.isArray(items) ? [...items] : [...pedidosFaturarCache];
+
+    const selectedEmp = pedidosFaturarEmpresaFilter ? pedidosFaturarEmpresaFilter.value : '';
+    if (selectedEmp) {
+      list = list.filter(p => p.empresa === selectedEmp || p.empresaKey === selectedEmp);
+    }
+
+    const searchTerm = pedidosFaturarSearchInput ? pedidosFaturarSearchInput.value.trim().toLowerCase() : '';
+    if (searchTerm) {
+      list = list.filter(p => 
+        (p.numPed && p.numPed.toLowerCase().includes(searchTerm)) ||
+        (p.codWeb && p.codWeb.toLowerCase().includes(searchTerm)) ||
+        (p.clienteNome && p.clienteNome.toLowerCase().includes(searchTerm)) ||
+        (p.clienteCod && p.clienteCod.toLowerCase().includes(searchTerm)) ||
+        (p.nomeTransp && p.nomeTransp.toLowerCase().includes(searchTerm)) ||
+        (p.vendedorNome && p.vendedorNome.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // Calcular KPIs
+    let totalPecas = 0;
+    let totalValor = 0;
+    for (const p of list) {
+      totalPecas += (p.totalQtd || 0);
+      totalValor += (p.totalGeral || p.totalValor || 0);
+    }
+
+    if (kpiPedidosFaturarCount) kpiPedidosFaturarCount.textContent = list.length;
+    if (kpiPedidosFaturarQtd) kpiPedidosFaturarQtd.textContent = totalPecas.toLocaleString('pt-BR');
+    if (kpiPedidosFaturarTotal) kpiPedidosFaturarTotal.textContent = formatCurrency(totalValor);
+    if (pedidosFaturarCount) pedidosFaturarCount.textContent = list.length;
+
+    if (list.length === 0) {
+      if (pedidosFaturarResults) pedidosFaturarResults.classList.add('hidden');
+      if (pedidosFaturarEmpty) pedidosFaturarEmpty.classList.remove('hidden');
+      pedidosFaturarTableBody.innerHTML = '';
+      return;
+    }
+
+    if (pedidosFaturarEmpty) pedidosFaturarEmpty.classList.add('hidden');
+    if (pedidosFaturarResults) pedidosFaturarResults.classList.remove('hidden');
+
+    // Ordenação
+    list.sort((a, b) => {
+      let valA = a[pedidosFaturarSortField] || '';
+      let valB = b[pedidosFaturarSortField] || '';
+
+      if (pedidosFaturarSortField === 'codWeb' || pedidosFaturarSortField === 'numPed') {
+        const numA = parseInt(String(valA).replace(/\D/g, ''), 10);
+        const numB = parseInt(String(valB).replace(/\D/g, ''), 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return pedidosFaturarSortDirection === 'asc' ? numA - numB : numB - numA;
+        }
+      }
+
+      if (pedidosFaturarSortField === 'totalGeral' || pedidosFaturarSortField === 'totalValor') {
+        const numA = parseFloat(valA || 0);
+        const numB = parseFloat(valB || 0);
+        return pedidosFaturarSortDirection === 'asc' ? numA - numB : numB - numA;
+      }
+
+      const cmp = String(valA).localeCompare(String(valB));
+      return pedidosFaturarSortDirection === 'asc' ? cmp : -cmp;
+    });
+
+    pedidosFaturarTableBody.innerHTML = list.map(p => {
+      let empresaBadge = `<span class="empresa-badge empresa-mp">MP</span>`;
+      if (p.empresa === 'GSI') empresaBadge = `<span class="empresa-badge empresa-gsi">GSI</span>`;
+      if (p.empresa === 'OACO') empresaBadge = `<span class="empresa-badge empresa-oaco">OACO</span>`;
+
+      const codWebCell = (p.codWeb && p.codWeb !== '-')
+        ? `<a href="https://app.pipedrive.com/deals?selected_deal_id=${escapeHtml(p.codWeb)}" target="_blank" rel="noopener noreferrer" class="link-pipedrive" title="Abrir negócio no Pipedrive">
+            <span class="pipedrive-icon">🔗</span> ${escapeHtml(p.codWeb)}
+          </a>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
+      const pedVendaCell = `
+        <button class="btn-link-pedvenda btn-pedvenda-faturar" data-empresa="${escapeHtml(p.empresaKey || p.empresa)}" data-pedido="${escapeHtml(p.numPed)}" title="Clique para abrir os detalhes completos">
+          📋 ${escapeHtml(p.numPed)}
+        </button>
+      `;
+
+      return `
+        <tr>
+          <td>${empresaBadge}</td>
+          <td>${codWebCell}</td>
+          <td>${pedVendaCell}</td>
+          <td>
+            <div style="font-weight: 600;">${escapeHtml(p.clienteNome)}</div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Cód: ${escapeHtml(p.clienteCod || '-')}</small>
+          </td>
+          <td>${escapeHtml(p.dataLibFmt || formatDataProtheusLocal(p.dataLib))}</td>
+          <td>${escapeHtml(p.dataPrevisaoFmt || formatDataProtheusLocal(p.dataPrevisao))}</td>
+          <td>
+            <div style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(p.nomeTransp)}</div>
+            <span class="badge" style="font-size: 0.7rem; padding: 1px 4px; background: rgba(59,130,246,0.1); color: #60a5fa;">${escapeHtml(p.tpFrete || '-')}</span>
+          </td>
+          <td style="text-align: center; font-weight: 700;">${p.totalQtd || 1}</td>
+          <td style="text-align: right; font-weight: 700; color: #10b981;">${formatCurrency(p.totalGeral || p.totalValor)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    pedidosFaturarTableBody.querySelectorAll('.btn-pedvenda-faturar').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emp = btn.getAttribute('data-empresa');
+        const ped = btn.getAttribute('data-pedido');
+        if (typeof abrirDetalhesPedidoModal === 'function') {
+          abrirDetalhesPedidoModal(emp, ped);
+        }
+      });
+    });
+  }
+
+  function updatePedidosFaturarSortIcons() {
+    if (sortIconFaturarCodWeb) sortIconFaturarCodWeb.textContent = pedidosFaturarSortField === 'codWeb' ? (pedidosFaturarSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconFaturarPedVenda) sortIconFaturarPedVenda.textContent = pedidosFaturarSortField === 'numPed' ? (pedidosFaturarSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconFaturarDataLib) sortIconFaturarDataLib.textContent = pedidosFaturarSortField === 'dataLib' ? (pedidosFaturarSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconFaturarValor) sortIconFaturarValor.textContent = (pedidosFaturarSortField === 'totalGeral' || pedidosFaturarSortField === 'totalValor') ? (pedidosFaturarSortDirection === 'asc' ? '▲' : '▼') : '↕';
+  }
+
+  if (pedidosFaturarEmpresaFilter) {
+    pedidosFaturarEmpresaFilter.addEventListener('change', () => renderPedidosFaturarTable());
+  }
+  if (pedidosFaturarSearchInput) {
+    pedidosFaturarSearchInput.addEventListener('input', () => renderPedidosFaturarTable());
+  }
+  if (btnAtualizarPedidosFaturar) {
+    btnAtualizarPedidosFaturar.addEventListener('click', () => carregarPedidosFaturar(true));
+  }
+  if (btnLimparFiltrosPedidosFaturar) {
+    btnLimparFiltrosPedidosFaturar.addEventListener('click', () => {
+      if (pedidosFaturarEmpresaFilter) pedidosFaturarEmpresaFilter.value = '';
+      if (pedidosFaturarSearchInput) pedidosFaturarSearchInput.value = '';
+      renderPedidosFaturarTable();
+    });
+  }
+  if (thSortFaturarCodWeb) {
+    thSortFaturarCodWeb.addEventListener('click', () => {
+      if (pedidosFaturarSortField === 'codWeb') pedidosFaturarSortDirection = pedidosFaturarSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosFaturarSortField = 'codWeb'; pedidosFaturarSortDirection = 'asc'; }
+      updatePedidosFaturarSortIcons();
+      renderPedidosFaturarTable();
+    });
+  }
+  if (thSortFaturarPedVenda) {
+    thSortFaturarPedVenda.addEventListener('click', () => {
+      if (pedidosFaturarSortField === 'numPed') pedidosFaturarSortDirection = pedidosFaturarSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosFaturarSortField = 'numPed'; pedidosFaturarSortDirection = 'asc'; }
+      updatePedidosFaturarSortIcons();
+      renderPedidosFaturarTable();
+    });
+  }
+  if (thSortFaturarDataLib) {
+    thSortFaturarDataLib.addEventListener('click', () => {
+      if (pedidosFaturarSortField === 'dataLib') pedidosFaturarSortDirection = pedidosFaturarSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosFaturarSortField = 'dataLib'; pedidosFaturarSortDirection = 'desc'; }
+      updatePedidosFaturarSortIcons();
+      renderPedidosFaturarTable();
+    });
+  }
+  if (thSortFaturarValor) {
+    thSortFaturarValor.addEventListener('click', () => {
+      if (pedidosFaturarSortField === 'totalGeral') pedidosFaturarSortDirection = pedidosFaturarSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosFaturarSortField = 'totalGeral'; pedidosFaturarSortDirection = 'desc'; }
+      updatePedidosFaturarSortIcons();
+      renderPedidosFaturarTable();
+    });
+  }
+
+  // --- SUB-ABA: PEDIDOS BLOQUEADOS POR ESTOQUE ---
+  async function carregarPedidosBloqEstoque(force = false) {
+    if (pedidosBloqCache.length > 0 && !force) {
+      renderPedidosBloqEstoqueTable(pedidosBloqCache);
+      return;
+    }
+
+    if (pedidosBloqLoading) pedidosBloqLoading.classList.remove('hidden');
+    if (pedidosBloqResults) pedidosBloqResults.classList.add('hidden');
+    if (pedidosBloqEmpty) pedidosBloqEmpty.classList.add('hidden');
+    if (btnAtualizarPedidosBloq) {
+      btnAtualizarPedidosBloq.disabled = true;
+      btnAtualizarPedidosBloq.textContent = '⏳ Carregando...';
+    }
+
+    try {
+      const response = await fetch('/api/logistica/pedidos-bloq-estoque');
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        pedidosBloqCache = data.data;
+        renderPedidosBloqEstoqueTable(pedidosBloqCache);
+      } else {
+        alert(data.message || 'Erro ao consultar pedidos bloqueados por estoque.');
+      }
+    } catch (err) {
+      console.error('Erro ao carregar pedidos bloqueados por estoque:', err);
+    } finally {
+      if (pedidosBloqLoading) pedidosBloqLoading.classList.add('hidden');
+      if (btnAtualizarPedidosBloq) {
+        btnAtualizarPedidosBloq.disabled = false;
+        btnAtualizarPedidosBloq.textContent = '🔄 Atualizar';
+      }
+    }
+  }
+
+  function renderPedidosBloqEstoqueTable(items) {
+    if (!pedidosBloqTableBody) return;
+    let list = Array.isArray(items) ? [...items] : [...pedidosBloqCache];
+
+    const selectedEmp = pedidosBloqEmpresaFilter ? pedidosBloqEmpresaFilter.value : '';
+    if (selectedEmp) {
+      list = list.filter(p => p.empresa === selectedEmp || p.empresaKey === selectedEmp);
+    }
+
+    const searchTerm = pedidosBloqSearchInput ? pedidosBloqSearchInput.value.trim().toLowerCase() : '';
+    if (searchTerm) {
+      list = list.filter(p => 
+        (p.numPed && p.numPed.toLowerCase().includes(searchTerm)) ||
+        (p.codWeb && p.codWeb.toLowerCase().includes(searchTerm)) ||
+        (p.clienteNome && p.clienteNome.toLowerCase().includes(searchTerm)) ||
+        (p.clienteCod && p.clienteCod.toLowerCase().includes(searchTerm)) ||
+        (p.nomeTransp && p.nomeTransp.toLowerCase().includes(searchTerm)) ||
+        (p.vendedorNome && p.vendedorNome.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // Calcular KPIs
+    let totalPecas = 0;
+    let totalValor = 0;
+    for (const p of list) {
+      totalPecas += (p.totalQtd || 0);
+      totalValor += (p.totalGeral || p.totalValor || 0);
+    }
+
+    if (kpiPedidosBloqCount) kpiPedidosBloqCount.textContent = list.length;
+    if (kpiPedidosBloqQtd) kpiPedidosBloqQtd.textContent = totalPecas.toLocaleString('pt-BR');
+    if (kpiPedidosBloqTotal) kpiPedidosBloqTotal.textContent = formatCurrency(totalValor);
+    if (pedidosBloqCount) pedidosBloqCount.textContent = list.length;
+
+    if (list.length === 0) {
+      if (pedidosBloqResults) pedidosBloqResults.classList.add('hidden');
+      if (pedidosBloqEmpty) pedidosBloqEmpty.classList.remove('hidden');
+      pedidosBloqTableBody.innerHTML = '';
+      return;
+    }
+
+    if (pedidosBloqEmpty) pedidosBloqEmpty.classList.add('hidden');
+    if (pedidosBloqResults) pedidosBloqResults.classList.remove('hidden');
+
+    // Ordenação
+    list.sort((a, b) => {
+      let valA = a[pedidosBloqSortField] || '';
+      let valB = b[pedidosBloqSortField] || '';
+
+      if (pedidosBloqSortField === 'codWeb' || pedidosBloqSortField === 'numPed') {
+        const numA = parseInt(String(valA).replace(/\D/g, ''), 10);
+        const numB = parseInt(String(valB).replace(/\D/g, ''), 10);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return pedidosBloqSortDirection === 'asc' ? numA - numB : numB - numA;
+        }
+      }
+
+      if (pedidosBloqSortField === 'totalGeral' || pedidosBloqSortField === 'totalValor') {
+        const numA = parseFloat(valA || 0);
+        const numB = parseFloat(valB || 0);
+        return pedidosBloqSortDirection === 'asc' ? numA - numB : numB - numA;
+      }
+
+      const cmp = String(valA).localeCompare(String(valB));
+      return pedidosBloqSortDirection === 'asc' ? cmp : -cmp;
+    });
+
+    pedidosBloqTableBody.innerHTML = list.map(p => {
+      let empresaBadge = `<span class="empresa-badge empresa-mp">MP</span>`;
+      if (p.empresa === 'GSI') empresaBadge = `<span class="empresa-badge empresa-gsi">GSI</span>`;
+      if (p.empresa === 'OACO') empresaBadge = `<span class="empresa-badge empresa-oaco">OACO</span>`;
+
+      const codWebCell = (p.codWeb && p.codWeb !== '-')
+        ? `<a href="https://app.pipedrive.com/deals?selected_deal_id=${escapeHtml(p.codWeb)}" target="_blank" rel="noopener noreferrer" class="link-pipedrive" title="Abrir negócio no Pipedrive">
+            <span class="pipedrive-icon">🔗</span> ${escapeHtml(p.codWeb)}
+          </a>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
+      const pedVendaCell = `
+        <button class="btn-link-pedvenda btn-pedvenda-bloq" data-empresa="${escapeHtml(p.empresaKey || p.empresa)}" data-pedido="${escapeHtml(p.numPed)}" title="Clique para abrir os detalhes completos">
+          📋 ${escapeHtml(p.numPed)}
+        </button>
+      `;
+
+      const statusBloqBadge = p.codBlCred === '01'
+        ? `<span class="status-badge erro" style="background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); font-weight: 600; padding: 2px 6px;">🔴 Estoque + Crédito</span>`
+        : `<span class="status-badge erro" style="background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); font-weight: 600; padding: 2px 6px;">🔴 Bloq. Estoque (02)</span>`;
+
+      return `
+        <tr>
+          <td>${empresaBadge}</td>
+          <td>${codWebCell}</td>
+          <td>${pedVendaCell}</td>
+          <td>
+            <div style="font-weight: 600;">${escapeHtml(p.clienteNome)}</div>
+            <small style="color: var(--text-muted); font-size: 0.75rem;">Cód: ${escapeHtml(p.clienteCod || '-')}</small>
+          </td>
+          <td>${statusBloqBadge}</td>
+          <td>${escapeHtml(p.dataLibFmt || formatDataProtheusLocal(p.dataLib))}</td>
+          <td>${escapeHtml(p.dataPrevisaoFmt || formatDataProtheusLocal(p.dataPrevisao))}</td>
+          <td>
+            <div style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(p.nomeTransp)}</div>
+            <span class="badge" style="font-size: 0.7rem; padding: 1px 4px; background: rgba(59,130,246,0.1); color: #60a5fa;">${escapeHtml(p.tpFrete || '-')}</span>
+          </td>
+          <td style="text-align: center; font-weight: 700;">${p.totalQtd || 1}</td>
+          <td style="text-align: right; font-weight: 700; color: #ef4444;">${formatCurrency(p.totalGeral || p.totalValor)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    pedidosBloqTableBody.querySelectorAll('.btn-pedvenda-bloq').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const emp = btn.getAttribute('data-empresa');
+        const ped = btn.getAttribute('data-pedido');
+        if (typeof abrirDetalhesPedidoModal === 'function') {
+          abrirDetalhesPedidoModal(emp, ped);
+        }
+      });
+    });
+  }
+
+  function updatePedidosBloqSortIcons() {
+    if (sortIconBloqCodWeb) sortIconBloqCodWeb.textContent = pedidosBloqSortField === 'codWeb' ? (pedidosBloqSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconBloqPedVenda) sortIconBloqPedVenda.textContent = pedidosBloqSortField === 'numPed' ? (pedidosBloqSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconBloqDataLib) sortIconBloqDataLib.textContent = pedidosBloqSortField === 'dataLib' ? (pedidosBloqSortDirection === 'asc' ? '▲' : '▼') : '↕';
+    if (sortIconBloqValor) sortIconBloqValor.textContent = (pedidosBloqSortField === 'totalGeral' || pedidosBloqSortField === 'totalValor') ? (pedidosBloqSortDirection === 'asc' ? '▲' : '▼') : '↕';
+  }
+
+  if (pedidosBloqEmpresaFilter) {
+    pedidosBloqEmpresaFilter.addEventListener('change', () => renderPedidosBloqEstoqueTable());
+  }
+  if (pedidosBloqSearchInput) {
+    pedidosBloqSearchInput.addEventListener('input', () => renderPedidosBloqEstoqueTable());
+  }
+  if (btnAtualizarPedidosBloq) {
+    btnAtualizarPedidosBloq.addEventListener('click', () => carregarPedidosBloqEstoque(true));
+  }
+  if (btnLimparFiltrosPedidosBloq) {
+    btnLimparFiltrosPedidosBloq.addEventListener('click', () => {
+      if (pedidosBloqEmpresaFilter) pedidosBloqEmpresaFilter.value = '';
+      if (pedidosBloqSearchInput) pedidosBloqSearchInput.value = '';
+      renderPedidosBloqEstoqueTable();
+    });
+  }
+  if (thSortBloqCodWeb) {
+    thSortBloqCodWeb.addEventListener('click', () => {
+      if (pedidosBloqSortField === 'codWeb') pedidosBloqSortDirection = pedidosBloqSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosBloqSortField = 'codWeb'; pedidosBloqSortDirection = 'asc'; }
+      updatePedidosBloqSortIcons();
+      renderPedidosBloqEstoqueTable();
+    });
+  }
+  if (thSortBloqPedVenda) {
+    thSortBloqPedVenda.addEventListener('click', () => {
+      if (pedidosBloqSortField === 'numPed') pedidosBloqSortDirection = pedidosBloqSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosBloqSortField = 'numPed'; pedidosBloqSortDirection = 'asc'; }
+      updatePedidosBloqSortIcons();
+      renderPedidosBloqEstoqueTable();
+    });
+  }
+  if (thSortBloqDataLib) {
+    thSortBloqDataLib.addEventListener('click', () => {
+      if (pedidosBloqSortField === 'dataLib') pedidosBloqSortDirection = pedidosBloqSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosBloqSortField = 'dataLib'; pedidosBloqSortDirection = 'desc'; }
+      updatePedidosBloqSortIcons();
+      renderPedidosBloqEstoqueTable();
+    });
+  }
+  if (thSortBloqValor) {
+    thSortBloqValor.addEventListener('click', () => {
+      if (pedidosBloqSortField === 'totalGeral') pedidosBloqSortDirection = pedidosBloqSortDirection === 'asc' ? 'desc' : 'asc';
+      else { pedidosBloqSortField = 'totalGeral'; pedidosBloqSortDirection = 'desc'; }
+      updatePedidosBloqSortIcons();
+      renderPedidosBloqEstoqueTable();
+    });
+  }
+
+  // Carregamento inicial de pedidos pra faturar se a aba inicial for tab-pedidos-faturar
+  if (document.getElementById('tab-pedidos-faturar') && !document.getElementById('tab-pedidos-faturar').classList.contains('hidden')) {
+    carregarPedidosFaturar();
   }
 
   carregarHistoricoCredito();

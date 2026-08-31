@@ -2129,12 +2129,362 @@ async function sincronizarFaturamentoConsolidado({ dataIni, dataFim, triggeredBy
   }
 }
 
+/**
+ * Consulta Pedidos Liberados e Prontos para Faturar (MATA460A - Legenda Verde)
+ * Junta SC9, SC5, SC6, SA4 e SF2 nas 3 empresas (OACO, GSI, METAL PLENO)
+ */
+async function buscarPedidosProntosFaturar({ empresa, search, limit = 500 } = {}) {
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+  const cleanSearch = sanitizeSqlParam(search || '').toLowerCase();
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160", sc9: "SC9160", sf2: "SF2160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150", sc9: "SC9150", sf2: "SF2150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140", sc9: "SC9140", sf2: "SF2140" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e => 
+      e.key === cleanEmpresa || 
+      e.sigla === cleanEmpresa || 
+      e.codigo === cleanEmpresa || 
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) empresasFiltradas = empresasConfig;
+  }
+
+  const results = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      const sql = `
+        SELECT TOP ${parseInt(limit, 10) || 500}
+          RTRIM(C9.C9_FILIAL) AS FILIAL,
+          RTRIM(C9.C9_PEDIDO) AS PEDIDO,
+          RTRIM(C9.C9_ITEM) AS ITEM,
+          RTRIM(C9.C9_SEQUEN) AS SEQUEN,
+          RTRIM(C9.C9_CLIENTE) AS CLIENTE,
+          RTRIM(C9.C9_LOJA) AS LOJA,
+          RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS NOMECLI,
+          RTRIM(C9.C9_PRODUTO) AS PRODUTO,
+          RTRIM(ISNULL(C6.C6_DESCRI, C9.C9_PRODUTO)) AS PROD_DESC,
+          C9.C9_QTDLIB AS QTDLIB,
+          C9.C9_PRCVEN AS PRCVEN,
+          (C9.C9_QTDLIB * C9.C9_PRCVEN) AS VALOR_ITEM,
+          RTRIM(C9.C9_BLCRED) AS BLCRED,
+          RTRIM(C9.C9_BLEST) AS BLEST,
+          RTRIM(C9.C9_BLOQUEI) AS BLOQUEI,
+          RTRIM(C9.C9_NFISCAL) AS NFISCAL,
+          RTRIM(C9.C9_SERIENF) AS SERIENF,
+          RTRIM(C9.C9_DATALIB) AS DATALIB,
+          RTRIM(C9.C9_DATENT) AS DATENT,
+          RTRIM(ISNULL(C5.C5_CODWEB, '')) AS CODWEB,
+          RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS EMISSAO,
+          RTRIM(ISNULL(C5.C5_TRANSP, '')) AS COD_TRANSP,
+          RTRIM(ISNULL(A4.A4_NOME, '')) AS NOME_TRANSP,
+          RTRIM(ISNULL(C5.C5_VEND1, '')) AS VEND1,
+          ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
+          ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+          RTRIM(ISNULL(C5.C5_TPFRETE, '')) AS TPFRETE
+        FROM ${emp.sc9} C9
+        INNER JOIN ${emp.sc5} C5
+          ON C5.C5_FILIAL = C9.C9_FILIAL
+         AND C5.C5_NUM = C9.C9_PEDIDO
+         AND C5.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sc6} C6
+          ON C6.C6_FILIAL = C9.C9_FILIAL
+         AND C6.C6_NUM = C9.C9_PEDIDO
+         AND C6.C6_ITEM = C9.C9_ITEM
+         AND C6.D_E_L_E_T_ = ' '
+        LEFT JOIN SA4010 A4
+          ON A4.A4_COD = C5.C5_TRANSP
+         AND A4.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sf2} F2
+          ON F2.F2_FILIAL = C9.C9_FILIAL
+         AND F2.F2_DOC = C9.C9_NFISCAL
+         AND F2.F2_SERIE = C9.C9_SERIENF
+         AND F2.D_E_L_E_T_ = ' '
+        WHERE C9.D_E_L_E_T_ = ' '
+          AND (C9.C9_BLEST IS NULL OR RTRIM(C9.C9_BLEST) = '' OR RTRIM(C9.C9_BLEST) = '10' OR RTRIM(C9.C9_BLEST) NOT IN ('02'))
+          AND (C9.C9_BLCRED IS NULL OR RTRIM(C9.C9_BLCRED) = '' OR RTRIM(C9.C9_BLCRED) = '10' OR RTRIM(C9.C9_BLCRED) NOT IN ('01'))
+          AND (C9.C9_BLOQUEI IS NULL OR RTRIM(C9.C9_BLOQUEI) = '')
+          AND C9.C9_QTDLIB > 0
+          AND (
+            C9.C9_NFISCAL IS NULL 
+            OR RTRIM(C9.C9_NFISCAL) = '' 
+            OR F2.F2_DOC IS NULL
+          )
+          AND (
+            C5.C5_NOTA IS NULL 
+            OR RTRIM(C5.C5_NOTA) = '' 
+            OR RTRIM(C5.C5_NOTA) = 'XXXXXXXXX' 
+            OR RTRIM(C5.C5_NOTA) = '0'
+          )
+          AND (C5.C5_MSBLQL IS NULL OR RTRIM(C5.C5_MSBLQL) <> '1')
+        ORDER BY C9.C9_DATALIB DESC, C9.C9_PEDIDO DESC
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+        const pedidosMap = new Map();
+        for (const r of dbRes.rows) {
+          const key = `${emp.sigla}_${r.PEDIDO}`;
+          if (!pedidosMap.has(key)) {
+            pedidosMap.set(key, {
+              empresa: emp.sigla,
+              empresaKey: emp.key,
+              empresaNome: emp.nome,
+              numPed: r.PEDIDO,
+              codWeb: r.CODWEB || '-',
+              clienteCod: r.CLIENTE,
+              clienteLoja: r.LOJA,
+              clienteNome: r.NOMECLI || 'CLIENTE NÃO INFORMADO',
+              dataEmissao: r.EMISSAO,
+              dataEmissaoFmt: formatarDataProtheus(r.EMISSAO),
+              dataLib: r.DATALIB,
+              dataLibFmt: formatarDataProtheus(r.DATALIB),
+              dataPrevisao: r.DATENT || r.DATALIB,
+              dataPrevisaoFmt: formatarDataProtheus(r.DATENT || r.DATALIB),
+              codTransp: r.COD_TRANSP,
+              nomeTransp: r.NOME_TRANSP || (r.COD_TRANSP ? `Transp. ${r.COD_TRANSP}` : 'NÃO INFORMADA'),
+              tpFrete: r.TPFRETE === 'C' ? 'CIF' : (r.TPFRETE === 'F' ? 'FOB' : (r.TPFRETE || '-')),
+              freteCobrado: parseFloat(r.C5_FRETE || 0),
+              freteEmbutido: parseFloat(r.C5_VLR_FRT || 0),
+              vendedorCod: r.VEND1,
+              vendedorNome: getNomeVendedor(r.VEND1) || r.VEND1 || 'NÃO INFORMADO',
+              totalQtd: 0,
+              totalValor: 0,
+              totalGeral: 0,
+              itens: []
+            });
+          }
+          const p = pedidosMap.get(key);
+          const qtd = parseFloat(r.QTDLIB || 0);
+          const prc = parseFloat(r.PRCVEN || 0);
+          const tot = parseFloat(r.VALOR_ITEM || (qtd * prc));
+          p.totalQtd += qtd;
+          p.totalValor += tot;
+          p.itens.push({
+            item: r.ITEM,
+            sequen: r.SEQUEN,
+            produto: r.PRODUTO,
+            descricao: r.PROD_DESC || r.PRODUTO,
+            qtdLib: qtd,
+            prcVenda: prc,
+            total: tot
+          });
+        }
+
+        for (const p of pedidosMap.values()) {
+          p.totalValor = Math.round((p.totalValor + Number.EPSILON) * 100) / 100;
+          p.totalGeral = Math.round(((p.totalValor + p.freteCobrado) + Number.EPSILON) * 100) / 100;
+
+          if (cleanSearch) {
+            const matches = 
+              (p.numPed && p.numPed.toLowerCase().includes(cleanSearch)) ||
+              (p.codWeb && p.codWeb.toLowerCase().includes(cleanSearch)) ||
+              (p.clienteNome && p.clienteNome.toLowerCase().includes(cleanSearch)) ||
+              (p.nomeTransp && p.nomeTransp.toLowerCase().includes(cleanSearch)) ||
+              (p.vendedorNome && p.vendedorNome.toLowerCase().includes(cleanSearch));
+            if (!matches) continue;
+          }
+
+          results.push(p);
+        }
+      }
+    } catch (err) {
+      console.warn(`Aviso: Erro ao buscar pedidos prontos para faturar em ${emp.nome}:`, err.message);
+    }
+  }
+
+  results.sort((a, b) => (b.dataLib || b.dataEmissao || '').localeCompare(a.dataLib || a.dataEmissao || '') || (b.numPed || '').localeCompare(a.numPed || ''));
+  return results;
+}
+
+/**
+ * Consulta Pedidos Bloqueados por Estoque (C9_BLEST = '02')
+ * Junta SC9, SC5, SC6, SA4 e SF2 nas 3 empresas (OACO, GSI, METAL PLENO)
+ */
+async function buscarPedidosBloqueadosEstoque({ empresa, search, limit = 500 } = {}) {
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+  const cleanSearch = sanitizeSqlParam(search || '').toLowerCase();
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sc6: "SC6160", sc9: "SC9160", sf2: "SF2160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sc6: "SC6150", sc9: "SC9150", sf2: "SF2150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sc6: "SC6140", sc9: "SC9140", sf2: "SF2140" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e => 
+      e.key === cleanEmpresa || 
+      e.sigla === cleanEmpresa || 
+      e.codigo === cleanEmpresa || 
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) empresasFiltradas = empresasConfig;
+  }
+
+  const results = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      const sql = `
+        SELECT TOP ${parseInt(limit, 10) || 500}
+          RTRIM(C9.C9_FILIAL) AS FILIAL,
+          RTRIM(C9.C9_PEDIDO) AS PEDIDO,
+          RTRIM(C9.C9_ITEM) AS ITEM,
+          RTRIM(C9.C9_SEQUEN) AS SEQUEN,
+          RTRIM(C9.C9_CLIENTE) AS CLIENTE,
+          RTRIM(C9.C9_LOJA) AS LOJA,
+          RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS NOMECLI,
+          RTRIM(C9.C9_PRODUTO) AS PRODUTO,
+          RTRIM(ISNULL(C6.C6_DESCRI, C9.C9_PRODUTO)) AS PROD_DESC,
+          C9.C9_QTDLIB AS QTDLIB,
+          C9.C9_PRCVEN AS PRCVEN,
+          (C9.C9_QTDLIB * C9.C9_PRCVEN) AS VALOR_ITEM,
+          RTRIM(C9.C9_BLCRED) AS BLCRED,
+          RTRIM(C9.C9_BLEST) AS BLEST,
+          RTRIM(C9.C9_BLOQUEI) AS BLOQUEI,
+          RTRIM(C9.C9_NFISCAL) AS NFISCAL,
+          RTRIM(C9.C9_SERIENF) AS SERIENF,
+          RTRIM(C9.C9_DATALIB) AS DATALIB,
+          RTRIM(C9.C9_DATENT) AS DATENT,
+          RTRIM(ISNULL(C5.C5_CODWEB, '')) AS CODWEB,
+          RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS EMISSAO,
+          RTRIM(ISNULL(C5.C5_TRANSP, '')) AS COD_TRANSP,
+          RTRIM(ISNULL(A4.A4_NOME, '')) AS NOME_TRANSP,
+          RTRIM(ISNULL(C5.C5_VEND1, '')) AS VEND1,
+          ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
+          ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+          RTRIM(ISNULL(C5.C5_TPFRETE, '')) AS TPFRETE
+        FROM ${emp.sc9} C9
+        INNER JOIN ${emp.sc5} C5
+          ON C5.C5_FILIAL = C9.C9_FILIAL
+         AND C5.C5_NUM = C9.C9_PEDIDO
+         AND C5.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sc6} C6
+          ON C6.C6_FILIAL = C9.C9_FILIAL
+         AND C6.C6_NUM = C9.C9_PEDIDO
+         AND C6.C6_ITEM = C9.C9_ITEM
+         AND C6.D_E_L_E_T_ = ' '
+        LEFT JOIN SA4010 A4
+          ON A4.A4_COD = C5.C5_TRANSP
+         AND A4.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sf2} F2
+          ON F2.F2_FILIAL = C9.C9_FILIAL
+         AND F2.F2_DOC = C9.C9_NFISCAL
+         AND F2.F2_SERIE = C9.C9_SERIENF
+         AND F2.D_E_L_E_T_ = ' '
+        WHERE C9.D_E_L_E_T_ = ' '
+          AND RTRIM(C9.C9_BLEST) = '02'
+          AND C9.C9_QTDLIB > 0
+          AND (
+            C9.C9_NFISCAL IS NULL 
+            OR RTRIM(C9.C9_NFISCAL) = '' 
+            OR F2.F2_DOC IS NULL
+          )
+          AND (
+            C5.C5_NOTA IS NULL 
+            OR RTRIM(C5.C5_NOTA) = '' 
+            OR RTRIM(C5.C5_NOTA) = 'XXXXXXXXX' 
+            OR RTRIM(C5.C5_NOTA) = '0'
+          )
+          AND (C5.C5_MSBLQL IS NULL OR RTRIM(C5.C5_MSBLQL) <> '1')
+        ORDER BY C9.C9_DATALIB DESC, C9.C9_PEDIDO DESC
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+        const pedidosMap = new Map();
+        for (const r of dbRes.rows) {
+          const key = `${emp.sigla}_${r.PEDIDO}`;
+          if (!pedidosMap.has(key)) {
+            pedidosMap.set(key, {
+              empresa: emp.sigla,
+              empresaKey: emp.key,
+              empresaNome: emp.nome,
+              numPed: r.PEDIDO,
+              codWeb: r.CODWEB || '-',
+              clienteCod: r.CLIENTE,
+              clienteLoja: r.LOJA,
+              clienteNome: r.NOMECLI || 'CLIENTE NÃO INFORMADO',
+              dataEmissao: r.EMISSAO,
+              dataEmissaoFmt: formatarDataProtheus(r.EMISSAO),
+              dataLib: r.DATALIB,
+              dataLibFmt: formatarDataProtheus(r.DATALIB),
+              dataPrevisao: r.DATENT || r.DATALIB,
+              dataPrevisaoFmt: formatarDataProtheus(r.DATENT || r.DATALIB),
+              codTransp: r.COD_TRANSP,
+              nomeTransp: r.NOME_TRANSP || (r.COD_TRANSP ? `Transp. ${r.COD_TRANSP}` : 'NÃO INFORMADA'),
+              tpFrete: r.TPFRETE === 'C' ? 'CIF' : (r.TPFRETE === 'F' ? 'FOB' : (r.TPFRETE || '-')),
+              freteCobrado: parseFloat(r.C5_FRETE || 0),
+              freteEmbutido: parseFloat(r.C5_VLR_FRT || 0),
+              vendedorCod: r.VEND1,
+              vendedorNome: getNomeVendedor(r.VEND1) || r.VEND1 || 'NÃO INFORMADO',
+              codBlEst: r.BLEST || '02',
+              codBlCred: r.BLCRED || '',
+              bloqMotivo: r.BLCRED === '01' ? 'Estoque + Crédito' : 'Falta de Estoque',
+              totalQtd: 0,
+              totalValor: 0,
+              totalGeral: 0,
+              itens: []
+            });
+          }
+          const p = pedidosMap.get(key);
+          const qtd = parseFloat(r.QTDLIB || 0);
+          const prc = parseFloat(r.PRCVEN || 0);
+          const tot = parseFloat(r.VALOR_ITEM || (qtd * prc));
+          p.totalQtd += qtd;
+          p.totalValor += tot;
+          p.itens.push({
+            item: r.ITEM,
+            sequen: r.SEQUEN,
+            produto: r.PRODUTO,
+            descricao: r.PROD_DESC || r.PRODUTO,
+            qtdLib: qtd,
+            prcVenda: prc,
+            total: tot,
+            blEst: r.BLEST
+          });
+        }
+
+        for (const p of pedidosMap.values()) {
+          p.totalValor = Math.round((p.totalValor + Number.EPSILON) * 100) / 100;
+          p.totalGeral = Math.round(((p.totalValor + p.freteCobrado) + Number.EPSILON) * 100) / 100;
+
+          if (cleanSearch) {
+            const matches = 
+              (p.numPed && p.numPed.toLowerCase().includes(cleanSearch)) ||
+              (p.codWeb && p.codWeb.toLowerCase().includes(cleanSearch)) ||
+              (p.clienteNome && p.clienteNome.toLowerCase().includes(cleanSearch)) ||
+              (p.nomeTransp && p.nomeTransp.toLowerCase().includes(cleanSearch)) ||
+              (p.vendedorNome && p.vendedorNome.toLowerCase().includes(cleanSearch));
+            if (!matches) continue;
+          }
+
+          results.push(p);
+        }
+      }
+    } catch (err) {
+      console.warn(`Aviso: Erro ao buscar pedidos bloqueados por estoque em ${emp.nome}:`, err.message);
+    }
+  }
+
+  results.sort((a, b) => (b.dataLib || b.dataEmissao || '').localeCompare(a.dataLib || a.dataEmissao || '') || (b.numPed || '').localeCompare(a.numPed || ''));
+  return results;
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
+  buscarPedidosProntosFaturar,
+  buscarPedidosBloqueadosEstoque,
   sincronizarSaldosEstoqueProtheus,
   consultarFaturamentoHistorico,
   sincronizarFaturamentoConsolidado,

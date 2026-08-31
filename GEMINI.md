@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 15:28 (v9.03 - Desbloqueio de Visão Unificada e Coluna Nome em Comissões)  
+> **Data da Última Auditoria:** 31/08/2026 18:20 (v9.04 - Sub-abas 'Ped. pra Faturar' MATA460A e 'Ped. Bloq Estoque' na Aba Logística)  
 
 ---
 
@@ -335,8 +335,30 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Consulta Protheus em `protheus_db.js` (`buscarComissoesPeriodo`) atualizada com `LEFT JOIN SA1010 A1` cruzando o código do cliente (`E3_CODCLI` com `A1_COD`).
       - Extração e truncamento do nome do cliente (`A1_NOME`) nas **primeiras 20 letras (incluindo espaços)** (`nomeCliente: rawNome.substring(0, 20)`), com preservação do nome completo no tooltip (`title="${item.nomeClienteCompleto}"`).
       - Tabela de Comissões atualizada em `public/index.html` e `public/app.js` com 8 colunas: inserção da coluna `Nome` (22% de largura) imediatamente ao lado de `Cliente` (11%) e redução da coluna `Vendedor` (de 16% para 12%) para distribuição harmônica do layout da tabela. Empty state ajustado para `colspan="8"`.
-    - **Suíte de Testes Automatizados:**
-      - Script `test_vendedores_desbloqueio.js` (8 testes aprovados) e `test_pedidos_abertos.js` (19 testes aprovados) validando truncamento exato, ordem e largura das colunas, renderização no frontend e acesso irrestrito dos vendedores aos dados globais.
+39. [x] **Sub-abas "Ped. pra Faturar" (MATA460A) e "Ped. Bloq Estoque" na Aba 📦 LOGÍSTICA (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `openapi.json`, `test_pedidos_faturar.js`):**
+    - **Reestruturação da Navegação da Aba Logística (4 Sub-abas):**
+      - Sub-aba 1 (Padrão/Inicial): `🟢 Ped. pra Faturar` (`#tab-pedidos-faturar` / `btnTabPedidosFaturar`).
+      - Sub-aba 2: `🔴 Ped. Bloq Estoque` (`#tab-pedidos-bloq-estoque` / `btnTabPedidosBloqEstoque`).
+      - Sub-aba 3: `📄 Upload Fatura Transp.` (`#tab-upload` / `btnTabUploadTransp`).
+      - Sub-aba 4: `📦 Fatura Correios & ViPP` (`#tab-correios` / `btnTabCorreios`).
+    - **Regras de Negócio Oficiais do Protheus MATA460A (Legenda Verde - Prontos para Faturar):**
+      - Consulta T-SQL multi-empresa (`SC9` + `SC5` + `SC6` + `SA4` + `SF2` nas empresas OACO 16, GSI 15 e Metal Pleno 14).
+      - Filtro de liberação: `C9_BLEST NOT IN ('02')`, `C9_BLCRED NOT IN ('01')`, `C9_BLOQUEI = ''`, `C9_QTDLIB > 0`, sem NF ativa em `SF2` (`F2_DOC IS NULL` ou `C9_NFISCAL = ''`) e `C5_NOTA` não faturada/reaberta (`XXXXXXXXX`).
+      - Na **OACO (16)**: Retorna exclusivamente o pedido **`000221`** (MOHAMMED NAHED RAJAB KHDAIR - R$ 515,07), cuja NF antiga `000132` foi cancelada/excluída (`SF2.D_E_L_E_T_ = '*'`).
+      - Na **GSI (15)**: Retorna 4 pedidos liberados (`001887`, `001886`, `000257`, `001845`).
+      - Na **MP (14)**: 0 pedidos.
+    - **Regras de Negócio para Pedidos Bloqueados por Estoque (`C9_BLEST = '02'`):**
+      - Identifica pedidos com pendência de estoque retidos no Protheus.
+      - Na **OACO (16)**: Lista com precisão os **8 pedidos** bloqueados (`000723`, `000729`, `000736`, `000754`, `000755`, `000762`, `000763`, `000764`).
+      - Na **MP (14)**: 4 pedidos bloqueados (`000338`, `000354`, `000346`, `000200`).
+      - Na **GSI (15)**: 0 pedidos bloqueados.
+    - **Interface, KPIs, Ordenação e Drilldown:**
+      - 3 Cards KPIs por sub-aba (*Pedidos Prontos/Bloqueados*, *Total de Peças*, *Valor Total R$*).
+      - Barra de filtros com busca instantânea textual, seletor de empresa e botão de limpeza.
+      - Integração seamless com o modal `#pedidoDetalhesModal` via clique no Pedido de Venda e links Pipedrive no `CodWeb`.
+    - **Segurança RBAC e Suíte de Testes Automatizados:**
+      - Endpoints `/api/logistica/pedidos-faturar` e `/api/logistica/pedidos-bloq-estoque` protegidos por JWT e auditados em `user_activities`.
+      - Suíte automatizada `test_pedidos_faturar.js` com 9 asserções aprovadas com 100% de sucesso.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

@@ -253,6 +253,26 @@
         }
       }
     },
+    "/api/logistica/pedidos-faturar": {
+      "get": {
+        "summary": "Consulta de Pedidos Liberados Prontos para Faturar (MATA460A)",
+        "description": "Retorna pedidos liberados em SC9 sem bloqueio de estoque nem crédito prontos para emissão de NF.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pedidos liberados listados com sucesso" }
+        }
+      }
+    },
+    "/api/logistica/pedidos-bloq-estoque": {
+      "get": {
+        "summary": "Consulta de Pedidos Bloqueados por Falta de Estoque (C9_BLEST = 02)",
+        "description": "Retorna pedidos em aberto retidos por indisponibilidade física de estoque no Protheus.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pedidos bloqueados por estoque listados com sucesso" }
+        }
+      }
+    },
     "/api/financeiro/analise-credito/protheus": {
       "get": {
         "summary": "Consulta de Dados de Crédito no ERP Protheus",

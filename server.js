@@ -16,6 +16,8 @@ const {
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
+  buscarPedidosProntosFaturar,
+  buscarPedidosBloqueadosEstoque,
   sincronizarSaldosEstoqueProtheus,
   consultarFaturamentoHistorico,
   sincronizarFaturamentoConsolidado,
@@ -1189,6 +1191,50 @@ app.post('/api/vendedores/comissoes', requireAuth, async (req, res) => {
     res.json({ success: true, data: resultado });
   } catch (err) {
     handleServerError(res, err, 'Erro ao consultar comissões.');
+  }
+});
+
+// API: Logística - Pedidos Prontos para Faturar (MATA460A - Legenda Verde)
+app.get('/api/logistica/pedidos-faturar', requireAuth, async (req, res) => {
+  try {
+    const { empresa, search } = req.query || {};
+    const pedidos = await buscarPedidosProntosFaturar({ empresa, search });
+    const user = getUserFromReq(req);
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS_FATURAR',
+      description: `Consultou pedidos prontos para faturar (${pedidos ? pedidos.length : 0} pedidos)`,
+      ip: req.ip,
+      metadata: { empresa, search, total: pedidos ? pedidos.length : 0 }
+    }).catch(() => {});
+
+    res.json({ success: true, count: pedidos.length, data: pedidos });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao consultar pedidos prontos para faturar.');
+  }
+});
+
+// API: Logística - Pedidos Bloqueados por Falta de Estoque (C9_BLEST = '02')
+app.get('/api/logistica/pedidos-bloq-estoque', requireAuth, async (req, res) => {
+  try {
+    const { empresa, search } = req.query || {};
+    const pedidos = await buscarPedidosBloqueadosEstoque({ empresa, search });
+    const user = getUserFromReq(req);
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS_BLOQ_ESTOQUE',
+      description: `Consultou pedidos bloqueados por estoque (${pedidos ? pedidos.length : 0} pedidos)`,
+      ip: req.ip,
+      metadata: { empresa, search, total: pedidos ? pedidos.length : 0 }
+    }).catch(() => {});
+
+    res.json({ success: true, count: pedidos.length, data: pedidos });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao consultar pedidos bloqueados por estoque.');
   }
 });
 
