@@ -606,6 +606,12 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
   try {
     await client.query('BEGIN');
 
+    // 2.0 Garante estrutura DDL sem constraints conflitantes e com RECNO
+    await client.query('ALTER TABLE contas_a_pagar DROP CONSTRAINT IF EXISTS uq_contas_a_pagar;');
+    await client.query('ALTER TABLE contas_a_receber DROP CONSTRAINT IF EXISTS uq_contas_a_receber;');
+    await client.query('ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS recno BIGINT;');
+    await client.query('ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS recno BIGINT;');
+
     // 2.0 Limpa as tabelas de estado atual antes de carregar o snapshot íntegro
     await client.query('DELETE FROM estoque;');
     await client.query('DELETE FROM contas_a_receber;');
@@ -648,10 +654,11 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       const chunk = contasReceber.slice(i, i + 100);
       const values = [];
       const placeholders = chunk.map((r, idx) => {
-        const o = idx * 18;
+        const o = idx * 19;
         values.push(
           r.empresa_cod,
           r.empresa_sigla,
+          r.recno || null,
           r.filial || '01',
           r.prefixo || '',
           r.numero_titulo,
@@ -669,12 +676,12 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
           r.dias_vencido || 0,
           r.valido_indice !== false
         );
-        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, $${o + 12}, $${o + 13}, $${o + 14}, $${o + 15}, $${o + 16}, $${o + 17}, $${o + 18}, 'ABERTO', NOW())`;
+        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, $${o + 12}, $${o + 13}, $${o + 14}, $${o + 15}, $${o + 16}, $${o + 17}, $${o + 18}, $${o + 19}, 'ABERTO', NOW())`;
       }).join(', ');
 
       const sqlCR = `
         INSERT INTO contas_a_receber (
-          empresa_cod, empresa_sigla, filial, prefixo, numero_titulo, parcela, tipo,
+          empresa_cod, empresa_sigla, recno, filial, prefixo, numero_titulo, parcela, tipo,
           cliente_cod, cliente_loja, cliente_nome, natureza_cod,
           data_emissao, data_vencimento, data_vencimento_real,
           valor_original, saldo, dias_vencido, valido_indice, status, synced_at
@@ -688,10 +695,11 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
       const chunk = contasPagar.slice(i, i + 100);
       const values = [];
       const placeholders = chunk.map((r, idx) => {
-        const o = idx * 17;
+        const o = idx * 18;
         values.push(
           r.empresa_cod,
           r.empresa_sigla,
+          r.recno || null,
           r.filial || '01',
           r.prefixo || '',
           r.numero_titulo,
@@ -708,12 +716,12 @@ async function persistirDadosIndicesDB(dados, { triggeredBy = 'JOB', duracaoMs =
           r.saldo || 0,
           r.is_provisorio === true
         );
-        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, $${o + 12}, $${o + 13}, $${o + 14}, $${o + 15}, $${o + 16}, $${o + 17}, 'ABERTO', NOW())`;
+        return `($${o + 1}, $${o + 2}, $${o + 3}, $${o + 4}, $${o + 5}, $${o + 6}, $${o + 7}, $${o + 8}, $${o + 9}, $${o + 10}, $${o + 11}, $${o + 12}, $${o + 13}, $${o + 14}, $${o + 15}, $${o + 16}, $${o + 17}, $${o + 18}, 'ABERTO', NOW())`;
       }).join(', ');
 
       const sqlCP = `
         INSERT INTO contas_a_pagar (
-          empresa_cod, empresa_sigla, filial, prefixo, numero_titulo, parcela, tipo,
+          empresa_cod, empresa_sigla, recno, filial, prefixo, numero_titulo, parcela, tipo,
           fornecedor_cod, fornecedor_loja, fornecedor_nome, natureza_cod,
           data_emissao, data_vencimento, data_vencimento_real,
           valor_original, saldo, is_provisorio, status, synced_at

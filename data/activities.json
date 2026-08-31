@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1788191473287",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 11498,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 101,
+        "contasPagar": 141,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-08-31T15:51:13.287Z"
+  },
+  {
+    "id": "ACT-1788191461654",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-08-31T15:51:01.654Z"
+  },
+  {
     "id": "ACT-1788191117670",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2250,28 +2280,5 @@
       "count": 8
     },
     "createdAt": "2026-08-27T10:47:29.837Z"
-  },
-  {
-    "id": "ACT-1787827646823",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000074 (10 pedido(s))",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "codVend": "000074",
-      "count": 10
-    },
-    "createdAt": "2026-08-27T10:47:26.823Z"
-  },
-  {
-    "id": "ACT-1787827642318",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para ju*****@oaco.com.br",
-    "ip": "127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T10:47:22.318Z"
   }
 ]

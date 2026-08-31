@@ -502,6 +502,7 @@ async function initPostgres() {
           id BIGSERIAL PRIMARY KEY,
           empresa_cod VARCHAR(10) NOT NULL,
           empresa_sigla VARCHAR(10) NOT NULL,
+          recno BIGINT,
           filial VARCHAR(10) DEFAULT '01',
           prefixo VARCHAR(10) DEFAULT '',
           numero_titulo VARCHAR(20) NOT NULL,
@@ -519,9 +520,10 @@ async function initPostgres() {
           dias_vencido INTEGER DEFAULT 0,
           valido_indice BOOLEAN DEFAULT TRUE,
           status VARCHAR(20) DEFAULT 'ABERTO',
-          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          CONSTRAINT uq_contas_a_receber UNIQUE (empresa_cod, prefixo, numero_titulo, parcela, tipo)
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
+        ALTER TABLE contas_a_receber DROP CONSTRAINT IF EXISTS uq_contas_a_receber;
+        ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS recno BIGINT;
         CREATE INDEX IF NOT EXISTS idx_cr_empresa ON contas_a_receber(empresa_cod);
         CREATE INDEX IF NOT EXISTS idx_cr_vencto ON contas_a_receber(data_vencimento);
         CREATE INDEX IF NOT EXISTS idx_cr_natureza ON contas_a_receber(natureza_cod);
@@ -533,6 +535,7 @@ async function initPostgres() {
           id BIGSERIAL PRIMARY KEY,
           empresa_cod VARCHAR(10) NOT NULL,
           empresa_sigla VARCHAR(10) NOT NULL,
+          recno BIGINT,
           filial VARCHAR(10) DEFAULT '01',
           prefixo VARCHAR(10) DEFAULT '',
           numero_titulo VARCHAR(20) NOT NULL,
@@ -549,9 +552,10 @@ async function initPostgres() {
           saldo NUMERIC(15, 2) NOT NULL DEFAULT 0,
           is_provisorio BOOLEAN DEFAULT FALSE,
           status VARCHAR(20) DEFAULT 'ABERTO',
-          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          CONSTRAINT uq_contas_a_pagar UNIQUE (empresa_cod, prefixo, numero_titulo, parcela, tipo)
+          synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
+        ALTER TABLE contas_a_pagar DROP CONSTRAINT IF EXISTS uq_contas_a_pagar;
+        ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS recno BIGINT;
         CREATE INDEX IF NOT EXISTS idx_cp_empresa ON contas_a_pagar(empresa_cod);
         CREATE INDEX IF NOT EXISTS idx_cp_vencto ON contas_a_pagar(data_vencimento);
         CREATE INDEX IF NOT EXISTS idx_cp_natureza ON contas_a_pagar(natureza_cod);
