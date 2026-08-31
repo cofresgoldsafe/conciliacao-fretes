@@ -32,6 +32,8 @@
 - [x] [VEND-05] Sub-aba Comissões & Metas: Apuração periódica `SE3` com cálculo dinâmico de Meta Atingida proporcional (R$ 120k / R$ 360k).
 - [x] [VEND-06] Autocura de `vendorCode`, fallback resiliente no login/2FA e campo de código de vendedor no painel administrativo.
 - [x] [VEND-07] Tema Claro/Escuro unificado para todas as 5 sub-abas dos Vendedores e modais com persistência `localStorage`.
+- [x] [VEND-08] Desbloqueio de Visão Unificada para Vendedores em Pedidos Abertos e Comissões (visualização global da equipe comercial sem travas restritivas).
+- [x] [VEND-09] Nova Coluna "Nome" no Relatório de Comissões (primeiras 20 letras com espaços via `SA1010`) e redistribuição harmônica de larguras (Vendedor 12%).
 - [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável.
 - [x] [CRED-02] Leitura de PDF Serasa Experian com validação de validade (&le; 4 meses), trava de consulta e expansão de métricas do Bloco 5.
 - [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
@@ -58,6 +60,7 @@
 - [x] [QA-14] Suíte de testes em Pytest para Parsers de Frete Correios, Rodonaves e ViPP Tipo 2 (`test_parsers.py`).
 - [x] [QA-15] Suíte de validação de Schemas Zod para Webhooks Bancários do Banco Inter (`test_webhook_schemas.js`).
 - [x] [QA-16] Suíte de testes para Arquitetura Modular ES6 e Documentação OpenAPI (`test_frontend_modules.js`).
+- [x] [QA-17] Suíte de testes automatizados para Desbloqueio de Vendedores e Coluna Nome em Comissões (`test_vendedores_desbloqueio.js`).
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).

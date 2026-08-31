@@ -106,13 +106,14 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
   * Pedidos não faturados (`C5_NOTA = ''` e não cancelados) nas 3 empresas (`SC5`).
   * Mapeamento de Bloqueios de Estoque (`C9_BLEST`) e Crédito (`C9_BLCRED`) da tabela `SC9` aderente às regras de negócio oficiais do Power BI.
   * Integração externa inteligente com o CRM Pipedrive (`deal/{digits}`) e abertura da modal do pedido.
-  * Proteção Anti-IDOR/BOLA e isolamento de carteira restrita para vendedores comerciais.
+  * **Visão Unificada e Desbloqueio de Vendedores:** Permite que qualquer vendedor visualize os pedidos em aberto de toda a equipe ou filtre por empresa/vendedor específico.
 * **Sub-aba `[ Pedidos Compras ]`:**
   * Consulta em tempo real de pedidos de compra em aberto (`SC7140`, `SC7150`, `SC7160`) com saldo a receber (`C7_QUANT - C7_QUJE > 0`) e previsão (`C7_DATPRF`).
   * Faixa estrita de produtos acabados `PA` (`001...` a `019...`) e fornecedores `SA2010`.
   * Identificador `PedCom` formatado com sigla (`MP000207`, `GSI000150`, `OACO000320`) e cards de resumo.
 * **Sub-aba `[ Comissões & Metas ]`:**
-  * Consulta periódica nas tabelas `SE3140`, `SE3150` e `SE3160` (ciclo oficial do dia 26 ao dia 25).
+  * Consulta periódica nas tabelas `SE3140`, `SE3150` e `SE3160` (ciclo oficial do dia 26 ao dia 25) com visão unificada para toda a equipe comercial.
+  * **Nova Coluna Nome:** Extração de `A1_NOME` via `LEFT JOIN SA1010` com truncamento nas primeiras **20 letras (incluindo espaços)** e tooltip com o nome completo.
   * **Card "Meta Atingida (%)":**
     * *Meta Individual:* **R$ 120.000,00** por vendedor.
     * *Meta Global:* **R$ 360.000,00** para a equipe.
@@ -158,9 +159,9 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 | Usuário | Perfil | Código Vendedor | Abas Autorizadas |
 | :--- | :---: | :---: | :--- |
 | **`alexandre`** | Administrador | *(Geral)* | `📦 Logística`, `🔍 Consulta`, `💼 Vendedores`, `💰 Assist. Financ.`, `⚙️ Configurações` (Acesso Total) |
-| **`juliana`** | Vendedor | `000074` | `💼 Vendedores` (Filtro, estoque, compras e comissões restritas à Juliana) |
-| **`andrea`** | Vendedor | `000064` | `💼 Vendedores` (Filtro, estoque, compras e comissões restritas à Andrea) |
-| **`figueiredo`** | Vendedor | `000004` | `💼 Vendedores` (Filtro, estoque, compras e comissões restritas ao Figueiredo) |
+| **`juliana`** | Vendedor | `000074` | `💼 Vendedores` (Visão Unificada: Estoque, Compras, Pedidos Abertos e Comissões de toda a equipe) |
+| **`andrea`** | Vendedor | `000064` | `💼 Vendedores` (Visão Unificada: Estoque, Compras, Pedidos Abertos e Comissões de toda a equipe) |
+| **`figueiredo`** | Vendedor | `000004` | `💼 Vendedores` (Visão Unificada: Estoque, Compras, Pedidos Abertos e Comissões de toda a equipe) |
 | **`rubens`** | Operador | - | `💰 Assist. Financ.` (Acesso focado na conciliação e financeiro) |
 | **`erica`** | Operador | - | `📦 Logística`, `🔍 Consulta` |
 | **`wallerson`** | Operador | - | `📦 Logística`, `🔍 Consulta` |
