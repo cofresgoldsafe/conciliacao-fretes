@@ -1,5 +1,35 @@
 [
   {
+    "id": "ACT-1788189682134",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 18054,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 101,
+        "contasPagar": 80,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-08-31T15:21:22.134Z"
+  },
+  {
+    "id": "ACT-1788189663979",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-08-31T15:21:03.979Z"
+  },
+  {
     "id": "ACT-1788187300163",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2239,28 +2269,5 @@
     "ip": "127.0.0.1",
     "metadata": {},
     "createdAt": "2026-08-27T10:46:14.176Z"
-  },
-  {
-    "id": "ACT-1787827574157",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"juliana\" (juliana@oaco.com.br)",
-    "ip": "127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T10:46:14.157Z"
-  },
-  {
-    "id": "ACT-1787827574135",
-    "username": "figueiredo",
-    "userName": "Figueiredo",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (1 pedido(s))",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "codVend": "000004",
-      "count": 1
-    },
-    "createdAt": "2026-08-27T10:46:14.135Z"
   }
 ]

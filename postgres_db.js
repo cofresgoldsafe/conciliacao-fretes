@@ -656,7 +656,7 @@ async function initPostgres() {
             COALESCE(SUM(CASE WHEN NOT valido_indice THEN saldo ELSE 0 END), 0) AS total_receber_inadimplente_mais_5d,
             COUNT(*) AS total_titulos_receber
           FROM contas_a_receber
-          WHERE saldo > 0
+          WHERE saldo > 0.01
           GROUP BY empresa_cod, empresa_sigla
         ),
         comp_pagar AS (
@@ -668,7 +668,7 @@ async function initPostgres() {
             COALESCE(SUM(CASE WHEN NOT is_provisorio THEN saldo ELSE 0 END), 0) AS total_pagar_definitivos,
             COUNT(*) AS total_titulos_pagar
           FROM contas_a_pagar
-          WHERE saldo > 0
+          WHERE saldo > 0.01 AND tipo <> 'PA'
           GROUP BY empresa_cod, empresa_sigla
         ),
         empresas_base AS (

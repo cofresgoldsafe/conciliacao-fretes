@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 (v8.97 - Formatação Visual Limpa das Fórmulas dos Cards de Índices)  
+> **Data da Última Auditoria:** 31/08/2026 (v8.98 - Filtros de Baixa Parcial e Exclusão de Pagamento Antecipado PA em Contas a Pagar)  
 
 ---
 
@@ -308,8 +308,8 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Regras Contábeis & Fiscais Estritas:**
       - **Estoque PA:** Leitura combinada de `SB2` com `SB1` usando custo unitário (`B1_VLUNIT`) de produtos tipo `PA` com quantidade $> 0$.
       - **Saldos Bancários (SE8):** Extração particionada por banco/agência/conta com `ROW_NUMBER() OVER (PARTITION BY E8_BANCO, E8_AGENCIA, E8_CONTA ORDER BY E8_DTSALAT DESC)` para obter o último saldo real disponível.
-      - **Contas a Receber (SE1):** Exclusão automática de títulos inadimplentes com vencimento superior a 5 dias de atraso (`dias_vencido > 5`).
-      - **Contas a Pagar (SE2):** Inclusão integral de provisórios do tipo `PR` no passivo circulante.
+      - **Contas a Receber (SE1):** Considera títulos em aberto com saldo $> \text{R\$\ 0,01}$ e exclusão automática de títulos inadimplentes com vencimento superior a 5 dias de atraso (`dias_vencido > 5`).
+      - **Contas a Pagar (SE2):** Considera títulos com saldo pendente $> \text{R\$\ 0,01}$ (suportando títulos com baixa parcial considerando o saldo residual real), inclusão integral de provisórios do tipo `PR` e **exclusão expressa de pagamentos antecipados `PA`** (pois o valor já foi desembolsado e não constitui passivo futuro).
     - **Tabelas Relacionais no Supabase & RLS:**
       - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e `indices_liquidez_historico` (gravação automática de 4 snapshots por execução: Consolidado, 14, 15 e 16 para gráficos de tendência e histórico) com Row-Level Security (RLS) habilitado.
     - **UX e Drilldown Interativo:**
@@ -319,7 +319,7 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Modal de Drilldown com 5 guias internas (Extrato Matemático passo a passo, Saldos Bancários, Títulos a Receber, Títulos a Pagar, Estoques PA) e busca instantânea.
     - **Segurança RBAC e Suíte de Testes:**
       - Endpoints `/api/bi/indices`, `/api/bi/indices/sync`, `/api/bi/indices/drilldown` e `/api/bi/indices/historico` protegidos por JWT e restritos a administradores.
-      - Suíte automatizada `test_bi_indices.js` com 17 asserções aprovadas com 100% de sucesso.
+      - Suíte automatizada `test_bi_indices.js` com 18 asserções aprovadas com 100% de sucesso.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

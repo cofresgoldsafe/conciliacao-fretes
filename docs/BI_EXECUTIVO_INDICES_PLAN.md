@@ -64,9 +64,9 @@ $$LC = \frac{\text{Ativo Circulante}}{\text{Passivo Circulante}}$$
   $$AC = \text{Estoques (Custo Total)} + \text{Saldos Bancários} + \text{Contas a Receber Válidas}$$
   - **Estoques:** $\sum (\text{Quantidade PA com saldo } > 0 \times \text{B1\_VLUNIT})$
   - **Saldos Bancários:** $\sum \text{Último saldo disponível de todas as contas em SE8}$ (garantindo que contas sem movimentação na data corrente tragam o último fechamento real gravado).
-  - **Contas a Receber Válidas:** $\sum \text{Títulos abertos em SE1 com saldo } > 0 \text{ e vencimento não ultrapassando 5 dias de atraso}$ ($\text{vencimento} \ge \text{Hoje} - 5\text{ dias}$).
+  - **Contas a Receber Válidas:** $\sum \text{Títulos abertos em SE1 com saldo } > \text{R\$\ 0,01 e vencimento não ultrapassando 5 dias de atraso}$ ($\text{vencimento} \ge \text{Hoje} - 5\text{ dias}$).
 * **Passivo Circulante ($PC$):**
-  $$PC = \sum \text{Todos os títulos em aberto em SE2 (incluindo provisórios tipo PR)}$$
+  $$PC = \sum \text{Títulos com saldo pendente } > \text{R\$\ 0,01 em SE2 (incluindo provisórios PR, saldo de baixa parcial; e excluindo adiantamentos PA)}$$
 
 ---
 

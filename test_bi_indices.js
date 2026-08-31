@@ -194,6 +194,24 @@ async function runAllTests() {
     assert.strictEqual(res.consolidado.liquidezImediata, 0);
   });
 
+  runSyncAssertion('Filtro Contas a Pagar: Exclui Pagamento Antecipado (PA) e saldos <= 0.01', () => {
+    const mockData = {
+      saldosBancarios: [{ empresa_cod: '14', saldo_atual: 50000 }],
+      contasReceber: [{ empresa_cod: '14', saldo: 20000, valido_indice: true }],
+      contasPagar: [
+        { empresa_cod: '14', tipo: 'NF', saldo: 10000, is_provisorio: false }, // Válido
+        { empresa_cod: '14', tipo: 'PR', saldo: 5000, is_provisorio: true },   // Válido (provisório)
+        { empresa_cod: '14', tipo: 'PA', saldo: 8000, is_provisorio: false },  // Excluído (Pagamento Antecipado)
+        { empresa_cod: '14', tipo: 'NF', saldo: 0.005, is_provisorio: false }  // Excluído (<= 0.01)
+      ],
+      estoque: [{ empresa_cod: '14', custo_total: 30000 }]
+    };
+    const res = calcularIndicesLiquidez(mockData);
+    // Passivo deve ser 10.000 + 5.000 = 15.000 (PA de 8.000 e residual de 0.005 ignorados)
+    assert.strictEqual(res.consolidado.passivoCirculante, 15000);
+    assert.strictEqual(res.consolidado.componentes.contasPagar.totalTitulos, 2);
+  });
+
   // --- BLOCO 2: TESTES DE ARQUIVOS E ARQUITETURA DDL ---
   console.log('\n📁 [BLOCO 2] Validação de Arquivos DDL e Frontend...');
 

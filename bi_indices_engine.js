@@ -134,7 +134,7 @@ async function extrairDadosIndicesProtheus() {
     }
   }
 
-  // 1.2 Extração de Contas a Receber (SE1) - Títulos em aberto (E1_SALDO > 0)
+  // 1.2 Extração de Contas a Receber (SE1) - Títulos em aberto (E1_SALDO > 0.01)
   for (const emp of EMPRESAS_INDICES) {
     try {
       const sqlSE1 = `
@@ -155,13 +155,16 @@ async function extrairDadosIndicesProtheus() {
           ISNULL(E1_SALDO, 0) AS SALDO
         FROM ${emp.se1}
         WHERE D_E_L_E_T_ = ' '
-          AND E1_SALDO > 0
+          AND E1_SALDO > 0.01
         ORDER BY E1_VENCREA ASC, E1_NUM ASC;
       `;
       const resSE1 = await executeRailwayQuery(sqlSE1);
       const rowsSE1 = resSE1.rows || resSE1 || [];
 
       for (const r of rowsSE1) {
+        const saldoVal = roundVal(parseFloat(r.SALDO || 0));
+        if (saldoVal <= 0.01) continue;
+
         const venctoEff = String(r.DATA_VENCREA || r.DATA_VENCTO || '').trim();
         const diasVencido = calcularDiasVencido(venctoEff);
         const validoIndice = diasVencido <= 5; // Regra: Não contar com vencidos a mais de 5 dias
@@ -182,7 +185,7 @@ async function extrairDadosIndicesProtheus() {
           data_vencimento: parseDateYmd(venctoEff) || parseDateYmd(r.DATA_VENCTO) || new Date().toISOString().slice(0, 10),
           data_vencimento_real: parseDateYmd(r.DATA_VENCREA),
           valor_original: roundVal(parseFloat(r.VALOR_ORIGINAL || 0)),
-          saldo: roundVal(parseFloat(r.SALDO || 0)),
+          saldo: saldoVal,
           dias_vencido: diasVencido,
           valido_indice: validoIndice,
           status: 'ABERTO'
@@ -193,7 +196,7 @@ async function extrairDadosIndicesProtheus() {
     }
   }
 
-  // 1.3 Extração de Contas a Pagar (SE2) - Títulos em aberto (E2_SALDO > 0), incluindo provisórios (PR)
+  // 1.3 Extração de Contas a Pagar (SE2) - Títulos com saldo pendente (E2_SALDO > 0.01 e tipo <> 'PA')
   for (const emp of EMPRESAS_INDICES) {
     try {
       const sqlSE2 = `
@@ -214,14 +217,20 @@ async function extrairDadosIndicesProtheus() {
           ISNULL(E2_SALDO, 0) AS SALDO
         FROM ${emp.se2}
         WHERE D_E_L_E_T_ = ' '
-          AND E2_SALDO > 0
+          AND E2_SALDO > 0.01
+          AND RTRIM(ISNULL(E2_TIPO, 'NF')) NOT IN ('PA')
         ORDER BY E2_VENCREA ASC, E2_NUM ASC;
       `;
       const resSE2 = await executeRailwayQuery(sqlSE2);
       const rowsSE2 = resSE2.rows || resSE2 || [];
 
       for (const r of rowsSE2) {
-        const tipoLimpo = String(r.TIPO || 'NF').trim();
+        const tipoLimpo = String(r.TIPO || 'NF').trim().toUpperCase();
+        if (tipoLimpo === 'PA') continue; // Pagamento antecipado já realizado / aguardando NF (não é passivo)
+
+        const saldoVal = roundVal(parseFloat(r.SALDO || 0));
+        if (saldoVal <= 0.01) continue; // Desconsidera títulos já quitados ou com resíduo irrelevante
+
         const isProvisorio = (tipoLimpo === 'PR');
 
         resultado.contasPagar.push({
@@ -240,7 +249,7 @@ async function extrairDadosIndicesProtheus() {
           data_vencimento: parseDateYmd(r.DATA_VENCREA) || parseDateYmd(r.DATA_VENCTO) || new Date().toISOString().slice(0, 10),
           data_vencimento_real: parseDateYmd(r.DATA_VENCREA),
           valor_original: roundVal(parseFloat(r.VALOR_ORIGINAL || 0)),
-          saldo: roundVal(parseFloat(r.SALDO || 0)),
+          saldo: saldoVal,
           is_provisorio: isProvisorio,
           status: 'ABERTO'
         });
@@ -353,8 +362,8 @@ function calcularIndicesLiquidez(dados) {
     const fEmp = (item) => !empCodFilter || item.empresa_cod === empCodFilter;
 
     const sbFiltrado = saldosBancarios.filter(fEmp);
-    const crFiltrado = contasReceber.filter(fEmp);
-    const cpFiltrado = contasPagar.filter(fEmp);
+    const crFiltrado = contasReceber.filter(item => fEmp(item) && Number(item.saldo || 0) > 0.01);
+    const cpFiltrado = contasPagar.filter(item => fEmp(item) && item.tipo !== 'PA' && Number(item.saldo || 0) > 0.01);
     const estFiltrado = estoque.filter(fEmp);
 
     // Componente 1: Disponibilidades (Saldos Bancários SE8)
@@ -956,7 +965,7 @@ async function obterDetalhesIndicesDrilldown({ tipo = 'bancos', empresa = 'ALL',
       );
     }
   } else if (tipo === 'receber') {
-    lista = dadosGerais.contasReceber || [];
+    lista = (dadosGerais.contasReceber || []).filter(r => Number(r.saldo || 0) > 0.01);
     if (empresa && empresa !== 'ALL') {
       lista = lista.filter(r => r.empresa_cod === empresa || r.empresa_sigla === empresa);
     }
@@ -968,7 +977,7 @@ async function obterDetalhesIndicesDrilldown({ tipo = 'bancos', empresa = 'ALL',
       );
     }
   } else if (tipo === 'pagar') {
-    lista = dadosGerais.contasPagar || [];
+    lista = (dadosGerais.contasPagar || []).filter(r => r.tipo !== 'PA' && Number(r.saldo || 0) > 0.01);
     if (empresa && empresa !== 'ALL') {
       lista = lista.filter(r => r.empresa_cod === empresa || r.empresa_sigla === empresa);
     }

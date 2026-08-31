@@ -26,9 +26,11 @@ $$LC = \frac{\text{Ativo Circulante}}{\text{Passivo Circulante}}$$
   $$\text{Ativo Circulante} = \text{Estoques PA (Custo Total)} + \text{Disponibilidades Bancárias (SE8)} + \text{Contas a Receber Válido (SE1 }\le 5\text{d)}$$
   1. **Estoques PA:** $\sum (\text{Quantidade com saldo } > 0 \times \text{B1\_VLUNIT / Custo Unitário})$ para produtos acabados (`B1_TIPO = 'PA'`).
   2. **Disponibilidades Bancárias:** $\sum \text{Último saldo registrado de todas as 22 contas correntes em SE8}$ (via CTE particionada por banco/agência/conta).
-  3. **Contas a Receber Válido:** $\sum \text{Títulos em aberto em SE1 não vencidos ou vencidos há no máximo 5 dias}$ ($\text{vencimento} \ge \text{Hoje} - 5\text{ dias}$).
+  3. **Contas a Receber Válido:** $\sum \text{Títulos em aberto em SE1 com saldo } > \text{R\$\ 0,01 não vencidos ou vencidos há no máximo 5 dias}$ ($\text{vencimento} \ge \text{Hoje} - 5\text{ dias}$).
 * **Denominador (Passivo Circulante):**
-  $$\text{Passivo Circulante} = \sum \text{Todos os títulos em aberto em SE2 (incluindo provisórios do tipo PR)}$$
+  $$\text{Passivo Circulante} = \sum \text{Títulos em aberto em SE2 com saldo pendente } > \text{R\$\ 0,01 (incluindo provisórios PR e resíduos de baixa parcial; e excluindo adiantamentos PA)}$$
+  * **Regra de Baixa Parcial:** Títulos pagos parcialmente utilizam exclusivamente o saldo residual pendente (`E2_SALDO > 0.01`).
+  * **Exclusão de Adiantamentos (`PA`):** Títulos do tipo `PA` (Pagamentos Antecipados a fornecedores) são desconsiderados pois o recurso financeiro já saiu do caixa e aguarda apenas a NF para baixa contábil, não constituindo passivo futuro.
 * **Parâmetro de Saúde:**
   * $\ge 1,50$: **Excelente** (Verde)
   * $\ge 1,00$: **Saudável** (Azul)
