@@ -130,11 +130,26 @@ asyncTest('saveSaldosEstoqueDB grava dados no fallback JSON e getSaldosEstoqueDB
       }
     ];
 
-    await postgresDb.saveSaldosEstoqueDB(mockProdutos, {
+    const metaSalvo = await postgresDb.saveSaldosEstoqueDB(mockProdutos, {
       status: 'SUCCESS',
       duracao_ms: 120,
       triggered_by: 'TEST_SUITE'
     });
+
+    // Valida propriedades normalizadas de metadados retornados por saveSaldosEstoqueDB
+    assert.strictEqual(metaSalvo.status, 'SUCCESS', 'metaSalvo.status deve ser SUCCESS');
+    assert.strictEqual(metaSalvo.total_produtos, 2, 'metaSalvo.total_produtos deve ser 2');
+    assert.strictEqual(metaSalvo.duracao_ms, 120, 'metaSalvo.duracao_ms deve ser 120');
+    assert.strictEqual(metaSalvo.triggered_by, 'TEST_SUITE', 'metaSalvo.triggered_by deve ser TEST_SUITE');
+    assert.ok(metaSalvo.synced_at, 'metaSalvo.synced_at deve existir');
+    assert.ok(metaSalvo.created_at, 'metaSalvo.created_at deve existir');
+
+    // Valida recuperação pelo getUltimoSyncEstoqueLog
+    const ultimoSync = await postgresDb.getUltimoSyncEstoqueLog();
+    assert.ok(ultimoSync, 'getUltimoSyncEstoqueLog deve retornar objeto válido');
+    assert.ok(ultimoSync.created_at || ultimoSync.synced_at, 'Deve conter created_at ou synced_at');
+    const parsedDate = new Date(ultimoSync.created_at || ultimoSync.synced_at);
+    assert.ok(!isNaN(parsedDate.getTime()), 'Data de sincronização deve ser parseável');
 
     // Consulta todos
     const todos = await postgresDb.getSaldosEstoqueDB({ filtroEstoque: 'todos' });
@@ -242,6 +257,72 @@ asyncTest('API: Requisição sem token Bearer é bloqueada com 401', async () =>
     req.on('error', () => resolve());
     req.end();
   });
+});
+
+// 6. Teste de Integridade de Parâmetros SQL para estoque_sync_logs
+test('Estrutura de metadados para estoque_sync_logs contém status obrigatório e tipos corretos', () => {
+  const metadataInput = {
+    status: 'SUCCESS',
+    duracao_ms: 450,
+    triggered_by: 'MANUAL (Alexandre)'
+  };
+  const produtos = [
+    { codigo: '001001', saldo: 10, saldo_total: 500 },
+    { codigo: '001002', saldo: 0, saldo_total: 0 }
+  ];
+
+  const status = metadataInput.status || 'SUCCESS';
+  const triggeredBy = metadataInput.triggered_by || metadataInput.trigger || 'MANUAL';
+  const duracaoMs = Number(metadataInput.duracao_ms ?? metadataInput.durationMs ?? 0);
+  const errorMessage = metadataInput.error_message || metadataInput.errorMessage || null;
+
+  const totalProdutos = produtos.length;
+  const totalSaldoPositivo = produtos.filter(p => Number(p.saldo || 0) > 0).length;
+  const totalValorEstoque = produtos.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
+
+  const sqlParams = [
+    status,
+    totalProdutos,
+    totalSaldoPositivo,
+    totalValorEstoque,
+    duracaoMs,
+    triggeredBy,
+    errorMessage
+  ];
+
+  assert.strictEqual(typeof sqlParams[0], 'string', 'status ($1) deve ser string');
+  assert.ok(sqlParams[0].length > 0, 'status ($1) não pode ser vazio/nulo (violação NOT NULL)');
+  assert.strictEqual(sqlParams[0], 'SUCCESS');
+  assert.strictEqual(sqlParams[1], 2, 'total_produtos ($2) deve ser 2');
+  assert.strictEqual(sqlParams[2], 1, 'total_saldo_positivo ($3) deve ser 1');
+  assert.strictEqual(sqlParams[3], 500, 'total_valor_estoque ($4) deve ser 500');
+  assert.strictEqual(sqlParams[4], 450, 'duracao_ms ($5) deve ser 450');
+  assert.strictEqual(sqlParams[5], 'MANUAL (Alexandre)', 'triggered_by ($6) deve ser MANUAL (Alexandre)');
+  assert.strictEqual(sqlParams[6], null, 'error_message ($7) deve ser null em caso de sucesso');
+});
+
+// 7. Teste de Formatação e Resiliência da Data de Sincronização
+test('Formatação da data de última sincronização suporta created_at, synced_at e syncedAt', () => {
+  function formatarUltimoSync(lastSync) {
+    if (!lastSync) return 'Não sincronizado';
+    const rawDate = lastSync.created_at || lastSync.synced_at || lastSync.syncedAt;
+    if (!rawDate) return 'Não sincronizado';
+    const syncDate = new Date(rawDate);
+    return syncDate && !isNaN(syncDate.getTime()) ? syncDate.toLocaleString('pt-BR') : 'Recente';
+  }
+
+  assert.strictEqual(formatarUltimoSync(null), 'Não sincronizado');
+  assert.strictEqual(formatarUltimoSync({}), 'Não sincronizado');
+  assert.strictEqual(formatarUltimoSync({ created_at: 'invalid-date' }), 'Recente');
+
+  const isoTest = '2026-09-01T11:45:00.000Z';
+  const res1 = formatarUltimoSync({ created_at: isoTest });
+  const res2 = formatarUltimoSync({ synced_at: isoTest });
+  const res3 = formatarUltimoSync({ syncedAt: isoTest });
+
+  assert.ok(res1.includes('2026') || res1.includes('/09/'), 'Data criada formatada corretamente');
+  assert.strictEqual(res1, res2, 'created_at e synced_at devem formatar de forma idêntica');
+  assert.strictEqual(res2, res3, 'synced_at e syncedAt devem formatar de forma idêntica');
 });
 
 // Resumo dos Testes

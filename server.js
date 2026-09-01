@@ -3329,19 +3329,22 @@ function startEstoqueSyncJob() {
     }
   };
 
-  // Checa a cada 180 minutos (3 horas)
-  estoqueSyncJobInterval = setInterval(verificarEExecutarSync, 180 * 60 * 1000);
+  // Checa a cada 60 minutos (1 hora)
+  estoqueSyncJobInterval = setInterval(verificarEExecutarSync, 60 * 60 * 1000);
   if (estoqueSyncJobInterval.unref) {
     estoqueSyncJobInterval.unref();
   }
 
-  // Executa uma sincronização inicial em background após 3 segundos se o cache/tabela não possuir dados reais
+  // Executa uma sincronização inicial em background após 3 segundos se o cache/tabela não possuir dados reais ou estiver desatualizado
   setTimeout(async () => {
     try {
       const ultimo = await getUltimoSyncEstoqueLog();
-      const needsSync = !ultimo || Number(ultimo.total_produtos || 0) < 10 || ultimo.triggered_by === 'TEST_SUITE';
+      const rawDate = ultimo?.created_at || ultimo?.synced_at || ultimo?.syncedAt;
+      const lastSyncTime = rawDate ? new Date(rawDate).getTime() : 0;
+      const isOutdated = !lastSyncTime || isNaN(lastSyncTime) || (Date.now() - lastSyncTime > 12 * 60 * 60 * 1000);
+      const needsSync = !ultimo || Number(ultimo.total_produtos || 0) < 10 || ultimo.triggered_by === 'TEST_SUITE' || isOutdated;
       if (needsSync) {
-        console.log('📦 [Job Estoque] Carga inicial necessária. Executando sincronização completa do Protheus...');
+        console.log('📦 [Job Estoque] Carga inicial ou atualização necessária. Executando sincronização completa do Protheus...');
         await sincronizarSaldosEstoqueProtheus({ triggeredBy: 'JOB_STARTUP' });
       }
     } catch (e) {

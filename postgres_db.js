@@ -1700,14 +1700,35 @@ async function getHistoricoCreditoDB(limit = 200) {
  */
 async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
   const p = getPool();
+  const status = metadata.status || 'SUCCESS';
+  const triggeredBy = metadata.triggered_by || metadata.trigger || 'MANUAL';
+  const duracaoMs = Number(metadata.duracao_ms ?? metadata.durationMs ?? 0);
+  const errorMessage = metadata.error_message || metadata.errorMessage || null;
+  const nowIso = new Date().toISOString();
+
+  const totalProdutos = produtosList.length;
+  const totalSaldoPositivo = produtosList.filter(p => Number(p.saldo || 0) > 0).length;
+  const totalZerados = produtosList.filter(p => Number(p.saldo || 0) <= 0).length;
+  const totalValorEstoque = produtosList.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
+
   const metaSalvar = {
-    totalProdutos: produtosList.length,
-    itensComSaldo: produtosList.filter(p => Number(p.saldo || 0) > 0).length,
-    itensZerados: produtosList.filter(p => Number(p.saldo || 0) === 0).length,
-    valorTotalEstoque: produtosList.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0),
-    syncedAt: new Date().toISOString(),
-    trigger: metadata.trigger || 'MANUAL',
-    durationMs: metadata.durationMs || 0
+    status,
+    total_produtos: totalProdutos,
+    totalProdutos,
+    total_saldo_positivo: totalSaldoPositivo,
+    itensComSaldo: totalSaldoPositivo,
+    itensZerados: totalZerados,
+    total_valor_estoque: totalValorEstoque,
+    valorTotalEstoque: totalValorEstoque,
+    duracao_ms: duracaoMs,
+    durationMs: duracaoMs,
+    triggered_by: triggeredBy,
+    trigger: triggeredBy,
+    error_message: errorMessage,
+    errorMessage,
+    created_at: nowIso,
+    synced_at: nowIso,
+    syncedAt: nowIso
   };
 
   // 1. Grava no cache JSON local de forma segura e atômica
@@ -1722,44 +1743,46 @@ async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
   }
 
   // 2. Grava no PostgreSQL / Supabase
-  if (p && produtosList.length > 0) {
+  if (p) {
     try {
       const client = await p.connect();
       try {
         await client.query('BEGIN');
 
-        // Upsert em lotes (chunks de 100 itens) para alto desempenho e atomicidade
-        const chunkSize = 100;
-        for (let i = 0; i < produtosList.length; i += chunkSize) {
-          const chunk = produtosList.slice(i, i + chunkSize);
-          for (const prod of chunk) {
-            await client.query(`
-              INSERT INTO produtos_saldo_estoque (
-                codigo, descricao, grupo, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-              ON CONFLICT (codigo) DO UPDATE SET
-                descricao = EXCLUDED.descricao,
-                grupo = EXCLUDED.grupo,
-                preco = EXCLUDED.preco,
-                saldo = EXCLUDED.saldo,
-                saldo_total = EXCLUDED.saldo_total,
-                qtd_vendas = EXCLUDED.qtd_vendas,
-                qtd_compras = EXCLUDED.qtd_compras,
-                ponto_ped = EXCLUDED.ponto_ped,
-                detalhes_empresas = EXCLUDED.detalhes_empresas,
-                synced_at = EXCLUDED.synced_at;
-            `, [
-              String(prod.codigo || '').trim(),
-              String(prod.descricao || '').trim(),
-              String(prod.grupo || '').trim(),
-              Number(prod.preco || 0),
-              Number(prod.saldo || 0),
-              Number(prod.saldo_total || 0),
-              Number(prod.qtd_vendas || 0),
-              Number(prod.qtd_compras || 0),
-              Number(prod.ponto_ped || 0),
-              JSON.stringify(prod.detalhes_empresas || {})
-            ]);
+        if (produtosList.length > 0) {
+          // Upsert em lotes (chunks de 100 itens) para alto desempenho e atomicidade
+          const chunkSize = 100;
+          for (let i = 0; i < produtosList.length; i += chunkSize) {
+            const chunk = produtosList.slice(i, i + chunkSize);
+            for (const prod of chunk) {
+              await client.query(`
+                INSERT INTO produtos_saldo_estoque (
+                  codigo, descricao, grupo, preco, saldo, saldo_total, qtd_vendas, qtd_compras, ponto_ped, detalhes_empresas, synced_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                ON CONFLICT (codigo) DO UPDATE SET
+                  descricao = EXCLUDED.descricao,
+                  grupo = EXCLUDED.grupo,
+                  preco = EXCLUDED.preco,
+                  saldo = EXCLUDED.saldo,
+                  saldo_total = EXCLUDED.saldo_total,
+                  qtd_vendas = EXCLUDED.qtd_vendas,
+                  qtd_compras = EXCLUDED.qtd_compras,
+                  ponto_ped = EXCLUDED.ponto_ped,
+                  detalhes_empresas = EXCLUDED.detalhes_empresas,
+                  synced_at = EXCLUDED.synced_at;
+              `, [
+                String(prod.codigo || '').trim(),
+                String(prod.descricao || '').trim(),
+                String(prod.grupo || '').trim(),
+                Number(prod.preco || 0),
+                Number(prod.saldo || 0),
+                Number(prod.saldo_total || 0),
+                Number(prod.qtd_vendas || 0),
+                Number(prod.qtd_compras || 0),
+                Number(prod.ponto_ped || 0),
+                JSON.stringify(prod.detalhes_empresas || {})
+              ]);
+            }
           }
         }
 
@@ -1909,16 +1932,20 @@ async function getUltimoSyncEstoqueLog() {
       `);
       if (res && res.rows && res.rows.length > 0) {
         const r = res.rows[0];
+        const createdAtIso = r.created_at ? new Date(r.created_at).toISOString() : null;
         return {
           id: r.id,
           status: r.status,
           total_produtos: Number(r.total_produtos) || 0,
+          totalProdutos: Number(r.total_produtos) || 0,
           total_saldo_positivo: Number(r.total_saldo_positivo) || 0,
           total_valor_estoque: Number(r.total_valor_estoque) || 0,
           duracao_ms: Number(r.duracao_ms) || 0,
           triggered_by: r.triggered_by,
           error_message: r.error_message,
-          created_at: r.created_at ? new Date(r.created_at).toISOString() : null
+          created_at: createdAtIso,
+          synced_at: createdAtIso,
+          syncedAt: createdAtIso
         };
       }
     } catch (err) {
@@ -1931,9 +1958,12 @@ async function getUltimoSyncEstoqueLog() {
     if (fs.existsSync(estoqueCacheFile)) {
       const cacheData = JSON.parse(fs.readFileSync(estoqueCacheFile, 'utf-8'));
       if (cacheData.metadata) {
+        const syncTime = cacheData.metadata.synced_at || cacheData.metadata.syncedAt || cacheData.metadata.created_at || new Date().toISOString();
         return {
           ...cacheData.metadata,
-          created_at: cacheData.metadata.synced_at || new Date().toISOString()
+          created_at: syncTime,
+          synced_at: syncTime,
+          syncedAt: syncTime
         };
       }
     }

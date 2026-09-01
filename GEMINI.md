@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo e Análise de Crédito Homologados em Produção & 12 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 11:35 (v9.11 - Disponibilização Unificada da sub-aba '📦 Saldos em Estoque' na aba '📦 LOGÍSTICA' com Arquitetura DRY / Single Source of Truth - 12 Suítes Automatizadas, 79 Testes 100% Aprovados, Zero Duplicação de Código DOM/JS e Suporte a Perfis Operacionais)  
+> **Data da Última Auditoria:** 01/09/2026 12:08 (v9.12 - Correção da Normalização de Metadados e Persistência de Logs de Sincronização de Saldos em Estoque no PostgreSQL / Supabase, Resiliência de Timestamps e Job Agendado a Cada 60 Min - 12 Suítes Automatizadas, 81 Testes 100% Aprovados)  
 
 ---
 
@@ -78,9 +78,10 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Cálculo Matemático e Fórmulas:** Cálculo em tempo real de `SALDO_TOTAL = (SALDO * PREÇO)` com arredondamento monetário e agregação por empresa.
    - **Job de Background & Sincronização Agendada (Supabase + Fallback JSON):**
      - Rotina de execução periódica (cron/timer a cada 60 min no horário comercial: segunda a sexta, 07h às 19h horário de Brasília - `America/Sao_Paulo`).
-     - Carga inicial inteligente no startup (`JOB_STARTUP`) se a base/cache estiver vazia.
+     - Carga inicial inteligente no startup (`JOB_STARTUP`) se a base/cache estiver vazia ou com dados desatualizados (> 12 horas).
+     - **Correção da Persistência de Logs no Supabase / PostgreSQL (`estoque_sync_logs`):** Normalização completa de metadados (`status`, `total_produtos`, `total_saldo_positivo`, `total_valor_estoque`, `duracao_ms`, `triggered_by`, `error_message`, `synced_at`, `created_at`), eliminando violações da constraint `status NOT NULL` que causavam rollback nas gravações e mantinham a data de sincronização congelada em 27/08.
      - Persistência na tabela relacional PostgreSQL / Supabase `produtos_saldo_estoque` e logs de auditoria `estoque_sync_logs` com duração em ms e gatilho (`JOB_AUTO`, `JOB_STARTUP`, `MANUAL`).
-     - Fallback gracioso automático para cache JSON em disco (`data/estoque_saldos_cache.json`) em caso de oscilação ou indisponibilidade de conexão com o banco.
+     - Fallback gracioso automático para cache JSON em disco (`data/estoque_saldos_cache.json`) com normalização de timestamps (`synced_at`, `syncedAt`, `created_at`).
    - **Visual Power BI, Experiência do Usuário (UX) & Paginação:**
      - 3 Cards KPIs principais no topo: *Itens em Estoque (Saldo > 0)*, *Itens sem Estoque (Saldo = 0)* e *Valor Total em Estoque (R$)* calculados sobre a totalidade da base comercial.
      - Tabela responsiva com 7 colunas (`DESCRIÇÃO`, `PREÇO`, `SALDO`, `SALDO_TOTAL`, `C6 QTD VENDAS`, `QTD COMPRAS`, `PONTO PED`).

@@ -3453,9 +3453,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Atualiza Badge de Sincronização
-      if (lastSyncSpan && json.lastSync) {
-        const syncDate = new Date(json.lastSync.created_at || json.lastSync.synced_at);
-        lastSyncSpan.textContent = isNaN(syncDate.getTime()) ? 'Recente' : syncDate.toLocaleString('pt-BR');
+      if (lastSyncSpan) {
+        const rawDate = json.lastSync ? (json.lastSync.created_at || json.lastSync.synced_at || json.lastSync.syncedAt) : null;
+        if (rawDate) {
+          const syncDate = new Date(rawDate);
+          lastSyncSpan.textContent = !isNaN(syncDate.getTime()) ? syncDate.toLocaleString('pt-BR') : 'Recente';
+        } else {
+          lastSyncSpan.textContent = 'Não sincronizado';
+        }
       }
 
       estoquePaginaAtual = 1;
