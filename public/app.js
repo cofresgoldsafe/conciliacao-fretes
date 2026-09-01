@@ -687,8 +687,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (targetMain === 'tarefas') {
       if (subGroupTarefas) subGroupTarefas.classList.remove('hidden');
       firstSubBtn = subGroupTarefas ? subGroupTarefas.querySelector('.nav-tab-btn') : null;
+      const targetPane = document.getElementById('tab-minhas-tarefas');
+      if (targetPane) targetPane.classList.remove('hidden');
       if (window.tarefasModule && typeof window.tarefasModule.initTarefasModule === 'function') {
         window.tarefasModule.initTarefasModule();
+      } else if (typeof window.initTarefasModule === 'function') {
+        window.initTarefasModule();
       }
     } else if (targetMain === 'logistica') {
       if (subGroupLogistica) subGroupLogistica.classList.remove('hidden');

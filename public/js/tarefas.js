@@ -1090,6 +1090,7 @@ export async function excluirTarefa(id) {
 
 // Expõe globalmente para acesso nos eventos inline do HTML
 if (typeof window !== 'undefined') {
+  window.initTarefasModule = initTarefasModule;
   window.tarefasModule = {
     initTarefasModule,
     carregarTarefas,
@@ -1110,4 +1111,15 @@ if (typeof window !== 'undefined') {
     enviarComentarioTarefa,
     excluirTarefa
   };
+
+  // Auto-inicializa quando o DOM estiver pronto ou quando o módulo for carregado
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        initTarefasModule();
+      });
+    } else {
+      initTarefasModule();
+    }
+  }
 }

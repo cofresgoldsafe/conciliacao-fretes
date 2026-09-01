@@ -1,5 +1,25 @@
 [
   {
+    "id": "ACT-1788285607262",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T18:00:07.262Z"
+  },
+  {
+    "id": "ACT-1788285607223",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T18:00:07.223Z"
+  },
+  {
     "id": "ACT-1788284871871",
     "username": "anonimo",
     "userName": "anonimo",
@@ -2376,30 +2396,5 @@
       "count": 14
     },
     "createdAt": "2026-08-27T11:18:56.813Z"
-  },
-  {
-    "id": "ACT-1787829533168",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (19 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 19
-    },
-    "createdAt": "2026-08-27T11:18:53.168Z"
-  },
-  {
-    "id": "ACT-1787829530251",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000074 (10 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "codVend": "000074",
-      "count": 10
-    },
-    "createdAt": "2026-08-27T11:18:50.251Z"
   }
 ]
