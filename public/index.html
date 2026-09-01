@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.113">
+  <link rel="stylesheet" href="style.css?v=8.114">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 01/09/2026 15:00 (v9.15 - Fix auto-init e renderizacao da aba Minhas Tarefas e Links Preferidos)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 01/09/2026 15:07 (v9.16 - Separacao dos blocos Meus Links Uteis e Painel de Tarefas e correcao de centralizacao do modal)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -72,7 +72,7 @@
       <div class="sub-tabs-group" id="subGroupTarefas" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
         <button class="nav-tab-btn active" data-tab="tab-minhas-tarefas" id="btnTabMinhasTarefas">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-          <span>Painel de Tarefas & Pauta do Dia</span>
+          <span>Painel de Tarefas</span>
         </button>
       </div>
 
@@ -189,10 +189,32 @@
 
     <!-- ABA PRINCIPAL: MINHAS TAREFAS & GESTÃO DE DEMANDAS -->
     <div id="tab-minhas-tarefas" class="tab-pane active">
+      <!-- BLOCO 1: MEUS LINKS ÚTEIS -->
+      <section class="card" style="margin-bottom: 1.25rem;">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.35rem;">⭐</span>
+            <div>
+              <h2 style="font-size: 1.15rem; font-weight: 700; margin: 0;">Meus Links Úteis</h2>
+              <p class="desc" style="margin: 0; font-size: 0.82rem;">Atalhos operacionais rápidos do seu dia a dia (abrem em nova janela).</p>
+            </div>
+          </div>
+          <button id="btnAddUserLink" class="btn btn-primary btn-sm" style="font-size: 0.82rem; padding: 6px 14px; height: 34px; font-weight: 600; display: flex; align-items: center; gap: 6px;" title="Adicionar novo link aos seus atalhos">
+            <span>➕ Adicionar Link</span>
+          </button>
+        </div>
+
+        <!-- Container dos Links em Baixo -->
+        <div id="userLinksContainer" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--panel-border);">
+          <!-- Preenchido dinamicamente via JS -->
+        </div>
+      </section>
+
+      <!-- BLOCO 2: PAINEL DE TAREFAS -->
       <section class="card">
         <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h2>📋 Central de Tarefas & Pauta do Dia</h2>
+            <h2>📋 Painel de Tarefas</h2>
             <p class="desc">Acompanhamento de demandas, delegação operacional para a equipe, checagem e histórico de validações.</p>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -203,22 +225,6 @@
               🔄 Atualizar
             </button>
           </div>
-        </div>
-
-        <!-- Links Preferidos do Usuário (Atalhos do Dia a Dia) -->
-        <div style="margin-top: 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;">
-            <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.85rem; color: #facc15; margin-right: 4px;">
-              <span>⭐</span>
-              <span>Links Preferidos:</span>
-            </div>
-            <div id="userLinksContainer" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <!-- Preenchido dinamicamente via JS -->
-            </div>
-          </div>
-          <button id="btnAddUserLink" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 3px 10px; height: 28px;" title="Adicionar novo link preferido">
-            ➕ Adicionar Link
-          </button>
         </div>
 
         <!-- Cards KPIs Superiores -->
@@ -3981,7 +3987,7 @@
   </div>
 
   <!-- MODAL: CRIAR NOVA TAREFA -->
-  <div id="modalNovaTarefa" class="modal-overlay hidden" style="display: none;">
+  <div id="modalNovaTarefa" class="modal hidden" style="display: none;">
     <div class="modal-content" style="max-width: 580px; width: 95%;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">➕ Nova Tarefa / Delegação</h3>
@@ -4031,7 +4037,7 @@
   </div>
 
   <!-- MODAL: DETALHES DA TAREFA & CHAT -->
-  <div id="modalTarefaDetalhes" class="modal-overlay hidden" style="display: none;">
+  <div id="modalTarefaDetalhes" class="modal hidden" style="display: none;">
     <div class="modal-content" style="max-width: 920px; width: 95%; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">📋 Ficha da Demanda & Histórico</h3>
@@ -4044,7 +4050,7 @@
   </div>
 
   <!-- MODAL: ADICIONAR LINK PREFERIDO -->
-  <div id="modalNovoLink" class="modal-overlay hidden" style="display: none;">
+  <div id="modalNovoLink" class="modal hidden" style="display: none;">
     <div class="modal-content" style="max-width: 480px; width: 95%;">
       <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
         <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">⭐ Adicionar Link Preferido</h3>
@@ -4083,9 +4089,9 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.113"></script>
-  <script src="js/bi_indices.js?v=8.113"></script>
-  <script type="module" src="js/tarefas.js?v=8.113"></script>
-  <script src="app.js?v=8.113"></script>
+  <script src="js/bi.js?v=8.114"></script>
+  <script src="js/bi_indices.js?v=8.114"></script>
+  <script type="module" src="js/tarefas.js?v=8.114"></script>
+  <script src="app.js?v=8.114"></script>
 </body>
 </html>

@@ -277,5 +277,59 @@
     "comentarios": [],
     "created_at": "2026-09-01T18:00:07.254Z",
     "updated_at": "2026-09-01T18:00:07.254Z"
+  },
+  {
+    "id": 11,
+    "titulo": "Testar emissão de nota fiscal pedido 1001",
+    "descricao": "Conferir alíquotas de ICMS e dados de entrega no Protheus.",
+    "status": "FINALIZADA",
+    "prioridade": "ALTA",
+    "responsavel_username": "juliana",
+    "responsavel_nome": "Juliana Vendas",
+    "criado_por_username": "alexandre",
+    "criado_por_nome": "Alexandre Gestor",
+    "data_limite": "2026-09-10",
+    "comentarios": [
+      {
+        "id": 1788286029090,
+        "autor_username": "juliana",
+        "autor_nome": "Juliana Vendas",
+        "mensagem": "Verifiquei o pedido no Protheus, está tudo ok!",
+        "created_at": "2026-09-01T18:07:09.090Z"
+      },
+      {
+        "id": 1788286029232,
+        "autor_username": "alexandre",
+        "autor_nome": "Alexandre Gestor",
+        "mensagem": "🔄 [TAREFA REABERTA]: Faltou conferir o frete embutido na cotação.",
+        "created_at": "2026-09-01T18:07:09.232Z"
+      },
+      {
+        "id": 1788286029269,
+        "autor_username": "alexandre",
+        "autor_nome": "Alexandre Gestor",
+        "mensagem": "✨ [TAREFA FINALIZADA]: Tudo conferido e validado com sucesso.",
+        "created_at": "2026-09-01T18:07:09.269Z"
+      }
+    ],
+    "created_at": "2026-09-01T18:07:09.076Z",
+    "updated_at": "2026-09-01T18:07:09.272Z",
+    "concluida_at": "2026-09-01T18:07:09.098Z",
+    "finalizada_at": "2026-09-01T18:07:09.265Z"
+  },
+  {
+    "id": 12,
+    "titulo": "Minha tarefa pessoal de conferência",
+    "descricao": "Ligar para cliente da cotação 502.",
+    "status": "PENDENTE",
+    "prioridade": "MEDIA",
+    "responsavel_username": "juliana",
+    "responsavel_nome": "Juliana Vendas",
+    "criado_por_username": "juliana",
+    "criado_por_nome": "Juliana Vendas",
+    "data_limite": null,
+    "comentarios": [],
+    "created_at": "2026-09-01T18:07:09.305Z",
+    "updated_at": "2026-09-01T18:07:09.305Z"
   }
 ]
