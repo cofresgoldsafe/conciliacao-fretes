@@ -2857,6 +2857,33 @@ body {
   text-decoration: underline;
 }
 
+/* ==========================================================================
+   ESTILOS: MÓDULO MINHAS TAREFAS & LINKS PREFERIDOS
+   ========================================================================== */
+
+.user-link-chip:hover {
+  background: rgba(51, 65, 85, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+.tarefas-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  min-height: 380px;
+}
+
+@media (max-width: 768px) {
+  .tarefas-modal-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .vend-search-form {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 
 
 

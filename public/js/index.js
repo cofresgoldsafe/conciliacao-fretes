@@ -11,3 +11,4 @@ export * from './credito.js';
 export * from './financeiro.js';
 export * from './logistica.js';
 export * from './config.js';
+export * from './tarefas.js';

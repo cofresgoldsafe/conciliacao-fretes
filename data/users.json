@@ -56,7 +56,39 @@
     ],
     "active": true,
     "lastActiveAt": "2026-09-01T15:04:56.730Z",
-    "totalActions": 112
+    "totalActions": 112,
+    "links_favoritos": [
+      {
+        "id": "1",
+        "titulo": "Gmail",
+        "url": "https://mail.google.com/mail/u/0/#inbox",
+        "icon": "✉️"
+      },
+      {
+        "id": "2",
+        "titulo": "Google Drive",
+        "url": "https://drive.google.com/drive",
+        "icon": "📁"
+      },
+      {
+        "id": "3",
+        "titulo": "CNPJ Receita",
+        "url": "https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/",
+        "icon": "🏛️"
+      },
+      {
+        "id": "4",
+        "titulo": "Sintegra",
+        "url": "https://www.sintegra.gov.br/",
+        "icon": "📊"
+      },
+      {
+        "id": "5",
+        "titulo": "PipeDrive",
+        "url": "https://benetroncomercial.pipedrive.com/deals/pipeline/1/filter/41",
+        "icon": "🎯"
+      }
+    ]
   },
   {
     "username": "andrea",

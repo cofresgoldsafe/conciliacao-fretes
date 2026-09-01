@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.111">
+  <link rel="stylesheet" href="style.css?v=8.112">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 01/09/2026 12:41 (Fix syntax and restore login)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 01/09/2026 14:45 (v9.14 - Central Minhas Tarefas, Gestao de Demandas, Links Preferidos e Auto-organizacao da Equipe)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -42,7 +42,10 @@
 
     <!-- 1ª CAMADA DE NAVEGAÇÃO: ABAS PRINCIPAIS -->
     <nav class="main-tabs-header">
-      <button class="main-tab-btn active" data-main-tab="logistica" id="mainTabLogistica">
+      <button class="main-tab-btn active" data-main-tab="tarefas" id="mainTabTarefas">
+        <span>📋 MINHAS TAREFAS</span>
+      </button>
+      <button class="main-tab-btn" data-main-tab="logistica" id="mainTabLogistica">
         <span>📦 LOGÍSTICA</span>
       </button>
       <button class="main-tab-btn" data-main-tab="consulta" id="mainTabConsulta">
@@ -65,9 +68,17 @@
 
     <!-- 2ª CAMADA DE NAVEGAÇÃO: SUB-ABAS (SUB-NÍVEL) -->
     <nav class="sub-tabs-container" id="subTabsContainer">
+      <!-- Sub-abas de Minhas Tarefas -->
+      <div class="sub-tabs-group" id="subGroupTarefas" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <button class="nav-tab-btn active" data-tab="tab-minhas-tarefas" id="btnTabMinhasTarefas">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+          <span>Painel de Tarefas & Pauta do Dia</span>
+        </button>
+      </div>
+
       <!-- Sub-abas de Logística -->
-      <div class="sub-tabs-group" id="subGroupLogistica" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-        <button class="nav-tab-btn active" data-tab="tab-pedidos-faturar" id="btnTabPedidosFaturar">
+      <div class="sub-tabs-group hidden" id="subGroupLogistica" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <button class="nav-tab-btn" data-tab="tab-pedidos-faturar" id="btnTabPedidosFaturar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Ped. pra Faturar</span>
         </button>
@@ -176,8 +187,163 @@
       </div>
     </nav>
 
+    <!-- ABA PRINCIPAL: MINHAS TAREFAS & GESTÃO DE DEMANDAS -->
+    <div id="tab-minhas-tarefas" class="tab-pane active">
+      <section class="card">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2>📋 Central de Tarefas & Pauta do Dia</h2>
+            <p class="desc">Acompanhamento de demandas, delegação operacional para a equipe, checagem e histórico de validações.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="btnNovaTarefa" class="btn btn-primary" style="background: #2563eb; font-weight: 600; height: 38px; display: flex; align-items: center; gap: 6px;">
+              <span>➕ Nova Tarefa</span>
+            </button>
+            <button id="btnRefreshTarefas" class="btn btn-outline" style="height: 38px;" title="Recarregar tarefas">
+              🔄 Atualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Links Preferidos do Usuário (Atalhos do Dia a Dia) -->
+        <div style="margin-top: 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1;">
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.85rem; color: #facc15; margin-right: 4px;">
+              <span>⭐</span>
+              <span>Links Preferidos:</span>
+            </div>
+            <div id="userLinksContainer" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <!-- Preenchido dinamicamente via JS -->
+            </div>
+          </div>
+          <button id="btnAddUserLink" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 3px 10px; height: 28px;" title="Adicionar novo link preferido">
+            ➕ Adicionar Link
+          </button>
+        </div>
+
+        <!-- Cards KPIs Superiores -->
+        <div class="summary-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+          <div class="summary-card" style="border-left: 4px solid #3b82f6;">
+            <span class="card-label">⏳ Minhas Pendentes</span>
+            <strong id="kpiTarefasPendentes" style="color: #3b82f6; font-size: 1.5rem;">0</strong>
+            <small>Tarefas em Aberto para Execução</small>
+          </div>
+          <div class="summary-card" style="border-left: 4px solid #eab308;">
+            <span class="card-label">🟡 Aguardando Validação</span>
+            <strong id="kpiTarefasAguardando" style="color: #eab308; font-size: 1.5rem;">0</strong>
+            <small>Entregas Prontas para Check do Gestor</small>
+          </div>
+          <div class="summary-card highlight-card" style="border-left: 4px solid #ef4444;">
+            <span class="card-label">🔄 Reabertas / Urgentes</span>
+            <strong id="kpiTarefasReabertas" style="color: #ef4444; font-size: 1.5rem;">0</strong>
+            <small>Ajustes Necessários ou Alta Prioridade</small>
+          </div>
+          <div class="summary-card" style="border-left: 4px solid #10b981;">
+            <span class="card-label">✅ Concluídas no Mês</span>
+            <strong id="kpiTarefasConcluidas" style="color: #10b981; font-size: 1.5rem;">0</strong>
+            <small>Demandas Finalizadas com Sucesso</small>
+          </div>
+        </div>
+
+        <!-- Barra de Filtros em Linha Única Compacta -->
+        <div class="vend-search-form" style="display: grid; grid-template-columns: 2fr 1.5fr 1.2fr 1.2fr auto; gap: 0.75rem; align-items: flex-end; margin-top: 1.25rem; background: rgba(15, 23, 42, 0.4); padding: 0.85rem 1rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0;">
+            <label for="inputBuscaTarefa" style="font-size: 0.8rem;">🔍 Buscar Tarefa</label>
+            <input type="text" id="inputBuscaTarefa" class="form-control" placeholder="Buscar por título ou descrição..." style="height: 38px; font-size: 0.88rem;">
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="filterTarefaResp" style="font-size: 0.8rem;">👥 Responsável</label>
+            <select id="filterTarefaResp" class="form-select" style="height: 38px; font-size: 0.88rem;">
+              <option value="TODOS">👥 Todos os Colaboradores</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="filterTarefaStatus" style="font-size: 0.8rem;">📊 Status</label>
+            <select id="filterTarefaStatus" class="form-select" style="height: 38px; font-size: 0.88rem;">
+              <option value="TODOS">Todos os Status</option>
+              <option value="PENDENTE">⏳ Pendente</option>
+              <option value="CONCLUIDA">🟡 Concluída (Validação)</option>
+              <option value="REABERTA">🔄 Reaberta</option>
+              <option value="FINALIZADA">✅ Finalizada</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="filterTarefaPrioridade" style="font-size: 0.8rem;">🏷️ Prioridade</label>
+            <select id="filterTarefaPrioridade" class="form-select" style="height: 38px; font-size: 0.88rem;">
+              <option value="TODOS">Todas as Prioridades</option>
+              <option value="URGENTE">🔴 Urgente</option>
+              <option value="ALTA">🟠 Alta</option>
+              <option value="MEDIA">🟢 Média</option>
+              <option value="BAIXA">⚪ Baixa</option>
+            </select>
+          </div>
+
+          <div>
+            <button id="btnLimparFiltrosTarefas" class="btn btn-outline" style="height: 38px; padding: 0 12px;" title="Limpar todos os filtros">
+              🧹 Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabela de Tarefas -->
+        <div style="margin-top: 1.25rem;">
+          <div class="table-header-info flex-between" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-weight: 600; font-size: 0.95rem;">
+                📋 Demandas (<span id="tarefasCountBadge">0 tarefas</span>)
+              </span>
+              <div style="display: inline-flex; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; background: rgba(30, 41, 59, 0.4);">
+                <button id="btnVerTarefasAtivas" class="btn btn-sm active" style="font-size: 0.78rem; padding: 4px 10px; border-radius: 0; border: none; cursor: pointer;">
+                  ⏳ Pauta Ativa
+                </button>
+                <button id="btnVerTarefasConcluidas" class="btn btn-sm" style="font-size: 0.78rem; padding: 4px 10px; border-radius: 0; border: none; cursor: pointer;">
+                  ✅ Tarefas Concluídas
+                </button>
+              </div>
+            </div>
+            <div class="badge-tip" style="font-size: 0.8rem; color: var(--text-muted);">
+              💡 Clique em uma tarefa para abrir as instruções, histórico e registrar comentários.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 5%; text-align: center;">ID</th>
+                  <th style="width: 13%; text-align: center;">Status</th>
+                  <th style="width: 9%; text-align: center;">Prioridade</th>
+                  <th style="width: 33%;">Tarefa / Instrução</th>
+                  <th style="width: 13%;">Solicitante</th>
+                  <th style="width: 13%;">Responsável</th>
+                  <th style="width: 8%; text-align: center;">Prazo</th>
+                  <th style="width: 6%; text-align: center;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tarefasTableBody">
+                <!-- Preenchido dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State -->
+          <div id="tarefasEmptyState" class="hidden" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🎉</div>
+            <h3 style="margin-bottom: 0.5rem; color: var(--text-primary); font-size: 1.1rem;">Tudo em dia por aqui!</h3>
+            <p style="font-size: 0.9rem;">Nenhuma tarefa encontrada para os filtros selecionados.</p>
+          </div>
+
+          <!-- Paginação -->
+          <div id="tarefasPagination"></div>
+        </div>
+      </section>
+    </div>
+
     <!-- SUB-ABA LOGÍSTICA 1: PEDIDOS PRONTOS PARA FATURAR -->
-    <div id="tab-pedidos-faturar" class="tab-pane active">
+    <div id="tab-pedidos-faturar" class="tab-pane hidden">
       <section class="card">
         <div class="section-title-row">
           <div>
@@ -3814,8 +3980,112 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.111"></script>
-  <script src="js/bi_indices.js?v=8.111"></script>
-  <script src="app.js?v=8.111"></script>
+  <!-- MODAL: CRIAR NOVA TAREFA -->
+  <div id="modalNovaTarefa" class="modal-overlay hidden" style="display: none;">
+    <div class="modal-content" style="max-width: 580px; width: 95%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">➕ Nova Tarefa / Delegação</h3>
+        <button id="btnFecharModalNovaTarefa" class="close-btn" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="formNovaTarefa" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+        <div class="form-group" style="margin: 0;">
+          <label for="tarefaTituloInput" style="font-weight: 600; font-size: 0.88rem;">Título da Tarefa *</label>
+          <input type="text" id="tarefaTituloInput" class="form-control" placeholder="Ex: Conferir nota fiscal pedido 140239..." required style="height: 38px;">
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+          <label for="tarefaDescInput" style="font-weight: 600; font-size: 0.88rem;">Instruções Detalhadas / O que deve ser feito</label>
+          <textarea id="tarefaDescInput" class="form-control" rows="4" placeholder="Descreva os passos, links ou referências necessárias..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group" style="margin: 0;">
+            <label for="tarefaRespSelect" style="font-weight: 600; font-size: 0.88rem;">Responsável *</label>
+            <select id="tarefaRespSelect" class="form-select" style="height: 38px;">
+              <!-- Preenchido dinamicamente -->
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="tarefaPrioSelect" style="font-weight: 600; font-size: 0.88rem;">Prioridade</label>
+            <select id="tarefaPrioSelect" class="form-select" style="height: 38px;">
+              <option value="MEDIA" selected>🟢 Média</option>
+              <option value="URGENTE">🔴 Urgente</option>
+              <option value="ALTA">🟠 Alta</option>
+              <option value="BAIXA">⚪ Baixa</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+          <label for="tarefaPrazoInput" style="font-weight: 600; font-size: 0.88rem;">Prazo Limite (Opcional)</label>
+          <input type="date" id="tarefaPrazoInput" class="form-control" style="height: 38px;">
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; border-top: 1px solid var(--panel-border); padding-top: 1rem;">
+          <button type="button" class="btn btn-outline" onclick="window.tarefasModule.fecharModalNovaTarefa()">Cancelar</button>
+          <button type="submit" id="btnSalvarNovaTarefa" class="btn btn-primary" style="font-weight: 600;">💾 Criar e Delegar Tarefa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DETALHES DA TAREFA & CHAT -->
+  <div id="modalTarefaDetalhes" class="modal-overlay hidden" style="display: none;">
+    <div class="modal-content" style="max-width: 920px; width: 95%; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">📋 Ficha da Demanda & Histórico</h3>
+        <button id="btnFecharModalTarefaDetalhes" class="close-btn" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <div id="modalTarefaDetalhesContent" style="margin-top: 1rem;">
+        <!-- Preenchido dinamicamente via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADICIONAR LINK PREFERIDO -->
+  <div id="modalNovoLink" class="modal-overlay hidden" style="display: none;">
+    <div class="modal-content" style="max-width: 480px; width: 95%;">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700;">⭐ Adicionar Link Preferido</h3>
+        <button id="btnFecharModalNovoLink" class="close-btn" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <form id="formNovoLink" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+        <div class="form-group" style="margin: 0;">
+          <label for="linkTituloInput" style="font-weight: 600; font-size: 0.88rem;">Título / Nome do Link *</label>
+          <input type="text" id="linkTituloInput" class="form-control" placeholder="Ex: Gmail, Sintegra, Consulta CNPJ..." required style="height: 38px;">
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+          <label for="linkUrlInput" style="font-weight: 600; font-size: 0.88rem;">Endereço Web (URL) *</label>
+          <input type="text" id="linkUrlInput" class="form-control" placeholder="https://..." required style="height: 38px;">
+        </div>
+
+        <div class="form-group" style="margin: 0;">
+          <label for="linkIconSelect" style="font-weight: 600; font-size: 0.88rem;">Ícone do Atalho</label>
+          <select id="linkIconSelect" class="form-select" style="height: 38px;">
+            <option value="🔗" selected>🔗 Link Padrão</option>
+            <option value="✉️">✉️ E-mail / Gmail</option>
+            <option value="📁">📁 Google Drive / Arquivos</option>
+            <option value="🏛️">🏛️ Governo / Receita / SEFAZ</option>
+            <option value="📊">📊 Relatórios / BI / Sintegra</option>
+            <option value="🎯">🎯 CRM / PipeDrive / Vendas</option>
+            <option value="💰">💰 Banco / Financeiro</option>
+            <option value="📦">📦 Logística / Rastreamento</option>
+          </select>
+        </div>
+
+        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; border-top: 1px solid var(--panel-border); padding-top: 1rem;">
+          <button type="button" class="btn btn-outline" onclick="window.tarefasModule.fecharModalNovoLink()">Cancelar</button>
+          <button type="submit" id="btnSalvarNovoLink" class="btn btn-primary" style="font-weight: 600;">💾 Salvar Link</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/bi.js?v=8.112"></script>
+  <script src="js/bi_indices.js?v=8.112"></script>
+  <script type="module" src="js/tarefas.js?v=8.112"></script>
+  <script src="app.js?v=8.112"></script>
 </body>
 </html>

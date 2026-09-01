@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo e Análise de Crédito Homologados em Produção & 12 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 12:28 (v9.13 - Filtro por Empresa [MP, GSI, OACO], Reorganização da Barra de Filtros em Linha Única Compacta e Botão de Exportação Completa de Todas as Páginas para Excel [CSV BOM UTF-8] na tela Saldos em Estoque - 12 Suítes Automatizadas, 83 Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados & Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login - 13 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 01/09/2026 14:45 (v9.14 - Central Minhas Tarefas como 1ª Tela Pós-Login, Gestão e Delegação de Demandas, Auto-criação de Tarefas, Coluna Solicitante, Links Preferidos / Atalhos Rápidos por Usuário, RLS e Fallback JSONB - 13 Suítes Automatizadas, 102 Testes 100% Aprovados)  
 
 ---
 
@@ -400,6 +400,29 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       10. `test_totais_pedido.js` (4 asserções - Segregação de frete normal `C5_FRETE` vs frete embutido `C5_VLR_FRT`)
       11. `test_frontend_modules.js` (5 asserções - Contratos ES6 e rotas de crédito)
       12. `test_dom_xss_and_secrets.js` (2 asserções - Sanitização XSS e integridade de armazenamento de crédito)
+42. [x] **Central "Minhas Tarefas" na 1ª Tela Pós-Login, Gestão e Delegação de Demandas, Links Preferidos & Auto-organização (`postgres_db.js`, `server.js`, `public/js/tarefas.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_minhas_tarefas.js`):**
+    - **Tela de Pouso Principal Pós-Login (1ª Tela):**
+      - O portal abre diretamente na central **`📋 Minhas Tarefas`** (`#tab-minhas-tarefas` / `mainTabTarefas`) após o login/2FA de todos os colaboradores (`alexandre`, `juliana`, `andrea`, `figueiredo`, `erica`, `wallerson`, etc.), permitindo que cada membro da equipe inicie a jornada com foco total em sua pauta operacional.
+    - **Segurança RBAC Zero-Trust & Isolamento Rigoroso de Escopo:**
+      - Colaboradores comuns só visualizam e interagem com as tarefas atribuídas a eles (`responsavel_username = user.username`).
+      - Tentativas de acessar tarefas de terceiros por ID direto ou forçar parâmetros de busca de outros usuários retornam **HTTP 403 Forbidden**.
+      - Gestores e Administradores (`alexandre` / `admin`) possuem visão unificada e global de todas as demandas da empresa, com filtros de busca por colaborador, status e criticidade.
+    - **Auto-criação de Tarefas & Coluna Solicitante:**
+      - Qualquer usuário pode criar tarefas e anotações para si mesmo.
+      - A tabela de demandas exibe a coluna **Solicitante** discriminando com clareza se a tarefa foi demandada pela gestão (`👤 Alexandre Gestor`) ou auto-gerada pelo próprio colaborador (`👤 Próprio Usuário`).
+    - **Workflow de Validação em Duas Etapas & Governança Estrita:**
+      - O colaborador executa a tarefa e clica em **`✅ Marcar como Concluída`** (status `CONCLUIDA`), entregando para validação da liderança.
+      - Apenas o gestor/admin possui autorização para aprovar e finalizar (**`✨ Aprovar e Finalizar`** - status `FINALIZADA`) ou reabrir apontando o que faltou (**`🔄 Reabrir Tarefa`** - status `REABERTA` com justificativa obrigatória registrada na linha do tempo).
+      - Tentativas de operadores alterarem para status restritos são bloqueadas no backend com **HTTP 403 Forbidden**.
+    - **Histórico & Chat de Linha do Tempo (JSONB Atômico):**
+      - Cada tarefa possui feed de comentários em tempo real (`autor_username`, `autor_nome`, `mensagem`, `created_at`) persistido nativamente na coluna `comentarios JSONB` da tabela `tarefas` no Supabase (com fallback em `data/tarefas.json`), sanitização contra injeções XSS (`escapeHtml`) e auto-scroll no chat.
+    - **Barra de Links Preferidos (Atalhos Operacionais do Dia a Dia):**
+      - Seção no topo da tela permitindo que cada colaborador cadastre, utilize e remova seus próprios atalhos web diários (*Gmail, Google Drive, Consulta CNPJ Receita Federal, Sintegra, PipeDrive CRM, Protheus, portais bancários*).
+      - Persistência na coluna `links_favoritos JSONB` da tabela `users` no Supabase (com fallback em `data/users.json`), inicialização com os 5 atalhos padrão na primeira sessão e abertura segura em nova janela com proteção contra *tabnabbing* (`target="_blank" rel="noopener noreferrer"`).
+    - **Segmented Control & Alternância Rápida de Pauta:**
+      - Botões no topo da tabela para troca rápida de contexto com 1 clique: **`⏳ Pauta Ativa`** vs **`✅ Tarefas Concluídas`**.
+    - **Suíte de Testes Automatizados (19 Asserções 100% Aprovadas):**
+      - Script `test_minhas_tarefas.js` cobrindo DDL de banco, métodos CRUD, append de JSONB, autenticação JWT, bloqueios RBAC/IDOR, governança de status, auto-criação, CRUD de links preferidos e compilação sintática via Node.js `vm.Script`.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

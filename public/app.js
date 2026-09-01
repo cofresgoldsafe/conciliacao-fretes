@@ -220,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyUserPermissions(user) {
+    const mainTabTarefas = document.getElementById('mainTabTarefas');
     const mainTabLogistica = document.getElementById('mainTabLogistica');
     const mainTabConsulta = document.getElementById('mainTabConsulta');
     const mainTabVendedores = document.getElementById('mainTabVendedores');
@@ -231,9 +232,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const isAdmin = (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin');
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
     if (!perms || isAdmin) {
-      perms = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
+      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
     }
 
+    if (mainTabTarefas) mainTabTarefas.style.display = ''; // Sempre visível para todos os colaboradores
     if (mainTabLogistica) mainTabLogistica.style.display = perms.includes('logistica') ? '' : 'none';
     if (mainTabConsulta) mainTabConsulta.style.display = perms.includes('consulta') ? '' : 'none';
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
@@ -246,28 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ajustarEscopoVendedor(user);
     } catch {}
 
-    // Se o usuário não tem nenhuma permissão atribuída
-    if (perms.length === 0) {
-      mainTabBtns.forEach(b => b.classList.remove('active'));
-      if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
-      if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
-      if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
-      if (subGroupFinanceiro) subGroupFinanceiro.classList.add('hidden');
-      if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
-      tabPanes.forEach(pane => pane.classList.add('hidden'));
-      return;
-    }
-
-    // Se o usuário atual estiver em uma aba que não tem permissão, redireciona para a primeira permitida
-    const activeMainBtn = document.querySelector('.main-tab-btn.active');
-    if (activeMainBtn) {
-      const activeMain = activeMainBtn.getAttribute('data-main-tab');
-      if (!perms.includes(activeMain)) {
-        const firstPerm = perms[0];
-        if (firstPerm && typeof switchMainTab === 'function') switchMainTab(firstPerm);
-      }
-    } else if (perms.length > 0) {
-      if (typeof switchMainTab === 'function') switchMainTab(perms[0]);
+    // Sempre direciona para a central "Minhas Tarefas" como tela de pouso pós-login
+    if (typeof switchMainTab === 'function') {
+      switchMainTab('tarefas');
     }
   }
 
@@ -677,6 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function switchMainTab(targetMain) {
     mainTabBtns.forEach(b => b.classList.remove('active'));
     
+    const subGroupTarefas = document.getElementById('subGroupTarefas');
     const subGroupLogistica = document.getElementById('subGroupLogistica');
     const subGroupConsulta = document.getElementById('subGroupConsulta');
     const subGroupVendedores = document.getElementById('subGroupVendedores');
@@ -685,6 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
     // Hide all sub groups
+    if (subGroupTarefas) subGroupTarefas.classList.add('hidden');
     if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
     if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
     if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
@@ -699,7 +684,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let firstSubBtn = null;
 
-    if (targetMain === 'logistica') {
+    if (targetMain === 'tarefas') {
+      if (subGroupTarefas) subGroupTarefas.classList.remove('hidden');
+      firstSubBtn = subGroupTarefas ? subGroupTarefas.querySelector('.nav-tab-btn') : null;
+      if (window.tarefasModule && typeof window.tarefasModule.initTarefasModule === 'function') {
+        window.tarefasModule.initTarefasModule();
+      }
+    } else if (targetMain === 'logistica') {
       if (subGroupLogistica) subGroupLogistica.classList.remove('hidden');
       firstSubBtn = subGroupLogistica ? subGroupLogistica.querySelector('.nav-tab-btn') : null;
     } else if (targetMain === 'consulta') {
@@ -749,6 +740,12 @@ document.addEventListener('DOMContentLoaded', () => {
       tabPanes.forEach(pane => pane.classList.add('hidden'));
       const targetPane = document.getElementById(targetTab);
       if (targetPane) targetPane.classList.remove('hidden');
+
+      if (targetTab === 'tab-minhas-tarefas') {
+        if (window.tarefasModule && typeof window.tarefasModule.initTarefasModule === 'function') {
+          window.tarefasModule.initTarefasModule();
+        }
+      }
 
       if (targetTab === 'tab-bi-indices') {
         if (typeof window.initBIIndicesTab === 'function') {

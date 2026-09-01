@@ -1,5 +1,75 @@
 [
   {
+    "id": "ACT-1788284871871",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:47:51.871Z"
+  },
+  {
+    "id": "ACT-1788284871837",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:47:51.837Z"
+  },
+  {
+    "id": "ACT-1788284678603",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:44:38.603Z"
+  },
+  {
+    "id": "ACT-1788284678568",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:44:38.568Z"
+  },
+  {
+    "id": "ACT-1788284335929",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:38:55.929Z"
+  },
+  {
+    "id": "ACT-1788284335902",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:38:55.902Z"
+  },
+  {
+    "id": "ACT-1788283432626",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T17:23:52.626Z"
+  },
+  {
     "id": "ACT-1788275201698",
     "username": "alexandre",
     "userName": "Alexandre",
@@ -2331,75 +2401,5 @@
       "count": 10
     },
     "createdAt": "2026-08-27T11:18:50.251Z"
-  },
-  {
-    "id": "ACT-1787829523339",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:43.339Z"
-  },
-  {
-    "id": "ACT-1787829511538",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:31.538Z"
-  },
-  {
-    "id": "ACT-1787829511307",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:31.307Z"
-  },
-  {
-    "id": "ACT-1787829510847",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:30.847Z"
-  },
-  {
-    "id": "ACT-1787829510552",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:30.552Z"
-  },
-  {
-    "id": "ACT-1787829509371",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"marcos_logistica\" (marcos@oaco.com.br)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:29.371Z"
-  },
-  {
-    "id": "ACT-1787829509254",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "REENVIO_2FA",
-    "description": "Novo código 2FA reenviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T11:18:29.254Z"
   }
 ]

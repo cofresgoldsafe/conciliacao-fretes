@@ -78,6 +78,16 @@ const {
   saveFaturamentoHistoricoDB,
   getFaturamentoHistoricoStats,
   getUltimoSyncFaturamentoLog,
+  getTarefasDB,
+  getTarefasKpisDB,
+  getTarefaByIdDB,
+  createTarefaDB,
+  updateTarefaDB,
+  addComentarioTarefaDB,
+  deleteTarefaDB,
+  getUserLinksDB,
+  addUserLinkDB,
+  deleteUserLinkDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -3321,6 +3331,390 @@ app.get('/api/bi/indices/historico', requireAuth, requireRole('admin'), async (r
     });
   } catch (err) {
     return handleServerError(res, err, 'Erro ao consultar série temporal histórica dos índices.');
+  }
+});
+
+/**
+ * ----------------------------------------------------------------------------
+ * ENDPOINTS REST: MÓDULO "MINHAS TAREFAS" & GESTÃO DE DELEGAÇÃO / CHECK
+ * ----------------------------------------------------------------------------
+ */
+
+// 1. Listagem Paginada de Tarefas com Filtros e Isolamento de Perfil
+app.get('/api/tarefas', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const isAdmin = (user.username === 'alexandre' || user.role === 'admin');
+
+    const status = (req.query.status || 'TODOS').trim();
+    const responsavel = (req.query.responsavel || (isAdmin ? 'TODOS' : user.username)).trim();
+    const prioridade = (req.query.prioridade || 'TODOS').trim();
+    const busca = (req.query.busca || '').trim();
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    const result = await getTarefasDB({
+      status,
+      responsavel,
+      prioridade,
+      busca,
+      limit,
+      offset,
+      isAdmin,
+      currentUsername: user.username
+    });
+
+    return res.json({
+      success: true,
+      ...result,
+      user: {
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        isAdmin
+      }
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao listar tarefas.');
+  }
+});
+
+// 2. Consulta de KPIs de Tarefas (Contadores e Faróis)
+app.get('/api/tarefas/kpis', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const isAdmin = (user.username === 'alexandre' || user.role === 'admin');
+
+    const kpis = await getTarefasKpisDB({
+      isAdmin,
+      currentUsername: user.username
+    });
+
+    return res.json({
+      success: true,
+      kpis,
+      isAdmin
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao carregar KPIs de tarefas.');
+  }
+});
+
+// 3. Detalhes de uma Tarefa Específica
+app.get('/api/tarefas/:id', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const isAdmin = (user.username === 'alexandre' || user.role === 'admin');
+
+    const tarefa = await getTarefaByIdDB(req.params.id);
+    if (!tarefa) {
+      return res.status(404).json({ success: false, message: 'Tarefa não encontrada.' });
+    }
+
+    // Isolamento Zero-Trust: Se não for admin e não for o responsável/criador, bloqueia
+    const resp = (tarefa.responsavel_username || '').toLowerCase();
+    const criador = (tarefa.criado_por_username || '').toLowerCase();
+    const curr = user.username.toLowerCase();
+
+    if (!isAdmin && resp !== curr && criador !== curr) {
+      return res.status(403).json({ success: false, message: 'Acesso negado: Você não tem permissão para visualizar esta tarefa.' });
+    }
+
+    return res.json({
+      success: true,
+      tarefa
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao buscar detalhes da tarefa.');
+  }
+});
+
+// 4. Criação de Nova Tarefa (Delegação pelo Gestor ou Autocriação)
+app.post('/api/tarefas', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const isAdmin = (user.username === 'alexandre' || user.role === 'admin');
+
+    const {
+      titulo,
+      descricao = '',
+      responsavel_username,
+      responsavel_nome,
+      prioridade = 'MEDIA',
+      data_limite = null
+    } = req.body;
+
+    if (!titulo || !String(titulo).trim()) {
+      return res.status(400).json({ success: false, message: 'O título da tarefa é obrigatório.' });
+    }
+
+    // Se usuário comum tentar delegar para outro sem ser admin, força atribuição a si mesmo
+    let respUser = String(responsavel_username || user.username).toLowerCase().trim();
+    let respNome = responsavel_nome || user.name;
+
+    if (!isAdmin && respUser !== user.username.toLowerCase()) {
+      respUser = user.username.toLowerCase();
+      respNome = user.name;
+    }
+
+    const novaTarefa = await createTarefaDB({
+      titulo: String(titulo).trim(),
+      descricao: String(descricao || '').trim(),
+      status: 'PENDENTE',
+      prioridade: ['BAIXA', 'MEDIA', 'ALTA', 'URGENTE'].includes(prioridade) ? prioridade : 'MEDIA',
+      responsavel_username: respUser,
+      responsavel_nome: respNome,
+      criado_por_username: user.username,
+      criado_por_nome: user.name,
+      data_limite: data_limite || null
+    });
+
+    try {
+      await logUserActivity(
+        user.username,
+        user.name,
+        'CRIACAO_TAREFA',
+        `Criou a tarefa #${novaTarefa.id}: "${novaTarefa.titulo}" para ${respNome} (${respUser})`,
+        req.ip || '127.0.0.1',
+        { tarefaId: novaTarefa.id, responsavel: respUser, prioridade }
+      );
+    } catch {}
+
+    return res.status(201).json({
+      success: true,
+      tarefa: novaTarefa,
+      message: 'Tarefa criada com sucesso.'
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao criar nova tarefa.');
+  }
+});
+
+// 5. Atualização de Tarefa (Transição de Status: Concluir, Reabrir, Finalizar)
+app.patch('/api/tarefas/:id', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const isAdmin = (user.username === 'alexandre' || user.role === 'admin');
+
+    const tarefa = await getTarefaByIdDB(req.params.id);
+    if (!tarefa) {
+      return res.status(404).json({ success: false, message: 'Tarefa não encontrada.' });
+    }
+
+    const resp = (tarefa.responsavel_username || '').toLowerCase();
+    const curr = user.username.toLowerCase();
+
+    // Se não for admin e não for o responsável, bloqueia
+    if (!isAdmin && resp !== curr) {
+      return res.status(403).json({ success: false, message: 'Acesso negado: Você não pode alterar tarefas de terceiros.' });
+    }
+
+    const updates = {};
+    const { status, titulo, descricao, prioridade, data_limite, responsavel_username, responsavel_nome, justificativa } = req.body;
+
+    // Regras de Governança de Transição de Status
+    if (status !== undefined) {
+      const novoStatus = String(status).toUpperCase().trim();
+      const statusPermitidos = ['PENDENTE', 'CONCLUIDA', 'REABERTA', 'FINALIZADA', 'CANCELADA'];
+      if (!statusPermitidos.includes(novoStatus)) {
+        return res.status(400).json({ success: false, message: `Status inválido: ${status}` });
+      }
+
+      // Trava: Apenas gestores podem Reabrir ou Finalizar tarefas
+      if ((novoStatus === 'REABERTA' || novoStatus === 'FINALIZADA' || novoStatus === 'CANCELADA') && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'Apenas gestores/administradores têm permissão para reabrir, finalizar ou cancelar tarefas.'
+        });
+      }
+
+      updates.status = novoStatus;
+    }
+
+    // Apenas admin pode reatribuir responsável ou editar título/prioridade de tarefa alheia
+    if (isAdmin) {
+      if (titulo !== undefined) updates.titulo = String(titulo).trim();
+      if (descricao !== undefined) updates.descricao = String(descricao).trim();
+      if (prioridade !== undefined) updates.prioridade = prioridade;
+      if (data_limite !== undefined) updates.data_limite = data_limite || null;
+      if (responsavel_username !== undefined) {
+        updates.responsavel_username = String(responsavel_username).toLowerCase().trim();
+        updates.responsavel_nome = responsavel_nome || updates.responsavel_username;
+      }
+    } else if (descricao !== undefined) {
+      updates.descricao = String(descricao).trim();
+    }
+
+    const tarefaAtualizada = await updateTarefaDB(req.params.id, updates);
+
+    // Se houve reabertura ou finalização com justificativa, anexa automaticamente nos comentários
+    if (justificativa && String(justificativa).trim()) {
+      const prefixo = updates.status === 'REABERTA' 
+        ? '🔄 [TAREFA REABERTA]: ' 
+        : (updates.status === 'FINALIZADA' ? '✨ [TAREFA FINALIZADA]: ' : '💬 ');
+      await addComentarioTarefaDB(req.params.id, {
+        autor_username: user.username,
+        autor_nome: user.name,
+        mensagem: prefixo + String(justificativa).trim()
+      });
+    }
+
+    try {
+      await logUserActivity(
+        user.username,
+        user.name,
+        'ATUALIZACAO_TAREFA',
+        `Atualizou tarefa #${tarefa.id} para status [${updates.status || tarefa.status}]`,
+        req.ip || '127.0.0.1',
+        { tarefaId: tarefa.id, novoStatus: updates.status, alteradoPor: user.username }
+      );
+    } catch {}
+
+    const tarefaFinal = await getTarefaByIdDB(req.params.id);
+
+    return res.json({
+      success: true,
+      tarefa: tarefaFinal,
+      message: 'Tarefa atualizada com sucesso.'
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao atualizar tarefa.');
+  }
+});
+
+// 6. Inserção de Comentário / Interação na Linha do Tempo da Tarefa
+app.post('/api/tarefas/:id/comentarios', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const isAdmin = (user.username === 'alexandre' || user.role === 'admin');
+
+    const tarefa = await getTarefaByIdDB(req.params.id);
+    if (!tarefa) {
+      return res.status(404).json({ success: false, message: 'Tarefa não encontrada.' });
+    }
+
+    const resp = (tarefa.responsavel_username || '').toLowerCase();
+    const criador = (tarefa.criado_por_username || '').toLowerCase();
+    const curr = user.username.toLowerCase();
+
+    // Se não for admin e não for parte da tarefa, bloqueia
+    if (!isAdmin && resp !== curr && criador !== curr) {
+      return res.status(403).json({ success: false, message: 'Acesso negado: Você não pode comentar nesta tarefa.' });
+    }
+
+    const { mensagem } = req.body;
+    if (!mensagem || !String(mensagem).trim()) {
+      return res.status(400).json({ success: false, message: 'A mensagem do comentário não pode estar vazia.' });
+    }
+
+    const result = await addComentarioTarefaDB(req.params.id, {
+      autor_username: user.username,
+      autor_nome: user.name,
+      mensagem: String(mensagem).trim()
+    });
+
+    return res.status(201).json({
+      success: true,
+      ...result,
+      message: 'Comentário adicionado com sucesso.'
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao adicionar comentário à tarefa.');
+  }
+});
+
+// 7. Exclusão de Tarefa (Exclusivo Administrador)
+app.delete('/api/tarefas/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const ok = await deleteTarefaDB(req.params.id);
+    if (!ok) {
+      return res.status(404).json({ success: false, message: 'Tarefa não encontrada para exclusão.' });
+    }
+
+    try {
+      await logUserActivity(
+        user.username,
+        user.name,
+        'EXCLUSAO_TAREFA',
+        `Excluiu a tarefa #${req.params.id}`,
+        req.ip || '127.0.0.1',
+        { tarefaId: req.params.id }
+      );
+    } catch {}
+
+    return res.json({
+      success: true,
+      message: `Tarefa #${req.params.id} excluída com sucesso.`
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao excluir tarefa.');
+  }
+});
+
+/**
+ * ----------------------------------------------------------------------------
+ * ENDPOINTS REST: LINKS PREFERIDOS DO USUÁRIO (ATALHOS DO DIA A DIA)
+ * ----------------------------------------------------------------------------
+ */
+
+app.get('/api/user/links', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const links = await getUserLinksDB(user.username);
+    return res.json({
+      success: true,
+      links: Array.isArray(links) ? links : []
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao buscar links favoritos.');
+  }
+});
+
+app.post('/api/user/links', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { titulo, url, icon } = req.body;
+
+    if (!titulo || !String(titulo).trim()) {
+      return res.status(400).json({ success: false, message: 'O título do link é obrigatório.' });
+    }
+    if (!url || !String(url).trim()) {
+      return res.status(400).json({ success: false, message: 'A URL do link é obrigatória.' });
+    }
+
+    let formattedUrl = String(url).trim();
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+
+    const result = await addUserLinkDB(user.username, {
+      titulo: String(titulo).trim(),
+      url: formattedUrl,
+      icon: icon || '🔗'
+    });
+
+    return res.status(201).json({
+      success: true,
+      ...result,
+      message: 'Link preferido salvo com sucesso.'
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao salvar link preferido.');
+  }
+});
+
+app.delete('/api/user/links/:id', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const result = await deleteUserLinkDB(user.username, req.params.id);
+    return res.json({
+      success: true,
+      ...result,
+      message: 'Link removido com sucesso.'
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao excluir link preferido.');
   }
 });
 

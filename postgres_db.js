@@ -37,6 +37,7 @@ const usersFile = path.join(dataDir, 'users.json');
 const historyFile = path.join(dataDir, 'history.json');
 const estoqueCacheFile = path.join(dataDir, 'estoque_saldos_cache.json');
 const faturamentoCacheFile = path.join(dataDir, 'faturamento_historico_cache.json');
+const tarefasFile = path.join(dataDir, 'tarefas.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -258,13 +259,14 @@ async function initPostgres() {
         );
       `);
 
-      // 5. Garante colunas de rastreamento, vendor_code e e-mail na tabela users
+      // 5. Garante colunas de rastreamento, vendor_code, e-mail e links favoritos na tabela users
       await client.query(`
         ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS total_actions INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS links_favoritos JSONB DEFAULT '[]'::jsonb;
       `);
 
       // 6. Cria Tabela de Controle de Códigos 2FA Temporários
@@ -328,6 +330,30 @@ async function initPostgres() {
         ALTER TABLE analise_credito_history ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) DEFAULT 'Sistema';
         CREATE INDEX IF NOT EXISTS idx_analise_credito_pedido ON analise_credito_history(pedido_venda);
         CREATE INDEX IF NOT EXISTS idx_analise_credito_created_at ON analise_credito_history(created_at DESC);
+      `);
+
+      // 8.1 Cria Tabela de Tarefas e Gestão de Workflow Operacional
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tarefas (
+          id SERIAL PRIMARY KEY,
+          titulo VARCHAR(255) NOT NULL,
+          descricao TEXT,
+          status VARCHAR(50) DEFAULT 'PENDENTE',
+          prioridade VARCHAR(20) DEFAULT 'MEDIA',
+          responsavel_username VARCHAR(100) NOT NULL,
+          responsavel_nome VARCHAR(200),
+          criado_por_username VARCHAR(100) NOT NULL,
+          criado_por_nome VARCHAR(200),
+          data_limite DATE,
+          comentarios JSONB DEFAULT '[]'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          concluida_at TIMESTAMP WITH TIME ZONE,
+          finalizada_at TIMESTAMP WITH TIME ZONE
+        );
+        CREATE INDEX IF NOT EXISTS idx_tarefas_responsavel ON tarefas(responsavel_username);
+        CREATE INDEX IF NOT EXISTS idx_tarefas_status ON tarefas(status);
+        CREATE INDEX IF NOT EXISTS idx_tarefas_created_at ON tarefas(created_at DESC);
       `);
 
       // 9. Cria Tabela de Saldos em Estoque de Produtos (Multi-Empresa)
@@ -812,7 +838,8 @@ async function initPostgres() {
         'contas_a_pagar',
         'saldos_bancarios',
         'indices_sync_logs',
-        'indices_liquidez_historico'
+        'indices_liquidez_historico',
+        'tarefas'
       ];
 
       for (const tbl of tablesToSecure) {
@@ -2244,6 +2271,486 @@ async function getUltimoSyncFaturamentoLog() {
   return null;
 }
 
+/**
+ * ----------------------------------------------------------------------------
+ * GESTÃO DE TAREFAS E WORKFLOW OPERACIONAL (POSTGRESQL / SUPABASE COM FALLBACK JSON)
+ * ----------------------------------------------------------------------------
+ */
+
+function readLocalTarefas() {
+  return safeReadJsonSync(tarefasFile, []);
+}
+
+function writeLocalTarefas(tarefas) {
+  safeWriteJsonSync(tarefasFile, tarefas);
+}
+
+async function getTarefasDB({ status, responsavel, prioridade, busca, limit = 50, offset = 0, isAdmin = false, currentUsername = '' } = {}) {
+  const p = getPool();
+  if (p) {
+    try {
+      const conditions = [];
+      const params = [];
+      let paramIdx = 1;
+
+      // Isolamento de Perfil: Usuário comum visualiza apenas tarefas atribuídas a ele
+      if (!isAdmin) {
+        conditions.push(`responsavel_username = $${paramIdx++}`);
+        params.push(String(currentUsername).toLowerCase().trim());
+      } else if (responsavel && responsavel !== 'TODOS') {
+        conditions.push(`responsavel_username = $${paramIdx++}`);
+        params.push(String(responsavel).toLowerCase().trim());
+      }
+
+      if (status && status !== 'TODOS') {
+        conditions.push(`status = $${paramIdx++}`);
+        params.push(status);
+      }
+
+      if (prioridade && prioridade !== 'TODOS') {
+        conditions.push(`prioridade = $${paramIdx++}`);
+        params.push(prioridade);
+      }
+
+      if (busca && String(busca).trim()) {
+        conditions.push(`(titulo ILIKE $${paramIdx} OR descricao ILIKE $${paramIdx})`);
+        params.push(`%${String(busca).trim()}%`);
+        paramIdx++;
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+      const countSql = `SELECT COUNT(*) FROM tarefas ${whereClause};`;
+      const countRes = await safeQuery(countSql, params);
+      const total = parseInt(countRes.rows[0].count, 10);
+
+      const dataSql = `
+        SELECT id, titulo, descricao, status, prioridade, responsavel_username, responsavel_nome,
+               criado_por_username, criado_por_nome, data_limite, comentarios,
+               created_at, updated_at, concluida_at, finalizada_at
+        FROM tarefas
+        ${whereClause}
+        ORDER BY 
+          CASE 
+            WHEN status = 'REABERTA' THEN 1
+            WHEN status = 'PENDENTE' THEN 2
+            WHEN status = 'CONCLUIDA' THEN 3
+            WHEN status = 'FINALIZADA' THEN 4
+            ELSE 5
+          END,
+          CASE 
+            WHEN prioridade = 'URGENTE' THEN 1
+            WHEN prioridade = 'ALTA' THEN 2
+            WHEN prioridade = 'MEDIA' THEN 3
+            ELSE 4
+          END,
+          created_at DESC
+        LIMIT $${paramIdx++} OFFSET $${paramIdx++};
+      `;
+      const dataParams = [...params, Number(limit) || 50, Number(offset) || 0];
+      const dataRes = await safeQuery(dataSql, dataParams);
+
+      return {
+        items: dataRes.rows,
+        total,
+        limit: Number(limit) || 50,
+        offset: Number(offset) || 0
+      };
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao consultar tarefas no banco:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  let items = readLocalTarefas();
+  if (!isAdmin) {
+    items = items.filter(t => (t.responsavel_username || '').toLowerCase() === String(currentUsername).toLowerCase());
+  } else if (responsavel && responsavel !== 'TODOS') {
+    items = items.filter(t => (t.responsavel_username || '').toLowerCase() === String(responsavel).toLowerCase());
+  }
+
+  if (status && status !== 'TODOS') {
+    items = items.filter(t => t.status === status);
+  }
+  if (prioridade && prioridade !== 'TODOS') {
+    items = items.filter(t => t.prioridade === prioridade);
+  }
+  if (busca && String(busca).trim()) {
+    const q = String(busca).toLowerCase().trim();
+    items = items.filter(t => (t.titulo && t.titulo.toLowerCase().includes(q)) || (t.descricao && t.descricao.toLowerCase().includes(q)));
+  }
+
+  items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  const total = items.length;
+  const sliced = items.slice(offset, offset + limit);
+
+  return { items: sliced, total, limit, offset };
+}
+
+async function getTarefasKpisDB({ isAdmin = false, currentUsername = '' } = {}) {
+  const p = getPool();
+  if (p) {
+    try {
+      const scopeFilter = !isAdmin 
+        ? `WHERE responsavel_username = '${String(currentUsername).toLowerCase().replace(/'/g, "''")}'` 
+        : '';
+      
+      const sql = `
+        SELECT 
+          COUNT(*) FILTER (WHERE status = 'PENDENTE') AS pendentes,
+          COUNT(*) FILTER (WHERE status = 'CONCLUIDA') AS aguardando_validacao,
+          COUNT(*) FILTER (WHERE status = 'REABERTA' OR (status = 'PENDENTE' AND prioridade = 'URGENTE')) AS reabertas_urgentes,
+          COUNT(*) FILTER (WHERE status = 'FINALIZADA' OR (status = 'CONCLUIDA' AND DATE_TRUNC('month', updated_at) = DATE_TRUNC('month', CURRENT_DATE))) AS concluidas_mes,
+          COUNT(*) AS total
+        FROM tarefas
+        ${scopeFilter};
+      `;
+      const res = await safeQuery(sql);
+      if (res && res.rows && res.rows.length > 0) {
+        const r = res.rows[0];
+        return {
+          pendentes: Number(r.pendentes) || 0,
+          aguardando_validacao: Number(r.aguardando_validacao) || 0,
+          reabertas_urgentes: Number(r.reabertas_urgentes) || 0,
+          concluidas_mes: Number(r.concluidas_mes) || 0,
+          total: Number(r.total) || 0
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar KPIs de tarefas:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  let items = readLocalTarefas();
+  if (!isAdmin) {
+    items = items.filter(t => (t.responsavel_username || '').toLowerCase() === String(currentUsername).toLowerCase());
+  }
+  return {
+    pendentes: items.filter(t => t.status === 'PENDENTE').length,
+    aguardando_validacao: items.filter(t => t.status === 'CONCLUIDA').length,
+    reabertas_urgentes: items.filter(t => t.status === 'REABERTA' || (t.status === 'PENDENTE' && t.prioridade === 'URGENTE')).length,
+    concluidas_mes: items.filter(t => t.status === 'FINALIZADA' || t.status === 'CONCLUIDA').length,
+    total: items.length
+  };
+}
+
+async function getTarefaByIdDB(id) {
+  const numId = parseInt(id, 10);
+  if (!numId) return null;
+
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await safeQuery('SELECT * FROM tarefas WHERE id = $1;', [numId]);
+      if (res && res.rows.length > 0) {
+        return res.rows[0];
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao consultar tarefa por ID:', err.message);
+    }
+  }
+
+  const items = readLocalTarefas();
+  return items.find(t => t.id === numId) || null;
+}
+
+async function createTarefaDB({
+  titulo,
+  descricao = '',
+  status = 'PENDENTE',
+  prioridade = 'MEDIA',
+  responsavel_username,
+  responsavel_nome = '',
+  criado_por_username,
+  criado_por_nome = '',
+  data_limite = null
+}) {
+  const cleanRespUser = String(responsavel_username || '').toLowerCase().trim();
+  const cleanCriadoUser = String(criado_por_username || 'sistema').toLowerCase().trim();
+
+  const p = getPool();
+  if (p) {
+    try {
+      const sql = `
+        INSERT INTO tarefas (
+          titulo, descricao, status, prioridade, 
+          responsavel_username, responsavel_nome, 
+          criado_por_username, criado_por_nome, 
+          data_limite, comentarios, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '[]'::jsonb, NOW(), NOW())
+        RETURNING *;
+      `;
+      const res = await safeQuery(sql, [
+        String(titulo).trim(),
+        String(descricao || '').trim(),
+        status,
+        prioridade,
+        cleanRespUser,
+        responsavel_nome || cleanRespUser,
+        cleanCriadoUser,
+        criado_por_nome || cleanCriadoUser,
+        data_limite || null
+      ]);
+      if (res && res.rows.length > 0) {
+        return res.rows[0];
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao inserir tarefa no banco:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const items = readLocalTarefas();
+  const nextId = items.length > 0 ? Math.max(...items.map(t => t.id || 0)) + 1 : 1;
+  const nova = {
+    id: nextId,
+    titulo: String(titulo).trim(),
+    descricao: String(descricao || '').trim(),
+    status,
+    prioridade,
+    responsavel_username: cleanRespUser,
+    responsavel_nome: responsavel_nome || cleanRespUser,
+    criado_por_username: cleanCriadoUser,
+    criado_por_nome: criado_por_nome || cleanCriadoUser,
+    data_limite: data_limite || null,
+    comentarios: [],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  items.push(nova);
+  writeLocalTarefas(items);
+  return nova;
+}
+
+async function updateTarefaDB(id, updates = {}) {
+  const numId = parseInt(id, 10);
+  if (!numId) return null;
+
+  const p = getPool();
+  if (p) {
+    try {
+      const fields = [];
+      const params = [];
+      let paramIdx = 1;
+
+      if (updates.titulo !== undefined) {
+        fields.push(`titulo = $${paramIdx++}`);
+        params.push(String(updates.titulo).trim());
+      }
+      if (updates.descricao !== undefined) {
+        fields.push(`descricao = $${paramIdx++}`);
+        params.push(String(updates.descricao).trim());
+      }
+      if (updates.status !== undefined) {
+        fields.push(`status = $${paramIdx++}`);
+        params.push(updates.status);
+        if (updates.status === 'CONCLUIDA') {
+          fields.push(`concluida_at = NOW()`);
+        } else if (updates.status === 'FINALIZADA') {
+          fields.push(`finalizada_at = NOW()`);
+        } else if (updates.status === 'REABERTA') {
+          fields.push(`finalizada_at = NULL`);
+        }
+      }
+      if (updates.prioridade !== undefined) {
+        fields.push(`prioridade = $${paramIdx++}`);
+        params.push(updates.prioridade);
+      }
+      if (updates.responsavel_username !== undefined) {
+        fields.push(`responsavel_username = $${paramIdx++}`);
+        params.push(String(updates.responsavel_username).toLowerCase().trim());
+      }
+      if (updates.responsavel_nome !== undefined) {
+        fields.push(`responsavel_nome = $${paramIdx++}`);
+        params.push(String(updates.responsavel_nome).trim());
+      }
+      if (updates.data_limite !== undefined) {
+        fields.push(`data_limite = $${paramIdx++}`);
+        params.push(updates.data_limite || null);
+      }
+
+      fields.push(`updated_at = NOW()`);
+
+      if (fields.length > 0) {
+        const sql = `UPDATE tarefas SET ${fields.join(', ')} WHERE id = $${paramIdx} RETURNING *;`;
+        params.push(numId);
+        const res = await safeQuery(sql, params);
+        if (res && res.rows.length > 0) {
+          return res.rows[0];
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao atualizar tarefa no banco:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const items = readLocalTarefas();
+  const idx = items.findIndex(t => t.id === numId);
+  if (idx === -1) return null;
+
+  const current = items[idx];
+  const updated = {
+    ...current,
+    ...updates,
+    updated_at: new Date().toISOString()
+  };
+  if (updates.status === 'CONCLUIDA') updated.concluida_at = new Date().toISOString();
+  if (updates.status === 'FINALIZADA') updated.finalizada_at = new Date().toISOString();
+  if (updates.status === 'REABERTA') updated.finalizada_at = null;
+
+  items[idx] = updated;
+  writeLocalTarefas(items);
+  return updated;
+}
+
+async function addComentarioTarefaDB(id, { autor_username, autor_nome, mensagem }) {
+  const numId = parseInt(id, 10);
+  if (!numId || !mensagem || !String(mensagem).trim()) return null;
+
+  const novoComentario = {
+    id: Date.now(),
+    autor_username: String(autor_username || 'sistema').toLowerCase().trim(),
+    autor_nome: String(autor_nome || autor_username || 'Sistema').trim(),
+    mensagem: String(mensagem).trim(),
+    created_at: new Date().toISOString()
+  };
+
+  const p = getPool();
+  if (p) {
+    try {
+      const sql = `
+        UPDATE tarefas 
+        SET comentarios = COALESCE(comentarios, '[]'::jsonb) || $1::jsonb,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING *;
+      `;
+      const res = await safeQuery(sql, [JSON.stringify(novoComentario), numId]);
+      if (res && res.rows.length > 0) {
+        return { tarefa: res.rows[0], comentario: novoComentario };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao anexar comentário à tarefa:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const items = readLocalTarefas();
+  const idx = items.findIndex(t => t.id === numId);
+  if (idx === -1) return null;
+
+  if (!Array.isArray(items[idx].comentarios)) {
+    items[idx].comentarios = [];
+  }
+  items[idx].comentarios.push(novoComentario);
+  items[idx].updated_at = new Date().toISOString();
+  writeLocalTarefas(items);
+  return { tarefa: items[idx], comentario: novoComentario };
+}
+
+async function deleteTarefaDB(id) {
+  const numId = parseInt(id, 10);
+  if (!numId) return false;
+
+  const p = getPool();
+  if (p) {
+    try {
+      await safeQuery('DELETE FROM tarefas WHERE id = $1;', [numId]);
+      return true;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao deletar tarefa:', err.message);
+    }
+  }
+
+  const items = readLocalTarefas();
+  const filtered = items.filter(t => t.id !== numId);
+  writeLocalTarefas(filtered);
+  return true;
+}
+
+const DEFAULT_USER_LINKS = [
+  { id: '1', titulo: 'Gmail', url: 'https://mail.google.com/mail/u/0/#inbox', icon: '✉️' },
+  { id: '2', titulo: 'Google Drive', url: 'https://drive.google.com/drive', icon: '📁' },
+  { id: '3', titulo: 'CNPJ Receita', url: 'https://solucoes.receita.fazenda.gov.br/Servicos/cnpjreva/', icon: '🏛️' },
+  { id: '4', titulo: 'Sintegra', url: 'https://www.sintegra.gov.br/', icon: '📊' },
+  { id: '5', titulo: 'PipeDrive', url: 'https://benetroncomercial.pipedrive.com/deals/pipeline/1/filter/41', icon: '🎯' }
+];
+
+async function getUserLinksDB(username) {
+  const cleanUser = String(username || '').toLowerCase().trim();
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await safeQuery('SELECT links_favoritos FROM users WHERE username = $1;', [cleanUser]);
+      if (res && res.rows.length > 0) {
+        const raw = res.rows[0].links_favoritos;
+        const links = Array.isArray(raw) ? raw : (raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null);
+        if (links && links.length > 0) return links;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar links_favoritos:', err.message);
+    }
+  }
+
+  // Fallback users.json
+  const users = safeReadJsonSync(usersFile, []);
+  const u = users.find(x => (x.username || '').toLowerCase() === cleanUser);
+  if (u && Array.isArray(u.links_favoritos) && u.links_favoritos.length > 0) {
+    return u.links_favoritos;
+  }
+
+  return DEFAULT_USER_LINKS;
+}
+
+async function saveUserLinksDB(username, links) {
+  const cleanUser = String(username || '').toLowerCase().trim();
+  const cleanLinks = Array.isArray(links) ? links : [];
+  const p = getPool();
+  if (p) {
+    try {
+      await safeQuery('UPDATE users SET links_favoritos = $1::jsonb, updated_at = NOW() WHERE username = $2;', [
+        JSON.stringify(cleanLinks),
+        cleanUser
+      ]);
+      return cleanLinks;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao salvar links_favoritos:', err.message);
+    }
+  }
+
+  // Fallback users.json
+  const users = safeReadJsonSync(usersFile, []);
+  const idx = users.findIndex(x => (x.username || '').toLowerCase() === cleanUser);
+  if (idx !== -1) {
+    users[idx].links_favoritos = cleanLinks;
+    safeWriteJsonSync(usersFile, users);
+  }
+  return cleanLinks;
+}
+
+async function addUserLinkDB(username, { titulo, url, icon = '🔗' }) {
+  const current = await getUserLinksDB(username);
+  const newLink = {
+    id: String(Date.now()),
+    titulo: String(titulo || '').trim(),
+    url: String(url || '').trim(),
+    icon: icon || '🔗'
+  };
+  const updated = [...current, newLink];
+  await saveUserLinksDB(username, updated);
+  return { links: updated, link: newLink };
+}
+
+async function deleteUserLinkDB(username, linkId) {
+  const current = await getUserLinksDB(username);
+  const updated = current.filter(l => String(l.id) !== String(linkId));
+  await saveUserLinksDB(username, updated);
+  return { links: updated };
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -2286,6 +2793,17 @@ module.exports = {
   saveFaturamentoHistoricoDB,
   getFaturamentoHistoricoStats,
   getUltimoSyncFaturamentoLog,
+  getTarefasDB,
+  getTarefasKpisDB,
+  getTarefaByIdDB,
+  createTarefaDB,
+  updateTarefaDB,
+  addComentarioTarefaDB,
+  deleteTarefaDB,
+  getUserLinksDB,
+  addUserLinkDB,
+  deleteUserLinkDB,
+  saveUserLinksDB,
   isPostgresConnected,
   getPool
 };
