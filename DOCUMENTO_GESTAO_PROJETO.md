@@ -10,7 +10,9 @@
 
 ## 1. 🎯 Objetivos e Escopo da Plataforma
 Prover um portal corporativo integrado na nuvem, multi-empresa e multi-perfil (Operadores, Administradores, Controladoria Financeira e Equipe Comercial), centralizando:
-1. **Logística & Conciliação de Fretes:** Leitura de faturas Rodonaves (PDF) e Correios/VIPP (PDF SFE e integração FTP), cruzando automaticamente com fretes cobrados no ERP Protheus (`C5_FRETE + C5_VLR_FRT`) e identificação de Ordens de Serviço (OS) e divergências.
+1. **Logística & Conciliação de Fretes:**
+   - **Saldos em Estoque Unificado (DRY):** Disponibilização direta do painel consolidado de produtos acabados PA, saldos físicos `SB2`, compras pendentes `SC7` e vendas em carteira `SC6` para a equipe operacional de logística, sincronizado com a aba comercial.
+   - **Conciliação e Faturas:** Leitura de faturas Rodonaves (PDF) e Correios/VIPP (PDF SFE e integração FTP), cruzando automaticamente com fretes cobrados no ERP Protheus (`C5_FRETE + C5_VLR_FRT`) e identificação de Ordens de Serviço (OS) e divergências.
 2. **Consulta Rápida e Unificada de Pedidos & NFs:** Localização instantânea em tempo real nas 3 empresas do grupo (Metal Pleno 14, GSI 15 e OACO 16) por `CodWeb`, `Número do Pedido` ou `Número da Nota Fiscal (Doc)`.
 3. **Módulo Comercial Completo (Vendedores):**
    - **Saldos em Estoque:** Painel estilo Power BI com consolidação de catálogo de Produtos Acabados (`PA`), saldos físicos `SB2`, pedidos de venda `SC6`, pedidos de compra `SC7`, KPIs de estoque, filtros de grupos comerciais (001, 002, 010, 018), paginação inteligente e sincronização agendada com o Supabase.

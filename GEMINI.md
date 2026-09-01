@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo Metabase Homologado em Produção & Suíte de Testes Automatizados Aprovada)  
-> **Data da Última Auditoria:** 31/08/2026 19:05 (v9.06 - Sub-aba 'Ped. Lib Estoque' com Fila Sequencial FIFO MATA455/MATA456 e Drilldown de Alocação SB2)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo e Análise de Crédito Homologados em Produção & 12 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 01/09/2026 11:35 (v9.11 - Disponibilização Unificada da sub-aba '📦 Saldos em Estoque' na aba '📦 LOGÍSTICA' com Arquitetura DRY / Single Source of Truth - 12 Suítes Automatizadas, 79 Testes 100% Aprovados, Zero Duplicação de Código DOM/JS e Suporte a Perfis Operacionais)  
 
 ---
 
@@ -278,9 +278,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Modelagem Analítica SQL & Cobertura dos 33 Grupos do Protheus (`SBM010`):**
      - Script DDL e Seeding `sql/bi/00_tabela_grupos_sbm.sql` cobrindo 100% dos **33 Grupos Oficiais do Protheus Empresa 01** (`001 - Cofres` até `091 - Insumos Produção Cofres`), garantindo suporte total a vendas passadas e presentes.
      - Scripts SQL de Views analíticas em `sql/bi/`: `01_vw_produtos_estoque.sql` (Saldos por empresa MP 14/GSI 15/OACO 16, preços, valor total de estoque, SC6, SC7 e rupturas), `02_vw_analise_credito.sql` (Histórico de crédito, scores, riscos e decisões), `03_vw_atividades_auditoria.sql` (Telemetria de operadores) e `04_vw_demandas_grupos_comerciais.sql` (Demandas e faturamento por grupo comercial).
-   - **Documentação e Testes:**
-     - Guia completo de implantação em `docs/metabase/GUIA_SETUP_METABASE.md` e manual de arquitetura corporativa em `docs/metabase/ARQUITETURA_BI_EXECUTIVO.md`.
-     - Suíte de testes automatizados `test_bi_embed.js` com 7 asserções cobrindo segurança RBAC (401, 403, 200), tokens JWT e fallbacks (100% de aprovação).
+    - **Documentação e Esteira de Auditoria Completa:**
+      - Guia completo de implantação em `docs/metabase/GUIA_SETUP_METABASE.md` e manual de arquitetura corporativa em `docs/metabase/ARQUITETURA_BI_EXECUTIVO.md`.
+      - **Esteira Completa de IA (5 Auditores Especializados):** Suíte de testes automatizados `test_bi_embed.js` expandida com **19 asserções cobrindo os 5 vetores**:
+        1. *Auditor de Segurança & Red Team:* Zero-Trust, bloqueios RBAC (401/403/200) e integridade de token HMAC-SHA256 com TTL efêmero.
+        2. *Auditor de Serviço & Criptografia:* Normalização e protocolo seguro de URL, signed JWT com dashboard ID e parâmetros.
+        3. *Auditor de Clean Code:* Modularização IIFE estrita em `public/js/bi.js` e desacoplamento backend em `services/bi_service.js`.
+        4. *Auditor de SRE & Resiliência:* Proteção contra DOM XSS com `escapeHtml`, `referrerpolicy="no-referrer"`, acessibilidade WCAG (`title`), bloqueio anti-concorrência `isBiLoading` e degradação graciosa para Setup Guide.
+        5. *Auditor de UI/UX & Acessibilidade:* Integridade estrutural do DOM no `index.html`, estilos CSS responsivos e tela cheia `bi-fullscreen-active` (100% de aprovação).
 35. [x] **Correção da Renderização de HTML/CSS na Coluna "Último Acesso Ativo" em Auditoria (`public/app.js`, `public/index.html`, `test_dom_xss_and_secrets.js`):**
     - **Causa Raiz & Resolução:** A função `formatTimeAgo()` gera marcação HTML segura (badges com cor, borda e timestamp legível). Na interpolação da tabela `auditUsersTableBody`, o resultado estava envolvido por `escapeHtml(...)`, convertendo tags como `<span>` e `<small>` em entidades textuais visíveis (`&lt;span...&gt;`).
     - **Correção Aplicada:** Remoção do `escapeHtml` sobre o retorno de `formatTimeAgo` em `auditUsersTableBody`, calibração visual dos badges com bordas suaves (`border: 1px solid rgba(16, 185, 129, 0.3)`) e inclusão de salvaguarda contra pequenas variações de relógio (`diffSec < 0`).
@@ -390,6 +395,25 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Segurança RBAC e Suíte de Testes Automatizados:**
       - Endpoint `/api/logistica/pedidos-lib-estoque` protegido por JWT e registrado em `user_activities` (`CONSULTA_PEDIDOS_LIB_ESTOQUE`).
       - Suíte automatizada `test_pedidos_lib_estoque.js` com 8 asserções cobrindo algoritmo FIFO, desempates, cenários parciais, integração HTTP e integridade visual do DOM (100% aprovada).
+41. [x] **Auditoria Completa da Sub-aba Análise de Crédito na Esteira de IA (`analise_credito_engine.js`, `public/js/credito.js`, `sql/bi/02_vw_analise_credito.sql`, `public/app.js`, `server.js`, 12 Suítes de Testes):**
+    - **Correção Crítica de Reatribuição no Histórico:** Eliminação de erro de runtime na renderização do histórico de crédito substituindo reatribuição indevida de constante por variável mutável (`let sugestoes = item.sugestoes_lista || []` em `public/app.js`), assegurando renderização fluida e sem interrupções das análises registradas.
+    - **Contratos de API Padronizados em `public/js/credito.js`:** Modularização e desacoplamento do cliente HTTP no frontend com contratos REST canônicos (`consultarCreditoProtheus`, `parseSerasaPdf`, `carregarScoreConfig`, `salvarScoreConfig`, `salvarAnaliseCredito`, `carregarHistoricoCredito`) consumindo endpoints same-origin com Bearer token JWT.
+    - **Modelagem Analítica BI SQL com Suporte JSONB Híbrido (`vw_bi_analise_credito`):** Atualização da view analítica no PostgreSQL Supabase (`sql/bi/02_vw_analise_credito.sql`) suportando leitura transparente de schemas legados planos e novos esquemas aninhados (`dados_completos->'protheus'`, `dados_completos->'receita'`, `dados_completos->'serasa'`, `dados_completos->'fgts'`) com castings defensivos via regex (`~ '^[0-9.]+$'`) para prevenção de exceções de conversão de tipos em campos numéricos.
+    - **Mascaramento e Segurança de Tokens de Integração:** Proteção do token de API InfoSimples no frontend e logs, prevenindo exposição acidental de credenciais em relatórios ou payloads de telemetria.
+    - **Robustez Numérica e Decimais com Ponto:** Tratamento defensivo em pontuações de score, idades decimais (ex: 24.3 meses, anos de fundação) e valores monetários com ponto flutuante, eliminando distorções de arredondamento.
+    - **Homologação Completa em 12 Suítes Automatizadas (78 Testes 100% Aprovados):**
+      1. `test_analise_credito_detalhes.js` (4 asserções - Imutabilidade e consistência matemática de pontuação)
+      2. `test_capital_social_isento.js` (5 asserções - Pontuação neutra e liberação de cadastro)
+      3. `test_deteccao_entrega.js` (10 asserções - Detecção semântica em `C5_MENNOTA` e transportadora `000009`)
+      4. `test_farois_resiliencia_credito.js` (9 asserções - Matriz FMEA fail-neutral e timeouts)
+      5. `test_infosimples_fgts.js` (8 asserções - Integração InfoSimples REST e regras antifraude)
+      6. `test_novos_criterios_credito.js` (8 asserções - Alteração de sócios, aumento de capital e 1-clique Caixa)
+      7. `test_registro_br_automacao.js` (8 asserções - Consulta RDAP NIC.br e confronto de raiz CNPJ)
+      8. `test_score_config.js` (5 asserções - Calibração de pesos e sincronização dinâmica de rótulos)
+      9. `test_serasa_pdf_parser.js` (10 asserções - Validação temporal &le; 4 meses, default e travas)
+      10. `test_totais_pedido.js` (4 asserções - Segregação de frete normal `C5_FRETE` vs frete embutido `C5_VLR_FRT`)
+      11. `test_frontend_modules.js` (5 asserções - Contratos ES6 e rotas de crédito)
+      12. `test_dom_xss_and_secrets.js` (2 asserções - Sanitização XSS e integridade de armazenamento de crédito)
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
@@ -420,6 +444,13 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Alerta Visual nos Detalhes do Pedido (`#pedidoDetalhesModal`):**
      - Exibição de badge destacado em vermelho/âmbar no cabeçalho de logística ao visualizar detalhes de qualquer pedido com entrega diferente, prevenindo erros na expedição/vendas.
    - **Suíte de Testes Automatizados:** Script `test_deteccao_entrega.js` com 10 asserções automatizadas cobrindo variações de códigos de transportadora, múltiplos padrões de texto em `C5_MENNOTA`, filtragem de falsos positivos e pontuação integrada no motor de crédito.
+31. [x] **Disponibilização Unificada de Saldos em Estoque na Aba Logística (`public/index.html`, `test_frontend_modules.js`, `test_playwright_e2e.js`):**
+   - **Arquitetura DRY (Single Source of Truth / Fonte Única da Verdade):**
+     - Inclusão da sub-aba `btnTabLogSaldosEstoque` no grupo de navegação `#subGroupLogistica` apontando diretamente para o container DOM compartilhado `tab-vend-saldos-estoque`.
+     - Zero duplicação de marcação HTML, classes CSS ou funções JavaScript: qualquer melhoria, adição de colunas, novos filtros ou customizações visuais feitas na tela refletem instantânea e simultaneamente em ambas as abas (Vendedores e Logística).
+   - **Acessibilidade para Perfis Operacionais:**
+     - Usuários com acesso restrito à aba Logística (ex: operadores de expedição) agora podem consultar em tempo real os saldos físicos multi-empresa (Metal Pleno 14, GSI 15, OACO 16), compras pendentes SC7, vendas em carteira SC6 e abrir o modal de drilldown.
+   - **Validação Automatizada Completa:** Cobertura por testes unitários e testes E2E Playwright validando a navegação, visibilidade e garantia de elemento DOM único.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

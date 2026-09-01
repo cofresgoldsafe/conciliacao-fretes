@@ -38,6 +38,7 @@
 - [x] [CRED-02] Leitura de PDF Serasa Experian com validação de validade (&le; 4 meses), trava de consulta e expansão de métricas do Bloco 5.
 - [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
 - [x] [CRED-04] Painel de Calibração de Pesos do Score em 6 blocos com sincronização dinâmica de rótulos dos seletores.
+- [x] [CRED-05] Auditoria Completa da Sub-aba Análise de Crédito: 12 suítes automatizadas, 78 testes 100% aprovados, resolução de reatribuição de const no histórico, contratos de API em `credito.js`, view BI SQL híbrida JSONB, mascaramento de token InfoSimples e robustez de decimais com ponto flutuante.
 - [ ] [INT-01] Ativação da gravação contábil direta no ERP Protheus via rotina AdvPL ExecAuto (`REST_AMARFRET.PRW` / `MATA116`) no AppServer TOTVS.
 
 ## 🌐 Infraestrutura & Domínio
@@ -61,6 +62,7 @@
 - [x] [QA-15] Suíte de validação de Schemas Zod para Webhooks Bancários do Banco Inter (`test_webhook_schemas.js`).
 - [x] [QA-16] Suíte de testes para Arquitetura Modular ES6 e Documentação OpenAPI (`test_frontend_modules.js`).
 - [x] [QA-17] Suíte de testes automatizados para Desbloqueio de Vendedores e Coluna Nome em Comissões (`test_vendedores_desbloqueio.js`).
+- [x] [QA-18] Suíte de testes automatizados da Análise de Crédito cobrindo 12 vetores de integridade (78 asserções 100% aprovadas).
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).

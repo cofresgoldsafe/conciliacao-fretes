@@ -119,6 +119,28 @@ async function runFrontendModulesTests() {
   }
 
   // -------------------------------------------------------------
+  // Teste 3B: Validação de Funções em credito.js
+  // -------------------------------------------------------------
+  console.log('\n--- 3B. Validação de Módulos de Crédito (credito.js) ---');
+  try {
+    const credCode = fs.readFileSync(path.join(jsDir, 'credito.js'), 'utf-8');
+    assert.ok(credCode.includes('function consultarCreditoProtheus'), 'Deve exportar consultarCreditoProtheus');
+    assert.ok(credCode.includes('function parseSerasaPdf'), 'Deve exportar parseSerasaPdf');
+    assert.ok(credCode.includes('function carregarScoreConfig'), 'Deve exportar carregarScoreConfig');
+    assert.ok(credCode.includes('function salvarScoreConfig'), 'Deve exportar salvarScoreConfig');
+    assert.ok(credCode.includes('function salvarAnaliseCredito'), 'Deve exportar salvarAnaliseCredito');
+    assert.ok(credCode.includes('function carregarHistoricoCredito'), 'Deve exportar carregarHistoricoCredito');
+    assert.ok(credCode.includes('/api/financeiro/analise-credito/protheus'), 'Deve apontar para rota /protheus');
+    assert.ok(credCode.includes('serasa_pdf'), 'Deve usar FormData key serasa_pdf');
+    assert.ok(credCode.includes('/api/financeiro/analise-credito/calcular-salvar'), 'Deve apontar para /calcular-salvar');
+    assert.ok(credCode.includes('/api/financeiro/analise-credito/historico'), 'Deve apontar para /historico');
+
+    report('Módulo credito.js exporta funções e contratos alinhados ao backend Express', true);
+  } catch (err) {
+    report('Módulo credito.js exporta funções e contratos alinhados ao backend Express', false, err.message);
+  }
+
+  // -------------------------------------------------------------
   // Teste 4: Validação de Endpoints OpenAPI & Swagger UI
   // -------------------------------------------------------------
   console.log('\n--- 4. Validação da Documentação OpenAPI 3.0 & Swagger UI ---');
@@ -146,6 +168,31 @@ async function runFrontendModulesTests() {
     report('Endpoints /api/openapi.json e /api-docs entregam especificação 3.0.3 e interface Swagger UI', false, err.message);
   } finally {
     server.close();
+  }
+
+  // -------------------------------------------------------------
+  // Teste 5: Validação do Compartilhamento DRY de Saldos em Estoque na Logística
+  // -------------------------------------------------------------
+  console.log('\n--- 5. Validação de Saldos em Estoque na Aba Logística (DRY) ---');
+  try {
+    const htmlPath = path.join(__dirname, 'public', 'index.html');
+    const html = fs.readFileSync(htmlPath, 'utf-8');
+
+    // Verifica sub-aba em Logística
+    assert.ok(html.includes('id="btnTabLogSaldosEstoque"'), 'Deve conter botão #btnTabLogSaldosEstoque em Logística');
+    assert.ok(html.includes('data-tab="tab-vend-saldos-estoque" id="btnTabLogSaldosEstoque"'), 'Sub-aba Logística deve apontar para data-tab="tab-vend-saldos-estoque"');
+
+    // Verifica sub-aba em Vendedores
+    assert.ok(html.includes('id="btnTabVendSaldosEstoque"'), 'Deve conter botão #btnTabVendSaldosEstoque em Vendedores');
+    assert.ok(html.includes('data-tab="tab-vend-saldos-estoque" id="btnTabVendSaldosEstoque"'), 'Sub-aba Vendedores deve apontar para data-tab="tab-vend-saldos-estoque"');
+
+    // Garante que existe apenas UMA definição do painel no DOM (Single Source of Truth / DRY)
+    const matches = (html.match(/id="tab-vend-saldos-estoque"/g) || []).length;
+    assert.strictEqual(matches, 1, `Deve existir exatamente 1 painel id="tab-vend-saldos-estoque" no DOM (encontrado: ${matches})`);
+
+    report('Sub-aba Saldos em Estoque configurada na Logística apontando para o painel unificado (DRY)', true);
+  } catch (err) {
+    report('Sub-aba Saldos em Estoque configurada na Logística apontando para o painel unificado (DRY)', false, err.message);
   }
 
   // -------------------------------------------------------------

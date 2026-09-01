@@ -3008,7 +3008,14 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
 
 // 2. Obter Configurações do Score
 app.get('/api/financeiro/analise-credito/config', (req, res) => {
-  res.json({ success: true, config: getScoreConfig() });
+  const cfg = { ...getScoreConfig() };
+  const user = getUserFromReq(req);
+  if (!user || user.role !== 'admin') {
+    if (cfg.infosimples_token) {
+      cfg.infosimples_token = '••••••••••••••••';
+    }
+  }
+  res.json({ success: true, config: cfg });
 });
 
 // 3. Salvar Configurações do Score

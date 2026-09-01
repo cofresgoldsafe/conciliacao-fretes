@@ -78,6 +78,8 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 * **Sub-aba `[ Ped. Bloq Estoque ]`:**
   * Listagem geral de pedidos de venda retidos no Protheus por pendência física de saldo em estoque (`C9_BLEST = '02'`).
   * Identifica com exatidão os 8 pedidos de OACO 16 (`000723`..`000764`) e 4 pedidos de MP 14, com KPIs, filtros e ordenação bidirecional.
+* **Sub-aba `[ Saldos em Estoque ]` (Unificada / DRY):**
+  * Consulta consolidada de catálogo de Produtos Acabados (`PA`), saldos físicos `SB2` (Metal Pleno 14, GSI 15, OACO 16), compras pendentes `SC7`, vendas em carteira `SC6`, KPIs em tempo real, filtros por grupo comercial e drilldown modal compartilhado com a aba Vendedores (fonte única da verdade).
 * **Sub-aba `[ Upload Fatura Transp. ]`:**
   * Processamento de Faturas Rodonaves (PDF multi-páginas via `parser_rodonaves.py`) e Faturas em CSV/TXT (`parser_tipo2.py`).
   * Batimento automático T-SQL no Protheus somando **Frete Cobrado no Pedido (`C5_FRETE`)** + **Frete Embutido (`C5_VLR_FRT`)**.

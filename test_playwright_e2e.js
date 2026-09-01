@@ -199,6 +199,28 @@ async function runPlaywrightE2ETests() {
     }
 
     // -------------------------------------------------------------
+    // Cenário 5B: Sub-aba Saldos em Estoque na Aba Logística (DRY)
+    // -------------------------------------------------------------
+    console.log('\n--- 5B. Sub-aba Saldos em Estoque na Logística (DRY) ---');
+    try {
+      await page.click('#mainTabLogistica', { force: true });
+      await page.waitForTimeout(300);
+
+      const btnEstoqueLog = await page.waitForSelector('#btnTabLogSaldosEstoque', { state: 'visible', timeout: 5000 });
+      assert.ok(btnEstoqueLog, 'Botão #btnTabLogSaldosEstoque deve existir no grupo de logística');
+      await btnEstoqueLog.click({ force: true });
+      await page.waitForTimeout(400);
+
+      // Valida que o container compartilhado tab-vend-saldos-estoque ficou visível na Logística
+      const paneEstoque = await page.$('#tab-vend-saldos-estoque:not(.hidden)');
+      assert.ok(paneEstoque, 'Painel de estoque deve estar visível e ativo após clique na Logística');
+
+      report('Sub-aba Saldos em Estoque abre painel compartilhado a partir da aba Logística com sucesso', true);
+    } catch (err) {
+      report('Sub-aba Saldos em Estoque abre painel compartilhado a partir da aba Logística com sucesso', false, err.message);
+    }
+
+    // -------------------------------------------------------------
     // Cenário 6: Painel de Análise de Crédito Comercial
     // -------------------------------------------------------------
     console.log('\n--- 6. Painel de Análise de Crédito Comercial ---');

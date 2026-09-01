@@ -267,3 +267,33 @@ WHERE data_registro >= CURRENT_DATE - INTERVAL '30 days'
   AND empresa_cod = 'CONSOLIDADO'
 ORDER BY data_registro ASC;
 ```
+
+---
+
+## 7. Guia de Configuração e Calibração Visual no Metabase (`bi-gsi.onrender.com`)
+
+### 7.1. Fluxo de Publicação no Dashboard Executivo (Static Embedding)
+1. **Salvar a Pergunta:**
+   - Execute a consulta SQL no Metabase e clique no botão **Visualização** > selecione **Linha** (*Line*).
+   - Salve a pergunta com o nome `📈 Evolução dos Índices de Liquidez (LC, LS, LI) — 90 Dias` na pasta *Nossas análises*.
+2. **Inserir no Painel / Dashboard:**
+   - No canto superior direito, clique em `+ Novo` > `Painel` (ou edite o Dashboard existente ID 1).
+   - Adicione o gráfico salvo e ajuste a largura na grade (recomendado: 8 a 12 colunas).
+   - Clique em **Salvar**.
+3. **Habilitar Incorporação Estática (Signed JWT):**
+   - No Dashboard salvo, clique no ícone de Compartilhamento/Incorporação > **Incorporação em outros aplicativos** > **Incorporação estática** (*Static embedding*).
+   - Clique em **Publicar** (*Publish*). O painel é sincronizado automaticamente com o portal via `METABASE_SECRET_KEY`.
+
+### 7.2. Calibração Visual do Gráfico de Linhas (Escala Dinâmica e Precisão)
+Para índices com oscilações sutis (ex: valores entre 0,10 e 0,45):
+* **Intervalo do Eixo Y (Aba 'Eixos'):**
+  - Fixar o valor máximo em `0.50` ou `0.60` (ou utilizar escala compacta), evitando o esmagamento causado pela escala automática padrão (0 a 2,5).
+  - Desmarcar "Sempre incluir o zero" caso deseje zoom exclusivo na faixa de variação diária.
+* **Marcadores de Leitura (Aba 'Exibição'):**
+  - Ativar **"Mostrar marcadores de pontos"** para identificação nítida de cada fechamento diário.
+  - Ativar **"Linha suavizada"** (*Spline*) para visualização fluída.
+* **Precisão Numérica:**
+  - Configurar formatação para **2 ou 3 casas decimais** (`0,28` ou `0,284`), permitindo detectar variações centesimais nos tooltips e no traçado.
+* **Linha de Meta Realista:**
+  - Ajustar a linha horizontal de meta para o teto operacional pretendido (ex: `0.30` ou `0.40`).
+

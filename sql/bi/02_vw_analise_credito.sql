@@ -41,12 +41,26 @@ SELECT
     ach.decisao_final,
     COALESCE(ach.usuario, 'Sistema') AS analista_responsavel,
 
-    -- Informações Enriquecidas extraídas do JSONB
-    COALESCE(ach.dados_completos->'protheus'->>'cnpj', '') AS cnpj_cliente,
-    COALESCE((ach.dados_completos->'serasa'->>'score')::INTEGER, 0) AS score_serasa,
-    COALESCE((ach.dados_completos->'receita'->>'idadeAnos')::NUMERIC, 0) AS idade_empresa_anos,
-    COALESCE(ach.dados_completos->'receita'->>'uf', '') AS uf_cliente,
-    COALESCE(ach.dados_completos->'fgts'->>'situacao', 'N/D') AS situacao_fgts,
+    -- Informações Enriquecidas extraídas do JSONB (suporta formato plano e aninhado)
+    COALESCE(ach.dados_completos->>'cliente_cnpj', ach.dados_completos->>'cnpj', ach.dados_completos->'protheus'->>'cnpj', '') AS cnpj_cliente,
+    COALESCE(
+        CASE 
+            WHEN (ach.dados_completos->>'score_serasa') ~ '^[0-9]+$' THEN (ach.dados_completos->>'score_serasa')::INTEGER
+            WHEN (ach.dados_completos->'serasa'->>'score') ~ '^[0-9]+$' THEN (ach.dados_completos->'serasa'->>'score')::INTEGER
+            ELSE 0 
+        END, 
+        0
+    ) AS score_serasa,
+    COALESCE(
+        CASE 
+            WHEN (ach.dados_completos->>'idade_empresa_anos') ~ '^[0-9.]+$' THEN (ach.dados_completos->>'idade_empresa_anos')::NUMERIC
+            WHEN (ach.dados_completos->'receita'->>'idadeAnos') ~ '^[0-9.]+$' THEN (ach.dados_completos->'receita'->>'idadeAnos')::NUMERIC
+            ELSE 0
+        END,
+        0
+    ) AS idade_empresa_anos,
+    COALESCE(ach.dados_completos->>'uf_cliente', ach.dados_completos->'receita'->>'uf', '') AS uf_cliente,
+    COALESCE(ach.dados_completos->>'fgts_situacao_regular', ach.dados_completos->>'fgts_situacao', ach.dados_completos->'fgts'->>'situacao', 'N/D') AS situacao_fgts,
     
     ach.created_at AS data_hora_registro
 FROM analise_credito_history ach;

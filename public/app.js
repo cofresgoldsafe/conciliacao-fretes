@@ -5255,10 +5255,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const parseMoeda = (valStr) => {
-      if (!valStr) return 0;
+      if (!valStr && valStr !== 0) return 0;
       if (typeof valStr === 'number') return valStr;
-      const limpo = String(valStr).replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
-      return parseFloat(limpo) || 0;
+      let str = String(valStr).trim().replace(/[^0-9.,-]/g, '');
+      if (!str) return 0;
+      if (str.includes(',')) {
+        str = str.replace(/\./g, '').replace(',', '.');
+      } else if ((str.match(/\./g) || []).length > 1) {
+        str = str.replace(/\./g, '');
+      }
+      return parseFloat(str) || 0;
     };
 
     const isSemCap = crSemCapitalSocial ? crSemCapitalSocial.checked : false;

@@ -122,6 +122,19 @@
   }
 
   /**
+   * Função utilitária de sanitização HTML contra DOM XSS
+   */
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /**
    * Renderiza o iframe seguro do Metabase
    */
   function renderBIIframe(embedUrl) {
@@ -139,9 +152,11 @@
       iframe = document.createElement('iframe');
       iframe.setAttribute('id', 'biMetabaseIframe');
       iframe.setAttribute('class', 'bi-metabase-iframe');
+      iframe.setAttribute('title', 'Painel Executivo de BI Metabase');
       iframe.setAttribute('frameborder', '0');
       iframe.setAttribute('allowtransparency', 'true');
       iframe.setAttribute('allow', 'fullscreen');
+      iframe.setAttribute('referrerpolicy', 'no-referrer');
       biIframeContainer.appendChild(iframe);
     }
 
@@ -187,7 +202,7 @@
             <small>Chave secreta de 64 caracteres gerada no painel de administração do Metabase</small>
           </div>
           <div class="bi-status-item status-ok">
-            <span class="status-badge">ℹ️ ID: ${data.setupGuide?.dashboardId || 1}</span>
+            <span class="status-badge">ℹ️ ID: ${escapeHtml(data.setupGuide?.dashboardId || 1)}</span>
             <strong>METABASE_EXEC_DASHBOARD_ID</strong>
             <small>ID numérico do Dashboard Executivo que será embutido (Padrão: 1)</small>
           </div>
@@ -217,7 +232,7 @@
   }
 
   /**
-   * Renderiza mensagem de erro
+   * Renderiza mensagem de erro com sanitização rigorosa contra XSS
    */
   function renderBIError(message) {
     const biIframeContainer = document.getElementById('biIframeContainer');
@@ -235,7 +250,7 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
           <span>Não foi possível carregar o painel executivo</span>
         </div>
-        <p style="color: var(--text-muted, #94a3b8); margin-bottom: 1rem;">${message}</p>
+        <p style="color: var(--text-muted, #94a3b8); margin-bottom: 1rem;">${escapeHtml(message)}</p>
         <button id="btnRetryBiError" class="btn btn-outline btn-sm">
           🔄 Tentar Novamente
         </button>

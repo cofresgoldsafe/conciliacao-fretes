@@ -10,7 +10,15 @@ const jwt = require('jsonwebtoken');
  * Verifica o status de configuração das variáveis do Metabase
  */
 function getMetabaseConfigStatus() {
-  const siteUrl = (process.env.METABASE_SITE_URL || '').trim().replace(/\/+$/, '');
+  let rawUrl = (process.env.METABASE_SITE_URL || '').trim().replace(/\/+$/, '');
+  let siteUrl = null;
+  if (rawUrl) {
+    if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+      siteUrl = `https://${rawUrl}`;
+    } else {
+      siteUrl = rawUrl;
+    }
+  }
   const secretKey = (process.env.METABASE_SECRET_KEY || '').trim();
   const dashboardId = parseInt(process.env.METABASE_EXEC_DASHBOARD_ID || '1', 10);
 

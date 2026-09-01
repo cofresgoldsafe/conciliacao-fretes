@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.105">
+  <link rel="stylesheet" href="style.css?v=8.108">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 31/08/2026 18:30 (v9.05 - Isolamento Estrito de Abas e Link do Pipedrive)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 01/09/2026 11:34 (Disponibilização da sub-aba Saldos em Estoque na Logística (DRY) - 12 Suítes Aprovadas)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -66,7 +66,7 @@
     <!-- 2ª CAMADA DE NAVEGAÇÃO: SUB-ABAS (SUB-NÍVEL) -->
     <nav class="sub-tabs-container" id="subTabsContainer">
       <!-- Sub-abas de Logística -->
-      <div class="sub-tabs-group" id="subGroupLogistica">
+      <div class="sub-tabs-group" id="subGroupLogistica" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
         <button class="nav-tab-btn active" data-tab="tab-pedidos-faturar" id="btnTabPedidosFaturar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Ped. pra Faturar</span>
@@ -78,6 +78,10 @@
         <button class="nav-tab-btn" data-tab="tab-pedidos-bloq-estoque" id="btnTabPedidosBloqEstoque">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
           <span>Ped. Bloq Estoque</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-vend-saldos-estoque" id="btnTabLogSaldosEstoque">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          <span>Saldos em Estoque</span>
         </button>
         <button class="nav-tab-btn" data-tab="tab-upload" id="btnTabUploadTransp">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -3793,8 +3797,8 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.105"></script>
-  <script src="js/bi_indices.js?v=8.105"></script>
-  <script src="app.js?v=8.105"></script>
+  <script src="js/bi.js?v=8.108"></script>
+  <script src="js/bi_indices.js?v=8.108"></script>
+  <script src="app.js?v=8.108"></script>
 </body>
 </html>

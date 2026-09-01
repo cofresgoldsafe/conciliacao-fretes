@@ -122,7 +122,11 @@ function getScoreConfig() {
 
 function saveScoreConfig(cfg) {
   try {
-    const merged = { ...getScoreConfig(), ...cfg };
+    const current = getScoreConfig();
+    const merged = { ...current, ...cfg };
+    if (merged.infosimples_token && typeof merged.infosimples_token === 'string' && merged.infosimples_token.includes('•••')) {
+      merged.infosimples_token = current.infosimples_token || '';
+    }
     safeWriteJsonSync(configFilePath, merged);
     return true;
   } catch (e) {
@@ -407,7 +411,7 @@ function getHistorico() {
 
 function salvarAnalise(registro) {
   try {
-    const list = getHistorico();
+    let list = getHistorico();
     const resultado = calcularScore(registro);
     const itemCompleto = {
       id: String(Date.now()),

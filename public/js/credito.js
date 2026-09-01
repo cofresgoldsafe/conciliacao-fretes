@@ -12,7 +12,14 @@
 import { apiFetch, escapeHtml, formatCurrency, formatDate } from './utils.js';
 
 export async function consultarCreditoProtheus(numPedido, empresaCodigo) {
-  const res = await apiFetch(`/api/financeiro/analise-credito/protheus?pedido=${encodeURIComponent(numPedido)}&empresa=${encodeURIComponent(empresaCodigo)}`);
+  const res = await apiFetch('/api/financeiro/analise-credito/protheus', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      empresa: empresaCodigo,
+      numero_pedido: numPedido
+    })
+  });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || 'Erro ao consultar pedido no Protheus.');
@@ -22,7 +29,7 @@ export async function consultarCreditoProtheus(numPedido, empresaCodigo) {
 
 export async function parseSerasaPdf(file) {
   const formData = new FormData();
-  formData.append('serasaPdf', file);
+  formData.append('serasa_pdf', file);
 
   const res = await apiFetch('/api/financeiro/analise-credito/parse-serasa-pdf', {
     method: 'POST',
@@ -57,7 +64,7 @@ export async function salvarScoreConfig(config) {
 }
 
 export async function salvarAnaliseCredito(dadosAnalise) {
-  const res = await apiFetch('/api/financeiro/analise-credito/save', {
+  const res = await apiFetch('/api/financeiro/analise-credito/calcular-salvar', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(dadosAnalise)
@@ -70,7 +77,7 @@ export async function salvarAnaliseCredito(dadosAnalise) {
 }
 
 export async function carregarHistoricoCredito(limit = 200) {
-  const res = await apiFetch(`/api/financeiro/analise-credito/history?limit=${limit}`);
+  const res = await apiFetch(`/api/financeiro/analise-credito/historico?limit=${limit}`);
   if (!res.ok) {
     throw new Error('Falha ao consultar histórico de crédito.');
   }
