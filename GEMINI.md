@@ -73,7 +73,7 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Filtro Estrito de Produtos PA & Faixa de Códigos:** Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa correspondente aos produtos acabados `PA`), descartando insumos, matérias-primas e serviços (`090...`) tanto na query T-SQL do backend quanto na camada reativa do frontend.
    - **Mapeamento e Identificadores:** Identificador visual `PedCom` com prefixo da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`), data de previsão `C7_DATPRF` formatada e busca de fornecedor via subselect em `SA2010`.
    - **Busca Instantânea & Métricas:** Filtro instantâneo conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa, cards de métricas (**`Ped Compras em Aberto`**, saldo total e previsão mais próxima), ordenação de 4 colunas e 10 testes automatizados.
-11. [x] **Sub-aba Saldos em Estoque no Módulo Vendedores com Filtro por Empresa, Barra em Linha Única, Exportação Completa para Excel e Job Supabase (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_saldos_estoque.js`):**
+11. [x] **Sub-aba Saldos em Estoque no Módulo Vendedores com Filtro por Empresa, Barra em Linha Única, Exportação Completa para Excel e Job Supabase (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_saldos_estoque.js`, `test_frontend_modules.js`):**
    - **Consolidação Multi-Empresa e Catálogo PA:** Leitura combinada de catálogo `SB1` (produtos acabados PA, descartando `XXX`, `X` e tipo diferente de PA), saldos físicos `SB2` (`SB2140` Metal Pleno 14, `SB2150` GSI 15, `SB2160` OACO 16), vendas em carteira não faturadas `SC6` (`SC6140`, `SC6150`, `SC6160`) e compras em aberto `SC7` (`SC7140`, `SC7150`, `SC7160`).
    - **Filtro por Empresa Reativo & KPIs Dedicados:**
      - Dropdown `🏢 Empresa` com opções: *Todas as Empresas*, *Metal Pleno (14)*, *GSI (15)* e *OACO (16)*.
@@ -91,9 +91,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Fallback gracioso para cache local `data/estoque_saldos_cache.json`.
    - **Modal Drilldown Multi-Empresa com 3 Guias:**
      - Clique na linha do produto abre modal com 4 mini KPIs, resumo por filial, compras em aberto (SC7) e vendas em aberto (SC6).
-   - **Segurança RBAC, Auditoria & Testes:**
+   - **Segurança RBAC, Prevenção de Erros de Sintaxe & Testes:**
      - Proteção JWT obrigatória em `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
-     - Suíte automatizada com 9 testes cobrindo cálculos, filtros de filial, exclusão de sucatas/bloqueados, DDL Supabase e geração de CSV para Excel.
+     - Unificação rigorosa de variáveis DOM em `public/app.js` prevenindo colisões de escopo (`SyntaxError: Identifier has already been declared`).
+     - Inclusão do **Teste 6** em `test_frontend_modules.js` validando a integridade léxica/sintática de `public/app.js` via Node.js `vm.Script` em pipeline automatizado.
+     - 12 Suítes automatizadas com 84 testes 100% aprovados.
 12. [x] **Habilitação de Row-Level Security (RLS) no Supabase (`postgres_db.js`):** Ativação de RLS em todas as tabelas públicas (`users`, `history`, `system_configs`, `user_activities`, `user_2fa_tokens`, `inter_webhook_events`, `analise_credito_history`, `produtos_saldo_estoque`, `estoque_sync_logs`), bloqueando acesso anônimo/não autenticado via PostgREST / Supabase REST API direta sem afetar a conexão direta TCP pooler do backend Node.js.
 13. [x] **Autocura e Gestão de Código de Vendedor no Perfil Comercial (`postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendor_autoheal.js`):**
    - **Causa Raiz & Resolução:** Correção do bloqueio 403 (*"Acesso negado: Perfil de vendedor sem código de vendedor associado"*) enfrentado por vendedores ao acessar pedidos de venda abertos.
