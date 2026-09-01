@@ -7663,16 +7663,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Garantir isolamento estrito de abas no startup
+  // Garantir isolamento estrito de abas no startup (mantém visível a aba inicial tab-minhas-tarefas)
   tabPanes.forEach(pane => {
-    if (pane.id !== 'tab-pedidos-faturar') {
+    if (pane.id !== 'tab-minhas-tarefas') {
       pane.classList.add('hidden');
+    } else {
+      pane.classList.remove('hidden');
     }
   });
 
-  // Carregamento inicial de pedidos pra faturar se a aba inicial for tab-pedidos-faturar
-  if (document.getElementById('tab-pedidos-faturar') && !document.getElementById('tab-pedidos-faturar').classList.contains('hidden')) {
-    carregarPedidosFaturar();
+  // Se o usuário estiver autenticado, ativa a central de tarefas
+  if (currentUser && typeof switchMainTab === 'function') {
+    switchMainTab('tarefas');
   }
 
   carregarHistoricoCredito();

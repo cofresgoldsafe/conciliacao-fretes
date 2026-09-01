@@ -1,5 +1,25 @@
 [
   {
+    "id": "ACT-1788286271527",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T18:11:11.527Z"
+  },
+  {
+    "id": "ACT-1788286271487",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-01T18:11:11.487Z"
+  },
+  {
     "id": "ACT-1788286029311",
     "username": "anonimo",
     "userName": "anonimo",
@@ -2371,25 +2391,5 @@
     "ip": "::ffff:127.0.0.1",
     "metadata": {},
     "createdAt": "2026-08-27T12:00:35.241Z"
-  },
-  {
-    "id": "ACT-1787832035137",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "REENVIO_2FA",
-    "description": "Novo código 2FA reenviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T12:00:35.137Z"
-  },
-  {
-    "id": "ACT-1787832034967",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T12:00:34.967Z"
   }
 ]
