@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados & Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login - 13 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 14:45 (v9.14 - Central Minhas Tarefas como 1ª Tela Pós-Login, Gestão e Delegação de Demandas, Auto-criação de Tarefas, Coluna Solicitante, Links Preferidos / Atalhos Rápidos por Usuário, RLS e Fallback JSONB - 13 Suítes Automatizadas, 102 Testes 100% Aprovados)  
+> **Data da Última Auditoria:** 01/09/2026 15:15 (v9.17 - Central Minhas Tarefas como 1ª Tela Pós-Login, Separação dos Blocos Meus Links Úteis e Painel de Tarefas, Centralização de Modais na Viewport, Fix de Startup Isolation no F5, RLS e Fallback JSONB - 13 Suítes Automatizadas, 102 Testes 100% Aprovados)  
 
 ---
 
@@ -416,9 +416,16 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Tentativas de operadores alterarem para status restritos são bloqueadas no backend com **HTTP 403 Forbidden**.
     - **Histórico & Chat de Linha do Tempo (JSONB Atômico):**
       - Cada tarefa possui feed de comentários em tempo real (`autor_username`, `autor_nome`, `mensagem`, `created_at`) persistido nativamente na coluna `comentarios JSONB` da tabela `tarefas` no Supabase (com fallback em `data/tarefas.json`), sanitização contra injeções XSS (`escapeHtml`) e auto-scroll no chat.
+    - **Divisão em Dois Cards Distintos (Links Úteis & Painel de Tarefas):**
+      - **1º Card (Superior):** `⭐ Meus Links Úteis` com botão de inclusão `➕ Adicionar Link` no cabeçalho e grade de atalhos logo abaixo.
+      - **2º Card (Inferior):** `📋 Painel de Tarefas` contendo contadores KPIs, formulário compacto de busca/filtros, tabela paginada e ações.
     - **Barra de Links Preferidos (Atalhos Operacionais do Dia a Dia):**
       - Seção no topo da tela permitindo que cada colaborador cadastre, utilize e remova seus próprios atalhos web diários (*Gmail, Google Drive, Consulta CNPJ Receita Federal, Sintegra, PipeDrive CRM, Protheus, portais bancários*).
       - Persistência na coluna `links_favoritos JSONB` da tabela `users` no Supabase (com fallback em `data/users.json`), inicialização com os 5 atalhos padrão na primeira sessão e abertura segura em nova janela com proteção contra *tabnabbing* (`target="_blank" rel="noopener noreferrer"`).
+    - **Centralização Fixa de Modais na Viewport:**
+      - Modais `#modalNovoLink`, `#modalNovaTarefa` e `#modalTarefaDetalhes` estilizados com a classe nativa `.modal`, garantindo renderização fixa e centralizada sobre a tela (`position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center;`).
+    - **Correção de Isolamento de Abas no Startup (F5/Refresh):**
+      - Ajustada a rotina de encerramento do script `public/app.js` para preservar `tab-minhas-tarefas` como visível e ativa por padrão, eliminando o mascaramento que ocultava o painel durante recarregamentos de página.
     - **Segmented Control & Alternância Rápida de Pauta:**
       - Botões no topo da tabela para troca rápida de contexto com 1 clique: **`⏳ Pauta Ativa`** vs **`✅ Tarefas Concluídas`**.
     - **Suíte de Testes Automatizados (19 Asserções 100% Aprovadas):**
