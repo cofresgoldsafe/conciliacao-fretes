@@ -1819,11 +1819,15 @@ async function saveSaldosEstoqueDB(produtosList = [], metadata = {}) {
 /**
  * Consulta saldos de estoque (PostgreSQL + Fallback JSON Local)
  */
-async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo } = {}) {
+async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo, filtroEmpresa } = {}) {
   const p = getPool();
   const cleanSearch = (search || '').toLowerCase().trim();
   const cleanFiltro = (filtroEstoque || 'todos').toLowerCase().trim();
   const cleanGrupo = (filtroGrupo || 'todos').trim();
+  const cleanEmpresa = (filtroEmpresa || 'todos').toLowerCase().trim();
+  const empCod = (cleanEmpresa === '14' || cleanEmpresa === 'mp') ? '14' :
+                 (cleanEmpresa === '15' || cleanEmpresa === 'gsi') ? '15' :
+                 (cleanEmpresa === '16' || cleanEmpresa === 'oaco') ? '16' : null;
 
   // 1. Tenta buscar no PostgreSQL
   if (p) {
@@ -1836,14 +1840,16 @@ async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo } = {}) {
         whereClauses.push(`(LOWER(codigo) LIKE $${params.length} OR LOWER(descricao) LIKE $${params.length})`);
       }
 
-      if (cleanFiltro === 'positivo') {
-        whereClauses.push('saldo > 0');
-      } else if (cleanFiltro === 'zerado_negativo') {
-        whereClauses.push('saldo <= 0');
-      } else if (cleanFiltro === 'com_vendas') {
-        whereClauses.push('qtd_vendas > 0');
-      } else if (cleanFiltro === 'com_compras') {
-        whereClauses.push('qtd_compras > 0');
+      if (!empCod) {
+        if (cleanFiltro === 'positivo') {
+          whereClauses.push('saldo > 0');
+        } else if (cleanFiltro === 'zerado_negativo') {
+          whereClauses.push('saldo <= 0');
+        } else if (cleanFiltro === 'com_vendas') {
+          whereClauses.push('qtd_vendas > 0');
+        } else if (cleanFiltro === 'com_compras') {
+          whereClauses.push('qtd_compras > 0');
+        }
       }
 
       if (cleanGrupo && cleanGrupo !== 'todos') {
@@ -1862,7 +1868,7 @@ async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo } = {}) {
 
       const res = await safeQuery(sql, params);
       if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+        let produtos = res.rows.map(r => ({
           codigo: r.codigo,
           descricao: r.descricao,
           grupo: r.grupo || '',
@@ -1875,6 +1881,32 @@ async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo } = {}) {
           detalhes_empresas: typeof r.detalhes_empresas === 'string' ? JSON.parse(r.detalhes_empresas) : (r.detalhes_empresas || {}),
           synced_at: r.synced_at ? new Date(r.synced_at).toISOString() : null
         }));
+
+        if (empCod) {
+          if (cleanFiltro === 'positivo') {
+            produtos = produtos.filter(p => {
+              const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+              return emp && Number(emp.saldo || 0) > 0;
+            });
+          } else if (cleanFiltro === 'zerado_negativo') {
+            produtos = produtos.filter(p => {
+              const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+              return !emp || Number(emp.saldo || 0) <= 0;
+            });
+          } else if (cleanFiltro === 'com_vendas') {
+            produtos = produtos.filter(p => {
+              const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+              return emp && Number(emp.vendas || 0) > 0;
+            });
+          } else if (cleanFiltro === 'com_compras') {
+            produtos = produtos.filter(p => {
+              const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+              return emp && Number(emp.compras || 0) > 0;
+            });
+          }
+        }
+
+        return produtos;
       }
     } catch (err) {
       console.warn('⚠️ [Postgres] Erro na query de produtos_saldo_estoque, recorrendo ao cache JSON:', err.message);
@@ -1894,14 +1926,38 @@ async function getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo } = {}) {
         );
       }
 
-      if (cleanFiltro === 'positivo') {
-        produtos = produtos.filter(p => Number(p.saldo || 0) > 0);
-      } else if (cleanFiltro === 'zerado_negativo') {
-        produtos = produtos.filter(p => Number(p.saldo || 0) <= 0);
-      } else if (cleanFiltro === 'com_vendas') {
-        produtos = produtos.filter(p => Number(p.qtd_vendas || 0) > 0);
-      } else if (cleanFiltro === 'com_compras') {
-        produtos = produtos.filter(p => Number(p.qtd_compras || 0) > 0);
+      if (!empCod) {
+        if (cleanFiltro === 'positivo') {
+          produtos = produtos.filter(p => Number(p.saldo || 0) > 0);
+        } else if (cleanFiltro === 'zerado_negativo') {
+          produtos = produtos.filter(p => Number(p.saldo || 0) <= 0);
+        } else if (cleanFiltro === 'com_vendas') {
+          produtos = produtos.filter(p => Number(p.qtd_vendas || 0) > 0);
+        } else if (cleanFiltro === 'com_compras') {
+          produtos = produtos.filter(p => Number(p.qtd_compras || 0) > 0);
+        }
+      } else {
+        if (cleanFiltro === 'positivo') {
+          produtos = produtos.filter(p => {
+            const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+            return emp && Number(emp.saldo || 0) > 0;
+          });
+        } else if (cleanFiltro === 'zerado_negativo') {
+          produtos = produtos.filter(p => {
+            const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+            return !emp || Number(emp.saldo || 0) <= 0;
+          });
+        } else if (cleanFiltro === 'com_vendas') {
+          produtos = produtos.filter(p => {
+            const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+            return emp && Number(emp.vendas || 0) > 0;
+          });
+        } else if (cleanFiltro === 'com_compras') {
+          produtos = produtos.filter(p => {
+            const emp = p.detalhes_empresas && p.detalhes_empresas[empCod];
+            return emp && Number(emp.compras || 0) > 0;
+          });
+        }
       }
 
       if (cleanGrupo && cleanGrupo !== 'todos') {

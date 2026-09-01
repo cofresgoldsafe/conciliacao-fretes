@@ -3399,6 +3399,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleEstoqueTheme = toggleVendedoresTheme;
   const inicializarTemaEstoque = inicializarTemaVendedores;
 
+  const estoqueBuscaInput = document.getElementById('estoqueBuscaInput');
+  const estoqueEmpresaSelect = document.getElementById('estoqueEmpresaSelect');
+  const estoqueGrupoSelect = document.getElementById('estoqueGrupoSelect');
+  const estoqueFiltroSelect = document.getElementById('estoqueFiltroSelect');
+  const btnLimparFiltrosEstoque = document.getElementById('btnLimparFiltrosEstoque');
+  const btnExportEstoqueExcel = document.getElementById('btnExportEstoqueExcel');
+
   const estoqueItensPorPaginaSelect = document.getElementById('estoqueItensPorPaginaSelect');
   const estoquePaginacaoInfo = document.getElementById('estoquePaginacaoInfo');
   const estoquePagNumeros = document.getElementById('estoquePagNumeros');
@@ -3418,11 +3425,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const searchVal = estoqueBuscaInput ? estoqueBuscaInput.value : '';
+      const empresaVal = estoqueEmpresaSelect ? estoqueEmpresaSelect.value : 'todos';
       const filtroVal = estoqueFiltroSelect ? estoqueFiltroSelect.value : 'todos';
       const grupoVal = estoqueGrupoSelect ? estoqueGrupoSelect.value : 'todos';
 
       const queryParams = new URLSearchParams({
         search: searchVal,
+        filtroEmpresa: empresaVal,
         filtroEstoque: filtroVal,
         filtroGrupo: grupoVal
       });
@@ -3475,12 +3484,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('estoqueTableBody');
     if (!tbody) return;
 
+    const empresaVal = estoqueEmpresaSelect ? estoqueEmpresaSelect.value : 'todos';
+    const empCod = (empresaVal === '14' || empresaVal === 'mp') ? '14' :
+                   (empresaVal === '15' || empresaVal === 'gsi') ? '15' :
+                   (empresaVal === '16' || empresaVal === 'oaco') ? '16' : null;
+
     let lista = [...estoqueProdutosData];
 
-    // Ordenação
+    // Ordenação (suportando valores consolidados ou por empresa selecionada)
     lista.sort((a, b) => {
-      let valA = a[estoqueSortColumn];
-      let valB = b[estoqueSortColumn];
+      let valA, valB;
+      if (empCod) {
+        const empA = a.detalhes_empresas && a.detalhes_empresas[empCod];
+        const empB = b.detalhes_empresas && b.detalhes_empresas[empCod];
+        if (estoqueSortColumn === 'saldo') {
+          valA = empA ? Number(empA.saldo || 0) : 0;
+          valB = empB ? Number(empB.saldo || 0) : 0;
+        } else if (estoqueSortColumn === 'saldo_total') {
+          valA = (empA ? Number(empA.saldo || 0) : 0) * Number(a.preco || 0);
+          valB = (empB ? Number(empB.saldo || 0) : 0) * Number(b.preco || 0);
+        } else if (estoqueSortColumn === 'qtd_vendas') {
+          valA = empA ? Number(empA.vendas || 0) : 0;
+          valB = empB ? Number(empB.vendas || 0) : 0;
+        } else if (estoqueSortColumn === 'qtd_compras') {
+          valA = empA ? Number(empA.compras || 0) : 0;
+          valB = empB ? Number(empB.compras || 0) : 0;
+        } else {
+          valA = a[estoqueSortColumn];
+          valB = b[estoqueSortColumn];
+        }
+      } else {
+        valA = a[estoqueSortColumn];
+        valB = b[estoqueSortColumn];
+      }
 
       if (typeof valA === 'string') {
         return estoqueSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
@@ -3518,9 +3554,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupBorder = isLight ? 'rgba(2, 132, 199, 0.25)' : 'rgba(56, 189, 248, 0.25)';
 
     tbody.innerHTML = itensExibidos.map(p => {
+      let saldoNum, saldoTotalNum, vendasNum, comprasNum;
+      if (empCod) {
+        const empObj = p.detalhes_empresas && p.detalhes_empresas[empCod];
+        saldoNum = empObj ? Number(empObj.saldo || 0) : 0;
+        saldoTotalNum = saldoNum * Number(p.preco || 0);
+        vendasNum = empObj ? Number(empObj.vendas || 0) : 0;
+        comprasNum = empObj ? Number(empObj.compras || 0) : 0;
+      } else {
+        saldoNum = Number(p.saldo || 0);
+        saldoTotalNum = Number(p.saldo_total || 0);
+        vendasNum = Number(p.qtd_vendas || 0);
+        comprasNum = Number(p.qtd_compras || 0);
+      }
+
       const precoFmt = Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const saldoTotalFmt = Number(p.saldo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const saldoNum = Number(p.saldo || 0);
+      const saldoTotalFmt = saldoTotalNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const saldoColor = saldoNum > 0 ? (isLight ? '#059669' : '#10b981') : (isLight ? '#dc2626' : '#ef4444');
       const saldoBg = saldoNum > 0 ? (isLight ? 'rgba(5, 150, 105, 0.12)' : 'rgba(16, 185, 129, 0.1)') : (isLight ? 'rgba(220, 38, 38, 0.12)' : 'rgba(239, 68, 68, 0.1)');
 
@@ -3531,6 +3580,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="font-size: 0.78rem; color: ${mutedColor}; margin-top: 2px;">
               Cód: <code>${p.codigo}</code>
               ${p.grupo ? `<span style="display:inline-block; font-size:0.7rem; margin-left:6px; background:${groupBg}; color:${groupColor}; border:1px solid ${groupBorder}; border-radius:4px; padding:0 5px; font-weight:600;">Grupo ${p.grupo}</span>` : ''}
+              ${empCod ? `<span style="display:inline-block; font-size:0.7rem; margin-left:4px; background:rgba(16, 185, 129, 0.12); color:#10b981; border:1px solid rgba(16, 185, 129, 0.25); border-radius:4px; padding:0 5px; font-weight:600;">${empCod === '14' ? 'MP' : empCod === '15' ? 'GSI' : 'OACO'}</span>` : ''}
             </div>
           </td>
           <td style="text-align: right; font-weight: 500; font-family: monospace;">${precoFmt}</td>
@@ -3540,11 +3590,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </span>
           </td>
           <td style="text-align: right; font-weight: 600; color: ${totalColor}; font-family: monospace;">${saldoTotalFmt}</td>
-          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_vendas) > 0 ? vendasActiveColor : mutedColor}; font-family: monospace;">
-            ${Number(p.qtd_vendas || 0) > 0 ? Number(p.qtd_vendas).toLocaleString('pt-BR') : '-'}
+          <td style="text-align: right; font-weight: 600; color: ${vendasNum > 0 ? vendasActiveColor : mutedColor}; font-family: monospace;">
+            ${vendasNum > 0 ? vendasNum.toLocaleString('pt-BR') : '-'}
           </td>
-          <td style="text-align: right; font-weight: 600; color: ${Number(p.qtd_compras) > 0 ? comprasActiveColor : mutedColor}; font-family: monospace;">
-            ${Number(p.qtd_compras || 0) > 0 ? Number(p.qtd_compras).toLocaleString('pt-BR') : '-'}
+          <td style="text-align: right; font-weight: 600; color: ${comprasNum > 0 ? comprasActiveColor : mutedColor}; font-family: monospace;">
+            ${comprasNum > 0 ? comprasNum.toLocaleString('pt-BR') : '-'}
           </td>
           <td style="text-align: right; font-weight: 500; color: ${mutedColor}; font-family: monospace;">
             ${Number(p.ponto_ped || 0) > 0 ? Number(p.ponto_ped).toLocaleString('pt-BR') : '-'}
@@ -3619,26 +3669,113 @@ document.addEventListener('DOMContentLoaded', () => {
           el.textContent = estoqueSortAsc ? '▲' : '▼';
           el.style.color = '#38bdf8';
         } else {
-          el.textContent = '↕';
+          el.textContent = '⇅';
           el.style.color = 'var(--text-muted)';
         }
       }
     });
   }
 
-  function handleEstoqueSortClick(colKey) {
-    if (estoqueSortColumn === colKey) {
+  function handleEstoqueSortClick(columnKey) {
+    if (estoqueSortColumn === columnKey) {
       estoqueSortAsc = !estoqueSortAsc;
     } else {
-      estoqueSortColumn = colKey;
-      estoqueSortAsc = (colKey === 'descricao'); // Texto inicia ASC, numérico inicia DESC
+      estoqueSortColumn = columnKey;
+      estoqueSortAsc = (columnKey === 'descricao') ? true : false;
     }
-    estoquePaginaAtual = 1;
     updateEstoqueSortIcons();
     renderSaldosEstoqueTable();
   }
 
-  // Listeners de ordenação das colunas da tabela
+  // Exportação Completa de Todas as Páginas para Excel (CSV BOM UTF-8)
+  function exportarEstoqueParaExcel() {
+    if (!estoqueProdutosData || estoqueProdutosData.length === 0) {
+      alert('Nenhum produto disponível para exportação.');
+      return;
+    }
+
+    const empresaVal = estoqueEmpresaSelect ? estoqueEmpresaSelect.value : 'todos';
+    const empCod = (empresaVal === '14' || empresaVal === 'mp') ? '14' :
+                   (empresaVal === '15' || empresaVal === 'gsi') ? '15' :
+                   (empresaVal === '16' || empresaVal === 'oaco') ? '16' : null;
+
+    // Obtém a lista completa respeitando a ordenação ativa
+    let listaExport = [...estoqueProdutosData];
+
+    listaExport.sort((a, b) => {
+      let valA, valB;
+      if (empCod) {
+        const empA = a.detalhes_empresas && a.detalhes_empresas[empCod];
+        const empB = b.detalhes_empresas && b.detalhes_empresas[empCod];
+        if (estoqueSortColumn === 'saldo') {
+          valA = empA ? Number(empA.saldo || 0) : 0;
+          valB = empB ? Number(empB.saldo || 0) : 0;
+        } else if (estoqueSortColumn === 'saldo_total') {
+          valA = (empA ? Number(empA.saldo || 0) : 0) * Number(a.preco || 0);
+          valB = (empB ? Number(empB.saldo || 0) : 0) * Number(b.preco || 0);
+        } else if (estoqueSortColumn === 'qtd_vendas') {
+          valA = empA ? Number(empA.vendas || 0) : 0;
+          valB = empB ? Number(empB.vendas || 0) : 0;
+        } else if (estoqueSortColumn === 'qtd_compras') {
+          valA = empA ? Number(empA.compras || 0) : 0;
+          valB = empB ? Number(empB.compras || 0) : 0;
+        } else {
+          valA = a[estoqueSortColumn];
+          valB = b[estoqueSortColumn];
+        }
+      } else {
+        valA = a[estoqueSortColumn];
+        valB = b[estoqueSortColumn];
+      }
+
+      if (typeof valA === 'string') {
+        return estoqueSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+      valA = Number(valA) || 0;
+      valB = Number(valB) || 0;
+      return estoqueSortAsc ? valA - valB : valB - valA;
+    });
+
+    // Cabeçalho CSV formatado para Excel pt-BR (separador ponto-e-vírgula e BOM UTF-8)
+    let csv = '\uFEFF';
+    csv += 'Código;Descrição;Grupo;Preço Unitário (R$);Saldo Total (Físico);Saldo Total (R$);Saldo Metal Pleno (14);Saldo GSI (15);Saldo OACO (16);Qtd Vendas (SC6);Qtd Compras (SC7);Ponto de Pedido\n';
+
+    listaExport.forEach(p => {
+      const cod = String(p.codigo || '').trim();
+      const desc = String(p.descricao || '').replace(/"/g, '""').trim();
+      const grupo = String(p.grupo || '').trim();
+      const preco = Number(p.preco || 0).toFixed(2).replace('.', ',');
+      const saldoTotal = Number(p.saldo || 0);
+      const saldoTotalValor = Number(p.saldo_total || 0).toFixed(2).replace('.', ',');
+
+      const emp14 = (p.detalhes_empresas && p.detalhes_empresas['14']) ? Number(p.detalhes_empresas['14'].saldo || 0) : 0;
+      const emp15 = (p.detalhes_empresas && p.detalhes_empresas['15']) ? Number(p.detalhes_empresas['15'].saldo || 0) : 0;
+      const emp16 = (p.detalhes_empresas && p.detalhes_empresas['16']) ? Number(p.detalhes_empresas['16'].saldo || 0) : 0;
+
+      const vendas = Number(p.qtd_vendas || 0);
+      const compras = Number(p.qtd_compras || 0);
+      const pontoPed = Number(p.ponto_ped || 0);
+
+      csv += `"${cod}";"${desc}";"${grupo}";"${preco}";${saldoTotal};"${saldoTotalValor}";${emp14};${emp15};${emp16};${vendas};${compras};${pontoPed}\n`;
+    });
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const dataHoraStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const empSuffix = empCod ? `_Empresa_${empCod}` : '_Consolidado';
+    const nomeArquivo = `Saldos_Estoque${empSuffix}_${dataHoraStr}.csv`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', nomeArquivo);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }
+
+  // Header click para ordenação na tabela de estoque
   const thDesc = document.getElementById('thEstoqueDescricao');
   const thPrc = document.getElementById('thEstoquePreco');
   const thSld = document.getElementById('thEstoqueSaldo');
@@ -3681,6 +3818,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (estoqueEmpresaSelect) {
+    estoqueEmpresaSelect.addEventListener('change', () => {
+      carregarSaldosEstoque();
+    });
+  }
+
   if (estoqueGrupoSelect) {
     estoqueGrupoSelect.addEventListener('change', () => {
       carregarSaldosEstoque();
@@ -3696,10 +3839,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLimparFiltrosEstoque) {
     btnLimparFiltrosEstoque.addEventListener('click', () => {
       if (estoqueBuscaInput) estoqueBuscaInput.value = '';
+      if (estoqueEmpresaSelect) estoqueEmpresaSelect.value = 'todos';
       if (estoqueGrupoSelect) estoqueGrupoSelect.value = 'todos';
       if (estoqueFiltroSelect) estoqueFiltroSelect.value = 'todos';
       carregarSaldosEstoque();
     });
+  }
+
+  if (btnExportEstoqueExcel) {
+    btnExportEstoqueExcel.addEventListener('click', exportarEstoqueParaExcel);
   }
 
   // Disparo manual de sincronização

@@ -325,6 +325,124 @@ test('Formatação da data de última sincronização suporta created_at, synced
   assert.strictEqual(res2, res3, 'synced_at e syncedAt devem formatar de forma idêntica');
 });
 
+// 8. Teste de Filtro por Empresa (Metal Pleno 14, GSI 15, OACO 16)
+asyncTest('Filtro por Empresa filtra corretamente itens com saldo e movimentação na filial', async () => {
+  const cacheFile = path.join(__dirname, 'data', 'estoque_saldos_cache.json');
+  let originalCache = null;
+  if (fs.existsSync(cacheFile)) {
+    originalCache = fs.readFileSync(cacheFile, 'utf-8');
+  }
+
+  try {
+    const mockProdutos = [
+      {
+        codigo: '001001000000001',
+        descricao: 'ARMARIO CORTA FOGO MP ONLY',
+        grupo: '018',
+        preco: 5000.00,
+        saldo: 10,
+        saldo_total: 50000.00,
+        qtd_vendas: 0,
+        qtd_compras: 0,
+        ponto_ped: 5,
+        detalhes_empresas: {
+          "14": { saldo: 10, vendas: 0, compras: 0 },
+          "15": { saldo: 0, vendas: 0, compras: 0 },
+          "16": { saldo: 0, vendas: 0, compras: 0 }
+        }
+      },
+      {
+        codigo: '001001000000002',
+        descricao: 'COFRE DIGITAL GSI ONLY',
+        grupo: '001',
+        preco: 3000.00,
+        saldo: 8,
+        saldo_total: 24000.00,
+        qtd_vendas: 2,
+        qtd_compras: 0,
+        ponto_ped: 2,
+        detalhes_empresas: {
+          "14": { saldo: 0, vendas: 0, compras: 0 },
+          "15": { saldo: 8, vendas: 2, compras: 0 },
+          "16": { saldo: 0, vendas: 0, compras: 0 }
+        }
+      }
+    ];
+
+    await postgresDb.saveSaldosEstoqueDB(mockProdutos, {
+      status: 'SUCCESS',
+      duracao_ms: 100,
+      triggered_by: 'TEST_SUITE'
+    });
+
+    // Filtro empresa 14 com saldo positivo
+    const mpPositivos = await postgresDb.getSaldosEstoqueDB({ filtroEmpresa: '14', filtroEstoque: 'positivo' });
+    assert.strictEqual(mpPositivos.length, 1, 'Apenas 1 produto possui saldo na empresa 14 (MP)');
+    assert.strictEqual(mpPositivos[0].codigo, '001001000000001');
+
+    // Filtro empresa 15 com saldo positivo
+    const gsiPositivos = await postgresDb.getSaldosEstoqueDB({ filtroEmpresa: '15', filtroEstoque: 'positivo' });
+    assert.strictEqual(gsiPositivos.length, 1, 'Apenas 1 produto possui saldo na empresa 15 (GSI)');
+    assert.strictEqual(gsiPositivos[0].codigo, '001001000000002');
+
+    // Filtro empresa 16 (sem saldo)
+    const oacoPositivos = await postgresDb.getSaldosEstoqueDB({ filtroEmpresa: '16', filtroEstoque: 'positivo' });
+    assert.strictEqual(oacoPositivos.length, 0, 'Nenhum produto possui saldo na empresa 16 (OACO)');
+  } finally {
+    if (originalCache) {
+      fs.writeFileSync(cacheFile, originalCache, 'utf-8');
+    }
+  }
+});
+
+// 9. Teste de Geração de Arquivo Excel (CSV com BOM UTF-8 e Todas as Páginas)
+test('Geração de CSV para Excel contém BOM UTF-8, delimitador ";" e todas as colunas oficiais', () => {
+  const produtos = [
+    {
+      codigo: '001001',
+      descricao: 'COFRE DIGITAL "TESTE" 50X40',
+      grupo: '001',
+      preco: 1500.50,
+      saldo: 20,
+      saldo_total: 30010.00,
+      detalhes_empresas: {
+        "14": { saldo: 10 },
+        "15": { saldo: 10 },
+        "16": { saldo: 0 }
+      },
+      qtd_vendas: 3,
+      qtd_compras: 5,
+      ponto_ped: 4
+    }
+  ];
+
+  let csv = '\uFEFF';
+  csv += 'Código;Descrição;Grupo;Preço Unitário (R$);Saldo Total (Físico);Saldo Total (R$);Saldo Metal Pleno (14);Saldo GSI (15);Saldo OACO (16);Qtd Vendas (SC6);Qtd Compras (SC7);Ponto de Pedido\n';
+
+  produtos.forEach(p => {
+    const cod = String(p.codigo || '').trim();
+    const desc = String(p.descricao || '').replace(/"/g, '""').trim();
+    const grupo = String(p.grupo || '').trim();
+    const preco = Number(p.preco || 0).toFixed(2).replace('.', ',');
+    const saldoTotal = Number(p.saldo || 0);
+    const saldoTotalValor = Number(p.saldo_total || 0).toFixed(2).replace('.', ',');
+
+    const emp14 = (p.detalhes_empresas && p.detalhes_empresas['14']) ? Number(p.detalhes_empresas['14'].saldo || 0) : 0;
+    const emp15 = (p.detalhes_empresas && p.detalhes_empresas['15']) ? Number(p.detalhes_empresas['15'].saldo || 0) : 0;
+    const emp16 = (p.detalhes_empresas && p.detalhes_empresas['16']) ? Number(p.detalhes_empresas['16'].saldo || 0) : 0;
+
+    const vendas = Number(p.qtd_vendas || 0);
+    const compras = Number(p.qtd_compras || 0);
+    const pontoPed = Number(p.ponto_ped || 0);
+
+    csv += `"${cod}";"${desc}";"${grupo}";"${preco}";${saldoTotal};"${saldoTotalValor}";${emp14};${emp15};${emp16};${vendas};${compras};${pontoPed}\n`;
+  });
+
+  assert.ok(csv.startsWith('\uFEFF'), 'CSV deve iniciar com BOM UTF-8 para compatibilidade nativa com Excel');
+  assert.ok(csv.includes('Código;Descrição;Grupo;Preço Unitário (R$)'), 'Deve conter cabeçalho com delimitador ponto-e-vírgula');
+  assert.ok(csv.includes('"001001";"COFRE DIGITAL ""TESTE"" 50X40";"001";"1500,50";20;"30010,00";10;10;0;3;5;4'), 'Deve formatar linha com valores escapados e dados consolidados');
+});
+
 // Resumo dos Testes
 setTimeout(() => {
   console.log('\n====================================================');

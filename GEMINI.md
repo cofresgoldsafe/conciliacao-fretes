@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo e Análise de Crédito Homologados em Produção & 12 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 12:08 (v9.12 - Correção da Normalização de Metadados e Persistência de Logs de Sincronização de Saldos em Estoque no PostgreSQL / Supabase, Resiliência de Timestamps e Job Agendado a Cada 60 Min - 12 Suítes Automatizadas, 81 Testes 100% Aprovados)  
+> **Data da Última Auditoria:** 01/09/2026 12:28 (v9.13 - Filtro por Empresa [MP, GSI, OACO], Reorganização da Barra de Filtros em Linha Única Compacta e Botão de Exportação Completa de Todas as Páginas para Excel [CSV BOM UTF-8] na tela Saldos em Estoque - 12 Suítes Automatizadas, 83 Testes 100% Aprovados)  
 
 ---
 
@@ -73,44 +73,27 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Filtro Estrito de Produtos PA & Faixa de Códigos:** Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa correspondente aos produtos acabados `PA`), descartando insumos, matérias-primas e serviços (`090...`) tanto na query T-SQL do backend quanto na camada reativa do frontend.
    - **Mapeamento e Identificadores:** Identificador visual `PedCom` com prefixo da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`), data de previsão `C7_DATPRF` formatada e busca de fornecedor via subselect em `SA2010`.
    - **Busca Instantânea & Métricas:** Filtro instantâneo conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa, cards de métricas (**`Ped Compras em Aberto`**, saldo total e previsão mais próxima), ordenação de 4 colunas e 10 testes automatizados.
-11. [x] **Sub-aba Saldos em Estoque no Módulo Vendedores com Job Supabase & Visual Power BI (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_saldos_estoque.js`):**
+11. [x] **Sub-aba Saldos em Estoque no Módulo Vendedores com Filtro por Empresa, Barra em Linha Única, Exportação Completa para Excel e Job Supabase (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_saldos_estoque.js`):**
    - **Consolidação Multi-Empresa e Catálogo PA:** Leitura combinada de catálogo `SB1` (produtos acabados PA, descartando `XXX`, `X` e tipo diferente de PA), saldos físicos `SB2` (`SB2140` Metal Pleno 14, `SB2150` GSI 15, `SB2160` OACO 16), vendas em carteira não faturadas `SC6` (`SC6140`, `SC6150`, `SC6160`) e compras em aberto `SC7` (`SC7140`, `SC7150`, `SC7160`).
-   - **Cálculo Matemático e Fórmulas:** Cálculo em tempo real de `SALDO_TOTAL = (SALDO * PREÇO)` com arredondamento monetário e agregação por empresa.
+   - **Filtro por Empresa Reativo & KPIs Dedicados:**
+     - Dropdown `🏢 Empresa` com opções: *Todas as Empresas*, *Metal Pleno (14)*, *GSI (15)* e *OACO (16)*.
+     - Ao selecionar uma empresa específica, a tabela, a ordenação e os 3 KPIs do topo (*Itens em Estoque*, *Itens sem Estoque*, *Valor Total em Estoque*) recalculam instantaneamente com base nos números específicos da filial (`detalhes_empresas`).
+   - **Barra de Filtros Compacta em Linha Única:**
+     - Layout em Grid responsivo com 6 elementos alinhados horizontalmente: `🔍 Buscar Produto`, `🏢 Empresa`, `🏷️ Grupo`, `📊 Disponibilidade`, `🧹 Limpar` e `📥 Exp. Excel`.
+     - Ajuste das larguras mínimas dos seletores para encaixe perfeito em 1 linha sem quebra indesejada.
+   - **Exportação Completa para Excel (`📥 Exp. Excel`):**
+     - Exportação da **totalidade dos produtos filtrados em todas as páginas** (não apenas a página atual).
+     - Formatação universal CSV com BOM UTF-8 (`\uFEFF`) e delimitador ponto-e-vírgula (`;`), abrindo diretamente no Microsoft Excel com acentuação e números corretos.
+     - 12 Colunas Oficiais: *Código, Descrição, Grupo, Preço Unitário (R$), Saldo Total (Físico), Saldo Total (R$), Saldo Metal Pleno (14), Saldo GSI (15), Saldo OACO (16), Qtd Vendas (SC6), Qtd Compras (SC7), Ponto de Pedido*.
    - **Job de Background & Sincronização Agendada (Supabase + Fallback JSON):**
-     - Rotina de execução periódica (cron/timer a cada 60 min no horário comercial: segunda a sexta, 07h às 19h horário de Brasília - `America/Sao_Paulo`).
-     - Carga inicial inteligente no startup (`JOB_STARTUP`) se a base/cache estiver vazia ou com dados desatualizados (> 12 horas).
-     - **Correção da Persistência de Logs no Supabase / PostgreSQL (`estoque_sync_logs`):** Normalização completa de metadados (`status`, `total_produtos`, `total_saldo_positivo`, `total_valor_estoque`, `duracao_ms`, `triggered_by`, `error_message`, `synced_at`, `created_at`), eliminando violações da constraint `status NOT NULL` que causavam rollback nas gravações e mantinham a data de sincronização congelada em 27/08.
-     - Persistência na tabela relacional PostgreSQL / Supabase `produtos_saldo_estoque` e logs de auditoria `estoque_sync_logs` com duração em ms e gatilho (`JOB_AUTO`, `JOB_STARTUP`, `MANUAL`).
-     - Fallback gracioso automático para cache JSON em disco (`data/estoque_saldos_cache.json`) com normalização de timestamps (`synced_at`, `syncedAt`, `created_at`).
-   - **Visual Power BI, Experiência do Usuário (UX) & Paginação:**
-     - 3 Cards KPIs principais no topo: *Itens em Estoque (Saldo > 0)*, *Itens sem Estoque (Saldo = 0)* e *Valor Total em Estoque (R$)* calculados sobre a totalidade da base comercial.
-     - Tabela responsiva com 7 colunas (`DESCRIÇÃO`, `PREÇO`, `SALDO`, `SALDO_TOTAL`, `C6 QTD VENDAS`, `QTD COMPRAS`, `PONTO PED`).
-     - Ordenação interativa bidirecional em todas as colunas com formatação numérica e monetária BRL.
-     - **Filtros Comerciais Estritos:**
-       - Catálogo Protheus restrito exclusivamente a Produtos Acabados (`B1_TIPO = 'PA'`), descartando códigos com `X` ou descrições com `XXX`.
-       - Exclusão de itens bloqueados no ERP Protheus (`B1_MSBLQL <> '1'`).
-       - Escopo estrito dos 4 Grupos Comerciais Oficiais: **Grupo 001 - Cofres**, **Grupo 002 - Fragmentadoras**, **Grupo 010 - Plastificação** e **Grupo 018 - Armários & Carrinhos** (eliminando grupos de TI como `017` e o grupo `020`).
-     - **Barra de Filtros Compacta e Reativa:**
-       - Campo de busca instantânea textual por código ou descrição com layout compacto (34px de altura).
-       - Select dropdown dedicado por **Grupo do Produto** (*Todos os Grupos Comerciais, 001, 002, 010, 018*).
-       - Select por **Disponibilidade** (*Todos, Somente com Saldo, Somente sem Estoque, Com Vendas SC6, Com Compras SC7*).
-       - Botão **🧹 Limpar** para reset simultâneo de todos os critérios de busca.
-     - **Paginação Dinâmica Inteligente:**
-       - Resumo visual no rodapé: `Exibindo X a Y de Z produtos`.
-       - Seletor de itens por página configurável (**50 por página** como padrão, com opções para **25**, **100** e **Todos**).
-       - Botões de navegação rápida (`« Primeira`, `‹ Anterior`, `Próxima ›`, `Última »`) e botões numéricos com destaque visual na página ativa.
-       - A paginação atua no client-side garantindo que ordenação e busca reflitam instantaneamente nos 368 produtos ativos sem requisições desnecessárias.
-     - Badge de status da sincronização com indicador verde/amarelo, timestamp da última execução e botão de disparo manual com Cooldown de 2 minutos (`429 Too Many Requests`).
+     - Rotina periódica a cada 60 min no horário comercial de Brasília (07h às 19h).
+     - Persistência e normalização de metadados na tabela relacional `produtos_saldo_estoque` e `estoque_sync_logs` com status, duração e contadores.
+     - Fallback gracioso para cache local `data/estoque_saldos_cache.json`.
    - **Modal Drilldown Multi-Empresa com 3 Guias:**
-     - Clique na linha do produto abre modal com 4 mini KPIs (*Preço Unitário, Saldo Físico Total, Valor em Estoque, Ponto de Pedido*).
-     - Subtítulo com identificação clara: `Código Protheus: XXXXX | Grupo: XXX`.
-     - Guia 1: *Resumo por Empresa* (saldos, vendas e compras discriminados por Metal Pleno 14, GSI 15 e OACO 16).
-     - Guia 2: *Compras em Aberto (SC7)* (pedido com sigla, fornecedor, quantidade comprada, entregue, saldo pendente e data de previsão).
-     - Guia 3: *Vendas em Aberto (SC6)* (pedido, CodWeb, cliente, vendedor, quantidade pedida e previsão).
+     - Clique na linha do produto abre modal com 4 mini KPIs, resumo por filial, compras em aberto (SC7) e vendas em aberto (SC6).
    - **Segurança RBAC, Auditoria & Testes:**
-     - Proteção JWT obrigatória nos endpoints `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
-     - Registro de auditoria em `user_activities` para ações de consulta (`CONSULTA_SALDOS_ESTOQUE`) e sincronização manual (`SYNC_SALDOS_ESTOQUE`).
-     - Cobertura por suíte automatizada em `test_saldos_estoque.js` validando fórmulas matemáticas, filtros de PA, bloqueios `MSBLQL`, grupos comerciais, gravação/leitura no Postgres/JSON e segurança de rotas HTTP com isolamento de testes e restauração de cache.
+     - Proteção JWT obrigatória em `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
+     - Suíte automatizada com 9 testes cobrindo cálculos, filtros de filial, exclusão de sucatas/bloqueados, DDL Supabase e geração de CSV para Excel.
 12. [x] **Habilitação de Row-Level Security (RLS) no Supabase (`postgres_db.js`):** Ativação de RLS em todas as tabelas públicas (`users`, `history`, `system_configs`, `user_activities`, `user_2fa_tokens`, `inter_webhook_events`, `analise_credito_history`, `produtos_saldo_estoque`, `estoque_sync_logs`), bloqueando acesso anônimo/não autenticado via PostgREST / Supabase REST API direta sem afetar a conexão direta TCP pooler do backend Node.js.
 13. [x] **Autocura e Gestão de Código de Vendedor no Perfil Comercial (`postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendor_autoheal.js`):**
    - **Causa Raiz & Resolução:** Correção do bloqueio 403 (*"Acesso negado: Perfil de vendedor sem código de vendedor associado"*) enfrentado por vendedores ao acessar pedidos de venda abertos.

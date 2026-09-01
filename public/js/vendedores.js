@@ -78,6 +78,7 @@ export async function carregarSaldosEstoque(params = {}) {
   if (params.busca) qs.set('busca', params.busca);
   if (params.grupo && params.grupo !== 'todos') qs.set('grupo', params.grupo);
   if (params.filtroEstoque && params.filtroEstoque !== 'todos') qs.set('filtroEstoque', params.filtroEstoque);
+  if (params.filtroEmpresa && params.filtroEmpresa !== 'todos') qs.set('filtroEmpresa', params.filtroEmpresa);
 
   const res = await apiFetch(`/api/vendedores/estoque/saldos?${qs.toString()}`);
   if (!res.ok) {

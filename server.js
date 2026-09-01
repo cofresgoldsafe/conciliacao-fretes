@@ -1048,26 +1048,48 @@ const ESTOQUE_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
 // API: Vendedores - Listar Saldos em Estoque e KPIs Consolidados
 app.get('/api/vendedores/estoque/saldos', requireAuth, async (req, res) => {
   try {
-    const { search, filtroEstoque, filtroGrupo } = req.query || {};
+    const { search, filtroEstoque, filtroGrupo, filtroEmpresa } = req.query || {};
     const user = getUserFromReq(req);
 
-    const produtos = await getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo });
-    const todosProdutos = await getSaldosEstoqueDB({ filtroEstoque: 'todos', filtroGrupo: 'todos' });
+    const produtos = await getSaldosEstoqueDB({ search, filtroEstoque, filtroGrupo, filtroEmpresa });
+    const todosProdutos = await getSaldosEstoqueDB({ filtroEstoque: 'todos', filtroGrupo: 'todos', filtroEmpresa });
     const ultimoSync = await getUltimoSyncEstoqueLog();
 
-    // Cálculos de KPIs consolidados globais (independente do filtro selecionado na tabela)
+    // Cálculos de KPIs consolidados (respeitando filtroEmpresa se selecionado)
     const baseKpi = todosProdutos && todosProdutos.length > 0 ? todosProdutos : produtos;
-    const totalItensEstoque = baseKpi.filter(p => Number(p.saldo || 0) > 0).length;
-    const totalItensSemEstoque = baseKpi.filter(p => Number(p.saldo || 0) <= 0).length;
-    const totalValorEstoque = baseKpi.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
+    const cleanEmp = (filtroEmpresa || 'todos').toLowerCase().trim();
+    const empCod = (cleanEmp === '14' || cleanEmp === 'mp') ? '14' :
+                   (cleanEmp === '15' || cleanEmp === 'gsi') ? '15' :
+                   (cleanEmp === '16' || cleanEmp === 'oaco') ? '16' : null;
+
+    let totalItensEstoque, totalItensSemEstoque, totalValorEstoque;
+    if (empCod) {
+      totalItensEstoque = baseKpi.filter(p => {
+        const empData = p.detalhes_empresas && p.detalhes_empresas[empCod];
+        return empData && Number(empData.saldo || 0) > 0;
+      }).length;
+      totalItensSemEstoque = baseKpi.filter(p => {
+        const empData = p.detalhes_empresas && p.detalhes_empresas[empCod];
+        return !empData || Number(empData.saldo || 0) <= 0;
+      }).length;
+      totalValorEstoque = baseKpi.reduce((acc, p) => {
+        const empData = p.detalhes_empresas && p.detalhes_empresas[empCod];
+        const s = empData ? Number(empData.saldo || 0) : 0;
+        return acc + (s * Number(p.preco || 0));
+      }, 0);
+    } else {
+      totalItensEstoque = baseKpi.filter(p => Number(p.saldo || 0) > 0).length;
+      totalItensSemEstoque = baseKpi.filter(p => Number(p.saldo || 0) <= 0).length;
+      totalValorEstoque = baseKpi.reduce((acc, p) => acc + Number(p.saldo_total || 0), 0);
+    }
 
     logUserActivity({
       username: user.username,
       userName: user.name,
       actionType: 'CONSULTA_SALDOS_ESTOQUE',
-      description: `Consultou saldos em estoque (${produtos.length} produtos carregados)`,
+      description: `Consultou saldos em estoque (${produtos.length} produtos carregados${empCod ? ` - Empresa ${empCod}` : ''})`,
       ip: req.ip,
-      metadata: { search, filtroEstoque, filtroGrupo, count: produtos.length }
+      metadata: { search, filtroEstoque, filtroGrupo, filtroEmpresa, count: produtos.length }
     }).catch(() => {});
 
     res.json({
