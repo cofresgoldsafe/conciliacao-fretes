@@ -3321,9 +3321,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let estoqueItensPorPagina = 50;
 
   const estoqueBuscaInput = document.getElementById('estoqueBuscaInput');
+  const estoqueEmpresaSelect = document.getElementById('estoqueEmpresaSelect');
   const estoqueGrupoSelect = document.getElementById('estoqueGrupoSelect');
   const estoqueFiltroSelect = document.getElementById('estoqueFiltroSelect');
   const btnLimparFiltrosEstoque = document.getElementById('btnLimparFiltrosEstoque');
+  const btnExportEstoqueExcel = document.getElementById('btnExportEstoqueExcel');
   const btnSyncEstoqueManual = document.getElementById('btnSyncEstoqueManual');
   const btnToggleThemeEstoque = document.getElementById('btnToggleThemeEstoque');
   const themeIconEstoque = document.getElementById('themeIconEstoque');
@@ -3398,13 +3400,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const aplicarTemaEstoque = aplicarTemaVendedores;
   const toggleEstoqueTheme = toggleVendedoresTheme;
   const inicializarTemaEstoque = inicializarTemaVendedores;
-
-  const estoqueBuscaInput = document.getElementById('estoqueBuscaInput');
-  const estoqueEmpresaSelect = document.getElementById('estoqueEmpresaSelect');
-  const estoqueGrupoSelect = document.getElementById('estoqueGrupoSelect');
-  const estoqueFiltroSelect = document.getElementById('estoqueFiltroSelect');
-  const btnLimparFiltrosEstoque = document.getElementById('btnLimparFiltrosEstoque');
-  const btnExportEstoqueExcel = document.getElementById('btnExportEstoqueExcel');
 
   const estoqueItensPorPaginaSelect = document.getElementById('estoqueItensPorPaginaSelect');
   const estoquePaginacaoInfo = document.getElementById('estoquePaginacaoInfo');

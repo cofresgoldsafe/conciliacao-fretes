@@ -196,6 +196,24 @@ async function runFrontendModulesTests() {
   }
 
   // -------------------------------------------------------------
+  // Teste 6: Validação de Sintaxe Rigorosa de public/app.js (Sem Conflitos de Variáveis)
+  // -------------------------------------------------------------
+  console.log('\n--- 6. Validação de Sintaxe Rigorosa (public/app.js) ---');
+  try {
+    const vm = require('vm');
+    const appJsPath = path.join(__dirname, 'public', 'app.js');
+    assert.ok(fs.existsSync(appJsPath), 'public/app.js deve existir');
+    const appJsCode = fs.readFileSync(appJsPath, 'utf-8');
+
+    // Executa análise léxica e sintática completa
+    new vm.Script(appJsCode, { filename: 'public/app.js' });
+
+    report('public/app.js compilado sem erros sintáticos ou redeclaração de variáveis', true);
+  } catch (err) {
+    report('public/app.js compilado sem erros sintáticos ou redeclaração de variáveis', false, err.message);
+  }
+
+  // -------------------------------------------------------------
   // Resumo Final
   // -------------------------------------------------------------
   console.log('\n=============================================================');
