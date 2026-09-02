@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login com Seleção de Responsáveis via /api/auth/users, Prioridades Normal/Alta/Urgente, Nova Sub-Aba "Ped Compras Aberto" na Aba COMPRAS e 16 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 09:11 (v8.125 - Correção da Seleção de Responsáveis via GET /api/auth/users, Unificação das Prioridades [Normal default, Alta, Urgente] e Suíte de Testes 100% Aprovada)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login com Seleção de Responsáveis via /api/auth/users, Prioridades Normal/Alta/Urgente e 17 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 12:10 (v8.126 - Sub-Aba Autorizações de Desconto no BI Executivo Integrada com Pipedrive e Protheus, Fórmulas Oficiais de Margem, Gravação de Notas Auditáveis, Tabela Postgres/Supabase e Testes Automatizados 100% Aprovados)  
 
 ---
 
@@ -519,6 +519,30 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Filtros reativos por Empresa, Busca Textual (pedido, fornecedor, código, produto) e Status do Prazo (Todos, Atrasados, Vence Hoje, No Prazo).
       - Sincronização total com o seletor de Modo Claro/Modo Escuro (`modal-theme-light` e `tab-theme-light`).
     - **Suíte de Testes Automatizados:** Script `test_pedidos_compras_abertos.js` com 10 asserções cobrindo cenários abertos/encerrados validados com os exemplos da OACO 16 (`000263`, `000264`, `000265`, `000255`, `000258` vs `000256`, `000260`, `000181`, `000108`), cálculo determinístico de dias de atraso, proteção RBAC / JWT nos endpoints HTTP e integridade sintática (100% de aprovação).
+44. [x] **Sub-aba "Autorizações" (Desconto & Análise de Margem Pipedrive <-> Protheus ERP) na Aba 📊 BI EXECUTIVO (`bi_autorizacoes_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_autorizacoes.js`, `test_bi_autorizacoes.js`):**
+    - **Navegação & Nova Sub-aba no BI Executivo:**
+      - Criação da sub-aba `🎯 Autorizações de Desconto` (`#tab-bi-autorizacoes` / `#btnTabBiAutorizacoes`) ao lado de `📊 Índices Financeiros` e `📈 Metabase Analytics` no grupo `#subGroupBi`.
+    - **Integração Completa Pipedrive CRM <-> Protheus ERP (SB1090 / SA1010):**
+      - Extração inteligente de Deal ID a partir de URLs completas (`/deal/25238`), IDs numéricos ou textos com suporte a query params e hashes.
+      - Extração e limpeza do código Protheus (`XX-YYYY...` ➔ `YYYY...`) com consulta direta no cadastro mestre `SB1090` (Filial 09) para obtenção do custo real (`B1_VLUNIT`) e preço de tabela oficial (`B1_PRV1`).
+      - Resolução textual automática da forma de pagamento (`bdbc4635...` ➔ label como `015-APPMAX` ou `074-1X DEPTEDDOC 10D`) com cache de 10 minutos.
+      - Identificação de clientes Revenda (`SA1010.A1_SATIV1 LIKE '%000085%'`) com isenção do alerta de desconto excessivo.
+    - **Fórmulas Matemáticas Oficiais e Regra Estrita do Frete Embutido:**
+      - $\text{Valor Líquido} = \text{Valor Vendido} - \text{Frete Embutido}$
+      - $\text{Desconto \%} = \frac{\text{Preço de Tabela Total} - \text{Valor Líquido}}{\text{Preço de Tabela Total}} \times 100$
+      - $\text{Lucro Bruto} = \text{Valor Vendido} - \text{Custo Total} - \text{Frete Embutido}$
+      - $\text{Margem \%} = \frac{\text{Lucro Bruto}}{\text{Valor Vendido}} \times 100$
+      - O frete embutido pago pela empresa (`cd279b00...` / `C5_VLR_FRT`) é **sempre subtraído** do valor vendido, nunca somado.
+    - **Painel Visual de Decisão & Gravação Auditável no Pipedrive:**
+      - Modal rico `#modalBiAutorizacaoDetalhes` com 3 cards de KPIs (Venda, Desconto, Margem), dados comerciais, tabela de itens cruzando Protheus x Deal e dois botões oficiais: `✅ AUTORIZADO` e `❌ NÃO AUTORIZADO`.
+      - Ao decidir, grava automaticamente uma nota oficial fixada no Deal (`pinned_to_deal_flag="1"`):
+        - Autorizado: `Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (ok autorizado)`
+        - Não Autorizado: `Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (NAO AUTORIZADO)`
+    - **Persistência Relacional com Paginação Compulsória (50 em 50) no Supabase:**
+      - Tabela `bi_autorizacoes_desconto` com índices em `deal_id`, `status` e `created_at DESC`, RLS ativo e fallback resiliente em `data/bi_autorizacoes_cache.json`.
+      - Envelope de paginação padronizado `{ items, pagination: { page, limit: 50, total, totalPages, hasNext, hasPrev } }` com filtros reativos por status e busca debounceada.
+    - **Suíte de Testes Automatizados (17 Asserções 100% Aprovadas):**
+      - Script `test_bi_autorizacoes.js` validando todos os casos de referência do manual (Deals 19039, 24827 e 23193), extração de URLs com query params e hashes, regras de frete, formatação de notas, DDL/DB, paginação e compilação `vm.Script`.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

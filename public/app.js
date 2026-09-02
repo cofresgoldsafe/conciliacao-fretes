@@ -769,6 +769,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.initBITab();
         }
       }
+      if (targetTab === 'tab-bi-autorizacoes') {
+        if (typeof window.initBIAutorizacoesTab === 'function') {
+          window.initBIAutorizacoesTab();
+        }
+      }
       if (targetTab === 'tab-config-logs') {
         loadAuditDashboard();
       }

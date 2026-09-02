@@ -38,6 +38,7 @@ const historyFile = path.join(dataDir, 'history.json');
 const estoqueCacheFile = path.join(dataDir, 'estoque_saldos_cache.json');
 const faturamentoCacheFile = path.join(dataDir, 'faturamento_historico_cache.json');
 const tarefasFile = path.join(dataDir, 'tarefas.json');
+const biAutorizacoesCacheFile = path.join(dataDir, 'bi_autorizacoes_cache.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -762,6 +763,34 @@ async function initPostgres() {
           FROM indices_liquidez_historico
         ) sub
         WHERE rn = 1;
+
+        -- 10.5 Cria Tabela de Histórico de Autorizações de Desconto e Margem (BI Executivo)
+        CREATE TABLE IF NOT EXISTS bi_autorizacoes_desconto (
+          id SERIAL PRIMARY KEY,
+          deal_id INTEGER NOT NULL,
+          solicitante_nome VARCHAR(200),
+          cliente_nome VARCHAR(255),
+          valor_total NUMERIC(14,2) DEFAULT 0.00,
+          preco_unitario_autorizado NUMERIC(14,2) DEFAULT 0.00,
+          margem_pct NUMERIC(8,2) DEFAULT 0.00,
+          lucro_bruto NUMERIC(14,2) DEFAULT 0.00,
+          desconto_pct NUMERIC(8,2) DEFAULT 0.00,
+          desconto_reais NUMERIC(14,2) DEFAULT 0.00,
+          cond_pagamento_label VARCHAR(150),
+          tipo_frete VARCHAR(50) DEFAULT 'FOB',
+          frete_cliente NUMERIC(14,2) DEFAULT 0.00,
+          frete_embutido NUMERIC(14,2) DEFAULT 0.00,
+          status VARCHAR(50) NOT NULL,
+          usuario_decisor VARCHAR(100) NOT NULL,
+          usuario_decisor_nome VARCHAR(200),
+          observacoes TEXT,
+          nota_pipedrive TEXT,
+          dados_completos JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_bi_aut_deal_id ON bi_autorizacoes_desconto(deal_id);
+        CREATE INDEX IF NOT EXISTS idx_bi_aut_status ON bi_autorizacoes_desconto(status);
+        CREATE INDEX IF NOT EXISTS idx_bi_aut_created_at ON bi_autorizacoes_desconto(created_at DESC);
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
@@ -2801,6 +2830,203 @@ async function deleteUserLinkDB(username, linkId) {
   return { links: updated };
 }
 
+/**
+ * Salva decisão de autorização de desconto (Postgres + Fallback JSON)
+ */
+async function saveAutorizacaoDescontoDB(data) {
+  const record = {
+    deal_id: parseInt(data.deal_id || data.dealId, 10),
+    solicitante_nome: String(data.solicitante_nome || data.solicitanteNome || 'Vendedor').trim(),
+    cliente_nome: String(data.cliente_nome || data.clienteNome || 'Cliente').trim(),
+    valor_total: parseFloat(data.valor_total || data.valorTotal || data.valorVendaFinal) || 0.0,
+    preco_unitario_autorizado: parseFloat(data.preco_unitario_autorizado || data.precoUnitarioAutorizado || data.precoUnitarioAutorizadoMedio) || 0.0,
+    margem_pct: parseFloat(data.margem_pct || data.margemPct) || 0.0,
+    lucro_bruto: parseFloat(data.lucro_bruto || data.lucroBruto) || 0.0,
+    desconto_pct: parseFloat(data.desconto_pct || data.descontoPct) || 0.0,
+    desconto_reais: parseFloat(data.desconto_reais || data.descontoReais) || 0.0,
+    cond_pagamento_label: String(data.cond_pagamento_label || data.condPgtoLabel || 'Não informada').trim(),
+    tipo_frete: String(data.tipo_frete || data.tipoFrete || 'FOB').trim(),
+    frete_cliente: parseFloat(data.frete_cliente || data.freteCliente) || 0.0,
+    frete_embutido: parseFloat(data.frete_embutido || data.freteEmbutido) || 0.0,
+    status: String(data.status || 'AUTORIZADO').trim().toUpperCase(),
+    usuario_decisor: String(data.usuario_decisor || data.usuarioDecisor || 'admin').trim(),
+    usuario_decisor_nome: String(data.usuario_decisor_nome || data.usuarioDecisorNome || data.usuario_decisor || 'Diretoria').trim(),
+    observacoes: String(data.observacoes || '').trim(),
+    nota_pipedrive: String(data.nota_pipedrive || data.notaPipedrive || '').trim(),
+    dados_completos: data.dados_completos || data.dadosCompletos || data,
+    created_at: data.created_at || new Date().toISOString()
+  };
+
+  const p = getPool();
+  let savedId = null;
+  if (p) {
+    try {
+      const sql = `
+        INSERT INTO bi_autorizacoes_desconto (
+          deal_id, solicitante_nome, cliente_nome, valor_total, preco_unitario_autorizado,
+          margem_pct, lucro_bruto, desconto_pct, desconto_reais, cond_pagamento_label,
+          tipo_frete, frete_cliente, frete_embutido, status, usuario_decisor,
+          usuario_decisor_nome, observacoes, nota_pipedrive, dados_completos, created_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+        ) RETURNING id, created_at;
+      `;
+      const res = await safeQuery(sql, [
+        record.deal_id,
+        record.solicitante_nome,
+        record.cliente_nome,
+        record.valor_total,
+        record.preco_unitario_autorizado,
+        record.margem_pct,
+        record.lucro_bruto,
+        record.desconto_pct,
+        record.desconto_reais,
+        record.cond_pagamento_label,
+        record.tipo_frete,
+        record.frete_cliente,
+        record.frete_embutido,
+        record.status,
+        record.usuario_decisor,
+        record.usuario_decisor_nome,
+        record.observacoes,
+        record.nota_pipedrive,
+        JSON.stringify(record.dados_completos),
+        record.created_at
+      ]);
+      if (res && res.rows && res.rows.length > 0) {
+        savedId = res.rows[0].id;
+        record.id = savedId;
+        record.created_at = res.rows[0].created_at;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao salvar autorização de desconto no banco:', err.message);
+    }
+  }
+
+  // Fallback JSON local com safe_json_storage
+  try {
+    const list = safeReadJsonSync(biAutorizacoesCacheFile, []);
+    if (!record.id) {
+      record.id = list.length > 0 ? (Math.max(...list.map(x => x.id || 0)) + 1) : 1;
+    }
+    list.unshift(record);
+    if (list.length > 500) list.length = 500;
+    await safeWriteJson(biAutorizacoesCacheFile, list);
+  } catch (err) {
+    console.warn('⚠️ [Storage] Falha ao persistir em bi_autorizacoes_cache.json:', err.message);
+  }
+
+  return record;
+}
+
+/**
+ * Consulta histórico paginado de autorizações de desconto
+ * Envelope: { items, pagination: { page, limit, total, totalPages, hasNext, hasPrev } }
+ */
+async function getAutorizacoesDescontoDB({ page = 1, limit = 50, deal_id, status, search } = {}) {
+  const pNum = Math.max(1, parseInt(page, 10) || 1);
+  const lNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
+  const offset = (pNum - 1) * lNum;
+
+  const p = getPool();
+  if (p) {
+    try {
+      const conditions = [];
+      const params = [];
+      let pIdx = 1;
+
+      if (deal_id) {
+        conditions.push(`deal_id = $${pIdx++}`);
+        params.push(parseInt(deal_id, 10));
+      }
+      if (status && status !== 'TODOS') {
+        conditions.push(`status = $${pIdx++}`);
+        params.push(String(status).trim().toUpperCase());
+      }
+      if (search) {
+        conditions.push(`(cliente_nome ILIKE $${pIdx} OR solicitante_nome ILIKE $${pIdx} OR usuario_decisor_nome ILIKE $${pIdx} OR observacoes ILIKE $${pIdx})`);
+        params.push(`%${search.trim()}%`);
+        pIdx++;
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+      // Count total
+      const countSql = `SELECT COUNT(*) AS total FROM bi_autorizacoes_desconto ${whereClause};`;
+      const countRes = await safeQuery(countSql, params);
+      const total = countRes && countRes.rows.length > 0 ? parseInt(countRes.rows[0].total, 10) : 0;
+      const totalPages = Math.max(1, Math.ceil(total / lNum));
+
+      // Fetch items
+      const selectSql = `
+        SELECT
+          id, deal_id, solicitante_nome, cliente_nome, valor_total, preco_unitario_autorizado,
+          margem_pct, lucro_bruto, desconto_pct, desconto_reais, cond_pagamento_label,
+          tipo_frete, frete_cliente, frete_embutido, status, usuario_decisor,
+          usuario_decisor_nome, observacoes, nota_pipedrive, dados_completos, created_at
+        FROM bi_autorizacoes_desconto
+        ${whereClause}
+        ORDER BY created_at DESC, id DESC
+        LIMIT $${pIdx++} OFFSET $${pIdx++};
+      `;
+      const selectParams = [...params, lNum, offset];
+      const res = await safeQuery(selectSql, selectParams);
+      const items = res && res.rows ? res.rows : [];
+
+      return {
+        items,
+        pagination: {
+          page: pNum,
+          limit: lNum,
+          total,
+          totalPages,
+          hasNext: pNum < totalPages,
+          hasPrev: pNum > 1
+        }
+      };
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar histórico de autorizações no banco:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  let list = safeReadJsonSync(biAutorizacoesCacheFile, []);
+  if (deal_id) {
+    const dId = parseInt(deal_id, 10);
+    list = list.filter(x => x.deal_id === dId);
+  }
+  if (status && status !== 'TODOS') {
+    const st = String(status).trim().toUpperCase();
+    list = list.filter(x => (x.status || '').toUpperCase() === st);
+  }
+  if (search) {
+    const term = String(search).toLowerCase().trim();
+    list = list.filter(x => 
+      (x.cliente_nome || '').toLowerCase().includes(term) ||
+      (x.solicitante_nome || '').toLowerCase().includes(term) ||
+      (x.usuario_decisor_nome || '').toLowerCase().includes(term) ||
+      (x.observacoes || '').toLowerCase().includes(term)
+    );
+  }
+
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total / lNum));
+  const items = list.slice(offset, offset + lNum);
+
+  return {
+    items,
+    pagination: {
+      page: pNum,
+      limit: lNum,
+      total,
+      totalPages,
+      hasNext: pNum < totalPages,
+      hasPrev: pNum > 1
+    }
+  };
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -2854,6 +3080,8 @@ module.exports = {
   addUserLinkDB,
   deleteUserLinkDB,
   saveUserLinksDB,
+  saveAutorizacaoDescontoDB,
+  getAutorizacoesDescontoDB,
   isPostgresConnected,
   getPool
 };

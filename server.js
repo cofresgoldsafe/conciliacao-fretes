@@ -90,6 +90,8 @@ const {
   getUserLinksDB,
   addUserLinkDB,
   deleteUserLinkDB,
+  saveAutorizacaoDescontoDB,
+  getAutorizacoesDescontoDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -111,6 +113,12 @@ const {
   obterDetalhesIndicesDrilldown,
   obterHistoricoIndices
 } = require('./bi_indices_engine');
+
+const {
+  analisarDealCompleto,
+  formatarNotaPipedrive,
+  gravarNotaPipedrive
+} = require('./bi_autorizacoes_engine');
 
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
@@ -3432,6 +3440,174 @@ app.get('/api/bi/indices/historico', requireAuth, requireRole('admin'), async (r
     });
   } catch (err) {
     return handleServerError(res, err, 'Erro ao consultar série temporal histórica dos índices.');
+  }
+});
+
+/**
+ * ----------------------------------------------------------------------------
+ * ENDPOINTS REST: BI EXECUTIVO — AUTORIZAÇÕES DE DESCONTO E MARGEM (PIPEDRIVE)
+ * ----------------------------------------------------------------------------
+ */
+
+// 1. Análise Financeira Prévia do Deal (Pipedrive + Protheus)
+app.get('/api/bi/autorizacoes/analisar', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const dealInput = (req.query.dealId || req.query.deal || '').trim();
+    if (!dealInput) {
+      return res.status(400).json({
+        success: false,
+        message: 'Parâmetro dealId é obrigatório.'
+      });
+    }
+
+    const proposta = req.query.proposta ? parseFloat(req.query.proposta) : null;
+    const observacoes = (req.query.observacoes || req.query.obs || '').trim();
+
+    const analise = await analisarDealCompleto(dealInput, { proposta, observacoes });
+
+    return res.json({
+      success: true,
+      deal: analise
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao analisar Deal para autorização de desconto.');
+  }
+});
+
+// 2. Gravação de Decisão de Autorização (Banco de Dados + Nota Fixada no Pipedrive)
+app.post('/api/bi/autorizacoes/decidir', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const {
+      dealId,
+      decisao,
+      observacoes,
+      proposta,
+      precoProposto
+    } = req.body;
+
+    if (!dealId) {
+      return res.status(400).json({
+        success: false,
+        message: 'O campo dealId é obrigatório.'
+      });
+    }
+
+    const decisaoLimpa = String(decisao || '').trim().toUpperCase();
+    if (decisaoLimpa !== 'AUTORIZADO' && decisaoLimpa !== 'NAO_AUTORIZADO') {
+      return res.status(400).json({
+        success: false,
+        message: 'A decisão deve ser estritamente "AUTORIZADO" ou "NAO_AUTORIZADO".'
+      });
+    }
+
+    // 1. Executa ou revalida a análise financeira completa
+    const valorProposto = proposta || precoProposto;
+    const analise = await analisarDealCompleto(dealId, {
+      proposta: valorProposto,
+      observacoes
+    });
+
+    const isAutorizado = (decisaoLimpa === 'AUTORIZADO');
+
+    // 2. Formata a nota oficial padronizada para o Pipedrive
+    const notaFormatada = formatarNotaPipedrive({
+      dealId: analise.dealId,
+      descontoPct: analise.descontoPct,
+      condPgtoLabel: analise.condPgtoLabel,
+      freteEmbutido: analise.freteEmbutido,
+      autorizado: isAutorizado
+    });
+
+    // 3. Grava nota fixada no Pipedrive
+    let notaGravadaPipedrive = false;
+    try {
+      await gravarNotaPipedrive(analise.dealId, notaFormatada);
+      notaGravadaPipedrive = true;
+    } catch (errNota) {
+      console.warn(`⚠️ [Autorizações] Falha na gravação remota da nota no Pipedrive (${errNota.message}), persistindo no banco...`);
+    }
+
+    // 4. Persiste no PostgreSQL/Supabase (e cache JSON)
+    const record = await saveAutorizacaoDescontoDB({
+      dealId: analise.dealId,
+      solicitanteNome: analise.solicitanteNome,
+      clienteNome: analise.clienteNome,
+      valorTotal: analise.valorVendaFinal,
+      precoUnitarioAutorizado: analise.precoUnitarioAutorizadoMedio,
+      margemPct: analise.margemPct,
+      lucroBruto: analise.lucroBruto,
+      descontoPct: analise.descontoPct,
+      descontoReais: analise.descontoReais,
+      condPgtoLabel: analise.condPgtoLabel,
+      tipoFrete: analise.tipoFrete,
+      freteCliente: 0.00,
+      freteEmbutido: analise.freteEmbutido,
+      status: decisaoLimpa,
+      usuarioDecisor: user.username || 'admin',
+      usuarioDecisorNome: user.name || user.username || 'Diretoria',
+      observacoes: observacoes || analise.observacoesInput || '',
+      notaPipedrive: notaFormatada,
+      dadosCompletos: {
+        analise,
+        notaGravadaPipedrive,
+        decididoEm: new Date().toISOString()
+      }
+    });
+
+    // 5. Registra telemetria de atividade
+    try {
+      await logUserActivity({
+        username: user.username,
+        userName: user.name,
+        actionType: 'AUTORIZACAO_DESCONTO',
+        description: `${isAutorizado ? 'Autorizou' : 'Negou'} desconto no Deal ${analise.dealId} (Margem: ${analise.margemPct}%, Desconto: ${analise.descontoPct}%)`,
+        ip: req.ip,
+        metadata: {
+          dealId: analise.dealId,
+          status: decisaoLimpa,
+          descontoPct: analise.descontoPct,
+          margemPct: analise.margemPct,
+          valorTotal: analise.valorVendaFinal
+        }
+      });
+    } catch {}
+
+    return res.json({
+      success: true,
+      message: `Decisão [${decisaoLimpa}] gravada com sucesso para o Deal ${analise.dealId}.`,
+      autorizacao: record,
+      nota: notaFormatada,
+      notaPipedriveEnviada: notaGravadaPipedrive
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao registrar decisão de autorização de desconto.');
+  }
+});
+
+// 3. Histórico Paginado de Autorizações de Desconto (Envelope 50 em 50)
+app.get('/api/bi/autorizacoes/historico', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+    const dealId = req.query.dealId || req.query.deal || null;
+    const status = (req.query.status || 'TODOS').trim();
+    const search = (req.query.search || req.query.busca || '').trim();
+
+    const resultado = await getAutorizacoesDescontoDB({
+      page,
+      limit,
+      deal_id: dealId,
+      status,
+      search
+    });
+
+    return res.json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao consultar histórico de autorizações de desconto.');
   }
 });
 

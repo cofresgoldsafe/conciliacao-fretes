@@ -14,15 +14,15 @@
       "configuracoes"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-02T11:16:25.938Z",
+    "lastActiveAt": "2026-09-02T16:52:37.378Z",
     "lastLoginAt": "2026-08-24T18:52:40.764Z",
-    "totalActions": 429
+    "totalActions": 433
   },
   {
     "username": "erica",
     "name": "Érica",
     "email": null,
-    "pass": "$2b$10$320XuKQbgc13f.sstbL7fu3AfeMOScJKR46J6OS1Ig.VOa6jVbdKG",
+    "pass": "$2b$10$BQojAN6eTFJDynSRs8K9NeHvf/m5R/SPUhUhOMe5Rd/MmvJsGw0JG",
     "role": "user",
     "permissions": [
       "logistica",
@@ -30,8 +30,8 @@
     ],
     "active": true,
     "vendorCode": null,
-    "lastActiveAt": "2026-09-02T11:15:45.258Z",
-    "totalActions": 78
+    "lastActiveAt": "2026-09-02T16:52:38.204Z",
+    "totalActions": 82
   },
   {
     "username": "wallerson",

@@ -38,6 +38,7 @@ html = html.replace(/style\.css\?v=[0-9.]+/g, `style.css?v=${novaVersaoNum}`);
 html = html.replace(/app\.js\?v=[0-9.]+/g, `app.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi\.js\?v=[0-9.]+/g, `js/bi.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi_indices\.js\?v=[0-9.]+/g, `js/bi_indices.js?v=${novaVersaoNum}`);
+html = html.replace(/js\/bi_autorizacoes\.js\?v=[0-9.]+/g, `js/bi_autorizacoes.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/tarefas\.js\?v=[0-9.]+/g, `js/tarefas.js?v=${novaVersaoNum}`);
 
 fs.writeFileSync(indexPath, html, 'utf-8');

@@ -1,0 +1,1820 @@
+================================================================================
+ MANUAL COMPLETO E DEFINITIVO
+ SISTEMA DE AUTORIZACAO DE DESCONTO E MARGEM
+ Pipedrive CRM  <->  TOTVS Protheus ERP  <->  IA (Claude)
+================================================================================
+ Empresa......: Goldsafe / Benetron Comercial (Metal Pleno, GSI Cofres, OACO)
+ Administrador: Alexandre  (contato@goldsafe.com.br)
+ Documento....: gerado em 02/09/2026
+ Finalidade...: servir de FONTE UNICA para operar, manter e REPLICAR este
+                sistema em qualquer outra IA / plataforma.
+ Confidencial.: contem credenciais de producao. Nao publicar.
+================================================================================
+
+
+--------------------------------------------------------------------------------
+INDICE
+--------------------------------------------------------------------------------
+ 0.  RESUMO EM 10 LINHAS (leia isto se so tiver 1 minuto)
+ 1.  PARA QUE SERVE O PROJETO
+ 2.  COMO SE USA NA PRATICA (passo a passo do usuario)
+ 3.  ARQUITETURA GERAL (o desenho de tudo)
+ 4.  CONEXOES, CREDENCIAIS E ENDERECOS (todos, sem omissao)
+ 5.  FERRAMENTAS MCP DISPONIVEIS (inventario completo)
+ 6.  O FLUXO OBRIGATORIO DE 5 PASSOS
+ 7.  REGRAS DE NEGOCIO E FORMULAS
+ 8.  O PAINEL DE AUTORIZACAO (HTML + botoes)
+ 9.  A GRAVACAO DA NOTA NO PIPEDRIVE
+ 10. DICIONARIO PROTHEUS (tabelas, campos, regras invioaveis)
+ 11. CODIGO-FONTE DE REFERENCIA (API Railway + MCP cloud)
+ 12. O JOB DIARIO DE DESCONTOS (sistema irmao, GitHub Actions)
+ 13. COMO REPLICAR EM OUTRA IA (receita completa, 3 niveis)
+ 14. PROMPT / SYSTEM INSTRUCTIONS PRONTOS PARA COLAR
+ 15. ARMADILHAS, MACETES E APRENDIZADOS (a parte mais valiosa)
+ 16. HISTORICO DE INCIDENTES REAIS E O QUE ENSINARAM
+ 17. DIVERGENCIAS ENCONTRADAS NA DOCUMENTACAO ATUAL (corrigir!)
+ 18. BACKLOG / DIVIDA TECNICA CONHECIDA
+ 19. CHECKLIST DE VALIDACAO ("esta funcionando?")
+ 20. GLOSSARIO
+
+
+================================================================================
+0. RESUMO EM 10 LINHAS
+================================================================================
+Um vendedor monta uma negociacao (deal) no Pipedrive com produtos e um preco.
+O sistema pega esse deal, descobre o codigo Protheus de cada produto, busca no
+ERP o CUSTO real e o PRECO DE TABELA de cada item, subtrai o frete que a
+empresa paga, e calcula duas coisas: o DESCONTO PONDERADO sobre a tabela e a
+MARGEM BRUTA do pedido. Mostra isso num painel visual com dois botoes
+(AUTORIZADO / NAO AUTORIZADO). Quem tem alcada clica. O clique volta para a IA
+como texto (sendPrompt), e a IA grava uma NOTA padronizada no proprio deal do
+Pipedrive registrando a decisao. Fim. O valor do sistema esta em transformar
+uma decisao de desconto "no feeling" numa decisao com custo e margem reais na
+tela, e em deixar rastro auditavel dentro do CRM.
+
+
+================================================================================
+1. PARA QUE SERVE O PROJETO
+================================================================================
+
+1.1 PROBLEMA DE NEGOCIO
+    O vendedor negocia desconto olhando so o preco de venda. Ele nao sabe:
+      - qual e o preco de tabela oficial daquele item hoje;
+      - qual e o custo real do produto no ERP;
+      - se a empresa esta pagando o frete (o que come margem silenciosamente);
+      - qual e a margem que sobra depois de tudo.
+    Resultado sem o sistema: pedidos aprovados com margem baixa ou negativa,
+    descobertos so no fechamento do mes.
+
+1.2 O QUE O SISTEMA ENTREGA
+    - Calculo do DESCONTO REAL (ponderado, sobre o preco de tabela, ja
+      descontando o frete que a empresa absorve).
+    - Calculo da MARGEM BRUTA do pedido usando o custo real do Protheus.
+    - Um painel de decisao com os numeros na tela e dois botoes de alcada.
+    - Registro auditavel da decisao como NOTA fixada no deal do Pipedrive,
+      em formato fixo (permite filtrar/auditar depois).
+
+1.3 QUEM USA
+    - Consultor/representante comercial: pede a analise do deal.
+    - Gerente/diretor comercial: e quem clica AUTORIZADO / NAO AUTORIZADO.
+    - Faturamento/controladoria: audita as notas gravadas.
+    - TI/SRE: sustenta as integracoes.
+
+1.4 EMPRESAS ATENDIDAS
+    Empresa 14 = METAL PLENO
+    Empresa 15 = GSI COFRES
+    Empresa 16 = OACO
+    Empresa 01 = cadastros gerais (clientes, vendedores, cond. pagamento)
+    Empresa 09 = CADASTRO MESTRE DE PRODUTOS (14, 15 e 16 usam este)
+
+1.5 SISTEMA IRMAO (nao confundir)
+    Existe um segundo produto no mesmo ecossistema: o JOB DIARIO DE DESCONTOS
+    (GitHub Actions, roda de terca a sabado as 5h BRT) que varre os pedidos do
+    dia anterior direto no SQL e manda um e-mail de alerta de descontos acima
+    de 11%. E o "policia depois do fato". O painel de autorizacao e o "policia
+    antes do fato". Ver secao 12.
+
+
+================================================================================
+2. COMO SE USA NA PRATICA
+================================================================================
+
+2.1 USO NORMAL (o caminho feliz)
+    Passo A. O usuario manda para a IA algo como:
+             "monta o painel pro deal 25238"
+             "o cliente pediu R$ 12.400 no deal 25238, da pra aprovar?"
+             ou simplesmente cola a URL:
+             https://benetroncomercial.pipedrive.com/deal/25238
+    Passo B. A IA executa sozinha o fluxo de 5 passos (secao 6).
+    Passo C. A IA exibe SOMENTE o painel visual. Sem introducao, sem resumo,
+             sem explicacao. So o painel + os dois botoes.
+    Passo D. O aprovador clica AUTORIZADO ou NAO AUTORIZADO.
+    Passo E. O clique dispara sendPrompt(), que devolve para o chat uma frase
+             pronta contendo todos os dados da nota.
+    Passo F. A IA le essa frase e grava a nota no deal via
+             pipedrive_criar_nota (ou POST /pipedrive/note).
+    Passo G. A IA confirma em uma linha: "Nota gravada no deal 25238."
+
+2.2 VARIACAO: PRECO PROPOSTO PELO CLIENTE
+    Se o usuario informar um valor negociado diferente da soma dos itens do
+    Pipedrive, use o valor PROPOSTO como Valor Vendido e diga explicitamente
+    no painel que o numero veio da proposta e nao do CRM.
+
+2.3 REGRA DE OURO DA APRESENTACAO
+    "Exibir APENAS o painel visual. Nenhum texto antes ou depois."
+    Isso e uma exigencia do usuario, nao um detalhe estetico. Texto extra
+    polui a tela de decisao.
+
+2.4 REGRA DE OURO DA GRAVACAO
+    NUNCA gravar a nota junto com a exibicao do painel. A nota so existe
+    DEPOIS do clique. O painel existe justamente porque alguem precisa decidir.
+
+2.5 O QUE FAZER QUANDO AS FERRAMENTAS NAO EXISTEM
+    Este fluxo depende de MCPs que nao estao em toda sessao. Antes de prometer
+    resultado, verifique. Se faltar ferramenta, diga isso NA PRIMEIRA FRASE e
+    ofereca alternativas (rodar no cliente onde os MCPs estao, ou receber os
+    dados colados). NUNCA preencher numero faltante com estimativa: um painel
+    de autorizacao com margem inventada e pior do que nenhum painel.
+
+
+================================================================================
+3. ARQUITETURA GERAL
+================================================================================
+
+3.1 DESENHO DAS CAMADAS
+
+  +---------------------------------------------------------------+
+  |  CLIENTES DE IA                                               |
+  |  Claude Desktop / Claude.ai (web e mobile) / Cursor / CLIs    |
+  +----------------+--------------------------+-------------------+
+                   | MCP stdio (local)        | MCP (cloud)
+                   v                          v
+        +----------------------+   +--------------------------+
+        | pipedrive-mcp        |   | protheus-mcp-cloud       |
+        | (Python, local)      |   | (Python, local, mas so   |
+        |                      |   |  chama HTTP -> Railway)  |
+        +----------+-----------+   +------------+-------------+
+                   | REST                       | HTTPS + X-API-Key
+                   v                            v
+        api.pipedrive.com/v1        +---------------------------+
+                                    | GATEWAY BFF (FastAPI)     |
+                                    | Railway                   |
+                                    | protheus-api-production   |
+                                    |   .up.railway.app         |
+                                    +------------+--------------+
+                                                 | pyodbc / TCP 1433
+                                                 v
+        +----------------------+       +---------------------------+
+        | protheus-mcp         |------>| SQL Server PROTHEUS       |
+        | (Node/TypeScript,    | TCP   | CNVYB3_184594_PR_PD       |
+        |  local, mssql)       | 1433  | 177.136.10.154:10971      |
+        +----------------------+       +---------------------------+
+                                                 ^
+                                                 | tunel socat
+                                       +---------------------------+
+                                       | VM Oracle Cloud           |
+                                       | proxy-sql-v2              |
+                                       | 137.131.209.46:1433       |
+                                       +---------------------------+
+
+3.2 POR QUE EXISTEM TRES CAMINHOS PARA O MESMO BANCO
+    Porque cada ambiente de IA tem uma restricao diferente:
+      - Claude Desktop com protheus-mcp local: SQL livre, conexao direta.
+      - Claude.ai web/mobile: nao enxerga MCP stdio local -> usa o Gateway.
+      - Artifacts no browser: CORS -> nao chama nada externo, usa sendPrompt.
+    Entender ISSO e entender o projeto inteiro. Ver secao 15.
+
+3.3 TABELA DE CAPACIDADE POR AMBIENTE
+
+  Ambiente                              | Consulta Protheus? | Como
+  --------------------------------------+--------------------+---------------
+  Claude Desktop + protheus-mcp local   | SIM, query livre   | mssql direto
+  Claude Desktop + protheus-cloud MCP   | PARCIAL, tools fixas| HTTP Railway
+  Claude.ai web com acesso ao Gateway   | SIM                | POST /query
+  Claude.ai web sem Gateway             | NAO                | -
+  Artifact (JS no browser)              | NAO                | CORS bloqueia
+  bash/sandbox de nuvem da Anthropic    | NAO                | IP nao liberado
+
+
+================================================================================
+4. CONEXOES, CREDENCIAIS E ENDERECOS
+================================================================================
+!! ATENCAO: esta secao contem segredos de producao. Ao replicar, mova tudo
+!! para variaveis de ambiente / cofre. NUNCA hardcode (ja causou incidente,
+!! ver secao 16).
+
+4.1 PIPEDRIVE
+    Subdominio............: benetroncomercial.pipedrive.com
+    API...................: https://api.pipedrive.com/v1/
+    Token (PIPEDRIVE_API_TOKEN):
+        27c8e6f7f9bccd60101889f25369f6075e30f615
+    Auth preferida........: header Authorization: Bearer <token>
+                            (o query param ?api_token= vaza em log de acesso;
+                             a API atual do projeto ainda usa query param —
+                             ver backlog)
+    URL de um deal........: https://benetroncomercial.pipedrive.com/deal/{id}
+
+    Endpoints usados:
+        GET  /deals/{id}                 -> dados do deal
+        GET  /deals/{id}/products        -> produtos do deal
+        GET  /products/{id}              -> dados do produto (campo `code`)
+        GET  /dealFields                 -> options[] da cond. de pagamento
+        POST /notes                      -> {deal_id, content,
+                                             pinned_to_deal_flag: "1"}
+
+    CAMPOS CUSTOMIZADOS (decorar estes dois hashes):
+        bdbc4635c15ed6d0add5748159b3a0b1f1b4b5a7  -> ID da condicao de pagamento
+        cd279b000a096a971341df192fba61a673ed87d2  -> Frete embutido (C5_VLR_FRT)
+
+4.2 GATEWAY RAILWAY (protheus-api)
+    URL...................: https://protheus-api-production.up.railway.app
+    Header de auth........: X-API-Key
+    CHAVE VALIDA HOJE.....: ProtheusClaude#2026        <-- TESTADA EM 02/09/2026
+    CHAVE ANTIGA/INVALIDA.: ProtheusAPI@2026           <-- retorna HTTP 403
+    Repositorio...........: github.com/cofresgoldsafe/protheus-api
+    Runtime...............: Python 3.11 / FastAPI / pyodbc / Dockerfile
+    Deploy................: automatico via git push (Railway)
+    Versao atual da API...: 2.2.0
+    IP estatico de saida..: 162.220.232.99 (Shared, regiao us-west2)
+                            -> precisa estar liberado no firewall do SQL Server
+
+    Endpoints:
+        GET  /                                  health check (sem key)
+        GET  /meu-ip                            IP de saida (sem key)
+        GET  /pipedrive/cond-pagamento/{id}     resolve ID -> label
+        GET  /pipedrive/deal/{id}
+        GET  /pipedrive/deal/{id}/products
+        GET  /pipedrive/product/{id}
+        GET  /pipedrive/deals?status=&limit=
+        POST /pipedrive/note        body {deal_id, content}
+        GET  /produto/{codigo}?filial=09
+        GET  /clientes/top?data_inicio=&data_fim=&filial=&top_n=
+        GET  /produtos/mais-vendidos?data_inicio=&data_fim=&filial=&top_n=
+        GET  /financeiro/resumo?filial=
+        POST /query                 body {"query": "SELECT ..."}   <- SQL livre
+
+    Variaveis de ambiente no Railway:
+        API_KEY              = ProtheusClaude#2026
+        DB_HOST              = 137.131.209.46      (VM proxy Oracle)
+        DB_PORT              = 1433
+        DB_NAME              = CNVYB3_184594_PR_PD
+        DB_USER              = PROD
+        DB_PASSWORD          = ukmly78056XWHZI?@
+        PIPEDRIVE_API_TOKEN  = 27c8e6f7f9bccd60101889f25369f6075e30f615
+
+4.3 SQL SERVER PROTHEUS
+    Banco.................: CNVYB3_184594_PR_PD
+    Usuario...............: PROD   (SOMENTE LEITURA — manter assim!)
+    Senha.................: ukmly78056XWHZI?@
+    Encrypt...............: false
+    TrustServerCertificate: true
+
+    DOIS CAMINHOS DE REDE (ambos validos, dependem de onde voce esta):
+      (a) DIRETO  ->  177.136.10.154 : 10971
+          usado pelo MCP local `protheus` no claude_desktop_config.json
+      (b) VIA PROXY -> 137.131.209.46 : 1433
+          VM Oracle Cloud `proxy-sql-v2`, tunel socat -> 177.136.10.154:10971
+          usado pela API Railway e pelos scripts PowerShell documentados
+
+    String de conexao PowerShell (caminho b):
+      $connStr = "Server=137.131.209.46,1433;Database=CNVYB3_184594_PR_PD;" +
+                 "User Id=PROD;Password=ukmly78056XWHZI?@;Encrypt=false;" +
+                 "TrustServerCertificate=true;"
+
+4.4 VM ORACLE CLOUD (proxy SQL)
+    IP....................: 137.131.209.46
+    Nome..................: proxy-sql-v2
+    Usuario SSH...........: opc
+    Chave SSH.............: C:\Users\alexa\Documents\claude\oracle-vps\
+                            ssh-key-2026-04-06.key
+    Porta exposta.........: 1433 (socat -> SQL Server 177.136.10.154:10971)
+    Comando...............: ssh -i <chave> opc@137.131.209.46
+    ALLOWLIST DE IP.......: a conexao 1433 so funciona se o IP de origem
+                            estiver liberado na Default Security List da VCN
+                            `vcn-20260406-0957`
+                            (Oracle Cloud Console -> Networking ->
+                             Virtual Cloud Networks -> vcn-20260406-0957 ->
+                             Security Lists -> Default -> Ingress Rules)
+    Se o tunel cair.......: SSH na VM e reiniciar o socat.
+
+4.5 CONFIG REAL DO CLAUDE DESKTOP  (%APPDATA%\Claude\claude_desktop_config.json)
+    Este e o conteudo efetivo hoje — util para replicar identicamente:
+
+    {
+      "mcpServers": {
+        "pipedrive": {
+          "command": "python",
+          "args": ["C:\\Users\\Alexandre\\Documents\\claude\\pipedrive-mcp\\server.py"],
+          "env": { "PIPEDRIVE_API_TOKEN": "27c8e6f7f9bccd60101889f25369f6075e30f615" }
+        },
+        "protheus": {
+          "command": "node",
+          "args": ["C:\\Users\\Alexandre\\Documents\\claude\\protheus-mcp\\dist\\index.js"],
+          "env": {
+            "DB_HOST": "177.136.10.154",
+            "DB_PORT": "10971",
+            "DB_USER": "PROD",
+            "DB_PASSWORD": "ukmly78056XWHZI?@",
+            "DB_NAME": "CNVYB3_184594_PR_PD",
+            "DB_TRUST_CERT": "true"
+          }
+        },
+        "protheus-cloud": {
+          "command": "python",
+          "args": ["C:\\Users\\Alexandre\\Documents\\claude\\protheus-mcp-cloud\\server.py"],
+          "env": {
+            "PROTHEUS_API_URL": "https://protheus-api-production.up.railway.app",
+            "PROTHEUS_API_KEY": "ProtheusClaude#2026"
+          }
+        }
+      }
+    }
+
+    Macete: para pegar a chave CORRETA em tempo de execucao, sem depender de
+    documentacao desatualizada:
+      $config = Get-Content "$env:APPDATA\Claude\claude_desktop_config.json" -Raw | ConvertFrom-Json
+      $key    = $config.mcpServers."protheus-cloud".env.PROTHEUS_API_KEY
+
+4.6 REPOSITORIOS GITHUB (org: cofresgoldsafe)
+    protheus-mcp          -> MCP local TypeScript (SQL direto)
+                             local: claude/protheus-mcp/
+    protheus-mcp-cloud    -> MCP Python que fala com o Gateway
+                             local: claude/protheus-mcp-cloud/
+    pipedrive-mcp         -> MCP Python do Pipedrive
+                             local: claude/pipedrive-mcp/
+    protheus-api          -> Gateway FastAPI no Railway
+                             local: claude/protheus-api/
+    protheus-connector    -> Conector TypeScript reutilizavel
+                             local: claude/protheus-connector/
+    claude-job-descontos  -> Job diario GitHub Actions
+                             local: claude/claude-job-descontos/
+    mailjet-sender        -> Conector de envio de e-mail
+
+    Fluxo de deploy do MCP local:
+      1. editar src/...
+      2. npm run build      (gera dist/)
+      3. git add . && git commit -m "..." && git push
+      4. REINICIAR o Claude Desktop (obrigatorio para recarregar o dist/)
+
+    Fluxo de deploy do Gateway:
+      git push -> Railway redeploya sozinho.
+
+4.7 OUTRAS CREDENCIAIS DO ECOSSISTEMA
+    ANTHROPIC_API_KEY ... secret do GitHub Actions (job de descontos)
+    MAILJET_API_KEY  .... secret do GitHub Actions
+    MAILJET_SECRET_KEY .. secret do GitHub Actions
+    RAILWAY_API_KEY ..... secret do GitHub Actions (mesma key do Gateway)
+    ANTHROPIC_MODEL ..... VARIABLE (nao secret!) = claude-sonnet-4-6
+    PAT claude-read-actions (fine-grained) — so le runs do Actions; o job
+        NAO depende dele.
+    WEBHOOK_SECRET ...... previsto para validar webhooks do Pipedrive
+                          (ainda NAO implementado — ver backlog)
+
+
+================================================================================
+5. FERRAMENTAS MCP DISPONIVEIS (INVENTARIO)
+================================================================================
+
+5.1 SERVIDOR "protheus-cloud" (Python -> Gateway Railway)
+    protheus_produto_cadastro(codigo, filial="09")
+    protheus_resumo_financeiro(filial)
+    protheus_produtos_mais_vendidos(data_inicio, data_fim, filial, top_n=15)
+    protheus_top_clientes(data_inicio, data_fim, filial, top_n=10)
+    protheus_relacao_fretes(data_inicio, data_fim, empresa[14|15|16], filial)
+    pipedrive_get_deal(deal_id)
+    pipedrive_get_deal_products(deal_id)
+    pipedrive_get_product(product_id)
+    pipedrive_list_deals(status="all_not_deleted", limit=20)
+    pipedrive_criar_nota(deal_id, content)
+
+5.2 SERVIDOR "protheus" (Node/TS -> SQL direto)
+    protheus_pedidos_abertos(empresa, filial, limite, ordem, dias_minimos)
+    protheus_produto_cadastro(codigo)
+    protheus_top_clientes(...)
+    protheus_produtos_mais_vendidos(...)
+    protheus_faturamento_periodo(data_inicio, data_fim, filial)
+    protheus_resumo_financeiro(filial)
+    protheus_contas_receber(dias_vencimento, filial)
+    protheus_contas_pagar(dias_vencimento, filial)
+    protheus_fluxo_caixa(dias_projecao)
+    protheus_relacao_fretes(periodo)
+
+    ATENCAO: `protheus_pedidos_abertos` mente no nome. Ele retorna TODOS os
+    pedidos, faturados ou nao, liberados ou bloqueados. Filtre voce mesmo.
+
+5.3 SERVIDOR "pipedrive" (Python, API direta)
+    create_deal / update_deal / get_deal / list_deals
+    create_person / get_person / list_persons
+    create_organization / list_organizations
+    create_lead / list_leads
+    create_activity / list_activities
+    get_deal_products
+    create_webhook / list_webhooks / delete_webhook
+
+5.4 QUAL USAR
+    Para o painel de autorizacao: prefira SEMPRE o conjunto `protheus-cloud`.
+    Ele funciona com o computador desligado (o trabalho pesado esta no Railway)
+    e ja implementa a filial 09 por padrao.
+    Para SQL livre / analises novas: `protheus` local ou POST /query.
+
+
+================================================================================
+6. O FLUXO OBRIGATORIO DE 5 PASSOS
+================================================================================
+Execute NESTA ORDEM. Pular etapa e a causa mais comum de erro do sistema.
+
+PASSO 1 — PRODUTOS DO DEAL
+    pipedrive_get_deal_products(deal_id)
+    Retorna por item: product_id, item_price, quantity, sum.
+
+PASSO 2 — CODIGO DE CADA PRODUTO
+    pipedrive_get_product(product_id)
+    Retorna o campo `code`, formato XX-YYYYYYYYYYYYYYY
+    Exemplo: 15-01801080802B001
+
+    NUNCA pule este passo. O `product_id` do deal NAO e o codigo do Protheus.
+
+PASSO 3 — EXTRAIR O CODIGO PROTHEUS
+    Use SOMENTE o que vem DEPOIS do hifen. Descarte prefixo e hifen.
+        15-01801080802B001  ->  01801080802B001
+        14-00101010101B060  ->  00101010101B060
+        16-00101990000B001  ->  00101990000B001
+
+    ERRADO 1: passar com hifen           -> HTTP 404
+    ERRADO 2: usar o campo `name`        -> HTTP 404
+              (ex.: "SP4005BW1PR" nao e codigo Protheus)
+
+PASSO 4 — CADASTRO NO PROTHEUS
+    protheus_produto_cadastro(codigo: "01801080802B001")
+    Retorna: B1_VLUNIT (custo), B1_PRV1 (preco de tabela), descricao, unidade,
+             tipo, grupo, bloqueado.
+    Produtos das empresas 14, 15 e 16 vivem TODOS na empresa 09 -> SB1090.
+    O MCP ja tenta a filial certa por padrao (ordem 09, 10, 01, 02, 03, 04, 05).
+
+PASSO 5 — DADOS DO DEAL
+    pipedrive_get_deal(deal_id)
+    Extrair:
+      bdbc4635c15ed6d0add5748159b3a0b1f1b4b5a7 -> ID da condicao de pagamento
+      cd279b000a096a971341df192fba61a673ed87d2 -> frete embutido (C5_VLR_FRT);
+                                                   se null, considerar R$ 0,00
+
+    E ENTAO, OBRIGATORIAMENTE, RESOLVER O LABEL:
+      GET /pipedrive/cond-pagamento/{ID}
+      Header: X-API-Key: ProtheusClaude#2026
+      Resposta: {"id": 43380, "label": "015-APPMAX"}
+
+    Exemplo PowerShell (Windows-MCP):
+      $config = Get-Content "$env:APPDATA\Claude\claude_desktop_config.json" -Raw | ConvertFrom-Json
+      $key = $config.mcpServers."protheus-cloud".env.PROTHEUS_API_KEY
+      $r = Invoke-RestMethod -Uri "https://protheus-api-production.up.railway.app/pipedrive/cond-pagamento/43380" -Headers @{"X-API-Key"=$key}
+      $r | ConvertTo-Json
+
+    PROIBIDO exibir ou gravar o ID numerico (ex.: 43380 ou 47).
+    Gravar "47" numa nota em vez de "028-1X BOL 28 D" torna a nota inutil.
+
+
+================================================================================
+7. REGRAS DE NEGOCIO E FORMULAS
+================================================================================
+
+7.1 DESCONTO PONDERADO SOBRE PRECO DE TABELA
+    Valor Liquido        = Valor Vendido (soma dos itens) - Frete Embutido
+    Preco de Tabela Tot. = soma de (B1_PRV1 x quantidade)
+    Desconto R$          = Preco de Tabela Total - Valor Liquido
+    Desconto %           = (Desconto R$ / Preco de Tabela Total) x 100
+
+7.2 MARGEM DE LUCRO BRUTO
+    Custo Total          = soma de (B1_VLUNIT x quantidade)
+    Lucro Bruto          = Valor Vendido - Custo Total - Frete Embutido
+    Margem %             = (Lucro Bruto / Valor Vendido) x 100
+
+7.3 A REGRA DO FRETE (a mais violada de todas)
+    O frete e SUBTRAIDO do valor vendido. NUNCA somado.
+    Somar frete e o erro que produz desconto e margem negativos sem explicacao.
+
+    Dois campos de frete convivem na SC5 e SO UM importa:
+      C5_FRETE    = frete pago PELO CLIENTE  -> receita -> NAO impacta margem
+      C5_VLR_FRT  = frete pago PELA EMPRESA  -> custo   -> REDUZ a margem
+    No Pipedrive, o frete da empresa e o campo cd279b000a...
+
+    Por que isso importa: um pedido com frete embutido parece estar ACIMA da
+    tabela. So subtraindo o frete o desconto real aparece.
+
+7.4 DESCONTO NEGATIVO
+    Desconto negativo significa preco ACIMA da tabela. E informacao valida,
+    nao bug. Bug e quando ele aparece porque voce somou o frete.
+
+7.5 THRESHOLD DE ALERTA
+    11%  -> acima disso o desconto e considerado alerta comercial.
+            (era 40% ate 10/04/2026; foi reduzido para 11%)
+    Usado hoje pelo job diario. No painel, use como referencia de cor:
+    ate 11% verde, acima disso vermelho/atencao.
+
+7.6 EXCECAO DE REVENDA (regra viva, implementada em 20/08/2026)
+    Se o cliente for REVENDA CADASTRADA, o desconto maior e ESPERADO e NAO
+    deve ser cobrado do vendedor.
+    Como identificar: campo A1_SATIV1 (Ramo de Atividade) na SA1010 contendo
+    o codigo 000085.
+    CUIDADO: A1_SATIV1 e um char longo que pode guardar VARIOS codigos de 6
+    caracteres CONCATENADOS (ex.: 000012000085000031) + padding de espacos.
+      -> usar LIKE '%000085%'  e NAO  = '000085'
+    Base atual: 45.526 clientes, 138 revendas.
+    Cadastro de cliente fica sempre na SA1010 (empresa 01), tabela unica que
+    atende as tres empresas; A1_FILIAL em branco.
+
+7.7 EXEMPLOS NUMERICOS DE REFERENCIA (usar para testar a implementacao)
+
+    Deal 19039: Vendido=87 | Frete=30 | Tabela=99 | Custo=5,67
+      Valor Liquido = 87 - 30 = 57
+      Desconto % = (99 - 57) / 99 x 100 = 42,42%
+      Lucro = 87 - 30 - 5,67 = 51,33
+      Margem % = 51,33 / 87 x 100 = 59,00%
+
+    Deal 24827: Vendido=87 | Frete=35 | Tabela=99 | Custo=5,67
+      Valor Liquido = 52 ; Desconto = 47,47% ; Lucro = 46,33 ; Margem = 53,25%
+
+    Deal 23193: Vendido=87 | Frete=40 | Tabela=99 | Custo=5,67
+      Valor Liquido = 47 ; Desconto = 52,53% ; Lucro = 41,33 ; Margem = 47,50%
+
+    Pedido 000148 (empresa 14, dados reais do ERP):
+      Tabela  R$ 8.869,00 | Venda R$ 9.533,00 | Frete empresa R$ 931,00
+      Liquido R$ 8.602,00 | Desconto 3,01%
+      Custo   R$ 3.798,94 | Lucro R$ 4.803,06 | Margem 50,38%
+
+    Pedido 000132 (empresa 14):
+      Venda R$ 17.745,00 | Custo R$ 8.990,00 | Frete R$ 0,00
+      Lucro R$ 8.755,00  | Margem 49,34%
+
+7.8 REGRA ARQUITETURAL DE SEGURANCA DE NEGOCIO
+    Nenhuma regra de piso de margem ou calculo financeiro pode ser delegada
+    unicamente a um modelo probabilistico. A IA interpreta contexto; o calculo
+    e o bloqueio final devem ser validados por codigo deterministico.
+
+
+================================================================================
+8. O PAINEL DE AUTORIZACAO
+================================================================================
+
+8.1 O QUE O PAINEL MOSTRA (obrigatorio)
+    - Deal ID e nome do cliente
+    - Valor proposto  (e, abaixo, o valor de tabela)
+    - Desconto ponderado em % (e em R$)
+    - Margem bruta em % (e lucro em R$)
+    - Forma de pagamento — SEMPRE o label textual
+    - Frete embutido em R$
+    - Tabela de itens: produto, qtd, unitario, tabela (B1_PRV1), custo (B1_VLUNIT)
+    - Dois botoes: AUTORIZADO (verde) e NAO AUTORIZADO (neutro/vermelho)
+
+8.2 REGRA DOS BOTOES — INEGOCIAVEL
+    Os botoes usam sendPrompt(). NUNCA fetch().
+    fetch() para a Railway API a partir de um artifact e bloqueado por CORS e
+    pela CSP da plataforma. Falha silenciosa ou "Failed to fetch".
+    sendPrompt() devolve uma frase ao chat e a IA faz a gravacao com a
+    ferramenta que ela tem.
+
+8.3 TEMPLATE HTML COMPLETO (substituir os marcadores {{...}})
+
+<div style="font-family:ui-sans-serif,system-ui,sans-serif;max-width:720px;color:var(--text-primary,#1a1a1a)">
+  <div style="border:1px solid var(--border,#e0ddd8);border-radius:12px;overflow:hidden">
+
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border,#e0ddd8)">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.6">Autorizacao de desconto</div>
+      <div style="font-size:22px;font-weight:600;margin-top:4px">Deal {{DEAL_ID}} — {{CLIENTE}}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border,#e0ddd8)">
+      <div style="background:var(--bg,#fff);padding:16px 20px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6">Valor proposto</div>
+        <div style="font-size:20px;font-weight:600;margin-top:6px">R$ {{VALOR_PROPOSTO}}</div>
+        <div style="font-size:11px;opacity:.6;margin-top:2px">tabela: R$ {{PRECO_TABELA_TOTAL}}</div>
+      </div>
+      <div style="background:var(--bg,#fff);padding:16px 20px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6">Desconto ponderado</div>
+        <div style="font-size:20px;font-weight:600;margin-top:6px;color:{{COR_DESCONTO}}">{{DESCONTO_PCT}}%</div>
+        <div style="font-size:11px;opacity:.6;margin-top:2px">R$ {{DESCONTO_RS}}</div>
+      </div>
+      <div style="background:var(--bg,#fff);padding:16px 20px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6">Margem bruta</div>
+        <div style="font-size:20px;font-weight:600;margin-top:6px;color:{{COR_MARGEM}}">{{MARGEM_PCT}}%</div>
+        <div style="font-size:11px;opacity:.6;margin-top:2px">lucro R$ {{LUCRO_BRUTO}}</div>
+      </div>
+    </div>
+
+    <div style="padding:14px 20px;border-top:1px solid var(--border,#e0ddd8);display:flex;gap:28px;font-size:13px;flex-wrap:wrap">
+      <div><span style="opacity:.6">Pagamento:</span> <strong>{{COND_PAGAMENTO_LABEL}}</strong></div>
+      <div><span style="opacity:.6">Frete embutido:</span> <strong>R$ {{FRETE}}</strong></div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px;border-top:1px solid var(--border,#e0ddd8)">
+      <thead>
+        <tr style="text-align:left;opacity:.6;font-size:11px;text-transform:uppercase;letter-spacing:.05em">
+          <th style="padding:10px 20px;font-weight:500">Produto</th>
+          <th style="padding:10px;font-weight:500;text-align:right">Qtd</th>
+          <th style="padding:10px;font-weight:500;text-align:right">Unit.</th>
+          <th style="padding:10px;font-weight:500;text-align:right">Tabela</th>
+          <th style="padding:10px 20px;font-weight:500;text-align:right">Custo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- repetir por item -->
+        <tr style="border-top:1px solid var(--border,#f0eeea)">
+          <td style="padding:10px 20px">{{ITEM_DESC}}</td>
+          <td style="padding:10px;text-align:right">{{ITEM_QTD}}</td>
+          <td style="padding:10px;text-align:right">{{ITEM_UNIT}}</td>
+          <td style="padding:10px;text-align:right">{{ITEM_PRV1}}</td>
+          <td style="padding:10px 20px;text-align:right">{{ITEM_VLUNIT}}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="padding:16px 20px;border-top:1px solid var(--border,#e0ddd8);display:flex;gap:10px">
+      <button onclick="autorizar()" style="flex:1;padding:12px;border:none;border-radius:8px;background:#1f7a4d;color:#fff;font-size:14px;font-weight:600;cursor:pointer">AUTORIZADO</button>
+      <button onclick="naoAutorizar()" style="flex:1;padding:12px;border:1px solid var(--border,#d8d4ce);border-radius:8px;background:transparent;font-size:14px;font-weight:600;cursor:pointer">NAO AUTORIZADO</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  var NOTA = 'Deal {{DEAL_ID}} | Desconto Medio Ponderado do Pedido: {{DESCONTO_PCT}}% | Forma de Pagamento: {{COND_PAGAMENTO_LABEL}} | Frete Embutido: R$ {{FRETE}}';
+
+  function autorizar() {
+    sendPrompt('AUTORIZADO — gravar nota: ' + NOTA + ' | (ok autorizado)');
+  }
+  function naoAutorizar() {
+    sendPrompt('NAO AUTORIZADO — gravar nota: ' + NOTA + ' | (NAO AUTORIZADO)');
+  }
+</script>
+
+8.4 SE A PLATAFORMA DE DESTINO NAO TIVER sendPrompt()
+    sendPrompt() e uma funcao do sandbox de artifacts do Claude. Em outra IA
+    voce nao vai ter isso. Alternativas, em ordem de preferencia:
+      (a) O usuario simplesmente digita no chat: "autorizado deal 25238".
+          Simples, funciona em qualquer lugar, zero codigo.
+      (b) Botao que copia o texto para a area de transferencia + instrucao
+          "cole no chat".
+      (c) Se a plataforma permitir fetch de origem propria: um backend proprio
+          que receba o clique. Exige CORS liberado no gateway (o FastAPI ja
+          tem allow_origins=["*"], mas a CSP do CLIENTE e que bloqueia).
+      (d) Um mini front-end hospedado fora do sandbox (pagina propria), que
+          chama o gateway. Ai o CORS do FastAPI resolve.
+
+
+================================================================================
+9. A GRAVACAO DA NOTA NO PIPEDRIVE
+================================================================================
+
+9.1 CHAMADA
+    Via MCP:   pipedrive_criar_nota(deal_id, content)
+    Via HTTP:  POST https://protheus-api-production.up.railway.app/pipedrive/note
+               Header: X-API-Key: ProtheusClaude#2026
+               Body:   {"deal_id": 25238, "content": "..."}
+               (internamente vira POST api.pipedrive.com/v1/notes com
+                pinned_to_deal_flag = "1", ou seja, a nota fica FIXADA no deal)
+
+9.2 FORMATO EXATO — AUTORIZADO
+    Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (ok autorizado)
+
+9.3 FORMATO EXATO — NAO AUTORIZADO
+    Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (NAO AUTORIZADO)
+
+9.4 EXEMPLO REAL
+    Deal 25238 | Desconto Medio Ponderado do Pedido: 6,00% | Forma de Pagamento: 074-1X DEPTEDDOC 10D | Frete Embutido: R$ 0,00 | (ok autorizado)
+
+9.5 POR QUE O FORMATO E FIXO
+    Porque e o que permite filtrar/auditar essas notas depois. Qualquer
+    variacao de texto quebra a auditoria. Nao "melhore" o formato.
+    Observacao historica: uma versao mais antiga usava "Pedido {N}" em vez de
+    "Deal {id}". O padrao vigente e "Deal {id}".
+
+9.6 PowerShell de gravacao (quando so houver Windows-MCP)
+    $key  = "ProtheusClaude#2026"
+    $body = @{ deal_id = 25238; content = "Deal 25238 | ... | (ok autorizado)" } | ConvertTo-Json
+    Invoke-RestMethod -Uri "https://protheus-api-production.up.railway.app/pipedrive/note" `
+      -Method POST -Headers @{ "X-API-Key" = $key; "Content-Type" = "application/json" } -Body $body
+
+
+================================================================================
+10. DICIONARIO PROTHEUS
+================================================================================
+
+10.1 REGRA DE NOMENCLATURA DAS TABELAS
+     As tabelas sao sufixadas pelo codigo da EMPRESA, nao da filial.
+     A filial e um CAMPO dentro da tabela (C5_FILIAL, F2_FILIAL...).
+
+       nome = <prefixo> + <codigo_empresa 2 digitos> + "0"
+
+       empresa 01 -> 010 -> SC5010, SC6010, SB1010, SA1010, SE4010
+       empresa 09 -> 090 -> SB1090  (cadastro mestre de produtos)
+       empresa 14 -> 140 -> SC5140, SC6140, SF2140   (Metal Pleno)
+       empresa 15 -> 150 -> SC5150, SC6150, SF2150   (GSI)
+       empresa 16 -> 160 -> SC5160, SC6160, SF2160   (OACO)
+
+     Escolher o sufixo errado retorna dados de OUTRA EMPRESA sem nenhum erro
+     visivel. E o bug mais perigoso do ambiente.
+
+10.2 REGRAS INVIOLAVEIS DE QUERY
+     (a) SOFT DELETE: todo WHERE precisa de   D_E_L_E_T_ = ' '
+         Registros excluidos ficam na tabela marcados com '*'.
+         Sem o filtro, entram no resultado silenciosamente.
+     (b) DATAS SAO STRING no formato YYYYMMDD (ex.: '20260902').
+         Comparacao lexicografica funciona; BETWEEN se comporta como esperado.
+         Para converter: CONVERT(DATE, C5_EMISSAO)
+     (c) CODIGOS TEM PADDING de zeros a esquerda: '000630', '000000546'.
+         Buscar por '630' nao acha nada.
+     (d) C5_VALTOT NAO EXISTE na SC5. O valor total do pedido se calcula
+         somando a SC6.
+     (e) Produtos das empresas 14/15/16 estao SEMPRE em SB1090.
+     (f) Cadastros de cliente, vendedor e cond. de pagamento ficam na
+         empresa 01: SA1010, SA3010, SE4010 — mesmo para pedidos de outra
+         empresa.
+
+10.3 TABELAS
+
+  SC5 — CABECALHO DO PEDIDO DE VENDA   (chave: C5_FILIAL + C5_NUM)
+    C5_FILIAL    filial dentro da empresa                        C(2)
+    C5_NUM       numero do pedido                                C(6)
+    C5_TIPO      N=Normal, D=Devolucao                           C(1)
+    C5_CLIENTE   codigo do cliente                               C(6)
+    C5_LOJACLI   loja do cliente                                 C(2)
+    C5_EMISSAO   data de emissao YYYYMMDD                        C(8)
+    C5_FECENT    data de entrega prevista                        D(8)
+    C5_CONDPAG   condicao de pagamento                           C(3)
+    C5_VEND1     codigo do vendedor                              C(6)
+    C5_NOTA      NF gerada (vazio = nao faturado)                C(9)
+    C5_LIBEROK   flag de liberacao (L ou S = liberado)           C(1)
+    C5_MSBLQL    status 1=Inativo 2=Ativo                        C(1)
+    C5_FRETE     frete pago pelo CLIENTE   (nao afeta margem)    N
+    C5_VLR_FRT   frete pago pela EMPRESA   (REDUZ margem)        N
+    C5_TPFRETE   C=CIF, F=FOB                                    C(1)
+
+  SC6 — ITENS DO PEDIDO   (chave: C6_FILIAL + C6_NUM + C6_ITEM)
+    C6_NUM       numero do pedido (FK -> C5_NUM)                 C(6)
+    C6_ITEM      sequencia 01, 02...                             C(2)
+    C6_PRODUTO   codigo do produto (FK -> B1_COD)                C(15)
+    C6_DESCRI    descricao                                       C(30)
+    C6_QTDVEN    quantidade vendida                              N
+    C6_PRCVEN    preco unitario de venda                         N
+    C6_VALOR     valor total do item                             N
+    C6_UM        unidade                                         C(2)
+    C6_LOCAL     armazem                                         C(2)
+    C6_ENTREG    data de entrega
+
+  SB1 — CADASTRO DE PRODUTOS   (chave: B1_FILIAL + B1_COD)
+    B1_COD       codigo do produto                               C(15)
+    B1_DESC      descricao                                       C(50)
+    B1_TIPO      tipo (PA = produto acabado)                     C(2)
+    B1_GRUPO     grupo de estoque                                C(4)
+    B1_UM        unidade                                         C(2)
+    B1_VLUNIT    CUSTO unitario                                  N
+    B1_PRV1      PRECO DE TABELA (venda)                         N
+    B1_MSBLQL    bloqueio ('1' = bloqueado)
+    B1_XCODPD    ID do produto no PIPEDRIVE  <- ponte entre os 2 sistemas
+
+  SA1 — CLIENTES   (SA1010, empresa 01, A1_FILIAL em branco)
+    A1_COD, A1_LOJA, A1_NOME, A1_CGC, A1_EMAIL, A1_END, A1_MUN, A1_EST
+    A1_SATIV1    ramo de atividade (pode ter varios codigos concatenados)
+                 contem '000085' -> REVENDA CADASTRADA
+
+  SA2 — FORNECEDORES: A2_COD, A2_LOJA, A2_NOME, A2_CGC
+  SA3 — VENDEDORES:   A3_COD  (join com C5_VEND1)
+  SE4 — COND. PAGAMENTO: E4_CODIGO (join com C5_CONDPAG)
+
+  SC7 — PEDIDOS DE COMPRA
+    C7_NUM, C7_PRODUTO, C7_QUANT, C7_QUJE, C7_PRECO, C7_FORNECE,
+    C7_DATPRF, C7_RESIDUO
+
+  SC9 — LIBERACAO DE CREDITO/ESTOQUE
+    C9_PEDIDO, C9_ITEM, C9_BLCRED (01=bloqueado), C9_BLEST (02=bloqueado),
+    C9_NFISCAL
+
+  SD2 — ITENS DE NF DE SAIDA
+    D2_DOC, D2_SERIE, D2_PEDIDO, D2_COD, D2_QUANT, D2_TOTAL,
+    D2_EMISSAO, D2_CLIENTE
+
+  SF2 — CABECALHO DE NF DE SAIDA
+    F2_DOC, F2_SERIE, F2_CLIENTE, F2_LOJA, F2_VALBRUT, F2_EMISSAO, F2_TIPO
+
+  SB2 — SALDO DE ESTOQUE: B2_COD, B2_LOCAL, B2_QATU, B2_RESERVA
+  SE1 — CONTAS A RECEBER: E1_NUM, E1_PREFIXO, E1_PARCELA, E1_CLIENTE,
+                          E1_VALOR, E1_SALDO, E1_VENCTO, E1_BAIXA
+  SE2 — CONTAS A PAGAR:   E2_NUM, E2_PREFIXO, E2_PARCELA, E2_FORNECE,
+                          E2_VALOR, E2_SALDO, E2_VENCTO, E2_BAIXA
+
+10.4 QUERY: ITENS DO PEDIDO COM CADASTRO
+    SELECT
+        SC6.C6_ITEM, SC6.C6_PRODUTO, SB1.B1_DESC, SB1.B1_TIPO, SB1.B1_GRUPO,
+        SB1.B1_UM, SC6.C6_QTDVEN,
+        SC6.C6_PRCVEN AS PRECO_VENDA_PEDIDO,
+        SB1.B1_VLUNIT AS CUSTO,
+        SB1.B1_PRV1   AS PRECO_TABELA,
+        SB1.B1_XCODPD AS ID_PIPEDRIVE,
+        SC6.C6_VALOR  AS VALOR_TOTAL_ITEM
+    FROM SC6160 SC6                       -- sufixo da empresa do pedido
+    INNER JOIN SB1090 SB1                 -- SEMPRE empresa 09
+        ON  SB1.B1_COD    = SC6.C6_PRODUTO
+        AND SB1.B1_FILIAL = '01'
+        AND SB1.D_E_L_E_T_ = ' '
+    WHERE SC6.C6_NUM     = '000426'
+      AND SC6.D_E_L_E_T_ = ' '
+    ORDER BY SC6.C6_ITEM
+
+10.5 QUERY: DESCONTO REAL SOBRE TABELA
+    SELECT
+        SC5.C5_NUM,
+        SC5.C5_VLR_FRT                                   AS FRETE_EMPRESA,
+        SUM(SC6.C6_VALOR)                                AS VALOR_VENDA_TOTAL,
+        SUM(SB1.B1_PRV1 * SC6.C6_QTDVEN)                 AS VALOR_TABELA_TOTAL,
+        SUM(SC6.C6_VALOR) - SC5.C5_VLR_FRT               AS VALOR_LIQUIDO_VENDA,
+        ROUND(
+            (SUM(SB1.B1_PRV1 * SC6.C6_QTDVEN)
+                - (SUM(SC6.C6_VALOR) - SC5.C5_VLR_FRT))
+            / NULLIF(SUM(SB1.B1_PRV1 * SC6.C6_QTDVEN), 0) * 100
+        , 2)                                             AS DESCONTO_PCT
+    FROM SC5140 SC5
+    INNER JOIN SC6140 SC6
+        ON  SC6.C6_NUM    = SC5.C5_NUM
+        AND SC6.C6_FILIAL = SC5.C5_FILIAL
+        AND SC6.D_E_L_E_T_ = ' '
+    INNER JOIN SB1090 SB1
+        ON  SB1.B1_COD    = SC6.C6_PRODUTO
+        AND SB1.B1_FILIAL = '01'
+        AND SB1.D_E_L_E_T_ = ' '
+    WHERE SC5.C5_NUM = '000148' AND SC5.D_E_L_E_T_ = ' '
+    GROUP BY SC5.C5_NUM, SC5.C5_VLR_FRT
+
+10.6 QUERY: MARGEM BRUTA
+    SELECT
+        SC5.C5_NUM,
+        SC5.C5_FRETE                                     AS FRETE_CLIENTE,
+        SC5.C5_VLR_FRT                                   AS FRETE_EMPRESA,
+        SUM(SC6.C6_VALOR)                                AS VALOR_VENDA_TOTAL,
+        SUM(SB1.B1_VLUNIT * SC6.C6_QTDVEN)               AS CUSTO_TOTAL,
+        SUM(SC6.C6_VALOR) - SUM(SB1.B1_VLUNIT * SC6.C6_QTDVEN)
+            - SC5.C5_VLR_FRT                             AS LUCRO_BRUTO,
+        ROUND(
+            (SUM(SC6.C6_VALOR) - SUM(SB1.B1_VLUNIT * SC6.C6_QTDVEN)
+                - SC5.C5_VLR_FRT)
+            / NULLIF(SUM(SC6.C6_VALOR), 0) * 100
+        , 2)                                             AS MARGEM_BRUTA_PCT
+    FROM SC5140 SC5
+    INNER JOIN SC6140 SC6 ON SC6.C6_NUM = SC5.C5_NUM
+        AND SC6.C6_FILIAL = SC5.C5_FILIAL AND SC6.D_E_L_E_T_ = ' '
+    INNER JOIN SB1090 SB1 ON SB1.B1_COD = SC6.C6_PRODUTO
+        AND SB1.B1_FILIAL = '01' AND SB1.D_E_L_E_T_ = ' '
+    WHERE SC5.C5_NUM = '000148' AND SC5.D_E_L_E_T_ = ' '
+    GROUP BY SC5.C5_NUM, SC5.C5_FRETE, SC5.C5_VLR_FRT
+
+10.7 ENRIQUECER COM O TIPO DE CLIENTE (revenda) SEM QUEBRAR OS SUM()
+    -- no SELECT:
+    MAX(CLI.A1_SATIV1)                                          AS SATIV1,
+    MAX(CASE WHEN CLI.A1_SATIV1 LIKE '%000085%' THEN 1 ELSE 0 END) AS REVENDA
+    -- depois dos JOINs, antes do WHERE:
+    OUTER APPLY (
+        SELECT TOP 1 SA1.A1_SATIV1
+        FROM SA1010 SA1
+        WHERE SA1.A1_COD     = SC5.C5_CLIENTE
+          AND SA1.A1_LOJA    = SC5.C5_LOJACLI
+          AND SA1.D_E_L_E_T_ = ' '
+    ) CLI
+
+    Por que OUTER APPLY ... TOP 1 e nao INNER JOIN:
+      - INNER JOIN faria o pedido SUMIR do relatorio se o cliente nao fosse
+        encontrado (loja divergente, cadastro apagado). Um alerta de 20% de
+        desconto desapareceria em silencio.
+      - Um JOIN que retorna 2 linhas MULTIPLICA os SUM() e o resultado sai
+        errado sem nenhum erro no log. TOP 1 elimina a classe inteira do
+        problema.
+
+
+================================================================================
+11. CODIGO-FONTE DE REFERENCIA
+================================================================================
+
+11.1 GATEWAY — protheus-api/main.py (FastAPI, versao 2.2.0) — INTEGRAL
+
+"""
+Protheus + Pipedrive API - versao nuvem para hospedar no Railway
+"""
+import os
+import httpx
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader
+from pydantic import BaseModel
+import pyodbc
+
+app = FastAPI(title="Protheus + Pipedrive API", version="2.2.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+API_KEY = os.environ.get("API_KEY", "")
+PIPEDRIVE_TOKEN = os.environ.get("PIPEDRIVE_API_TOKEN", "")
+PIPEDRIVE_BASE = "https://api.pipedrive.com/v1"
+COND_PGTO_KEY = "bdbc4635c15ed6d0add5748159b3a0b1f1b4b5a7"
+_cond_pgto_cache: dict = {}
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def verify_key(key: str = Security(api_key_header)):
+    if API_KEY and key != API_KEY:
+        raise HTTPException(status_code=403, detail="API Key invalida.")
+    return key
+
+def get_conn():
+    conn_str = (
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"SERVER={os.environ['DB_HOST']},{os.environ['DB_PORT']};"
+        f"DATABASE={os.environ['DB_NAME']};"
+        f"UID={os.environ['DB_USER']};"
+        f"PWD={os.environ['DB_PASSWORD']};"
+        f"TrustServerCertificate=yes;"
+        f"Encrypt=yes;"
+    )
+    return pyodbc.connect(conn_str, timeout=15)
+
+@app.get("/")
+def health():
+    return {"status": "ok", "service": "Protheus + Pipedrive API", "version": "2.2.0"}
+
+@app.get("/meu-ip")
+async def meu_ip():
+    async with httpx.AsyncClient() as client:
+        r = await client.get("https://api.ipify.org?format=json")
+        return r.json()
+
+async def pipedrive_get(path: str, params: dict = {}):
+    params["api_token"] = PIPEDRIVE_TOKEN
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        r = await client.get(f"{PIPEDRIVE_BASE}{path}", params=params)
+        r.raise_for_status()
+        return r.json()
+
+async def pipedrive_post(path: str, body: dict):
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        r = await client.post(f"{PIPEDRIVE_BASE}{path}",
+                              params={"api_token": PIPEDRIVE_TOKEN}, json=body)
+        r.raise_for_status()
+        return r.json()
+
+async def get_cond_pgto_label(option_id: int) -> str:
+    global _cond_pgto_cache
+    if not _cond_pgto_cache:
+        data = await pipedrive_get("/dealFields", {"limit": 100})
+        for field in data.get("data", []):
+            if field.get("key") == COND_PGTO_KEY:
+                for opt in field.get("options", []):
+                    _cond_pgto_cache[opt["id"]] = opt["label"]
+                break
+    return _cond_pgto_cache.get(option_id, str(option_id))
+
+@app.get("/pipedrive/cond-pagamento/{option_id}", dependencies=[Depends(verify_key)])
+async def cond_pagamento(option_id: int):
+    label = await get_cond_pgto_label(option_id)
+    return {"id": option_id, "label": label}
+
+@app.get("/pipedrive/deal/{deal_id}", dependencies=[Depends(verify_key)])
+async def get_deal(deal_id: int):
+    return await pipedrive_get(f"/deals/{deal_id}")
+
+@app.get("/pipedrive/deal/{deal_id}/products", dependencies=[Depends(verify_key)])
+async def get_deal_products(deal_id: int):
+    return await pipedrive_get(f"/deals/{deal_id}/products")
+
+@app.get("/pipedrive/product/{product_id}", dependencies=[Depends(verify_key)])
+async def get_product(product_id: int):
+    return await pipedrive_get(f"/products/{product_id}")
+
+@app.get("/pipedrive/deals", dependencies=[Depends(verify_key)])
+async def list_deals(status: str = "all_not_deleted", limit: int = 20):
+    return await pipedrive_get("/deals", {"status": status, "limit": limit})
+
+class NoteRequest(BaseModel):
+    deal_id: int
+    content: str
+
+@app.post("/pipedrive/note", dependencies=[Depends(verify_key)])
+async def criar_nota(body: NoteRequest):
+    return await pipedrive_post("/notes", {
+        "deal_id": body.deal_id,
+        "content": body.content,
+        "pinned_to_deal_flag": "1"
+    })
+
+@app.get("/produto/{codigo}", dependencies=[Depends(verify_key)])
+def produto_cadastro(codigo: str, filial: str = None):
+    FILIAL_ORDER = ["09", "10", "01", "02", "03", "04", "05"]
+    filiais = [filial.zfill(2)] if filial else FILIAL_ORDER
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        for fil in filiais:
+            table = f"SB1{fil}0"
+            try:
+                cursor.execute(f"""
+                    SELECT B1_COD, B1_DESC, B1_UM, B1_TIPO, B1_GRUPO,
+                           B1_VLUNIT, B1_PRV1, B1_MSBLQL
+                    FROM {table}
+                    WHERE B1_COD = ? AND D_E_L_E_T_ = ' '
+                """, codigo)
+                row = cursor.fetchone()
+                if row:
+                    conn.close()
+                    return {
+                        "codigo":      row[0].strip(),
+                        "descricao":   row[1].strip(),
+                        "unidade":     row[2].strip(),
+                        "tipo":        row[3].strip(),
+                        "grupo":       row[4].strip(),
+                        "custo":       float(row[5]) if row[5] else 0.0,
+                        "preco_venda": float(row[6]) if row[6] else 0.0,
+                        "bloqueado":   row[7].strip() == "1",
+                        "filial":      fil,
+                    }
+            except Exception:
+                continue
+        conn.close()
+        raise HTTPException(status_code=404, detail=f"Produto '{codigo}' nao encontrado.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ... /clientes/top , /produtos/mais-vendidos , /financeiro/resumo
+#     (mesma estrutura: abre conexao, monta SQL com filtro de filial,
+#      sempre com D_E_L_E_T_ = ' ')
+
+class QueryRequest(BaseModel):
+    query: str
+
+@app.post("/query", dependencies=[Depends(verify_key)])
+def executar_query(body: QueryRequest):
+    try:
+        conn = get_conn()
+        cursor = conn.cursor()
+        cursor.execute(body.query)
+        colunas = [col[0] for col in cursor.description]
+        rows = cursor.fetchall()
+        conn.close()
+        resultado = [
+            {colunas[i]: (float(v) if isinstance(v, (int, float))
+                          else str(v).strip() if v is not None else None)
+             for i, v in enumerate(row)}
+            for row in rows
+        ]
+        return {"rows": resultado}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    OBSERVACAO DE SEGURANCA: /query aceita SQL arbitrario. A unica protecao
+    real e o usuario PROD ser somente-leitura. Se replicar isso, MANTENHA o
+    usuario do banco somente-leitura. Um agente de IA que pode escrever no ERP
+    de producao e um incidente esperando data.
+
+11.2 requirements.txt
+    fastapi==0.111.0
+    uvicorn==0.29.0
+    pyodbc==5.1.0
+    pydantic==2.7.1
+    httpx==0.27.0
+
+11.3 Dockerfile (Railway)
+    FROM python:3.11-slim
+    RUN apt-get update && apt-get install -y \
+        curl apt-transport-https gnupg2 unixodbc-dev ca-certificates \
+        && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+           | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+        && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
+           > /etc/apt/sources.list.d/mssql-release.list \
+        && apt-get update \
+        && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+    WORKDIR /app
+    COPY requirements.txt .
+    RUN pip install --no-cache-dir -r requirements.txt
+    COPY main.py .
+    EXPOSE 8000
+    CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+11.4 MCP CLOUD — protheus-mcp-cloud/server.py (esqueleto essencial)
+
+    import asyncio, json, os, httpx
+    from mcp.server import Server
+    from mcp.server.stdio import stdio_server
+    from mcp.types import TextContent, Tool
+
+    server = Server("protheus-pipedrive-cloud")
+    API_URL = os.environ.get("PROTHEUS_API_URL",
+                             "https://protheus-api-production.up.railway.app")
+    API_KEY = os.environ.get("PROTHEUS_API_KEY", "")
+
+    def headers():
+        h = {"Content-Type": "application/json"}
+        if API_KEY:
+            h["X-API-Key"] = API_KEY
+        return h
+
+    async def api_get(path):
+        async with httpx.AsyncClient(timeout=30.0) as c:
+            r = await c.get(f"{API_URL}{path}", headers=headers())
+            r.raise_for_status()
+            return r.json()
+
+    async def api_post(path, body):
+        async with httpx.AsyncClient(timeout=30.0) as c:
+            r = await c.post(f"{API_URL}{path}", headers=headers(), json=body)
+            r.raise_for_status()
+            return r.json()
+
+    @server.list_tools()
+    async def list_tools():
+        return [ Tool(name="protheus_produto_cadastro", ...),
+                 Tool(name="pipedrive_get_deal", ...),
+                 Tool(name="pipedrive_get_deal_products", ...),
+                 Tool(name="pipedrive_get_product", ...),
+                 Tool(name="pipedrive_criar_nota", ...), ... ]
+
+    @server.call_tool()
+    async def call_tool(name, arguments):
+        try:
+            if name == "protheus_produto_cadastro":
+                data = await api_get(f"/produto/{arguments['codigo']}"
+                                     f"?filial={arguments.get('filial','09')}")
+                result = "...markdown formatado..."
+            elif name == "pipedrive_criar_nota":
+                await api_post("/pipedrive/note",
+                               {"deal_id": arguments["deal_id"],
+                                "content": arguments["content"]})
+                result = f"Nota gravada no Deal {arguments['deal_id']}."
+            ...
+            return [TextContent(type="text", text=result)]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Erro: {str(e)}")]
+
+    async def main():
+        async with stdio_server() as (r, w):
+            await server.run(r, w, server.create_initialization_options())
+
+    if __name__ == "__main__":
+        asyncio.run(main())
+
+    LICAO DE DESIGN: as tools do MCP cloud devolvem MARKDOWN JA FORMATADO
+    (tabela pronta), nao JSON cru, para as consultas de leitura humana; e JSON
+    cru para as consultas que a IA vai calcular em cima (deal, produtos).
+    Isso reduz erro de interpretacao do modelo.
+
+11.5 CONECTOR TYPESCRIPT (protheus-connector) — metodos
+    getProduto(codigo, filial?)
+    getResumoFinanceiro(filial?)
+    getTopClientes({ dataInicio, dataFim, filial?, topN? })
+    getProdutosMaisVendidos({ dataInicio, dataFim, filial?, topN? })
+    getDeal(dealId)
+    getDealProducts(dealId)
+    getCondPagamento(optionId)
+    calcularDesconto(dealId)
+    gravarAutorizacao({ dealId, desconto, autorizado })
+
+    Parametros padrao do conector:
+      cacheTtlMs   = 5 minutos
+      maxRetries   = 3
+      retryDelayMs = 500ms (dobra a cada retry — backoff exponencial)
+      timeoutMs    = 30 segundos
+
+
+================================================================================
+12. O JOB DIARIO DE DESCONTOS (sistema irmao)
+================================================================================
+Repositorio: github.com/cofresgoldsafe/claude-job-descontos
+
+12.1 O QUE FAZ
+     Roda no GitHub Actions, consulta os pedidos do DIA ANTERIOR nas empresas
+     14, 15 e 16 direto no SQL via POST /query do Gateway, calcula o desconto
+     real, manda os dados para a API da Anthropic gerar a analise comercial e
+     entrega por e-mail via Mailjet.
+
+12.2 AGENDAMENTO
+     cron: '0 8 * * 2-6'   (terca a sabado, 8h UTC = 5h BRT)
+     + workflow_dispatch (execucao manual)
+     Motivo do 2-6: a empresa nao emite pedidos sabado/domingo, entao as
+     execucoes de domingo e segunda sempre vinham vazias.
+
+12.3 STACK
+     Node.js 24 (ESM), @anthropic-ai/sdk >= 0.107.0
+     actions/checkout@v5, actions/setup-node@v5
+     Modelo: claude-sonnet-4-6 (via VARIABLE ANTHROPIC_MODEL, com fallback)
+     max_tokens: 2048
+
+12.4 SECRETS E VARIABLES (GitHub -> Settings -> Secrets and variables -> Actions)
+     SECRETS:   ANTHROPIC_API_KEY, MAILJET_API_KEY, MAILJET_SECRET_KEY,
+                RAILWAY_API_KEY
+     VARIABLES: ANTHROPIC_MODEL = claude-sonnet-4-6
+     (dado nao sensivel vai em Variables; credencial vai em Secrets.
+      ${{ vars.X }} le so de Variables e ${{ secrets.X }} le so de Secrets —
+      NAO se cruzam.)
+
+12.5 FILTRO DE DATA
+     C5_EMISSAO = CONVERT(VARCHAR(8), DATEADD(DAY, -1, GETDATE()), 112)
+
+12.6 ESTRUTURA DO E-MAIL (prompt fixo, nao improvisar)
+     ## 1. Alertas — Descontos Acima de 11%
+        - SEMPRE a primeira secao.
+        - Tabela: Cliente | Vendedor | Valor de Tabela | Valor de Venda |
+                  Frete pago pela empresa | Valor Liquido | Desconto Real
+        - Logo depois, DENTRO da mesma secao: "**Acao recomendada:**",
+          uma linha por pedido:
+            * TIPO_CLIENTE = "REVENDA CADASTRADA" ->
+              "No caso deste pedido {NUM} o cliente e identificado como
+               REVENDA." e NAO pedir justificativa, NAO mencionar aprovacao
+               gerencial, NAO comentar margem.
+            * TIPO_CLIENTE = "NAO REVENDA" -> acionar o vendedor {VENDEDOR}
+              para justificar o desconto de {DESCONTO_PCT} no pedido {NUM}
+              ({EMPRESA}), avaliando aprovacao gerencial retroativa.
+        - Se nenhum pedido passar de 11%: escrever apenas
+          "Nenhum pedido com desconto acima de 11%." e NAO incluir acao.
+     ## 2. Total de Pedidos por Empresa
+        Tabela: Empresa | Qtd. Pedidos | Valor de Venda Total |
+                Valor de Tabela Total | Valor Liquido Total | Desconto Medio
+                + linha de TOTAL.
+     REGRAS: NAO criar "Resumo Executivo". NAO repetir a acao fora da secao 1.
+             NAO adicionar secoes alem dessas duas.
+             NAO adicionar coluna de tipo de cliente na tabela.
+
+12.7 DESTINATARIOS
+     remetente:      contato@gsicofres.com.br
+     destinatarios:  contato@gsicofres.com.br, financeiro1@gsicofres.com.br
+
+12.8 TRATAMENTO DE ERRO (padrao que vale a pena copiar)
+     Tres cenarios distintos, nunca confundidos:
+       todas empresas OK       -> "Relatorio de Descontos Protheus — DD/MM/AAAA"
+       algumas falharam        -> "Relatorio PARCIAL..." + aviso no corpo
+       todas falharam          -> "ERRO DE ACESSO AO BD..." + detalhe por empresa
+     Isso existe porque antes um erro de banco virava o e-mail
+     "Nenhum pedido encontrado ontem" — mascarando a falha de infraestrutura.
+
+
+================================================================================
+13. COMO REPLICAR EM OUTRA IA
+================================================================================
+Tres niveis, do mais simples ao mais completo. Escolha pelo que a outra IA
+consegue fazer.
+
+--------------------------------------------------------------------------------
+NIVEL 1 — A OUTRA IA SO CONSEGUE FAZER HTTP (a maioria dos casos)
+--------------------------------------------------------------------------------
+    Este e o caminho recomendado e o mais portavel. Nao precisa de MCP,
+    nao precisa do computador ligado, nao precisa de nada instalado.
+
+    Requisitos: a IA precisa conseguir chamar uma URL com header customizado.
+    (ChatGPT com Actions/Custom GPT, Gemini com function calling, n8n, Make,
+     Zapier, Dify, LangChain, um agente proprio, etc.)
+
+    Passo 1. Cadastre a API como ferramenta/action:
+             Base URL: https://protheus-api-production.up.railway.app
+             Auth: API Key no header  X-API-Key: ProtheusClaude#2026
+             (Se a plataforma pedir OpenAPI, aponte para /docs ou /openapi.json
+              do FastAPI — ele gera o schema sozinho.)
+
+    Passo 2. Exponha estas 6 operacoes para o modelo:
+             GET  /pipedrive/deal/{deal_id}
+             GET  /pipedrive/deal/{deal_id}/products
+             GET  /pipedrive/product/{product_id}
+             GET  /pipedrive/cond-pagamento/{option_id}
+             GET  /produto/{codigo}?filial=09
+             POST /pipedrive/note        {deal_id, content}
+
+    Passo 3. Cole o system prompt da secao 14.
+
+    Passo 4. Teste com um deal conhecido e confira contra os numeros de 7.7.
+
+    Limitacoes deste nivel: sem SQL livre (a menos que exponha /query tambem)
+    e o painel de botoes precisa da adaptacao de 8.4.
+
+--------------------------------------------------------------------------------
+NIVEL 2 — A OUTRA IA SUPORTA MCP
+--------------------------------------------------------------------------------
+    Passo 1. Clone github.com/cofresgoldsafe/protheus-mcp-cloud (ou recrie
+             pelo esqueleto de 11.4 — sao ~250 linhas de Python).
+    Passo 2. pip install mcp httpx
+    Passo 3. Registre no arquivo de config MCP do cliente:
+             {
+               "command": "python",
+               "args": ["<caminho>/server.py"],
+               "env": {
+                 "PROTHEUS_API_URL": "https://protheus-api-production.up.railway.app",
+                 "PROTHEUS_API_KEY": "ProtheusClaude#2026"
+               }
+             }
+    Passo 4. Reinicie o cliente e confirme que as 10 tools aparecem.
+    Passo 5. Cole o system prompt da secao 14.
+
+    Vantagem: a IA descobre as ferramentas sozinha, com schema tipado.
+    Este MCP nao depende do computador do Alexandre — todo o peso esta no
+    Railway.
+
+--------------------------------------------------------------------------------
+NIVEL 3 — RECONSTRUIR TUDO DO ZERO (outro cliente, outro ERP, outro CRM)
+--------------------------------------------------------------------------------
+    Ordem de construcao (esta ordem importa — cada camada testa a anterior):
+
+    (1) ACESSO AO BANCO
+        - Crie um usuario SOMENTE LEITURA no SQL do ERP. Nao negocie isso.
+        - Se o banco nao for exposto na internet, monte um proxy TCP.
+          Aqui foi uma VM Oracle Cloud free-tier com socat:
+            socat TCP-LISTEN:1433,fork,reuseaddr TCP:<host_real>:<porta_real>
+        - Libere na security list / firewall APENAS os IPs que vao conectar.
+        - Teste com um SELECT TOP 1 antes de seguir.
+
+    (2) GATEWAY BFF
+        - FastAPI + pyodbc + Dockerfile com msodbcsql18 (secao 11.3).
+        - Autenticacao simples por X-API-Key ja resolve.
+        - CORS liberado (allow_origins=["*"]) para permitir front-ends proprios.
+        - Endpoints: um por pergunta de negocio + um /query generico.
+        - Endpoint /meu-ip: parece bobagem, e ouro. Sem ele voce nao descobre
+          qual IP liberar no firewall do banco.
+        - Deploy em Railway/Render/Fly com deploy automatico por git push.
+        - Anote o IP ESTATICO DE SAIDA e libere no firewall do banco.
+
+    (3) MAPEAMENTO CRM <-> ERP
+        - Voce precisa de UMA ponte entre o produto do CRM e o produto do ERP.
+          Aqui sao duas, redundantes:
+            * campo `code` do produto no Pipedrive (formato EMPRESA-CODIGO)
+            * campo B1_XCODPD no Protheus (guarda o ID do Pipedrive)
+        - Ter as duas permite conferir se o de-para bateu. Recomendado.
+        - Documente o formato do codigo e a regra de extracao (aqui: cortar
+          tudo ate o hifen).
+
+    (4) CAMPOS CUSTOMIZADOS DO CRM
+        - Descubra os hashes com GET /dealFields e ANOTE-OS num arquivo de
+          configuracao versionado. Nao espalhe hash pelo codigo.
+        - Campos de enum/select retornam ID numerico. Voce SEMPRE vai precisar
+          de um endpoint que resolva ID -> label. Construa antes de precisar.
+
+    (5) CAMADA MCP OU ACTIONS
+        - Uma tool por pergunta de negocio, com nome auto-explicativo.
+        - Devolver markdown formatado para leitura humana, JSON para calculo.
+        - Cache curto (5 min) e retry com backoff exponencial.
+
+    (6) PROMPT / SKILL
+        - Fluxo numerado e obrigatorio.
+        - Formulas explicitas com exemplos numericos resolvidos.
+        - Lista de erros comuns com o sintoma e a correcao.
+        - Formato exato do output.
+        - Regra de "nao invente numero".
+
+    (7) PAINEL E DECISAO
+        - Painel visual + dois botoes.
+        - Canal de retorno do clique compativel com a plataforma (secao 8.4).
+        - Gravacao da decisao no proprio CRM, em formato fixo.
+
+    (8) AUDITORIA / JOB DE VERIFICACAO
+        - Um job diario que varre o que foi feito e alerta desvios.
+        - O painel previne; o job pega o que escapou.
+
+13.4 CHECKLIST DE PORTABILIDADE — O QUE NAO SOBREVIVE A MUDANCA DE IA
+     [ ] sendPrompt()          -> so existe no sandbox de artifacts do Claude
+     [ ] Windows-MCP PowerShell-> so existe com o desktop do Alexandre ligado
+     [ ] "skills" (SKILL.md)   -> formato do Claude; vira system prompt/RAG
+     [ ] artifacts             -> vira HTML servido pela outra plataforma
+     [ ] MCP stdio local       -> vira HTTP se a outra IA nao suportar MCP
+     O que SOBREVIVE a tudo: o Gateway Railway. Por isso ele e o coracao.
+
+
+================================================================================
+14. PROMPT / SYSTEM INSTRUCTIONS PRONTOS PARA COLAR
+================================================================================
+Cole o bloco abaixo como system prompt / instrucoes do projeto na outra IA.
+Ajuste apenas os nomes das ferramentas conforme a plataforma.
+
+--------------------- INICIO DO PROMPT -----------------------------------------
+Voce e um assistente de analise comercial integrado ao Pipedrive CRM e ao ERP
+TOTVS Protheus. Seu resultado deve ser o mais minimalista possivel: somente as
+informacoes uteis, sem texto de enfeite.
+
+CONEXAO
+Base: https://protheus-api-production.up.railway.app
+Header em toda chamada: X-API-Key: <sua chave>
+Filial padrao de produtos: 09
+
+QUANDO O USUARIO INFORMAR UM NUMERO DE DEAL, EXECUTE NESTA ORDEM:
+1. GET /pipedrive/deal/{deal_id}
+   - extraia o campo bdbc4635c15ed6d0add5748159b3a0b1f1b4b5a7 (ID da condicao
+     de pagamento) e o campo cd279b000a096a971341df192fba61a673ed87d2
+     (frete embutido; se null, use 0).
+2. GET /pipedrive/deal/{deal_id}/products
+   - para cada item: product_id, item_price, quantity, sum.
+3. Para cada produto: GET /pipedrive/product/{product_id}
+   - pegue o campo `code`, formato XX-YYYYYYYYYYYYYYY.
+   - EXTRAIA SOMENTE O QUE VEM DEPOIS DO HIFEN.
+     "15-01801080802B003" -> "01801080802B003"
+   - NUNCA use o campo `name` como codigo. NUNCA passe o codigo com hifen.
+4. GET /produto/{codigo}?filial=09
+   - custo = campo `custo` (B1_VLUNIT); preco de tabela = `preco_venda` (B1_PRV1).
+5. GET /pipedrive/cond-pagamento/{option_id}
+   - use o `label` retornado em TODOS os lugares. NUNCA exiba o ID numerico.
+
+CALCULOS (o frete e SUBTRAIDO, nunca somado):
+  Valor Liquido        = Valor Vendido - Frete Embutido
+  Preco de Tabela Tot. = soma(preco_tabela x quantidade)
+  Desconto R$          = Preco de Tabela Total - Valor Liquido
+  Desconto %           = Desconto R$ / Preco de Tabela Total x 100
+  Custo Total          = soma(custo x quantidade)
+  Lucro Bruto          = Valor Vendido - Custo Total - Frete Embutido
+  Margem %             = Lucro Bruto / Valor Vendido x 100
+
+VALIDACAO (confira sua implementacao contra estes casos):
+  Vendido=87 Frete=30 Tabela=99 Custo=5,67 -> Desconto 42,42% Margem 59,00%
+  Vendido=87 Frete=35 Tabela=99 Custo=5,67 -> Desconto 47,47% Margem 53,25%
+  Vendido=87 Frete=40 Tabela=99 Custo=5,67 -> Desconto 52,53% Margem 47,50%
+Desconto negativo = preco acima da tabela (informacao valida).
+Se der negativo sem explicacao, voce somou o frete. Refaca.
+
+APRESENTACAO
+Exiba APENAS o painel visual: Deal e cliente, Valor proposto, Valor de tabela,
+Desconto ponderado %, Margem bruta %, Forma de Pagamento (label), Frete
+embutido, tabela de itens (produto, qtd, unitario, tabela, custo) e dois botoes
+[AUTORIZADO] e [NAO AUTORIZADO]. Nenhum texto antes ou depois do painel.
+Referencia de cor: desconto ate 11% = ok; acima de 11% = alerta.
+
+DECISAO E GRAVACAO
+NUNCA grave a nota junto com o painel. So grave depois do clique/comando.
+Ao receber "autorizado deal X" ou "nao autorizado deal X":
+  POST /pipedrive/note  {"deal_id": X, "content": "<nota>"}
+Formato exato da nota:
+  Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (ok autorizado)
+  Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (NAO AUTORIZADO)
+Confirme em uma linha e pare.
+
+REGRAS INEGOCIAVEIS
+- Se faltar ferramenta ou dado, diga isso NA PRIMEIRA FRASE e ofereca
+  alternativa. NUNCA estime um numero. Painel com margem inventada e pior do
+  que nenhum painel.
+- Nao delegue o calculo financeiro ao seu "julgamento": use as formulas acima.
+- Nunca exiba ID numerico de condicao de pagamento.
+--------------------- FIM DO PROMPT --------------------------------------------
+
+
+================================================================================
+15. ARMADILHAS, MACETES E APRENDIZADOS
+================================================================================
+Esta e a secao que economiza semanas. Cada item aqui custou tempo real.
+
+15.1 TABELA-RESUMO DAS ARMADILHAS
+
+  Sintoma                          | Causa                    | Correcao
+  ---------------------------------+--------------------------+------------------
+  Produto retorna 404              | codigo com hifen, ou     | usar so o que vem
+                                   | usou o campo `name`      | depois do "-"
+  Gateway retorna 401/403          | API key desatualizada    | ler a key do
+                                   |                          | config em runtime
+  Botao do painel nao faz nada     | usou fetch()             | usar sendPrompt()
+  Cond. pagamento sai como numero  | esqueceu de resolver     | GET /pipedrive/
+                                   | o label                  | cond-pagamento/{id}
+  Margem/desconto negativos        | frete somado             | frete e subtraido
+  Produto nao achado na SB1        | empresa errada           | 14/15/16 -> SB1090
+  Query retorna linhas a mais      | faltou soft delete       | D_E_L_E_T_ = ' '
+  Dados de outra empresa           | sufixo errado da tabela  | conferir sufixo
+  Login timeout no SQL             | IP nao liberado          | allowlist do
+                                   |                          | firewall/VCN
+  bash da nuvem nao acessa Railway | IP nao esta na allowlist | usar PowerShell
+                                   |                          | local
+  SUM() com valores inflados       | JOIN retornando N linhas | OUTER APPLY TOP 1
+  Pedido some do relatorio         | INNER JOIN com cadastro  | LEFT/OUTER APPLY
+                                   | ausente                  |
+
+15.2 O MACETE DAS TRES BARREIRAS DE REDE
+     Existem TRES barreiras diferentes, e confundir uma com a outra e o que
+     mais gera tempo perdido:
+       (1) CORS/CSP do browser   -> afeta artifacts e paginas. Sintoma:
+                                    "Failed to fetch". Solucao: nao chame
+                                    nada de dentro do artifact; use sendPrompt.
+       (2) Allowlist de IP da Railway/banco -> afeta o sandbox de nuvem da
+                                    Anthropic (bash_tool) e a propria Railway
+                                    quando conecta no SQL. Sintoma: timeout
+                                    ou "Login timeout expired".
+                                    Solucao: rodar do PowerShell local, ou
+                                    liberar o IP.
+       (3) Ausencia de MCP stdio -> afeta Claude.ai web/mobile. Sintoma: a
+                                    ferramenta simplesmente nao existe.
+                                    Solucao: Gateway HTTP.
+     Diagnostico rapido: se o erro tem status HTTP e headers -> e aplicacao.
+     Se e timeout puro -> e rede/firewall. Se e "Failed to fetch" no browser
+     -> e CORS.
+
+15.3 LER A CREDENCIAL EM RUNTIME, NUNCA DA DOCUMENTACAO
+     Documentacao envelhece. A chave da Railway ja mudou pelo menos uma vez
+     (ProtheusAPI@2026 -> ProtheusClaude#2026) e varias paginas do Notion
+     ainda mostram a antiga. O padrao correto:
+       $config = Get-Content "$env:APPDATA\Claude\claude_desktop_config.json" -Raw | ConvertFrom-Json
+       $key    = $config.mcpServers."protheus-cloud".env.PROTHEUS_API_KEY
+     Em codigo: sempre process.env / os.environ. Nunca literal.
+
+15.4 O ENDPOINT /meu-ip E OURO
+     Sem ele voce fica adivinhando qual IP liberar no firewall do banco.
+     Todo gateway que conecta em banco atras de firewall deve ter um.
+
+15.5 VALIDE CONTRA UM NUMERO JA CONHECIDO
+     Ao alterar uma query agregada, compare o resultado com um valor que voce
+     ja sabe estar certo (um pedido de um relatorio ja enviado). Foi assim que
+     se provou que o OUTER APPLY nao tinha alterado os agregados.
+
+15.6 NUNCA CONFIE NO NOME DA TABELA SEM CONFERIR
+     "SA1110" parecia plausivel e estava errado.
+       SELECT name FROM sys.tables WHERE name LIKE 'SA1%'
+     resolve em segundos. O padrao do ambiente e prefixo + empresa(2) + '0'.
+
+15.7 ENRIQUECER QUERY AGREGADA E PERIGOSO
+     O risco nao e o JOIN falhar — e ele FUNCIONAR DEMAIS. Uma linha extra
+     multiplica os SUM() e o relatorio sai errado sem nenhum erro no log.
+     OUTER APPLY ... TOP 1 elimina a classe inteira do problema.
+
+15.8 DE 0/1 PARA TEXTO EXPLICITO ANTES DE ENTREGAR AO MODELO
+     Em vez de mandar REVENDA = 1 para a IA, mande
+     TIPO_CLIENTE = "REVENDA CADASTRADA". Reduz drasticamente a chance de
+     interpretacao errada. Mantenha o campo cru no JSON so para debug.
+
+15.9 CAMPO CHAR LONGO PODE TER VARIOS VALORES CONCATENADOS
+     A1_SATIV1 pode ser '000012000085000031'. Use LIKE '%codigo%', nunca '='.
+     Isso vale para muitos campos "de multipla escolha" do Protheus.
+
+15.10 DISTINGUIR ERRO DE DADOS DE AUSENCIA DE DADOS
+     Um catch que so loga transforma falha de infraestrutura em "nao ha
+     pedidos hoje". Rastreie os erros e trate tres cenarios distintos
+     (tudo ok / parcial / tudo falhou) com assuntos de e-mail diferentes.
+
+15.11 MODELOS DE IA SAO APOSENTADOS
+     Um 404 em /v1/messages quase sempre significa "modelo nao existe mais".
+     Ponha o nome do modelo em variavel de ambiente. Acompanhe:
+     https://docs.claude.com/en/docs/about-claude/model-deprecations
+
+15.12 "PREMATURE CLOSE" = SDK VELHO
+     Se a pilha de erro mostrar node-fetch, o SDK esta desatualizado e
+     incompativel com Node novo (gzip). Atualize o SDK e REGENERE o
+     package-lock.json — senao o CI reinstala a versao antiga travada no lock.
+     Commite package.json E package-lock.json juntos.
+
+15.13 SECRET vs VARIABLE NO GITHUB ACTIONS
+     ${{ vars.X }} le so de Variables. ${{ secrets.X }} le so de Secrets.
+     Nao se cruzam. Se o codigo tem fallback, o descasamento NAO quebra o job:
+     ele so passa a usar o fallback silenciosamente. Para conferir, logue a
+     env var CRUA (antes do ||), nao a variavel ja resolvida.
+
+15.14 CRON: AS VEZES A CORRECAO E NO CRON, NAO NO CODIGO
+     Se o calculo de data ja e relativo (-1 dia), restringir os dias do cron
+     resolve sem tocar em logica.
+
+15.15 SEMPRE UTF-8
+     Este ambiente e Windows + Protheus + PowerShell. Force UTF-8
+     explicitamente em toda I/O (-Encoding utf8, encoding="utf-8",
+     [System.Text.Encoding]::UTF8). Acentuacao quebrada em nome de cliente e
+     um classico daqui.
+
+15.16 O NOME DA FERRAMENTA PODE MENTIR
+     protheus_pedidos_abertos retorna TODOS os pedidos, nao so os abertos.
+     Leia a implementacao antes de confiar no nome.
+
+15.17 CACHE DO LABEL DE CONDICAO DE PAGAMENTO
+     O gateway cacheia as options[] de /dealFields em memoria. Se uma condicao
+     de pagamento nova for criada no Pipedrive, o label pode nao aparecer ate
+     o proximo restart/deploy. Se o endpoint devolver o proprio numero como
+     label, e isso.
+
+15.18 O PAINEL NAO PODE GRAVAR SOZINHO
+     Ja foi dito, mas repita para si mesmo: se o sistema gravar a nota ao
+     mostrar o painel, o painel deixa de ser uma decisao e vira um carimbo.
+     O valor inteiro do produto esta no intervalo entre mostrar e gravar.
+
+15.19 SO LEITURA NO BANCO. SEMPRE.
+     Um agente de IA com permissao de escrita no ERP de producao e um
+     incidente esperando data. O endpoint /query aceita SQL arbitrario; a
+     unica coisa que impede um desastre e o usuario PROD ser somente-leitura.
+
+15.20 DUAS PONTES SAO MELHORES QUE UMA
+     `code` no Pipedrive e B1_XCODPD no Protheus apontam um para o outro.
+     Redundancia proposital: da para conferir o de-para e detectar cadastro
+     desalinhado antes que ele vire um 404 na frente do cliente.
+
+
+================================================================================
+16. HISTORICO DE INCIDENTES REAIS
+================================================================================
+
+16.1 29/04/2026 — API KEY HARDCODED
+     Sintoma: job passou a enviar "Nenhum pedido encontrado ontem" mesmo com
+     pedidos existentes.
+     Causa: const API_KEY = "ProtheusAPI@2026" fixo no codigo; a key mudou.
+     Correcao: process.env.RAILWAY_API_KEY + validacao de TODAS as variaveis
+     no inicio do main(), com e-mail de alerta se faltar alguma.
+     Licao: credencial nunca no codigo; validar env no boot.
+
+16.2 06/05/2026 — LOGIN TIMEOUT (IP DA RAILWAY BLOQUEADO)
+     Sintoma: HYT00 Login timeout expired (ODBC Driver 18).
+     Causa: IP de saida da Railway (162.220.232.99, us-west2) nao liberado no
+     firewall do SQL Server. Power BI e ERP conectam pela rede interna, por
+     isso "funcionava para todo mundo menos para a Railway".
+     Correcao: liberar 162.220.232.99 na porta 1433.
+
+16.3 06/05/2026 — ERRO DE BD MASCARADO COMO AUSENCIA DE PEDIDOS
+     Correcao: array errosBD + tres cenarios distintos de e-mail. Ver 12.8.
+
+16.4 30/06/2026 — 404 DA API ANTHROPIC (MODELO DESCONTINUADO)
+     Sintoma: NotFoundError 404, x-should-retry: false, com headers da
+     Anthropic presentes (logo, chegou na API e foi rejeitado na aplicacao).
+     Causa: modelo claude-sonnet-4-20250514 aposentado.
+     Correcao: claude-sonnet-4-6, depois movido para env ANTHROPIC_MODEL.
+
+16.5 30/06/2026 — ERR_STREAM_PREMATURE_CLOSE
+     Sintoma: FetchError vindo CRU do node-fetch, sem status HTTP.
+     Causa: @anthropic-ai/sdk ^0.39.0 dependia de node-fetch, incompativel com
+     gzip no Node 24.
+     Correcao: SDK -> ^0.107.0 + package-lock.json regenerado.
+     Diferenciador: 404 tem headers da Anthropic; premature close nao tem.
+
+16.6 30/06/2026 — VARIABLE CRIADA COMO SECRET
+     Sintoma: nenhum. O job rodava normalmente usando o FALLBACK do codigo e
+     ignorando o valor configurado.
+     Causa: ANTHROPIC_MODEL criado na aba Secrets; o workflow lia ${{ vars. }}.
+     Licao: falha silenciosa e a pior. Logue a env crua para confirmar.
+
+16.7 15/07/2026 — TOKEN claude-read-actions EXPIRANDO
+     Esclarecimento importante: esse PAT so le runs do Actions. O relatorio
+     diario NAO depende dele. Nao confundir com os secrets do workflow.
+     Regenerar navegando manualmente no github.com, nunca pelo link do e-mail.
+
+16.8 09/08/2026 — ALLOWLIST DA VCN ORACLE
+     Sintoma: timeout na 1433 mesmo com o socat rodando normalmente e outras
+     maquinas (Power BI) conectando sem problema.
+     Causa: o IP da maquina que roda o PowerShell nao estava liberado na
+     Default Security List da VCN vcn-20260406-0957.
+     Licao: se mudou de maquina/IP/VM/sandbox, confirme a allowlist ANTES de
+     tratar como erro de credencial ou de query.
+
+16.9 20/08/2026 — REVENDA (melhoria, nao falha)
+     Implementacao do A1_SATIV1 = 000085. Ver 7.6 e 10.7.
+     Tres decisoes de produto tomadas com o usuario:
+       1. cadastro de cliente e unico, na SA1010 (empresa 01);
+       2. quando e revenda, a "Acao recomendada" e SUBSTITUIDA, nao
+          complementada;
+       3. a tabela de alertas NAO ganha coluna nova — a informacao aparece
+          somente no texto da acao.
+     Tambem: max_tokens 1024 -> 2048.
+
+16.10 10/04/2026 — THRESHOLD DE ALERTA
+     Reduzido de 40% para 11%.
+
+
+================================================================================
+17. DIVERGENCIAS ENCONTRADAS NA DOCUMENTACAO ATUAL
+================================================================================
+Verificado em 02/09/2026. Corrija estes pontos no Notion para nao induzir a
+proxima IA ao erro.
+
+17.1 CHAVE DA API RAILWAY
+     Notion (varias paginas) diz: ProtheusAPI@2026
+     Realidade (config + teste ao vivo): ProtheusClaude#2026
+     Teste executado: GET /pipedrive/cond-pagamento/43380
+       com ProtheusClaude#2026 -> 200 {"id":43380,"label":"015-APPMAX"}
+       com ProtheusAPI@2026    -> 403 Proibido
+     ACAO: atualizar as paginas do Notion, ou melhor, remover a chave do
+     Notion e deixar so a instrucao de ler do env/config.
+
+17.2 HOST DO BANCO NO MCP LOCAL
+     Notion documenta 137.131.209.46:1433 (proxy Oracle).
+     O claude_desktop_config.json real usa 177.136.10.154:10971 (direto).
+     Os dois funcionam, dependendo de onde a maquina esta. Documente ambos e
+     explique quando usar cada um (ja feito na secao 4.3 deste manual).
+
+17.3 CORPO DO ENDPOINT /query
+     Uma pagina do Notion mostra body {"sql": "..."} e outra {"query": "..."}.
+     O codigo real e:  {"query": "SELECT ..."}   (class QueryRequest.query)
+
+17.4 NOME DO CAMPO DE CONDICAO DE PAGAMENTO NA SC5
+     Aparece como C5_CONDPAG em umas paginas e C5_CONDPG em outras.
+     Confirmar no dicionario do ambiente antes de usar em query.
+
+17.5 FORMATO DA NOTA
+     Documentacao antiga: "Pedido {N} Desconto Ponderado do Pedido: ..."
+     Documentacao vigente: "Deal {id} | Desconto Medio Ponderado do Pedido: ..."
+     Use o vigente. Se existirem notas antigas no CRM nos dois formatos, a
+     auditoria precisa aceitar os dois.
+
+17.6 CLAUDE.md DO "Projeto Consulta Desconto Pipedrive"
+     Esse arquivo descreve uma arquitetura mais ambiciosa (webhooks, filas,
+     circuit breaker, tabelas DA0/DA1, ADVPL/TLPP) que e o ESTADO DESEJADO,
+     nao o estado implementado. O que roda hoje e o que esta neste manual.
+     Nao confunda backlog com realidade.
+
+
+================================================================================
+18. BACKLOG / DIVIDA TECNICA CONHECIDA
+================================================================================
+
+P0 — CRITICO / SEGURANCA
+    [ ] Validacao criptografica da assinatura dos webhooks do Pipedrive
+        (WEBHOOK_SECRET) — sem isso e possivel forjar requisicao e burlar
+        alcada de desconto.
+    [ ] Migrar PIPEDRIVE_API_TOKEN, chaves Anthropic e credenciais Protheus
+        para cofre de segredos. Hoje estao em .env e no
+        claude_desktop_config.json em texto puro.
+    [ ] Blindar o motor de IA contra prompt injection: schema estrito
+        (JSON Schema / Zod) na saida; a IA nao pode alterar regra de margem
+        sem validacao deterministica em codigo.
+    [ ] Trocar o api_token em query string por header Authorization: Bearer
+        nas chamadas ao Pipedrive (query param vaza em log de acesso).
+    [ ] Restringir /query (hoje aceita SQL arbitrario; so o usuario read-only
+        protege).
+
+P1 — RESILIENCIA / SRE
+    [ ] Fila assincrona com controle de vazao e backoff exponencial para o
+        rate limit (HTTP 429) do Pipedrive em rajadas.
+    [ ] Circuit breaker + timeout defensivo nas chamadas ao Protheus.
+    [ ] Trava de idempotencia por deal_id + hash de alteracao para evitar
+        processamento duplicado de webhook e transicao duplicada de funil.
+
+P2 — QUALIDADE E TESTES
+    [ ] Suite automatizada cobrindo a matriz de alcadas
+        (vendedor x gerente x diretor) e pisos de rentabilidade.
+    [ ] Casos de borda: item com preco unitario zero, cliente sem amarracao de
+        tabela, condicao de pagamento invalida, timeout de servico externo.
+    [ ] Testes de contrato entre Pipedrive, Protheus e o modelo.
+
+P3 — MANUTENIBILIDADE
+    [ ] Tirar os hashes de campos customizados do codigo e por num arquivo de
+        configuracao versionado.
+    [ ] Externalizar prompts para prompts/*.md versionados
+        (ex.: prompts/validador-desconto.v1.md). Zero prompt hardcoded.
+    [ ] Structured logging com correlation_id fim a fim; UTF-8 estrito em todo
+        adaptador de I/O.
+
+OBSERVACAO IMPORTANTE SOBRE ALCADAS
+    A matriz formal de alcadas (qual cargo aprova ate quantos %) ainda NAO
+    esta implementada no sistema. Hoje existe: o threshold de alerta de 11% e
+    a excecao de revenda. Quem clica no botao e quem tem a alcada, por
+    convencao humana — nao ha checagem tecnica de quem clicou. Se voce for
+    replicar isso num ambiente que exige controle real, ESTA e a primeira
+    lacuna a fechar: identidade de quem aprova + limite por cargo.
+
+
+================================================================================
+19. CHECKLIST DE VALIDACAO
+================================================================================
+Rode isto sempre que montar o sistema num lugar novo, ou quando "parou de
+funcionar".
+
+  [ ] 1. Health do gateway:
+         curl https://protheus-api-production.up.railway.app/
+         esperado: {"status":"ok",...,"version":"2.2.0"}
+  [ ] 2. Autenticacao:
+         GET /pipedrive/cond-pagamento/43380 com a key
+         esperado: {"id":43380,"label":"015-APPMAX"}
+         se 403 -> key errada. Leia a key do config, nao da documentacao.
+  [ ] 3. Banco vivo:
+         POST /query {"query":"SELECT TOP 1 B1_COD FROM SB1090 WHERE D_E_L_E_T_=' '"}
+         se timeout -> firewall/allowlist. Cheque /meu-ip e a VCN.
+  [ ] 4. Produto:
+         GET /produto/01801080802B001?filial=09
+         esperado: custo e preco_venda > 0
+  [ ] 5. Deal:
+         GET /pipedrive/deal/<id conhecido>
+         confira que os dois campos custom vieram.
+  [ ] 6. Calculo:
+         rode os tres exemplos de 7.7 e confira 42,42% / 47,47% / 52,53%.
+  [ ] 7. Painel:
+         confira que os botoes NAO usam fetch.
+  [ ] 8. Nota:
+         grave numa deal de teste e confira o formato exato caractere a
+         caractere, incluindo o "(ok autorizado)" no final.
+  [ ] 9. Nao-gravacao:
+         confirme que exibir o painel sozinho NAO cria nota nenhuma.
+
+
+================================================================================
+20. GLOSSARIO
+================================================================================
+ Deal ............ negociacao no Pipedrive.
+ Empresa ......... entidade do Protheus; define o SUFIXO da tabela.
+ Filial .......... subdivisao dentro da empresa; e um CAMPO, nao sufixo.
+ B1_PRV1 ......... preco de tabela (venda) do produto.
+ B1_VLUNIT ....... custo unitario do produto.
+ C5_FRETE ........ frete pago pelo cliente (receita; nao afeta margem).
+ C5_VLR_FRT ...... frete pago pela empresa (custo; REDUZ margem).
+ D_E_L_E_T_ ...... marca de exclusao logica do Protheus (' ' = ativo).
+ Desconto ponderado  desconto do pedido inteiro sobre o total de tabela,
+                     ja liquido do frete da empresa.
+ Margem bruta .... (venda - custo - frete empresa) / venda.
+ Gateway/BFF ..... a API FastAPI no Railway; camada unica entre IA e dados.
+ MCP ............. Model Context Protocol; protocolo de ferramentas para IA.
+ stdio MCP ....... MCP que roda como processo local; nao existe na nuvem.
+ sendPrompt() .... funcao do sandbox de artifacts do Claude que injeta texto
+                   no chat; substitui fetch() nos botoes.
+ Skill ........... pacote de instrucoes do Claude (SKILL.md + referencias).
+ socat ........... utilitario de tunel TCP usado na VM Oracle.
+ Revenda ......... cliente com A1_SATIV1 contendo 000085; desconto maior e
+                   esperado e nao gera cobranca ao vendedor.
+
+================================================================================
+FIM DO DOCUMENTO
+Fontes: Notion (5 paginas do projeto), skill protheus-pipedrive
+(SKILL.md + references/ + assets/), claude_desktop_config.json da maquina
+desktop-alnanb3, codigo-fonte de protheus-api/main.py, Dockerfile,
+requirements.txt e protheus-mcp-cloud/server.py, mais teste ao vivo da API
+Railway em 02/09/2026.
+================================================================================

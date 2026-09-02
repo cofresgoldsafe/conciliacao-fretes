@@ -1,5 +1,155 @@
 [
   {
+    "id": "ACT-1788367958204",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T16:52:38.204Z"
+  },
+  {
+    "id": "ACT-1788367958031",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T16:52:38.031Z"
+  },
+  {
+    "id": "ACT-1788367957687",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T16:52:37.687Z"
+  },
+  {
+    "id": "ACT-1788367957378",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T16:52:37.378Z"
+  },
+  {
+    "id": "ACT-1788367956043",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-02T16:52:36.044Z"
+  },
+  {
+    "id": "ACT-1788367956010",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-02T16:52:36.011Z"
+  },
+  {
+    "id": "ACT-1788361382151",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T15:03:02.151Z"
+  },
+  {
+    "id": "ACT-1788361381988",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T15:03:01.988Z"
+  },
+  {
+    "id": "ACT-1788361381656",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T15:03:01.656Z"
+  },
+  {
+    "id": "ACT-1788361381349",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T15:03:01.349Z"
+  },
+  {
+    "id": "ACT-1788361380204",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-02T15:03:00.204Z"
+  },
+  {
+    "id": "ACT-1788361380144",
+    "username": "anonimo",
+    "userName": "anonimo",
+    "actionType": "OUTRO",
+    "description": "",
+    "ip": "",
+    "metadata": {},
+    "createdAt": "2026-09-02T15:03:00.144Z"
+  },
+  {
+    "id": "ACT-1788361374095",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 19785,
+      "totais": {
+        "estoque": 183,
+        "contasReceber": 97,
+        "contasPagar": 183,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-09-02T15:02:54.096Z"
+  },
+  {
+    "id": "ACT-1788361354187",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-09-02T15:02:34.187Z"
+  },
+  {
     "id": "ACT-1788347785938",
     "username": "alexandre",
     "userName": "Alexandre",
@@ -2188,216 +2338,5 @@
       "source": "CACHE_JSON"
     },
     "createdAt": "2026-08-31T14:41:28.747Z"
-  },
-  {
-    "id": "ACT-1788187063244",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 13439,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 85,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T14:37:43.244Z"
-  },
-  {
-    "id": "ACT-1788187049656",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T14:37:29.656Z"
-  },
-  {
-    "id": "ACT-1788186678471",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 15029,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 147,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T14:31:18.471Z"
-  },
-  {
-    "id": "ACT-1788186663337",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T14:31:03.337Z"
-  },
-  {
-    "id": "ACT-1788185477179",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 17287,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 147,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T14:11:17.179Z"
-  },
-  {
-    "id": "ACT-1788185459800",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T14:10:59.800Z"
-  },
-  {
-    "id": "ACT-1788183883098",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 17390,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 99,
-        "contasPagar": 183,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T13:44:43.098Z"
-  },
-  {
-    "id": "ACT-1788183865619",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T13:44:25.619Z"
-  },
-  {
-    "id": "ACT-1788183678776",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 14191,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 99,
-        "contasPagar": 183,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T13:41:18.776Z"
-  },
-  {
-    "id": "ACT-1788183664494",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T13:41:04.494Z"
-  },
-  {
-    "id": "ACT-1788183392266",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_BI_EXECUTIVO",
-    "description": "Acessou o Dashboard Executivo de BI (Configurado: true)",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "configured": true,
-      "dashboardId": 42
-    },
-    "createdAt": "2026-08-31T13:36:32.266Z"
-  },
-  {
-    "id": "ACT-1788183391806",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 14192,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 99,
-        "contasPagar": 183,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T13:36:31.806Z"
-  },
-  {
-    "id": "ACT-1788183377554",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T13:36:17.554Z"
-  },
-  {
-    "id": "ACT-1788183363406",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 17069,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 99,
-        "contasPagar": 183,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T13:36:03.406Z"
   }
 ]
