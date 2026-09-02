@@ -385,5 +385,113 @@
     "comentarios": [],
     "created_at": "2026-09-01T18:11:11.520Z",
     "updated_at": "2026-09-01T18:11:11.520Z"
+  },
+  {
+    "id": 15,
+    "titulo": "Testar emissão de nota fiscal pedido 1001",
+    "descricao": "Conferir alíquotas de ICMS e dados de entrega no Protheus.",
+    "status": "FINALIZADA",
+    "prioridade": "ALTA",
+    "responsavel_username": "juliana",
+    "responsavel_nome": "Juliana Vendas",
+    "criado_por_username": "alexandre",
+    "criado_por_nome": "Alexandre Gestor",
+    "data_limite": "2026-09-10",
+    "comentarios": [
+      {
+        "id": 1788313693196,
+        "autor_username": "juliana",
+        "autor_nome": "Juliana Vendas",
+        "mensagem": "Verifiquei o pedido no Protheus, está tudo ok!",
+        "created_at": "2026-09-02T01:48:13.196Z"
+      },
+      {
+        "id": 1788313693311,
+        "autor_username": "alexandre",
+        "autor_nome": "Alexandre Gestor",
+        "mensagem": "🔄 [TAREFA REABERTA]: Faltou conferir o frete embutido na cotação.",
+        "created_at": "2026-09-02T01:48:13.311Z"
+      },
+      {
+        "id": 1788313693336,
+        "autor_username": "alexandre",
+        "autor_nome": "Alexandre Gestor",
+        "mensagem": "✨ [TAREFA FINALIZADA]: Tudo conferido e validado com sucesso.",
+        "created_at": "2026-09-02T01:48:13.336Z"
+      }
+    ],
+    "created_at": "2026-09-02T01:48:13.188Z",
+    "updated_at": "2026-09-02T01:48:13.338Z",
+    "concluida_at": "2026-09-02T01:48:13.204Z",
+    "finalizada_at": "2026-09-02T01:48:13.333Z"
+  },
+  {
+    "id": 16,
+    "titulo": "Minha tarefa pessoal de conferência",
+    "descricao": "Ligar para cliente da cotação 502.",
+    "status": "PENDENTE",
+    "prioridade": "MEDIA",
+    "responsavel_username": "juliana",
+    "responsavel_nome": "Juliana Vendas",
+    "criado_por_username": "juliana",
+    "criado_por_nome": "Juliana Vendas",
+    "data_limite": null,
+    "comentarios": [],
+    "created_at": "2026-09-02T01:48:13.369Z",
+    "updated_at": "2026-09-02T01:48:13.369Z"
+  },
+  {
+    "id": 17,
+    "titulo": "Testar emissão de nota fiscal pedido 1001",
+    "descricao": "Conferir alíquotas de ICMS e dados de entrega no Protheus.",
+    "status": "FINALIZADA",
+    "prioridade": "ALTA",
+    "responsavel_username": "juliana",
+    "responsavel_nome": "Juliana Vendas",
+    "criado_por_username": "alexandre",
+    "criado_por_nome": "Alexandre Gestor",
+    "data_limite": "2026-09-10",
+    "comentarios": [
+      {
+        "id": 1788313765989,
+        "autor_username": "juliana",
+        "autor_nome": "Juliana Vendas",
+        "mensagem": "Verifiquei o pedido no Protheus, está tudo ok!",
+        "created_at": "2026-09-02T01:49:25.989Z"
+      },
+      {
+        "id": 1788313766082,
+        "autor_username": "alexandre",
+        "autor_nome": "Alexandre Gestor",
+        "mensagem": "🔄 [TAREFA REABERTA]: Faltou conferir o frete embutido na cotação.",
+        "created_at": "2026-09-02T01:49:26.082Z"
+      },
+      {
+        "id": 1788313766107,
+        "autor_username": "alexandre",
+        "autor_nome": "Alexandre Gestor",
+        "mensagem": "✨ [TAREFA FINALIZADA]: Tudo conferido e validado com sucesso.",
+        "created_at": "2026-09-02T01:49:26.107Z"
+      }
+    ],
+    "created_at": "2026-09-02T01:49:25.979Z",
+    "updated_at": "2026-09-02T01:49:26.109Z",
+    "concluida_at": "2026-09-02T01:49:25.997Z",
+    "finalizada_at": "2026-09-02T01:49:26.103Z"
+  },
+  {
+    "id": 18,
+    "titulo": "Minha tarefa pessoal de conferência",
+    "descricao": "Ligar para cliente da cotação 502.",
+    "status": "PENDENTE",
+    "prioridade": "MEDIA",
+    "responsavel_username": "juliana",
+    "responsavel_nome": "Juliana Vendas",
+    "criado_por_username": "juliana",
+    "criado_por_nome": "Juliana Vendas",
+    "data_limite": null,
+    "comentarios": [],
+    "created_at": "2026-09-02T01:49:26.133Z",
+    "updated_at": "2026-09-02T01:49:26.133Z"
   }
 ]

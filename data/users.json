@@ -9,19 +9,20 @@
       "logistica",
       "consulta",
       "vendedores",
+      "compras",
       "financeiro",
       "configuracoes"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-01T15:06:41.698Z",
+    "lastActiveAt": "2026-09-02T01:49:36.134Z",
     "lastLoginAt": "2026-08-24T18:52:40.764Z",
-    "totalActions": 398
+    "totalActions": 408
   },
   {
     "username": "erica",
     "name": "Érica",
     "email": null,
-    "pass": "$2b$10$Xzwt8JWur0DhlST.He0G3Og7VUteJcDEQsUIfM6z4CHswvdyTroe.",
+    "pass": "$2b$10$4FxKV.stdcW.B2ueqrwzQeqZZgXFmoQqoWuCldsiu/V8Ry2drjmJO",
     "role": "user",
     "permissions": [
       "logistica",
@@ -55,8 +56,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-01T15:04:56.730Z",
-    "totalActions": 112,
+    "lastActiveAt": "2026-09-02T01:49:30.104Z",
+    "totalActions": 122,
     "links_favoritos": [
       {
         "id": "1",
@@ -101,8 +102,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-01T15:04:51.057Z",
-    "totalActions": 18
+    "lastActiveAt": "2026-09-02T01:49:34.358Z",
+    "totalActions": 23
   },
   {
     "username": "figueiredo",
@@ -115,8 +116,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-08-27T16:42:14.571Z",
-    "totalActions": 13
+    "lastActiveAt": "2026-09-02T01:49:36.107Z",
+    "totalActions": 16
   },
   {
     "username": "rubens",

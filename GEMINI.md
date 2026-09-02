@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login & Expurgo Estrito de Produtos Bloqueados B1_MSBLQL no Estoque - 13 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 21:40 (v9.18 - Expurgo Estrito de Produtos Bloqueados B1_MSBLQL, Descarte de Catálogo Legado SB1010 da Empresa 01 na Sincronização de Estoque, Normalização de Joins no Faturamento Protheus - 13 Suítes Automatizadas, 102 Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login, Nova Aba Principal COMPRAS com 4 Sub-Abas DRY & Expurgo Estrito de Produtos Bloqueados B1_MSBLQL no Estoque - 14 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 01/09/2026 22:50 (v9.19 - Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas: Saldos em Estoque, Consulta Pedido, Pedidos Abertos, Pedidos Compras, Arquitetura DRY Estrita sem Duplicação de DOM/CSS, Permissões Granulares RBAC no Admin/Server/DB e Suporte a Tema Claro/Escuro - 14 Suítes Automatizadas, 108 Testes 100% Aprovados)  
 
 ---
 
@@ -477,6 +477,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Acessibilidade para Perfis Operacionais:**
      - Usuários com acesso restrito à aba Logística (ex: operadores de expedição) agora podem consultar em tempo real os saldos físicos multi-empresa (Metal Pleno 14, GSI 15, OACO 16), compras pendentes SC7, vendas em carteira SC6 e abrir o modal de drilldown.
    - **Validação Automatizada Completa:** Cobertura por testes unitários e testes E2E Playwright validando a navegação, visibilidade e garantia de elemento DOM único.
+32. [x] **Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY) (`public/index.html`, `public/style.css`, `public/app.js`, `public/js/vendedores.js`, `server.js`, `postgres_db.js`, `test_compras_tab.js`):**
+   - **Criação da Aba Principal `COMPRAS`:**
+     - Botão `#mainTabCompras` posicionado na 1ª camada de navegação com atributo `data-main-tab="compras"`.
+   - **Sub-Grupo de Navegação `#subGroupCompras` com 4 Sub-Abas:**
+     1. *Saldos em Estoque* ➔ aponta diretamente para `#tab-vend-saldos-estoque`
+     2. *Consulta Pedido* ➔ aponta diretamente para `#tab-vend-pedidos`
+     3. *Pedidos Abertos* ➔ aponta diretamente para `#tab-vend-pedidos-abertos`
+     4. *Pedidos Compras* ➔ aponta diretamente para `#tab-vend-pedidos-compras`
+   - **Arquitetura Estritamente DRY (Single Source of Truth):**
+     - Zero duplicação de marcação HTML de tela, formulários ou regras de CSS.
+     - Estado compartilhado em tempo real: qualquer filtro, ordenação, busca ou seleção efetuada em uma aba reflete imediatamente nas demais, mantendo o estado de memória único e sincronizado.
+   - **Controle de Acesso Granular (RBAC):**
+     - Inclusão da permissão `compras` no modal de gerenciamento de usuários (`#permCompras`), renderização de badge auditável na tabela (`.perm-badge-compras`) e autorização em `server.js` (`allowedTabs`) e `postgres_db.js`.
+   - **Suporte a Tema Claro/Escuro:**
+     - Botão `#btnToggleThemeCompras` integrado à rotina unificada de temas, sincronizando ícones e labels (`☀️ Modo Claro` / `🌙 Modo Escuro`).
+   - **Suíte de Testes Automatizados:** Script `test_compras_tab.js` com 6 asserções cobrindo integridade HTML, diretriz DRY, RBAC, alternância de abas, sincronização de temas e compilação `vm.Script` sem erros.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

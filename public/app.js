@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const subGroupLogistica = document.getElementById('subGroupLogistica');
   const subGroupConsulta = document.getElementById('subGroupConsulta');
   const subGroupVendedores = document.getElementById('subGroupVendedores');
+  const subGroupCompras = document.getElementById('subGroupCompras');
   const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
   const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
@@ -224,6 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTabLogistica = document.getElementById('mainTabLogistica');
     const mainTabConsulta = document.getElementById('mainTabConsulta');
     const mainTabVendedores = document.getElementById('mainTabVendedores');
+    const mainTabCompras = document.getElementById('mainTabCompras');
     const mainTabFinanceiro = document.getElementById('mainTabFinanceiro');
     const mainTabBi = document.getElementById('mainTabBi');
     const mainTabConfig = document.getElementById('mainTabConfig');
@@ -232,13 +234,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const isAdmin = (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin');
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
     if (!perms || isAdmin) {
-      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
+      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'configuracoes'];
     }
 
     if (mainTabTarefas) mainTabTarefas.style.display = ''; // Sempre visível para todos os colaboradores
     if (mainTabLogistica) mainTabLogistica.style.display = perms.includes('logistica') ? '' : 'none';
     if (mainTabConsulta) mainTabConsulta.style.display = perms.includes('consulta') ? '' : 'none';
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
+    if (mainTabCompras) mainTabCompras.style.display = perms.includes('compras') ? '' : 'none';
     if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
     if (mainTabBi) mainTabBi.style.display = isAdmin ? '' : 'none';
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
@@ -664,6 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const subGroupLogistica = document.getElementById('subGroupLogistica');
     const subGroupConsulta = document.getElementById('subGroupConsulta');
     const subGroupVendedores = document.getElementById('subGroupVendedores');
+    const subGroupCompras = document.getElementById('subGroupCompras');
     const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
     const subGroupBi = document.getElementById('subGroupBi');
     const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
@@ -673,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (subGroupLogistica) subGroupLogistica.classList.add('hidden');
     if (subGroupConsulta) subGroupConsulta.classList.add('hidden');
     if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
+    if (subGroupCompras) subGroupCompras.classList.add('hidden');
     if (subGroupFinanceiro) subGroupFinanceiro.classList.add('hidden');
     if (subGroupBi) subGroupBi.classList.add('hidden');
     if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
@@ -704,6 +709,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (subGroupVendedores) subGroupVendedores.classList.remove('hidden');
       firstSubBtn = subGroupVendedores ? subGroupVendedores.querySelector('.nav-tab-btn') : null;
       initComissaoDates();
+    } else if (targetMain === 'compras') {
+      if (subGroupCompras) subGroupCompras.classList.remove('hidden');
+      firstSubBtn = subGroupCompras ? subGroupCompras.querySelector('.nav-tab-btn') : null;
     } else if (targetMain === 'financeiro') {
       if (subGroupFinanceiro) subGroupFinanceiro.classList.remove('hidden');
       firstSubBtn = subGroupFinanceiro ? subGroupFinanceiro.querySelector('.nav-tab-btn') : null;
@@ -1745,6 +1753,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const permLogistica = document.getElementById('permLogistica');
   const permConsulta = document.getElementById('permConsulta');
   const permVendedores = document.getElementById('permVendedores');
+  const permCompras = document.getElementById('permCompras');
   const permFinanceiro = document.getElementById('permFinanceiro');
   const permConfiguracoes = document.getElementById('permConfiguracoes');
   const userModalMsg = document.getElementById('userModalMsg');
@@ -1782,6 +1791,7 @@ document.addEventListener('DOMContentLoaded', () => {
         perms.includes('logistica') ? '<span class="perm-badge perm-badge-logistica">📦 Logística</span>' : '',
         perms.includes('consulta') ? '<span class="perm-badge perm-badge-consulta">🔍 Consulta</span>' : '',
         perms.includes('vendedores') ? '<span class="perm-badge perm-badge-vendedores">💼 Vendedores</span>' : '',
+        perms.includes('compras') ? '<span class="perm-badge perm-badge-compras">🛒 Compras</span>' : '',
         perms.includes('financeiro') ? '<span class="perm-badge perm-badge-financeiro">💰 Assist. Financ.</span>' : '',
         perms.includes('configuracoes') ? '<span class="perm-badge perm-badge-configuracoes">⚙️ Configurações</span>' : ''
       ].filter(Boolean).join(' ');
@@ -1857,6 +1867,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (permLogistica) permLogistica.checked = true;
     if (permConsulta) permConsulta.checked = true;
     if (permVendedores) permVendedores.checked = true;
+    if (permCompras) permCompras.checked = true;
     if (permFinanceiro) permFinanceiro.checked = false;
     if (permConfiguracoes) permConfiguracoes.checked = false;
     if (userModalMsg) userModalMsg.classList.add('hidden');
@@ -1881,6 +1892,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (permLogistica) permLogistica.checked = perms.includes('logistica');
     if (permConsulta) permConsulta.checked = perms.includes('consulta');
     if (permVendedores) permVendedores.checked = perms.includes('vendedores');
+    if (permCompras) permCompras.checked = perms.includes('compras');
     if (permFinanceiro) permFinanceiro.checked = perms.includes('financeiro');
     if (permConfiguracoes) permConfiguracoes.checked = perms.includes('configuracoes');
 
@@ -1916,6 +1928,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (permLogistica && permLogistica.checked) selectedPerms.push('logistica');
       if (permConsulta && permConsulta.checked) selectedPerms.push('consulta');
       if (permVendedores && permVendedores.checked) selectedPerms.push('vendedores');
+      if (permCompras && permCompras.checked) selectedPerms.push('compras');
       if (permFinanceiro && permFinanceiro.checked) selectedPerms.push('financeiro');
       if (permConfiguracoes && permConfiguracoes.checked) selectedPerms.push('configuracoes');
 
@@ -3334,6 +3347,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnToggleThemeVendedores = document.getElementById('btnToggleThemeVendedores');
   const themeIconVendedores = document.getElementById('themeIconVendedores');
   const themeLabelVendedores = document.getElementById('themeLabelVendedores');
+  const btnToggleThemeCompras = document.getElementById('btnToggleThemeCompras');
+  const themeIconCompras = document.getElementById('themeIconCompras');
+  const themeLabelCompras = document.getElementById('themeLabelCompras');
   const modalEstoqueDetalhes = document.getElementById('modalEstoqueDetalhes');
   const btnCloseModalEstoque = document.getElementById('btnCloseModalEstoque');
   const btnFecharModalEstoqueDetalhes = document.getElementById('btnFecharModalEstoqueDetalhes');
@@ -3372,6 +3388,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (themeLabelEstoque) themeLabelEstoque.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
     if (themeIconVendedores) themeIconVendedores.textContent = isLight ? '🌙' : '☀️';
     if (themeLabelVendedores) themeLabelVendedores.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
+    if (themeIconCompras) themeIconCompras.textContent = isLight ? '🌙' : '☀️';
+    if (themeLabelCompras) themeLabelCompras.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
   }
 
   function toggleVendedoresTheme() {
@@ -3876,12 +3894,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Alternância de Tema Claro/Escuro no Módulo Vendedores
+  // Alternância de Tema Claro/Escuro no Módulo Vendedores e Compras
   if (btnToggleThemeEstoque) {
     btnToggleThemeEstoque.addEventListener('click', toggleVendedoresTheme);
   }
   if (btnToggleThemeVendedores) {
     btnToggleThemeVendedores.addEventListener('click', toggleVendedoresTheme);
+  }
+  if (btnToggleThemeCompras) {
+    btnToggleThemeCompras.addEventListener('click', toggleVendedoresTheme);
   }
   inicializarTemaVendedores();
 

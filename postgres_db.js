@@ -779,7 +779,7 @@ async function initPostgres() {
 
         if (localUsers.length === 0) {
           localUsers = [
-            { username: 'alexandre', name: 'Alexandre', email: 'alexandre@oaco.com.br', pass: '$2b$10$p0RJWNsHaXZhB.OVofss9ekoTYw5/e9fG9McA24vn03Ws.z/KMOUi', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'], active: true },
+            { username: 'alexandre', name: 'Alexandre', email: 'alexandre@oaco.com.br', pass: '$2b$10$p0RJWNsHaXZhB.OVofss9ekoTYw5/e9fG9McA24vn03Ws.z/KMOUi', role: 'admin', permissions: ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'configuracoes'], active: true },
             { username: 'erica', name: 'Érica', email: 'erica@oaco.com.br', pass: '$2b$10$tG.0iXqpKLWZrPS3P9bSmO5fIxRlF66sKcPuhrchlpA8A1OgrfEn2', role: 'user', permissions: ['logistica', 'consulta'], active: true },
             { username: 'wallerson', name: 'Wallerson', email: 'wallerson@oaco.com.br', pass: '$2b$10$4K2LJfNjtIcHjM1Nj8vXiOpZh2esE4jvbE1YRd3brORaQLB4UJCOq', role: 'user', permissions: ['logistica', 'consulta'], active: true },
             { username: 'juliana', name: 'Juliana', email: 'juliana@oaco.com.br', pass: '$2b$10$Zj3xa3MmI1q6FCN78Njx/OQ.4vIoO5UuCO/Gl/azN.3NglvoZrmhq', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'], active: true },

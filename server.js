@@ -505,7 +505,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
           name: userFound.name,
           role: userFound.role || (cleanUser === 'alexandre' ? 'admin' : (DEFAULT_VENDOR_CODES[cleanUser] ? 'vendedor' : 'user')),
           vendorCode: userVendorCode,
-          permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
+          permissions: userFound.permissions || (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
         };
 
         // Migração silenciosa para hash bcrypt se senha estiver em texto puro
@@ -627,7 +627,7 @@ app.post('/api/auth/verify-2fa', verify2FALimiter, async (req, res) => {
       email: userFound ? userFound.email : null,
       role: userFound ? (userFound.role || 'user') : (cleanUser === 'alexandre' ? 'admin' : (DEFAULT_VENDOR_CODES[cleanUser] ? 'vendedor' : 'user')),
       vendorCode: userVendorCode,
-      permissions: userFound ? (userFound.permissions || ['logistica', 'consulta']) : (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
+      permissions: userFound ? (userFound.permissions || ['logistica', 'consulta']) : (cleanUser === 'alexandre' ? ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'configuracoes'] : ['logistica', 'consulta'])
     };
 
     const tokenPayload = {
@@ -838,7 +838,7 @@ app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req,
       return res.status(400).json({ success: false, message: 'Por favor, informe um endereço de e-mail válido (ex: nome@empresa.com.br).' });
     }
 
-    const allowedTabs = ['logistica', 'consulta', 'vendedores', 'financeiro', 'configuracoes'];
+    const allowedTabs = ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'configuracoes'];
     let cleanPerms = Array.isArray(permissions) ? permissions.filter(p => allowedTabs.includes(p)) : ['logistica', 'consulta'];
     if (cleanPerms.length === 0) {
       cleanPerms = ['logistica', 'consulta'];
@@ -1000,6 +1000,12 @@ app.get('/api/vendedores/pedidos/abertos', requireAuth, async (req, res) => {
   try {
     let { empresa, codVend } = req.query || {};
     const user = getUserFromReq(req);
+
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
+      }
+    }
 
     const results = await buscarPedidosAbertosVendedores({ empresa, codVend });
 

@@ -36,6 +36,9 @@ export function aplicarTemaVendedores(modo) {
   const btnEstoque = document.getElementById('btnToggleThemeEstoque');
   const iconE = document.getElementById('themeIconEstoque');
   const labelE = document.getElementById('themeLabelEstoque');
+  const btnCompras = document.getElementById('btnToggleThemeCompras');
+  const iconC = document.getElementById('themeIconCompras');
+  const labelC = document.getElementById('themeLabelCompras');
 
   if (iconV && labelV) {
     iconV.textContent = isLight ? '🌙' : '☀️';
@@ -44,6 +47,10 @@ export function aplicarTemaVendedores(modo) {
   if (iconE && labelE) {
     iconE.textContent = isLight ? '🌙' : '☀️';
     labelE.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
+  }
+  if (iconC && labelC) {
+    iconC.textContent = isLight ? '🌙' : '☀️';
+    labelC.textContent = isLight ? 'Modo Escuro' : 'Modo Claro';
   }
 
   // Modais de Drilldown
