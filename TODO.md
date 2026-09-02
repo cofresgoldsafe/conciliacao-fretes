@@ -34,6 +34,7 @@
 - [x] [VEND-07] Tema Claro/Escuro unificado para todas as 5 sub-abas dos Vendedores e modais com persistência `localStorage`.
 - [x] [VEND-08] Desbloqueio de Visão Unificada para Vendedores em Pedidos Abertos e Comissões (visualização global da equipe comercial sem travas restritivas).
 - [x] [VEND-09] Nova Coluna "Nome" no Relatório de Comissões (primeiras 20 letras com espaços via `SA1010`) e redistribuição harmônica de larguras (Vendedor 12%).
+- [x] [COMP-01] Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY): Disponibilização de Saldos em Estoque, Consulta Pedido, Pedidos Abertos e Pedidos Compras com zero duplicação de DOM/CSS, sincronização em tempo real, controle granular RBAC (`compras`) e alternância de Tema Claro/Escuro.
 - [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável.
 - [x] [CRED-02] Leitura de PDF Serasa Experian com validação de validade (&le; 4 meses), trava de consulta e expansão de métricas do Bloco 5.
 - [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
@@ -63,6 +64,7 @@
 - [x] [QA-16] Suíte de testes para Arquitetura Modular ES6 e Documentação OpenAPI (`test_frontend_modules.js`).
 - [x] [QA-17] Suíte de testes automatizados para Desbloqueio de Vendedores e Coluna Nome em Comissões (`test_vendedores_desbloqueio.js`).
 - [x] [QA-18] Suíte de testes automatizados da Análise de Crédito cobrindo 12 vetores de integridade (78 asserções 100% aprovadas).
+- [x] [QA-19] Suíte de testes automatizados para a Aba Principal Compras e Sub-Abas DRY (`test_compras_tab.js` - 6 asserções 100% aprovadas).
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).
