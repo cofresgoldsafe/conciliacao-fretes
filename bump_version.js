@@ -27,7 +27,7 @@ if (vMatch && vMatch[1]) {
   }
 }
 
-const regexVersionTag = /<span class="version-tag"[^>]*>Última Versão:[^<]*<\/span>/;
+const regexVersionTag = /<span class="version-tag"[^>]*>Última Versão:[\s\S]*?<\/span>/;
 const novaTag = `<span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: ${dataHoraStr} (${description})</span>`;
 
 if (regexVersionTag.test(html)) {
