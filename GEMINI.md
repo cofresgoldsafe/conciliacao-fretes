@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login, Nova Sub-Aba "Ped Compras Aberto" na Aba COMPRAS com Destaque de Prazos < Hoje, Modal Detalhado de Itens/Fornecedores SC7 e 16 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 07:35 (v9.22 - Sub-Aba "Ped Compras Aberto" na Aba COMPRAS com Agregação Multi-Empresa SC7, Alertas Visuais de Atraso de Entrega, Modal Completo com Fornecedor SA2/SE4 e 16 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login com Seleção de Responsáveis via /api/auth/users, Prioridades Normal/Alta/Urgente, Nova Sub-Aba "Ped Compras Aberto" na Aba COMPRAS e 16 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 09:11 (v8.125 - Correção da Seleção de Responsáveis via GET /api/auth/users, Unificação das Prioridades [Normal default, Alta, Urgente] e Suíte de Testes 100% Aprovada)  
 
 ---
 
@@ -434,8 +434,13 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Ajustada a rotina de encerramento do script `public/app.js` para preservar `tab-minhas-tarefas` como visível e ativa por padrão, eliminando o mascaramento que ocultava o painel durante recarregamentos de página.
     - **Segmented Control & Alternância Rápida de Pauta:**
       - Botões no topo da tabela para troca rápida de contexto com 1 clique: **`⏳ Pauta Ativa`** vs **`✅ Tarefas Concluídas`**.
-    - **Suíte de Testes Automatizados (19 Asserções 100% Aprovadas):**
-      - Script `test_minhas_tarefas.js` cobrindo DDL de banco, métodos CRUD, append de JSONB, autenticação JWT, bloqueios RBAC/IDOR, governança de status, auto-criação, CRUD de links preferidos e compilação sintática via Node.js `vm.Script`.
+    - **Seleção Dinâmica de Responsáveis (`GET /api/auth/users`):**
+      - Endpoint REST autenticado (`requireAuth`) retornando a lista de colaboradores ativos para atribuição no modal de criação (`#tarefaRespSelect`). Recarregamento sob demanda e proteção contra vazamento de senhas.
+    - **Unificação de Prioridades (Normal Default | Alta | Urgente):**
+      - Eliminação da opção `Média` e renomeação de `Baixa` para `Normal`, estabelecendo o trio: `🟢 Normal` (padrão / default), `🟠 Alta` e `🔴 Urgente`.
+      - Migração e retrocompatibilidade automática de registros legados no PostgreSQL, renderização e backend.
+    - **Suíte de Testes Automatizados (20 Asserções 100% Aprovadas):**
+      - Script `test_minhas_tarefas.js` cobrindo DDL de banco, métodos CRUD, append de JSONB, autenticação JWT, bloqueios RBAC/IDOR, governança de status, auto-criação, CRUD de links preferidos, novo endpoint `/api/auth/users` e integridade sintática via Node.js `vm.Script`.
 43. [x] **Expurgo Estrito de Produtos Bloqueados (`B1_MSBLQL`), Descarte de Catálogo Legado (`SB1010`) & Ajuste de Joins no Faturamento (`protheus_db.js`, `test_saldos_estoque.js`):**
     - **Causa Raiz & Resolução do Surgimento de Produtos Bloqueados:**
       - **Dicionário Protheus `B1_MSBLQL`:** No ERP TOTVS Protheus, `B1_MSBLQL = '1'` significa **Bloqueado/Inativo** e `B1_MSBLQL = '2'` significa **Não Bloqueado/Ativo**.
