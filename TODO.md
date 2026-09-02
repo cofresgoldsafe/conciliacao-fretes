@@ -9,7 +9,7 @@
 - [x] [SEC-06] Incluir pacote `pypdf` na instalação Python do `Dockerfile`.
 - [x] [SEC-07] Restringir origens no CORS e sanitizar mensagens de erro 500.
 - [x] [SEC-08] Implementar autenticação 2FA por e-mail com tokens de 4 dígitos via Mailjet REST API (HTTPS 443) / SMTP e rate limiting.
-- [x] [SEC-09] Habilitar Row-Level Security (RLS) em 100% das 9 tabelas públicas no Supabase PostgreSQL.
+- [x] [SEC-09] Habilitação de Row-Level Security (RLS) e FORCE RLS em 100% das tabelas públicas no Supabase PostgreSQL, revogação de acessos anônimos (`REVOKE ALL`) no PostgREST, isolamento da extensão `citext` no schema `extensions` e script de remediação `sql/fix_supabase_rls_security.sql`, zerando 100% dos alertas críticos do Security Advisor.
 - [x] [SEC-10] Processamento efêmero de relatórios PDF Serasa Experian em memória sem gravação em disco e trava cruzada de CNPJs.
 - [x] [SEC-11] Mitigação de DOM-based XSS: Função global `escapeHtml()` no topo da SPA e sanitização de 100% dos dados dinâmicos em tabelas e modais.
 - [x] [SEC-12] Criptografia e Proteção de Segredos: Eliminação de caminhos fixos de drive em `inter_api.js`, remoção de senhas em texto puro e migração 100% para variáveis de ambiente seguras no Render.
