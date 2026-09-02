@@ -112,7 +112,7 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 * **Sub-aba `[ Saldos em Estoque ]` (Visual Power BI):**
   * Catálogo de Produtos Acabados (`PA`), saldos físicos `SB2` (14, 15, 16), pedidos de venda `SC6` e pedidos de compra `SC7`.
   * Cálculo de `SALDO_TOTAL = (SALDO * PREÇO)` e 3 KPIs no topo (*Itens em Estoque*, *Itens sem Estoque*, *Valor Total em Estoque*).
-  * Filtros por grupos comerciais oficiais (**001 - Cofres**, **002 - Fragmentadoras**, **010 - Plastificação**, **018 - Armários & Carrinhos**) e exclusão de bloqueados (`B1_MSBLQL <> '1'`).
+  * Filtros por grupos comerciais oficiais (**001 - Cofres**, **002 - Fragmentadoras**, **010 - Plastificação**, **018 - Armários & Carrinhos**), isolamento estrito dos catálogos operacionais ativos (`SB1090` e `SB1160`), descarte do catálogo legado `SB1010` da Empresa 01 e expurgo determinístico de produtos bloqueados (`B1_MSBLQL IN ('1', 'S', 's')`).
   * Paginação inteligente configurável (25, 50, 100 itens) e busca instantânea.
   * Job automático de sincronização Protheus x Supabase a cada 60 min no horário comercial com fallback JSON e Cooldown de 2 min no botão manual.
   * Modal Drilldown Multi-Empresa com 3 guias (*Resumo por Empresa*, *Compras em Aberto SC7*, *Vendas em Aberto SC6*).

@@ -28,7 +28,7 @@
 - [x] [VEND-01] Sub-aba Consulta Pedido: Pesquisa multi-empresa (14, 15, 16) com integração `SA1010`, máscaras e itens `SC6`.
 - [x] [VEND-02] Sub-aba Pedidos Abertos: Listagem multi-empresa não faturada com regras de bloqueio `SC9` e CRM Pipedrive.
 - [x] [VEND-03] Sub-aba Pedidos Compras: Consulta de compras em aberto (`SC7`) de produtos `PA` com fornecedores `SA2010`.
-- [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação `SB1`/`SB2`/`SC6`/`SC7`, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), exclusão de bloqueados (`B1_MSBLQL <> '1'`), paginação dinâmica e drilldown multi-empresa.
+- [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação `SB1`/`SB2`/`SC6`/`SC7`, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), isolamento dos catálogos operacionais ativos (`SB1090`, `SB1160`), descarte de `SB1010` legado da Empresa 01 e expurgo estrito de produtos bloqueados (`B1_MSBLQL IN ('1', 'S', 's')`), paginação dinâmica e drilldown multi-empresa.
 - [x] [VEND-05] Sub-aba Comissões & Metas: Apuração periódica `SE3` com cálculo dinâmico de Meta Atingida proporcional (R$ 120k / R$ 360k).
 - [x] [VEND-06] Autocura de `vendorCode`, fallback resiliente no login/2FA e campo de código de vendedor no painel administrativo.
 - [x] [VEND-07] Tema Claro/Escuro unificado para todas as 5 sub-abas dos Vendedores e modais com persistência `localStorage`.
