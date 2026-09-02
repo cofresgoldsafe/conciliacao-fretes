@@ -84,16 +84,16 @@ function renderStatusBadge(status) {
  * Formata prioridade com ícone
  */
 function renderPrioridadeBadge(prioridade) {
-  const prio = String(prioridade || 'MEDIA').toUpperCase();
+  const prio = String(prioridade || 'NORMAL').toUpperCase();
   switch (prio) {
     case 'URGENTE':
       return `<span style="color: #ef4444; font-weight: 700; font-size: 0.85rem;"><span style="display:inline-block; animation: pulse 1.5s infinite;">🔴</span> Urgente</span>`;
     case 'ALTA':
       return `<span style="color: #f97316; font-weight: 600; font-size: 0.85rem;">🟠 Alta</span>`;
+    case 'NORMAL':
     case 'MEDIA':
-      return `<span style="color: #3b82f6; font-weight: 500; font-size: 0.85rem;">🟢 Média</span>`;
     case 'BAIXA':
-      return `<span style="color: #64748b; font-weight: 400; font-size: 0.85rem;">⚪ Baixa</span>`;
+      return `<span style="color: #10b981; font-weight: 500; font-size: 0.85rem;">🟢 Normal</span>`;
     default:
       return `<span style="color: #94a3b8; font-size: 0.85rem;">${escapeHtml(prio)}</span>`;
   }
@@ -177,10 +177,14 @@ function popularSelectsUsuarios() {
       modalResp.disabled = true;
     } else {
       modalResp.disabled = false;
-      tarefasState.usersList.forEach(u => {
-        const isSelected = tarefasState.currentUser && u.username.toLowerCase() === tarefasState.currentUser.username.toLowerCase();
-        modalOptions += `<option value="${escapeHtml(u.username)}" data-name="${escapeHtml(u.name || u.username)}" ${isSelected ? 'selected' : ''}>${escapeHtml(u.name || u.username)}</option>`;
-      });
+      if (tarefasState.usersList.length === 0 && tarefasState.currentUser) {
+        modalOptions += `<option value="${escapeHtml(tarefasState.currentUser.username)}" data-name="${escapeHtml(tarefasState.currentUser.name || tarefasState.currentUser.username)}" selected>${escapeHtml(tarefasState.currentUser.name || tarefasState.currentUser.username)}</option>`;
+      } else {
+        tarefasState.usersList.forEach(u => {
+          const isSelected = tarefasState.currentUser && u.username.toLowerCase() === tarefasState.currentUser.username.toLowerCase();
+          modalOptions += `<option value="${escapeHtml(u.username)}" data-name="${escapeHtml(u.name || u.username)}" ${isSelected ? 'selected' : ''}>${escapeHtml(u.name || u.username)}</option>`;
+        });
+      }
       modalResp.innerHTML = modalOptions;
     }
   }
@@ -689,12 +693,16 @@ function renderTarefasPagination() {
 /**
  * Modal de Criação de Tarefa
  */
-export function abrirModalNovaTarefa() {
+export async function abrirModalNovaTarefa() {
   const modal = document.getElementById('modalNovaTarefa');
   const form = document.getElementById('formNovaTarefa');
   if (form) form.reset();
 
-  popularSelectsUsuarios();
+  if (!tarefasState.usersList || tarefasState.usersList.length === 0) {
+    await carregarUsuariosDisponiveis();
+  } else {
+    popularSelectsUsuarios();
+  }
 
   if (modal) {
     modal.classList.remove('hidden');
@@ -733,7 +741,7 @@ export async function salvarNovaTarefa() {
     descricao: descInp ? descInp.value.trim() : '',
     responsavel_username: respUsername,
     responsavel_nome: respNome,
-    prioridade: prioSelect ? prioSelect.value : 'MEDIA',
+    prioridade: prioSelect ? prioSelect.value : 'NORMAL',
     data_limite: prazoInp && prazoInp.value ? prazoInp.value : null
   };
 
@@ -761,7 +769,7 @@ export async function salvarNovaTarefa() {
   } finally {
     if (btnSalvar) {
       btnSalvar.disabled = false;
-      btnSalvar.textContent = '💾 Criar Tarefa';
+      btnSalvar.textContent = '💾 Criar e Delegar Tarefa';
     }
   }
 }

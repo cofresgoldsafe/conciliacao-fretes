@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.124">
+  <link rel="stylesheet" href="style.css?v=8.125">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 08:51 (KPIs do Painel de Tarefas em Linha Única Compacta)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 09:11 (Correção Seleção de Responsáveis e Prioridades Normal/Alta/Urgente nas Tarefas)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -316,8 +316,7 @@
               <option value="TODOS">Todas as Prioridades</option>
               <option value="URGENTE">🔴 Urgente</option>
               <option value="ALTA">🟠 Alta</option>
-              <option value="MEDIA">🟢 Média</option>
-              <option value="BAIXA">⚪ Baixa</option>
+              <option value="NORMAL">🟢 Normal</option>
             </select>
           </div>
 
@@ -4179,10 +4178,9 @@
           <div class="form-group" style="margin: 0;">
             <label for="tarefaPrioSelect" style="font-weight: 600; font-size: 0.88rem;">Prioridade</label>
             <select id="tarefaPrioSelect" class="form-select" style="height: 38px;">
-              <option value="MEDIA" selected>🟢 Média</option>
-              <option value="URGENTE">🔴 Urgente</option>
+              <option value="NORMAL" selected>🟢 Normal</option>
               <option value="ALTA">🟠 Alta</option>
-              <option value="BAIXA">⚪ Baixa</option>
+              <option value="URGENTE">🔴 Urgente</option>
             </select>
           </div>
         </div>
@@ -4281,9 +4279,9 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.124"></script>
-  <script src="js/bi_indices.js?v=8.124"></script>
-  <script type="module" src="js/tarefas.js?v=8.124"></script>
-  <script src="app.js?v=8.124"></script>
+  <script src="js/bi.js?v=8.125"></script>
+  <script src="js/bi_indices.js?v=8.125"></script>
+  <script type="module" src="js/tarefas.js?v=8.125"></script>
+  <script src="app.js?v=8.125"></script>
 </body>
 </html>

@@ -321,7 +321,7 @@ async function runTests() {
       assert.ok(typeof res.body.kpis.concluidas_mes === 'number');
     });
 
-    await itAsync('2.9 Operador comum pode criar tarefas para si mesmo (autocriação)', async () => {
+    await itAsync('2.9 Operador comum pode criar tarefas para si mesmo com prioridade NORMAL padrão', async () => {
       const res = await makeRequest({
         port: testPort,
         path: '/api/tarefas',
@@ -329,8 +329,7 @@ async function runTests() {
         headers: { 'Authorization': `Bearer ${julianaToken}` },
         body: {
           titulo: 'Minha tarefa pessoal de conferência',
-          descricao: 'Ligar para cliente da cotação 502.',
-          prioridade: 'MEDIA'
+          descricao: 'Ligar para cliente da cotação 502.'
         }
       });
 
@@ -338,6 +337,22 @@ async function runTests() {
       assert.strictEqual(res.body.success, true);
       assert.strictEqual(res.body.tarefa.responsavel_username, 'juliana');
       assert.strictEqual(res.body.tarefa.criado_por_username, 'juliana');
+      assert.strictEqual(res.body.tarefa.prioridade, 'NORMAL');
+    });
+
+    await itAsync('2.10 Deve listar colaboradores ativos autenticados via GET /api/auth/users', async () => {
+      const res = await makeRequest({
+        port: testPort,
+        path: '/api/auth/users',
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${julianaToken}` }
+      });
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.body.success, true);
+      assert.ok(Array.isArray(res.body.users), 'Deve retornar array de colaboradores');
+      assert.ok(res.body.users.length > 0, 'Deve conter pelo menos um colaborador');
+      assert.strictEqual(res.body.users[0].pass, undefined, 'Não deve expor hash de senha');
     });
 
     // --- BLOCO 3: LINKS PREFERIDOS DO USUÁRIO ---

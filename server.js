@@ -827,6 +827,25 @@ app.get('/api/admin/users', requireAuth, requireRole('admin'), async (req, res) 
   }
 });
 
+// API: Listar Colaboradores Ativos para Tarefas / Delegação (Qualquer Usuário Autenticado)
+app.get('/api/auth/users', requireAuth, async (req, res) => {
+  try {
+    const allUsers = await getUsersDB();
+    const users = allUsers
+      .filter(u => u.active !== false)
+      .map(u => ({
+        username: u.username,
+        name: u.name || u.username,
+        role: u.role || 'user',
+        email: u.email || '',
+        active: true
+      }));
+    return res.json({ success: true, users });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao listar colaboradores.');
+  }
+});
+
 // API: Salvar / Atualizar Usuário e Permissões (Admin)
 app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req, res) => {
   try {
@@ -3539,11 +3558,15 @@ app.post('/api/tarefas', requireAuth, async (req, res) => {
       respNome = user.name;
     }
 
+    let cleanPrio = String(prioridade || 'NORMAL').toUpperCase().trim();
+    if (cleanPrio === 'MEDIA' || cleanPrio === 'BAIXA') cleanPrio = 'NORMAL';
+    if (!['NORMAL', 'ALTA', 'URGENTE'].includes(cleanPrio)) cleanPrio = 'NORMAL';
+
     const novaTarefa = await createTarefaDB({
       titulo: String(titulo).trim(),
       descricao: String(descricao || '').trim(),
       status: 'PENDENTE',
-      prioridade: ['BAIXA', 'MEDIA', 'ALTA', 'URGENTE'].includes(prioridade) ? prioridade : 'MEDIA',
+      prioridade: cleanPrio,
       responsavel_username: respUser,
       responsavel_nome: respNome,
       criado_por_username: user.username,
@@ -3558,7 +3581,7 @@ app.post('/api/tarefas', requireAuth, async (req, res) => {
         'CRIACAO_TAREFA',
         `Criou a tarefa #${novaTarefa.id}: "${novaTarefa.titulo}" para ${respNome} (${respUser})`,
         req.ip || '127.0.0.1',
-        { tarefaId: novaTarefa.id, responsavel: respUser, prioridade }
+        { tarefaId: novaTarefa.id, responsavel: respUser, prioridade: cleanPrio }
       );
     } catch {}
 
@@ -3617,7 +3640,13 @@ app.patch('/api/tarefas/:id', requireAuth, async (req, res) => {
     if (isAdmin) {
       if (titulo !== undefined) updates.titulo = String(titulo).trim();
       if (descricao !== undefined) updates.descricao = String(descricao).trim();
-      if (prioridade !== undefined) updates.prioridade = prioridade;
+      if (prioridade !== undefined) {
+        let cleanPrio = String(prioridade || 'NORMAL').toUpperCase().trim();
+        if (cleanPrio === 'MEDIA' || cleanPrio === 'BAIXA') cleanPrio = 'NORMAL';
+        if (['NORMAL', 'ALTA', 'URGENTE'].includes(cleanPrio)) {
+          updates.prioridade = cleanPrio;
+        }
+      }
       if (data_limite !== undefined) updates.data_limite = data_limite || null;
       if (responsavel_username !== undefined) {
         updates.responsavel_username = String(responsavel_username).toLowerCase().trim();

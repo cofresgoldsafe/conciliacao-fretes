@@ -339,7 +339,7 @@ async function initPostgres() {
           titulo VARCHAR(255) NOT NULL,
           descricao TEXT,
           status VARCHAR(50) DEFAULT 'PENDENTE',
-          prioridade VARCHAR(20) DEFAULT 'MEDIA',
+          prioridade VARCHAR(20) DEFAULT 'NORMAL',
           responsavel_username VARCHAR(100) NOT NULL,
           responsavel_nome VARCHAR(200),
           criado_por_username VARCHAR(100) NOT NULL,
@@ -351,6 +351,8 @@ async function initPostgres() {
           concluida_at TIMESTAMP WITH TIME ZONE,
           finalizada_at TIMESTAMP WITH TIME ZONE
         );
+        ALTER TABLE tarefas ALTER COLUMN prioridade SET DEFAULT 'NORMAL';
+        UPDATE tarefas SET prioridade = 'NORMAL' WHERE prioridade IN ('MEDIA', 'BAIXA', 'media', 'baixa');
         CREATE INDEX IF NOT EXISTS idx_tarefas_responsavel ON tarefas(responsavel_username);
         CREATE INDEX IF NOT EXISTS idx_tarefas_status ON tarefas(status);
         CREATE INDEX IF NOT EXISTS idx_tarefas_created_at ON tarefas(created_at DESC);
@@ -2389,7 +2391,7 @@ async function getTarefasDB({ status, responsavel, prioridade, busca, limit = 50
           CASE 
             WHEN prioridade = 'URGENTE' THEN 1
             WHEN prioridade = 'ALTA' THEN 2
-            WHEN prioridade = 'MEDIA' THEN 3
+            WHEN prioridade = 'NORMAL' THEN 3
             ELSE 4
           END,
           created_at DESC
@@ -2507,7 +2509,7 @@ async function createTarefaDB({
   titulo,
   descricao = '',
   status = 'PENDENTE',
-  prioridade = 'MEDIA',
+  prioridade = 'NORMAL',
   responsavel_username,
   responsavel_nome = '',
   criado_por_username,

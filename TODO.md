@@ -65,6 +65,10 @@
 - [x] [QA-17] Suíte de testes automatizados para Desbloqueio de Vendedores e Coluna Nome em Comissões (`test_vendedores_desbloqueio.js`).
 - [x] [QA-18] Suíte de testes automatizados da Análise de Crédito cobrindo 12 vetores de integridade (78 asserções 100% aprovadas).
 - [x] [QA-19] Suíte de testes automatizados para a Aba Principal Compras e Sub-Abas DRY (`test_compras_tab.js` - 6 asserções 100% aprovadas).
+- [x] [QA-20] Suíte de testes automatizados para a Central de Tarefas e Delegação (`test_minhas_tarefas.js` - 20 asserções 100% aprovadas).
+
+## 💼 Central de Tarefas & Delegação
+- [x] [TASK-01] Central de Delegação e Checagem "Minhas Tarefas": Criação e delegação de demandas operacionais, listagem de colaboradores ativos via `GET /api/auth/users`, unificação de prioridades (`Normal` default, `Alta`, `Urgente`), governança de status, comentários atômicos em JSONB e painel de KPIs em linha única compacta.
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).
