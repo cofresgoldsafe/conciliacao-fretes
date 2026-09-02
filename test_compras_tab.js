@@ -46,7 +46,7 @@ test('1. index.html possui botão da aba principal #mainTabCompras e sub-grupo #
 });
 
 // 2. Validação DRY das 4 Sub-Abas em COMPRAS e VENDEDORES
-test('2. Sub-grupos #subGroupCompras e #subGroupVendedores contêm sub-aba "Prod x Ped Compras" apontando para IDs existentes (DRY)', () => {
+test('2. Sub-grupos #subGroupCompras e #subGroupVendedores contêm sub-abas "Consulta Ped Venda", "Ped Vendas Abertos" e "Prod x Ped Compras" apontando para IDs existentes (DRY)', () => {
   const htmlPath = path.join(__dirname, 'public', 'index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
 
@@ -56,8 +56,12 @@ test('2. Sub-grupos #subGroupCompras e #subGroupVendedores contêm sub-aba "Prod
   const vendEnd = html.indexOf('id="subGroupCompras"', vendStart);
   const vendBlock = html.substring(vendStart, vendEnd !== -1 ? vendEnd : vendStart + 2500);
 
-  // Valida rótulo em Vendedores
+  // Valida rótulos em Vendedores
   assert.ok(vendBlock.includes('data-tab="tab-vend-pedidos"'), 'Falta sub-aba tab-vend-pedidos em subGroupVendedores');
+  assert.ok(vendBlock.includes('<span>Consulta Ped Venda</span>'), 'Falta rótulo Consulta Ped Venda em subGroupVendedores');
+  assert.ok(vendBlock.includes('data-tab="tab-vend-pedidos-abertos"'), 'Falta sub-aba tab-vend-pedidos-abertos em subGroupVendedores');
+  assert.ok(vendBlock.includes('<span>Ped Vendas Abertos</span>'), 'Falta rótulo Ped Vendas Abertos em subGroupVendedores');
+  assert.ok(vendBlock.includes('data-tab="tab-vend-pedidos-compras"'), 'Falta sub-aba tab-vend-pedidos-compras em subGroupVendedores');
   assert.ok(vendBlock.includes('<span>Prod x Ped Compras</span>'), 'Falta rótulo Prod x Ped Compras em subGroupVendedores');
 
   // Localiza o bloco do subGroupCompras
@@ -66,12 +70,15 @@ test('2. Sub-grupos #subGroupCompras e #subGroupVendedores contêm sub-aba "Prod
   const subGroupEnd = html.indexOf('<!-- Sub-abas de Assistente Financeiro -->', subGroupStart);
   const subGroupBlock = html.substring(subGroupStart, subGroupEnd !== -1 ? subGroupEnd : subGroupStart + 2500);
 
-  // Verifica as 4 sub-abas e o rótulo atualizado
+  // Verifica as 4 sub-abas e os rótulos atualizados
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-saldos-estoque"'), 'Falta sub-aba apontando para tab-vend-saldos-estoque');
+  assert.ok(subGroupBlock.includes('<span>Saldos em Estoque</span>'), 'Falta rótulo Saldos em Estoque em subGroupCompras');
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-pedidos"'), 'Falta sub-aba apontando para tab-vend-pedidos');
-  assert.ok(subGroupBlock.includes('<span>Prod x Ped Compras</span>'), 'Falta rótulo Prod x Ped Compras em subGroupCompras');
+  assert.ok(subGroupBlock.includes('<span>Consulta Ped Venda</span>'), 'Falta rótulo Consulta Ped Venda em subGroupCompras');
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-pedidos-abertos"'), 'Falta sub-aba apontando para tab-vend-pedidos-abertos');
+  assert.ok(subGroupBlock.includes('<span>Ped Vendas Abertos</span>'), 'Falta rótulo Ped Vendas Abertos em subGroupCompras');
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-pedidos-compras"'), 'Falta sub-aba apontando para tab-vend-pedidos-compras');
+  assert.ok(subGroupBlock.includes('<span>Prod x Ped Compras</span>'), 'Falta rótulo Prod x Ped Compras em subGroupCompras');
 
   // Verifica ausência de duplicação de containers tab-pane
   const matchesSaldos = (html.match(/id="tab-vend-saldos-estoque"/g) || []).length;
@@ -91,7 +98,8 @@ test('3. Gestão de permissões RBAC inclui "compras" em formulário, badges, se
   const html = fs.readFileSync(htmlPath, 'utf8');
   assert.ok(html.includes('id="permCompras"'), 'Falta checkbox #permCompras no #userModal');
   assert.ok(html.includes('value="compras"'), 'Falta value="compras" no checkbox');
-  assert.ok(html.includes('Prod x Ped Compras &amp; Comissões') || html.includes('Prod x Ped Compras & Comissões'), 'Falta texto Prod x Ped Compras & Comissões no modal de permissões');
+  assert.ok(html.includes('Consulta Ped Venda, Ped Vendas Abertos, Prod x Ped Compras &amp; Comissões') || html.includes('Consulta Ped Venda, Ped Vendas Abertos, Prod x Ped Compras & Comissões'), 'Falta texto detalhado de VENDEDORES no modal de permissões');
+  assert.ok(html.includes('Saldos em Estoque, Consulta Ped Venda, Ped Vendas Abertos &amp; Prod x Ped Compras') || html.includes('Saldos em Estoque, Consulta Ped Venda, Ped Vendas Abertos & Prod x Ped Compras'), 'Falta texto detalhado de COMPRAS no modal de permissões');
 
   const cssPath = path.join(__dirname, 'public', 'style.css');
   const css = fs.readFileSync(cssPath, 'utf8');
