@@ -888,6 +888,26 @@ async function initPostgres() {
         console.warn('⚠️ [Postgres RLS] Aviso ao revogar privilégios públicos anônimos:', errRevoke.message);
       }
 
+      // 13. Migração de extensões instaladas no schema public para o schema 'extensions' (Security Advisor: extension_in_public)
+      try {
+        await client.query(`
+          CREATE SCHEMA IF NOT EXISTS extensions;
+          GRANT USAGE ON SCHEMA extensions TO postgres, anon, authenticated, service_role;
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1 FROM pg_extension e 
+              JOIN pg_namespace n ON n.oid = e.extnamespace 
+              WHERE e.extname = 'citext' AND n.nspname = 'public'
+            ) THEN
+              ALTER EXTENSION citext SET SCHEMA extensions;
+            END IF;
+          END $$;
+        `);
+      } catch (errExt) {
+        // Ignora caso sem privilégio de superuser para mover extensão
+      }
+
       return true;
     } finally {
       client.release();

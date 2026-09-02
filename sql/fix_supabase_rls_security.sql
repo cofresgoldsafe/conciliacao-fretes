@@ -48,7 +48,22 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authen
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON ROUTINES FROM anon, authenticated;
 
--- 4. Confirmação do status de segurança de todas as tabelas públicas
+-- 4. Migração de extensões para o schema 'extensions' (Check: extension_in_public)
+CREATE SCHEMA IF NOT EXISTS extensions;
+GRANT USAGE ON SCHEMA extensions TO postgres, anon, authenticated, service_role;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_extension e 
+        JOIN pg_namespace n ON n.oid = e.extnamespace 
+        WHERE e.extname = 'citext' AND n.nspname = 'public'
+    ) THEN
+        ALTER EXTENSION citext SET SCHEMA extensions;
+    END IF;
+END $$;
+
+-- 5. Confirmação do status de segurança de todas as tabelas públicas
 SELECT 
     n.nspname AS schemaname,
     c.relname AS tablename,
@@ -59,4 +74,5 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public' 
   AND c.relkind = 'r'
 ORDER BY c.relname ASC;
+
 
