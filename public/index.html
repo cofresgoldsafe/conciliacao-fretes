@@ -262,32 +262,31 @@
           </div>
         </div>
 
-        <!-- Cards KPIs Superiores -->
-        <div class="summary-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-          <div class="summary-card" style="border-left: 4px solid #3b82f6;">
-            <span class="card-label">⏳ Minhas Pendentes</span>
-            <strong id="kpiTarefasPendentes" style="color: #3b82f6; font-size: 1.5rem;">0</strong>
-            <small>Tarefas em Aberto para Execução</small>
+        <!-- Barra de KPIs em Linha Única -->
+        <div class="tarefas-kpi-bar" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem 1.25rem; margin-top: 0.85rem; padding: 0.65rem 1.25rem; background: rgba(15, 23, 42, 0.45); border: 1px solid var(--panel-border); border-radius: 10px; font-size: 0.88rem;">
+          <div style="display: inline-flex; align-items: center; gap: 0.45rem;" title="Tarefas em Aberto para Execução">
+            <span>⏳ Minhas Pendentes</span>
+            <strong id="kpiTarefasPendentes" style="color: #3b82f6; font-size: 1.05rem; font-weight: 700;">0</strong>
           </div>
-          <div class="summary-card" style="border-left: 4px solid #eab308;">
-            <span class="card-label">🟡 Aguardando Validação</span>
-            <strong id="kpiTarefasAguardando" style="color: #eab308; font-size: 1.5rem;">0</strong>
-            <small>Entregas Prontas para Check do Gestor</small>
+          <span style="color: var(--panel-border); font-size: 0.95rem; user-select: none;">|</span>
+          <div style="display: inline-flex; align-items: center; gap: 0.45rem;" title="Entregas Prontas para Check do Gestor">
+            <span>🟡 Aguardando Validação</span>
+            <strong id="kpiTarefasAguardando" style="color: #eab308; font-size: 1.05rem; font-weight: 700;">0</strong>
           </div>
-          <div class="summary-card highlight-card" style="border-left: 4px solid #ef4444;">
-            <span class="card-label">🔄 Reabertas / Urgentes</span>
-            <strong id="kpiTarefasReabertas" style="color: #ef4444; font-size: 1.5rem;">0</strong>
-            <small>Ajustes Necessários ou Alta Prioridade</small>
+          <span style="color: var(--panel-border); font-size: 0.95rem; user-select: none;">|</span>
+          <div style="display: inline-flex; align-items: center; gap: 0.45rem;" title="Ajustes Necessários ou Alta Prioridade">
+            <span>🔄 Reabertas / Urgentes</span>
+            <strong id="kpiTarefasReabertas" style="color: #ef4444; font-size: 1.05rem; font-weight: 700;">0</strong>
           </div>
-          <div class="summary-card" style="border-left: 4px solid #10b981;">
-            <span class="card-label">✅ Concluídas no Mês</span>
-            <strong id="kpiTarefasConcluidas" style="color: #10b981; font-size: 1.5rem;">0</strong>
-            <small>Demandas Finalizadas com Sucesso</small>
+          <span style="color: var(--panel-border); font-size: 0.95rem; user-select: none;">|</span>
+          <div style="display: inline-flex; align-items: center; gap: 0.45rem;" title="Demandas Finalizadas com Sucesso">
+            <span>✅ Concluídas no Mês</span>
+            <strong id="kpiTarefasConcluidas" style="color: #10b981; font-size: 1.05rem; font-weight: 700;">0</strong>
           </div>
         </div>
 
         <!-- Barra de Filtros em Linha Única Compacta -->
-        <div class="vend-search-form" style="display: grid; grid-template-columns: 2fr 1.5fr 1.2fr 1.2fr auto; gap: 0.75rem; align-items: flex-end; margin-top: 1.25rem; background: rgba(15, 23, 42, 0.4); padding: 0.85rem 1rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+        <div class="vend-search-form" style="display: grid; grid-template-columns: 2fr 1.5fr 1.2fr 1.2fr auto; gap: 0.75rem; align-items: flex-end; margin-top: 0.85rem; background: rgba(15, 23, 42, 0.4); padding: 0.85rem 1rem; border-radius: 12px; border: 1px solid var(--panel-border);">
           <div class="form-group" style="margin: 0;">
             <label for="inputBuscaTarefa" style="font-size: 0.8rem;">🔍 Buscar Tarefa</label>
             <input type="text" id="inputBuscaTarefa" class="form-control" placeholder="Buscar por título ou descrição..." style="height: 38px; font-size: 0.88rem;">
