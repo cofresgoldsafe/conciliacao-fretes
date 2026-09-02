@@ -680,6 +680,345 @@ async function buscarPedidosCompras({ empresa, search } = {}) {
 }
 
 /**
+ * Consulta consolidada multi-empresa de Pedidos de Compras em Aberto (SC7)
+ * Agrupa linhas por pedido de compra, identifica entregas atrasadas (< hoje) e calcula saldos e totais.
+ */
+async function buscarPedidosComprasAbertosConsolidado({ empresa, search, statusPrazo } = {}) {
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+  const cleanSearch = sanitizeSqlParam(search || '');
+  const cleanStatusPrazo = String(statusPrazo || '').trim().toUpperCase();
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc7: "SC7160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc7: "SC7150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc7: "SC7140" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e => 
+      e.key === cleanEmpresa || 
+      e.sigla === cleanEmpresa || 
+      e.codigo === cleanEmpresa || 
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) {
+      empresasFiltradas = empresasConfig;
+    }
+  }
+
+  // Obter data atual de hoje em formato Protheus YYYYMMDD (Fuso horário de Brasília)
+  const agora = new Date();
+  const spTime = new Date(agora.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const yyyy = spTime.getFullYear();
+  const mm = String(spTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(spTime.getDate()).padStart(2, '0');
+  const hojeRaw = `${yyyy}${mm}${dd}`;
+  const hojeDate = new Date(yyyy, spTime.getMonth(), spTime.getDate());
+
+  const results = [];
+
+  for (const emp of empresasFiltradas) {
+    try {
+      const conditions = [
+        "C7.D_E_L_E_T_ = ' '",
+        "(ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0",
+        "(C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')",
+        "(C7.C7_ENCER IS NULL OR RTRIM(C7.C7_ENCER) <> 'E')"
+      ];
+
+      if (cleanSearch) {
+        conditions.push(`(
+          C7.C7_NUM LIKE '%${cleanSearch}%' OR 
+          C7.C7_FORNECE LIKE '%${cleanSearch}%' OR 
+          C7.C7_NOMFOR LIKE '%${cleanSearch}%' OR 
+          C7.C7_PRODUTO LIKE '%${cleanSearch}%' OR 
+          C7.C7_DESCRI LIKE '%${cleanSearch}%'
+        )`);
+      }
+
+      const sql = `
+        SELECT 
+          RTRIM(C7.C7_NUM) AS NUM_PED,
+          RTRIM(C7.C7_FORNECE) AS COD_FORNEC,
+          ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(C7.C7_NOMFOR, ''))) AS NOME_FORNEC,
+          MIN(RTRIM(C7.C7_EMISSAO)) AS EMISSAO,
+          MIN(RTRIM(C7.C7_DATPRF)) AS DATA_ENTREGA,
+          COUNT(*) AS TOTAL_ITENS,
+          SUM(ISNULL(C7.C7_QUANT, 0)) AS QTD_TOTAL,
+          SUM(ISNULL(C7.C7_QUJE, 0)) AS QTD_ENTREGUE,
+          SUM(ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) AS SALDO_TOTAL,
+          SUM(ISNULL(C7.C7_TOTAL, 0)) AS VALOR_TOTAL
+        FROM ${emp.sc7} C7
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY C7.C7_NUM, C7.C7_FORNECE, C7.C7_NOMFOR
+        ORDER BY MIN(C7.C7_DATPRF) ASC, C7.C7_NUM ASC
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+        for (const row of dbRes.rows) {
+          const pedNum = String(row.NUM_PED || '').trim();
+          const dataEntregaRaw = String(row.DATA_ENTREGA || '').trim();
+          let diasAtraso = 0;
+          let statusPrazoItem = 'NO_PRAZO';
+
+          if (dataEntregaRaw && dataEntregaRaw.length === 8) {
+            const pAno = parseInt(dataEntregaRaw.substring(0, 4), 10);
+            const pMes = parseInt(dataEntregaRaw.substring(4, 6), 10) - 1;
+            const pDia = parseInt(dataEntregaRaw.substring(6, 8), 10);
+            const entregaDate = new Date(pAno, pMes, pDia);
+
+            if (dataEntregaRaw < hojeRaw) {
+              statusPrazoItem = 'ATRASADO';
+              const diffMs = hojeDate.getTime() - entregaDate.getTime();
+              diasAtraso = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+            } else if (dataEntregaRaw === hojeRaw) {
+              statusPrazoItem = 'HOJE';
+              diasAtraso = 0;
+            } else {
+              statusPrazoItem = 'NO_PRAZO';
+              diasAtraso = 0;
+            }
+          }
+
+          if (cleanStatusPrazo && cleanStatusPrazo !== 'TODOS' && cleanStatusPrazo !== 'TODAS') {
+            if (cleanStatusPrazo === 'ATRASADOS' || cleanStatusPrazo === 'ATRASADO') {
+              if (statusPrazoItem !== 'ATRASADO') continue;
+            } else if (cleanStatusPrazo === 'HOJE') {
+              if (statusPrazoItem !== 'HOJE') continue;
+            } else if (cleanStatusPrazo === 'NO_PRAZO') {
+              if (statusPrazoItem !== 'NO_PRAZO') continue;
+            }
+          }
+
+          results.push({
+            empresa: emp.sigla,
+            empresaNome: emp.nome,
+            empresaKey: emp.key,
+            numPed: pedNum,
+            pedCom: `${emp.sigla}${pedNum}`,
+            codFornecedor: row.COD_FORNEC || '',
+            fornecedor: row.NOME_FORNEC || row.COD_FORNEC || 'FORNECEDOR NÃO INFORMADO',
+            emissao: formatarDataProtheus(row.EMISSAO),
+            emissaoRaw: row.EMISSAO || '',
+            dataEntrega: formatarDataProtheus(row.DATA_ENTREGA),
+            dataEntregaRaw: dataEntregaRaw,
+            diasAtraso: diasAtraso,
+            statusPrazo: statusPrazoItem,
+            totalItens: Number(row.TOTAL_ITENS) || 0,
+            qtdTotal: Number(row.QTD_TOTAL) || 0,
+            qtdEntregue: Number(row.QTD_ENTREGUE) || 0,
+            saldoTotal: Math.max(0, Number(row.SALDO_TOTAL) || 0),
+            valorTotal: Number(row.VALOR_TOTAL) || 0
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`Erro na consulta de pedidos de compras em aberto da empresa ${emp.nome}:`, err.message);
+    }
+  }
+
+  // Ordenação global inicial: mais atrasados e com menor data de entrega primeiro
+  results.sort((a, b) => {
+    if (a.dataEntregaRaw && b.dataEntregaRaw) {
+      return a.dataEntregaRaw.localeCompare(b.dataEntregaRaw);
+    }
+    return (a.numPed || '').localeCompare(b.numPed || '');
+  });
+
+  return results;
+}
+
+/**
+ * Consulta Detalhes Completos de um Pedido de Compra (SC7 + SA2 + SE4)
+ */
+async function obterDetalhesPedidoCompra({ empresaKey, numPedido } = {}) {
+  const cleanEmp = sanitizeSqlParam(empresaKey || 'OACO').toUpperCase();
+  const cleanNumPed = sanitizeSqlParam(numPedido || '');
+
+  if (!cleanNumPed) {
+    throw new Error('Número do pedido de compra não informado.');
+  }
+
+  const empresasConfig = {
+    'OACO': { sigla: 'OACO', nome: 'Empresa 16 (OACO)', sc7: 'SC7160' },
+    '16': { sigla: 'OACO', nome: 'Empresa 16 (OACO)', sc7: 'SC7160' },
+    'GSI': { sigla: 'GSI', nome: 'Empresa 15 (GSI)', sc7: 'SC7150' },
+    '15': { sigla: 'GSI', nome: 'Empresa 15 (GSI)', sc7: 'SC7150' },
+    'METAL_PLENO': { sigla: 'MP', nome: 'Empresa 14 (METAL PLENO)', sc7: 'SC7140' },
+    'MP': { sigla: 'MP', nome: 'Empresa 14 (METAL PLENO)', sc7: 'SC7140' },
+    '14': { sigla: 'MP', nome: 'Empresa 14 (METAL PLENO)', sc7: 'SC7140' }
+  };
+
+  const emp = empresasConfig[cleanEmp] || empresasConfig['OACO'];
+
+  // Data atual de hoje para cálculo de atrasos
+  const agora = new Date();
+  const spTime = new Date(agora.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+  const yyyy = spTime.getFullYear();
+  const mm = String(spTime.getMonth() + 1).padStart(2, '0');
+  const dd = String(spTime.getDate()).padStart(2, '0');
+  const hojeRaw = `${yyyy}${mm}${dd}`;
+  const hojeDate = new Date(yyyy, spTime.getMonth(), spTime.getDate());
+
+  const sql = `
+    SELECT 
+      RTRIM(C7.C7_FILIAL) AS C7_FILIAL,
+      RTRIM(C7.C7_NUM) AS C7_NUM,
+      RTRIM(C7.C7_ITEM) AS C7_ITEM,
+      RTRIM(C7.C7_PRODUTO) AS C7_PRODUTO,
+      RTRIM(C7.C7_DESCRI) AS C7_DESCRI,
+      RTRIM(ISNULL(C7.C7_UM, 'UN')) AS C7_UM,
+      ISNULL(C7.C7_QUANT, 0) AS C7_QUANT,
+      ISNULL(C7.C7_QUJE, 0) AS C7_QUJE,
+      (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) AS SALDO,
+      ISNULL(C7.C7_PRECO, 0) AS C7_PRECO,
+      ISNULL(C7.C7_TOTAL, 0) AS C7_TOTAL,
+      ISNULL(C7.C7_VALIPI, 0) AS C7_VALIPI,
+      ISNULL(C7.C7_VALICM, 0) AS C7_VALICM,
+      RTRIM(ISNULL(C7.C7_TES, '')) AS C7_TES,
+      RTRIM(ISNULL(C7.C7_DATPRF, '')) AS C7_DATPRF,
+      RTRIM(ISNULL(C7.C7_EMISSAO, '')) AS C7_EMISSAO,
+      RTRIM(ISNULL(C7.C7_FORNECE, '')) AS C7_FORNECE,
+      RTRIM(ISNULL(C7.C7_LOJA, '')) AS C7_LOJA,
+      RTRIM(ISNULL(C7.C7_NOMFOR, '')) AS C7_NOMFOR,
+      RTRIM(ISNULL(C7.C7_CONTATO, '')) AS C7_CONTATO,
+      RTRIM(ISNULL(C7.C7_COND, '')) AS C7_COND,
+      RTRIM(ISNULL(C7.C7_OBS, '')) AS C7_OBS,
+      RTRIM(ISNULL(C7.C7_SOLICIT, '')) AS C7_SOLICIT,
+      RTRIM(ISNULL(C7.C7_USER, '')) AS C7_USER,
+      ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(C7.C7_NOMFOR, ''))) AS NOME_FORNEC_SA2,
+      ISNULL((SELECT TOP 1 RTRIM(A2_CGC) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), '') AS CNPJ_FORNEC,
+      ISNULL((SELECT TOP 1 RTRIM(A2_TEL) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), '') AS TEL_FORNEC,
+      ISNULL((SELECT TOP 1 RTRIM(A2_EMAIL) FROM SA2010 WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), '') AS EMAIL_FORNEC,
+      ISNULL((SELECT TOP 1 RTRIM(E4_DESCRI) FROM SE4010 WHERE E4_CODIGO = C7.C7_COND AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(C7.C7_COND, ''))) AS COND_PAGTO_DESC
+    FROM ${emp.sc7} C7
+    WHERE C7.D_E_L_E_T_ = ' ' AND C7.C7_NUM = '${cleanNumPed}'
+    ORDER BY C7.C7_ITEM ASC
+  `;
+
+  const dbRes = await executeRailwayQuery(sql);
+  if (!dbRes || !dbRes.rows || dbRes.rows.length === 0) {
+    return null;
+  }
+
+  const firstRow = dbRes.rows[0];
+  const itens = [];
+  let somaQtd = 0;
+  let somaQuje = 0;
+  let somaSaldo = 0;
+  let somaTotal = 0;
+  let menorPrevisaoRaw = '';
+
+  for (const r of dbRes.rows) {
+    const qtd = Number(r.C7_QUANT) || 0;
+    const quje = Number(r.C7_QUJE) || 0;
+    const saldo = Math.max(0, (Number(r.SALDO) || (qtd - quje)));
+    const preco = Number(r.C7_PRECO) || 0;
+    const total = Number(r.C7_TOTAL) || (qtd * preco);
+    const prevRaw = String(r.C7_DATPRF || '').trim();
+
+    somaQtd += qtd;
+    somaQuje += quje;
+    somaSaldo += saldo;
+    somaTotal += total;
+
+    if (prevRaw && (!menorPrevisaoRaw || prevRaw < menorPrevisaoRaw)) {
+      menorPrevisaoRaw = prevRaw;
+    }
+
+    let diasAtrasoItem = 0;
+    let statusPrazoItem = 'NO_PRAZO';
+
+    if (prevRaw && prevRaw.length === 8) {
+      const pAno = parseInt(prevRaw.substring(0, 4), 10);
+      const pMes = parseInt(prevRaw.substring(4, 6), 10) - 1;
+      const pDia = parseInt(prevRaw.substring(6, 8), 10);
+      const entregaDate = new Date(pAno, pMes, pDia);
+
+      if (prevRaw < hojeRaw) {
+        statusPrazoItem = 'ATRASADO';
+        const diffMs = hojeDate.getTime() - entregaDate.getTime();
+        diasAtrasoItem = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+      } else if (prevRaw === hojeRaw) {
+        statusPrazoItem = 'HOJE';
+        diasAtrasoItem = 0;
+      }
+    }
+
+    itens.push({
+      item: r.C7_ITEM || '0001',
+      produto: r.C7_PRODUTO || '',
+      descricao: r.C7_DESCRI || 'PRODUTO SEM DESCRIÇÃO',
+      um: r.C7_UM || 'UN',
+      qtd: qtd,
+      quje: quje,
+      saldo: saldo,
+      precoUnit: preco,
+      total: total,
+      valIpi: Number(r.C7_VALIPI) || 0,
+      valIcm: Number(r.C7_VALICM) || 0,
+      tes: r.C7_TES || '',
+      previsao: formatarDataProtheus(prevRaw),
+      previsaoRaw: prevRaw,
+      diasAtraso: diasAtrasoItem,
+      statusPrazo: statusPrazoItem,
+      obs: r.C7_OBS || ''
+    });
+  }
+
+  let statusGeral = 'NO_PRAZO';
+  let diasAtrasoGeral = 0;
+  if (menorPrevisaoRaw && menorPrevisaoRaw < hojeRaw) {
+    statusGeral = 'ATRASADO';
+    const pAno = parseInt(menorPrevisaoRaw.substring(0, 4), 10);
+    const pMes = parseInt(menorPrevisaoRaw.substring(4, 6), 10) - 1;
+    const pDia = parseInt(menorPrevisaoRaw.substring(6, 8), 10);
+    const entregaDate = new Date(pAno, pMes, pDia);
+    const diffMs = hojeDate.getTime() - entregaDate.getTime();
+    diasAtrasoGeral = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+  } else if (menorPrevisaoRaw === hojeRaw) {
+    statusGeral = 'HOJE';
+  }
+
+  return {
+    cabecalho: {
+      empresa: emp.sigla,
+      empresaNome: emp.nome,
+      empresaKey: cleanEmp,
+      numPed: cleanNumPed,
+      pedCom: `${emp.sigla}${cleanNumPed}`,
+      emissao: formatarDataProtheus(firstRow.C7_EMISSAO),
+      emissaoRaw: firstRow.C7_EMISSAO || '',
+      codFornecedor: firstRow.C7_FORNECE || '',
+      lojaFornecedor: firstRow.C7_LOJA || '',
+      nomeFornecedor: firstRow.NOME_FORNEC_SA2 || firstRow.C7_NOMFOR || firstRow.C7_FORNECE || 'NÃO INFORMADO',
+      cnpjFornecedor: firstRow.CNPJ_FORNEC || '',
+      telFornecedor: firstRow.TEL_FORNEC || '',
+      emailFornecedor: firstRow.EMAIL_FORNEC || '',
+      contatoFornecedor: firstRow.C7_CONTATO || '',
+      condPagtoCod: firstRow.C7_COND || '',
+      condPagtoDesc: firstRow.COND_PAGTO_DESC || firstRow.C7_COND || '',
+      solicitante: firstRow.C7_SOLICIT || '',
+      usuario: firstRow.C7_USER || '',
+      previsaoGeral: formatarDataProtheus(menorPrevisaoRaw),
+      previsaoGeralRaw: menorPrevisaoRaw,
+      statusPrazo: statusGeral,
+      diasAtraso: diasAtrasoGeral
+    },
+    totais: {
+      totalItens: itens.length,
+      qtdTotal: somaQtd,
+      qtdEntregue: somaQuje,
+      saldoTotal: somaSaldo,
+      valorTotal: somaTotal
+    },
+    itens: itens
+  };
+}
+
+/**
  * Detecta se o pedido possui endereço de entrega diferente do cadastro
  * Regra Dupla:
  * 1. C5_TRANSP = '000009' (ou '9', transportadora especial / retira / redespacho)
@@ -2846,6 +3185,8 @@ module.exports = {
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
+  buscarPedidosComprasAbertosConsolidado,
+  obterDetalhesPedidoCompra,
   buscarPedidosProntosFaturar,
   buscarPedidosBloqueadosEstoque,
   buscarPedidosAnaliseLibEstoque,

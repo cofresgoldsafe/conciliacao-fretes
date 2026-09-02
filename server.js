@@ -16,6 +16,8 @@ const {
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
+  buscarPedidosComprasAbertosConsolidado,
+  obterDetalhesPedidoCompra,
   buscarPedidosProntosFaturar,
   buscarPedidosBloqueadosEstoque,
   buscarPedidosAnaliseLibEstoque,
@@ -1054,6 +1056,80 @@ app.get('/api/vendedores/pedidos/compras', requireAuth, async (req, res) => {
     res.json({ success: true, count: results.length, data: results });
   } catch (err) {
     handleServerError(res, err, 'Erro na busca de pedidos de compras de vendedores.');
+  }
+});
+
+// API: Compras - Listar Pedidos de Compras em Aberto Consolidados (Multi-Empresa SC7)
+app.get('/api/compras/pedidos/abertos', requireAuth, async (req, res) => {
+  try {
+    const { empresa, search, statusPrazo } = req.query || {};
+    const user = getUserFromReq(req);
+
+    const results = await buscarPedidosComprasAbertosConsolidado({ empresa, search, statusPrazo });
+
+    const totalPedidos = results.length;
+    const totalAtrasados = results.filter(p => p.statusPrazo === 'ATRASADO').length;
+    const totalPecas = results.reduce((acc, p) => acc + (Number(p.saldoTotal) || 0), 0);
+    const valorTotal = results.reduce((acc, p) => acc + (Number(p.valorTotal) || 0), 0);
+
+    const filtros = [
+      empresa ? `Empresa: ${empresa}` : 'Todas as Empresas',
+      search ? `Busca: ${search}` : 'Sem filtro de busca',
+      statusPrazo ? `Prazo: ${statusPrazo}` : 'Todos os prazos'
+    ].join(' | ');
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_PEDIDOS_COMPRAS_ABERTOS',
+      description: `Consultou pedidos de compras em aberto: ${filtros} (${totalPedidos} pedido(s))`,
+      ip: req.ip,
+      metadata: { empresa, search, statusPrazo, count: totalPedidos }
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      count: totalPedidos,
+      kpis: {
+        totalPedidos,
+        totalAtrasados,
+        totalPecas,
+        valorTotal
+      },
+      data: results
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro na consulta de pedidos de compras em aberto.');
+  }
+});
+
+// API: Compras - Detalhes Completos do Pedido de Compra (SC7 + SA2 + SE4)
+app.get('/api/compras/pedidos/detalhes', requireAuth, async (req, res) => {
+  try {
+    const { empresaKey, numPedido } = req.query || {};
+    const user = getUserFromReq(req);
+
+    if (!numPedido) {
+      return res.status(400).json({ success: false, message: 'Parâmetro numPedido é obrigatório.' });
+    }
+
+    const data = await obterDetalhesPedidoCompra({ empresaKey, numPedido });
+    if (!data) {
+      return res.status(404).json({ success: false, message: `Pedido de compra #${numPedido} não localizado na empresa ${empresaKey || 'OACO'}.` });
+    }
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_DETALHES_PEDIDO_COMPRA',
+      description: `Visualizou detalhes do pedido de compra #${numPedido} (${data.cabecalho.empresaNome || empresaKey})`,
+      ip: req.ip,
+      metadata: { empresaKey, numPedido, totalItens: data.totais.totalItens }
+    }).catch(() => {});
+
+    res.json({ success: true, data });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao consultar detalhes do pedido de compra.');
   }
 });
 

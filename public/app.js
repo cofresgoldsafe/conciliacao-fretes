@@ -778,6 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 
+          targetTab === 'tab-compras-pedidos-abertos' || 
           targetTab === 'tab-vend-pedidos-compras' || 
           targetTab === 'tab-vend-comissoes') {
         if (typeof inicializarTemaVendedores === 'function') inicializarTemaVendedores();
@@ -787,6 +788,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (targetTab === 'tab-vend-pedidos-abertos') {
         carregarPedidosAbertos();
+      }
+      if (targetTab === 'tab-compras-pedidos-abertos') {
+        carregarPedidosComprasAbertos();
       }
       if (targetTab === 'tab-vend-pedidos-compras') {
         carregarPedidosCompras();
@@ -3324,6 +3328,487 @@ document.addEventListener('DOMContentLoaded', () => {
   if (thSortComprasPrevisao) thSortComprasPrevisao.addEventListener('click', () => handleComprasSortClick('previsao'));
 
   // =========================================================================
+  // SUB-ABA COMPRAS: PEDIDOS DE COMPRAS EM ABERTO (SC7 CONSOLIDADO & MODAL)
+  // =========================================================================
+
+  const pedidosComprasAbertosSearchInput = document.getElementById('pedidosComprasAbertosSearchInput');
+  const pedidosComprasAbertosEmpresaFilter = document.getElementById('pedidosComprasAbertosEmpresaFilter');
+  const pedidosComprasAbertosStatusFilter = document.getElementById('pedidosComprasAbertosStatusFilter');
+  const btnAtualizarPedidosComprasAbertos = document.getElementById('btnAtualizarPedidosComprasAbertos');
+  const pedidosComprasAbertosLoading = document.getElementById('pedidosComprasAbertosLoading');
+  const pedidosComprasAbertosResults = document.getElementById('pedidosComprasAbertosResults');
+  const pedidosComprasAbertosCount = document.getElementById('pedidosComprasAbertosCount');
+  const pedidosComprasAbertosTableBody = document.getElementById('pedidosComprasAbertosTableBody');
+  const pedidosComprasAbertosEmptyState = document.getElementById('pedidosComprasAbertosEmptyState');
+
+  const statComprasAbertosTotalPedidos = document.getElementById('statComprasAbertosTotalPedidos');
+  const statComprasAbertosAtrasados = document.getElementById('statComprasAbertosAtrasados');
+  const statComprasAbertosTotalPecas = document.getElementById('statComprasAbertosTotalPecas');
+  const statComprasAbertosValorTotal = document.getElementById('statComprasAbertosValorTotal');
+
+  const thSortComprasAbertosPed = document.getElementById('thSortComprasAbertosPed');
+  const thSortComprasAbertosEmissao = document.getElementById('thSortComprasAbertosEmissao');
+  const thSortComprasAbertosEntrega = document.getElementById('thSortComprasAbertosEntrega');
+
+  const sortIconComprasAbertosPed = document.getElementById('sortIconComprasAbertosPed');
+  const sortIconComprasAbertosEmissao = document.getElementById('sortIconComprasAbertosEmissao');
+  const sortIconComprasAbertosEntrega = document.getElementById('sortIconComprasAbertosEntrega');
+
+  const modalPedidoCompraDetalhes = document.getElementById('modalPedidoCompraDetalhes');
+  const modalPedCompraNum = document.getElementById('modalPedCompraNum');
+  const modalPedCompraEmpresaBadge = document.getElementById('modalPedCompraEmpresaBadge');
+  const modalPedCompraBody = document.getElementById('modalPedCompraBody');
+  const btnCloseModalPedCompra = document.getElementById('btnCloseModalPedCompra');
+  const btnFecharModalPedCompra = document.getElementById('btnFecharModalPedCompra');
+
+  let pedidosComprasAbertosCache = [];
+  let pedidosComprasAbertosSortField = 'dataEntrega'; // 'numPed' | 'emissao' | 'dataEntrega'
+  let pedidosComprasAbertosSortDirection = 'asc'; // 'asc' | 'desc'
+
+  function updatePedidosComprasAbertosSortIcons() {
+    const map = [
+      { field: 'numPed', icon: sortIconComprasAbertosPed },
+      { field: 'emissao', icon: sortIconComprasAbertosEmissao },
+      { field: 'dataEntrega', icon: sortIconComprasAbertosEntrega }
+    ];
+
+    map.forEach(item => {
+      if (!item.icon) return;
+      if (pedidosComprasAbertosSortField === item.field) {
+        item.icon.textContent = pedidosComprasAbertosSortDirection === 'asc' ? '▲' : '▼';
+        item.icon.style.color = '#38bdf8';
+        item.icon.style.fontWeight = '700';
+      } else {
+        item.icon.textContent = '↕';
+        item.icon.style.color = 'var(--text-muted)';
+        item.icon.style.fontWeight = 'normal';
+      }
+    });
+  }
+
+  function ordenarListaPedidosComprasAbertos(lista, field, direction) {
+    if (!field || !Array.isArray(lista)) return lista;
+    return [...lista].sort((a, b) => {
+      let cmp = 0;
+      if (field === 'numPed') {
+        const numA = parseInt(String(a.numPed || '').replace(/\D/g, ''), 10);
+        const numB = parseInt(String(b.numPed || '').replace(/\D/g, ''), 10);
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+          cmp = numA - numB;
+        } else {
+          cmp = String(a.numPed || '').localeCompare(String(b.numPed || ''), 'pt-BR');
+        }
+      } else if (field === 'emissao') {
+        const rawA = a.emissaoRaw || '';
+        const rawB = b.emissaoRaw || '';
+        cmp = rawA.localeCompare(rawB);
+      } else if (field === 'dataEntrega') {
+        const rawA = a.dataEntregaRaw || '';
+        const rawB = b.dataEntregaRaw || '';
+        cmp = rawA.localeCompare(rawB);
+      } else {
+        cmp = String(a.fornecedor || '').localeCompare(String(b.fornecedor || ''), 'pt-BR', { sensitivity: 'base' });
+      }
+
+      return direction === 'desc' ? -cmp : cmp;
+    });
+  }
+
+  function formatBadgeEntregaComprasAbertos(dataEntrega, dataEntregaRaw, statusPrazo, diasAtraso) {
+    if (!dataEntregaRaw || dataEntregaRaw.length !== 8) {
+      return `<span style="color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(dataEntrega || '-')}</span>`;
+    }
+
+    if (statusPrazo === 'ATRASADO') {
+      const txtDias = diasAtraso > 1 ? `${diasAtraso}d atrasado` : '1d atrasado';
+      return `<span class="diverg-badge status-danger" style="font-size: 0.78rem; font-weight: 700; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;" title="Previsão expirada! Comprador deve cobrar novo prazo do fornecedor.">🔴 ${escapeHtml(dataEntrega)} (${escapeHtml(txtDias)})</span>`;
+    } else if (statusPrazo === 'HOJE') {
+      return `<span class="diverg-badge status-warning" style="font-size: 0.78rem; font-weight: 700; padding: 3px 8px; display: inline-flex; align-items: center; gap: 4px;" title="Previsão de entrega para hoje!">🟡 ${escapeHtml(dataEntrega)} (Hoje)</span>`;
+    } else {
+      return `<span class="status-badge sucesso" style="font-size: 0.78rem; font-weight: 600; padding: 3px 8px;">🟢 ${escapeHtml(dataEntrega)}</span>`;
+    }
+  }
+
+  function renderPedidosComprasAbertosTable(pedidos) {
+    if (!pedidosComprasAbertosTableBody) return;
+    pedidosComprasAbertosTableBody.innerHTML = '';
+
+    const empFiltro = (pedidosComprasAbertosEmpresaFilter ? pedidosComprasAbertosEmpresaFilter.value : '').toUpperCase();
+    const statusFiltro = (pedidosComprasAbertosStatusFilter ? pedidosComprasAbertosStatusFilter.value : '').toUpperCase();
+    const searchVal = (pedidosComprasAbertosSearchInput ? pedidosComprasAbertosSearchInput.value : '').toLowerCase().trim();
+
+    const filtrados = (pedidos || []).filter(p => {
+      if (empFiltro) {
+        const empSigla = (p.empresa || '').toUpperCase();
+        const empKey = (p.empresaKey || '').toUpperCase();
+        if (empSigla !== empFiltro && empKey !== empFiltro && !(empFiltro === 'MP' && empKey === 'METAL_PLENO')) {
+          return false;
+        }
+      }
+
+      if (statusFiltro) {
+        if (statusFiltro === 'ATRASADOS' || statusFiltro === 'ATRASADO') {
+          if (p.statusPrazo !== 'ATRASADO') return false;
+        } else if (statusFiltro === 'HOJE') {
+          if (p.statusPrazo !== 'HOJE') return false;
+        } else if (statusFiltro === 'NO_PRAZO') {
+          if (p.statusPrazo !== 'NO_PRAZO') return false;
+        }
+      }
+
+      if (searchVal) {
+        const ped = (p.pedCom || '').toLowerCase();
+        const numPed = (p.numPed || '').toLowerCase();
+        const forn = (p.fornecedor || '').toLowerCase();
+        const codForn = (p.codFornecedor || '').toLowerCase();
+
+        const match = ped.includes(searchVal) || 
+                      numPed.includes(searchVal) || 
+                      forn.includes(searchVal) || 
+                      codForn.includes(searchVal);
+        if (!match) return false;
+      }
+
+      return true;
+    });
+
+    if (pedidosComprasAbertosCount) pedidosComprasAbertosCount.textContent = filtrados.length;
+
+    // Atualiza cards de métricas
+    const totalPedidos = filtrados.length;
+    const totalAtrasados = filtrados.filter(p => p.statusPrazo === 'ATRASADO').length;
+    const totalPecas = filtrados.reduce((acc, p) => acc + (Number(p.saldoTotal) || 0), 0);
+    const valorTotal = filtrados.reduce((acc, p) => acc + (Number(p.valorTotal) || 0), 0);
+
+    if (statComprasAbertosTotalPedidos) statComprasAbertosTotalPedidos.textContent = totalPedidos.toLocaleString('pt-BR');
+    if (statComprasAbertosAtrasados) statComprasAbertosAtrasados.textContent = totalAtrasados.toLocaleString('pt-BR');
+    if (statComprasAbertosTotalPecas) statComprasAbertosTotalPecas.textContent = totalPecas.toLocaleString('pt-BR');
+    if (statComprasAbertosValorTotal) statComprasAbertosValorTotal.textContent = formatCurrency(valorTotal);
+
+    if (filtrados.length === 0) {
+      if (pedidosComprasAbertosResults) pedidosComprasAbertosResults.classList.add('hidden');
+      if (pedidosComprasAbertosEmptyState) pedidosComprasAbertosEmptyState.classList.remove('hidden');
+      return;
+    }
+
+    if (pedidosComprasAbertosEmptyState) pedidosComprasAbertosEmptyState.classList.add('hidden');
+    if (pedidosComprasAbertosResults) pedidosComprasAbertosResults.classList.remove('hidden');
+
+    const listaFinal = pedidosComprasAbertosSortField
+      ? ordenarListaPedidosComprasAbertos(filtrados, pedidosComprasAbertosSortField, pedidosComprasAbertosSortDirection)
+      : filtrados;
+
+    const isLight = document.getElementById('tab-compras-pedidos-abertos')?.classList.contains('tab-theme-light');
+    const linkPedColor = isLight ? '#0284c7' : '#38bdf8';
+    const mutedColor = isLight ? '#64748b' : 'var(--text-muted)';
+
+    listaFinal.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="company-badge ${escapeHtml(p.empresa)}">${escapeHtml(p.empresa)}</span></td>
+        <td>
+          <button type="button" class="link-ped-compra btn-link" data-empresa="${escapeHtml(p.empresaKey || 'OACO')}" data-ped="${escapeHtml(p.numPed)}" 
+                  title="Clique para abrir a ficha completa do Pedido de Compra #${escapeHtml(p.numPed)}"
+                  style="background: none; border: none; padding: 0; color: ${linkPedColor}; font-weight: 700; cursor: pointer; text-decoration: underline; font-size: 0.92rem; font-family: var(--font-mono);">
+            ${escapeHtml(p.numPed)}
+          </button>
+        </td>
+        <td style="font-size: 0.85rem; color: ${mutedColor};">${escapeHtml(p.emissao || '-')}</td>
+        <td style="font-family: var(--font-mono); font-size: 0.85rem; color: ${mutedColor};">${escapeHtml(p.codFornecedor || '-')}</td>
+        <td style="font-weight: 600; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(p.fornecedor)}">
+          ${escapeHtml(p.fornecedor)}
+        </td>
+        <td style="text-align: center;">
+          <span style="font-weight: 700; color: #10b981; font-size: 0.85rem;">
+            ${Number(p.saldoTotal || 0).toLocaleString('pt-BR')} un
+          </span>
+          <div style="font-size: 0.74rem; color: ${mutedColor};">${p.totalItens} ${p.totalItens === 1 ? 'item' : 'itens'}</div>
+        </td>
+        <td style="text-align: right; font-weight: 700; color: #60a5fa; font-size: 0.88rem;">
+          ${formatCurrency(p.valorTotal)}
+        </td>
+        <td>${formatBadgeEntregaComprasAbertos(p.dataEntrega, p.dataEntregaRaw, p.statusPrazo, p.diasAtraso)}</td>
+      `;
+      pedidosComprasAbertosTableBody.appendChild(tr);
+    });
+  }
+
+  // Event Delegation para links de pedidos de compras em aberto
+  if (pedidosComprasAbertosTableBody) {
+    pedidosComprasAbertosTableBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('.link-ped-compra');
+      if (btn) {
+        const emp = btn.getAttribute('data-empresa') || 'OACO';
+        const ped = btn.getAttribute('data-ped');
+        if (ped) abrirDetalhesPedidoCompraModal(emp, ped);
+      }
+    });
+  }
+
+  async function carregarPedidosComprasAbertos(forceRefresh = false) {
+    if (pedidosComprasAbertosLoading) pedidosComprasAbertosLoading.classList.remove('hidden');
+    if (pedidosComprasAbertosResults) pedidosComprasAbertosResults.classList.add('hidden');
+    if (pedidosComprasAbertosEmptyState) pedidosComprasAbertosEmptyState.classList.add('hidden');
+    if (btnAtualizarPedidosComprasAbertos) {
+      btnAtualizarPedidosComprasAbertos.disabled = true;
+      btnAtualizarPedidosComprasAbertos.textContent = '⏳ Carregando...';
+    }
+
+    try {
+      const response = await fetch('/api/compras/pedidos/abertos');
+      const data = await response.json();
+
+      if (data.success && Array.isArray(data.data)) {
+        pedidosComprasAbertosCache = data.data;
+        updatePedidosComprasAbertosSortIcons();
+        renderPedidosComprasAbertosTable(pedidosComprasAbertosCache);
+      } else {
+        alert(data.message || 'Erro ao carregar lista de pedidos de compras em aberto.');
+      }
+    } catch (err) {
+      alert('Erro de comunicação ao carregar pedidos de compras: ' + err.message);
+    } finally {
+      if (pedidosComprasAbertosLoading) pedidosComprasAbertosLoading.classList.add('hidden');
+      if (btnAtualizarPedidosComprasAbertos) {
+        btnAtualizarPedidosComprasAbertos.disabled = false;
+        btnAtualizarPedidosComprasAbertos.textContent = '🔄 Atualizar Pedidos';
+      }
+    }
+  }
+
+  if (pedidosComprasAbertosSearchInput) {
+    pedidosComprasAbertosSearchInput.addEventListener('input', () => {
+      renderPedidosComprasAbertosTable(pedidosComprasAbertosCache);
+    });
+  }
+
+  if (pedidosComprasAbertosEmpresaFilter) {
+    pedidosComprasAbertosEmpresaFilter.addEventListener('change', () => {
+      renderPedidosComprasAbertosTable(pedidosComprasAbertosCache);
+    });
+  }
+
+  if (pedidosComprasAbertosStatusFilter) {
+    pedidosComprasAbertosStatusFilter.addEventListener('change', () => {
+      renderPedidosComprasAbertosTable(pedidosComprasAbertosCache);
+    });
+  }
+
+  if (btnAtualizarPedidosComprasAbertos) {
+    btnAtualizarPedidosComprasAbertos.addEventListener('click', () => carregarPedidosComprasAbertos(true));
+  }
+
+  function handleComprasAbertosSortClick(field) {
+    if (pedidosComprasAbertosSortField === field) {
+      pedidosComprasAbertosSortDirection = pedidosComprasAbertosSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      pedidosComprasAbertosSortField = field;
+      pedidosComprasAbertosSortDirection = 'asc';
+    }
+    updatePedidosComprasAbertosSortIcons();
+    renderPedidosComprasAbertosTable(pedidosComprasAbertosCache);
+  }
+
+  if (thSortComprasAbertosPed) thSortComprasAbertosPed.addEventListener('click', () => handleComprasAbertosSortClick('numPed'));
+  if (thSortComprasAbertosEmissao) thSortComprasAbertosEmissao.addEventListener('click', () => handleComprasAbertosSortClick('emissao'));
+  if (thSortComprasAbertosEntrega) thSortComprasAbertosEntrega.addEventListener('click', () => handleComprasAbertosSortClick('dataEntrega'));
+
+  // --- MODAL: DETALHES DO PEDIDO DE COMPRA ---
+  async function abrirDetalhesPedidoCompraModal(empresaKey, numPedido) {
+    if (!modalPedidoCompraDetalhes || !modalPedCompraBody) return;
+
+    const isLight = document.getElementById('tab-compras-pedidos-abertos')?.classList.contains('tab-theme-light') ||
+                    localStorage.getItem('theme_vendedores') === 'light' ||
+                    localStorage.getItem('theme_saldos_estoque') === 'light';
+
+    if (isLight) {
+      modalPedidoCompraDetalhes.classList.add('modal-theme-light');
+    } else {
+      modalPedidoCompraDetalhes.classList.remove('modal-theme-light');
+    }
+
+    if (modalPedCompraNum) modalPedCompraNum.textContent = numPedido;
+    if (modalPedCompraEmpresaBadge) {
+      const sigla = (empresaKey === '14' || empresaKey === 'MP' || empresaKey === 'METAL_PLENO') ? 'MP' :
+                    (empresaKey === '15' || empresaKey === 'GSI') ? 'GSI' : 'OACO';
+      modalPedCompraEmpresaBadge.innerHTML = `<span class="company-badge ${sigla}" style="margin-left: 8px;">${sigla}</span>`;
+    }
+
+    modalPedCompraBody.innerHTML = `
+      <div style="text-align: center; padding: 2.5rem;">
+        <div class="spinner" style="margin: 0 auto 1rem auto; width: 32px; height: 32px; border: 3px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <p>Consultando dados e itens do Pedido de Compra <strong>#${escapeHtml(numPedido)}</strong> no Protheus...</p>
+      </div>
+    `;
+    modalPedidoCompraDetalhes.classList.remove('hidden');
+
+    try {
+      const response = await fetch(`/api/compras/pedidos/detalhes?empresaKey=${encodeURIComponent(empresaKey)}&numPedido=${encodeURIComponent(numPedido)}`);
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        renderModalDetalhesPedidoCompraContent(data.data);
+      } else {
+        modalPedCompraBody.innerHTML = `
+          <div class="empty-results-box">
+            <div class="empty-icon">⚠️</div>
+            <h4>Não foi possível carregar o pedido</h4>
+            <p>${data.message || 'Verifique se o pedido ainda existe no Protheus.'}</p>
+          </div>
+        `;
+      }
+    } catch (err) {
+      modalPedCompraBody.innerHTML = `
+        <div class="empty-results-box">
+          <div class="empty-icon">❌</div>
+          <h4>Erro de comunicação</h4>
+          <p>${err.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderModalDetalhesPedidoCompraContent(det) {
+    if (!modalPedCompraBody) return;
+    const c = det.cabecalho || {};
+    const t = det.totais || {};
+    const itens = det.itens || [];
+
+    let statusBadgeEntrega = '';
+    if (c.statusPrazo === 'ATRASADO') {
+      statusBadgeEntrega = `<span class="diverg-badge status-danger" style="font-weight: 700; padding: 3px 8px;">🔴 Atrasado (${c.diasAtraso}d de atraso)</span>`;
+    } else if (c.statusPrazo === 'HOJE') {
+      statusBadgeEntrega = `<span class="diverg-badge status-warning" style="font-weight: 700; padding: 3px 8px;">🟡 Vence Hoje</span>`;
+    } else {
+      statusBadgeEntrega = `<span class="status-badge sucesso" style="font-weight: 600; padding: 3px 8px;">🟢 No Prazo</span>`;
+    }
+
+    let itensHtml = '';
+    if (itens.length > 0) {
+      itensHtml = itens.map(i => {
+        let badgeItemPrazo = '';
+        if (i.statusPrazo === 'ATRASADO') {
+          badgeItemPrazo = `<span class="diverg-badge status-danger" style="font-size: 0.74rem; padding: 2px 6px;">🔴 ${escapeHtml(i.previsao)} (${i.diasAtraso}d)</span>`;
+        } else if (i.statusPrazo === 'HOJE') {
+          badgeItemPrazo = `<span class="diverg-badge status-warning" style="font-size: 0.74rem; padding: 2px 6px;">🟡 ${escapeHtml(i.previsao)} (Hoje)</span>`;
+        } else {
+          badgeItemPrazo = `<span style="font-weight: 600; color: #38bdf8; font-size: 0.82rem;">${escapeHtml(i.previsao || '-')}</span>`;
+        }
+
+        return `
+          <tr>
+            <td style="text-align: center; color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(i.item || '0001')}</td>
+            <td><code style="font-size: 0.85rem;">${escapeHtml(i.produto || '-')}</code></td>
+            <td><strong>${escapeHtml(i.descricao || '-')}</strong></td>
+            <td style="text-align: center;"><span class="badge" style="font-size: 0.75rem;">${escapeHtml(i.um || 'UN')}</span></td>
+            <td style="text-align: right; font-weight: 600;">${Number(i.qtd || 0).toLocaleString('pt-BR')}</td>
+            <td style="text-align: right; color: var(--text-muted);">${Number(i.quje || 0).toLocaleString('pt-BR')}</td>
+            <td style="text-align: right; font-weight: 700; color: #10b981;">${Number(i.saldo || 0).toLocaleString('pt-BR')}</td>
+            <td style="text-align: right;">${formatCurrency(i.precoUnit)}</td>
+            <td style="text-align: right; font-weight: 700; color: #60a5fa;">${formatCurrency(i.total)}</td>
+            <td style="text-align: center;">${badgeItemPrazo}</td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      itensHtml = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum item localizado para este pedido de compra no Protheus.</td></tr>`;
+    }
+
+    modalPedCompraBody.innerHTML = `
+      <!-- Cabeçalho Cadastral do Pedido & Fornecedor -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; background: rgba(15, 23, 42, 0.4); padding: 1.15rem; border-radius: 10px; border: 1px solid var(--panel-border); margin-bottom: 1.25rem;">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Fornecedor</div>
+          <div style="font-weight: 700; font-size: 0.95rem; margin-top: 2px;">${escapeHtml(c.nomeFornecedor)}</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono);">Cód: ${escapeHtml(c.codFornecedor)} ${c.lojaFornecedor ? `| Loja: ${escapeHtml(c.lojaFornecedor)}` : ''}</div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">CNPJ / Telefone</div>
+          <div style="font-weight: 600; font-size: 0.88rem; margin-top: 2px; font-family: var(--font-mono);">${escapeHtml(c.cnpjFornecedor || '-')}</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">${c.telFornecedor ? `📞 ${escapeHtml(c.telFornecedor)}` : ''} ${c.contatoFornecedor ? `(${escapeHtml(c.contatoFornecedor)})` : ''}</div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Emissão / Cond. Pagto</div>
+          <div style="font-weight: 600; font-size: 0.88rem; margin-top: 2px;">📅 Emissão: ${escapeHtml(c.emissao || '-')}</div>
+          <div style="font-size: 0.8rem; color: #38bdf8;">💳 ${escapeHtml(c.condPagtoDesc || 'Padrão')}</div>
+        </div>
+
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Previsão Geral / Status</div>
+          <div style="font-weight: 700; font-size: 0.92rem; margin-top: 2px;">📦 Entrega: ${escapeHtml(c.previsaoGeral || '-')}</div>
+          <div style="margin-top: 4px;">${statusBadgeEntrega}</div>
+        </div>
+      </div>
+
+      <!-- Tabela de Itens do Pedido de Compra -->
+      <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0; color: var(--text-primary);">
+          📦 Itens do Pedido de Compra (${t.totalItens} ${t.totalItens === 1 ? 'item' : 'itens'})
+        </h3>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          Total a receber: <strong style="color: #10b981;">${Number(t.saldoTotal || 0).toLocaleString('pt-BR')} peças</strong>
+        </span>
+      </div>
+
+      <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width: 5%; text-align: center;">Item</th>
+              <th style="width: 14%;">Código</th>
+              <th style="width: 25%;">Descrição do Produto</th>
+              <th style="width: 6%; text-align: center;">UM</th>
+              <th style="width: 8%; text-align: right;">Qtd Pedida</th>
+              <th style="width: 8%; text-align: right;">Entregue</th>
+              <th style="width: 8%; text-align: right;">Saldo</th>
+              <th style="width: 9%; text-align: right;">Preço Unit</th>
+              <th style="width: 9%; text-align: right;">Total Item</th>
+              <th style="width: 14%; text-align: center;">Previsão</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itensHtml}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Resumo Financeiro no Rodapé -->
+      <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: rgba(30, 41, 59, 0.4); border-radius: 8px; border: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          Comprador / Usuário Protheus: <strong>${escapeHtml(c.solicitante || c.usuario || 'NÃO INFORMADO')}</strong>
+        </div>
+        <div style="display: flex; gap: 1.5rem; align-items: center;">
+          <div style="font-size: 0.88rem;">Qtd Total: <strong style="color: var(--text-primary);">${Number(t.qtdTotal || 0).toLocaleString('pt-BR')}</strong></div>
+          <div style="font-size: 0.88rem;">Saldo Pendente: <strong style="color: #10b981;">${Number(t.saldoTotal || 0).toLocaleString('pt-BR')}</strong></div>
+          <div style="font-size: 1rem; font-weight: 700; color: #60a5fa;">Valor Total: ${formatCurrency(t.valorTotal)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (btnCloseModalPedCompra) {
+    btnCloseModalPedCompra.addEventListener('click', () => {
+      if (modalPedidoCompraDetalhes) modalPedidoCompraDetalhes.classList.add('hidden');
+    });
+  }
+
+  if (btnFecharModalPedCompra) {
+    btnFecharModalPedCompra.addEventListener('click', () => {
+      if (modalPedidoCompraDetalhes) modalPedidoCompraDetalhes.classList.add('hidden');
+    });
+  }
+
+  if (modalPedidoCompraDetalhes) {
+    modalPedidoCompraDetalhes.addEventListener('click', (e) => {
+      if (e.target === modalPedidoCompraDetalhes) {
+        modalPedidoCompraDetalhes.classList.add('hidden');
+      }
+    });
+  }
+
+  // =========================================================================
   // SUB-ABA VENDEDORES: SALDOS EM ESTOQUE (POWER BI STYLE & DRILLDOWN)
   // =========================================================================
 
@@ -3358,6 +3843,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'tab-vend-saldos-estoque',
     'tab-vend-pedidos',
     'tab-vend-pedidos-abertos',
+    'tab-compras-pedidos-abertos',
     'tab-vend-pedidos-compras',
     'tab-vend-comissoes'
   ];
@@ -3375,6 +3861,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const modalEstoque = document.getElementById('modalEstoqueDetalhes');
     const modalPedido = document.getElementById('pedidoDetalhesModal');
+    const modalPedCompra = document.getElementById('modalPedidoCompraDetalhes');
     if (modalEstoque) {
       if (isLight) modalEstoque.classList.add('modal-theme-light');
       else modalEstoque.classList.remove('modal-theme-light');
@@ -3382,6 +3869,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalPedido) {
       if (isLight) modalPedido.classList.add('modal-theme-light');
       else modalPedido.classList.remove('modal-theme-light');
+    }
+    if (modalPedCompra) {
+      if (isLight) modalPedCompra.classList.add('modal-theme-light');
+      else modalPedCompra.classList.remove('modal-theme-light');
     }
 
     if (themeIconEstoque) themeIconEstoque.textContent = isLight ? '🌙' : '☀️';

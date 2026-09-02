@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login, Nova Aba Principal COMPRAS com 4 Sub-Abas DRY & Expurgo Estrito de Produtos Bloqueados B1_MSBLQL no Estoque - 14 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 23:18 (v9.21 - Ajuste Definitivo dos Rótulos das Sub-Abas: "Consulta Ped Venda", "Ped Vendas Abertos" e "Prod x Ped Compras" nas Abas COMPRAS e VENDEDORES, Validação 100% Aprovada em 15 Suítes de Testes)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login, Nova Sub-Aba "Ped Compras Aberto" na Aba COMPRAS com Destaque de Prazos < Hoje, Modal Detalhado de Itens/Fornecedores SC7 e 16 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 07:35 (v9.22 - Sub-Aba "Ped Compras Aberto" na Aba COMPRAS com Agregação Multi-Empresa SC7, Alertas Visuais de Atraso de Entrega, Modal Completo com Fornecedor SA2/SE4 e 16 Suítes de Testes Automatizados 100% Aprovadas)  
 
 ---
 
@@ -492,7 +492,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Inclusão da permissão `compras` no modal de gerenciamento de usuários (`#permCompras`), renderização de badge auditável na tabela (`.perm-badge-compras`) e autorização em `server.js` (`allowedTabs`) e `postgres_db.js`.
    - **Suporte a Tema Claro/Escuro:**
      - Botão `#btnToggleThemeCompras` integrado à rotina unificada de temas, sincronizando ícones e labels (`☀️ Modo Claro` / `🌙 Modo Escuro`).
-   - **Suíte de Testes Automatizados:** Script `test_compras_tab.js` com 6 asserções cobrindo integridade HTML, diretriz DRY, RBAC, alternância de abas, sincronização de temas e compilação `vm.Script` sem erros.
+     - **Suíte de Testes Automatizados:** Script `test_compras_tab.js` com 6 asserções cobrindo integridade HTML, diretriz DRY, RBAC, alternância de abas, sincronização de temas e compilação `vm.Script` sem erros.
+33. [x] **Sub-Aba "Ped Compras Aberto" na Aba Principal COMPRAS com Alertas de Prazos < Hoje & Modal Completo (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_pedidos_compras_abertos.js`):**
+    - **Agregação Multi-Empresa de Pedidos SC7:**
+      - Consulta unificada nas 3 empresas (Metal Pleno 14, GSI 15, OACO 16) de pedidos de compra em aberto (`(C7_QUANT - C7_QUJE) > 0`, `C7_ENCER <> 'E'`, `C7_RESIDUO <> 'S'` e `D_E_L_E_T_ = ' '`), expurgando pedidos encerrados, entregues ou cancelados.
+      - Cobertura completa de todas as categorias de compra (matérias-primas, insumos, embalagens, serviços e produtos acabados).
+    - **Alertas Visuais de Prazos de Entrega (< hoje):**
+      - Confronto da data de previsão mais próxima (`MIN(C7_DATPRF)`) com a data atual de Brasília (`hojeRaw`).
+      - Destaque em evidência com badge vermelho (`🔴 DD/MM/AAAA (X dias atrasado)`) para ação imediata do comprador junto ao fornecedor. Badges dedicados para pedidos que vencem hoje (`🟡`) e no prazo (`🟢`).
+    - **Modal Rico de Detalhes do Pedido (`#modalPedidoCompraDetalhes`):**
+      - Clique no número do pedido abre modal com dados cadastrais e de contato do fornecedor (`SA2010`: CNPJ, Telefone, E-mail, Contato), condição de pagamento (`SE4010`), datas, status geral e grade completa de itens (`C7_ITEM`, `C7_PRODUTO`, `C7_DESCRI`, `C7_UM`, `C7_QUANT`, `C7_QUJE`, `SALDO`, `C7_PRECO`, `C7_TOTAL`, `C7_DATPRF`).
+      - Rodapé consolidado com comprador/usuário solicitante, quantidade total pedida, saldo total e valor total (R$).
+    - **Barra de Filtros, KPIs & Sincronização de Temas:**
+      - 4 Cards KPIs no topo (`Pedidos em Aberto`, `Pedidos Atrasados`, `Peças a Receber`, `Valor Total em Aberto R$`).
+      - Filtros reativos por Empresa, Busca Textual (pedido, fornecedor, código, produto) e Status do Prazo (Todos, Atrasados, Vence Hoje, No Prazo).
+      - Sincronização total com o seletor de Modo Claro/Modo Escuro (`modal-theme-light` e `tab-theme-light`).
+    - **Suíte de Testes Automatizados:** Script `test_pedidos_compras_abertos.js` com 10 asserções cobrindo cenários abertos/encerrados validados com os exemplos da OACO 16 (`000263`, `000264`, `000265`, `000255`, `000258` vs `000256`, `000260`, `000181`, `000108`), cálculo determinístico de dias de atraso, proteção RBAC / JWT nos endpoints HTTP e integridade sintática (100% de aprovação).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

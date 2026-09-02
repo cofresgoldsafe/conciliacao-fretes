@@ -1,5 +1,175 @@
 [
   {
+    "id": "ACT-1788345691401",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_DETALHES_PEDIDO_COMPRA",
+    "description": "Visualizou detalhes do pedido de compra #000263 (Empresa 16 (OACO))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresaKey": "OACO",
+      "numPedido": "000263",
+      "totalItens": 8
+    },
+    "createdAt": "2026-09-02T10:41:31.401Z"
+  },
+  {
+    "id": "ACT-1788345690753",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS_ABERTOS",
+    "description": "Consultou pedidos de compras em aberto: Empresa: OACO | Sem filtro de busca | Todos os prazos (16 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "OACO",
+      "count": 16
+    },
+    "createdAt": "2026-09-02T10:41:30.753Z"
+  },
+  {
+    "id": "ACT-1788345594824",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_DETALHES_PEDIDO_COMPRA",
+    "description": "Visualizou detalhes do pedido de compra #000263 (Empresa 16 (OACO))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresaKey": "OACO",
+      "numPedido": "000263",
+      "totalItens": 8
+    },
+    "createdAt": "2026-09-02T10:39:54.824Z"
+  },
+  {
+    "id": "ACT-1788345594203",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS_ABERTOS",
+    "description": "Consultou pedidos de compras em aberto: Empresa: OACO | Sem filtro de busca | Todos os prazos (16 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "OACO",
+      "count": 16
+    },
+    "createdAt": "2026-09-02T10:39:54.203Z"
+  },
+  {
+    "id": "ACT-1788345389932",
+    "username": "andrea",
+    "userName": "Andrea",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (1 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "codVend": "000004",
+      "count": 1
+    },
+    "createdAt": "2026-09-02T10:36:29.932Z"
+  },
+  {
+    "id": "ACT-1788345388108",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (26 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 26
+    },
+    "createdAt": "2026-09-02T10:36:28.109Z"
+  },
+  {
+    "id": "ACT-1788345385006",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (26 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 26
+    },
+    "createdAt": "2026-09-02T10:36:25.006Z"
+  },
+  {
+    "id": "ACT-1788345380988",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "MP",
+      "count": 5
+    },
+    "createdAt": "2026-09-02T10:36:20.988Z"
+  },
+  {
+    "id": "ACT-1788345380303",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 14
+    },
+    "createdAt": "2026-09-02T10:36:20.303Z"
+  },
+  {
+    "id": "ACT-1788345375298",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_DETALHES_PEDIDO_COMPRA",
+    "description": "Visualizou detalhes do pedido de compra #000263 (Empresa 16 (OACO))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresaKey": "OACO",
+      "numPedido": "000263",
+      "totalItens": 8
+    },
+    "createdAt": "2026-09-02T10:36:15.298Z"
+  },
+  {
+    "id": "ACT-1788345373543",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS_ABERTOS",
+    "description": "Consultou pedidos de compras em aberto: Empresa: OACO | Sem filtro de busca | Todos os prazos (16 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "OACO",
+      "count": 16
+    },
+    "createdAt": "2026-09-02T10:36:13.543Z"
+  },
+  {
+    "id": "ACT-1788345351754",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_DETALHES_PEDIDO_COMPRA",
+    "description": "Visualizou detalhes do pedido de compra #000263 (Empresa 16 (OACO))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresaKey": "OACO",
+      "numPedido": "000263",
+      "totalItens": 8
+    },
+    "createdAt": "2026-09-02T10:35:51.754Z"
+  },
+  {
+    "id": "ACT-1788345350894",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS_ABERTOS",
+    "description": "Consultou pedidos de compras em aberto: Empresa: OACO | Sem filtro de busca | Todos os prazos (16 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "OACO",
+      "count": 16
+    },
+    "createdAt": "2026-09-02T10:35:50.894Z"
+  },
+  {
     "id": "ACT-1788313776156",
     "username": "alexandre",
     "userName": "Alexandre",
@@ -2261,147 +2431,5 @@
       "count": 15
     },
     "createdAt": "2026-08-27T13:02:32.406Z"
-  },
-  {
-    "id": "ACT-1787835748618",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (19 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 19
-    },
-    "createdAt": "2026-08-27T13:02:28.618Z"
-  },
-  {
-    "id": "ACT-1787835745683",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000074 (10 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "codVend": "000074",
-      "count": 10
-    },
-    "createdAt": "2026-08-27T13:02:25.683Z"
-  },
-  {
-    "id": "ACT-1787835732472",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:02:12.472Z"
-  },
-  {
-    "id": "ACT-1787835720380",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:02:00.380Z"
-  },
-  {
-    "id": "ACT-1787835720221",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:02:00.221Z"
-  },
-  {
-    "id": "ACT-1787835719891",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:01:59.891Z"
-  },
-  {
-    "id": "ACT-1787835719611",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:01:59.611Z"
-  },
-  {
-    "id": "ACT-1787835718570",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"marcos_logistica\" (marcos@oaco.com.br)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:01:58.570Z"
-  },
-  {
-    "id": "ACT-1787835718463",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "REENVIO_2FA",
-    "description": "Novo código 2FA reenviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:01:58.463Z"
-  },
-  {
-    "id": "ACT-1787835718287",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-08-27T13:01:58.287Z"
-  },
-  {
-    "id": "ACT-1787835232052",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (6 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "MP",
-      "count": 6
-    },
-    "createdAt": "2026-08-27T12:53:52.052Z"
-  },
-  {
-    "id": "ACT-1787835230308",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (15 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 15
-    },
-    "createdAt": "2026-08-27T12:53:50.308Z"
-  },
-  {
-    "id": "ACT-1787835226366",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (19 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 19
-    },
-    "createdAt": "2026-08-27T12:53:46.366Z"
   }
 ]

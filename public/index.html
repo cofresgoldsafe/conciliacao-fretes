@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.119">
+  <link rel="stylesheet" href="style.css?v=8.121">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 01/09/2026 23:15 (Ajuste de Rótulos das Sub-Abas: Consulta Ped Venda, Ped Vendas Abertos e Prod x Ped Compras)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 07:39 (Sub-Aba Ped Compras Aberto na Aba COMPRAS com Destaque de Prazos < Hoje e Modal SC7)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -162,8 +162,12 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             <span>Ped Vendas Abertos</span>
           </button>
-          <button class="nav-tab-btn" data-tab="tab-vend-pedidos-compras" id="btnTabComprasPedidosCompras">
+          <button class="nav-tab-btn" data-tab="tab-compras-pedidos-abertos" id="btnTabComprasPedidosComprasAbertos">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+            <span>Ped Compras Aberto</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-vend-pedidos-compras" id="btnTabComprasPedidosCompras">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
             <span>Prod x Ped Compras</span>
           </button>
         </div>
@@ -1467,6 +1471,132 @@
           <div class="empty-icon">🎉</div>
           <h4>Nenhum pedido em aberto</h4>
           <p>Não há pedidos pendentes de faturamento para os filtros selecionados.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- SUB-ABA: PED COMPRAS ABERTO (SC7 CONSOLIDADO) -->
+    <div id="tab-compras-pedidos-abertos" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>🛒 Pedidos de Compras em Aberto</h2>
+            <p class="desc">Acompanhamento consolidado dos pedidos de compra pendentes nas empresas Metal Pleno (14), GSI (15) e OACO (16), com monitoramento de prazos de entrega e detalhes por fornecedor.</p>
+          </div>
+        </div>
+
+        <!-- Barra de Filtros de Compras em Aberto -->
+        <div class="vend-search-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: flex-end; margin-top: 1rem; background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0;">
+            <label for="pedidosComprasAbertosSearchInput">🔍 Buscar Pedido / Fornecedor / Produto</label>
+            <input type="text" id="pedidosComprasAbertosSearchInput" class="input-text" placeholder="Filtrar por pedido, fornecedor ou produto..." autocomplete="off" />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="pedidosComprasAbertosEmpresaFilter">🏢 Empresa</label>
+            <select id="pedidosComprasAbertosEmpresaFilter" class="form-select">
+              <option value="">Todas as Empresas</option>
+              <option value="MP">MP (Metal Pleno 14)</option>
+              <option value="GSI">GSI (GSI Cofres 15)</option>
+              <option value="OACO">OAÇO (Oaço 16)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="pedidosComprasAbertosStatusFilter">📅 Status do Prazo</label>
+            <select id="pedidosComprasAbertosStatusFilter" class="form-select">
+              <option value="">Todos os Prazos</option>
+              <option value="ATRASADOS">🔴 Atrasados (&lt; Hoje)</option>
+              <option value="HOJE">🟡 Vence Hoje</option>
+              <option value="NO_PRAZO">🟢 No Prazo</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btnAtualizarPedidosComprasAbertos" class="btn btn-primary" style="height: 42px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" title="Atualizar dados do Protheus">
+              🔄 Atualizar Pedidos
+            </button>
+          </div>
+        </div>
+
+        <!-- Indicador de Carregamento -->
+        <div id="pedidosComprasAbertosLoading" class="loading-state hidden" style="margin-top: 1.5rem; text-align: center; padding: 2rem;">
+          <div class="spinner" style="margin: 0 auto 1rem;"></div>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Consultando pedidos de compras em aberto no Protheus...</p>
+        </div>
+
+        <!-- Resultados dos Pedidos de Compras em Aberto -->
+        <div id="pedidosComprasAbertosResults" class="hidden" style="margin-top: 1.5rem;">
+          <!-- Cards de Métricas Resumo -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Pedidos em Aberto</div>
+              <div id="statComprasAbertosTotalPedidos" style="font-size: 1.5rem; font-weight: 700; color: #38bdf8; margin-top: 4px;">0</div>
+            </div>
+            <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Pedidos Atrasados</div>
+              <div id="statComprasAbertosAtrasados" style="font-size: 1.5rem; font-weight: 700; color: #ef4444; margin-top: 4px;">0</div>
+            </div>
+            <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Peças a Receber</div>
+              <div id="statComprasAbertosTotalPecas" style="font-size: 1.5rem; font-weight: 700; color: #10b981; margin-top: 4px;">0</div>
+            </div>
+            <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); padding: 1rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Valor Total em Aberto</div>
+              <div id="statComprasAbertosValorTotal" style="font-size: 1.5rem; font-weight: 700; color: #f59e0b; margin-top: 4px;">R$ 0,00</div>
+            </div>
+          </div>
+
+          <div class="table-header-info flex-between" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-weight: 600; font-size: 0.95rem;">
+              📦 Pedidos de Compras Pendentes (<span id="pedidosComprasAbertosCount">0</span>)
+            </div>
+            <div class="badge-tip" style="font-size: 0.8rem; color: var(--text-muted);">
+              💡 Clique no <strong>Número do Pedido</strong> para ver a ficha detalhada com todos os itens.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 8%;">Empresa</th>
+                  <th style="width: 12%; cursor: pointer; user-select: none;" id="thSortComprasAbertosPed" title="Clique para alternar ordenação por Pedido de Compra">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Ped. Compra</span>
+                      <span class="sort-icon" id="sortIconComprasAbertosPed" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th style="width: 11%; cursor: pointer; user-select: none;" id="thSortComprasAbertosEmissao" title="Clique para alternar ordenação por Data de Emissão">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Emissão</span>
+                      <span class="sort-icon" id="sortIconComprasAbertosEmissao" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th style="width: 10%;">Cod Fornec</th>
+                  <th style="width: 24%;">Nome Fornecedor</th>
+                  <th style="width: 10%; text-align: center;">Itens / Peças</th>
+                  <th style="width: 11%; text-align: right;">Valor Total</th>
+                  <th style="width: 14%; cursor: pointer; user-select: none;" id="thSortComprasAbertosEntrega" title="Clique para alternar ordenação por Data de Entrega">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Entrega (1º Item)</span>
+                      <span class="sort-icon" id="sortIconComprasAbertosEntrega" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="pedidosComprasAbertosTableBody">
+                <!-- Linhas injetadas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="pedidosComprasAbertosEmptyState" class="empty-results-box hidden" style="margin-top: 1.5rem;">
+          <div class="empty-icon">🎉</div>
+          <h4>Nenhum pedido de compra em aberto</h4>
+          <p>Não há pedidos pendentes de entrega para os filtros selecionados.</p>
         </div>
       </section>
     </div>
@@ -4124,9 +4254,37 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.119"></script>
-  <script src="js/bi_indices.js?v=8.119"></script>
-  <script type="module" src="js/tarefas.js?v=8.119"></script>
-  <script src="app.js?v=8.119"></script>
+  <!-- MODAL: DETALHES DO PEDIDO DE COMPRA (SC7 + SA2 + SE4) -->
+  <div id="modalPedidoCompraDetalhes" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 1040px; width: 95%;">
+      <div class="modal-header flex-between" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem;">
+        <div>
+          <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>📋 Detalhes do Pedido de Compra:</span>
+            <span id="modalPedCompraNum" style="color: var(--primary-color); font-weight: 800;">-</span>
+            <span id="modalPedCompraEmpresaBadge"></span>
+          </h2>
+          <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Informações do fornecedor, itens solicitados, saldos pendentes e previsão de entrega (SC7)</p>
+        </div>
+        <button id="btnCloseModalPedCompra" class="btn-close" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modalPedCompraBody" style="padding: 1.25rem 0;">
+        <!-- Preenchido dinamicamente via JS -->
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--panel-border); padding-top: 0.75rem;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          ℹ️ Dados integrados em tempo real do TOTVS Protheus (<code>SC7</code>, <code>SA2010</code> e <code>SE4010</code>)
+        </span>
+        <button id="btnFecharModalPedCompra" class="btn btn-primary">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/bi.js?v=8.121"></script>
+  <script src="js/bi_indices.js?v=8.121"></script>
+  <script type="module" src="js/tarefas.js?v=8.121"></script>
+  <script src="app.js?v=8.121"></script>
 </body>
 </html>
