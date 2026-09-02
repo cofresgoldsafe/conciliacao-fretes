@@ -2890,6 +2890,91 @@ body {
   }
 }
 
+/* ==========================================================================
+   SUB-ABA: GORDURA DE FRETE & FECHAMENTO COMERCIAL (26 A 25)
+   ========================================================================== */
+
+.badge-gordura-pos {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.badge-gordura-neg {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.badge-gordura-neu {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Tema Claro para Gordura de Frete */
+.tab-theme-light #tab-vend-gordura-frete .vend-search-form {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .vend-search-form label {
+  color: #334155 !important;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .vend-search-form input,
+.tab-theme-light #tab-vend-gordura-frete .vend-search-form select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .vend-search-form input:focus,
+.tab-theme-light #tab-vend-gordura-frete .vend-search-form select:focus {
+  border-color: #0284c7 !important;
+  outline: none;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .stat-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .data-table th {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .data-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.tab-theme-light #tab-vend-gordura-frete .data-table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+
 
 
 

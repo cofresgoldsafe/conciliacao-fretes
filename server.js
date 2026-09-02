@@ -120,6 +120,11 @@ const {
   gravarNotaPipedrive
 } = require('./bi_autorizacoes_engine');
 
+const {
+  consultarGorduraFrete,
+  obterCiclosPredefinidos
+} = require('./gordura_frete_engine');
+
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
 
@@ -1333,6 +1338,49 @@ app.post('/api/vendedores/comissoes', requireAuth, async (req, res) => {
     res.json({ success: true, data: resultado });
   } catch (err) {
     handleServerError(res, err, 'Erro ao consultar comissões.');
+  }
+});
+
+// API: Vendedores - Ciclos Predefinidos de Fechamento de Fretes (Dia 26 a 25)
+app.get('/api/vendedores/gordura-frete/ciclos', requireAuth, (req, res) => {
+  try {
+    const ciclos = obterCiclosPredefinidos();
+    res.json({ success: true, ciclos });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao obter ciclos de frete.');
+  }
+});
+
+// API: Vendedores - Consulta de Gordura de Frete do Período
+app.post('/api/vendedores/gordura-frete', requireAuth, async (req, res) => {
+  try {
+    let { dataIni, dataFim, empresa, codVend } = req.body || {};
+    const user = getUserFromReq(req);
+
+    // Enforcement estrito de RBAC: Vendedor só pode consultar seus próprios fretes
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código de vendedor associado.' });
+      }
+      codVend = user.vendorCode;
+    }
+
+    const resultado = await consultarGorduraFrete({ dataIni, dataFim, empresa, codVend });
+
+    const vendTxt = codVend ? `Vendedor ${codVend}` : 'Todos os Vendedores';
+    const empTxt = empresa || 'Todas as Empresas';
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_GORDURA_FRETE',
+      description: `Consultou Gordura de Frete (${resultado.periodo.dataIniBR} a ${resultado.periodo.dataFimBR}) - ${empTxt} - ${vendTxt} (${resultado.totalRegistros} notas)`,
+      ip: req.ip,
+      metadata: { dataIni, dataFim, empresa, codVend, totalRegistros: resultado.totalRegistros, kpis: resultado.kpis }
+    }).catch(() => {});
+
+    res.json({ success: true, data: resultado });
+  } catch (err) {
+    handleServerError(res, err, err.message || 'Erro ao consultar gordura de frete.');
   }
 });
 

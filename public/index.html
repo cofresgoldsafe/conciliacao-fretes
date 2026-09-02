@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.129">
+  <link rel="stylesheet" href="style.css?v=8.130">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 14:22 (v8.129 - Correção do Aninhamento do Modal de Autorizações de Desconto no DOM)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 20:30 (v8.130 - Sub-Aba Gordura Frete no Módulo Vendedores com Fechamento 26 a 25 e Cálculos de Margem)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -137,6 +137,10 @@
           <button class="nav-tab-btn" data-tab="tab-vend-comissoes">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             <span>Comissões</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-vend-gordura-frete" id="btnTabVendGorduraFrete">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <span>Gordura Frete</span>
           </button>
         </div>
         <div style="margin-left: auto;">
@@ -1811,6 +1815,221 @@
           <div class="empty-icon">📊</div>
           <h4>Nenhum relatório gerado</h4>
           <p>Selecione as datas do ciclo e clique em <strong>Consultar Comissões</strong> para apurar os valores.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ABA VENDEDORES 5: GORDURA DE FRETE (FECHAMENTO 26 A 25) -->
+    <div id="tab-vend-gordura-frete" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2>🚚 Gordura de Frete & Fechamento Comercial</h2>
+            <p class="desc">Acompanhamento consolidado de fretes faturados nas empresas Metal Pleno (14), GSI (15) e OACO (16), confrontando o Frete Cobrado do Cliente (Adicional + Embutido) com o Custo Real da Transportadora.</p>
+          </div>
+        </div>
+
+        <!-- Barra de Ciclos Rápidos (Atalhos Predefinidos) -->
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 1rem;">
+          <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-right: 4px;">⚡ Atalhos de Ciclo:</span>
+          <button id="btnGorduraCicloAtual" class="btn btn-primary btn-sm" style="height: 32px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center;">
+            📌 Ciclo Atual
+          </button>
+          <button id="btnGorduraCicloAnterior" class="btn btn-outline btn-sm" style="height: 32px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center;">
+            ⏮️ Ciclo Anterior
+          </button>
+          <button id="btnGorduraCicloDoisAnteriores" class="btn btn-outline btn-sm" style="height: 32px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center;">
+            ⏮️ 2 Ciclos Atrás
+          </button>
+        </div>
+
+        <!-- Formulário de Filtros Personalizados -->
+        <div class="vend-search-form" style="display: grid; grid-template-columns: minmax(130px, 1.2fr) minmax(130px, 1.2fr) minmax(130px, 1fr) minmax(140px, 1fr) minmax(130px, 1fr) minmax(160px, 1.8fr) auto auto; gap: 0.5rem; align-items: flex-end; margin-top: 0.75rem; background: rgba(15, 23, 42, 0.4); padding: 0.85rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+          <div class="form-group" style="margin: 0;">
+            <label for="gorduraDataIni" style="font-size: 0.78rem; margin-bottom: 3px; font-weight: 500;">📅 Data Inicial</label>
+            <input type="date" id="gorduraDataIni" class="input-text" style="height: 34px; padding: 4px 6px; font-size: 0.82rem;" />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="gorduraDataFim" style="font-size: 0.78rem; margin-bottom: 3px; font-weight: 500;">📅 Data Final</label>
+            <input type="date" id="gorduraDataFim" class="input-text" style="height: 34px; padding: 4px 6px; font-size: 0.82rem;" />
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="gorduraEmpresaFilter" style="font-size: 0.78rem; margin-bottom: 3px; font-weight: 500;">🏢 Empresa</label>
+            <select id="gorduraEmpresaFilter" class="form-select" style="height: 34px; padding: 4px 6px; font-size: 0.82rem;">
+              <option value="" selected>Todas</option>
+              <option value="MP">Metal Pleno (14)</option>
+              <option value="GSI">GSI (15)</option>
+              <option value="OACO">OACO (16)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;" id="gorduraVendedorFilterGroup">
+            <label for="gorduraVendedorFilter" style="font-size: 0.78rem; margin-bottom: 3px; font-weight: 500;">👤 Vendedor</label>
+            <select id="gorduraVendedorFilter" class="form-select" style="height: 34px; padding: 4px 6px; font-size: 0.82rem;">
+              <option value="" selected>Todos</option>
+              <option value="000004">Figueiredo (000004)</option>
+              <option value="000064">Andrea (000064)</option>
+              <option value="000074">Juliana (000074)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="gorduraStatusFilter" style="font-size: 0.78rem; margin-bottom: 3px; font-weight: 500;">📊 Resultado</label>
+            <select id="gorduraStatusFilter" class="form-select" style="height: 34px; padding: 4px 6px; font-size: 0.82rem;">
+              <option value="" selected>Todos</option>
+              <option value="SUPERAVIT">🟢 Superávit (Gordura &gt; 0)</option>
+              <option value="DEFICIT">🔴 Déficit (Gordura &lt; 0)</option>
+              <option value="NEUTRO">⚪ Neutro (R$ 0,00)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label for="gorduraBuscaInput" style="font-size: 0.78rem; margin-bottom: 3px; font-weight: 500;">🔍 Busca Instantânea</label>
+            <input type="text" id="gorduraBuscaInput" class="input-text" style="height: 34px; padding: 4px 8px; font-size: 0.82rem;" placeholder="Cliente, NF, pedido, transp..." />
+          </div>
+
+          <div style="display: flex; gap: 0.35rem;">
+            <button id="btnBuscarGorduraFrete" class="btn btn-primary" style="height: 34px; padding: 4px 12px; font-size: 0.82rem; white-space: nowrap; font-weight: 600;">
+              📊 Consultar
+            </button>
+            <button id="btnLimparFiltrosGordura" class="btn btn-outline" style="height: 34px; padding: 4px 8px; font-size: 0.82rem;" title="Limpar Filtros">
+              🧹
+            </button>
+          </div>
+
+          <div>
+            <button id="btnExportGorduraExcel" class="btn btn-success" style="height: 34px; padding: 4px 12px; font-size: 0.8rem; white-space: nowrap; display: flex; align-items: center; gap: 5px; background: #059669; border-color: #059669; color: #ffffff; cursor: pointer; font-weight: 600;" title="Exportar dados para Excel (CSV)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>Exp. Excel</span>
+            </button>
+          </div>
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem;">
+          ⏱️ <em>Ciclo padrão Protheus: dia 26 do mês anterior a dia 25 do mês atual. Limite máximo de 95 dias por consulta.</em>
+        </div>
+
+        <!-- 4 Cards de Resumo / KPIs Superiores -->
+        <div id="gorduraSummaryCards" class="hidden" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+          <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #38bdf8; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #38bdf8; font-weight: 600;">💳 Total Cobrado Cliente</div>
+            <div id="gorduraKpiCobrado" style="font-size: 1.75rem; font-weight: 700; color: #38bdf8; margin-top: 0.25rem;">R$ 0,00</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Frete Adicional + Frete Embutido</div>
+          </div>
+
+          <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #f59e0b; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #f59e0b; font-weight: 600;">🚚 Custo Real Transportadoras</div>
+            <div id="gorduraKpiCusto" style="font-size: 1.75rem; font-weight: 700; color: #f59e0b; margin-top: 0.25rem;">R$ 0,00</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Valor Faturado pelas Transportadoras</div>
+          </div>
+
+          <div id="gorduraKpiSaldoCard" class="stat-card" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #10b981; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #34d399; font-weight: 600;">💰 Gordura de Frete Líquida</div>
+            <div id="gorduraKpiSaldo" style="font-size: 1.75rem; font-weight: 700; color: #10b981; margin-top: 0.25rem;">R$ 0,00</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Saldo Cobrado - Custo Real</div>
+          </div>
+
+          <div class="stat-card" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-left: 4px solid #8b5cf6; border-radius: 12px; padding: 1.25rem;">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #a78bfa; font-weight: 600;">🎯 Margem & Aproveitamento</div>
+            <div id="gorduraKpiMargem" style="font-size: 1.75rem; font-weight: 700; color: #a78bfa; margin-top: 0.25rem;">0,00%</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <span id="gorduraKpiNotasCount">0</span> fretes (<span id="gorduraKpiSuperavitCount" style="color: #10b981;">0 superávit</span> / <span id="gorduraKpiDeficitCount" style="color: #ef4444;">0 déficit</span>)
+            </div>
+          </div>
+        </div>
+
+        <!-- Indicador de Carregamento -->
+        <div id="gorduraFreteLoading" class="loading-state hidden" style="margin-top: 1.5rem; text-align: center; padding: 2.5rem 1rem;">
+          <div class="spinner" style="margin: 0 auto 1rem auto; width: 32px; height: 32px; border: 3px solid rgba(56,189,248,0.2); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Consultando conhecimentos de frete e notas no Protheus...</p>
+        </div>
+
+        <!-- Tabela de Resultados -->
+        <div id="gorduraFreteResults" class="hidden" style="margin-top: 1.5rem;">
+          <div class="table-header-info flex-between" style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="font-weight: 600; font-size: 0.95rem;">
+              🚚 Conhecimentos & Notas de Frete (<span id="gorduraFreteCount">0</span>)
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              💡 Clique nas colunas com ↕ para alternar a ordenação. Valores verdes representam economia / lucro de frete gerado pelo vendedor.
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="tabelaGorduraFrete">
+              <thead>
+                <tr>
+                  <th style="width: 7%; text-align: center;">Empresa</th>
+                  <th id="thSortGorduraData" style="width: 9%; cursor: pointer; user-select: none;" title="Ordenar por Data">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Emissão</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraNF" style="width: 9%; cursor: pointer; user-select: none;" title="Ordenar por NF">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>NF-e</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraPed" style="width: 9%; cursor: pointer; user-select: none;" title="Ordenar por Pedido">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Ped. Venda</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraCli" style="width: 20%; cursor: pointer; user-select: none;" title="Ordenar por Cliente">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Cliente</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraVend" style="width: 12%; cursor: pointer; user-select: none;" title="Ordenar por Vendedor">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Vendedor</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraTransp" style="width: 12%; cursor: pointer; user-select: none;" title="Ordenar por Transportadora">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                      <span>Transportadora</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraCobrado" style="width: 10%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Frete Cobrado">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>Cobrado (R$)</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraCusto" style="width: 10%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Custo da Transportadora">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>Custo (R$)</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                  <th id="thSortGorduraSaldo" style="width: 11%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Gordura de Frete">
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                      <span>Gordura (R$)</span>
+                      <span class="gordura-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="gorduraFreteTableBody">
+                <!-- Linhas injetadas via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="gorduraFreteEmptyState" class="empty-results-box" style="margin-top: 1.5rem;">
+          <div class="empty-icon">🚚</div>
+          <h4>Consulte a Gordura de Frete do Período</h4>
+          <p>Clique em um dos <strong>Atalhos de Ciclo</strong> acima ou selecione as datas desejadas e clique em <strong>Consultar</strong> para analisar o fechamento de fretes.</p>
         </div>
       </section>
     </div>
@@ -4493,10 +4712,11 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.129"></script>
-  <script src="js/bi_indices.js?v=8.129"></script>
-  <script src="js/bi_autorizacoes.js?v=8.129"></script>
-  <script type="module" src="js/tarefas.js?v=8.129"></script>
-  <script src="app.js?v=8.129"></script>
+  <script src="js/bi.js?v=8.130"></script>
+  <script src="js/bi_indices.js?v=8.130"></script>
+  <script src="js/bi_autorizacoes.js?v=8.130"></script>
+  <script src="js/gordura_frete.js?v=8.130"></script>
+  <script type="module" src="js/tarefas.js?v=8.130"></script>
+  <script src="app.js?v=8.130"></script>
 </body>
 </html>

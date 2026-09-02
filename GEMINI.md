@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login com Seleção de Responsáveis via /api/auth/users, Prioridades Normal/Alta/Urgente e 17 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 12:10 (v8.126 - Sub-Aba Autorizações de Desconto no BI Executivo Integrada com Pipedrive e Protheus, Fórmulas Oficiais de Margem, Gravação de Notas Auditáveis, Tabela Postgres/Supabase e Testes Automatizados 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Aba "Gordura Frete" Ativa no Módulo Vendedores com Fechamento 26 a 25, Consulta Protheus Otimizada em Tempo Real e 18 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 20:30 (v8.130 - Sub-Aba Gordura Frete no Módulo Vendedores Integrada com Protheus Multi-Empresas 14, 15 e 16, Regra Oficial de Fechamento 26 a 25, KPIs de Superávit/Déficit, Exportação Excel e Testes Automatizados 100% Aprovados)  
 
 ---
 
@@ -451,6 +451,32 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Correção de Joins no Faturamento Protheus (`SD2`):**
       - Substituição de `LEFT JOIN SB1010 B1` por `LEFT JOIN SB1090 B19` e `LEFT JOIN SB1160 B16` com `COALESCE(B19.B1_DESC, B16.B1_DESC, '')`, garantindo descrições 100% corretas para todos os itens faturados das empresas ativas.
     - **Homologação:** 100% das 13 suítes automatizadas aprovadas sem regressões.
+44. [x] **Sub-Aba "Gordura Frete" no Módulo Vendedores com Fechamento 26 a 25 (`gordura_frete_engine.js`, `server.js`, `public/js/gordura_frete.js`, `public/js/vendedores.js`, `public/index.html`, `public/style.css`, `test_gordura_frete.js`):**
+    - **Acompanhamento de Gordura de Frete em Tempo Real:**
+      - Nova sub-aba dedicada no módulo de Vendedores (`#tab-vend-gordura-frete` / `#btnTabVendGorduraFrete`) que permite aos vendedores e gestores acompanharem o desempenho e cumprimento de metas de frete nos fechamentos mensais.
+    - **Regra Oficial de Ciclo de Fechamento (26 a 25):**
+      - Cálculo automatizado do período padrão baseado na regra: se hoje &le; dia 25, o ciclo ativo compreende do dia 26 do mês anterior até o dia 25 do mês atual (ex: em 02/09/2026 ➔ **26/08/2026 a 25/09/2026**).
+      - **3 Botões de Atalho Rápido no Topo:** `📌 Ciclo Atual`, `⏮️ Ciclo Anterior` e `⏮️ 2 Ciclos Atrás`, permitindo alternância instantânea com 1 clique, além de Datepickers livres para intervalos personalizados.
+    - **Arquitetura Direta Otimizada no Protheus com Trava de 3 Períodos:**
+      - Consulta T-SQL executada diretamente no Protheus DB via Railway API com índice em `SF1.F1_EMISSAO`, garantindo **dados 100% em tempo real (zero lag de sincronização)** assim que as notas são amarradas na rotina `AMARFRET.PRW`.
+      - **Trava de Proteção de Performance:** Limite máximo estrito de **95 dias (3 períodos de fechamento)** por consulta, impedindo varreduras pesadas que possam onerar o ERP.
+    - **Fórmulas Oficiais de Frete e Margem:**
+      - **Frete Cobrado do Cliente (`COBCLI`):** `SC5.C5_FRETE` (Adicional) + `SC5.C5_VLR_FRT` (Embutido).
+      - **Custo Real da Transportadora (`Custo`):** `SF1.F1_VALMERC` / `SF1.F1_VALBRUT`.
+      - **Gordura de Frete Líquida:** `COBCLI - Custo Real` (Verde para Superávit/Lucro `> 0`, Vermelho para Déficit `< 0`, Neutro para `R$ 0,00`).
+      - **% Margem / Aproveitamento:** `((COBCLI - Custo) / COBCLI) * 100`.
+      - **Prevenção de Duplicidade de Itens:** Uso de `OUTER APPLY` com `SELECT DISTINCT D2_PEDIDO, D2_FILIAL` para impedir que múltiplos itens na `SD2` multipliquem o frete do pedido `SC5`.
+    - **Segurança RBAC Zero-Trust & Isolamento de Vendedores:**
+      - Perfil `vendedor`: O backend força compulsoriamente `SF2.F2_VEND1 = user.vendorCode`. Cada vendedor **só enxerga estritamente os seus próprios fretes e notas**.
+      - Perfil `admin` / diretoria: Visualiza o consolidado multi-empresa (14 Metal Pleno, 15 GSI, 16 OACO) com seletor para filtrar por vendedor específico (`Todos`, `Juliana`, `Andrea`, `Figueiredo`).
+    - **Arquitetura Desacoplada & Zero Regressão:**
+      - Motor backend isolado em `gordura_frete_engine.js`.
+      - Módulo frontend isolado dentro de IIFE em `public/js/gordura_frete.js` sem inflar o monolito SPA `public/app.js`.
+      - Sincronização completa de Tema Claro/Escuro em `public/js/vendedores.js` e tokens de estilo em `public/style.css`.
+    - **Exportação Completa para Excel (CSV UTF-8):**
+      - Botão `📥 Exp. Excel` gerando arquivo CSV com BOM UTF-8 (`\uFEFF`) e delimitador `;` contendo todos os 17 campos detalhados de faturamento e custos de frete.
+    - **Suíte de Testes Automatizados (11/11 Aprovados):**
+      - Script `test_gordura_frete.js` cobrindo regras de data, limites temporais, query T-SQL, cálculos matemáticos e integridade léxica/sintática via Node.js `vm.Script`.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
