@@ -50,10 +50,13 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON ROUTINES FROM anon, auth
 
 -- 4. Confirmação do status de segurança de todas as tabelas públicas
 SELECT 
-    schemaname,
-    tablename,
-    rowsecurity AS rls_ativo,
-    forcerowsecurity AS force_rls_ativo
-FROM pg_tables
-WHERE schemaname = 'public'
-ORDER BY tablename ASC;
+    n.nspname AS schemaname,
+    c.relname AS tablename,
+    c.relrowsecurity AS rls_ativo,
+    c.relforcerowsecurity AS force_rls_ativo
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' 
+  AND c.relkind = 'r'
+ORDER BY c.relname ASC;
+
