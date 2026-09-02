@@ -51,3 +51,19 @@ INSERT INTO grupos_produtos_sbm (codigo, descricao, ativo) VALUES
 ON CONFLICT (codigo) DO UPDATE SET
     descricao = EXCLUDED.descricao,
     ativo = EXCLUDED.ativo;
+
+-- ============================================================================
+-- Habilitação de Row-Level Security (RLS) e Política de Acesso Backend
+-- ============================================================================
+ALTER TABLE grupos_produtos_sbm ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grupos_produtos_sbm FORCE ROW LEVEL SECURITY;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE tablename = 'grupos_produtos_sbm' AND policyname = 'Acesso exclusivo backend'
+    ) THEN
+        CREATE POLICY "Acesso exclusivo backend" ON public.grupos_produtos_sbm TO service_role USING (true) WITH CHECK (true);
+    END IF;
+END $$;
+

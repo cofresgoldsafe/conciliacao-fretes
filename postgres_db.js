@@ -821,7 +821,7 @@ async function initPostgres() {
       }
 
       // 12. Habilita Row-Level Security (RLS) e Políticas de Backend no Supabase (Security Advisor Check 0013 & 0008)
-      const tablesToSecure = [
+      const knownTablesToSecure = [
         'users',
         'history',
         'system_configs',
@@ -839,25 +839,53 @@ async function initPostgres() {
         'saldos_bancarios',
         'indices_sync_logs',
         'indices_liquidez_historico',
+        'grupos_produtos_sbm',
         'tarefas'
       ];
 
-      for (const tbl of tablesToSecure) {
+      // Busca dinamicamente todas as tabelas do schema public para garantir 100% de cobertura
+      let allPublicTables = [...knownTablesToSecure];
+      try {
+        const dbTablesRes = await client.query(`SELECT tablename FROM pg_tables WHERE schemaname = 'public';`);
+        if (dbTablesRes && Array.isArray(dbTablesRes.rows)) {
+          const found = dbTablesRes.rows.map(r => r.tablename);
+          allPublicTables = Array.from(new Set([...allPublicTables, ...found]));
+        }
+      } catch (errList) {
+        console.warn('⚠️ [Postgres RLS] Aviso ao listar tabelas em pg_tables:', errList.message);
+      }
+
+      for (const tbl of allPublicTables) {
         try {
-          await client.query(`ALTER TABLE ${tbl} ENABLE ROW LEVEL SECURITY;`);
+          await client.query(`ALTER TABLE public."${tbl}" ENABLE ROW LEVEL SECURITY;`);
+          await client.query(`ALTER TABLE public."${tbl}" FORCE ROW LEVEL SECURITY;`);
           await client.query(`
             DO $$
             BEGIN
               IF NOT EXISTS (
-                SELECT 1 FROM pg_policies WHERE tablename = '${tbl}' AND policyname = 'Acesso exclusivo backend'
+                SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = '${tbl}' AND policyname = 'Acesso exclusivo backend'
               ) THEN
-                CREATE POLICY "Acesso exclusivo backend" ON public.${tbl} TO service_role USING (true) WITH CHECK (true);
+                CREATE POLICY "Acesso exclusivo backend" ON public."${tbl}" TO service_role USING (true) WITH CHECK (true);
               END IF;
             END $$;
           `);
         } catch (errRls) {
-          console.warn(`⚠️ [Postgres RLS] Aviso ao configurar RLS/Políticas na tabela ${tbl}:`, errRls.message);
+          // Ignora se tabela temporariamente não existir no banco
         }
+      }
+
+      // Revogação de privilégios das roles 'anon' e 'authenticated' no PostgREST
+      try {
+        await client.query(`
+          REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+          REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+          REVOKE ALL ON ALL ROUTINES IN SCHEMA public FROM anon, authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON ROUTINES FROM anon, authenticated;
+        `);
+      } catch (errRevoke) {
+        console.warn('⚠️ [Postgres RLS] Aviso ao revogar privilégios públicos anônimos:', errRevoke.message);
       }
 
       return true;

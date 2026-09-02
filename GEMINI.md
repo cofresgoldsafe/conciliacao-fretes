@@ -96,7 +96,13 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Unificação rigorosa de variáveis DOM em `public/app.js` prevenindo colisões de escopo (`SyntaxError: Identifier has already been declared`).
      - Inclusão do **Teste 6** em `test_frontend_modules.js` validando a integridade léxica/sintática de `public/app.js` via Node.js `vm.Script` em pipeline automatizado.
      - 12 Suítes automatizadas com 84 testes 100% aprovados.
-12. [x] **Habilitação de Row-Level Security (RLS) no Supabase (`postgres_db.js`):** Ativação de RLS em todas as tabelas públicas (`users`, `history`, `system_configs`, `user_activities`, `user_2fa_tokens`, `inter_webhook_events`, `analise_credito_history`, `produtos_saldo_estoque`, `estoque_sync_logs`), bloqueando acesso anônimo/não autenticado via PostgREST / Supabase REST API direta sem afetar a conexão direta TCP pooler do backend Node.js.
+12. [x] **Habilitação de Row-Level Security (RLS) e Hardening de Segurança no Supabase (`postgres_db.js`, `sql/fix_supabase_rls_security.sql`, `sql/bi/00_tabela_grupos_sbm.sql`, `test_security.js`):**
+    - **Remediação dos Alertas Críticos Supabase (`rls_disabled_in_public` e `sensitive_columns_exposed`):**
+      - Ativação dinâmica e compulsória de `ENABLE ROW LEVEL SECURITY` e `FORCE ROW LEVEL SECURITY` em todas as tabelas públicas (`users`, `user_2fa_tokens`, `analise_credito_history`, `grupos_produtos_sbm`, `system_configs`, `tarefas`, `faturamento_itens_historico`, `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs`, `indices_liquidez_historico`, etc.).
+      - Revogação formal de privilégios (`REVOKE ALL`) das roles `anon` e `authenticated` no schema `public` (tabelas, sequências e rotinas), neutralizando requisições não autorizadas via API REST PostgREST pública com a chave `anon`.
+      - Criação de políticas com escopo exclusivo para o backend (`service_role` / `postgres`) e configuração de `ALTER DEFAULT PRIVILEGES` para que futuras tabelas não herdem permissões anônimas.
+      - Criação do script de remediação imediata `sql/fix_supabase_rls_security.sql` para execução no SQL Editor do painel Supabase.
+      - Suíte de testes automatizados em `test_security.js` cobrindo 100% dos requisitos de RLS e sanitização de colunas sensíveis.
 13. [x] **Autocura e Gestão de Código de Vendedor no Perfil Comercial (`postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendor_autoheal.js`):**
    - **Causa Raiz & Resolução:** Correção do bloqueio 403 (*"Acesso negado: Perfil de vendedor sem código de vendedor associado"*) enfrentado por vendedores ao acessar pedidos de venda abertos.
    - **Autocura e DDL Supabase:** Adicionado `ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20)` e rotina DML de autocura no startup (`initDB`) para restaurar códigos de vendedores cadastrados (`juliana: '000074'`, `andrea: '000064'`, `figueiredo: '000004'`).

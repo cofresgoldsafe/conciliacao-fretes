@@ -144,7 +144,10 @@ async function runSecurityTests() {
       const url = new URL(path, baseUrl);
       const req = http.request(url, {
         method: method,
-        headers: headers
+        headers: {
+          'Connection': 'close',
+          ...headers
+        }
       }, (res) => {
         let resData = '';
         res.on('data', chunk => resData += chunk);
@@ -300,14 +303,52 @@ async function runSecurityTests() {
       assert.strictEqual(res.data.success, true);
     });
 
-    // Restaura estado inicial
-    await saveUser({
-      username: 'erica',
-      name: 'Érica',
-      pass: '1020304050',
-      role: 'user',
-      permissions: ['logistica', 'consulta'],
-      active: true
+    // --- 5. TESTES DE ROW-LEVEL SECURITY (RLS) E SUPABASE HARDENING (Checks 0013 & 0008) ---
+    console.log('\n🔹 5. Testes de Validação de Supabase RLS & Proteção de Colunas Sensíveis');
+
+    const fs = require('fs');
+    const path = require('path');
+
+    test('Script SQL de remediação fix_supabase_rls_security.sql existe e é válido', () => {
+      const sqlPath = path.join(__dirname, 'sql', 'fix_supabase_rls_security.sql');
+      assert.ok(fs.existsSync(sqlPath), 'Arquivo sql/fix_supabase_rls_security.sql deve existir');
+      const content = fs.readFileSync(sqlPath, 'utf8');
+      assert.ok(content.includes('ENABLE ROW LEVEL SECURITY'), 'Deve conter ENABLE ROW LEVEL SECURITY');
+      assert.ok(content.includes('FORCE ROW LEVEL SECURITY'), 'Deve conter FORCE ROW LEVEL SECURITY');
+      assert.ok(content.includes('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated'), 'Deve revogar acessos públicos de tabelas');
+      assert.ok(content.includes('ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated'), 'Deve configurar privilégios padrão para futuras tabelas');
+    });
+
+    test('postgres_db.js contém rotina dinâmica de RLS e revogação de acessos anônimos', () => {
+      const pgDbPath = path.join(__dirname, 'postgres_db.js');
+      const content = fs.readFileSync(pgDbPath, 'utf8');
+      assert.ok(content.includes('ENABLE ROW LEVEL SECURITY'), 'Deve conter ENABLE ROW LEVEL SECURITY');
+      assert.ok(content.includes('FORCE ROW LEVEL SECURITY'), 'Deve conter FORCE ROW LEVEL SECURITY');
+      assert.ok(content.includes('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated'), 'Deve conter REVOKE de acessos anônimos');
+      assert.ok(content.includes('grupos_produtos_sbm'), 'Deve incluir grupos_produtos_sbm na proteção');
+      assert.ok(content.includes('user_2fa_tokens'), 'Deve proteger tabela de tokens 2FA');
+      assert.ok(content.includes('analise_credito_history'), 'Deve proteger tabela de análise de crédito');
+    });
+
+    test('sql/bi/00_tabela_grupos_sbm.sql possui comandos de RLS e política de backend', () => {
+      const sbmSqlPath = path.join(__dirname, 'sql', 'bi', '00_tabela_grupos_sbm.sql');
+      const content = fs.readFileSync(sbmSqlPath, 'utf8');
+      assert.ok(content.includes('ENABLE ROW LEVEL SECURITY'), 'grupos_produtos_sbm deve habilitar RLS');
+      assert.ok(content.includes('FORCE ROW LEVEL SECURITY'), 'grupos_produtos_sbm deve forçar RLS');
+      assert.ok(content.includes('service_role'), 'grupos_produtos_sbm deve ter política para service_role');
+    });
+
+    await testAsync('Endpoint GET /api/admin/users não vaza hash de senhas (pass) na listagem', async () => {
+      const res = await request('GET', '/api/admin/users', {
+        'Authorization': `Bearer ${adminToken}`
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.data.success, true);
+      assert(Array.isArray(res.data.users));
+      for (const u of res.data.users) {
+        assert.strictEqual(u.pass, undefined, `Usuário ${u.username} não deve ter a coluna pass exposta`);
+        assert.strictEqual(u.password, undefined, `Usuário ${u.username} não deve ter a coluna password exposta`);
+      }
     });
 
   } finally {
