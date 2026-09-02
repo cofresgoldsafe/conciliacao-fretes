@@ -86,7 +86,15 @@ Prover um portal corporativo integrado na nuvem, multi-empresa e multi-perfil (O
 * **`[ Comissões & Metas ]`:** Apuração periódica `SE3` (ciclo padrão de 26 a 25) com visão unificada para toda a equipe comercial, **nova coluna Nome** truncada em 20 letras (com espaços) via `SA1010` e tooltip completo, card de **Meta Atingida (%)** dinâmico proporcional (R$ 120.000,00 individual / R$ 360.000,00 global), totalizadores de base faturada e trava de segurança de 60 dias.
 * **Tema Claro/Escuro:** Botão seletor no cabeçalho `#btnToggleThemeVendedores` aplicando instantaneamente a paleta de alto contraste em todas as 5 sub-abas e modais com persistência em `localStorage`.
 
-### 💰 4. ABA ASSIST. FINANC.
+### 🛒 4. ABA COMPRAS
+* **`[ Saldos em Estoque ]`:** Acesso unificado ao painel de estoques multi-empresa (MP 14, GSI 15, OACO 16), rupturas e pedidos pendentes (DRY).
+* **`[ Consulta Ped Venda ]`:** Consulta rápida de pedidos de venda e clientes.
+* **`[ Ped Vendas Abertos ]`:** Monitoramento da carteira de vendas em aberto e demandas pendentes.
+* **`[ Ped Compras Aberto ]`:** Listagem consolidada multi-empresa de pedidos de compras pendentes (`SC7`), com **destaque em evidência de prazos de entrega vencidos (`< hoje`)** para renegociação imediata com o fornecedor, 4 cards de KPIs (*Pedidos em Aberto*, *Pedidos Atrasados*, *Peças a Receber*, *Valor Total em Aberto R$*), filtros por empresa e status do prazo, e **Modal Rico de Detalhes (`#modalPedidoCompraDetalhes`)** trazendo dados cadastrais e de contato do fornecedor (`SA2010`), condição de pagamento (`SE4010`) e grade completa de itens.
+* **`[ Prod x Ped Compras ]`:** Consulta de pedidos de compra de produtos acabados `PA` com saldo e previsões.
+* **Tema Claro/Escuro:** Botão dedicado `#btnToggleThemeCompras` sincronizado com todo o módulo.
+
+### 💰 5. ABA ASSIST. FINANC.
 * **`[ Conciliação Bancária ]`:** Conciliação sob demanda do Banco Inter 077 confrontando `SE8` e `SE5` nas contas correntes das 3 empresas (14, 15 e 16). Motor de compensação de taxas de cartão/adquirentes (bruto - taxa = líquido), diagnóstico micro com algoritmo de agrupamento N:1 para lotes de pagamento, identificação de faltantes com *Cliente Provável (Extrato)* e receptor de webhooks com idempotência estrita.
 * **`[ Análise de Crédito ]`:** Motor de Score de Crédito Comercial com:
   - Leitura obrigatória de PDF Serasa Experian em buffer efêmero na memória (sem gravação em disco) com validação de modelo oficial e validade &le; 4 meses.
@@ -97,7 +105,7 @@ Prover um portal corporativo integrado na nuvem, multi-empresa e multi-perfil (O
   - Checkbox para Capital Social Não Informado / Isento (0 pts).
   - Ficha do Pedido e Extrato Matemático do Score com snapshots imutáveis de pontuação (`detalhes_pontos`), auditoria do usuário analista e botão `⚡ Carregar no Formulário`.
 
-### ⚙️ 5. ABA CONFIGURAÇÕES
+### ⚙️ 6. ABA CONFIGURAÇÕES
 * **`[ Usuários & Permissões ]`:** Gestão completa de operadores, perfis RBAC, permissões granulares por aba, alteração de senhas, campo dedicado de código de vendedor Protheus (`vendor_code`) e autenticação 2FA por e-mail (Mailjet HTTPS 443 / SMTP).
 * **`[ Atividades & Auditoria ]`:** Telemetria e auditoria de engajamento em tempo real, status de *Último Acesso Ativo Relativo* (*Online agora*, *Há X min*), heartbeat de sessão a cada 5 min e feed dos últimos eventos.
 * **`[ Análise de Crédito (Configuração) ]`:** Painel de calibração administrativa em 6 blocos com 100% dos parâmetros e pesos do motor de score, sincronização dinâmica dos rótulos dos seletores e botão de restauração para padrões oficiais.
