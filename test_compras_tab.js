@@ -45,10 +45,20 @@ test('1. index.html possui botão da aba principal #mainTabCompras e sub-grupo #
   assert.ok(html.includes('id="subGroupCompras"'), 'Falta container #subGroupCompras');
 });
 
-// 2. Validação DRY das 4 Sub-Abas em COMPRAS
-test('2. Sub-grupo #subGroupCompras contém as 4 sub-abas apontando para os IDs existentes (DRY)', () => {
+// 2. Validação DRY das 4 Sub-Abas em COMPRAS e VENDEDORES
+test('2. Sub-grupos #subGroupCompras e #subGroupVendedores contêm sub-aba "Prod x Ped Compras" apontando para IDs existentes (DRY)', () => {
   const htmlPath = path.join(__dirname, 'public', 'index.html');
   const html = fs.readFileSync(htmlPath, 'utf8');
+
+  // Localiza o bloco do subGroupVendedores
+  const vendStart = html.indexOf('id="subGroupVendedores"');
+  assert.ok(vendStart !== -1, 'subGroupVendedores não encontrado');
+  const vendEnd = html.indexOf('id="subGroupCompras"', vendStart);
+  const vendBlock = html.substring(vendStart, vendEnd !== -1 ? vendEnd : vendStart + 2500);
+
+  // Valida rótulo em Vendedores
+  assert.ok(vendBlock.includes('data-tab="tab-vend-pedidos"'), 'Falta sub-aba tab-vend-pedidos em subGroupVendedores');
+  assert.ok(vendBlock.includes('<span>Prod x Ped Compras</span>'), 'Falta rótulo Prod x Ped Compras em subGroupVendedores');
 
   // Localiza o bloco do subGroupCompras
   const subGroupStart = html.indexOf('id="subGroupCompras"');
@@ -56,9 +66,10 @@ test('2. Sub-grupo #subGroupCompras contém as 4 sub-abas apontando para os IDs 
   const subGroupEnd = html.indexOf('<!-- Sub-abas de Assistente Financeiro -->', subGroupStart);
   const subGroupBlock = html.substring(subGroupStart, subGroupEnd !== -1 ? subGroupEnd : subGroupStart + 2500);
 
-  // Verifica as 4 sub-abas
+  // Verifica as 4 sub-abas e o rótulo atualizado
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-saldos-estoque"'), 'Falta sub-aba apontando para tab-vend-saldos-estoque');
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-pedidos"'), 'Falta sub-aba apontando para tab-vend-pedidos');
+  assert.ok(subGroupBlock.includes('<span>Prod x Ped Compras</span>'), 'Falta rótulo Prod x Ped Compras em subGroupCompras');
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-pedidos-abertos"'), 'Falta sub-aba apontando para tab-vend-pedidos-abertos');
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-pedidos-compras"'), 'Falta sub-aba apontando para tab-vend-pedidos-compras');
 
@@ -80,6 +91,7 @@ test('3. Gestão de permissões RBAC inclui "compras" em formulário, badges, se
   const html = fs.readFileSync(htmlPath, 'utf8');
   assert.ok(html.includes('id="permCompras"'), 'Falta checkbox #permCompras no #userModal');
   assert.ok(html.includes('value="compras"'), 'Falta value="compras" no checkbox');
+  assert.ok(html.includes('Prod x Ped Compras &amp; Comissões') || html.includes('Prod x Ped Compras & Comissões'), 'Falta texto Prod x Ped Compras & Comissões no modal de permissões');
 
   const cssPath = path.join(__dirname, 'public', 'style.css');
   const css = fs.readFileSync(cssPath, 'utf8');

@@ -2,7 +2,7 @@
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login, Nova Aba Principal COMPRAS com 4 Sub-Abas DRY & Expurgo Estrito de Produtos Bloqueados B1_MSBLQL no Estoque - 14 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 22:50 (v9.19 - Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas: Saldos em Estoque, Consulta Pedido, Pedidos Abertos, Pedidos Compras, Arquitetura DRY Estrita sem Duplicação de DOM/CSS, Permissões Granulares RBAC no Admin/Server/DB e Suporte a Tema Claro/Escuro - 14 Suítes Automatizadas, 108 Testes 100% Aprovados)  
+> **Data da Última Auditoria:** 01/09/2026 23:05 (v9.20 - Renomeação Definitiva da Sub-Aba para "Prod x Ped Compras" nas Abas COMPRAS e VENDEDORES, Atualização do Modal RBAC de Usuários e Validação Automatizada 100% Aprovada)  
 
 ---
 
@@ -104,11 +104,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
    - **Campo no Painel Administrativo:** Inclusão do input `Código do Vendedor no Protheus` no modal de gerenciamento de usuários (`#userModal`) com exibição condicional ao selecionar perfil `Vendedor`, validação e preservação do código anterior em edições.
 14. [x] **Seletor de Tema Claro/Escuro em Todo o Módulo Vendedores & Modais (`public/style.css`, `public/index.html`, `public/app.js`, `test_theme_toggle.js`):**
    - **Expansão Modular (Fase 2):** Botão seletor no cabeçalho geral das sub-abas dos Vendedores (`#btnToggleThemeVendedores`) e no cabeçalho de estoque (`#btnToggleThemeEstoque`), alternando e sincronizando instantaneamente o tema em todas as 5 sub-abas:
-     1. *Saldos em Estoque* (`#tab-vend-saldos-estoque`)
-     2. *Consulta Pedido* (`#tab-vend-pedidos`)
-     3. *Pedidos Abertos* (`#tab-vend-pedidos-abertos`)
-     4. *Pedidos Compras* (`#tab-vend-pedidos-compras`)
-     5. *Comissões* (`#tab-vend-comissoes`)
+      1. *Saldos em Estoque* (`#tab-vend-saldos-estoque`)
+      2. *Prod x Ped Compras* (`#tab-vend-pedidos`)
+      3. *Pedidos Abertos* (`#tab-vend-pedidos-abertos`)
+      4. *Pedidos Compras* (`#tab-vend-pedidos-compras`)
+      5. *Comissões* (`#tab-vend-comissoes`)
    - **Sincronização com Modais:** Aplicação automática do tema claro nos modais de *Drilldown de Estoque* (`#modalEstoqueDetalhes`) e *Detalhes do Pedido de Venda* (`#pedidoDetalhesModal`), mantendo legibilidade total nos itens de grade SC6, faturas SE1, mini KPIs e dados de entrega.
    - **Paleta de Alto Contraste WCAG 2.1 (AA/AAA):** Calibração de tokens claros (`.tab-theme-light`, `.modal-theme-light`) com fundo `#ffffff`, textos `#0f172a`, bordas `#e2e8f0`, saldos positivos em verde esmeralda (`#059669`), compras/totais em azul céu (`#0284c7`) e vendas em âmbar escuro (`#d97706`), eliminando riscos de textos ilegíveis em fundos brancos.
    - **Persistência Perene:** Armazenamento da preferência no `localStorage.setItem('theme_vendedores', mode)` e `theme_saldos_estoque`, restaurado automaticamente sem flash de tela (Zero-FOUC).
@@ -480,11 +480,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
 32. [x] **Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY) (`public/index.html`, `public/style.css`, `public/app.js`, `public/js/vendedores.js`, `server.js`, `postgres_db.js`, `test_compras_tab.js`):**
    - **Criação da Aba Principal `COMPRAS`:**
      - Botão `#mainTabCompras` posicionado na 1ª camada de navegação com atributo `data-main-tab="compras"`.
-   - **Sub-Grupo de Navegação `#subGroupCompras` com 4 Sub-Abas:**
-     1. *Saldos em Estoque* ➔ aponta diretamente para `#tab-vend-saldos-estoque`
-     2. *Consulta Pedido* ➔ aponta diretamente para `#tab-vend-pedidos`
-     3. *Pedidos Abertos* ➔ aponta diretamente para `#tab-vend-pedidos-abertos`
-     4. *Pedidos Compras* ➔ aponta diretamente para `#tab-vend-pedidos-compras`
+    - **Sub-Grupo de Navegação `#subGroupCompras` com 4 Sub-Abas:**
+      1. *Saldos em Estoque* ➔ aponta diretamente para `#tab-vend-saldos-estoque`
+      2. *Prod x Ped Compras* ➔ aponta diretamente para `#tab-vend-pedidos`
+      3. *Pedidos Abertos* ➔ aponta diretamente para `#tab-vend-pedidos-abertos`
+      4. *Pedidos Compras* ➔ aponta diretamente para `#tab-vend-pedidos-compras`
    - **Arquitetura Estritamente DRY (Single Source of Truth):**
      - Zero duplicação de marcação HTML de tela, formulários ou regras de CSS.
      - Estado compartilhado em tempo real: qualquer filtro, ordenação, busca ou seleção efetuada em uma aba reflete imediatamente nas demais, mantendo o estado de memória único e sincronizado.

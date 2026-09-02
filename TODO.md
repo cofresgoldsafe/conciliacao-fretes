@@ -25,7 +25,7 @@
 - [x] [SRE-08] Prevenir vazamento de memória e acumuladores de eventos no frontend através de Event Delegation nos containers `tbody` (`public/app.js`).
 
 ## 💼 Funcionalidades & Módulos de Negócio
-- [x] [VEND-01] Sub-aba Consulta Pedido: Pesquisa multi-empresa (14, 15, 16) com integração `SA1010`, máscaras e itens `SC6`.
+- [x] [VEND-01] Sub-aba Prod x Ped Compras: Pesquisa multi-empresa (14, 15, 16) com integração `SA1010`, máscaras e itens `SC6`.
 - [x] [VEND-02] Sub-aba Pedidos Abertos: Listagem multi-empresa não faturada com regras de bloqueio `SC9` e CRM Pipedrive.
 - [x] [VEND-03] Sub-aba Pedidos Compras: Consulta de compras em aberto (`SC7`) de produtos `PA` com fornecedores `SA2010`.
 - [x] [VEND-04] Sub-aba Saldos em Estoque: Visual Power BI, consolidação `SB1`/`SB2`/`SC6`/`SC7`, KPIs, filtros comerciais (Grupos 001, 002, 010, 018), isolamento dos catálogos operacionais ativos (`SB1090`, `SB1160`), descarte de `SB1010` legado da Empresa 01 e expurgo estrito de produtos bloqueados (`B1_MSBLQL IN ('1', 'S', 's')`), paginação dinâmica e drilldown multi-empresa.
@@ -34,7 +34,7 @@
 - [x] [VEND-07] Tema Claro/Escuro unificado para todas as 5 sub-abas dos Vendedores e modais com persistência `localStorage`.
 - [x] [VEND-08] Desbloqueio de Visão Unificada para Vendedores em Pedidos Abertos e Comissões (visualização global da equipe comercial sem travas restritivas).
 - [x] [VEND-09] Nova Coluna "Nome" no Relatório de Comissões (primeiras 20 letras com espaços via `SA1010`) e redistribuição harmônica de larguras (Vendedor 12%).
-- [x] [COMP-01] Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY): Disponibilização de Saldos em Estoque, Consulta Pedido, Pedidos Abertos e Pedidos Compras com zero duplicação de DOM/CSS, sincronização em tempo real, controle granular RBAC (`compras`) e alternância de Tema Claro/Escuro.
+- [x] [COMP-01] Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY): Disponibilização de Saldos em Estoque, Prod x Ped Compras, Pedidos Abertos e Pedidos Compras com zero duplicação de DOM/CSS, sincronização em tempo real, controle granular RBAC (`compras`) e alternância de Tema Claro/Escuro.
 - [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável.
 - [x] [CRED-02] Leitura de PDF Serasa Experian com validação de validade (&le; 4 meses), trava de consulta e expansão de métricas do Bloco 5.
 - [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
