@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados & Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login - 13 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 01/09/2026 15:15 (v9.17 - Central Minhas Tarefas como 1ª Tela Pós-Login, Separação dos Blocos Meus Links Úteis e Painel de Tarefas, Centralização de Modais na Viewport, Fix de Startup Isolation no F5, RLS e Fallback JSONB - 13 Suítes Automatizadas, 102 Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa na 1ª Tela Pós-Login & Expurgo Estrito de Produtos Bloqueados B1_MSBLQL no Estoque - 13 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 01/09/2026 21:40 (v9.18 - Expurgo Estrito de Produtos Bloqueados B1_MSBLQL, Descarte de Catálogo Legado SB1010 da Empresa 01 na Sincronização de Estoque, Normalização de Joins no Faturamento Protheus - 13 Suítes Automatizadas, 102 Testes 100% Aprovados)  
 
 ---
 
@@ -430,6 +430,16 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Botões no topo da tabela para troca rápida de contexto com 1 clique: **`⏳ Pauta Ativa`** vs **`✅ Tarefas Concluídas`**.
     - **Suíte de Testes Automatizados (19 Asserções 100% Aprovadas):**
       - Script `test_minhas_tarefas.js` cobrindo DDL de banco, métodos CRUD, append de JSONB, autenticação JWT, bloqueios RBAC/IDOR, governança de status, auto-criação, CRUD de links preferidos e compilação sintática via Node.js `vm.Script`.
+43. [x] **Expurgo Estrito de Produtos Bloqueados (`B1_MSBLQL`), Descarte de Catálogo Legado (`SB1010`) & Ajuste de Joins no Faturamento (`protheus_db.js`, `test_saldos_estoque.js`):**
+    - **Causa Raiz & Resolução do Surgimento de Produtos Bloqueados:**
+      - **Dicionário Protheus `B1_MSBLQL`:** No ERP TOTVS Protheus, `B1_MSBLQL = '1'` significa **Bloqueado/Inativo** e `B1_MSBLQL = '2'` significa **Não Bloqueado/Ativo**.
+      - **Isolamento de Catálogo Legado (`SB1010`):** Identificado que o código `001010101011016` e outros 294 itens obsoletos pertenciam à antiga **Empresa 01** (`SB1010`), onde estavam registrados com `B1_MSBLQL = '2'` desde 2019/2020. Nas empresas ativas do grupo (Holding `SB1090`, Metal Pleno `SB2140`, GSI `SB2150` e OACO `SB1160`), esse código nem existia. A inclusão de `SB1010` na sincronização trazia esses produtos com saldo zero para o catálogo.
+      - **Exclusão de Tabelas Legadas:** A lista `sb1Tables` foi enxugada para consultar estritamente os catálogos oficiais operacionais: `['SB1090', 'SB1160']`.
+    - **Varredura e Expurgo Bidirecional de Códigos Bloqueados:**
+      - A rotina de sincronização coleta preventivamente todos os códigos com `B1_MSBLQL IN ('1', 'S', 's')` em `SB1090` e `SB1160` (mais de 530 códigos identificados) e garante a exclusão determinística (`produtosMap.delete(cod)`), impedindo que produtos bloqueados apareçam na visualização de estoque.
+    - **Correção de Joins no Faturamento Protheus (`SD2`):**
+      - Substituição de `LEFT JOIN SB1010 B1` por `LEFT JOIN SB1090 B19` e `LEFT JOIN SB1160 B16` com `COALESCE(B19.B1_DESC, B16.B1_DESC, '')`, garantindo descrições 100% corretas para todos os itens faturados das empresas ativas.
+    - **Homologação:** 100% das 13 suítes automatizadas aprovadas sem regressões.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

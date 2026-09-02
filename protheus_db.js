@@ -1655,11 +1655,28 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
 
   try {
     // 1. Extração do Catálogo de Produtos PA dos Grupos Comerciais (001, 002, 010, 018)
-    const sb1Tables = ['SB1090', 'SB1100', 'SB1140', 'SB1150', 'SB1160', 'SB1010'];
+    // Usamos estritamente os catálogos oficiais das empresas ativas (SB1090 e SB1160)
+    // Excluímos tabelas legadas (SB1010) para evitar produtos descontinuados/fantasmas
+    const sb1Tables = ['SB1090', 'SB1160'];
     const GRUPOS_COMERCIAIS = ['001', '002', '010', '018', '0001', '0002', '0010', '0018', '1', '2', '10', '18'];
+    const codigosBloqueados = new Set();
 
     for (const sb1Table of sb1Tables) {
       try {
+        // Mapear códigos bloqueados para expurgo garantido
+        const sqlBlocked = `
+          SELECT RTRIM(B1_COD) AS B1_COD
+          FROM ${sb1Table}
+          WHERE D_E_L_E_T_ = ' '
+            AND (RTRIM(B1_MSBLQL) = '1' OR RTRIM(B1_MSBLQL) = 'S' OR RTRIM(B1_MSBLQL) = 's');
+        `;
+        const resBlocked = await executeRailwayQuery(sqlBlocked);
+        if (resBlocked && resBlocked.rows) {
+          for (const rb of resBlocked.rows) {
+            if (rb.B1_COD) codigosBloqueados.add(String(rb.B1_COD).trim());
+          }
+        }
+
         const sqlSB1 = `
           SELECT 
             RTRIM(B1_COD) AS B1_COD,
@@ -1674,7 +1691,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
           WHERE D_E_L_E_T_ = ' '
             AND RTRIM(B1_TIPO) = 'PA'
             AND RTRIM(B1_GRUPO) IN ('001', '002', '010', '018', '0001', '0002', '0010', '0018')
-            AND (B1_MSBLQL IS NULL OR RTRIM(B1_MSBLQL) <> '1')
+            AND (B1_MSBLQL IS NULL OR (RTRIM(B1_MSBLQL) <> '1' AND RTRIM(B1_MSBLQL) <> 'S' AND RTRIM(B1_MSBLQL) <> 's'))
             AND B1_DESC NOT LIKE '%XXX%'
             AND B1_COD NOT LIKE '%X%'
             AND B1_COD LIKE '%0%'
@@ -1684,7 +1701,7 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
         if (resSB1 && resSB1.rows && resSB1.rows.length > 0) {
           for (const r of resSB1.rows) {
             const cod = String(r.B1_COD || '').trim();
-            if (!cod) continue;
+            if (!cod || codigosBloqueados.has(cod)) continue;
 
             const desc = String(r.B1_DESC || '').trim();
             const grupo = String(r.B1_GRUPO || '').trim();
@@ -1719,6 +1736,13 @@ async function sincronizarSaldosEstoqueProtheus({ triggeredBy = 'JOB' } = {}) {
         }
       } catch (errSB1) {
         console.warn(`Aviso ao consultar produtos em ${sb1Table}:`, errSB1.message);
+      }
+    }
+
+    // Expurgo preventivo de códigos bloqueados
+    for (const bCod of codigosBloqueados) {
+      if (produtosMap.has(bCod)) {
+        produtosMap.delete(bCod);
       }
     }
 
@@ -2009,8 +2033,8 @@ async function consultarFaturamentoHistorico({ dataIni, dataFim, empresa } = {})
           RTRIM(ISNULL(A1.A1_NOME, '')) AS CLIENTE_NOME,
           RTRIM(ISNULL(F2.F2_VEND1, '')) AS VENDEDOR_COD,
           RTRIM(D2.D2_COD) AS PRODUTO_COD,
-          RTRIM(ISNULL(B1.B1_DESC, '')) AS PRODUTO_DESC,
-          RTRIM(ISNULL(D2.D2_GRUPO, ISNULL(B1.B1_GRUPO, ''))) AS GRUPO_COD,
+          RTRIM(COALESCE(B19.B1_DESC, B16.B1_DESC, '')) AS PRODUTO_DESC,
+          RTRIM(ISNULL(D2.D2_GRUPO, COALESCE(B19.B1_GRUPO, B16.B1_GRUPO, ''))) AS GRUPO_COD,
           ISNULL(D2.D2_QUANT, 0) AS QUANTIDADE,
           ISNULL(D2.D2_PRCVEN, 0) AS PRECO_UNITARIO,
           ISNULL(D2.D2_TOTAL, 0) AS VALOR_TOTAL_ITEM,
@@ -2024,9 +2048,12 @@ async function consultarFaturamentoHistorico({ dataIni, dataFim, empresa } = {})
          AND F2.F2_DOC = D2.D2_DOC
          AND F2.F2_SERIE = D2.D2_SERIE
          AND F2.D_E_L_E_T_ = ' '
-        LEFT JOIN SB1010 B1
-          ON B1.B1_COD = D2.D2_COD
-         AND B1.D_E_L_E_T_ = ' '
+        LEFT JOIN SB1090 B19
+          ON B19.B1_COD = D2.D2_COD
+         AND B19.D_E_L_E_T_ = ' '
+        LEFT JOIN SB1160 B16
+          ON B16.B1_COD = D2.D2_COD
+         AND B16.D_E_L_E_T_ = ' '
         LEFT JOIN SA1010 A1
           ON A1.A1_COD = D2.D2_CLIENTE
          AND A1.A1_LOJA = D2.D2_LOJA
