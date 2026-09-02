@@ -116,15 +116,15 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
   * Paginação inteligente configurável (25, 50, 100 itens) e busca instantânea.
   * Job automático de sincronização Protheus x Supabase a cada 60 min no horário comercial com fallback JSON e Cooldown de 2 min no botão manual.
   * Modal Drilldown Multi-Empresa com 3 guias (*Resumo por Empresa*, *Compras em Aberto SC7*, *Vendas em Aberto SC6*).
-* **Sub-aba `[ Consulta Pedido ]`:**
+* **Sub-aba `[ Consulta Ped Venda ]`:**
   * Pesquisa multi-critério (`CodWeb`, `Número do Pedido`, `Nome do Cliente`) nas 3 empresas.
   * Modal rico com dados mestres de `SA1010` (CNPJ/CPF, endereço, CEP, telefone com máscara), grade `SC6`, totais e botão para impressão.
-* **Sub-aba `[ Pedidos Abertos ]`:**
+* **Sub-aba `[ Ped Vendas Abertos ]`:**
   * Pedidos não faturados (`C5_NOTA = ''` e não cancelados) nas 3 empresas (`SC5`).
   * Mapeamento de Bloqueios de Estoque (`C9_BLEST`) e Crédito (`C9_BLCRED`) da tabela `SC9` aderente às regras de negócio oficiais do Power BI.
   * Integração externa inteligente com o CRM Pipedrive (`deal/{digits}`) e abertura da modal do pedido.
   * **Visão Unificada e Desbloqueio de Vendedores:** Permite que qualquer vendedor visualize os pedidos em aberto de toda a equipe ou filtre por empresa/vendedor específico.
-* **Sub-aba `[ Pedidos Compras ]`:**
+* **Sub-aba `[ Prod x Ped Compras ]`:**
   * Consulta em tempo real de pedidos de compra em aberto (`SC7140`, `SC7150`, `SC7160`) com saldo a receber (`C7_QUANT - C7_QUJE > 0`) e previsão (`C7_DATPRF`).
   * Faixa estrita de produtos acabados `PA` (`001...` a `019...`) e fornecedores `SA2010`.
   * Identificador `PedCom` formatado com sigla (`MP000207`, `GSI000150`, `OACO000320`) e cards de resumo.
