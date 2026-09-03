@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna e Card de "Total Gordura de Frete Embut." [C5_VLR_FRT] em Comissões e 19 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 23:50 (v8.149 - Card de "Total Gordura de Frete Embut." substituindo Lançamentos no Relatório de Comissões e Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna e Card de "Total Gordura de Frete Embut." [C5_VLR_FRT] em Comissões, Paridade Exata de Frete Embutido no Fechamento Mensal e 19 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 00:05 (v8.150 - Correção do Cálculo de Frete Embutido no Fechamento Mensal com Deduplicação e Paridade SE3 x SC5 e Testes 100% Aprovados)  
 
 ---
 
@@ -611,6 +611,16 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Coluna na Tabela:** Inserida coluna `<th style="width: 13%; text-align: right;">Gordura de Frete Embut.</th>` logo após `Nome` e antes de `Valor Base`. Larguras calibradas somando 100%. Valores zerados mantidos como `R$ 0,00`. Empty state com `colspan="9"`.
       - **Card de Resumo:** Substituição do card *Lançamentos* pelo card **`🚚 Total Gordura de Frete Embut.`** (`#comisTotalGorduraFrete`), exibindo em destaque a soma total dos fretes embutidos (`C5_VLR_FRT`) de todos os registros do período consultado com suporte visual aos temas escuro e claro.
     - **Testes Automatizados:** Suíte `test_vendedores_desbloqueio.js` atualizada e 100% aprovada (8/8 testes).
+46. [x] **Correção do Cálculo de Frete Embutido (`C5_VLR_FRT`) no Fechamento Mensal dos Vendedores com Paridade Total à Aba Comissões (`fechamento_vendedores_engine.js`, `test_fechamento_vendedores.js`):**
+    - **Causa Raiz & Diagnóstico:** `buscarFretesEmbutidosPeriodo` consultava `SF2` (Notas Fiscais de Saída) diretamente. Na empresa GSI (15), a NF `000001942` (Pedido `001881` com `C5_VLR_FRT = R$ 230,00`) foi emitida com `F2_VEND1 = '000074'` (Juliana) para `RETORNO DE CONSERTO/TROCA` (TES `543`, `F4_DUPLIC = 'N'`). Essa remessa não gerou comissão e não constava na `SE3` (Venda Base Bruta). Como o fechamento consultava `SF2`, subtraía indevidamente R$ 230,00 de um frete não incluso na base de vendas, elevando o Frete Embutido para R$ 3.006,00 (Venda Líquida R$ 169.014,14).
+    - **Alinhamento e Deduplicação por Venda Comercial (`SE3 x SC5`):**
+      - Refatorada `buscarFretesEmbutidosPeriodo` para consultar `SE3` (tabela oficial de comissões que compõe a Venda Base Bruta), agrupando por `(E3_PEDIDO, E3_VEND)` e fazendo `INNER JOIN` com `SC5` (`C5_VLR_FRT > 0`).
+      - Garante que apenas fretes vinculados a vendas comerciais faturadas do vendedor e integrantes da base bruta sejam deduzidos.
+    - **Resultados Homologados e Paridade 100%:**
+      - **Juliana (000074):** Frete Embutido corrigido para **R$ 2.776,00** (exatamente idêntico à aba Comissões). Venda Base Líquida corrigida para **R$ 169.244,14** (172.020,14 - 2.776,00). Comissão Bruta (1,3%): **R$ 2.200,17**. Prêmio Metas: **R$ 400,00** (Meta R$ 120k batida). Total a Receber: **R$ 2.600,17**.
+      - **Figueiredo (000004):** Frete Embutido: R$ 2.306,00 (100% consistente).
+      - **Andrea (000064):** Frete Embutido: R$ 4.828,00 (100% consistente).
+    - **Testes Automatizados:** Inserido teste 4.2 em `test_fechamento_vendedores.js` com 19 asserções 100% aprovadas.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

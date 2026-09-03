@@ -1,5 +1,401 @@
 [
   {
+    "id": "ACT-1788404497146",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "GESTÃO_USUARIO",
+    "description": "Salvou configurações do usuário \"marcos_logistica\" (marcos@oaco.com.br)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:37.146Z"
+  },
+  {
+    "id": "ACT-1788404496945",
+    "username": "usuario_2fa_teste",
+    "userName": "Usuário de Teste 2FA",
+    "actionType": "REENVIO_2FA",
+    "description": "Novo código 2FA reenviado para us*********@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:36.945Z"
+  },
+  {
+    "id": "ACT-1788404496605",
+    "username": "usuario_2fa_teste",
+    "userName": "Usuário de Teste 2FA",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para us*********@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:36.605Z"
+  },
+  {
+    "id": "ACT-1788404493158",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:33.158Z"
+  },
+  {
+    "id": "ACT-1788404492860",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:32.860Z"
+  },
+  {
+    "id": "ACT-1788404492142",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:32.142Z"
+  },
+  {
+    "id": "ACT-1788404491609",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T03:01:31.609Z"
+  },
+  {
+    "id": "ACT-1788404487259",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "MP",
+      "count": 5
+    },
+    "createdAt": "2026-09-03T03:01:27.259Z"
+  },
+  {
+    "id": "ACT-1788404486651",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 14
+    },
+    "createdAt": "2026-09-03T03:01:26.651Z"
+  },
+  {
+    "id": "ACT-1788404481042",
+    "username": "andrea",
+    "userName": "Andrea",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (2 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "codVend": "000004",
+      "count": 2
+    },
+    "createdAt": "2026-09-03T03:01:21.042Z"
+  },
+  {
+    "id": "ACT-1788404478116",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T03:01:18.116Z"
+  },
+  {
+    "id": "ACT-1788404476284",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T03:01:16.284Z"
+  },
+  {
+    "id": "ACT-1788404467455",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "dataIni": "2026-08-01",
+      "dataFim": "2026-08-25",
+      "codVend": "000004",
+      "totalRegistros": 15
+    },
+    "createdAt": "2026-09-03T03:01:07.455Z"
+  },
+  {
+    "id": "ACT-1788404464350",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T03:01:04.350Z"
+  },
+  {
+    "id": "ACT-1788403682906",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "dataIni": "2026-08-01",
+      "dataFim": "2026-08-25",
+      "codVend": "000004",
+      "totalRegistros": 15
+    },
+    "createdAt": "2026-09-03T02:48:02.906Z"
+  },
+  {
+    "id": "ACT-1788403679825",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:47:59.825Z"
+  },
+  {
+    "id": "ACT-1788403343015",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "dataIni": "2026-08-01",
+      "dataFim": "2026-08-25",
+      "codVend": "000004",
+      "totalRegistros": 15
+    },
+    "createdAt": "2026-09-03T02:42:23.015Z"
+  },
+  {
+    "id": "ACT-1788403339814",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:42:19.814Z"
+  },
+  {
+    "id": "ACT-1788403240525",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "dataIni": "2026-08-01",
+      "dataFim": "2026-08-25",
+      "codVend": "000004",
+      "totalRegistros": 15
+    },
+    "createdAt": "2026-09-03T02:40:40.525Z"
+  },
+  {
+    "id": "ACT-1788403237324",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:40:37.324Z"
+  },
+  {
+    "id": "ACT-1788403198368",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T02:39:58.368Z"
+  },
+  {
+    "id": "ACT-1788403198066",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T02:39:58.066Z"
+  },
+  {
+    "id": "ACT-1788403197504",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T02:39:57.504Z"
+  },
+  {
+    "id": "ACT-1788403197042",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T02:39:57.042Z"
+  },
+  {
+    "id": "ACT-1788403193733",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "MP",
+      "count": 5
+    },
+    "createdAt": "2026-09-03T02:39:53.733Z"
+  },
+  {
+    "id": "ACT-1788403192015",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 14
+    },
+    "createdAt": "2026-09-03T02:39:52.015Z"
+  },
+  {
+    "id": "ACT-1788403187934",
+    "username": "andrea",
+    "userName": "Andrea",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (2 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "codVend": "000004",
+      "count": 2
+    },
+    "createdAt": "2026-09-03T02:39:47.934Z"
+  },
+  {
+    "id": "ACT-1788403185012",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:39:45.012Z"
+  },
+  {
+    "id": "ACT-1788403182078",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:39:42.078Z"
+  },
+  {
+    "id": "ACT-1788403167619",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "dataIni": "2026-08-01",
+      "dataFim": "2026-08-25",
+      "codVend": "000004",
+      "totalRegistros": 15
+    },
+    "createdAt": "2026-09-03T02:39:27.619Z"
+  },
+  {
+    "id": "ACT-1788403165506",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:39:25.506Z"
+  },
+  {
+    "id": "ACT-1788403095121",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_COMISSOES",
+    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "dataIni": "2026-08-01",
+      "dataFim": "2026-08-25",
+      "codVend": "000004",
+      "totalRegistros": 15
+    },
+    "createdAt": "2026-09-03T02:38:15.121Z"
+  },
+  {
+    "id": "ACT-1788403091933",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T02:38:11.933Z"
+  },
+  {
     "id": "ACT-1788398915718",
     "username": "alexandre",
     "userName": "Alexandre",
@@ -1858,434 +2254,5 @@
       "count": 5
     },
     "createdAt": "2026-09-01T12:08:22.391Z"
-  },
-  {
-    "id": "ACT-1788264501752",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (11 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 11
-    },
-    "createdAt": "2026-09-01T12:08:21.752Z"
-  },
-  {
-    "id": "ACT-1788264496715",
-    "username": "andrea",
-    "userName": "Andrea",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (1 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "codVend": "000004",
-      "count": 1
-    },
-    "createdAt": "2026-09-01T12:08:16.715Z"
-  },
-  {
-    "id": "ACT-1788264493767",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (16 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 16
-    },
-    "createdAt": "2026-09-01T12:08:13.767Z"
-  },
-  {
-    "id": "ACT-1788264489497",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (16 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 16
-    },
-    "createdAt": "2026-09-01T12:08:09.497Z"
-  },
-  {
-    "id": "ACT-1788264469058",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:49.058Z"
-  },
-  {
-    "id": "ACT-1788264458591",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:38.591Z"
-  },
-  {
-    "id": "ACT-1788264458420",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:38.420Z"
-  },
-  {
-    "id": "ACT-1788264458097",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:38.097Z"
-  },
-  {
-    "id": "ACT-1788264457798",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:37.798Z"
-  },
-  {
-    "id": "ACT-1788264456777",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"marcos_logistica\" (marcos@oaco.com.br)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:36.777Z"
-  },
-  {
-    "id": "ACT-1788264456667",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "REENVIO_2FA",
-    "description": "Novo código 2FA reenviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:36.667Z"
-  },
-  {
-    "id": "ACT-1788264456471",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T12:07:36.471Z"
-  },
-  {
-    "id": "ACT-1788264255569",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE_SOCIOS_CAPITAL (Score: 12, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE_SOCIOS_CAPITAL",
-      "score": 12,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T12:04:15.569Z"
-  },
-  {
-    "id": "ACT-1788264254343",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE-ISENTO-01 (Score: 36, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE-ISENTO-01",
-      "score": 36,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T12:04:14.343Z"
-  },
-  {
-    "id": "ACT-1788264160896",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE-ISENTO-01 (Score: 36, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE-ISENTO-01",
-      "score": 36,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T12:02:40.896Z"
-  },
-  {
-    "id": "ACT-1788264160214",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE_SOCIOS_CAPITAL (Score: 12, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE_SOCIOS_CAPITAL",
-      "score": 12,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T12:02:40.214Z"
-  },
-  {
-    "id": "ACT-1788263568602",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE_SOCIOS_CAPITAL (Score: 12, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE_SOCIOS_CAPITAL",
-      "score": 12,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T11:52:48.602Z"
-  },
-  {
-    "id": "ACT-1788263552403",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE-ISENTO-01 (Score: 36, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE-ISENTO-01",
-      "score": 36,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T11:52:32.403Z"
-  },
-  {
-    "id": "ACT-1788263551864",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE_SOCIOS_CAPITAL (Score: 12, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE_SOCIOS_CAPITAL",
-      "score": 12,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T11:52:31.864Z"
-  },
-  {
-    "id": "ACT-1788263494359",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE-ISENTO-01 (Score: 36, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE-ISENTO-01",
-      "score": 36,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T11:51:34.359Z"
-  },
-  {
-    "id": "ACT-1788263493806",
-    "username": "sistema",
-    "userName": "Sistema",
-    "actionType": "GRAVACAO_CREDITO",
-    "description": "Gravou análise de crédito do Pedido #TESTE_SOCIOS_CAPITAL (Score: 12, Risco: SEM-RISCO, Decisão: Liberado)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "14",
-      "pedido": "TESTE_SOCIOS_CAPITAL",
-      "score": 12,
-      "risco": "SEM-RISCO",
-      "decisao": "Liberado"
-    },
-    "createdAt": "2026-09-01T11:51:33.806Z"
-  },
-  {
-    "id": "ACT-1788263116905",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T11:45:16.905Z"
-  },
-  {
-    "id": "ACT-1788263116683",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T11:45:16.683Z"
-  },
-  {
-    "id": "ACT-1788263116317",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T11:45:16.317Z"
-  },
-  {
-    "id": "ACT-1788263116004",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T11:45:16.004Z"
-  },
-  {
-    "id": "ACT-1788263114556",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 12234,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 146,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-09-01T11:45:14.556Z"
-  },
-  {
-    "id": "ACT-1788263102224",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-09-01T11:45:02.224Z"
-  },
-  {
-    "id": "ACT-1788262941767",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_BI_EXECUTIVO",
-    "description": "Acessou o Dashboard Executivo de BI (Configurado: true)",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "configured": true,
-      "dashboardId": 42
-    },
-    "createdAt": "2026-09-01T11:42:21.767Z"
-  },
-  {
-    "id": "ACT-1788262809972",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 12198,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 146,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-09-01T11:40:09.972Z"
-  },
-  {
-    "id": "ACT-1788262797376",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-09-01T11:39:57.376Z"
-  },
-  {
-    "id": "ACT-1788262796857",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_BI_EXECUTIVO",
-    "description": "Acessou o Dashboard Executivo de BI (Configurado: true)",
-    "ip": "127.0.0.1",
-    "metadata": {
-      "configured": true,
-      "dashboardId": 42
-    },
-    "createdAt": "2026-09-01T11:39:56.857Z"
-  },
-  {
-    "id": "ACT-1788261124178",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 9757,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 146,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-09-01T11:12:04.178Z"
-  },
-  {
-    "id": "ACT-1788261114301",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-09-01T11:11:54.301Z"
   }
 ]

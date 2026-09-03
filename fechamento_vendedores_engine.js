@@ -261,7 +261,9 @@ async function buscarVendasComissoesPeriodo({ dataIni, dataFim, codVend } = {}) 
 
 /**
  * Consulta Fretes Embutidos (C5_VLR_FRT) nos pedidos de venda faturados do vendedor no período
- * Aplica deduplicação por D2_PEDIDO para evitar somas duplicadas em notas multi-itens
+ * Consulta a tabela SE3 (Comissões Faturadas que compõem a Venda Base Bruta) deduplicando por
+ * pedido de venda (E3_PEDIDO) e cruzando com SC5 (C5_VLR_FRT) para assegurar perfeita paridade
+ * com a Aba Comissões e evitar deduzir fretes de operações não comerciais (ex: conserto/troca).
  */
 async function buscarFretesEmbutidosPeriodo({ dataIni, dataFim, codVend } = {}) {
   const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
@@ -276,43 +278,37 @@ async function buscarFretesEmbutidosPeriodo({ dataIni, dataFim, codVend } = {}) 
     try {
       let vendFilter = '';
       if (cleanVend) {
-        vendFilter = `AND (RTRIM(SF2.F2_VEND1) = '${cleanVend}' OR RTRIM(SF2.F2_VEND1) = '${paddedVend6}')`;
+        vendFilter = `AND (RTRIM(E3.E3_VEND) = '${cleanVend}' OR RTRIM(E3.E3_VEND) = '${paddedVend6}')`;
       }
 
       const sql = `
         SELECT 
-          RTRIM(SF2.F2_DOC) AS NOTA,
-          RTRIM(SF2.F2_SERIE) AS SERIE,
-          RTRIM(SF2.F2_EMISSAO) AS EMISSAO,
-          RTRIM(SF2.F2_VEND1) AS VENDEDOR,
-          ISNULL(PED.TOTAL_FRETE_EMBUTIDO, 0.00) AS FRETE_EMBUTIDO,
-          ISNULL(PED.TOTAL_FRETE_COBRADO, 0.00) AS FRETE_COBRADO,
-          ISNULL(PED.PEDIDOS, '') AS PEDIDOS
-        FROM ${emp.sf2} SF2
-        OUTER APPLY (
+          RTRIM(PED.E3_PEDIDO) AS PEDIDO,
+          RTRIM(PED.EMISSAO) AS EMISSAO,
+          RTRIM(PED.E3_VEND) AS VENDEDOR,
+          RTRIM(PED.E3_NUM) AS NOTA,
+          RTRIM(PED.E3_SERIE) AS SERIE,
+          ISNULL(SC5.C5_VLR_FRT, 0.00) AS FRETE_EMBUTIDO,
+          ISNULL(SC5.C5_FRETE, 0.00) AS FRETE_COBRADO
+        FROM (
           SELECT 
-            SUM(SC5.C5_VLR_FRT) AS TOTAL_FRETE_EMBUTIDO,
-            SUM(SC5.C5_FRETE) AS TOTAL_FRETE_COBRADO,
-            STRING_AGG(RTRIM(PED_DIST.D2_PEDIDO), ', ') AS PEDIDOS
-          FROM (
-            SELECT DISTINCT D2_PEDIDO, D2_FILIAL 
-            FROM ${emp.sd2} 
-            WHERE D2_DOC = SF2.F2_DOC 
-              AND D2_SERIE = SF2.F2_SERIE 
-              AND D2_CLIENTE = SF2.F2_CLIENTE
-              AND D_E_L_E_T_ = ' '
-          ) PED_DIST
-          INNER JOIN ${emp.sc5} SC5 
-            ON RTRIM(SC5.C5_NUM) = RTRIM(PED_DIST.D2_PEDIDO) 
-           AND SC5.C5_FILIAL = PED_DIST.D2_FILIAL 
-           AND SC5.D_E_L_E_T_ = ' '
+            E3_PEDIDO,
+            E3_VEND,
+            MAX(E3_NUM) AS E3_NUM,
+            MAX(E3_SERIE) AS E3_SERIE,
+            MAX(E3_EMISSAO) AS EMISSAO
+          FROM ${emp.se3} E3
+          WHERE E3.E3_EMISSAO >= '${cleanDataIni}'
+            AND E3.E3_EMISSAO <= '${cleanDataFim}'
+            ${vendFilter}
+            AND E3.D_E_L_E_T_ = ' '
+            AND RTRIM(E3.E3_PEDIDO) <> ''
+          GROUP BY E3_PEDIDO, E3_VEND
         ) PED
-        WHERE SF2.F2_EMISSAO >= '${cleanDataIni}'
-          AND SF2.F2_EMISSAO <= '${cleanDataFim}'
-          AND SF2.F2_TIPO = 'N'
-          ${vendFilter}
-          AND SF2.D_E_L_E_T_ = ' '
-          AND ISNULL(PED.TOTAL_FRETE_EMBUTIDO, 0) > 0;
+        INNER JOIN ${emp.sc5} SC5
+          ON (SC5.C5_NUM = PED.E3_PEDIDO OR SC5.C5_NUM = RIGHT('000000' + RTRIM(PED.E3_PEDIDO), 6))
+         AND SC5.D_E_L_E_T_ = ' '
+        WHERE ISNULL(SC5.C5_VLR_FRT, 0) > 0;
       `;
 
       const dbRes = await executeRailwayQuery(sql);
@@ -328,7 +324,7 @@ async function buscarFretesEmbutidosPeriodo({ dataIni, dataFim, codVend } = {}) 
           serie: r.SERIE,
           emissao: r.EMISSAO,
           vendedor: r.VENDEDOR,
-          pedidos: r.PEDIDOS,
+          pedidos: r.PEDIDO,
           freteEmbutido: frtEmb
         });
       }

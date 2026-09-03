@@ -14,15 +14,15 @@
       "configuracoes"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-03T01:28:35.718Z",
+    "lastActiveAt": "2026-09-03T03:01:37.146Z",
     "lastLoginAt": "2026-08-24T18:52:40.764Z",
-    "totalActions": 443
+    "totalActions": 450
   },
   {
     "username": "erica",
     "name": "Érica",
     "email": null,
-    "pass": "$2b$10$ft.ly8WvKZFNE/yVtu4KWOl.GS89MANiCwwg0r0rJiAnjnICsfPaO",
+    "pass": "$2b$10$loBCo1GT360qNAc0fu/h2OOhNLz6J92g80cOjS7gLUnbaUAuZDjJy",
     "role": "user",
     "permissions": [
       "logistica",
@@ -30,8 +30,8 @@
     ],
     "active": true,
     "vendorCode": null,
-    "lastActiveAt": "2026-09-03T01:13:15.151Z",
-    "totalActions": 86
+    "lastActiveAt": "2026-09-03T03:01:33.158Z",
+    "totalActions": 90
   },
   {
     "username": "wallerson",
@@ -56,8 +56,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-03T01:28:33.922Z",
-    "totalActions": 130,
+    "lastActiveAt": "2026-09-03T03:01:26.651Z",
+    "totalActions": 146,
     "links_favoritos": [
       {
         "id": "1",
@@ -102,8 +102,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-03T01:28:28.390Z",
-    "totalActions": 26
+    "lastActiveAt": "2026-09-03T03:01:21.042Z",
+    "totalActions": 28
   },
   {
     "username": "figueiredo",
@@ -134,7 +134,7 @@
     "username": "usuario_2fa_teste",
     "name": "Usuário de Teste 2FA",
     "email": "usuario.2fa@oaco.com.br",
-    "pass": "$2b$10$/jFCWOqUBrhCuq9iEtnNgeUtPS4RpckcOLBl6JI712uWCW1bAZzaW",
+    "pass": "$2b$10$M73D//eJw.vY9L474m1nrOClNLRxQXL3G3c0XHppBxH7OH05Gry9m",
     "role": "user",
     "vendorCode": null,
     "permissions": [
@@ -142,14 +142,14 @@
       "consulta"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-02T11:15:42.008Z",
-    "totalActions": 95
+    "lastActiveAt": "2026-09-03T03:01:36.945Z",
+    "totalActions": 97
   },
   {
     "username": "marcos_logistica",
     "name": "Marcos de Oliveira",
     "email": "marcos@oaco.com.br",
-    "pass": "$2b$10$630N4N20nQCiiI0jhM7.yu3dDUrntBdXPvLEMJBP7WMWfRUfIF4IK",
+    "pass": "$2b$10$HCntQIqjeB2qhJPA3UB/nOjAW19L2m7Nep2lm301B2l6r9zl4brsa",
     "role": "user",
     "vendorCode": null,
     "permissions": [

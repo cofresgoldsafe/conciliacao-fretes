@@ -29,8 +29,8 @@
       "TOTAL": 476917.24
     },
     "benchmarking_json": {
-      "mediaVendasEquipe": 155592.41,
-      "diffVendasPct": 2.93,
+      "mediaVendasEquipe": 155669.08,
+      "diffVendasPct": 2.88,
       "statusVendasBench": "ACIMA_MEDIA",
       "mediaGorduraEquipe": 837.72,
       "diffGorduraPct": -17.69,
@@ -52,8 +52,8 @@
       "totalPedidosComFreteEmbutido": 6,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "TEST",
-    "gerado_em": "2026-09-03T01:47:44.426Z"
+    "tipo_geracao": "TEST_RECALC",
+    "gerado_em": "2026-09-03T03:00:28.477Z"
   },
   {
     "ciclo_id": "2026-07-26_2026-08-25",
@@ -85,8 +85,8 @@
       "TOTAL": 476917.24
     },
     "benchmarking_json": {
-      "mediaVendasEquipe": 155592.41,
-      "diffVendasPct": -11.55,
+      "mediaVendasEquipe": 155669.08,
+      "diffVendasPct": -11.6,
       "statusVendasBench": "ABAIXO_MEDIA",
       "mediaGorduraEquipe": 837.72,
       "diffGorduraPct": 181.61,
@@ -108,8 +108,8 @@
       "totalPedidosComFreteEmbutido": 6,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "TEST",
-    "gerado_em": "2026-09-03T01:47:44.439Z"
+    "tipo_geracao": "TEST_RECALC",
+    "gerado_em": "2026-09-03T03:00:28.483Z"
   },
   {
     "ciclo_id": "2026-07-26_2026-08-25",
@@ -119,21 +119,21 @@
     "cod_vendedor": "000074",
     "nome_vendedor": "Juliana",
     "vendas_base_bruta": 172020.14,
-    "fretes_embutidos": 3006,
-    "vendas_base_liquida": 169014.14,
+    "fretes_embutidos": 2776,
+    "vendas_base_liquida": 169244.14,
     "meta_vendas_valor": 120000,
-    "pct_meta_vendas": 140.85,
+    "pct_meta_vendas": 141.04,
     "premio_meta_vendas": 400,
     "faixa_meta_vendas": ">= 100% da Meta",
     "gordura_frete_total": -535.47,
     "premio_gordura_frete": 0,
     "faixa_gordura_frete": "Sem Premiação (< R$ 700)",
     "comissao_taxa": 0.013,
-    "comissao_bruta": 2197.18,
+    "comissao_bruta": 2200.17,
     "inadimplentes_total": 0,
-    "comissao_liquida": 2197.18,
+    "comissao_liquida": 2200.17,
     "total_premios": 400,
-    "total_geral_receber": 2597.18,
+    "total_geral_receber": 2600.17,
     "faturamento_empresas_json": {
       "GSI": 3445.72,
       "OACO": 184497.62,
@@ -141,8 +141,8 @@
       "TOTAL": 476917.24
     },
     "benchmarking_json": {
-      "mediaVendasEquipe": 155592.41,
-      "diffVendasPct": 8.63,
+      "mediaVendasEquipe": 155669.08,
+      "diffVendasPct": 8.72,
       "statusVendasBench": "ACIMA_MEDIA",
       "mediaGorduraEquipe": 837.72,
       "diffGorduraPct": -163.92,
@@ -161,10 +161,10 @@
     },
     "detalhes_json": {
       "totalLancamentosComissao": 68,
-      "totalPedidosComFreteEmbutido": 6,
+      "totalPedidosComFreteEmbutido": 5,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "TEST",
-    "gerado_em": "2026-09-03T01:47:44.449Z"
+    "tipo_geracao": "TEST_RECALC",
+    "gerado_em": "2026-09-03T03:00:28.489Z"
   }
 ]

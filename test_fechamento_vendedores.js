@@ -220,6 +220,30 @@ runTest('4.1 - Dedução estrita de frete embutido na base de vendas e dedução
   assert.strictEqual(resultado.totalGeralReceber, 2740.00);
 });
 
+runTest('4.2 - Juliana (000074): Frete Embutido deve ser exatamente R$ 2.776,00 com Venda Líquida R$ 169.244,14', () => {
+  const resultado = calcularComissoesEPremiosVendedor({
+    vendasBaseBruta: 172020.14,
+    fretesEmbutidos: 2776.00, // Paridade exata com a Aba Comissões
+    inadimplentesTotal: 0.00,
+    gorduraFreteTotal: 0.00,
+    metasConfig: DEFAULT_METAS_VENDAS
+  });
+
+  // 1. Venda Base Líquida = 172.020,14 - 2.776,00 = 169.244,14
+  assert.strictEqual(resultado.vendasBaseLiquida, 169244.14);
+  
+  // 2. Comissão Bruta (1,3%) = 169.244,14 * 0.013 = 2.200,17
+  assert.strictEqual(resultado.comissaoBruta, 2200.17);
+  assert.strictEqual(resultado.comissaoLiquida, 2200.17);
+  
+  // 3. Prêmio Meta Vendas (>= 100% da Meta de R$ 120k) = R$ 400,00
+  assert.strictEqual(resultado.premioMetaVendas, 400.00);
+  assert.strictEqual(resultado.metaVendasStatus, 'BATEU_100');
+  
+  // 4. Total a Receber = 2.200,17 + 400,00 = 2.600,17
+  assert.strictEqual(resultado.totalGeralReceber, 2600.17);
+});
+
 // ─── TESTE 5: Inadimplência superior à Comissão não gera comissão negativa ────
 
 runTest('5.1 - Comissão líquida é truncada em zero se a inadimplência for superior', () => {
