@@ -138,6 +138,13 @@ async function main() {
     assert.strictEqual(sqlJuliana.includes("SF2.F2_VEND1) = '000074'"), true, 'Deve filtrar SF2_VEND1 = 000074');
   });
 
+  runTest('A query T-SQL deve conter cláusula NOT EXISTS excluindo CFOPs 5916 e 6916 (Retorno de Assistência Técnica)', () => {
+    const sqlGSI = buildGorduraFreteSql('150', 'GSI', '20260726', '20260825', '');
+    assert.strictEqual(sqlGSI.includes('NOT EXISTS'), true, 'Deve conter NOT EXISTS');
+    assert.strictEqual(sqlGSI.includes('SD2150 SD2_EXC'), true, 'Deve pesquisar SD2 da empresa');
+    assert.strictEqual(sqlGSI.includes("'5916', '6916'"), true, 'Deve filtrar CFOPs 5916 e 6916');
+  });
+
   // ─── TESTE 5: FÓRMULAS DE GORDURA DE FRETE E MARGENS ──────────────────────
   console.log('\n📦 5. Fórmulas de Frete e Gordura:');
 

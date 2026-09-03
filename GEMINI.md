@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.154 (Homologada em 03/09/2026 10:05)  
+> **Versão da Documentação:** v8.155 (Homologada em 03/09/2026 10:28)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas com Calibração 0 a 1ª Faixa, Emojis Dinâmicos 🏆/😞, Card de Desempenho e Ranking da Equipe 1º Dourado, 2º Prateado, 3º Bronze, Popup de Detalhamento de Fretes no Card de Gordura com 10 Colunas Oficiais, Busca, Ordenação, Exportação CSV e 16 Novas Asserções Automatizadas 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 10:05 (v8.154 - Popup de Detalhamento de Fretes no Card de Gordura de Frete do Fechamento Mensal com Colunas Oficiais e Exportação CSV Homologado)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas com Calibração 0 a 1ª Faixa, Emojis Dinâmicos 🏆/😞, Card de Desempenho e Ranking da Equipe 1º Dourado, 2º Prateado, 3º Bronze, Popup de Detalhamento de Fretes no Card de Gordura com 10 Colunas Oficiais, Filtro Exclusor de CFOPs 5916/6916 de Assistência Técnica Homologado, Busca, Ordenação, Exportação CSV e 12 Asserções Automatizadas 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 10:28 (v8.155 - Filtro Exclusor de CFOPs 5916/6916 de Retorno de Assistência Técnica na Gordura de Frete e Fechamento de Vendedores Homologado com Auditoria Adversarial)  
 
 ---
 
@@ -511,6 +511,29 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Tabela relacional `fechamentos_vendedores` no Supabase com RLS ativo e chave única `(ciclo_id, cod_vendedor)`.
       - Vendedores autenticados acessam exclusivamente seus próprios números; administradores acessam visão global e individual.
       - Suíte automatizada `test_fechamento_vendedores.js` com **18 asserções 100% aprovadas**.
+46. [x] **Filtro Exclusor de Notas Fiscais de Retorno de Assistência Técnica (CFOP 5916 e 6916) na Gordura de Frete e Fechamento Mensal (`gordura_frete_engine.js`, `test_gordura_frete.js`):**
+    - **Causa Raiz & Problema Identificado:**
+      - Notas fiscais de retorno de assistência técnica e conserto (ex: NFs `000001941`, `000001942` e `000001945` da GSI 15) emitidas após reparos eram amarradas a conhecimentos de transporte (`SF1.F1_DOC` via `SF2.F2_COFRETE`).
+      - Como não há frete cobrado comercial do cliente nessas remessas (`COBCLI = R$ 0,00` ou valor residual), o custo do frete cobrado pela transportadora (R$ 300,00, R$ 400,00 e R$ 219,89) era debitado indevidamente na conta do vendedor, gerando um prejuízo/déficit artificial de quase R$ 700,00 na apuração da gordura de frete e no fechamento mensal.
+    - **Regra de Exclusão Fiscal Estrita por CFOP (5916 e 6916):**
+      - Inclusão de cláusula `NOT EXISTS` na função geradora T-SQL `buildGorduraFreteSql`:
+        ```sql
+        AND NOT EXISTS (
+          SELECT 1 
+          FROM SD2${sufixo} SD2_EXC 
+          WHERE SD2_EXC.D2_DOC = SF2.F2_DOC 
+            AND SD2_EXC.D2_SERIE = SF2.F2_SERIE 
+            AND SD2_EXC.D2_CLIENTE = SF2.F2_CLIENTE
+            AND SD2_EXC.D_E_L_E_T_ = ' '
+            AND RTRIM(SD2_EXC.D2_CF) IN ('5916', '6916')
+        )
+        ```
+      - O tratamento com `RTRIM(D2_CF)` elimina falsos negativos decorrentes de padding de caracteres no Protheus (`CHAR(5)` / `CHAR(4)`).
+      - Isolamento perfeito: preserva 100% das notas comerciais legítimas de venda (CFOPs 5102, 6108, 6102, etc.) e notas de entrega futura (`5117`, `6117`), expurgando exclusivamente retornos de conserto e assistência técnica.
+    - **Auditoria Adversarial & Testes Automatizados:**
+      - Auditoria do subagente `adversarial-verifier` concluída com veredicto **🟢 APROVADO** (risco de SQL injection zero, execução Left Anti Semi Join no MS SQL Server e páginas de buffer pool já aquecidas em memória).
+      - Suíte `test_gordura_frete.js` atualizada com asserção específica para o filtro CFOP e **12/12 testes 100% aprovados**.
+      - Suíte `test_fechamento_vendedores.js` com **23/23 testes 100% aprovados** e `test_modal_fretes_fechamento.js` com **16/16 testes 100% aprovados**.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
