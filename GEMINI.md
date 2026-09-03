@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna e Card de "Total Gordura de Frete Embut." [C5_VLR_FRT] em Comissões, Paridade Exata de Frete Embutido no Fechamento Mensal e 19 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 00:05 (v8.150 - Correção do Cálculo de Frete Embutido no Fechamento Mensal com Deduplicação e Paridade SE3 x SC5 e Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Dropdown de 12 Ciclos Predefinidos com Consolidação Sob Demanda, Ciclo 26/06 a 25/07 Homologado, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna e Card de "Total Gordura de Frete Embut." [C5_VLR_FRT] em Comissões, Paridade Exata de Frete Embutido no Fechamento Mensal e 20 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 00:16 (v8.151 - Dropdown com 12 Ciclos de Fechamento Predefinidos, Consolidação Sob Demanda, Ciclo Anterior 26/06 a 25/07 Persistido e Testes 100% Aprovados)  
 
 ---
 
@@ -621,6 +621,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Figueiredo (000004):** Frete Embutido: R$ 2.306,00 (100% consistente).
       - **Andrea (000064):** Frete Embutido: R$ 4.828,00 (100% consistente).
     - **Testes Automatizados:** Inserido teste 4.2 em `test_fechamento_vendedores.js` com 19 asserções 100% aprovadas.
+47. [x] **Dropdown de 12 Ciclos de Fechamento Predefinidos, Consolidação Sob Demanda e Ciclo 26/06 a 25/07 Registrado (`fechamento_vendedores_engine.js`, `server.js`, `public/js/fechamento_vendedores.js`, `scripts/gerar_fechamento_manual.js`, `test_fechamento_vendedores.js`):**
+    - **12 Ciclos Mensais Predefinidos (26 a 25):** Implementada a função `obterCiclosPredefinidosFechamento(qtd = 12)` no backend e `gerarCiclosPredefinidosClient(12)` no frontend para listar permanentemente os 12 ciclos mensais oficiais no dropdown `#fechamentoHistoricoSelect`, com identificadores claros (`📌 Ciclo Atual: 26/07/2026 a 25/08/2026`, `⏮️ Mês Anterior: 26/06/2026 a 25/07/2026`, `⏮️ Ciclo: ...`).
+    - **Consolidação Automática Sob Demanda:** Rota `/api/vendedores/fechamento/ciclo/:cicloId` atualizada para, caso um ciclo selecionado ainda não esteja no banco de dados, invocar automaticamente `consolidarFechamentoMensal` com `triggeredBy: 'ON_DEMAND'` e persistir no banco e cache em tempo real.
+    - **Ciclo Anterior 26/06/2026 a 25/07/2026 Consolidado & Script Utilitário:** Executada e homologada a extração completa do ciclo anterior com faturamento global de R$ 409.691,88 (MP 14: R$ 304.886,63, OACO 16: R$ 100.198,25, GSI 15: R$ 4.607,00), metas (Andrea: R$ 3.475,97, Figueiredo: R$ 2.169,24, Juliana: R$ 1.048,16), persistido no cache/banco e disponibilizado o utilitário `scripts/gerar_fechamento_manual.js`.
+    - **Suíte de Testes Automatizados:** Teste 1.4 adicionado a `test_fechamento_vendedores.js` totalizando 20/20 testes (100% de aprovação).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
