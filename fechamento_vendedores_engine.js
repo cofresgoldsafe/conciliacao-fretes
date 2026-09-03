@@ -344,10 +344,11 @@ async function buscarFretesEmbutidosPeriodo({ dataIni, dataFim, codVend } = {}) 
 }
 
 /**
- * Consulta Títulos Inadimplentes Vencidos do Vendedor (SE1)
- * Regra: Títulos com E1_SALDO > 0.01, E1_BAIXA vazio e vencimento <= dataFim
+ * Consulta Títulos Inadimplentes Vencidos do Vendedor no Período (SE1)
+ * Regra: Títulos com E1_SALDO > 0.01, E1_BAIXA vazio e vencimento dentro do período do fechamento (dataIni a dataFim)
  */
-async function buscarInadimplentesPeriodo({ dataFim, codVend } = {}) {
+async function buscarInadimplentesPeriodo({ dataIni, dataFim, codVend } = {}) {
+  const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
   const cleanDataFim = String(dataFim || '').replace(/\D/g, '');
   const cleanVend = sanitizeSqlParam(codVend || '');
   const paddedVend6 = cleanVend ? cleanVend.padStart(6, '0') : '';
@@ -360,6 +361,13 @@ async function buscarInadimplentesPeriodo({ dataFim, codVend } = {}) {
       let vendFilter = '';
       if (cleanVend) {
         vendFilter = `AND (RTRIM(E1.E1_VEND1) = '${cleanVend}' OR RTRIM(E1.E1_VEND1) = '${paddedVend6}')`;
+      }
+
+      let dateFilter = '';
+      if (cleanDataIni && cleanDataFim) {
+        dateFilter = `AND ((E1.E1_VENCREA >= '${cleanDataIni}' AND E1.E1_VENCREA <= '${cleanDataFim}') OR (E1.E1_VENCREA = '' AND E1.E1_VENCTO >= '${cleanDataIni}' AND E1.E1_VENCTO <= '${cleanDataFim}'))`;
+      } else if (cleanDataFim) {
+        dateFilter = `AND (E1.E1_VENCREA <= '${cleanDataFim}' OR E1.E1_VENCTO <= '${cleanDataFim}')`;
       }
 
       const sql = `
@@ -378,7 +386,7 @@ async function buscarInadimplentesPeriodo({ dataFim, codVend } = {}) {
         FROM ${emp.se1} E1
         WHERE (E1.E1_BAIXA = '' OR E1.E1_BAIXA IS NULL)
           AND E1.E1_SALDO > 0.01
-          AND (E1.E1_VENCREA <= '${cleanDataFim}' OR E1.E1_VENCTO <= '${cleanDataFim}')
+          ${dateFilter}
           ${vendFilter}
           AND E1.D_E_L_E_T_ = ' '
         ORDER BY E1.E1_VENCREA ASC;
@@ -568,8 +576,8 @@ async function consolidarFechamentoMensal({ dataIni, dataFim, codVend, triggered
       console.warn(`⚠️ [Fechamento] Erro ao consultar gordura de frete para ${v.nome}:`, errGf.message);
     }
 
-    // 2.4 Inadimplentes
-    const inadRes = await buscarInadimplentesPeriodo({ dataFim: periodo.dtFim, codVend: v.cod });
+    // 2.4 Inadimplentes do Período
+    const inadRes = await buscarInadimplentesPeriodo({ dataIni: periodo.dtIni, dataFim: periodo.dtFim, codVend: v.cod });
     const inadimplentesTotal = inadRes.totalInadimplente;
 
     // 2.5 R$ Comissões (1,3%)

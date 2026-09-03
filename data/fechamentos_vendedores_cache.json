@@ -53,7 +53,7 @@
       "totalTitulosInadimplentes": 0
     },
     "tipo_geracao": "TEST",
-    "gerado_em": "2026-09-03T01:32:02.669Z"
+    "gerado_em": "2026-09-03T01:47:44.426Z"
   },
   {
     "ciclo_id": "2026-07-26_2026-08-25",
@@ -74,10 +74,10 @@
     "faixa_gordura_frete": ">= R$ 2.100,00",
     "comissao_taxa": 0.013,
     "comissao_bruta": 1789.01,
-    "inadimplentes_total": 29943,
-    "comissao_liquida": 0,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 1789.01,
     "total_premios": 900,
-    "total_geral_receber": 900,
+    "total_geral_receber": 2689.01,
     "faturamento_empresas_json": {
       "GSI": 3445.72,
       "OACO": 184497.62,
@@ -106,10 +106,10 @@
     "detalhes_json": {
       "totalLancamentosComissao": 34,
       "totalPedidosComFreteEmbutido": 6,
-      "totalTitulosInadimplentes": 3
+      "totalTitulosInadimplentes": 0
     },
     "tipo_geracao": "TEST",
-    "gerado_em": "2026-09-03T01:32:02.672Z"
+    "gerado_em": "2026-09-03T01:47:44.439Z"
   },
   {
     "ciclo_id": "2026-07-26_2026-08-25",
@@ -165,6 +165,6 @@
       "totalTitulosInadimplentes": 0
     },
     "tipo_geracao": "TEST",
-    "gerado_em": "2026-09-03T01:32:02.677Z"
+    "gerado_em": "2026-09-03T01:47:44.449Z"
   }
 ]

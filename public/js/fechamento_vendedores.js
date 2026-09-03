@@ -423,15 +423,15 @@
       trofeuTexto = '🎉 Nível Lendário: Meta 200% Batida!';
       temConquista = true;
     } else if (pctVendas >= 150) {
-      trofeuEmoji = '🥇';
+      trofeuEmoji = '🏆';
       trofeuTexto = '🚀 Nível Ouro: Meta 150% Superada!';
       temConquista = true;
     } else if (pctVendas >= 100) {
-      trofeuEmoji = '🥈';
+      trofeuEmoji = '🏆';
       trofeuTexto = '🎯 Meta de Vendas 100% Atingida!';
       temConquista = true;
     } else if (gorduraTotal >= 700) {
-      trofeuEmoji = '🚚';
+      trofeuEmoji = '🏆';
       trofeuTexto = '⭐ Superávit de Frete Conquistado!';
       temConquista = true;
     }
