@@ -200,6 +200,39 @@ async function runTests() {
       assert.strictEqual(updated.status, 'CONCLUIDA');
     });
 
+    await itAsync('1.5 getTarefasDB com status="PENDENTE" deve retornar tarefas com status PENDENTE e REABERTA', async () => {
+      const tPend = await createTarefaDB({
+        titulo: 'Tarefa Pendente Teste Filtro',
+        status: 'PENDENTE',
+        responsavel_username: 'juliana',
+        responsavel_nome: 'Juliana Vendas',
+        criado_por_username: 'alexandre',
+        criado_por_nome: 'Alexandre Gestor'
+      });
+      const tReab = await createTarefaDB({
+        titulo: 'Tarefa Reaberta Teste Filtro',
+        status: 'REABERTA',
+        responsavel_username: 'juliana',
+        responsavel_nome: 'Juliana Vendas',
+        criado_por_username: 'alexandre',
+        criado_por_nome: 'Alexandre Gestor'
+      });
+
+      const res = await getTarefasDB({
+        status: 'PENDENTE',
+        responsavel: 'juliana',
+        isAdmin: true
+      });
+
+      assert.ok(res && Array.isArray(res.items));
+      const ids = res.items.map(t => t.id);
+      assert.ok(ids.includes(tPend.id), 'Deve incluir tarefa PENDENTE');
+      assert.ok(ids.includes(tReab.id), 'Deve incluir tarefa REABERTA');
+      
+      const statusIndesejados = res.items.filter(t => t.status !== 'PENDENTE' && t.status !== 'REABERTA');
+      assert.strictEqual(statusIndesejados.length, 0, 'Não deve conter tarefas fora de PENDENTE ou REABERTA');
+    });
+
     // --- BLOCO 2: ENDPOINTS REST & SEGURANÇA ZERO-TRUST ---
     console.log('\n🔹 2. Testes de Endpoints REST & Controle de Acesso (RBAC / Zero-Trust)');
 
@@ -355,6 +388,23 @@ async function runTests() {
       assert.strictEqual(res.body.users[0].pass, undefined, 'Não deve expor hash de senha');
     });
 
+    await itAsync('2.11 GET /api/tarefas?status=PENDENTE retorna tarefas pendentes e reabertas agrupadas no filtro padrão', async () => {
+      const res = await makeRequest({
+        port: testPort,
+        path: '/api/tarefas?status=PENDENTE',
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.body.success, true);
+      assert.ok(Array.isArray(res.body.items));
+      
+      // Todas as tarefas retornadas no filtro PENDENTE devem ser PENDENTE ou REABERTA
+      const invalidas = res.body.items.filter(t => t.status !== 'PENDENTE' && t.status !== 'REABERTA');
+      assert.strictEqual(invalidas.length, 0, 'Todas as tarefas retornadas no filtro PENDENTE devem ser PENDENTE ou REABERTA');
+    });
+
     // --- BLOCO 3: LINKS PREFERIDOS DO USUÁRIO ---
     console.log('\n🔹 3. Testes de Links Preferidos (Atalhos do Dia a Dia)');
 
@@ -443,6 +493,18 @@ async function runTests() {
       assert.ok(content.includes('id="modalNovoLink"'), 'Deve conter modalNovoLink');
       assert.ok(content.includes('id="modalTarefaDetalhes"'), 'Deve conter modalTarefaDetalhes');
       assert.ok(content.includes('js/tarefas.js'), 'Deve carregar script tarefas.js');
+    });
+
+    it('4.4 public/index.html define PENDENTE selecionado por padrão com rótulo "⏳ Pendente / Reaberta"', () => {
+      const htmlPath = path.join(__dirname, 'public', 'index.html');
+      const content = fs.readFileSync(htmlPath, 'utf-8');
+      assert.ok(content.includes('<option value="PENDENTE" selected>⏳ Pendente / Reaberta</option>'), 'Deve conter option PENDENTE selecionada por padrão');
+    });
+
+    it('4.5 public/js/tarefas.js inicializa tarefasState.filterStatus com "PENDENTE"', () => {
+      const jsPath = path.join(__dirname, 'public', 'js', 'tarefas.js');
+      const content = fs.readFileSync(jsPath, 'utf-8');
+      assert.ok(content.includes("filterStatus: 'PENDENTE'"), 'tarefasState deve inicializar com filterStatus: PENDENTE');
     });
 
     console.log('\n========================================================');

@@ -2431,8 +2431,13 @@ async function getTarefasDB({ status, responsavel, prioridade, busca, limit = 50
       }
 
       if (status && status !== 'TODOS') {
-        conditions.push(`status = $${paramIdx++}`);
-        params.push(status);
+        const stUpper = String(status).toUpperCase().trim();
+        if (stUpper === 'PENDENTE' || stUpper === 'PENDENTE,REABERTA') {
+          conditions.push(`status IN ('PENDENTE', 'REABERTA')`);
+        } else {
+          conditions.push(`status = $${paramIdx++}`);
+          params.push(stUpper);
+        }
       }
 
       if (prioridade && prioridade !== 'TODOS') {
@@ -2498,7 +2503,15 @@ async function getTarefasDB({ status, responsavel, prioridade, busca, limit = 50
   }
 
   if (status && status !== 'TODOS') {
-    items = items.filter(t => t.status === status);
+    const stUpper = String(status).toUpperCase().trim();
+    if (stUpper === 'PENDENTE' || stUpper === 'PENDENTE,REABERTA') {
+      items = items.filter(t => {
+        const s = (t.status || '').toUpperCase();
+        return s === 'PENDENTE' || s === 'REABERTA';
+      });
+    } else {
+      items = items.filter(t => (t.status || '').toUpperCase() === stUpper);
+    }
   }
   if (prioridade && prioridade !== 'TODOS') {
     items = items.filter(t => t.prioridade === prioridade);
@@ -2508,7 +2521,17 @@ async function getTarefasDB({ status, responsavel, prioridade, busca, limit = 50
     items = items.filter(t => (t.titulo && t.titulo.toLowerCase().includes(q)) || (t.descricao && t.descricao.toLowerCase().includes(q)));
   }
 
-  items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  const statusOrder = { REABERTA: 1, PENDENTE: 2, CONCLUIDA: 3, FINALIZADA: 4 };
+  const prioOrder = { URGENTE: 1, ALTA: 2, NORMAL: 3 };
+  items.sort((a, b) => {
+    const stA = statusOrder[String(a.status).toUpperCase()] || 5;
+    const stB = statusOrder[String(b.status).toUpperCase()] || 5;
+    if (stA !== stB) return stA - stB;
+    const prA = prioOrder[String(a.prioridade).toUpperCase()] || 4;
+    const prB = prioOrder[String(b.prioridade).toUpperCase()] || 4;
+    if (prA !== prB) return prA - prB;
+    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+  });
   const total = items.length;
   const sliced = items.slice(offset, offset + limit);
 

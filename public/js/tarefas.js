@@ -20,7 +20,7 @@ const tarefasState = {
   limit: 50,
   offset: 0,
   currentPage: 1,
-  filterStatus: 'TODOS',
+  filterStatus: 'PENDENTE',
   filterResponsavel: 'TODOS',
   filterPrioridade: 'TODOS',
   filterBusca: '',
@@ -114,6 +114,19 @@ export async function initTarefasModule() {
       tarefasState.isAdmin = (sess.user && (sess.user.username.toLowerCase() === 'alexandre' || sess.user.role === 'admin'));
     }
   } catch {}
+
+  // 1.5 Garante que o filtro padrão inicial seja PENDENTE (Pendente / Reaberta)
+  tarefasState.filterStatus = 'PENDENTE';
+  const filterStatus = document.getElementById('filterTarefaStatus');
+  if (filterStatus) {
+    filterStatus.value = 'PENDENTE';
+  }
+  const btnVerAtivas = document.getElementById('btnVerTarefasAtivas');
+  const btnVerConcluidas = document.getElementById('btnVerTarefasConcluidas');
+  if (btnVerAtivas && btnVerConcluidas) {
+    btnVerAtivas.classList.add('active');
+    btnVerConcluidas.classList.remove('active');
+  }
 
   // 2. Carrega lista de usuários para os selects de responsável
   await carregarUsuariosDisponiveis();
@@ -348,9 +361,9 @@ function setupTarefasEventListeners() {
     btnVerAtivas.onclick = () => {
       btnVerAtivas.classList.add('active');
       if (btnVerConcluidas) btnVerConcluidas.classList.remove('active');
-      tarefasState.filterStatus = 'TODOS';
+      tarefasState.filterStatus = 'PENDENTE';
       const filterStatus = document.getElementById('filterTarefaStatus');
-      if (filterStatus) filterStatus.value = 'TODOS';
+      if (filterStatus) filterStatus.value = 'PENDENTE';
       carregarTarefas(1);
     };
   }
@@ -415,13 +428,13 @@ function setupTarefasEventListeners() {
   const btnLimpar = document.getElementById('btnLimparFiltrosTarefas');
   if (btnLimpar) {
     btnLimpar.onclick = () => {
-      if (filterStatus) filterStatus.value = 'TODOS';
+      if (filterStatus) filterStatus.value = 'PENDENTE';
       if (filterResp && !filterResp.disabled) filterResp.value = 'TODOS';
       if (filterPrioridade) filterPrioridade.value = 'TODOS';
       if (inputBusca) inputBusca.value = '';
       if (btnVerAtivas) btnVerAtivas.classList.add('active');
       if (btnVerConcluidas) btnVerConcluidas.classList.remove('active');
-      tarefasState.filterStatus = 'TODOS';
+      tarefasState.filterStatus = 'PENDENTE';
       tarefasState.filterResponsavel = 'TODOS';
       tarefasState.filterPrioridade = 'TODOS';
       tarefasState.filterBusca = '';

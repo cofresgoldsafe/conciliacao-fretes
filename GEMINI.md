@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.155 (Homologada em 03/09/2026 10:28)  
+> **Versão da Documentação:** v8.156 (Homologada em 03/09/2026 10:52)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas com Calibração 0 a 1ª Faixa, Emojis Dinâmicos 🏆/😞, Card de Desempenho e Ranking da Equipe 1º Dourado, 2º Prateado, 3º Bronze, Popup de Detalhamento de Fretes no Card de Gordura com 10 Colunas Oficiais, Filtro Exclusor de CFOPs 5916/6916 de Assistência Técnica Homologado, Busca, Ordenação, Exportação CSV e 12 Asserções Automatizadas 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 10:28 (v8.155 - Filtro Exclusor de CFOPs 5916/6916 de Retorno de Assistência Técnica na Gordura de Frete e Fechamento de Vendedores Homologado com Auditoria Adversarial)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" com Filtro Padrão Pendente & Reaberta Unificados, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas, Popup de Detalhamento de Fretes, Filtro Exclusor de CFOPs 5916/6916 de Assistência Técnica Homologado, 24 Asserções de Tarefas 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 10:52 (v8.156 - Unificação de Filtro de Status Pendente/Reaberta e Padrão Ativo na Central "Minhas Tarefas" Homologado com Auditoria Automatizada)  
 
 ---
 
@@ -534,6 +534,20 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Auditoria do subagente `adversarial-verifier` concluída com veredicto **🟢 APROVADO** (risco de SQL injection zero, execução Left Anti Semi Join no MS SQL Server e páginas de buffer pool já aquecidas em memória).
       - Suíte `test_gordura_frete.js` atualizada com asserção específica para o filtro CFOP e **12/12 testes 100% aprovados**.
       - Suíte `test_fechamento_vendedores.js` com **23/23 testes 100% aprovados** e `test_modal_fretes_fechamento.js` com **16/16 testes 100% aprovados**.
+47. [x] **Unificação do Filtro de Status "Pendente / Reaberta" e Default Ativo na Central "Minhas Tarefas" (`postgres_db.js`, `public/index.html`, `public/js/tarefas.js`, `test_minhas_tarefas.js`):**
+    - **Demanda e Objetivo Operacional:**
+      - Atendimento ao fluxo de resolução de tarefas: ao entrar na central "Minhas Tarefas" (tela inicial pós-login), o operador ou gestor precisa enxergar de imediato tudo o que demanda ação ou resolução pendente.
+      - Unificação no filtro inicial das tarefas com status `PENDENTE` (novas demandas) e `REABERTA` (demandas que retornaram da validação da liderança para correções).
+    - **Filtro Unificado no Backend (`getTarefasDB`):**
+      - Quando `status = 'PENDENTE'` (ou `'PENDENTE,REABERTA'`), a consulta SQL filtra via `status IN ('PENDENTE', 'REABERTA')` e o fallback JSON local filtra `t.status === 'PENDENTE' || t.status === 'REABERTA'`.
+      - Preservação da integridade interna dos status individuais (`REABERTA`, `PENDENTE`, `CONCLUIDA`, `FINALIZADA`) no banco de dados e nos feeds da linha do tempo.
+      - Ordenação de prioridade preservada: tarefas `REABERTA` aparecem no topo com destaque visual urgente/reaberto, seguidas pelas tarefas `PENDENTE`, ambas ordenadas por criticidade (`URGENTE` > `ALTA` > `NORMAL`) e `created_at DESC`.
+    - **Ajustes de UI e Estado Padrão (Frontend):**
+      - No `<select id="filterTarefaStatus">` em `public/index.html`, a opção default passa a ser `<option value="PENDENTE" selected>⏳ Pendente / Reaberta</option>`.
+      - Opções individuais mantidas para consultas específicas: `🟡 Concluída (Validação)`, `🔄 Reaberta (Apenas)`, `✅ Finalizada` e `Todos os Status`.
+      - Em `public/js/tarefas.js`: inicialização de `tarefasState.filterStatus = 'PENDENTE'`, sincronização do seletor e do botão de pauta rápida `btnVerTarefasAtivas` (⏳ Pauta Ativa) e redefinição no botão de limpeza `btnLimparFiltrosTarefas`.
+    - **Testes Automatizados (24/24 Aprovados):**
+      - Expansão de `test_minhas_tarefas.js` com testes para agregação de status no helper DB (1.5), rota REST `GET /api/tarefas?status=PENDENTE` (2.11) e integridade dos contratos de frontend (4.4 e 4.5).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
