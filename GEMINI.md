@@ -750,13 +750,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Suíte de Testes Automatizados:**
       - Arquivo `test_cron_fechamento.js` homologado com 9 asserções cobrindo integridade do YAML, timingSafeEqual, bloqueio 401 sem secret/com secret inválido, aceitação 200 via Bearer e x-cron-secret, fallback admin JWT e testes assíncronos (100% aprovados).
 53. [ ] **Configuração das Secrets de Produção e Homologação E2E do GitHub Actions Cron (`API_BASE_URL` e `CRON_SECRET`):**
-    - **Status:** Pendente de parametrização no ambiente de nuvem pelo administrador.
-    - **Passos Necessários:**
-      1. *Cadastro no GitHub:* Em `Settings > Secrets and variables > Actions > New repository secret`, cadastrar:
-         - `API_BASE_URL`: URL pública oficial da aplicação (ex: `https://portal-faturas.onrender.com`).
-         - `CRON_SECRET`: Chave secreta alfanumérica forte compartilhada para autorizar o cron.
-      2. *Cadastro no Servidor / Render:* Incluir a chave `CRON_SECRET` idêntica nas variáveis de ambiente (*Environment Variables*) da hospedagem.
-      3. *Disparo Teste em Produção:* Ir até a aba **Actions** no GitHub, selecionar `Fechamento Mensal dos Vendedores (Dia 26 às 00:30 BRT)`, acionar via `Run workflow` e confirmar HTTP 200 com consolidação no banco.
+    - **Status:** Secrets cadastradas no GitHub Actions; pendente apenas inserção de `CRON_SECRET` nas Environment Variables do Render pelo administrador.
+    - **Progresso:**
+      1. [x] *Cadastro no GitHub Actions:* `API_BASE_URL` (`https://conciliacao-fretes.onrender.com`) e `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) cadastrados com sucesso via GitHub CLI (`gh secret set`).
+      2. [ ] *Cadastro no Servidor / Render:* Incluir `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) nas Environment Variables do serviço `conciliacao-fretes` no painel do Render (`dashboard.render.com`).
+      3. [ ] *Disparo de Teste em Produção:* Acionar via `gh workflow run fechamento_mensal.yml -f force=true` ou botão `Run workflow` no GitHub Actions e validar consolidação com HTTP 200.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

@@ -11,20 +11,27 @@ Este documento orienta a configuração do agendamento externo de fechamento men
 
 ---
 
-## 2. Configuração das Secrets no GitHub
+## 2. Configuração das Secrets no GitHub e Render
 
-No repositório do projeto no GitHub:
-1. Acesse: **Settings** > **Secrets and variables** > **Actions**
-2. Clique no botão **`New repository secret`**
-3. Adicione as 2 variáveis secretas abaixo:
+### 2.1. Secrets já Cadastradas no GitHub Actions ✅
+As variáveis foram geradas e cadastradas no repositório GitHub (`Settings > Secrets and variables > Actions`) via GitHub CLI:
 
-| Secret Name | Valor de Exemplo | Descrição |
+| Secret Name | Valor Cadastrado | Status |
 | :--- | :--- | :--- |
-| `API_BASE_URL` | `https://portal-faturas.onrender.com` | A URL pública base onde a API está hospedada (sem barra `/` no final). |
-| `CRON_SECRET` | *(um segredo longo e aleatório)* | A chave secreta compartilhada entre o GitHub Actions e as variáveis de ambiente da aplicação. |
+| `API_BASE_URL` | `https://conciliacao-fretes.onrender.com` | ✅ **Configurado** |
+| `CRON_SECRET` | `bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411` | ✅ **Configurado** |
 
-> [!IMPORTANT]
-> A mesma chave cadastrada em `CRON_SECRET` no GitHub deve ser configurada nas **Environment Variables** do servidor (ex: painel de controle do Render / arquivo `.env` de produção).
+---
+
+### 2.2. Passo Pendente: Configuração no Render (Servidor) ⏳
+Para que a API em produção autorize as requisições do GitHub Actions:
+1. Acesse o painel do **Render**: `https://dashboard.render.com/`
+2. Selecione o Web Service **`conciliacao-fretes`**.
+3. No menu lateral, clique em **`Environment`**.
+4. Clique em **`Add Environment Variable`**:
+   - **Key:** `CRON_SECRET`
+   - **Value:** `bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`
+5. Clique em **`Save Changes`** (o Render fará redeploy automático com a variável ativa em ~60s).
 
 ---
 

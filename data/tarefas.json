@@ -620,9 +620,16 @@
         "autor_nome": "Sistema",
         "mensagem": "📌 Passo a passo disponível em docs/GUIA_SETUP_GITHUB_CRON.md e no GEMINI.md (Item 53).",
         "created_at": "2026-09-03T18:25:00.000Z"
+      },
+      {
+        "id": 1788461000000,
+        "autor_username": "sistema",
+        "autor_nome": "Sistema",
+        "mensagem": "✅ [Passo 1 Concluído]: Secrets 'API_BASE_URL' (https://conciliacao-fretes.onrender.com) e 'CRON_SECRET' cadastradas com sucesso no GitHub Actions via GitHub CLI. Resta apenas cadastrar CRON_SECRET no painel do Render.",
+        "created_at": "2026-09-03T18:47:00.000Z"
       }
     ],
     "created_at": "2026-09-03T18:25:00.000Z",
-    "updated_at": "2026-09-03T18:25:00.000Z"
+    "updated_at": "2026-09-03T18:47:00.000Z"
   }
 ]
