@@ -1540,11 +1540,13 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
 
   const totalBase = results.reduce((acc, c) => acc + c.valorBase, 0);
   const totalComis = results.reduce((acc, c) => acc + c.valorComis, 0);
+  const totalGorduraFrete = results.reduce((acc, c) => acc + (c.gorduraFreteEmbut || c.freteEmbutido || 0), 0);
 
   return {
     comissoes: results,
     totalGeralBase: roundVal(totalBase),
     totalGeralComissao: roundVal(totalComis),
+    totalGeralGorduraFrete: roundVal(totalGorduraFrete),
     totalRegistros: results.length
   };
 }

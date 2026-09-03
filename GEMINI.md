@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna "Gordura de Frete Embut." [C5_VLR_FRT] em Comissões e 19 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 23:45 (v8.148 - Inclusão da Coluna "Gordura de Frete Embut." [C5_VLR_FRT] no Relatório de Comissões dos Vendedores e Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna e Card de "Total Gordura de Frete Embut." [C5_VLR_FRT] em Comissões e 19 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 23:50 (v8.149 - Card de "Total Gordura de Frete Embut." substituindo Lançamentos no Relatório de Comissões e Testes 100% Aprovados)  
 
 ---
 
@@ -602,16 +602,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Envelope de paginação padronizado `{ items, pagination: { page, limit: 50, total, totalPages, hasNext, hasPrev } }` com filtros reativos por status e busca debounceada.
     - **Suíte de Testes Automatizados (17 Asserções 100% Aprovadas):**
       - Script `test_bi_autorizacoes.js` validando todos os casos de referência do manual (Deals 19039, 24827 e 23193), extração de URLs com query params e hashes, regras de frete, formatação de notas, DDL/DB, paginação e compilação `vm.Script`.
-45. [x] **Inclusão da Coluna "Gordura de Frete Embut." (`C5_VLR_FRT`) na Tabela de Comissões (`protheus_db.js`, `public/index.html`, `public/app.js`, `test_vendedores_desbloqueio.js`):**
+45. [x] **Inclusão da Coluna e Card "Total Gordura de Frete Embut." (`C5_VLR_FRT`) na Tabela de Comissões (`protheus_db.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_vendedores_desbloqueio.js`):**
     - **Integração no Backend (`protheus_db.js`):**
       - Adicionado `sc5` no mapa de empresas (`SC5160` para OACO, `SC5150` para GSI e `SC5140` para Metal Pleno).
       - Na query T-SQL de `buscarComissoesPeriodo`, incluído `LEFT JOIN ${emp.sc5} C5 ON (C5.C5_NUM = E3.E3_PEDIDO OR C5.C5_NUM = RIGHT('000000' + RTRIM(E3.E3_PEDIDO), 6)) AND C5.D_E_L_E_T_ = ' '` e selecionado `ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT`.
-      - Exportado `freteEmbutido: roundVal(freteEmbutido)` e `gorduraFreteEmbut: roundVal(freteEmbutido)` no payload retornado.
-    - **Renderização e Distribuição no Frontend (`public/index.html` e `public/app.js`):**
-      - Inserida coluna `<th style="width: 13%; text-align: right;">Gordura de Frete Embut.</th>` logo após a coluna `Nome` e imediatamente antes de `Valor Base`.
-      - Larguras calibradas: Vendedor (11%), Empresa (7%), Emissão (9%), Pedido (9%), Cliente (9%), Nome (18%), Gordura de Frete Embut. (13%), Valor Base (12%), Comissão (12%).
-      - Renderização em cada linha com formatação em moeda (`formatCurrency(item.gorduraFreteEmbut || 0)`), garantindo a exibição de `R$ 0,00` quando o valor for zero.
-      - Empty state da tabela atualizado para `colspan="9"`.
+      - Exportado `freteEmbutido: roundVal(freteEmbutido)`, `gorduraFreteEmbut: roundVal(freteEmbutido)` e o somatório `totalGeralGorduraFrete: roundVal(totalGorduraFrete)` no payload retornado.
+    - **Renderização e Distribuição no Frontend (`public/index.html`, `public/app.js`, `public/style.css`):**
+      - **Coluna na Tabela:** Inserida coluna `<th style="width: 13%; text-align: right;">Gordura de Frete Embut.</th>` logo após `Nome` e antes de `Valor Base`. Larguras calibradas somando 100%. Valores zerados mantidos como `R$ 0,00`. Empty state com `colspan="9"`.
+      - **Card de Resumo:** Substituição do card *Lançamentos* pelo card **`🚚 Total Gordura de Frete Embut.`** (`#comisTotalGorduraFrete`), exibindo em destaque a soma total dos fretes embutidos (`C5_VLR_FRT`) de todos os registros do período consultado com suporte visual aos temas escuro e claro.
     - **Testes Automatizados:** Suíte `test_vendedores_desbloqueio.js` atualizada e 100% aprovada (8/8 testes).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)

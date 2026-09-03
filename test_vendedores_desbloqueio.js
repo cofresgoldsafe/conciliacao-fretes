@@ -105,10 +105,14 @@ test('index.html contém a coluna Nome, Gordura de Frete Embut. e larguras calib
   assert.ok(indexCliente > 0 && indexNome > indexCliente, 'A coluna Nome deve vir após a coluna Cliente');
   assert.ok(indexGordura > indexNome, 'A coluna Gordura de Frete Embut. deve vir logo após a coluna Nome');
   assert.ok(indexValorBase > indexGordura, 'A coluna Valor Base deve vir após a coluna Gordura de Frete Embut.');
+
+  // Verifica a substituição do card de Lançamentos pelo card Total Gordura de Frete Embut.
+  assert.ok(html.includes('id="comisTotalGorduraFrete"'), 'index.html deve conter o card #comisTotalGorduraFrete');
+  assert.ok(html.includes('Total Gordura de Frete Embut.'), 'index.html deve conter o título Total Gordura de Frete Embut.');
 });
 
 // 3. Testes de Validação da Lógica do Frontend (app.js)
-test('app.js renderiza coluna Nome, Gordura de Frete Embut. e atualiza colspan para 9', () => {
+test('app.js renderiza coluna Nome, Gordura de Frete Embut., card de total e atualiza colspan para 9', () => {
   const appJsPath = path.join(__dirname, 'public', 'app.js');
   const code = fs.readFileSync(appJsPath, 'utf8');
 
@@ -116,6 +120,7 @@ test('app.js renderiza coluna Nome, Gordura de Frete Embut. e atualiza colspan p
   assert.ok(code.includes('nome20') || code.includes('nomeCliente'), 'app.js deve processar nome20 / nomeCliente');
   assert.ok(code.includes('gorduraFreteEmbut') || code.includes('freteEmbutido'), 'app.js deve renderizar gorduraFreteEmbut / freteEmbutido');
   assert.ok(code.includes('<td>${escapeHtml(item.cliente)}</td>'), 'app.js deve renderizar coluna cliente');
+  assert.ok(code.includes('comisTotalGorduraFrete'), 'app.js deve atualizar #comisTotalGorduraFrete');
 });
 
 test('app.js ajustarEscopoVendedor não trava selects para vendedores', () => {
@@ -140,6 +145,7 @@ test('protheus_db.js executa LEFT JOIN com SA1010 e SC5 na busca de comissões',
   assert.ok(code.includes('nomeCliente: nome20'), 'Deve exportar nomeCliente truncado');
   assert.ok(code.includes('ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT'), 'Deve selecionar C5_VLR_FRT da SC5');
   assert.ok(code.includes('gorduraFreteEmbut: roundVal(freteEmbutido)'), 'Deve exportar gorduraFreteEmbut no resultado');
+  assert.ok(code.includes('totalGeralGorduraFrete'), 'Deve exportar totalGeralGorduraFrete no resultado');
 });
 
 // 5. Testes de Integração HTTP dos Endpoints Desbloqueados

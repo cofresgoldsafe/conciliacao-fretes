@@ -2257,6 +2257,10 @@ body {
   color: #0284c7 !important;
 }
 
+.tab-theme-light #comisTotalGorduraFrete {
+  color: #d97706 !important;
+}
+
 /* Caixas de Estado Vazio (Empty State) */
 .tab-theme-light .empty-results-box {
   background: #f8fafc !important;

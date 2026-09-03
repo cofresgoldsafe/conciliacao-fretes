@@ -2721,6 +2721,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const comisMetaDesc = document.getElementById('comisMetaDesc');
   const comisTotalBase = document.getElementById('comisTotalBase');
   const comisTotalCount = document.getElementById('comisTotalCount');
+  const comisTotalGorduraFrete = document.getElementById('comisTotalGorduraFrete');
 
   async function consultarComissoesAction() {
     const dataIni = comisDataIni ? comisDataIni.value : '';
@@ -2783,6 +2784,11 @@ document.addEventListener('DOMContentLoaded', () => {
       comisMetaDesc.textContent = `Meta: ${formatCurrency(metaTotal)} (${numVendedores} vendedor${numVendedores > 1 ? 'es' : ''})`;
     }
     if (comisTotalBase) comisTotalBase.textContent = formatCurrency(resData.totalGeralBase);
+    
+    const totalGordura = (resData.totalGeralGorduraFrete !== undefined) 
+      ? parseFloat(resData.totalGeralGorduraFrete) 
+      : list.reduce((acc, c) => acc + (parseFloat(c.gorduraFreteEmbut || c.freteEmbutido) || 0), 0);
+    if (comisTotalGorduraFrete) comisTotalGorduraFrete.textContent = formatCurrency(totalGordura);
     if (comisTotalCount) comisTotalCount.textContent = resData.totalRegistros || list.length;
 
     if (comissoesSummaryCards) comissoesSummaryCards.classList.remove('hidden');
