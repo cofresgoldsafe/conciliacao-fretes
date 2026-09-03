@@ -6,3 +6,5 @@ uploads/*
 .DS_Store
 data/*.tmp*
 data/.*.tmp*
+__pycache__/
+*.pyc
