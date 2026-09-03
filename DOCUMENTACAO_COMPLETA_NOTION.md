@@ -1,8 +1,8 @@
 # 📘 Documentação Completa: Plataforma de Apoio GSI Multi-Empresas & Protheus
 
-> **Versão da Documentação:** v8.154 (Homologada em 03/09/2026 10:05)  
+> **Versão da Documentação:** v8.155 (Homologada em 03/09/2026 10:40)  
 > **Documento de Gestão, Arquitetura e Aperfeiçoamento (Pronto para Notion)**  
-> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque e Fechamento Mensal dos Vendedores com Detalhamento de Fretes em Popup Oficial)  
+> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque, Fechamento Mensal 26 a 25 e Filtro Exclusor de CFOPs 5916/6916 de Assistência Técnica na Gordura de Frete)  
 > **Link do Sistema:** `https://conciliacao-fretes.onrender.com`  
 > **Repositório GitHub:** `https://github.com/cofresgoldsafe/conciliacao-fretes`  
 > **Segurança:** Documento livre de credenciais sensíveis, senhas ou tokens de API.
@@ -138,6 +138,17 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
     * *Fórmula:* `Meta Atingida (%) = (Total Faturado / Meta Proporcional) * 100`.
   * De-Para de vendedores: `000004` (Figueiredo), `000064` (Andrea), `000074` (Juliana).
   * Trava de intervalo de 60 dias para proteção do banco de dados.
+* **Sub-aba `[ Gordura Frete ]`:**
+  * Apuração em tempo real de frete cobrado do cliente (`COBCLI = C5_FRETE + C5_VLR_FRT`) confrontado com o custo da transportadora (`SF1.F1_VALMERC`).
+  * Cálculo de Superávit (`> 0`, Verde) e Déficit (`< 0`, Vermelho) por nota e acumulado no ciclo.
+  * Ciclo padrão oficial do dia 26 ao dia 25 com atalhos rápidos (`Ciclo Atual`, `Ciclo Anterior`, `2 Ciclos Atrás`).
+  * **Filtro Exclusor de CFOPs 5916 e 6916 (Assistência Técnica):** Elimina notas fiscais de retorno de conserto/troca, impedindo déficits indevidos decorrentes de custos de transporte de manutenção.
+* **Sub-aba `[ Fechamento Mensal (26 a 25) ]`:**
+  * Painel consolidado mensal de comissões, metas e premiações com job noturno agendado às 00:30 do dia 26.
+  * Dedução de frete embutido (`C5_VLR_FRT`) para cálculo da Base Líquida de Vendas e comissão de 1,3%.
+  * Dedução de títulos inadimplentes (`SE1`) vencidos e em aberto até o fechamento.
+  * **Gamificação e Pódio:** Troféu Dourado 🏆 animado para metas $\ge 100\%$, confetes e ranking com 1º Dourado, 2º Prateado e 3º Bronze.
+  * **Popup de Detalhamento de Fretes (Botão Lupa):** Modal interativo nos Cards 2 e 3 exibindo a totalidade dos fretes com 10 colunas oficiais, filtros de status, busca rápida e exportação CSV.
 
 ---
 
