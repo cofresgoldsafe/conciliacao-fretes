@@ -133,6 +133,7 @@ const {
 
 const {
   calcularCicloFechamentoDisponivel,
+  obterCiclosPredefinidosFechamento,
   normalizarPeriodo,
   consolidarFechamentoMensal,
   executarJobFechamentoMensal,
@@ -1496,7 +1497,7 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
   }
 });
 
-// Retorna o histórico de ciclos de fechamento persistidos
+// Retorna o histórico de ciclos de fechamento (12 últimos ciclos oficiais 26 a 25)
 app.get('/api/vendedores/fechamento/historico', requireAuth, async (req, res) => {
   try {
     const user = getUserFromReq(req);
@@ -1504,14 +1505,39 @@ app.get('/api/vendedores/fechamento/historico', requireAuth, async (req, res) =>
     if (user.role === 'vendedor') {
       codVend = user.vendorCode;
     }
-    const historico = await obterUltimosFechamentosDB({ limite: 12, codVendedor: codVend });
-    res.json({ success: true, data: historico });
+    const historicoBanco = await obterUltimosFechamentosDB({ limite: 12, codVendedor: codVend });
+    const ciclosPredefinidos = obterCiclosPredefinidosFechamento(12);
+
+    // Mapeia registros já gravados no banco/cache
+    const mapHistorico = new Map();
+    (historicoBanco || []).forEach(h => {
+      mapHistorico.set(h.ciclo_id, h);
+    });
+
+    // Mescla ciclos predefinidos com os metadados do banco
+    const listaFinal = ciclosPredefinidos.map(c => {
+      const dbItem = mapHistorico.get(c.cicloId);
+      return {
+        ciclo_id: c.cicloId,
+        cicloId: c.cicloId,
+        periodo_label: c.label,
+        periodoLabel: c.label,
+        data_ini: c.dataIniIso,
+        data_fim: c.dataFimIso,
+        isAtual: c.isAtual,
+        offset: c.offset,
+        persistido: !!dbItem,
+        gerado_em: dbItem ? dbItem.gerado_em : null
+      };
+    });
+
+    res.json({ success: true, data: listaFinal });
   } catch (err) {
     handleServerError(res, err, 'Erro ao listar histórico de fechamentos.');
   }
 });
 
-// Retorna o fechamento de um ciclo específico do histórico
+// Retorna o fechamento de um ciclo específico do histórico (com cálculo automático sob demanda se não gravado)
 app.get('/api/vendedores/fechamento/ciclo/:cicloId', requireAuth, async (req, res) => {
   try {
     const user = getUserFromReq(req);
@@ -1525,24 +1551,30 @@ app.get('/api/vendedores/fechamento/ciclo/:cicloId', requireAuth, async (req, re
       codVend = user.vendorCode;
     }
 
+    // 1. Tenta carregar do banco de dados
+    let fechamento = null;
     if (codVend) {
-      const fechamento = await obterFechamentoPorCicloEVendedorDB(cicloId, codVend);
-      if (!fechamento) {
-        // Se não encontrou no banco, tenta consolidar para esse ciclo específico
-        const parts = cicloId.split('_');
-        if (parts.length === 2) {
-          const resCalc = await consolidarFechamentoMensal({
-            dataIni: parts[0],
-            dataFim: parts[1],
-            codVend,
-            triggeredBy: 'ON_DEMAND',
-            persist: true
-          });
-          return res.json({ success: true, ...resCalc });
-        }
-        return res.status(404).json({ success: false, message: 'Fechamento não encontrado para este ciclo.' });
+      fechamento = await obterFechamentoPorCicloEVendedorDB(cicloId, codVend);
+    }
+    let todosDoCiclo = await obterFechamentosPorCicloDB(cicloId);
+
+    // 2. Se não existir no banco de dados, consolida e persiste automaticamente sob demanda
+    if (!todosDoCiclo || todosDoCiclo.length === 0 || (codVend && !fechamento)) {
+      const parts = cicloId.split('_');
+      if (parts.length === 2) {
+        const resCalc = await consolidarFechamentoMensal({
+          dataIni: parts[0],
+          dataFim: parts[1],
+          codVend,
+          triggeredBy: 'ON_DEMAND',
+          persist: true
+        });
+        return res.json({ success: true, ...resCalc });
       }
-      const todosDoCiclo = await obterFechamentosPorCicloDB(cicloId);
+      return res.status(404).json({ success: false, message: 'Fechamento não encontrado para este ciclo.' });
+    }
+
+    if (codVend) {
       return res.json({
         success: true,
         fechamento,
@@ -1553,8 +1585,14 @@ app.get('/api/vendedores/fechamento/ciclo/:cicloId', requireAuth, async (req, re
       });
     }
 
-    const todos = await obterFechamentosPorCicloDB(cicloId);
-    res.json({ success: true, fechamentos: todos });
+    res.json({
+      success: true,
+      fechamento: todosDoCiclo[0] || null,
+      todosVendedores: todosDoCiclo,
+      faturamentoGlobalPorEmpresa: todosDoCiclo[0]?.faturamento_empresas_json || {},
+      metasSnapshot: todosDoCiclo[0]?.metas_snapshot_json || {},
+      benchmarking: todosDoCiclo[0]?.benchmarking_json || {}
+    });
   } catch (err) {
     handleServerError(res, err, 'Erro ao obter fechamento do ciclo.');
   }

@@ -240,6 +240,13 @@
         currentFechamento = json.fechamentos[0];
       }
 
+      currentCiclo = {
+        cicloId: cicloId,
+        label: json.periodo?.label || currentFechamento?.periodo_label || currentFechamento?.periodoLabel || cicloId,
+        dtIni: json.periodo?.dtIni || currentFechamento?.data_ini || currentFechamento?.dataIni,
+        dtFim: json.periodo?.dtFim || currentFechamento?.data_fim || currentFechamento?.dataFim
+      };
+
       renderizarTelaCompleta();
     } catch (err) {
       mostrarErro(err.message || 'Erro ao carregar fechamento do ciclo selecionado.');
@@ -375,16 +382,78 @@
     });
   }
 
+  function gerarCiclosPredefinidosClient(qtd = 12) {
+    const pad = (n) => String(n).padStart(2, '0');
+    const now = new Date();
+    const ano = now.getFullYear();
+    const mes = now.getMonth();
+    const dia = now.getDate();
+    const hora = now.getHours();
+    const minuto = now.getMinutes();
+
+    const isAposFechamentoDia26 = (dia > 26) || (dia === 26 && (hora > 0 || minuto >= 30));
+    let endYear = ano;
+    let endMonth = isAposFechamentoDia26 ? mes : mes - 1;
+
+    const ciclos = [];
+    for (let offset = 0; offset < qtd; offset++) {
+      const dIni = new Date(endYear, endMonth - offset - 1, 26);
+      const dFim = new Date(endYear, endMonth - offset, 25);
+
+      const sYear = dIni.getFullYear();
+      const sMonth = dIni.getMonth() + 1;
+      const eYear = dFim.getFullYear();
+      const eMonth = dFim.getMonth() + 1;
+
+      const dataIniIso = `${sYear}-${pad(sMonth)}-26`;
+      const dataFimIso = `${eYear}-${pad(eMonth)}-25`;
+      const dataIniBR = `26/${pad(sMonth)}/${sYear}`;
+      const dataFimBR = `25/${pad(eMonth)}/${eYear}`;
+      const cicloId = `${dataIniIso}_${dataFimIso}`;
+      const label = `${dataIniBR} a ${dataFimBR}`;
+
+      ciclos.push({
+        ciclo_id: cicloId,
+        cicloId: cicloId,
+        periodo_label: label,
+        periodoLabel: label,
+        data_ini: dataIniIso,
+        data_fim: dataFimIso,
+        isAtual: offset === 0,
+        offset: offset
+      });
+    }
+    return ciclos;
+  }
+
   function renderizarSelectHistorico() {
     const select = document.getElementById('fechamentoHistoricoSelect');
     if (!select) return;
 
-    select.innerHTML = '<option value="">📌 Ciclo Atual (Ativo)</option>';
-    currentHistorico.forEach(h => {
+    let lista = currentHistorico;
+    if (!lista || lista.length === 0) {
+      lista = gerarCiclosPredefinidosClient(12);
+    }
+
+    const currentCicloId = currentFechamento ? (currentFechamento.ciclo_id || currentFechamento.cicloId) : (currentCiclo ? currentCiclo.cicloId : '');
+
+    select.innerHTML = '';
+    lista.forEach((h, idx) => {
       const opt = document.createElement('option');
-      opt.value = h.ciclo_id;
-      opt.textContent = `${h.periodo_label} (Gerado em ${new Date(h.gerado_em).toLocaleDateString('pt-BR')})`;
-      if (currentFechamento && (currentFechamento.ciclo_id === h.ciclo_id || currentFechamento.cicloId === h.ciclo_id)) {
+      const cId = h.ciclo_id || h.cicloId;
+      opt.value = cId;
+
+      let prefix = '';
+      if (h.isAtual || idx === 0) {
+        prefix = '📌 Ciclo Atual:';
+      } else if (h.offset === 1 || idx === 1) {
+        prefix = '⏮️ Mês Anterior:';
+      } else {
+        prefix = '⏮️ Ciclo:';
+      }
+
+      opt.textContent = `${prefix} ${h.periodo_label || h.periodoLabel}`;
+      if (currentCicloId && currentCicloId === cId) {
         opt.selected = true;
       }
       select.appendChild(opt);
@@ -834,6 +903,9 @@
     if (tabBtnConfigMetas) {
       tabBtnConfigMetas.addEventListener('click', carregarConfigMetasUI);
     }
+
+    // Renderiza o select de histórico imediatamente com os ciclos padrão
+    renderizarSelectHistorico();
   }
 
   // Inicializa quando o DOM estiver pronto

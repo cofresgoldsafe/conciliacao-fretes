@@ -144,6 +144,59 @@ function calcularCicloFechamentoDisponivel(refDate) {
 }
 
 /**
+ * Retorna os últimos N ciclos oficiais de fechamento (26 a 25)
+ * @param {number} [qtd=12] Quantidade de ciclos a retornar
+ * @param {Date|string} [refDate] Data de referência
+ */
+function obterCiclosPredefinidosFechamento(qtd = 12, refDate) {
+  const c0 = calcularCicloFechamentoDisponivel(refDate);
+  const parts = c0.dataFimIso.split('-');
+  const endYear = parseInt(parts[0], 10);
+  const endMonth = parseInt(parts[1], 10) - 1; // 0-based
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const ciclos = [];
+
+  for (let offset = 0; offset < qtd; offset++) {
+    const dIni = new Date(endYear, endMonth - offset - 1, 26);
+    const dFim = new Date(endYear, endMonth - offset, 25);
+
+    const sYear = dIni.getFullYear();
+    const sMonth = dIni.getMonth() + 1;
+    const eYear = dFim.getFullYear();
+    const eMonth = dFim.getMonth() + 1;
+
+    const dataIniIso = `${sYear}-${pad(sMonth)}-26`;
+    const dataFimIso = `${eYear}-${pad(eMonth)}-25`;
+    const dtIni = `${sYear}${pad(sMonth)}26`;
+    const dtFim = `${eYear}${pad(eMonth)}25`;
+    const dataIniBR = `26/${pad(sMonth)}/${sYear}`;
+    const dataFimBR = `25/${pad(eMonth)}/${eYear}`;
+    const cicloId = `${dataIniIso}_${dataFimIso}`;
+    const label = `${dataIniBR} a ${dataFimBR}`;
+
+    ciclos.push({
+      cicloId,
+      ciclo_id: cicloId,
+      label,
+      periodoLabel: label,
+      periodo_label: label,
+      dataIniIso,
+      dataFimIso,
+      data_ini: dataIniIso,
+      data_fim: dataFimIso,
+      dtIni,
+      dtFim,
+      dataIniBR,
+      dataFimBR,
+      isAtual: offset === 0,
+      offset
+    });
+  }
+  return ciclos;
+}
+
+/**
  * Converte datas livres em objeto de período estruturado
  */
 function normalizarPeriodo(dataIni, dataFim) {
@@ -709,6 +762,7 @@ async function executarJobFechamentoMensal({ force = false } = {}) {
 
 module.exports = {
   calcularCicloFechamentoDisponivel,
+  obterCiclosPredefinidosFechamento,
   normalizarPeriodo,
   buscarVendasComissoesPeriodo,
   buscarFretesEmbutidosPeriodo,

@@ -20,6 +20,7 @@ const vm = require('vm');
 
 const {
   calcularCicloFechamentoDisponivel,
+  obterCiclosPredefinidosFechamento,
   normalizarPeriodo,
   calcularMetasEPremios,
   calcularComissoesEPremiosVendedor,
@@ -30,18 +31,19 @@ console.log('🧪 Iniciando Suíte de Testes: Fechamento Mensal dos Vendedores (
 let totalTests = 0;
 let passedTests = 0;
 
-function runTest(nome, fn) {
+function runTest(name, fn) {
   totalTests++;
   try {
     fn();
-    console.log(`  ✅ [PASS] ${nome}`);
     passedTests++;
+    console.log(`  ✅ [PASS] ${name}`);
   } catch (err) {
-    console.error(`  ❌ [FAIL] ${nome}:`, err.message);
+    console.error(`  ❌ [FAIL] ${name}:`, err.message);
+    process.exitCode = 1;
   }
 }
 
-// ─── TESTE 1: Regra Temporal do Ciclo de Fechamento (Antes e Depois do Dia 26) ─
+// ─── TESTE 1: Regras Temporais dos Ciclos ────────────────────────────────────
 
 runTest('1.1 - No dia 25 às 23:59:59 deve exibir o ciclo anterior encerrado', () => {
   // Simula 25/08/2026 às 23:59:59
@@ -74,6 +76,18 @@ runTest('1.3 - No dia 02/09 deve manter o ciclo 26/07 a 25/08 até dia 25/09', (
   assert.strictEqual(ciclo02Set.dtIni, '20260726');
   assert.strictEqual(ciclo02Set.dtFim, '20260825');
   assert.strictEqual(ciclo02Set.cicloId, '2026-07-26_2026-08-25');
+});
+
+runTest('1.4 - obterCiclosPredefinidosFechamento deve retornar exatamente os últimos 12 ciclos mensais (26 a 25)', () => {
+  const ref = new Date('2026-09-03T10:00:00-03:00');
+  const lista = obterCiclosPredefinidosFechamento(12, ref);
+  assert.strictEqual(lista.length, 12, 'Deve conter exatamente 12 ciclos');
+  assert.strictEqual(lista[0].cicloId, '2026-07-26_2026-08-25', 'Ciclo 0 deve ser o atual');
+  assert.strictEqual(lista[0].isAtual, true);
+  assert.strictEqual(lista[1].cicloId, '2026-06-26_2026-07-25', 'Ciclo 1 deve ser o mês passado');
+  assert.strictEqual(lista[1].label, '26/06/2026 a 25/07/2026');
+  assert.strictEqual(lista[2].cicloId, '2026-05-26_2026-06-25', 'Ciclo 2 deve ser 2 meses atrás');
+  assert.strictEqual(lista[2].label, '26/05/2026 a 25/06/2026');
 });
 
 // ─── TESTE 2: Metas de Vendas e Premiações ────────────────────────────────────
