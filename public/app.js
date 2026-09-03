@@ -2793,7 +2793,7 @@ document.addEventListener('DOMContentLoaded', () => {
     comissoesTableBody.innerHTML = '';
 
     if (list.length === 0) {
-      comissoesTableBody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
+      comissoesTableBody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Nenhum lançamento de comissão encontrado para o período e vendedor selecionados.</td></tr>`;
       return;
     }
 
@@ -2815,6 +2815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><code>${escapeHtml(item.pedido)}</code></td>
         <td>${escapeHtml(item.cliente)}</td>
         <td title="${escapeHtml(item.nomeClienteCompleto || item.nomeCliente || '')}">${escapeHtml(nome20)}</td>
+        <td style="text-align: right; font-weight: 500;">${formatCurrency(item.gorduraFreteEmbut !== undefined ? item.gorduraFreteEmbut : (item.freteEmbutido || 0))}</td>
         <td style="text-align: right; font-weight: 500;">${formatCurrency(item.valorBase)}</td>
         <td style="text-align: right; font-weight: 700; color: #10b981;">${formatCurrency(item.valorComis)}</td>
       `;

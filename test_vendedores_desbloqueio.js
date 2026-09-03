@@ -86,28 +86,35 @@ test('Regra de Truncamento do Nome do Cliente em 20 caracteres (com espaços)', 
 });
 
 // 2. Testes de Validação do HTML de Comissões (index.html)
-test('index.html contém a coluna Nome ao lado de Cliente e largura de Vendedor reduzida', () => {
+test('index.html contém a coluna Nome, Gordura de Frete Embut. e larguras calibradas', () => {
   const indexPath = path.join(__dirname, 'public', 'index.html');
   const html = fs.readFileSync(indexPath, 'utf8');
 
-  // Verifica que existe o thead de comissões com a coluna Nome
-  assert.ok(html.includes('<th style="width: 22%;">Nome</th>'), 'Falta a coluna Nome com 22% no thead');
-  assert.ok(html.includes('<th style="width: 12%;">Vendedor</th>'), 'A largura da coluna Vendedor deve ter sido reduzida para 12%');
-  assert.ok(html.includes('<th style="width: 11%;">Cliente</th>'), 'A coluna Cliente deve estar presente');
+  // Verifica que existe o thead de comissões com as colunas Nome e Gordura de Frete Embut.
+  assert.ok(html.includes('<th style="width: 18%;">Nome</th>'), 'Falta a coluna Nome com 18% no thead');
+  assert.ok(html.includes('<th style="width: 13%; text-align: right;">Gordura de Frete Embut.</th>'), 'Falta a coluna Gordura de Frete Embut. no thead');
+  assert.ok(html.includes('<th style="width: 11%;">Vendedor</th>'), 'A largura da coluna Vendedor deve ter 11%');
+  assert.ok(html.includes('<th style="width: 9%;">Cliente</th>'), 'A coluna Cliente deve ter 9%');
 
-  // Verifica a ordem das colunas no thead
-  const indexCliente = html.indexOf('<th style="width: 11%;">Cliente</th>');
-  const indexNome = html.indexOf('<th style="width: 22%;">Nome</th>');
-  assert.ok(indexCliente > 0 && indexNome > indexCliente, 'A coluna Nome deve vir imediatamente ao lado/após a coluna Cliente');
+  // Verifica a ordem das colunas no thead: Cliente -> Nome -> Gordura de Frete Embut. -> Valor Base
+  const indexCliente = html.indexOf('<th style="width: 9%;">Cliente</th>');
+  const indexNome = html.indexOf('<th style="width: 18%;">Nome</th>');
+  const indexGordura = html.indexOf('<th style="width: 13%; text-align: right;">Gordura de Frete Embut.</th>');
+  const indexValorBase = html.indexOf('<th style="width: 12%; text-align: right;">Valor Base</th>');
+
+  assert.ok(indexCliente > 0 && indexNome > indexCliente, 'A coluna Nome deve vir após a coluna Cliente');
+  assert.ok(indexGordura > indexNome, 'A coluna Gordura de Frete Embut. deve vir logo após a coluna Nome');
+  assert.ok(indexValorBase > indexGordura, 'A coluna Valor Base deve vir após a coluna Gordura de Frete Embut.');
 });
 
 // 3. Testes de Validação da Lógica do Frontend (app.js)
-test('app.js renderiza coluna Nome e atualiza colspan para 8', () => {
+test('app.js renderiza coluna Nome, Gordura de Frete Embut. e atualiza colspan para 9', () => {
   const appJsPath = path.join(__dirname, 'public', 'app.js');
   const code = fs.readFileSync(appJsPath, 'utf8');
 
-  assert.ok(code.includes('colspan="8"'), 'Empty state de comissões deve usar colspan="8"');
+  assert.ok(code.includes('colspan="9"'), 'Empty state de comissões deve usar colspan="9"');
   assert.ok(code.includes('nome20') || code.includes('nomeCliente'), 'app.js deve processar nome20 / nomeCliente');
+  assert.ok(code.includes('gorduraFreteEmbut') || code.includes('freteEmbutido'), 'app.js deve renderizar gorduraFreteEmbut / freteEmbutido');
   assert.ok(code.includes('<td>${escapeHtml(item.cliente)}</td>'), 'app.js deve renderizar coluna cliente');
 });
 
@@ -124,13 +131,15 @@ test('app.js ajustarEscopoVendedor não trava selects para vendedores', () => {
 });
 
 // 4. Testes de Validação da Query SQL em protheus_db.js
-test('protheus_db.js executa LEFT JOIN com SA1010 na busca de comissões', () => {
+test('protheus_db.js executa LEFT JOIN com SA1010 e SC5 na busca de comissões', () => {
   const protheusPath = path.join(__dirname, 'protheus_db.js');
   const code = fs.readFileSync(protheusPath, 'utf8');
 
   assert.ok(code.includes('LEFT JOIN SA1010 A1'), 'protheus_db.js deve fazer LEFT JOIN com SA1010');
   assert.ok(code.includes('RTRIM(ISNULL(A1.A1_NOME, \'\')) AS NOME_CLIENTE'), 'Deve selecionar A1_NOME como NOME_CLIENTE');
   assert.ok(code.includes('nomeCliente: nome20'), 'Deve exportar nomeCliente truncado');
+  assert.ok(code.includes('ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT'), 'Deve selecionar C5_VLR_FRT da SC5');
+  assert.ok(code.includes('gorduraFreteEmbut: roundVal(freteEmbutido)'), 'Deve exportar gorduraFreteEmbut no resultado');
 });
 
 // 5. Testes de Integração HTTP dos Endpoints Desbloqueados

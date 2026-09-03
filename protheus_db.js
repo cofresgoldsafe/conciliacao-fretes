@@ -1463,9 +1463,9 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
   const cleanCodVend = sanitizeSqlParam(codVend);
 
   const empresas = [
-    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160" },
-    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", se3: "SE3150" },
-    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", se3: "SE3140" }
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", se3: "SE3160", sc5: "SC5160" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", se3: "SE3150", sc5: "SC5150" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", se3: "SE3140", sc5: "SC5140" }
   ];
 
   const results = [];
@@ -1485,11 +1485,15 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
           RTRIM(ISNULL(A1.A1_NOME, '')) AS NOME_CLIENTE,
           ISNULL(E3.E3_BASE, 0) AS E3_BASE,
           ISNULL(E3.E3_PORC, 0) AS E3_PORC,
-          ISNULL(E3.E3_COMIS, 0) AS E3_COMIS
+          ISNULL(E3.E3_COMIS, 0) AS E3_COMIS,
+          ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT
         FROM ${emp.se3} E3
         LEFT JOIN SA1010 A1
           ON (A1.A1_COD = E3.E3_CODCLI OR A1.A1_COD = RIGHT('000000' + RTRIM(E3.E3_CODCLI), 6))
          AND A1.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sc5} C5
+          ON (C5.C5_NUM = E3.E3_PEDIDO OR C5.C5_NUM = RIGHT('000000' + RTRIM(E3.E3_PEDIDO), 6))
+         AND C5.D_E_L_E_T_ = ' '
         WHERE E3.E3_EMISSAO >= '${cleanDataIni}' 
           AND E3.E3_EMISSAO <= '${cleanDataFim}'
           ${vendFilter}
@@ -1503,6 +1507,7 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
           const valorBase = parseFloat(row.E3_BASE || 0);
           const percComis = parseFloat(row.E3_PORC || 0);
           const valorComis = parseFloat(row.E3_COMIS || 0);
+          const freteEmbutido = parseFloat(row.C5_VLR_FRT || 0);
           const rawNome = (row.NOME_CLIENTE || '').trim();
           const nome20 = rawNome.length > 20 ? rawNome.substring(0, 20) : rawNome;
 
@@ -1519,7 +1524,9 @@ async function buscarComissoesPeriodo({ dataIni, dataFim, codVend }) {
             nomeClienteCompleto: rawNome || '-',
             valorBase: roundVal(valorBase),
             percComis: roundVal(percComis),
-            valorComis: roundVal(valorComis)
+            valorComis: roundVal(valorComis),
+            freteEmbutido: roundVal(freteEmbutido),
+            gorduraFreteEmbut: roundVal(freteEmbutido)
           });
         }
       }
