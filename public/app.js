@@ -3893,6 +3893,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalEstoque = document.getElementById('modalEstoqueDetalhes');
     const modalPedido = document.getElementById('pedidoDetalhesModal');
     const modalPedCompra = document.getElementById('modalPedidoCompraDetalhes');
+    const modalFretes = document.getElementById('modalFretesFechamento');
     if (modalEstoque) {
       if (isLight) modalEstoque.classList.add('modal-theme-light');
       else modalEstoque.classList.remove('modal-theme-light');
@@ -3904,6 +3905,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalPedCompra) {
       if (isLight) modalPedCompra.classList.add('modal-theme-light');
       else modalPedCompra.classList.remove('modal-theme-light');
+    }
+    if (modalFretes) {
+      if (isLight) modalFretes.classList.add('modal-theme-light');
+      else modalFretes.classList.remove('modal-theme-light');
     }
 
     if (themeIconEstoque) themeIconEstoque.textContent = isLight ? '🌙' : '☀️';

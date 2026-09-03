@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.153 (Homologada em 03/09/2026 09:30)  
+> **Versão da Documentação:** v8.154 (Homologada em 03/09/2026 10:05)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas com Calibração 0 a 1ª Faixa, Emojis Dinâmicos 🏆/😞, Card de Desempenho e Ranking da Equipe 1º Dourado, 2º Prateado, 3º Bronze e 17 Novas Asserções Automatizadas 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 09:30 (v8.153 - Cards Gamificados de Metas Vendas/Frete de 0 à 1ª Faixa, Troféu vs Cara Triste e Ranking da Equipe Ouro/Prata/Bronze Homologados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas com Calibração 0 a 1ª Faixa, Emojis Dinâmicos 🏆/😞, Card de Desempenho e Ranking da Equipe 1º Dourado, 2º Prateado, 3º Bronze, Popup de Detalhamento de Fretes no Card de Gordura com 10 Colunas Oficiais, Busca, Ordenação, Exportação CSV e 16 Novas Asserções Automatizadas 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 10:05 (v8.154 - Popup de Detalhamento de Fretes no Card de Gordura de Frete do Fechamento Mensal com Colunas Oficiais e Exportação CSV Homologado)  
 
 ---
 
@@ -651,7 +651,25 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
         - **4º+ Lugar:** Número neutro (`#94a3b8`) estimulando o avanço rumo ao Top 3.
       - Bloco comparativo com média de vendas da equipe e badge de percentual (▲ / ▼).
     - **Suíte de Testes Automatizados:** Script dedicado `test_fechamento_cards_gamificados.js` com 17 asserções automatizadas cobrindo calibrações matemáticas, cenários de trava 85%, ordenação de pódio e sintaxe (100% aprovados).
-50. [ ] **Evolução e Regras de Negócio do Módulo de Inadimplentes no Fechamento dos Vendedores (`fechamento_vendedores_engine.js`, `public/js/fechamento_vendedores.js`, `test_fechamento_vendedores.js`):**
+50. [x] **Botão Lupa & Popup Grande de Detalhamento de Gordura de Frete no Fechamento Mensal dos Vendedores (`public/index.html`, `public/style.css`, `public/js/fechamento_vendedores.js`, `public/app.js`, `public/js/vendedores.js`, `test_modal_fretes_fechamento.js`):**
+    - **Demanda Operacional & Solução:**
+      - Atendendo à necessidade dos vendedores e gestores de auditar exatamente quais conhecimentos de frete geraram o valor apurado no card **`🚚 Gordura de Frete (Gatilho ≥ 85%)`**, foi implementado o botão `🔍 Ver Fretes` no cabeçalho do Card 2 e a mini-lupa no Card 3 (`cardFechamentoGorduraVal`).
+    - **Modal Drilldown em Formato Oficial (10 Colunas Idênticas à Tela Gordura Frete):**
+      - Popup responsivo (`#modalFretesFechamento`) em largura estendida (`max-width: 1120px; width: 95%`) com as 10 colunas oficiais: *Empresa, Emissão, NF-e, Ped. Venda, Cliente, Vendedor, Transportadora, Cobrado (R$), Custo (R$) e Gordura (R$)*.
+      - Badges de alto contraste para superávit (`.badge-gordura-pos`), déficit (`.badge-gordura-neg`) e neutro (`.badge-gordura-neu`).
+    - **Mini KPIs & Filtros Dinâmicos no Modal:**
+      - 4 Cards de resumo no topo: *Frete Cobrado (COBCLI), Custo Real (Transportadora), Gordura de Frete Líquida* e *Total de Conhecimentos/Notas* com discriminação de superávits vs déficits.
+      - Barra de pesquisa rápida textual filtrando simultaneamente por cliente, nota, pedido e transportadora.
+      - Filtro por status (*Todos, Apenas Superávit, Apenas Déficit, Neutro*).
+      - Ordenação interativa bidirecional (crescente/decrescente) em todas as colunas clicando no cabeçalho.
+    - **Exportação CSV para Excel:**
+      - Botão `📥 Exportar CSV (Excel)` que gera arquivo `.csv` formatado no padrão brasileiro (delimitador `;`, valores com vírgula e cabeçalho completo) com codificação UTF-8 com BOM (`\uFEFF`), iniciando download automático imediato.
+    - **Arquitetura Resiliente, Cache em Memória & Tema Claro:**
+      - Consulta centralizada no motor `POST /api/vendedores/gordura-frete` passando as datas do ciclo e o vendedor selecionado (com proteção RBAC).
+      - Cache em memória efêmero (`fretesFechamentoCache`) garantindo abertura instantânea em reconsultas do mesmo ciclo.
+      - Suporte total aos Modos Escuro e Claro via `#modalFretesFechamento.modal-theme-light` integrado a `aplicarTemaVendedores`.
+    - **Suíte de Testes Automatizados:** Script dedicado `test_modal_fretes_fechamento.js` com 16 asserções automatizadas cobrindo elementos de UI, regras CSS, compilação sintática via `vm.Script` e lógica em memória (100% aprovados).
+51. [ ] **Evolução e Regras de Negócio do Módulo de Inadimplentes no Fechamento dos Vendedores (`fechamento_vendedores_engine.js`, `public/js/fechamento_vendedores.js`, `test_fechamento_vendedores.js`):**
     - **Contexto & Escopo:**
       - Revisão aprofundada do cálculo e das deduções de títulos inadimplentes (`SE1140`, `SE1150`, `SE1160`) na apuração das comissões mensais dos vendedores.
       - **Tópicos Prioritários para Tratamento em Breve:**

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.153">
+  <link rel="stylesheet" href="style.css?v=8.154">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 03/09/2026 09:35 (v8.153 - Cards gamificados de metas 0 à 1ª faixa, emojis e ranking da equipe)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 03/09/2026 10:01 (v8.154 - Popup Detalhamento de Gordura de Frete no Fechamento Mensal dos Vendedores)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -2179,13 +2179,18 @@
               <!-- 2. Card Meta de Gordura de Frete -->
               <div id="fechamentoCardFrete" class="fechamento-gamificado-card">
                 <div>
-                  <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.75rem;">
-                    <div id="fechamentoFreteIcon" style="font-size: 2.8rem; line-height: 1; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">🏆</div>
-                    <div style="min-width: 0; flex: 1;">
-                      <span style="color: #10b981; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: block;" title="Prêmio válido exclusivamente para vendedores com &ge; 85% da meta de vendas atingida">🚚 Gordura de Frete <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 500;">(Gatilho &ge; 85%)</span></span>
-                      <div id="fechamentoProgressLabelFrete" style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; margin-top: 2px;">Superávit: R$ 0,00</div>
-                      <div id="fechamentoFreteSub" style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">1ª Faixa da Meta: R$ 700,00</div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.85rem; margin-bottom: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.85rem; min-width: 0; flex: 1;">
+                      <div id="fechamentoFreteIcon" style="font-size: 2.8rem; line-height: 1; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">🏆</div>
+                      <div style="min-width: 0; flex: 1;">
+                        <span style="color: #10b981; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: block;" title="Prêmio válido exclusivamente para vendedores com &ge; 85% da meta de vendas atingida">🚚 Gordura de Frete <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 500;">(Gatilho &ge; 85%)</span></span>
+                        <div id="fechamentoProgressLabelFrete" style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; margin-top: 2px;">Superávit: R$ 0,00</div>
+                        <div id="fechamentoFreteSub" style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">1ª Faixa da Meta: R$ 700,00</div>
+                      </div>
                     </div>
+                    <button type="button" id="btnAbrirModalFretesCard" class="btn-fechamento-lupa" title="Ver fretes detalhados que geraram este resultado">
+                      🔍 <span class="btn-lupa-label">Ver Fretes</span>
+                    </button>
                   </div>
 
                   <!-- Barra de Progresso (0 a 1ª Faixa da Meta = R$ 700,00) -->
@@ -2260,7 +2265,10 @@
             <div class="stat-card" style="background: rgba(15, 23, 42, 0.6); padding: 1.15rem; border-radius: 10px; border: 1px solid var(--panel-border);">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">🚚 Gordura de Frete Líq.</span>
-                <span style="font-size: 1.1rem;">🚛</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <button type="button" id="btnAbrirModalFretesStatCard" class="btn-fechamento-lupa-mini" title="Ver fretes detalhados deste fechamento">🔍</button>
+                  <span style="font-size: 1.1rem;">🚛</span>
+                </div>
               </div>
               <div id="cardFechamentoGorduraVal" style="font-size: 1.55rem; font-weight: 800; color: #10b981; font-family: 'JetBrains Mono', monospace;">R$ 0,00</div>
               <div id="cardFechamentoGorduraSub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">
@@ -4312,6 +4320,148 @@
     </div>
   </div>
 
+  <!-- Modal Drilldown: Detalhamento de Fretes do Fechamento Mensal -->
+  <div id="modalFretesFechamento" class="modal hidden">
+    <div class="modal-content modal-large" style="max-width: 1120px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
+      <!-- Header do Modal -->
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.3rem;">🚚</span>
+            <h3 id="modalFretesTitulo" style="margin: 0; color: #10b981; font-size: 1.15rem;">Detalhamento da Gordura de Frete</h3>
+          </div>
+          <div id="modalFretesSubtitulo" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">
+            Vendedor: <strong id="modalFretesVendNome" style="color: #f8fafc;">-</strong> | Período: <span id="modalFretesPeriodo">-</span>
+          </div>
+        </div>
+        <button id="btnCloseModalFretes" class="close-btn" title="Fechar (Esc)">&times;</button>
+      </div>
+
+      <!-- Mini KPIs no Topo do Modal -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; margin: 0.85rem 0;">
+        <div class="modal-fretes-kpi" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Frete Cobrado (COBCLI)</div>
+          <div id="modalFretesKpiCobrado" style="font-weight: 800; color: #f1f5f9; font-size: 1.1rem; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">R$ 0,00</div>
+        </div>
+        <div class="modal-fretes-kpi" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Custo Real (Transp.)</div>
+          <div id="modalFretesKpiCusto" style="font-weight: 800; color: #94a3b8; font-size: 1.1rem; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">R$ 0,00</div>
+        </div>
+        <div class="modal-fretes-kpi" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border); border-left: 3px solid #10b981;">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Gordura de Frete Líquida</div>
+          <div id="modalFretesKpiGordura" style="font-weight: 800; color: #10b981; font-size: 1.1rem; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">R$ 0,00</div>
+        </div>
+        <div class="modal-fretes-kpi" style="background: rgba(15, 23, 42, 0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Conhecimentos / Notas</div>
+          <div style="display: flex; align-items: baseline; gap: 6px; margin-top: 2px;">
+            <span id="modalFretesKpiNotasCount" style="font-weight: 800; color: #38bdf8; font-size: 1.1rem; font-family: 'JetBrains Mono', monospace;">0</span>
+            <span id="modalFretesKpiSuperDef" style="font-size: 0.73rem; color: var(--text-muted);">(0 sup / 0 déf)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros Rápidos dentro do Modal -->
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--panel-border); border-radius: 6px;">
+        <div style="flex: 1; min-width: 240px;">
+          <input type="text" id="modalFretesBuscaInput" class="form-control form-control-sm" placeholder="🔍 Filtrar por Cliente, NF-e, Pedido, Transportadora..." style="width: 100%; font-size: 0.82rem;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <select id="modalFretesStatusSelect" class="form-control form-control-sm" style="font-size: 0.82rem; width: auto;">
+            <option value="">Status: Todos</option>
+            <option value="SUPERAVIT">🟢 Apenas Superávit (&gt; 0)</option>
+            <option value="DEFICIT">🔴 Apenas Déficit (&lt; 0)</option>
+            <option value="NEUTRO">⚪ Neutro (R$ 0,00)</option>
+          </select>
+          <span id="modalFretesCountBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.75rem; padding: 4px 8px; white-space: nowrap;">0 fretes</span>
+        </div>
+      </div>
+
+      <!-- Estado de Carregamento (Spinner) -->
+      <div id="modalFretesLoading" class="hidden" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+        <div class="loading-spinner" style="display: inline-block; width: 32px; height: 32px; border: 3px solid rgba(16, 185, 129, 0.2); border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <div style="margin-top: 0.75rem; font-size: 0.85rem; font-weight: 600; color: #10b981;">Consultando fretes no Protheus...</div>
+      </div>
+
+      <!-- Tabela Responsiva com as 10 Colunas Oficiais (Idênticas à tela Gordura Frete) -->
+      <div id="modalFretesTableContainer" style="flex: 1; overflow-y: auto; border: 1px solid var(--panel-border); border-radius: 6px; min-height: 250px;">
+        <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+          <thead style="position: sticky; top: 0; background: var(--panel-bg, #0f172a); z-index: 2;">
+            <tr>
+              <th style="width: 7%; text-align: center;">Empresa</th>
+              <th id="thSortModalFreteData" style="width: 9%; cursor: pointer; user-select: none;" title="Ordenar por Data">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                  <span>Emissão</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteNF" style="width: 9%; cursor: pointer; user-select: none;" title="Ordenar por NF">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                  <span>NF-e</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFretePed" style="width: 9%; cursor: pointer; user-select: none;" title="Ordenar por Pedido">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                  <span>Ped. Venda</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteCli" style="width: 20%; cursor: pointer; user-select: none;" title="Ordenar por Cliente">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                  <span>Cliente</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteVend" style="width: 12%; cursor: pointer; user-select: none;" title="Ordenar por Vendedor">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                  <span>Vendedor</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteTransp" style="width: 12%; cursor: pointer; user-select: none;" title="Ordenar por Transportadora">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                  <span>Transportadora</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteCobrado" style="width: 10%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Frete Cobrado">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                  <span>Cobrado (R$)</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteCusto" style="width: 10%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Custo Real">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                  <span>Custo (R$)</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+              <th id="thSortModalFreteSaldo" style="width: 11%; text-align: right; cursor: pointer; user-select: none;" title="Ordenar por Gordura de Frete">
+                <div style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                  <span>Gordura (R$)</span>
+                  <span class="modal-frete-sort-icon" style="font-size: 0.8rem; color: var(--text-muted);">↕</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="modalFretesTableBody">
+            <!-- Linhas inseridas via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Rodapé do Modal -->
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.85rem; border-top: 1px solid var(--panel-border); padding-top: 0.75rem;">
+        <button type="button" id="btnExportarCsvModalFretes" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+          📥 Exportar CSV (Excel)
+        </button>
+        <button type="button" id="btnFecharModalFretes" class="btn btn-primary btn-sm">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Configuração Credenciais Banco Inter -->
   <div id="interConfigModal" class="modal hidden">
     <div class="modal-content modal-large" style="max-width: 750px;">
@@ -5118,12 +5268,12 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.153"></script>
-  <script src="js/bi_indices.js?v=8.153"></script>
-  <script src="js/bi_autorizacoes.js?v=8.153"></script>
-  <script src="js/gordura_frete.js?v=8.153"></script>
-  <script src="js/fechamento_vendedores.js?v=8.153"></script>
-  <script type="module" src="js/tarefas.js?v=8.153"></script>
-  <script src="app.js?v=8.153"></script>
+  <script src="js/bi.js?v=8.154"></script>
+  <script src="js/bi_indices.js?v=8.154"></script>
+  <script src="js/bi_autorizacoes.js?v=8.154"></script>
+  <script src="js/gordura_frete.js?v=8.154"></script>
+  <script src="js/fechamento_vendedores.js?v=8.154"></script>
+  <script type="module" src="js/tarefas.js?v=8.154"></script>
+  <script src="app.js?v=8.154"></script>
 </body>
 </html>

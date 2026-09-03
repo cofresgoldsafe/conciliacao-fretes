@@ -1,8 +1,8 @@
 # 📘 Documentação Completa: Plataforma de Apoio GSI Multi-Empresas & Protheus
 
-> **Versão da Documentação:** v8.153 (Homologada em 03/09/2026 09:30)  
+> **Versão da Documentação:** v8.154 (Homologada em 03/09/2026 10:05)  
 > **Documento de Gestão, Arquitetura e Aperfeiçoamento (Pronto para Notion)**  
-> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA e Job de Estoque)  
+> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque e Fechamento Mensal dos Vendedores com Detalhamento de Fretes em Popup Oficial)  
 > **Link do Sistema:** `https://conciliacao-fretes.onrender.com`  
 > **Repositório GitHub:** `https://github.com/cofresgoldsafe/conciliacao-fretes`  
 > **Segurança:** Documento livre de credenciais sensíveis, senhas ou tokens de API.

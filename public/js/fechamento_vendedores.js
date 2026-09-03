@@ -15,6 +15,26 @@
   let isLoading = false;
   let confettiAnimationId = null;
 
+  // Estado do Modal de Detalhamento de Fretes
+  let modalFretesData = [];
+  let modalFretesKpis = null;
+  let modalSortColumn = 'dataEmissao';
+  let modalSortAsc = false;
+  const fretesFechamentoCache = new Map();
+
+  function formatarDataBRLocal(dtStr) {
+    if (!dtStr) return '-';
+    const clean = String(dtStr).replace(/\D/g, '');
+    if (clean.length === 8) {
+      return `${clean.slice(6, 8)}/${clean.slice(4, 6)}/${clean.slice(0, 4)}`;
+    }
+    if (String(dtStr).includes('-')) {
+      const parts = String(dtStr).split('-');
+      if (parts.length === 3) return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+    }
+    return String(dtStr);
+  }
+
   function getToken() {
     try {
       const rawSession = localStorage.getItem('conciliacao_fretes_session');
@@ -1067,6 +1087,328 @@
     });
   }
 
+  // ─── POPUP / MODAL: DETALHAMENTO DE FRETES DO FECHAMENTO MENSAL ────────────
+
+  async function abrirModalFretesFechamento() {
+    const modal = document.getElementById('modalFretesFechamento');
+    if (!modal) return;
+
+    // Se ainda não tiver fechamento carregado, carrega o atual
+    if (!currentFechamento) {
+      await carregarFechamentoAtual();
+    }
+
+    const f = currentFechamento || {};
+    const user = getCurrentUser();
+    const codVend = f.cod_vendedor || f.codVendedor || (user && user.role === 'vendedor' ? user.vendorCode : '');
+    const nomeVend = f.nome_vendedor || f.nomeVendedor || (user && user.name ? user.name : 'Vendedor');
+    const dataIni = f.data_ini || f.dataIni || currentCiclo?.dtIni;
+    const dataFim = f.data_fim || f.dataFim || currentCiclo?.dtFim;
+    const cicloLabel = currentCiclo?.label || f.periodo_label || f.periodoLabel || 'Ciclo de Fechamento';
+
+    // Sincroniza tema com preferência ativa
+    const isLight = localStorage.getItem('theme_vendedores') === 'light' || localStorage.getItem('theme_saldos_estoque') === 'light';
+    if (isLight) modal.classList.add('modal-theme-light');
+    else modal.classList.remove('modal-theme-light');
+
+    // Preenche títulos no cabeçalho do modal
+    const vendEl = document.getElementById('modalFretesVendNome');
+    const perEl = document.getElementById('modalFretesPeriodo');
+    if (vendEl) vendEl.textContent = nomeVend;
+    if (perEl) perEl.textContent = `${formatarDataBRLocal(dataIni)} a ${formatarDataBRLocal(dataFim)} (${cicloLabel})`;
+
+    // Limpa campo de busca e reseta filtro de status
+    const buscaInput = document.getElementById('modalFretesBuscaInput');
+    const statusSelect = document.getElementById('modalFretesStatusSelect');
+    if (buscaInput) buscaInput.value = '';
+    if (statusSelect) statusSelect.value = '';
+
+    modal.classList.remove('hidden');
+
+    // Verifica se já temos em cache
+    const cacheKey = `${cicloLabel}_${codVend || 'TODOS'}_${dataIni}_${dataFim}`;
+    if (fretesFechamentoCache.has(cacheKey)) {
+      const cached = fretesFechamentoCache.get(cacheKey);
+      modalFretesData = cached.dados || [];
+      modalFretesKpis = cached.kpis || null;
+      renderizarModalFretes();
+      return;
+    }
+
+    // Consulta na API se não estiver em cache
+    const loadingEl = document.getElementById('modalFretesLoading');
+    const tableContainer = document.getElementById('modalFretesTableContainer');
+    if (loadingEl) loadingEl.classList.remove('hidden');
+    if (tableContainer) tableContainer.classList.add('hidden');
+
+    try {
+      const res = await apiFetch('/api/vendedores/gordura-frete', {
+        method: 'POST',
+        body: JSON.stringify({
+          dataIni,
+          dataFim,
+          codVend: codVend || undefined,
+          empresa: 'TODAS'
+        })
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.message || 'Erro ao carregar fretes do período.');
+      }
+
+      modalFretesData = (json.data && json.data.dados) ? json.data.dados : [];
+      modalFretesKpis = (json.data && json.data.kpis) ? json.data.kpis : null;
+
+      // Grava no cache da sessão
+      fretesFechamentoCache.set(cacheKey, {
+        dados: modalFretesData,
+        kpis: modalFretesKpis
+      });
+
+      renderizarModalFretes();
+    } catch (err) {
+      console.error('❌ [Fechamento] Erro ao carregar fretes:', err);
+      const tbody = document.getElementById('modalFretesTableBody');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ef4444; padding: 2rem;">Falha ao obter fretes: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    } finally {
+      if (loadingEl) loadingEl.classList.add('hidden');
+      if (tableContainer) tableContainer.classList.remove('hidden');
+    }
+  }
+
+  function fecharModalFretesFechamento() {
+    const modal = document.getElementById('modalFretesFechamento');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function renderizarModalFretes() {
+    // 1. Mini KPIs
+    const kpiCobrado = document.getElementById('modalFretesKpiCobrado');
+    const kpiCusto = document.getElementById('modalFretesKpiCusto');
+    const kpiGordura = document.getElementById('modalFretesKpiGordura');
+    const kpiNotasCount = document.getElementById('modalFretesKpiNotasCount');
+    const kpiSuperDef = document.getElementById('modalFretesKpiSuperDef');
+
+    const kpis = modalFretesKpis || {
+      totalFreteCobrado: modalFretesData.reduce((acc, r) => acc + (r.freteCobradoCliente || 0), 0),
+      totalCustoFrete: modalFretesData.reduce((acc, r) => acc + (r.custoFreteReal || 0), 0),
+      totalGordura: modalFretesData.reduce((acc, r) => acc + (r.gorduraFrete || 0), 0),
+      totalConhecimentos: modalFretesData.length,
+      totalSuperavit: modalFretesData.filter(r => r.gorduraFrete > 0).length,
+      totalDeficit: modalFretesData.filter(r => r.gorduraFrete < 0).length
+    };
+
+    if (kpiCobrado) kpiCobrado.textContent = formatCurrency(kpis.totalFreteCobrado);
+    if (kpiCusto) kpiCusto.textContent = formatCurrency(kpis.totalCustoFrete);
+
+    if (kpiGordura) {
+      kpiGordura.textContent = formatCurrency(kpis.totalGordura);
+      if (kpis.totalGordura > 0) {
+        kpiGordura.style.color = '#10b981';
+      } else if (kpis.totalGordura < 0) {
+        kpiGordura.style.color = '#ef4444';
+      } else {
+        kpiGordura.style.color = '#94a3b8';
+      }
+    }
+
+    if (kpiNotasCount) kpiNotasCount.textContent = kpis.totalConhecimentos || modalFretesData.length;
+    if (kpiSuperDef) kpiSuperDef.textContent = `(${kpis.totalSuperavit || 0} sup / ${kpis.totalDeficit || 0} déf)`;
+
+    // 2. Tabela de Linhas
+    renderizarTabelaModalFretes();
+  }
+
+  function getFilteredModalRows() {
+    let rows = [...modalFretesData];
+    const busca = (document.getElementById('modalFretesBuscaInput')?.value || '').toLowerCase().trim();
+    const status = document.getElementById('modalFretesStatusSelect')?.value || '';
+
+    if (busca) {
+      rows = rows.filter(r =>
+        (r.cliente && r.cliente.toLowerCase().includes(busca)) ||
+        (r.notaFiscal && r.notaFiscal.toLowerCase().includes(busca)) ||
+        (r.pedidoVenda && r.pedidoVenda.toLowerCase().includes(busca)) ||
+        (r.transportadora && r.transportadora.toLowerCase().includes(busca)) ||
+        (r.vendedor && r.vendedor.toLowerCase().includes(busca)) ||
+        (r.conhecimento && r.conhecimento.toLowerCase().includes(busca))
+      );
+    }
+
+    if (status) {
+      rows = rows.filter(r => r.statusGordura === status);
+    }
+
+    // Ordenação
+    rows.sort((a, b) => {
+      let valA = a[modalSortColumn];
+      let valB = b[modalSortColumn];
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return modalSortAsc ? valA - valB : valB - valA;
+      }
+      valA = String(valA || '').toLowerCase();
+      valB = String(valB || '').toLowerCase();
+      return modalSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+
+    return rows;
+  }
+
+  function renderizarTabelaModalFretes() {
+    const tbody = document.getElementById('modalFretesTableBody');
+    const badgeCount = document.getElementById('modalFretesCountBadge');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+    const rows = getFilteredModalRows();
+
+    if (badgeCount) {
+      badgeCount.textContent = `${rows.length} ${rows.length === 1 ? 'frete' : 'fretes'}`;
+    }
+
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Nenhum frete encontrado para os critérios selecionados.</td></tr>`;
+      return;
+    }
+
+    rows.forEach(item => {
+      const tr = document.createElement('tr');
+      const sigla = item.empresaSigla || (item.empresa && item.empresa.includes('METAL') ? 'MP' : (item.empresa && item.empresa.includes('GSI') ? 'GSI' : 'OACO'));
+
+      let badgeGordura = '';
+      if (item.gorduraFrete > 0) {
+        badgeGordura = `<span class="badge-gordura-pos">+ ${formatCurrency(item.gorduraFrete)}</span>`;
+      } else if (item.gorduraFrete < 0) {
+        badgeGordura = `<span class="badge-gordura-neg">- ${formatCurrency(Math.abs(item.gorduraFrete))}</span>`;
+      } else {
+        badgeGordura = `<span class="badge-gordura-neu">R$ 0,00</span>`;
+      }
+
+      tr.innerHTML = `
+        <td style="text-align: center;"><span class="company-badge" style="font-weight: 700; padding: 2px 8px; font-size: 0.78rem;">${escapeHtml(sigla)}</span></td>
+        <td><strong>${escapeHtml(item.dataEmissaoFormatada || formatarDataBRLocal(item.dataEmissao))}</strong></td>
+        <td><code>${escapeHtml(item.notaFiscal || '-')}</code></td>
+        <td><code>${escapeHtml(item.pedidoVenda || '-')}</code></td>
+        <td title="${escapeHtml(item.cliente)}"><strong>${escapeHtml(item.cliente)}</strong></td>
+        <td>${escapeHtml(item.vendedor || '-')}</td>
+        <td>${escapeHtml(item.transportadora || '-')}</td>
+        <td style="text-align: right; font-weight: 600;">${formatCurrency(item.freteCobradoCliente)}</td>
+        <td style="text-align: right; color: var(--text-muted); font-weight: 500;">${formatCurrency(item.custoFreteReal)}</td>
+        <td style="text-align: right;">${badgeGordura}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function setupModalTableSorting() {
+    const sortHeaders = [
+      { id: 'thSortModalFreteData', col: 'dataEmissao' },
+      { id: 'thSortModalFreteNF', col: 'notaFiscal' },
+      { id: 'thSortModalFretePed', col: 'pedidoVenda' },
+      { id: 'thSortModalFreteCli', col: 'cliente' },
+      { id: 'thSortModalFreteVend', col: 'vendedor' },
+      { id: 'thSortModalFreteTransp', col: 'transportadora' },
+      { id: 'thSortModalFreteCobrado', col: 'freteCobradoCliente' },
+      { id: 'thSortModalFreteCusto', col: 'custoFreteReal' },
+      { id: 'thSortModalFreteSaldo', col: 'gorduraFrete' }
+    ];
+
+    sortHeaders.forEach(sh => {
+      const el = document.getElementById(sh.id);
+      if (!el) return;
+
+      el.addEventListener('click', () => {
+        if (modalSortColumn === sh.col) {
+          modalSortAsc = !modalSortAsc;
+        } else {
+          modalSortColumn = sh.col;
+          modalSortAsc = true;
+        }
+        updateModalSortIcons(sh.id, modalSortAsc);
+        renderizarTabelaModalFretes();
+      });
+    });
+  }
+
+  function updateModalSortIcons(activeHeaderId, isAsc) {
+    const icons = document.querySelectorAll('.modal-frete-sort-icon');
+    icons.forEach(ic => {
+      ic.textContent = '↕';
+      ic.style.color = 'var(--text-muted)';
+    });
+
+    const activeHeader = document.getElementById(activeHeaderId);
+    if (activeHeader) {
+      const activeIcon = activeHeader.querySelector('.modal-frete-sort-icon');
+      if (activeIcon) {
+        activeIcon.textContent = isAsc ? '↑' : '↓';
+        activeIcon.style.color = '#10b981';
+      }
+    }
+  }
+
+  function exportarCsvFretesModal() {
+    const rows = getFilteredModalRows();
+    if (rows.length === 0) {
+      alert('Não há dados para exportar com os filtros atuais.');
+      return;
+    }
+
+    const cabecalho = [
+      'Empresa',
+      'Data Emissao',
+      'Nota Fiscal',
+      'Pedido Venda',
+      'Cliente',
+      'Vendedor',
+      'Transportadora',
+      'Frete Cobrado (R$)',
+      'Custo Real (R$)',
+      'Gordura Frete (R$)',
+      'Status Gordura'
+    ];
+
+    const linhasCsv = rows.map(r => {
+      const cobrado = (r.freteCobradoCliente || 0).toFixed(2).replace('.', ',');
+      const custo = (r.custoFreteReal || 0).toFixed(2).replace('.', ',');
+      const gordura = (r.gorduraFrete || 0).toFixed(2).replace('.', ',');
+      return [
+        `"${r.empresaSigla || r.empresa || ''}"`,
+        `"${r.dataEmissaoFormatada || formatarDataBRLocal(r.dataEmissao)}"`,
+        `"${r.notaFiscal || ''}"`,
+        `"${r.pedidoVenda || ''}"`,
+        `"${String(r.cliente || '').replace(/"/g, '""')}"`,
+        `"${String(r.vendedor || '').replace(/"/g, '""')}"`,
+        `"${String(r.transportadora || '').replace(/"/g, '""')}"`,
+        `"${cobrado}"`,
+        `"${custo}"`,
+        `"${gordura}"`,
+        `"${r.statusGordura || ''}"`
+      ].join(';');
+    });
+
+    const conteudoCsv = '\uFEFF' + [cabecalho.join(';'), ...linhasCsv].join('\r\n');
+    const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const f = currentFechamento || {};
+    const vendClean = (f.nome_vendedor || f.nomeVendedor || 'Vendedor').replace(/\s+/g, '_');
+    const cicloClean = (currentCiclo?.label || 'Ciclo').replace(/[\/\s]+/g, '_');
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Gordura_Frete_${vendClean}_${cicloClean}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   // ─── INICIALIZAÇÃO & EVENT LISTENERS ───────────────────────────────────────
 
   function setupEventListeners() {
@@ -1137,6 +1479,61 @@
       tabBtnConfigMetas.addEventListener('click', carregarConfigMetasUI);
     }
 
+    // 6. Botões para abrir Modal de Detalhamento de Fretes (Card 2 e Card 3)
+    const btnAbrirCard2 = document.getElementById('btnAbrirModalFretesCard');
+    if (btnAbrirCard2) {
+      btnAbrirCard2.addEventListener('click', abrirModalFretesFechamento);
+    }
+
+    const btnAbrirCard3 = document.getElementById('btnAbrirModalFretesStatCard');
+    if (btnAbrirCard3) {
+      btnAbrirCard3.addEventListener('click', abrirModalFretesFechamento);
+    }
+
+    // 7. Fechamento do Modal de Fretes
+    const btnCloseModal = document.getElementById('btnCloseModalFretes');
+    if (btnCloseModal) {
+      btnCloseModal.addEventListener('click', fecharModalFretesFechamento);
+    }
+
+    const btnFecharModal = document.getElementById('btnFecharModalFretes');
+    if (btnFecharModal) {
+      btnFecharModal.addEventListener('click', fecharModalFretesFechamento);
+    }
+
+    const modalFretesEl = document.getElementById('modalFretesFechamento');
+    if (modalFretesEl) {
+      modalFretesEl.addEventListener('click', (e) => {
+        if (e.target === modalFretesEl) fecharModalFretesFechamento();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modalFretesEl && !modalFretesEl.classList.contains('hidden')) {
+        fecharModalFretesFechamento();
+      }
+    });
+
+    // 8. Filtros dentro do Modal de Fretes
+    const inputBuscaModal = document.getElementById('modalFretesBuscaInput');
+    if (inputBuscaModal) {
+      inputBuscaModal.addEventListener('input', renderizarTabelaModalFretes);
+    }
+
+    const selectStatusModal = document.getElementById('modalFretesStatusSelect');
+    if (selectStatusModal) {
+      selectStatusModal.addEventListener('change', renderizarTabelaModalFretes);
+    }
+
+    // 9. Exportar CSV do Modal de Fretes
+    const btnExportarCsv = document.getElementById('btnExportarCsvModalFretes');
+    if (btnExportarCsv) {
+      btnExportarCsv.addEventListener('click', exportarCsvFretesModal);
+    }
+
+    // 10. Ordenação das colunas da tabela do modal
+    setupModalTableSorting();
+
     // Renderiza o select de histórico imediatamente com os ciclos padrão
     renderizarSelectHistorico();
   }
@@ -1156,7 +1553,10 @@
     carregarFechamentoPorCiclo,
     forcarRecalculoFechamento,
     carregarConfigMetasUI,
-    salvarConfigMetasUI
+    salvarConfigMetasUI,
+    abrirModalFretesFechamento,
+    fecharModalFretesFechamento
   };
 
 })();
+

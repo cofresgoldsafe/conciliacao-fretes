@@ -58,7 +58,8 @@ export function aplicarTemaVendedores(modo) {
   // Modais de Drilldown
   const modais = [
     document.getElementById('modalEstoqueDetalhes'),
-    document.getElementById('pedidoDetalhesModal')
+    document.getElementById('pedidoDetalhesModal'),
+    document.getElementById('modalFretesFechamento')
   ];
   modais.forEach(modal => {
     if (!modal) return;
