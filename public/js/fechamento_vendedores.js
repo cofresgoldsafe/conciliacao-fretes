@@ -418,6 +418,7 @@
     let trofeuTexto = 'Fechamento do Período';
     let temConquista = false;
 
+    // Troféu Dourado 🏆 com animação de pulso: EXCLUSIVO para quem bateu a meta de vendas (>= 100%)
     if (pctVendas >= 200) {
       trofeuEmoji = '🏆';
       trofeuTexto = '🎉 Nível Lendário: Meta 200% Batida!';
@@ -429,10 +430,6 @@
     } else if (pctVendas >= 100) {
       trofeuEmoji = '🏆';
       trofeuTexto = '🎯 Meta de Vendas 100% Atingida!';
-      temConquista = true;
-    } else if (gorduraTotal >= 700) {
-      trofeuEmoji = '🏆';
-      trofeuTexto = '⭐ Superávit de Frete Conquistado!';
       temConquista = true;
     }
 
