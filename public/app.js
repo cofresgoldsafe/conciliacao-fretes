@@ -786,6 +786,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.holeritesModule.carregarHolerites();
         }
       }
+      if (targetTab === 'tab-funcionarios') {
+        if (window.funcionariosDpModule && typeof window.funcionariosDpModule.carregarColaboradores === 'function') {
+          window.funcionariosDpModule.carregarColaboradores();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 

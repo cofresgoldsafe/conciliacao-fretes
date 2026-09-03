@@ -788,7 +788,30 @@
       if (container && modal) {
         // Renderiza o holerite com uma área editável de mensagem no topo da visualização
         const doc = data.documento;
+
+        let pixBarHtml = '';
+        try {
+          const colabRes = await fetch(`/api/dp/colaboradores?busca=${encodeURIComponent(doc.funcionario_cpf || doc.funcionario_nome)}`, { headers: getAuthHeader() });
+          const colabData = await colabRes.json();
+          if (colabData.success && Array.isArray(colabData.colaboradores) && colabData.colaboradores.length > 0) {
+            const c = colabData.colaboradores[0];
+            if (c.chave_pix || c.telefone_celular) {
+              pixBarHtml = `
+                <div class="no-print" style="margin-bottom: 12px; padding: 10px 14px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 14px; font-size: 0.82rem;">
+                    ${c.chave_pix ? `<span>💳 PIX: <strong style="font-family: monospace; color: #a855f7;">${c.chave_pix}</strong></span>` : ''}
+                    ${c.telefone_celular ? `<span>📱 Cel: <strong>${c.telefone_celular}</strong></span>` : ''}
+                    <span>Status: <strong style="color: #10b981;">${c.status || 'ATIVO'}</strong></span>
+                  </div>
+                  ${c.chave_pix ? `<button type="button" class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${c.chave_pix.replace(/'/g, "\\'")}').then(() => alert('📋 Chave PIX copiada: ${c.chave_pix}'))" style="font-size: 0.75rem; padding: 2px 8px;">📋 Copiar PIX</button>` : ''}
+                </div>
+              `;
+            }
+          }
+        } catch (e) {}
+
         const html = `
+          ${pixBarHtml}
           <div class="no-print" style="margin-bottom: 16px; padding: 12px 16px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px;">
             <label style="font-size: 0.82rem; font-weight: 700; color: #1e293b; display: block; margin-bottom: 6px;">
               ✏️ Personalizar Mensagem / Recado para este Holerite:

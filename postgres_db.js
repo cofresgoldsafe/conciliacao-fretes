@@ -42,6 +42,7 @@ const biAutorizacoesCacheFile = path.join(dataDir, 'bi_autorizacoes_cache.json')
 const fechamentosCacheFile = path.join(dataDir, 'fechamentos_vendedores_cache.json');
 const configMetasVendasFile = path.join(dataDir, 'config_metas_vendas.json');
 const holeritesCacheFile = path.join(dataDir, 'holerites_documentos.json');
+const colaboradoresCacheFile = path.join(dataDir, 'dp_colaboradores.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -888,6 +889,53 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_holerites_empresa ON holerites_documentos(empresa);
         CREATE INDEX IF NOT EXISTS idx_holerites_func ON holerites_documentos(funcionario_nome);
         CREATE INDEX IF NOT EXISTS idx_holerites_tipo ON holerites_documentos(tipo_documento);
+
+        -- 11. Tabela de Cadastro Geral de Colaboradores e Funcionários (DP / RH)
+        CREATE TABLE IF NOT EXISTS dp_colaboradores (
+          id SERIAL PRIMARY KEY,
+          empresa VARCHAR(20) NOT NULL,
+          codigo_interno VARCHAR(20),
+          nome_completo VARCHAR(255) NOT NULL,
+          cpf VARCHAR(20),
+          rg VARCHAR(20),
+          ctps_numero VARCHAR(30),
+          ctps_serie VARCHAR(20),
+          pis_pasep VARCHAR(30),
+          data_nascimento VARCHAR(20),
+          cargo VARCHAR(150),
+          cbo VARCHAR(20),
+          departamento VARCHAR(100),
+          data_admissao VARCHAR(20),
+          data_demissao VARCHAR(20),
+          tipo_contrato VARCHAR(50) DEFAULT 'CLT',
+          status VARCHAR(30) DEFAULT 'ATIVO',
+          salario_base NUMERIC(15, 2) DEFAULT 0.00,
+          telefone_celular VARCHAR(30),
+          telefone_fixo VARCHAR(30),
+          email_pessoal VARCHAR(150),
+          endereco_logradouro VARCHAR(255),
+          endereco_numero VARCHAR(20),
+          endereco_complemento VARCHAR(100),
+          endereco_bairro VARCHAR(100),
+          endereco_cidade VARCHAR(100),
+          endereco_uf VARCHAR(2),
+          endereco_cep VARCHAR(15),
+          tipo_chave_pix VARCHAR(20),
+          chave_pix VARCHAR(150),
+          banco_nome VARCHAR(100),
+          banco_codigo VARCHAR(10),
+          agencia VARCHAR(20),
+          conta_corrente VARCHAR(30),
+          tipo_conta VARCHAR(20) DEFAULT 'CORRENTE',
+          observacoes TEXT,
+          created_by VARCHAR(100),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_dp_colab_empresa ON dp_colaboradores(empresa);
+        CREATE INDEX IF NOT EXISTS idx_dp_colab_cpf ON dp_colaboradores(cpf);
+        CREATE INDEX IF NOT EXISTS idx_dp_colab_status ON dp_colaboradores(status);
+        CREATE INDEX IF NOT EXISTS idx_dp_colab_nome ON dp_colaboradores(nome_completo);
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
@@ -3825,6 +3873,318 @@ async function obterCompetenciasHoleritesDB() {
   return result;
 }
 
+// ============================================================================
+// CADASTRO GERAL DE COLABORADORES E FUNCIONÁRIOS (DP / RH)
+// ============================================================================
+
+async function salvarColaboradorDB(dados, usuario = 'sistema') {
+  const cleanUser = (usuario || 'sistema').replace(/[^a-zA-Z0-9_.-]/g, '');
+  const now = new Date().toISOString();
+
+  const colab = {
+    empresa: (dados.empresa || 'GSI').toUpperCase(),
+    codigo_interno: dados.codigo_interno ? String(dados.codigo_interno).trim() : null,
+    nome_completo: (dados.nome_completo || '').trim().toUpperCase(),
+    cpf: dados.cpf ? String(dados.cpf).trim() : null,
+    rg: dados.rg ? String(dados.rg).trim() : null,
+    ctps_numero: dados.ctps_numero ? String(dados.ctps_numero).trim() : null,
+    ctps_serie: dados.ctps_serie ? String(dados.ctps_serie).trim() : null,
+    pis_pasep: dados.pis_pasep ? String(dados.pis_pasep).trim() : null,
+    data_nascimento: dados.data_nascimento ? String(dados.data_nascimento).trim() : null,
+    cargo: (dados.cargo || '').trim(),
+    cbo: dados.cbo ? String(dados.cbo).trim() : null,
+    departamento: (dados.departamento || '').trim(),
+    data_admissao: dados.data_admissao ? String(dados.data_admissao).trim() : null,
+    data_demissao: dados.data_demissao ? String(dados.data_demissao).trim() : null,
+    tipo_contrato: dados.tipo_contrato || 'CLT',
+    status: (dados.status || 'ATIVO').toUpperCase(),
+    salario_base: parseFloat(dados.salario_base) || 0.0,
+    telefone_celular: dados.telefone_celular ? String(dados.telefone_celular).trim() : null,
+    telefone_fixo: dados.telefone_fixo ? String(dados.telefone_fixo).trim() : null,
+    email_pessoal: dados.email_pessoal ? String(dados.email_pessoal).trim() : null,
+    endereco_logradouro: (dados.endereco_logradouro || '').trim(),
+    endereco_numero: (dados.endereco_numero || '').trim(),
+    endereco_complemento: (dados.endereco_complemento || '').trim(),
+    endereco_bairro: (dados.endereco_bairro || '').trim(),
+    endereco_cidade: (dados.endereco_cidade || '').trim(),
+    endereco_uf: (dados.endereco_uf || '').trim().toUpperCase(),
+    endereco_cep: dados.endereco_cep ? String(dados.endereco_cep).trim() : null,
+    tipo_chave_pix: dados.tipo_chave_pix || null,
+    chave_pix: dados.chave_pix ? String(dados.chave_pix).trim() : null,
+    banco_nome: (dados.banco_nome || '').trim(),
+    banco_codigo: (dados.banco_codigo || '').trim(),
+    agencia: (dados.agencia || '').trim(),
+    conta_corrente: (dados.conta_corrente || '').trim(),
+    tipo_conta: dados.tipo_conta || 'CORRENTE',
+    observacoes: (dados.observacoes || '').trim()
+  };
+
+  if (getPool()) {
+    try {
+      if (dados.id) {
+        const sql = `
+          UPDATE dp_colaboradores SET
+            empresa = $1, codigo_interno = $2, nome_completo = $3, cpf = $4, rg = $5,
+            ctps_numero = $6, ctps_serie = $7, pis_pasep = $8, data_nascimento = $9,
+            cargo = $10, cbo = $11, departamento = $12, data_admissao = $13, data_demissao = $14,
+            tipo_contrato = $15, status = $16, salario_base = $17, telefone_celular = $18,
+            telefone_fixo = $19, email_pessoal = $20, endereco_logradouro = $21, endereco_numero = $22,
+            endereco_complemento = $23, endereco_bairro = $24, endereco_cidade = $25, endereco_uf = $26,
+            endereco_cep = $27, tipo_chave_pix = $28, chave_pix = $29, banco_nome = $30,
+            banco_codigo = $31, agencia = $32, conta_corrente = $33, tipo_conta = $34,
+            observacoes = $35, updated_at = NOW()
+          WHERE id = $36
+          RETURNING *;
+        `;
+        const params = [
+          colab.empresa, colab.codigo_interno, colab.nome_completo, colab.cpf, colab.rg,
+          colab.ctps_numero, colab.ctps_serie, colab.pis_pasep, colab.data_nascimento,
+          colab.cargo, colab.cbo, colab.departamento, colab.data_admissao, colab.data_demissao,
+          colab.tipo_contrato, colab.status, colab.salario_base, colab.telefone_celular,
+          colab.telefone_fixo, colab.email_pessoal, colab.endereco_logradouro, colab.endereco_numero,
+          colab.endereco_complemento, colab.endereco_bairro, colab.endereco_cidade, colab.endereco_uf,
+          colab.endereco_cep, colab.tipo_chave_pix, colab.chave_pix, colab.banco_nome,
+          colab.banco_codigo, colab.agencia, colab.conta_corrente, colab.tipo_conta,
+          colab.observacoes, parseInt(dados.id, 10)
+        ];
+        const res = await safeQuery(sql, params);
+        if (res && res.rows && res.rows[0]) return res.rows[0];
+      } else {
+        const sql = `
+          INSERT INTO dp_colaboradores (
+            empresa, codigo_interno, nome_completo, cpf, rg, ctps_numero, ctps_serie,
+            pis_pasep, data_nascimento, cargo, cbo, departamento, data_admissao,
+            data_demissao, tipo_contrato, status, salario_base, telefone_celular,
+            telefone_fixo, email_pessoal, endereco_logradouro, endereco_numero,
+            endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf,
+            endereco_cep, tipo_chave_pix, chave_pix, banco_nome, banco_codigo,
+            agencia, conta_corrente, tipo_conta, observacoes, created_by
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+            $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31,
+            $32, $33, $34, $35, $36
+          )
+          RETURNING *;
+        `;
+        const params = [
+          colab.empresa, colab.codigo_interno, colab.nome_completo, colab.cpf, colab.rg,
+          colab.ctps_numero, colab.ctps_serie, colab.pis_pasep, colab.data_nascimento,
+          colab.cargo, colab.cbo, colab.departamento, colab.data_admissao, colab.data_demissao,
+          colab.tipo_contrato, colab.status, colab.salario_base, colab.telefone_celular,
+          colab.telefone_fixo, colab.email_pessoal, colab.endereco_logradouro, colab.endereco_numero,
+          colab.endereco_complemento, colab.endereco_bairro, colab.endereco_cidade, colab.endereco_uf,
+          colab.endereco_cep, colab.tipo_chave_pix, colab.chave_pix, colab.banco_nome,
+          colab.banco_codigo, colab.agencia, colab.conta_corrente, colab.tipo_conta,
+          colab.observacoes, cleanUser
+        ];
+        const res = await safeQuery(sql, params);
+        if (res && res.rows && res.rows[0]) return res.rows[0];
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao salvar colaborador:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const list = safeReadJsonSync(colaboradoresCacheFile, []);
+  let savedRec = null;
+  if (dados.id) {
+    const idx = list.findIndex(x => parseInt(x.id, 10) === parseInt(dados.id, 10));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...colab, id: list[idx].id, updated_at: now };
+      savedRec = list[idx];
+    }
+  } else {
+    let idx = -1;
+    if (colab.cpf) {
+      idx = list.findIndex(x => x.cpf === colab.cpf);
+    }
+    if (idx < 0) {
+      idx = list.findIndex(x => x.nome_completo === colab.nome_completo && x.empresa === colab.empresa);
+    }
+
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...colab, id: list[idx].id, updated_at: now };
+      savedRec = list[idx];
+    } else {
+      savedRec = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        ...colab,
+        created_by: cleanUser,
+        created_at: now,
+        updated_at: now
+      };
+      list.push(savedRec);
+    }
+  }
+
+  safeWriteJsonSync(colaboradoresCacheFile, list);
+  return savedRec;
+}
+
+async function obterColaboradoresDB(filtros = {}) {
+  const { empresa, status, busca, limit = 500, offset = 0 } = filtros;
+
+  if (getPool()) {
+    try {
+      let conditions = [];
+      let params = [];
+      let pIdx = 1;
+
+      if (empresa && empresa !== 'TODAS') {
+        conditions.push(`empresa = $${pIdx++}`);
+        params.push(empresa);
+      }
+      if (status && status !== 'TODOS') {
+        conditions.push(`status = $${pIdx++}`);
+        params.push(status);
+      }
+      if (busca) {
+        conditions.push(`(
+          nome_completo ILIKE $${pIdx} OR
+          cpf ILIKE $${pIdx} OR
+          cargo ILIKE $${pIdx} OR
+          telefone_celular ILIKE $${pIdx} OR
+          chave_pix ILIKE $${pIdx} OR
+          codigo_interno ILIKE $${pIdx}
+        )`);
+        params.push(`%${busca}%`);
+        pIdx++;
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const sql = `
+        SELECT * FROM dp_colaboradores
+        ${whereClause}
+        ORDER BY CASE WHEN status = 'ATIVO' THEN 0 ELSE 1 END, nome_completo ASC
+        LIMIT $${pIdx++} OFFSET $${pIdx++};
+      `;
+      params.push(parseInt(limit, 10) || 500);
+      params.push(parseInt(offset, 10) || 0);
+
+      const res = await safeQuery(sql, params);
+      if (res && res.rows) return res.rows;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar colaboradores:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  let list = safeReadJsonSync(colaboradoresCacheFile, []);
+  list = list.filter(item => {
+    if (empresa && empresa !== 'TODAS' && item.empresa !== empresa) return false;
+    if (status && status !== 'TODOS' && item.status !== status) return false;
+    if (busca) {
+      const q = busca.toLowerCase();
+      const match = (item.nome_completo || '').toLowerCase().includes(q) ||
+                    (item.cpf || '').toLowerCase().includes(q) ||
+                    (item.cargo || '').toLowerCase().includes(q) ||
+                    (item.telefone_celular || '').toLowerCase().includes(q) ||
+                    (item.chave_pix || '').toLowerCase().includes(q) ||
+                    (item.codigo_interno || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  list.sort((a, b) => {
+    const aAtivo = a.status === 'ATIVO' ? 0 : 1;
+    const bAtivo = b.status === 'ATIVO' ? 0 : 1;
+    if (aAtivo !== bAtivo) return aAtivo - bAtivo;
+    return (a.nome_completo || '').localeCompare(b.nome_completo || '');
+  });
+
+  return list;
+}
+
+async function obterColaboradorPorIdDB(id) {
+  if (!id) return null;
+  const numId = parseInt(id, 10);
+
+  if (getPool()) {
+    try {
+      const res = await safeQuery('SELECT * FROM dp_colaboradores WHERE id = $1;', [numId]);
+      if (res && res.rows && res.rows[0]) return res.rows[0];
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar colaborador por ID:', err.message);
+    }
+  }
+
+  const list = safeReadJsonSync(colaboradoresCacheFile, []);
+  return list.find(x => parseInt(x.id, 10) === numId) || null;
+}
+
+async function excluirColaboradorDB(id, usuario = 'sistema') {
+  if (!id) return false;
+  const numId = parseInt(id, 10);
+
+  if (getPool()) {
+    try {
+      const res = await safeQuery('DELETE FROM dp_colaboradores WHERE id = $1 RETURNING id;', [numId]);
+      if (res && res.rowCount > 0) return true;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao excluir colaborador:', err.message);
+    }
+  }
+
+  const list = safeReadJsonSync(colaboradoresCacheFile, []);
+  const initialLen = list.length;
+  const filtered = list.filter(x => parseInt(x.id, 10) !== numId);
+  if (filtered.length !== initialLen) {
+    safeWriteJsonSync(colaboradoresCacheFile, filtered);
+    return true;
+  }
+  return false;
+}
+
+async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
+  const holerites = await obterHoleritesDB({ status: 'ATIVO', limit: 5000 });
+  if (!holerites || holerites.length === 0) {
+    return { total_verificados: 0, novos_adicionados: 0 };
+  }
+
+  const existentes = await obterColaboradoresDB({});
+  let novos = 0;
+  let total = 0;
+
+  for (const doc of holerites) {
+    if (!doc.funcionario_nome) continue;
+    total++;
+
+    const jaExiste = existentes.some(c => {
+      if (doc.funcionario_cpf && c.cpf && doc.funcionario_cpf === c.cpf) return true;
+      return (c.nome_completo || '').toUpperCase() === (doc.funcionario_nome || '').toUpperCase() &&
+             (c.empresa || '').toUpperCase() === (doc.empresa || '').toUpperCase();
+    });
+
+    if (!jaExiste) {
+      const novoColab = {
+        empresa: doc.empresa || 'GSI',
+        codigo_interno: doc.funcionario_codigo || null,
+        nome_completo: doc.funcionario_nome,
+        cpf: doc.funcionario_cpf || null,
+        cargo: doc.funcionario_cargo || null,
+        cbo: doc.funcionario_cbo || null,
+        departamento: doc.funcionario_departamento || null,
+        data_admissao: doc.funcionario_admissao || null,
+        salario_base: doc.salario_base || 0.0,
+        status: 'ATIVO',
+        tipo_contrato: doc.funcionario_tipo_contrato || (doc.empresa === 'SEM_REGISTRO' ? 'AUTONOMO' : 'CLT'),
+        tipo_chave_pix: doc.funcionario_cpf ? 'CPF' : null,
+        chave_pix: doc.funcionario_cpf || null
+      };
+
+      const salvo = await salvarColaboradorDB(novoColab, usuario);
+      if (salvo) {
+        existentes.push(salvo);
+        novos++;
+      }
+    }
+  }
+
+  return { total_verificados: total, novos_adicionados: novos };
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -3893,6 +4253,11 @@ module.exports = {
   atualizarMensagemHoleritesLoteDB,
   excluirHoleriteDB,
   obterCompetenciasHoleritesDB,
+  salvarColaboradorDB,
+  obterColaboradoresDB,
+  obterColaboradorPorIdDB,
+  excluirColaboradorDB,
+  sincronizarColaboradoresDosHoleritesDB,
   DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool

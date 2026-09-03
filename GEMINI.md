@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.159 (Homologada em 03/09/2026 18:35)  
+> **Versão da Documentação:** v8.160 (Homologada em 03/09/2026 18:45)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Módulo de Holerites & Recibos Personalizados Homologado com Suporte a GSI, OAÇO e Sem Registro, Parser Python Autônomo com stdlib/pdfplumber, Persistência Estruturada no Supabase, Filtros Facetados de Competência, Edição de Mensagens Personalizadas em Lote/Individual, Emissão Executiva em A4 com Logotipos Oficiais e 13 Asserções Pytest/Node 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 18:35 (v8.159 - Implementação da sub-aba Upload de Holerites sob AN. FINANCEIRO com motor de parsing e emissão executiva)  
+> **Status:** Estável / Operacional em Produção (Sub-Aba Independente "Cadastro Funcion." sob AN. FINANCEIRO Homologada com Suporte a GSI, OAÇO e Sem Registro, Gestão de Chaves Pix com Cópia Rápida, CTPS, Contatos e Endereço, Auto-Sync com Módulo de Holerites, Enriquecimento Cruzado na Emissão de Recibos e 25 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 03/09/2026 18:45 (v8.160 - Implementação da sub-aba independente Cadastro Funcion. sob AN. FINANCEIRO e auto-sync de colaboradores)  
 
 ---
 
@@ -785,6 +785,31 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - 6 Testes Pytest em `test_parser_holerites.py` cobrindo 100% dos modelos de amostra de PDFs e planilhas.
       - 7 Testes de API em `test_holerites_api.js` validando gravação, filtros, busca por nome/CPF, atualização de mensagens individual/lote, agregação de competências e exclusão.
       - Validação de integridade sintática e modular em `test_frontend_modules.js` (100% aprovados).
+55. [x] **Sub-Aba Independente "Cadastro Funcion." sob AN. FINANCEIRO (`postgres_db.js`, `server.js`, `public/index.html`, `public/js/funcionarios_dp.js`, `test_funcionarios_dp.js`):**
+    - **Visão Geral e Arquitetura:**
+      - Criada sub-aba dedicada e exclusiva **Cadastro Funcion.** (`#tab-funcionarios`) no grupo `subGroupFinanceiro` sob a aba principal `💰 ASSIST. FINANC.`, separada da sub-aba `Documentos DP` conforme solicitação explícita do usuário.
+      - Atua como repositório mestre de colaboradores (GSI BW Empresa 15, OAÇO Empresa 16 e Prestadores Sem Registro / Avulsos) para gestão centralizada de dados pessoais, contatos, endereços, chaves PIX, documentos e vínculos trabalhistas.
+    - **Modelagem Relacional & DDL Supabase (`postgres_db.js`):**
+      - Tabela `dp_colaboradores` criada com índices estratégicos por empresa, CPF, status e nome completo (`idx_dp_colab_empresa`, `idx_dp_colab_cpf`, `idx_dp_colab_status`, `idx_dp_colab_nome`).
+      - Campos contemplados: `empresa`, `nome_completo`, `cpf`, `rg`, `data_nascimento`, `codigo_interno`, `cargo`, `cbo`, `departamento`, `tipo_contrato`, `data_admissao`, `data_demissao`, `ctps_numero`, `ctps_serie`, `pis_pasep`, `status` (ATIVO, FERIAS, AFASTADO, DESLIGADO), `salario_base`, `telefone_celular`, `telefone_fixo`, `email_pessoal`, `endereco_cep`, `endereco_logradouro`, `endereco_numero`, `endereco_complemento`, `endereco_bairro`, `endereco_cidade`, `endereco_uf`, `tipo_chave_pix`, `chave_pix`, `banco_nome`, `banco_codigo`, `agencia`, `conta_corrente`, `tipo_conta`, `observacoes`.
+      - Suporte a cache e fallback offline em `data/dp_colaboradores.json`.
+    - **Rotas RESTful no Backend (`server.js`):**
+      - `GET /api/dp/colaboradores`: Consulta com filtros facetados por empresa, status e busca universal.
+      - `GET /api/dp/colaboradores/:id`: Consulta individual de colaborador.
+      - `POST /api/dp/colaboradores`: Cadastro com auditoria de usuário no feed de atividades (`CADASTRO_COLABORADOR`).
+      - `PUT /api/dp/colaboradores/:id`: Edição completa com auditoria (`EDICAO_COLABORADOR`).
+      - `DELETE /api/dp/colaboradores/:id`: Exclusão de ficha funcional (`EXCLUSAO_COLABORADOR`).
+      - `POST /api/dp/colaboradores/sync-holerites`: Rotina de auto-sincronização que varre o histórico de holerites e cadastra automaticamente colaboradores não matriculados.
+      - **Auto-Sync Transparente no Upload:** O endpoint de upload de holerites (`POST /api/financeiro/holerites/upload`) aciona em background `sincronizarColaboradoresDosHoleritesDB`, garantindo que novos funcionários contidos nos PDFs contábeis ou planilhas apareçam instantaneamente no cadastro geral sem intervenção manual.
+    - **Interface Moderna e Enriquecimento em Holerites (`public/index.html`, `public/js/funcionarios_dp.js`, `public/js/holerites.js`):**
+      - *KPIs do Topo (6 Cards):* Total de Colaboradores, Ativos, GSI BW, OAÇO, Sem Registro e Desligados/Afastados com contadores em tempo real.
+      - *Filtros Facetados & Busca Instantânea:* Filtros por empresa, botões de status e busca rápida com debounce por nome, CPF, cargo, celular ou chave PIX.
+      - *Tabela Funcional:* Exibe empresa, colaborador/CPF, cargo/departamento, admissão, contato com atalho direto para WhatsApp (`https://wa.me/...`), chave PIX com badge mono e botão `📋 Copiar` em 1 clique, e status com badge colorido.
+      - *Modais Operacionais:* `#modalColaboradorForm` dividido em 5 blocos lógicos com validação, e `#modalColaboradorFicha` apresentando a ficha executiva detalhada.
+      - *Enriquecimento Cruzado em Documentos DP:* Na pré-visualização de qualquer holerite (`visualizarHolerite`), o sistema localiza a ficha do funcionário e renderiza no topo um card destacado com a Chave PIX, botão de cópia rápida e telefone celular para agilizar o pagamento financeiro.
+      - *Exportação CSV Excel:* Exportação completa com BOM UTF-8 e delimitador `;`.
+    - **Suíte de Testes Automatizados:**
+      - `test_funcionarios_dp.js` com 5 asserções automatizadas cobrindo CRUD, filtros por PIX/empresa, atualização de ficha funcional, auto-sincronização a partir de holerites e exclusão segura (100% aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

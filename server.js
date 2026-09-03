@@ -105,6 +105,11 @@ const {
   atualizarMensagemHoleritesLoteDB,
   excluirHoleriteDB,
   obterCompetenciasHoleritesDB,
+  salvarColaboradorDB,
+  obterColaboradoresDB,
+  obterColaboradorPorIdDB,
+  excluirColaboradorDB,
+  sincronizarColaboradoresDosHoleritesDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -3726,6 +3731,11 @@ app.post('/api/financeiro/holerites/upload', requireAuth, holeritesUpload.array(
     // Salva no banco de dados / fallback local
     const savedDocs = await salvarHoleritesDB(parseResult.documentos, user ? user.username : 'sistema');
 
+    // Auto-sincroniza novos colaboradores na tabela de cadastro geral de funcionários
+    sincronizarColaboradoresDosHoleritesDB(user ? user.username : 'sistema').catch(errSync => {
+      console.warn('⚠️ Falha ao auto-sincronizar colaboradores após upload:', errSync.message);
+    });
+
     // Registra atividade no feed de auditoria
     logUserActivity({
       username: user ? user.username : 'sistema',
@@ -3843,6 +3853,140 @@ app.delete('/api/financeiro/holerites/:id', requireAuth, async (req, res) => {
     return res.json({ success: true, message: 'Holerite excluído com sucesso.' });
   } catch (err) {
     console.error('Erro ao excluir holerite:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// MÓDULO DE CADASTRO GERAL DE FUNCIONÁRIOS / COLABORADORES (DP / RH)
+// ============================================================================
+
+// 1. Listar Colaboradores com Filtros
+app.get('/api/dp/colaboradores', requireAuth, async (req, res) => {
+  try {
+    const { empresa, status, busca, limit, offset } = req.query;
+    const colaboradores = await obterColaboradoresDB({
+      empresa,
+      status,
+      busca,
+      limit: limit ? parseInt(limit, 10) : 500,
+      offset: offset ? parseInt(offset, 10) : 0
+    });
+    return res.json({ success: true, colaboradores });
+  } catch (err) {
+    console.error('Erro ao buscar colaboradores:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Obter Detalhes de um Colaborador
+app.get('/api/dp/colaboradores/:id', requireAuth, async (req, res) => {
+  try {
+    const colab = await obterColaboradorPorIdDB(req.params.id);
+    if (!colab) {
+      return res.status(404).json({ success: false, error: 'Colaborador não encontrado.' });
+    }
+    return res.json({ success: true, colaborador: colab });
+  } catch (err) {
+    console.error('Erro ao obter colaborador:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Cadastrar Novo Colaborador
+app.post('/api/dp/colaboradores', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const dados = req.body || {};
+    if (!dados.nome_completo || !dados.empresa) {
+      return res.status(400).json({ success: false, error: 'Nome completo e empresa são campos obrigatórios.' });
+    }
+    const salvo = await salvarColaboradorDB(dados, user ? user.username : 'sistema');
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'CADASTRO_COLABORADOR',
+      description: `Cadastrou o colaborador "${salvo.nome_completo}" (${salvo.empresa}).`,
+      ip: req.ip,
+      metadata: { id: salvo.id, nome: salvo.nome_completo, empresa: salvo.empresa }
+    }).catch(() => {});
+
+    return res.status(201).json({ success: true, colaborador: salvo });
+  } catch (err) {
+    console.error('Erro ao criar colaborador:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Atualizar Colaborador
+app.put('/api/dp/colaboradores/:id', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const dados = req.body || {};
+    dados.id = req.params.id;
+    if (!dados.nome_completo || !dados.empresa) {
+      return res.status(400).json({ success: false, error: 'Nome completo e empresa são campos obrigatórios.' });
+    }
+    const atualizado = await salvarColaboradorDB(dados, user ? user.username : 'sistema');
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'EDICAO_COLABORADOR',
+      description: `Atualizou os dados do colaborador "${atualizado.nome_completo}" (${atualizado.empresa}).`,
+      ip: req.ip,
+      metadata: { id: atualizado.id, nome: atualizado.nome_completo }
+    }).catch(() => {});
+
+    return res.json({ success: true, colaborador: atualizado });
+  } catch (err) {
+    console.error('Erro ao atualizar colaborador:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Excluir Colaborador
+app.delete('/api/dp/colaboradores/:id', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const colab = await obterColaboradorPorIdDB(req.params.id);
+    await excluirColaboradorDB(req.params.id, user ? user.username : 'sistema');
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'EXCLUSAO_COLABORADOR',
+      description: `Excluiu o colaborador "${colab ? colab.nome_completo : req.params.id}".`,
+      ip: req.ip,
+      metadata: { id: req.params.id }
+    }).catch(() => {});
+
+    return res.json({ success: true, message: 'Colaborador excluído com sucesso.' });
+  } catch (err) {
+    console.error('Erro ao excluir colaborador:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6. Sincronizar Colaboradores dos Holerites
+app.post('/api/dp/colaboradores/sync-holerites', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const resultado = await sincronizarColaboradoresDosHoleritesDB(user ? user.username : 'sistema');
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'SYNC_COLABORADORES_HOLERITES',
+      description: `Sincronizou colaboradores a partir dos holerites: ${resultado.novos_adicionados} novos cadastrados de ${resultado.total_verificados} verificados.`,
+      ip: req.ip,
+      metadata: resultado
+    }).catch(() => {});
+
+    return res.json({ success: true, ...resultado });
+  } catch (err) {
+    console.error('Erro ao sincronizar colaboradores:', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
