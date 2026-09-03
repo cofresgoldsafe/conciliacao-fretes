@@ -92,6 +92,12 @@ const {
   deleteUserLinkDB,
   saveAutorizacaoDescontoDB,
   getAutorizacoesDescontoDB,
+  getConfigMetasVendasDB,
+  saveConfigMetasVendasDB,
+  salvarFechamentoVendedorDB,
+  obterFechamentoPorCicloEVendedorDB,
+  obterFechamentosPorCicloDB,
+  obterUltimosFechamentosDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -124,6 +130,15 @@ const {
   consultarGorduraFrete,
   obterCiclosPredefinidos
 } = require('./gordura_frete_engine');
+
+const {
+  calcularCicloFechamentoDisponivel,
+  normalizarPeriodo,
+  consolidarFechamentoMensal,
+  executarJobFechamentoMensal,
+  getConfigMetas,
+  saveConfigMetas
+} = require('./fechamento_vendedores_engine');
 
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
@@ -1381,6 +1396,192 @@ app.post('/api/vendedores/gordura-frete', requireAuth, async (req, res) => {
     res.json({ success: true, data: resultado });
   } catch (err) {
     handleServerError(res, err, err.message || 'Erro ao consultar gordura de frete.');
+  }
+});
+
+// ============================================================================
+// API: CONFIGURAÇÃO DE METAS COMERCIAIS (ABA CONFIGURAÇÕES)
+// ============================================================================
+
+app.get('/api/config/metas-vendas', requireAuth, async (req, res) => {
+  try {
+    const config = await getConfigMetas();
+    res.json({ success: true, data: config });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao consultar configurações de metas.');
+  }
+});
+
+app.post('/api/config/metas-vendas', requireAuth, requireRole('admin', 'diretoria', 'comercial'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const novasMetas = req.body || {};
+    const salvo = await saveConfigMetas(novasMetas, user.username || user.name || 'Admin');
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONFIG_METAS_VENDAS',
+      description: `Atualizou parâmetros de metas de vendas e frete (Meta Base: R$ ${salvo.metaBaseVendas})`,
+      ip: req.ip,
+      metadata: salvo
+    }).catch(() => {});
+
+    res.json({ success: true, message: 'Metas e premiações salvas com sucesso!', data: salvo });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao salvar configurações de metas.');
+  }
+});
+
+// ============================================================================
+// API: VENDEDORES - FECHAMENTO MENSAL (26 A 25)
+// ============================================================================
+
+// Retorna o fechamento ativo/disponível do ciclo corrente
+app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    let codVend = req.query.codVend;
+
+    // RBAC: Se for vendedor, restringe estritamente ao seu próprio código
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código associado.' });
+      }
+      codVend = user.vendorCode;
+    }
+
+    const cicloAtivo = calcularCicloFechamentoDisponivel();
+
+    // 1. Tenta carregar do banco / snapshot gravado primeiro
+    let fechamentoDoBanco = null;
+    if (codVend) {
+      fechamentoDoBanco = await obterFechamentoPorCicloEVendedorDB(cicloAtivo.cicloId, codVend);
+    }
+
+    // 2. Se não houver dados gravados ainda (ou se solicitado todos os vendedores), consolida em tempo real
+    if (!fechamentoDoBanco) {
+      const consolidado = await consolidarFechamentoMensal({
+        dataIni: cicloAtivo.dtIni,
+        dataFim: cicloAtivo.dtFim,
+        codVend: codVend,
+        triggeredBy: 'ON_DEMAND',
+        persist: true
+      });
+      return res.json({ success: true, ciclo: cicloAtivo, ...consolidado });
+    }
+
+    // Se achou no banco para vendedor específico, carrega também todos do ciclo para compor a visão geral
+    const todosDoCiclo = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
+    res.json({
+      success: true,
+      ciclo: cicloAtivo,
+      fechamento: fechamentoDoBanco,
+      todosVendedores: todosDoCiclo,
+      faturamentoGlobalPorEmpresa: fechamentoDoBanco.faturamento_empresas_json || {},
+      metasSnapshot: fechamentoDoBanco.metas_snapshot_json || {},
+      benchmarking: fechamentoDoBanco.benchmarking_json || {}
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao consultar fechamento atual.');
+  }
+});
+
+// Retorna o histórico de ciclos de fechamento persistidos
+app.get('/api/vendedores/fechamento/historico', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    let codVend = req.query.codVend;
+    if (user.role === 'vendedor') {
+      codVend = user.vendorCode;
+    }
+    const historico = await obterUltimosFechamentosDB({ limite: 12, codVendedor: codVend });
+    res.json({ success: true, data: historico });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao listar histórico de fechamentos.');
+  }
+});
+
+// Retorna o fechamento de um ciclo específico do histórico
+app.get('/api/vendedores/fechamento/ciclo/:cicloId', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { cicloId } = req.params;
+    let codVend = req.query.codVend;
+
+    if (user.role === 'vendedor') {
+      if (!user.vendorCode) {
+        return res.status(403).json({ success: false, message: 'Acesso negado: Perfil de vendedor sem código associado.' });
+      }
+      codVend = user.vendorCode;
+    }
+
+    if (codVend) {
+      const fechamento = await obterFechamentoPorCicloEVendedorDB(cicloId, codVend);
+      if (!fechamento) {
+        // Se não encontrou no banco, tenta consolidar para esse ciclo específico
+        const parts = cicloId.split('_');
+        if (parts.length === 2) {
+          const resCalc = await consolidarFechamentoMensal({
+            dataIni: parts[0],
+            dataFim: parts[1],
+            codVend,
+            triggeredBy: 'ON_DEMAND',
+            persist: true
+          });
+          return res.json({ success: true, ...resCalc });
+        }
+        return res.status(404).json({ success: false, message: 'Fechamento não encontrado para este ciclo.' });
+      }
+      const todosDoCiclo = await obterFechamentosPorCicloDB(cicloId);
+      return res.json({
+        success: true,
+        fechamento,
+        todosVendedores: todosDoCiclo,
+        faturamentoGlobalPorEmpresa: fechamento.faturamento_empresas_json || {},
+        metasSnapshot: fechamento.metas_snapshot_json || {},
+        benchmarking: fechamento.benchmarking_json || {}
+      });
+    }
+
+    const todos = await obterFechamentosPorCicloDB(cicloId);
+    res.json({ success: true, fechamentos: todos });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao obter fechamento do ciclo.');
+  }
+});
+
+// Força o recálculo / geração manual do fechamento do período
+app.post('/api/vendedores/fechamento/gerar', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    let { dataIni, dataFim, codVend } = req.body || {};
+
+    if (user.role === 'vendedor') {
+      codVend = user.vendorCode;
+    }
+
+    const periodo = normalizarPeriodo(dataIni, dataFim);
+    const resultado = await consolidarFechamentoMensal({
+      dataIni: periodo.dtIni,
+      dataFim: periodo.dtFim,
+      codVend,
+      triggeredBy: 'MANUAL_USER',
+      persist: true
+    });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'GERACAO_FECHAMENTO',
+      description: `Gerou/recalculou fechamento (${periodo.label}) - ${codVend || 'Todos os Vendedores'}`,
+      ip: req.ip,
+      metadata: { periodo, codVend }
+    }).catch(() => {});
+
+    res.json({ success: true, message: 'Fechamento consolidado e persistido com sucesso!', data: resultado });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao gerar fechamento.');
   }
 });
 
@@ -4148,6 +4349,60 @@ function startIndicesSyncJob() {
   }, 5000);
 }
 
+/**
+ * ----------------------------------------------------------------------------
+ * JOB AGENDADO: FECHAMENTO MENSAL DOS VENDEDORES (DIA 26 ÀS 00:30 DE BRASÍLIA)
+ * ----------------------------------------------------------------------------
+ */
+let fechamentoJobInterval = null;
+
+function startFechamentoVendedoresJob() {
+  if (fechamentoJobInterval) return;
+
+  const verificarEExecutarFechamento = async () => {
+    try {
+      const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+      const nowBrasilia = new Date(nowStr);
+      const dia = nowBrasilia.getDate();
+      const hora = nowBrasilia.getHours();
+      const minuto = nowBrasilia.getMinutes();
+
+      // Roda no dia 26 entre 00h30m e 01h00m
+      if (dia === 26 && hora === 0 && minuto >= 30) {
+        console.log(`⏰ [Job Fechamento] Executando fechamento programado (Dia 26 às ${hora}:${String(minuto).padStart(2, '0')})...`);
+        await executarJobFechamentoMensal({ force: false });
+      }
+    } catch (e) {
+      console.warn('⚠️ [Job Fechamento] Erro na rotina agendada de fechamento:', e.message);
+    }
+  };
+
+  // Checa a cada 15 minutos
+  fechamentoJobInterval = setInterval(verificarEExecutarFechamento, 15 * 60 * 1000);
+  if (fechamentoJobInterval.unref) {
+    fechamentoJobInterval.unref();
+  }
+
+  // No startup, verifica se já existe fechamento do ciclo atual gravado; se não, consolida em background após 7 segundos
+  setTimeout(async () => {
+    try {
+      const cicloAtivo = calcularCicloFechamentoDisponivel();
+      const salvos = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
+      if (!salvos || salvos.length === 0) {
+        console.log(`🏆 [Job Fechamento] Carga inicial de fechamento (${cicloAtivo.label}). Consolidando dados do Protheus...`);
+        await consolidarFechamentoMensal({
+          dataIni: cicloAtivo.dtIni,
+          dataFim: cicloAtivo.dtFim,
+          triggeredBy: 'JOB_STARTUP',
+          persist: true
+        });
+      }
+    } catch (e) {
+      console.warn('⚠️ [Job Fechamento] Falha na carga inicial do fechamento:', e.message);
+    }
+  }, 7000);
+}
+
 if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`=================================================`);
@@ -4157,6 +4412,7 @@ if (require.main === module) {
     await initPostgres();
     startEstoqueSyncJob();
     startIndicesSyncJob();
+    startFechamentoVendedoresJob();
   });
 }
 

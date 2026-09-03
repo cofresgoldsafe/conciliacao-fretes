@@ -39,6 +39,8 @@ const estoqueCacheFile = path.join(dataDir, 'estoque_saldos_cache.json');
 const faturamentoCacheFile = path.join(dataDir, 'faturamento_historico_cache.json');
 const tarefasFile = path.join(dataDir, 'tarefas.json');
 const biAutorizacoesCacheFile = path.join(dataDir, 'bi_autorizacoes_cache.json');
+const fechamentosCacheFile = path.join(dataDir, 'fechamentos_vendedores_cache.json');
+const configMetasVendasFile = path.join(dataDir, 'config_metas_vendas.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -791,6 +793,52 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_bi_aut_deal_id ON bi_autorizacoes_desconto(deal_id);
         CREATE INDEX IF NOT EXISTS idx_bi_aut_status ON bi_autorizacoes_desconto(status);
         CREATE INDEX IF NOT EXISTS idx_bi_aut_created_at ON bi_autorizacoes_desconto(created_at DESC);
+
+        -- 10.6 Cria Tabela de Configurações Gerais do Sistema
+        CREATE TABLE IF NOT EXISTS system_configs (
+          chave VARCHAR(100) PRIMARY KEY,
+          valor JSONB NOT NULL,
+          descricao TEXT,
+          atualizado_por VARCHAR(100),
+          atualizado_em TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        -- 10.7 Cria Tabela de Fechamentos Mensais dos Vendedores
+        CREATE TABLE IF NOT EXISTS fechamentos_vendedores (
+          id SERIAL PRIMARY KEY,
+          ciclo_id VARCHAR(50) NOT NULL,
+          periodo_label VARCHAR(100) NOT NULL,
+          data_ini DATE NOT NULL,
+          data_fim DATE NOT NULL,
+          cod_vendedor VARCHAR(20) NOT NULL,
+          nome_vendedor VARCHAR(100) NOT NULL,
+          vendas_base_bruta NUMERIC(15, 2) DEFAULT 0,
+          fretes_embutidos NUMERIC(15, 2) DEFAULT 0,
+          vendas_base_liquida NUMERIC(15, 2) DEFAULT 0,
+          meta_vendas_valor NUMERIC(15, 2) DEFAULT 120000,
+          pct_meta_vendas NUMERIC(7, 2) DEFAULT 0,
+          premio_meta_vendas NUMERIC(15, 2) DEFAULT 0,
+          faixa_meta_vendas VARCHAR(50) DEFAULT '',
+          gordura_frete_total NUMERIC(15, 2) DEFAULT 0,
+          premio_gordura_frete NUMERIC(15, 2) DEFAULT 0,
+          faixa_gordura_frete VARCHAR(50) DEFAULT '',
+          comissao_taxa NUMERIC(5, 4) DEFAULT 0.0130,
+          comissao_bruta NUMERIC(15, 2) DEFAULT 0,
+          inadimplentes_total NUMERIC(15, 2) DEFAULT 0,
+          comissao_liquida NUMERIC(15, 2) DEFAULT 0,
+          total_premios NUMERIC(15, 2) DEFAULT 0,
+          total_geral_receber NUMERIC(15, 2) DEFAULT 0,
+          faturamento_empresas_json JSONB,
+          benchmarking_json JSONB,
+          metas_snapshot_json JSONB,
+          detalhes_json JSONB,
+          gerado_em TIMESTAMPTZ DEFAULT NOW(),
+          tipo_geracao VARCHAR(30) DEFAULT 'JOB_AUTO',
+          CONSTRAINT uq_fechamento_ciclo_vend UNIQUE (ciclo_id, cod_vendedor)
+        );
+        CREATE INDEX IF NOT EXISTS idx_fechamentos_ciclo ON fechamentos_vendedores(ciclo_id);
+        CREATE INDEX IF NOT EXISTS idx_fechamentos_vendedor ON fechamentos_vendedores(cod_vendedor);
+        CREATE INDEX IF NOT EXISTS idx_fechamentos_datas ON fechamentos_vendedores(data_ini, data_fim);
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
@@ -871,7 +919,8 @@ async function initPostgres() {
         'indices_sync_logs',
         'indices_liquidez_historico',
         'grupos_produtos_sbm',
-        'tarefas'
+        'tarefas',
+        'fechamentos_vendedores'
       ];
 
       // Busca dinamicamente todas as tabelas do schema public para garantir 100% de cobertura
@@ -3027,6 +3076,307 @@ async function getAutorizacoesDescontoDB({ page = 1, limit = 50, deal_id, status
   };
 }
 
+// ============================================================================
+// CONFIGURAÇÃO DE METAS DE VENDAS & PRÊMIOS
+// ============================================================================
+
+const DEFAULT_METAS_VENDAS = {
+  metaBaseVendas: 120000.00,
+  premioMeta100: 400.00,
+  premioMeta150: 600.00,
+  premioMeta200: 1000.00,
+  premioGordura700: 200.00,
+  premioGordura1100: 300.00,
+  premioGordura1500: 400.00,
+  premioGordura2100: 500.00,
+  premioGordura3000: 600.00
+};
+
+async function getConfigMetasVendasDB() {
+  if (getPool()) {
+    try {
+      const res = await safeQuery(`SELECT valor, atualizado_por, atualizado_em FROM system_configs WHERE chave = 'config_metas_vendas' LIMIT 1;`);
+      if (res && res.rows && res.rows.length > 0) {
+        const raw = res.rows[0].valor;
+        const val = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        return {
+          ...DEFAULT_METAS_VENDAS,
+          ...val,
+          _atualizadoPor: res.rows[0].atualizado_por || 'Sistema',
+          _atualizadoEm: res.rows[0].atualizado_em || null
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao ler config_metas_vendas:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const localVal = safeReadJsonSync(configMetasVendasFile, null);
+  if (localVal) {
+    return { ...DEFAULT_METAS_VENDAS, ...localVal };
+  }
+  return { ...DEFAULT_METAS_VENDAS };
+}
+
+async function saveConfigMetasVendasDB(metasData, usuario = 'Sistema') {
+  const merged = {
+    metaBaseVendas: parseFloat(metasData.metaBaseVendas ?? DEFAULT_METAS_VENDAS.metaBaseVendas) || 120000,
+    premioMeta100: parseFloat(metasData.premioMeta100 ?? DEFAULT_METAS_VENDAS.premioMeta100) || 400,
+    premioMeta150: parseFloat(metasData.premioMeta150 ?? DEFAULT_METAS_VENDAS.premioMeta150) || 600,
+    premioMeta200: parseFloat(metasData.premioMeta200 ?? DEFAULT_METAS_VENDAS.premioMeta200) || 1000,
+    premioGordura700: parseFloat(metasData.premioGordura700 ?? DEFAULT_METAS_VENDAS.premioGordura700) || 200,
+    premioGordura1100: parseFloat(metasData.premioGordura1100 ?? DEFAULT_METAS_VENDAS.premioGordura1100) || 300,
+    premioGordura1500: parseFloat(metasData.premioGordura1500 ?? DEFAULT_METAS_VENDAS.premioGordura1500) || 400,
+    premioGordura2100: parseFloat(metasData.premioGordura2100 ?? DEFAULT_METAS_VENDAS.premioGordura2100) || 500,
+    premioGordura3000: parseFloat(metasData.premioGordura3000 ?? DEFAULT_METAS_VENDAS.premioGordura3000) || 600,
+    atualizadoPor: usuario,
+    atualizadoEm: new Date().toISOString()
+  };
+
+  // 1. Salva em JSON local primeiro (Resiliência)
+  safeWriteJsonSync(configMetasVendasFile, merged);
+
+  // 2. Salva no Postgres / Supabase
+  if (getPool()) {
+    try {
+      await safeQuery(`
+        INSERT INTO system_configs (chave, valor, descricao, atualizado_por, atualizado_em)
+        VALUES ('config_metas_vendas', $1, 'Configuração de Metas Comerciais e Premiações (Vendas e Gordura de Frete)', $2, NOW())
+        ON CONFLICT (chave) DO UPDATE SET
+          valor = EXCLUDED.valor,
+          atualizado_por = EXCLUDED.atualizado_por,
+          atualizado_em = NOW();
+      `, [JSON.stringify(merged), usuario]);
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao salvar config_metas_vendas:', err.message);
+    }
+  }
+
+  return merged;
+}
+
+// ============================================================================
+// FECHAMENTOS MENSAIS DOS VENDEDORES (PERSISTÊNCIA ACID + JSON FALLBACK)
+// ============================================================================
+
+async function salvarFechamentoVendedorDB(item) {
+  if (!item || !item.cicloId || !item.codVendedor) {
+    throw new Error('Parâmetros obrigatórios ausentes para salvar fechamento de vendedor.');
+  }
+
+  const record = {
+    ciclo_id: item.cicloId,
+    periodo_label: item.periodoLabel || item.periodo?.label || '',
+    data_ini: item.dataIni || item.periodo?.dataIniIso || '',
+    data_fim: item.dataFim || item.periodo?.dataFimIso || '',
+    cod_vendedor: String(item.codVendedor).trim(),
+    nome_vendedor: item.nomeVendedor || '',
+    vendas_base_bruta: parseFloat(item.vendasBaseBruta || 0),
+    fretes_embutidos: parseFloat(item.fretesEmbutidos || 0),
+    vendas_base_liquida: parseFloat(item.vendasBaseLiquida || 0),
+    meta_vendas_valor: parseFloat(item.metaVendasValor || 120000),
+    pct_meta_vendas: parseFloat(item.pctMetaVendas || 0),
+    premio_meta_vendas: parseFloat(item.premioMetaVendas || 0),
+    faixa_meta_vendas: item.faixaMetaVendas || '',
+    gordura_frete_total: parseFloat(item.gorduraFreteTotal || 0),
+    premio_gordura_frete: parseFloat(item.premioGorduraFrete || 0),
+    faixa_gordura_frete: item.faixaGorduraFrete || '',
+    comissao_taxa: parseFloat(item.comissaoTaxa || 0.0130),
+    comissao_bruta: parseFloat(item.comissaoBruta || 0),
+    inadimplentes_total: parseFloat(item.inadimplentesTotal || 0),
+    comissao_liquida: parseFloat(item.comissaoLiquida || 0),
+    total_premios: parseFloat(item.totalPremios || 0),
+    total_geral_receber: parseFloat(item.totalGeralReceber || 0),
+    faturamento_empresas_json: item.faturamentoEmpresas || {},
+    benchmarking_json: item.benchmarking || {},
+    metas_snapshot_json: item.metasSnapshot || {},
+    detalhes_json: item.detalhes || {},
+    tipo_geracao: item.tipoGeracao || 'JOB_AUTO',
+    gerado_em: new Date().toISOString()
+  };
+
+  // 1. Grava no cache JSON local
+  try {
+    let list = safeReadJsonSync(fechamentosCacheFile, []);
+    const idx = list.findIndex(x => x.ciclo_id === record.ciclo_id && x.cod_vendedor === record.cod_vendedor);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...record };
+    } else {
+      list.push(record);
+    }
+    safeWriteJsonSync(fechamentosCacheFile, list);
+  } catch (errJson) {
+    console.warn('⚠️ [Postgres] Erro ao salvar fechamento no cache JSON:', errJson.message);
+  }
+
+  // 2. Grava no PostgreSQL / Supabase
+  if (getPool()) {
+    try {
+      const sql = `
+        INSERT INTO fechamentos_vendedores (
+          ciclo_id, periodo_label, data_ini, data_fim, cod_vendedor, nome_vendedor,
+          vendas_base_bruta, fretes_embutidos, vendas_base_liquida, meta_vendas_valor,
+          pct_meta_vendas, premio_meta_vendas, faixa_meta_vendas, gordura_frete_total,
+          premio_gordura_frete, faixa_gordura_frete, comissao_taxa, comissao_bruta,
+          inadimplentes_total, comissao_liquida, total_premios, total_geral_receber,
+          faturamento_empresas_json, benchmarking_json, metas_snapshot_json, detalhes_json,
+          tipo_geracao, gerado_em
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, $9, $10,
+          $11, $12, $13, $14,
+          $15, $16, $17, $18,
+          $19, $20, $21, $22,
+          $23, $24, $25, $26,
+          $27, NOW()
+        )
+        ON CONFLICT (ciclo_id, cod_vendedor) DO UPDATE SET
+          periodo_label = EXCLUDED.periodo_label,
+          data_ini = EXCLUDED.data_ini,
+          data_fim = EXCLUDED.data_fim,
+          nome_vendedor = EXCLUDED.nome_vendedor,
+          vendas_base_bruta = EXCLUDED.vendas_base_bruta,
+          fretes_embutidos = EXCLUDED.fretes_embutidos,
+          vendas_base_liquida = EXCLUDED.vendas_base_liquida,
+          meta_vendas_valor = EXCLUDED.meta_vendas_valor,
+          pct_meta_vendas = EXCLUDED.pct_meta_vendas,
+          premio_meta_vendas = EXCLUDED.premio_meta_vendas,
+          faixa_meta_vendas = EXCLUDED.faixa_meta_vendas,
+          gordura_frete_total = EXCLUDED.gordura_frete_total,
+          premio_gordura_frete = EXCLUDED.premio_gordura_frete,
+          faixa_gordura_frete = EXCLUDED.faixa_gordura_frete,
+          comissao_taxa = EXCLUDED.comissao_taxa,
+          comissao_bruta = EXCLUDED.comissao_bruta,
+          inadimplentes_total = EXCLUDED.inadimplentes_total,
+          comissao_liquida = EXCLUDED.comissao_liquida,
+          total_premios = EXCLUDED.total_premios,
+          total_geral_receber = EXCLUDED.total_geral_receber,
+          faturamento_empresas_json = EXCLUDED.faturamento_empresas_json,
+          benchmarking_json = EXCLUDED.benchmarking_json,
+          metas_snapshot_json = EXCLUDED.metas_snapshot_json,
+          detalhes_json = EXCLUDED.detalhes_json,
+          tipo_geracao = EXCLUDED.tipo_geracao,
+          gerado_em = NOW()
+        RETURNING *;
+      `;
+      const params = [
+        record.ciclo_id, record.periodo_label, record.data_ini, record.data_fim, record.cod_vendedor, record.nome_vendedor,
+        record.vendas_base_bruta, record.fretes_embutidos, record.vendas_base_liquida, record.meta_vendas_valor,
+        record.pct_meta_vendas, record.premio_meta_vendas, record.faixa_meta_vendas, record.gordura_frete_total,
+        record.premio_gordura_frete, record.faixa_gordura_frete, record.comissao_taxa, record.comissao_bruta,
+        record.inadimplentes_total, record.comissao_liquida, record.total_premios, record.total_geral_receber,
+        JSON.stringify(record.faturamento_empresas_json), JSON.stringify(record.benchmarking_json),
+        JSON.stringify(record.metas_snapshot_json), JSON.stringify(record.detalhes_json),
+        record.tipo_geracao
+      ];
+      const res = await safeQuery(sql, params);
+      if (res && res.rows && res.rows[0]) {
+        return res.rows[0];
+      }
+    } catch (errDb) {
+      console.warn('⚠️ [Postgres] Erro ao gravar fechamento no banco:', errDb.message);
+    }
+  }
+
+  return record;
+}
+
+async function obterFechamentoPorCicloEVendedorDB(cicloId, codVendedor) {
+  const cleanCiclo = String(cicloId || '').trim();
+  const cleanVend = String(codVendedor || '').trim();
+
+  if (getPool()) {
+    try {
+      const sql = `
+        SELECT * FROM fechamentos_vendedores
+        WHERE ciclo_id = $1 AND (cod_vendedor = $2 OR cod_vendedor = $3)
+        LIMIT 1;
+      `;
+      const padded6 = cleanVend.padStart(6, '0');
+      const res = await safeQuery(sql, [cleanCiclo, cleanVend, padded6]);
+      if (res && res.rows && res.rows[0]) {
+        return res.rows[0];
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar fechamento por ciclo e vendedor:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const list = safeReadJsonSync(fechamentosCacheFile, []);
+  return list.find(x => x.ciclo_id === cleanCiclo && (x.cod_vendedor === cleanVend || x.cod_vendedor === cleanVend.padStart(6, '0'))) || null;
+}
+
+async function obterFechamentosPorCicloDB(cicloId) {
+  const cleanCiclo = String(cicloId || '').trim();
+
+  if (getPool()) {
+    try {
+      const sql = `
+        SELECT * FROM fechamentos_vendedores
+        WHERE ciclo_id = $1
+        ORDER BY nome_vendedor ASC;
+      `;
+      const res = await safeQuery(sql, [cleanCiclo]);
+      if (res && res.rows) {
+        return res.rows;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar fechamentos por ciclo:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const list = safeReadJsonSync(fechamentosCacheFile, []);
+  return list.filter(x => x.ciclo_id === cleanCiclo).sort((a, b) => (a.nome_vendedor || '').localeCompare(b.nome_vendedor || ''));
+}
+
+async function obterUltimosFechamentosDB({ limite = 12, codVendedor } = {}) {
+  const lim = parseInt(limite, 10) || 12;
+  const cleanVend = codVendedor ? String(codVendedor).trim() : null;
+
+  if (getPool()) {
+    try {
+      let sql = `
+        SELECT DISTINCT ciclo_id, periodo_label, data_ini, data_fim, MAX(gerado_em) as gerado_em
+        FROM fechamentos_vendedores
+      `;
+      const params = [];
+      if (cleanVend) {
+        sql += ` WHERE (cod_vendedor = $1 OR cod_vendedor = $2)`;
+        params.push(cleanVend, cleanVend.padStart(6, '0'));
+      }
+      sql += ` GROUP BY ciclo_id, periodo_label, data_ini, data_fim ORDER BY data_fim DESC LIMIT ${lim};`;
+      const res = await safeQuery(sql, params);
+      if (res && res.rows) {
+        return res.rows;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao listar últimos fechamentos:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  const list = safeReadJsonSync(fechamentosCacheFile, []);
+  const map = new Map();
+  for (const item of list) {
+    if (cleanVend && item.cod_vendedor !== cleanVend && item.cod_vendedor !== cleanVend.padStart(6, '0')) continue;
+    if (!map.has(item.ciclo_id)) {
+      map.set(item.ciclo_id, {
+        ciclo_id: item.ciclo_id,
+        periodo_label: item.periodo_label || item.periodoLabel,
+        data_ini: item.data_ini || item.dataIni,
+        data_fim: item.data_fim || item.dataFim,
+        gerado_em: item.gerado_em || item.geradoEm
+      });
+    }
+  }
+  const result = Array.from(map.values());
+  result.sort((a, b) => (b.data_fim || '').localeCompare(a.data_fim || ''));
+  return result.slice(0, lim);
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -3082,6 +3432,13 @@ module.exports = {
   saveUserLinksDB,
   saveAutorizacaoDescontoDB,
   getAutorizacoesDescontoDB,
+  getConfigMetasVendasDB,
+  saveConfigMetasVendasDB,
+  salvarFechamentoVendedorDB,
+  obterFechamentoPorCicloEVendedorDB,
+  obterFechamentosPorCicloDB,
+  obterUltimosFechamentosDB,
+  DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool
 };

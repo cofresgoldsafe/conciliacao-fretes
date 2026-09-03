@@ -1,5 +1,201 @@
 [
   {
+    "id": "ACT-1788398071986",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "SYNC_INDICES_LIQUIDEZ",
+    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "duracaoMs": 13844,
+      "totais": {
+        "estoque": 184,
+        "contasReceber": 98,
+        "contasPagar": 193,
+        "saldosBancarios": 22
+      }
+    },
+    "createdAt": "2026-09-03T01:14:31.986Z"
+  },
+  {
+    "id": "ACT-1788398058039",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-09-03T01:14:18.039Z"
+  },
+  {
+    "id": "ACT-1788398000385",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-09-03T01:13:20.385Z"
+  },
+  {
+    "id": "ACT-1788397995151",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T01:13:15.151Z"
+  },
+  {
+    "id": "ACT-1788397994995",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T01:13:14.995Z"
+  },
+  {
+    "id": "ACT-1788397994665",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T01:13:14.665Z"
+  },
+  {
+    "id": "ACT-1788397994359",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-03T01:13:14.360Z"
+  },
+  {
+    "id": "ACT-1788397976195",
+    "username": "alexandre",
+    "userName": "Alexandre Admin",
+    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
+    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "source": "CACHE_JSON"
+    },
+    "createdAt": "2026-09-03T01:12:56.195Z"
+  },
+  {
+    "id": "ACT-1788397973975",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "MP",
+      "count": 5
+    },
+    "createdAt": "2026-09-03T01:12:53.975Z"
+  },
+  {
+    "id": "ACT-1788397973289",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 14
+    },
+    "createdAt": "2026-09-03T01:12:53.289Z"
+  },
+  {
+    "id": "ACT-1788397967525",
+    "username": "andrea",
+    "userName": "Andrea",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (2 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "codVend": "000004",
+      "count": 2
+    },
+    "createdAt": "2026-09-03T01:12:47.525Z"
+  },
+  {
+    "id": "ACT-1788397964544",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T01:12:44.544Z"
+  },
+  {
+    "id": "ACT-1788397961546",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T01:12:41.546Z"
+  },
+  {
+    "id": "ACT-1788391597769",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T23:26:37.770Z"
+  },
+  {
+    "id": "ACT-1788391597554",
+    "username": "erica",
+    "userName": "Érica",
+    "actionType": "TROCA_SENHA",
+    "description": "Alterou a própria senha com sucesso",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T23:26:37.554Z"
+  },
+  {
+    "id": "ACT-1788391597135",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T23:26:37.135Z"
+  },
+  {
+    "id": "ACT-1788391596777",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "SOLICITACAO_2FA",
+    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {},
+    "createdAt": "2026-09-02T23:26:36.777Z"
+  },
+  {
     "id": "ACT-1788367958204",
     "username": "erica",
     "userName": "Érica",
@@ -2094,249 +2290,5 @@
       "count": 1
     },
     "createdAt": "2026-08-31T18:24:05.239Z"
-  },
-  {
-    "id": "ACT-1788200643472",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (16 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 16
-    },
-    "createdAt": "2026-08-31T18:24:03.472Z"
-  },
-  {
-    "id": "ACT-1788200640563",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (16 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 16
-    },
-    "createdAt": "2026-08-31T18:24:00.563Z"
-  },
-  {
-    "id": "ACT-1788200626778",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_COMISSOES",
-    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "dataIni": "2026-08-01",
-      "dataFim": "2026-08-25",
-      "codVend": "000004",
-      "totalRegistros": 15
-    },
-    "createdAt": "2026-08-31T18:23:46.778Z"
-  },
-  {
-    "id": "ACT-1788200622057",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (16 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 16
-    },
-    "createdAt": "2026-08-31T18:23:42.057Z"
-  },
-  {
-    "id": "ACT-1788200492626",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000074 (10 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "codVend": "000074",
-      "count": 10
-    },
-    "createdAt": "2026-08-31T18:21:32.626Z"
-  },
-  {
-    "id": "ACT-1788192608356",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 14291,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 101,
-        "contasPagar": 141,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T16:10:08.356Z"
-  },
-  {
-    "id": "ACT-1788192593961",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T16:09:53.961Z"
-  },
-  {
-    "id": "ACT-1788192216663",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 12229,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 101,
-        "contasPagar": 141,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T16:03:36.663Z"
-  },
-  {
-    "id": "ACT-1788192204311",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T16:03:24.311Z"
-  },
-  {
-    "id": "ACT-1788191473287",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 11498,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 101,
-        "contasPagar": 141,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T15:51:13.287Z"
-  },
-  {
-    "id": "ACT-1788191461654",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T15:51:01.654Z"
-  },
-  {
-    "id": "ACT-1788191117670",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 14712,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 101,
-        "contasPagar": 141,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T15:45:17.670Z"
-  },
-  {
-    "id": "ACT-1788191102827",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T15:45:02.827Z"
-  },
-  {
-    "id": "ACT-1788189682134",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 18054,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 101,
-        "contasPagar": 80,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T15:21:22.134Z"
-  },
-  {
-    "id": "ACT-1788189663979",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T15:21:03.979Z"
-  },
-  {
-    "id": "ACT-1788187300163",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "SYNC_INDICES_LIQUIDEZ",
-    "description": "Disparou sincronização manual dos Índices de Liquidez (Sucesso: true)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "duracaoMs": 11332,
-      "totais": {
-        "estoque": 183,
-        "contasReceber": 100,
-        "contasPagar": 85,
-        "saldosBancarios": 22
-      }
-    },
-    "createdAt": "2026-08-31T14:41:40.163Z"
-  },
-  {
-    "id": "ACT-1788187288747",
-    "username": "alexandre",
-    "userName": "Alexandre Admin",
-    "actionType": "CONSULTA_INDICES_LIQUIDEZ",
-    "description": "Consultou os Índices Financeiros de Liquidez (LC, LS, LI)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "source": "CACHE_JSON"
-    },
-    "createdAt": "2026-08-31T14:41:28.747Z"
   }
 ]

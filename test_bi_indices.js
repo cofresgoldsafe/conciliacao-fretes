@@ -104,14 +104,17 @@ async function runAllTests() {
 
   runSyncAssertion('Cálculo de Dias Vencidos', () => {
     // Data futura não deve retornar dias vencidos
+    const pad = n => String(n).padStart(2, '0');
+    const getLocalYmd = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+
     const hoje = new Date();
-    const amanha = new Date(hoje.getTime() + 24 * 60 * 60 * 1000);
-    const amanhaYmd = amanha.toISOString().slice(0, 10).replace(/-/g, '');
+    const amanha = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+    const amanhaYmd = getLocalYmd(amanha);
     assert.strictEqual(calcularDiasVencido(amanhaYmd), 0);
 
     // Data de 10 dias atrás deve retornar 10 dias
-    const dezDiasAtras = new Date(hoje.getTime() - 10 * 24 * 60 * 60 * 1000);
-    const dezDiasYmd = dezDiasAtras.toISOString().slice(0, 10).replace(/-/g, '');
+    const dezDiasAtras = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 10);
+    const dezDiasYmd = getLocalYmd(dezDiasAtras);
     assert.strictEqual(calcularDiasVencido(dezDiasYmd), 10);
   });
 

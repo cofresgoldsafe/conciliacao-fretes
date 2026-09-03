@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 20:30 (v8.130 - Sub-Aba Gordura Frete no Módulo Vendedores com Fechamento 26 a 25 e Cálculos de Margem)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 02/09/2026 22:15 (v8.140 - Sub-Aba Fechamento no Módulo Vendedores com Regra 26 a 25, Metas, Prêmios, Dedução C5_VLR_FRT/SE1 e Configuração de Metas)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -142,6 +142,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             <span>Gordura Frete</span>
           </button>
+          <button class="nav-tab-btn" data-tab="tab-vend-fechamento" id="btnTabVendFechamento">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h10c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+            <span>Fechamento</span>
+          </button>
         </div>
         <div style="margin-left: auto;">
           <button id="btnToggleThemeVendedores" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; transition: all 0.2s ease;" title="Alternar tema Claro/Escuro para todas as sub-abas dos Vendedores">
@@ -168,26 +172,34 @@
           </button>
           <button class="nav-tab-btn" data-tab="tab-compras-pedidos-abertos" id="btnTabComprasPedidosComprasAbertos">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-            <span>Ped Compras Aberto</span>
+            <span>Ped Compras em Aberto</span>
           </button>
           <button class="nav-tab-btn" data-tab="tab-vend-pedidos-compras" id="btnTabComprasPedidosCompras">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
             <span>Prod x Ped Compras</span>
           </button>
         </div>
         <div style="margin-left: auto;">
-          <button id="btnToggleThemeCompras" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; transition: all 0.2s ease;" title="Alternar tema Claro/Escuro para todas as sub-abas">
+          <button id="btnToggleThemeCompras" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; transition: all 0.2s ease;" title="Alternar tema Claro/Escuro para sub-abas de Compras">
             <span id="themeIconCompras">☀️</span>
             <span id="themeLabelCompras">Modo Claro</span>
           </button>
         </div>
       </div>
 
-      <!-- Sub-abas de Assistente Financeiro -->
+      <!-- Sub-abas de Financeiro -->
       <div class="sub-tabs-group hidden" id="subGroupFinanceiro">
         <button class="nav-tab-btn active" data-tab="tab-conciliacao-bancaria">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"/></svg>
           <span>Conciliação Bancária</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-inter-extrato" id="btnTabInterExtrato">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          <span>Extrato API Inter</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-inter-webhooks" id="btnTabInterWebhooks">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Webhooks Pix Inter</span>
         </button>
         <button class="nav-tab-btn" data-tab="tab-analise-credito" id="btnTabAnaliseCredito">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -208,6 +220,10 @@
         <button class="nav-tab-btn" data-tab="tab-config-score" id="btnTabConfigScore">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Análise de Crédito (Configuração)</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-config-metas-vendas" id="btnTabConfigMetasVendas">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h10c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+          <span>Metas Vendas (Configuração)</span>
         </button>
       </div>
 
@@ -2034,6 +2050,272 @@
       </section>
     </div>
 
+    <!-- ABA VENDEDORES 6: FECHAMENTO MENSAL (26 A 25) & METAS COMERCIAIS -->
+    <div id="tab-vend-fechamento" class="tab-pane hidden">
+      <section class="card fechamento-card" style="position: relative;">
+        <!-- Cabeçalho do Fechamento -->
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <h2 style="margin: 0;">🏆 Fechamento Mensal dos Vendedores</h2>
+              <span id="fechamentoBadgeCiclo" class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700; padding: 3px 10px; border-radius: 6px; font-size: 0.82rem;">
+                📅 Fechamento Oficial: Carregando...
+              </span>
+              <span id="fechamentoBadgeTipo" class="badge" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight: 600; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem;">
+                🤖 Gerado Automaticamente
+              </span>
+            </div>
+            <p class="desc" style="margin-top: 4px;">
+              Apuração mensal consolidada (ciclo 26 a 25) com comissões líquidas (1,3% deduzindo fretes embutidos e inadimplência), premiações de metas atingidas, faturamento por empresa e comparativo de benchmarking da equipe.
+            </p>
+          </div>
+
+          <!-- Controles de Ação e Filtro Superior -->
+          <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <!-- Seletor de Vendedor (Gestão/Admin) -->
+            <div id="fechamentoVendedorWrapper" style="display: flex; align-items: center; gap: 6px;">
+              <label for="fechamentoVendedorSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">👤 Vendedor:</label>
+              <select id="fechamentoVendedorSelect" class="form-select" style="height: 34px; padding: 2px 8px; font-size: 0.82rem; min-width: 140px; font-weight: 600;">
+                <!-- Preenchido via JS -->
+              </select>
+            </div>
+
+            <!-- Seletor de Histórico de Fechamentos -->
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <label for="fechamentoHistoricoSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">📅 Histórico:</label>
+              <select id="fechamentoHistoricoSelect" class="form-select" style="height: 34px; padding: 2px 8px; font-size: 0.82rem; min-width: 160px;">
+                <option value="">📌 Ciclo Atual (Ativo)</option>
+              </select>
+            </div>
+
+            <!-- Botões de Ação -->
+            <button id="btnRecalcularFechamento" class="btn btn-outline btn-sm" style="height: 34px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="Recalcular e consolidar fechamento em tempo real">
+              🔄 Recalcular Fechamento
+            </button>
+            <button id="btnImprimirFechamento" class="btn btn-outline btn-sm" style="height: 34px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="Imprimir ou Salvar Ficha em PDF">
+              🖨️ Imprimir Ficha
+            </button>
+          </div>
+        </div>
+
+        <!-- Alertas & Mensagens de Erro -->
+        <div id="fechamentoErrorBox" class="alert alert-danger hidden" style="margin-top: 1rem;"></div>
+
+        <!-- Estado de Carregamento -->
+        <div id="fechamentoLoading" class="loading-state hidden" style="text-align: center; padding: 3rem 1.5rem;">
+          <div class="spinner"></div>
+          <p style="margin-top: 0.85rem; font-weight: 600; color: var(--text-muted);">Consolidando dados do fechamento mensal no Protheus...</p>
+        </div>
+
+        <!-- Estado Vazio -->
+        <div id="fechamentoEmptyState" class="empty-results-box hidden" style="margin-top: 1.5rem;">
+          <div class="empty-icon">🏆</div>
+          <h4>Nenhum Fechamento Disponível</h4>
+          <p>Clique em <strong>Recalcular Fechamento</strong> para processar os dados do período oficial.</p>
+        </div>
+
+        <!-- Conteúdo Principal do Fechamento -->
+        <div id="fechamentoMainContent" style="position: relative; margin-top: 1.25rem;">
+          <!-- Canvas de Confetes e Serpentina Leve -->
+          <canvas id="fechamentoConfettiCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 260px; pointer-events: none; z-index: 10;"></canvas>
+
+          <!-- HERO CARD GAMIFICADO: CONQUISTAS, TROFÉU & METAS -->
+          <div class="fechamento-hero-card" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
+              <!-- Bloco do Troféu -->
+              <div style="display: flex; align-items: center; gap: 1.25rem;">
+                <div id="fechamentoTrofeuIcon" style="font-size: 3.2rem; filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.4)); animation: pulseTrofeu 2s infinite ease-in-out;">🏆</div>
+                <div>
+                  <h3 id="fechamentoTrofeuTitle" style="font-size: 1.35rem; font-weight: 800; color: #fbbf24; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    🎉 Nível Ouro: Meta Superada!
+                  </h3>
+                  <p id="fechamentoTrofeuSub" style="font-size: 0.88rem; color: var(--text-muted); margin: 4px 0 0 0;">
+                    Parabéns pelo excelente desempenho no fechamento comercial do período.
+                  </p>
+                  <!-- Badges de Conquistas -->
+                  <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 8px;">
+                    <span id="fechamentoBadgePremioVendas" class="conquista-badge-ativa">🎁 Prêmio Vendas: <strong>R$ 0,00</strong></span>
+                    <span id="fechamentoBadgePremioFrete" class="conquista-badge-ativa">🚚 Prêmio Frete: <strong>R$ 0,00</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card Lateral: Destaque de Premiação Total -->
+              <div style="text-align: right; background: rgba(245, 158, 11, 0.12); padding: 0.85rem 1.25rem; border-radius: 10px; border: 1px solid rgba(245, 158, 11, 0.3); min-width: 200px;">
+                <span style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; color: #fbbf24; display: block;">Total Premiações</span>
+                <span id="fechamentoTotalPremiosDestaque" style="font-size: 1.8rem; font-weight: 800; color: #fbbf24; font-family: 'JetBrains Mono', monospace; display: block;">R$ 0,00</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Metas de Vendas + Gordura Frete</span>
+              </div>
+            </div>
+
+            <!-- BARRAS DE PROGRESSO DAS METAS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+              <!-- 1. Meta de Vendas -->
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px;">
+                  <span style="color: #38bdf8;">🎯 Meta de Vendas (Base R$ 120k)</span>
+                  <span id="fechamentoProgressLabelVendas" style="color: var(--text-muted);">0,00% Atingida</span>
+                </div>
+                <div class="progress-bar-container" style="background: rgba(15, 23, 42, 0.8); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); position: relative;">
+                  <div id="fechamentoProgressBarVendas" style="background: linear-gradient(90deg, #38bdf8 0%, #10b981 100%); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                  <span>0%</span>
+                  <span>100% (R$ 400)</span>
+                  <span>150% (R$ 600)</span>
+                  <span>200% (R$ 1.000)</span>
+                </div>
+              </div>
+
+              <!-- 2. Meta de Gordura de Frete -->
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px;">
+                  <span style="color: #10b981;">🚚 Meta de Gordura de Frete</span>
+                  <span id="fechamentoProgressLabelFrete" style="color: var(--text-muted);">Superávit: R$ 0,00</span>
+                </div>
+                <div class="progress-bar-container" style="background: rgba(15, 23, 42, 0.8); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); position: relative;">
+                  <div id="fechamentoProgressBarFrete" style="background: linear-gradient(90deg, #10b981 0%, #fbbf24 100%); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                  <span>R$ 700 (200)</span>
+                  <span>R$ 1.100 (300)</span>
+                  <span>R$ 1.500 (400)</span>
+                  <span>R$ 2.100 (500)</span>
+                  <span>R$ 3.000 (600)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GRID DE 4 STAT CARDS PRINCIPAIS -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <!-- Card 1: Venda Base Líquida -->
+            <div class="stat-card" style="background: rgba(15, 23, 42, 0.6); padding: 1.15rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">💰 Venda Base Líquida</span>
+                <span style="font-size: 1.1rem;">📦</span>
+              </div>
+              <div id="cardFechamentoVendaLiquida" style="font-size: 1.55rem; font-weight: 800; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">R$ 0,00</div>
+              <div id="cardFechamentoVendaSub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">
+                Base: R$ 0,00 | (-) Frete Emb: R$ 0,00
+              </div>
+            </div>
+
+            <!-- Card 2: Comissão Líquida (1,3%) -->
+            <div class="stat-card" style="background: rgba(15, 23, 42, 0.6); padding: 1.15rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">💼 Comissão Comercial Líq.</span>
+                <span style="font-size: 1.1rem;">📊</span>
+              </div>
+              <div id="cardFechamentoComissaoLiquida" style="font-size: 1.55rem; font-weight: 800; color: #10b981; font-family: 'JetBrains Mono', monospace;">R$ 0,00</div>
+              <div id="cardFechamentoComissaoSub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">
+                Bruta (1,3%): R$ 0,00 | (-) Inadimpl: R$ 0,00
+              </div>
+            </div>
+
+            <!-- Card 3: Gordura de Frete Líquida -->
+            <div class="stat-card" style="background: rgba(15, 23, 42, 0.6); padding: 1.15rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted);">🚚 Gordura de Frete Líq.</span>
+                <span style="font-size: 1.1rem;">🚛</span>
+              </div>
+              <div id="cardFechamentoGorduraVal" style="font-size: 1.55rem; font-weight: 800; color: #10b981; font-family: 'JetBrains Mono', monospace;">R$ 0,00</div>
+              <div id="cardFechamentoGorduraSub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">
+                Prêmio de Frete: R$ 0,00
+              </div>
+            </div>
+
+            <!-- Card 4: Total Geral a Receber -->
+            <div class="stat-card" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%); padding: 1.15rem; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.35);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.8rem; font-weight: 700; color: #10b981; text-transform: uppercase;">⭐ Total a Receber</span>
+                <span style="font-size: 1.1rem;">💵</span>
+              </div>
+              <div id="cardFechamentoTotalGeral" style="font-size: 1.7rem; font-weight: 900; color: #10b981; font-family: 'JetBrains Mono', monospace;">R$ 0,00</div>
+              <div id="cardFechamentoTotalGeralSub" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">
+                Comissão Líquida + Prêmios
+              </div>
+            </div>
+          </div>
+
+          <!-- LINHA INFORMATIVA DUPLA: FATURAMENTO POR EMPRESA & BENCHMARKING -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.5rem;">
+            <!-- 1. Faturamento Geral do Período por Empresa -->
+            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1.25rem;">
+              <h4 style="font-size: 0.92rem; font-weight: 700; color: #38bdf8; margin: 0 0 0.85rem 0; display: flex; align-items: center; gap: 6px;">
+                <span>🏢 Faturamento do Período por Empresa (Base SE3)</span>
+              </h4>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem;">
+                <div style="background: rgba(255, 255, 255, 0.03); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                  <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; display: block;">GSI (15)</span>
+                  <strong id="fatEmpresaGsi" style="font-size: 0.95rem; color: #f8fafc; font-family: 'JetBrains Mono', monospace;">R$ 0,00</strong>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.03); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                  <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; display: block;">OACO (16)</span>
+                  <strong id="fatEmpresaOaco" style="font-size: 0.95rem; color: #f8fafc; font-family: 'JetBrains Mono', monospace;">R$ 0,00</strong>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.03); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                  <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; display: block;">METAL PLENO (14)</span>
+                  <strong id="fatEmpresaMp" style="font-size: 0.95rem; color: #f8fafc; font-family: 'JetBrains Mono', monospace;">R$ 0,00</strong>
+                </div>
+                <div style="background: rgba(56, 189, 248, 0.1); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.25);">
+                  <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 700; display: block;">TOTAL GERAL</span>
+                  <strong id="fatEmpresaTotal" style="font-size: 0.95rem; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">R$ 0,00</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Benchmarking da Equipe de Vendas -->
+            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1.25rem;">
+              <h4 style="font-size: 0.92rem; font-weight: 700; color: #fbbf24; margin: 0 0 0.85rem 0; display: flex; align-items: center; gap: 6px;">
+                <span>📊 Comparativo: Vendedor vs Média da Equipe</span>
+              </h4>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div style="background: rgba(255, 255, 255, 0.03); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Performance Vendas</span>
+                    <span id="benchVendasDiff"><span class="bench-badge-pos">▲ +0,00%</span></span>
+                  </div>
+                  <div id="benchVendasMedia" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">Média da Equipe: R$ 0,00</div>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.03); padding: 0.65rem 0.85rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Performance Frete</span>
+                    <span id="benchFreteDiff"><span class="bench-badge-pos">▲ +0,00%</span></span>
+                  </div>
+                  <div id="benchFreteMedia" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 4px;">Média da Equipe: R$ 0,00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TABELA DE EXTRATO & AUDITORIA MATEMÁTICA -->
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--panel-border); border-radius: 10px; overflow: hidden;">
+            <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+              <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+                <span>📋 Extrato Detalhado & Memória de Cálculo do Fechamento</span>
+              </h4>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Auditoria Matemática 100% Rastreável</span>
+            </div>
+            <div class="table-responsive" style="overflow-x: auto;">
+              <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+                <thead>
+                  <tr style="background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid var(--panel-border);">
+                    <th style="padding: 10px 14px; text-align: left;">Componente Financeiro</th>
+                    <th style="padding: 10px 14px; text-align: left;">Origem / Regra Aplicada</th>
+                    <th style="padding: 10px 14px; text-align: right;">Valor (R$)</th>
+                  </tr>
+                </thead>
+                <tbody id="fechamentoExtratoTableBody">
+                  <!-- Injetado dinamicamente via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <!-- ABA 4 PRINCIPAL: CONFIGURAÇÕES & USUÁRIOS -->
     <div id="tab-configuracoes" class="tab-pane hidden">
       <section class="card config-card">
@@ -2563,6 +2845,84 @@
 
           <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
             <button type="submit" class="btn btn-primary btn-large">💾 Salvar Parâmetros do Score</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- SUB-ABA 4 DE CONFIGURAÇÕES: METAS COMERCIAIS & PREMIAÇÕES DOS VENDEDORES -->
+    <div id="tab-config-metas-vendas" class="tab-pane hidden">
+      <section class="card config-card">
+        <div class="card-header flex-between" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2>🎯 Configuração de Metas Comerciais & Premiações</h2>
+            <p class="desc">Defina os valores das metas de vendas e prêmios de gordura de frete válidas para os fechamentos mensais dos vendedores. No momento do fechamento, um snapshot imutável destas regras é gravado no banco de dados.</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <button id="btnRestaurarConfigMetas" class="btn btn-outline btn-sm">
+              🔄 Restaurar Padrões
+            </button>
+            <button id="btnSalvarConfigMetas" class="btn btn-primary btn-sm">
+              💾 Salvar Configurações de Metas
+            </button>
+          </div>
+        </div>
+
+        <form id="configMetasVendasForm" onsubmit="event.preventDefault();" style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <!-- 1. Metas de Vendas do Vendedor (Base = R$ 120.000,00) -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #38bdf8; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>1. 📦 Metas de Vendas Líquidas & Premiações</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Base: Vendas - Frete Embutido</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfgMetaBaseVendas">Meta Base de Vendas (R$)</label>
+                <input type="text" id="cfgMetaBaseVendas" class="form-input" placeholder="120.000,00" style="font-weight: 700; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioMeta100">Prêmio 100% da Meta (R$)</label>
+                <input type="text" id="cfgPremioMeta100" class="form-input" placeholder="400,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioMeta150">Prêmio 150% da Meta (R$)</label>
+                <input type="text" id="cfgPremioMeta150" class="form-input" placeholder="600,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioMeta200">Prêmio 200% da Meta (R$)</label>
+                <input type="text" id="cfgPremioMeta200" class="form-input" placeholder="1.000,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Metas de Gordura de Frete (Superávit) -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
+            <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+              <span>2. 🚚 Premiações por Gordura de Frete Conquistada</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Escala Progressiva</span>
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label for="cfgPremioGordura700">Gordura &ge; R$ 700,00 (Prêmio R$)</label>
+                <input type="text" id="cfgPremioGordura700" class="form-input" placeholder="200,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioGordura1100">Gordura &ge; R$ 1.100,00 (Prêmio R$)</label>
+                <input type="text" id="cfgPremioGordura1100" class="form-input" placeholder="300,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioGordura1500">Gordura &ge; R$ 1.500,00 (Prêmio R$)</label>
+                <input type="text" id="cfgPremioGordura1500" class="form-input" placeholder="400,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioGordura2100">Gordura &ge; R$ 2.100,00 (Prêmio R$)</label>
+                <input type="text" id="cfgPremioGordura2100" class="form-input" placeholder="500,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+              <div class="form-group">
+                <label for="cfgPremioGordura3000">Gordura &ge; R$ 3.000,00 (Prêmio R$)</label>
+                <input type="text" id="cfgPremioGordura3000" class="form-input" placeholder="600,00" style="font-weight: 700; color: #10b981; font-family: 'JetBrains Mono', monospace;" />
+              </div>
+            </div>
           </div>
         </form>
       </section>
@@ -4712,11 +5072,12 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.130"></script>
-  <script src="js/bi_indices.js?v=8.130"></script>
-  <script src="js/bi_autorizacoes.js?v=8.130"></script>
-  <script src="js/gordura_frete.js?v=8.130"></script>
-  <script type="module" src="js/tarefas.js?v=8.130"></script>
-  <script src="app.js?v=8.130"></script>
+  <script src="js/bi.js?v=8.140"></script>
+  <script src="js/bi_indices.js?v=8.140"></script>
+  <script src="js/bi_autorizacoes.js?v=8.140"></script>
+  <script src="js/gordura_frete.js?v=8.140"></script>
+  <script src="js/fechamento_vendedores.js?v=8.140"></script>
+  <script type="module" src="js/tarefas.js?v=8.140"></script>
+  <script src="app.js?v=8.140"></script>
 </body>
 </html>

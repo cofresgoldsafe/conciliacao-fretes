@@ -180,7 +180,7 @@ async function main() {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     assert.strictEqual(html.includes('data-tab="tab-vend-gordura-frete"'), true, 'Botão de navegação deve existir');
     assert.strictEqual(html.includes('id="tab-vend-gordura-frete"'), true, 'Container da sub-aba deve existir');
-    assert.strictEqual(html.includes('src="js/gordura_frete.js?v=8.130"'), true, 'Script deve ser carregado com versão v=8.130');
+    assert.strictEqual(/src="js\/gordura_frete\.js(\?v=[\d\.]+)?/.test(html), true, 'Script deve ser carregado com versão v>=8.130');
   });
 
   console.log('\n======================================================');

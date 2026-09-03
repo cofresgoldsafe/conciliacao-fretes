@@ -8,7 +8,7 @@
       "conta": "397407319",
       "conta_nome": "MP - Bco 077 Ag 0001 Cta 397407319",
       "data_saldo": "2026-09-02",
-      "saldo_atual": 26972.71
+      "saldo_atual": 27092.71
     },
     {
       "empresa_cod": "14",
@@ -17,8 +17,8 @@
       "agencia": "PAGAR",
       "conta": "PAGARLINK",
       "conta_nome": "MP - Bco 198 Ag PAGAR Cta PAGARLINK",
-      "data_saldo": "2026-08-20",
-      "saldo_atual": 7630.37
+      "data_saldo": "2026-09-02",
+      "saldo_atual": 13894.88
     },
     {
       "empresa_cod": "14",
@@ -137,8 +137,8 @@
       "agencia": "0001",
       "conta": "48165605",
       "conta_nome": "OACO - Bco 077 Ag 0001 Cta 48165605",
-      "data_saldo": "2026-09-01",
-      "saldo_atual": 8057.74
+      "data_saldo": "2026-09-02",
+      "saldo_atual": 8900.67
     },
     {
       "empresa_cod": "16",
@@ -147,8 +147,8 @@
       "agencia": "PAGAL",
       "conta": "0000000000",
       "conta_nome": "OACO - Bco 197 Ag PAGAL Cta 0000000000",
-      "data_saldo": "2026-09-01",
-      "saldo_atual": 6534.56
+      "data_saldo": "2026-09-02",
+      "saldo_atual": 8814.68
     },
     {
       "empresa_cod": "16",
@@ -306,6 +306,28 @@
       "data_vencimento_real": "2026-09-02",
       "valor_original": 10340,
       "saldo": 10340,
+      "dias_vencido": 0,
+      "valido_indice": true,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "14",
+      "empresa_sigla": "MP",
+      "recno": 630,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "PED362",
+      "parcela": "",
+      "tipo": "RA",
+      "cliente_cod": "137367",
+      "cliente_loja": "01",
+      "cliente_nome": "HYDRATIGHT EQUIPAMEN",
+      "natureza_cod": "1.01.002",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-02",
+      "data_vencimento_real": "2026-09-02",
+      "valor_original": 120,
+      "saldo": 120,
       "dias_vencido": 0,
       "valido_indice": true,
       "status": "ABERTO"
@@ -900,28 +922,6 @@
       "data_vencimento_real": "2026-09-24",
       "valor_original": 4453,
       "saldo": 4453,
-      "dias_vencido": 0,
-      "valido_indice": true,
-      "status": "ABERTO"
-    },
-    {
-      "empresa_cod": "14",
-      "empresa_sigla": "MP",
-      "recno": 600,
-      "filial": "01",
-      "prefixo": "1",
-      "numero_titulo": "000000397",
-      "parcela": "",
-      "tipo": "NF",
-      "cliente_cod": "144758",
-      "cliente_loja": "01",
-      "cliente_nome": "CONTRAIL LOGISTICA S",
-      "natureza_cod": "1.01.001",
-      "data_emissao": "2026-08-25",
-      "data_vencimento": "2026-09-24",
-      "data_vencimento_real": "2026-09-24",
-      "valor_original": 6882,
-      "saldo": 6882,
       "dias_vencido": 0,
       "valido_indice": true,
       "status": "ABERTO"
@@ -1941,6 +1941,28 @@
     {
       "empresa_cod": "16",
       "empresa_sigla": "OACO",
+      "recno": 985,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "PED780",
+      "parcela": "01",
+      "tipo": "RA",
+      "cliente_cod": "144778",
+      "cliente_loja": "01",
+      "cliente_nome": "Ana Helena Martins",
+      "natureza_cod": "1.01.002",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-02",
+      "data_vencimento_real": "2026-09-02",
+      "valor_original": 2303.15,
+      "saldo": 2303.15,
+      "dias_vencido": 0,
+      "valido_indice": true,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
       "recno": 877,
       "filial": "01",
       "prefixo": "1",
@@ -2481,6 +2503,27 @@
       "data_vencimento_real": "2026-09-08",
       "valor_original": 3356.14,
       "saldo": 3356.14,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "14",
+      "empresa_sigla": "MP",
+      "recno": 687,
+      "filial": "01",
+      "prefixo": "FRE",
+      "numero_titulo": "732907935",
+      "parcela": "A",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.03.004",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 173.62,
+      "saldo": 173.62,
       "is_provisorio": false,
       "status": "ABERTO"
     },
@@ -3054,6 +3097,27 @@
     {
       "empresa_cod": "14",
       "empresa_sigla": "MP",
+      "recno": 686,
+      "filial": "01",
+      "prefixo": "1",
+      "numero_titulo": "040595",
+      "parcela": "",
+      "tipo": "NF",
+      "fornecedor_cod": "120319",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "USE EPI EQUIPAMENTOS",
+      "natureza_cod": "2.03.001",
+      "data_emissao": "2026-09-01",
+      "data_vencimento": "2026-09-29",
+      "data_vencimento_real": "2026-09-29",
+      "valor_original": 1389.94,
+      "saldo": 1389.94,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "14",
+      "empresa_sigla": "MP",
       "recno": 656,
       "filial": "01",
       "prefixo": "3",
@@ -3237,6 +3301,27 @@
       "data_vencimento_real": "2026-09-08",
       "valor_original": 4619.1,
       "saldo": 4619.1,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "15",
+      "empresa_sigla": "GSI",
+      "recno": 5053,
+      "filial": "01",
+      "prefixo": "FRE",
+      "numero_titulo": "765600759",
+      "parcela": "A",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.03.004",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 35.38,
+      "saldo": 35.38,
       "is_provisorio": false,
       "status": "ABERTO"
     },
@@ -4440,6 +4525,27 @@
     {
       "empresa_cod": "16",
       "empresa_sigla": "OACO",
+      "recno": 1400,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "298088146",
+      "parcela": "",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.01.015",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 41.7,
+      "saldo": 41.7,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
       "recno": 1376,
       "filial": "01",
       "prefixo": "FRE",
@@ -4560,6 +4666,48 @@
       "data_vencimento_real": "2026-09-08",
       "valor_original": 51.73,
       "saldo": 51.73,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
+      "recno": 1401,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "348755922",
+      "parcela": "",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.01.015",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 60.45,
+      "saldo": 60.45,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
+      "recno": 1402,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "355090105",
+      "parcela": "",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.01.015",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 80.02,
+      "saldo": 80.02,
       "is_provisorio": false,
       "status": "ABERTO"
     },
@@ -4875,6 +5023,48 @@
       "data_vencimento_real": "2026-09-08",
       "valor_original": 37.88,
       "saldo": 37.88,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
+      "recno": 1399,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "733422717",
+      "parcela": "",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.01.015",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 31.59,
+      "saldo": 31.59,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
+      "recno": 1398,
+      "filial": "01",
+      "prefixo": "",
+      "numero_titulo": "735226352",
+      "parcela": "",
+      "tipo": "NF",
+      "fornecedor_cod": "001135",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "CORREIOS",
+      "natureza_cod": "2.01.015",
+      "data_emissao": "2026-09-02",
+      "data_vencimento": "2026-09-08",
+      "data_vencimento_real": "2026-09-08",
+      "valor_original": 37,
+      "saldo": 37,
       "is_provisorio": false,
       "status": "ABERTO"
     },
@@ -5952,6 +6142,27 @@
     {
       "empresa_cod": "16",
       "empresa_sigla": "OACO",
+      "recno": 1396,
+      "filial": "01",
+      "prefixo": "1",
+      "numero_titulo": "000343",
+      "parcela": "AA",
+      "tipo": "NF",
+      "fornecedor_cod": "120540",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "BRUNO FERREIRA DE JE",
+      "natureza_cod": "2.03.001",
+      "data_emissao": "2026-09-01",
+      "data_vencimento": "2026-10-01",
+      "data_vencimento_real": "2026-10-01",
+      "valor_original": 1141,
+      "saldo": 1141,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
       "recno": 463,
       "filial": "01",
       "prefixo": "",
@@ -6093,6 +6304,27 @@
       "data_vencimento_real": "2026-10-13",
       "valor_original": 926.67,
       "saldo": 926.67,
+      "is_provisorio": false,
+      "status": "ABERTO"
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
+      "recno": 1397,
+      "filial": "01",
+      "prefixo": "1",
+      "numero_titulo": "000343",
+      "parcela": "AB",
+      "tipo": "NF",
+      "fornecedor_cod": "120540",
+      "fornecedor_loja": "01",
+      "fornecedor_nome": "BRUNO FERREIRA DE JE",
+      "natureza_cod": "2.03.001",
+      "data_emissao": "2026-09-01",
+      "data_vencimento": "2026-10-16",
+      "data_vencimento_real": "2026-10-16",
+      "valor_original": 1141,
+      "saldo": 1141,
       "is_provisorio": false,
       "status": "ABERTO"
     },
@@ -6262,11 +6494,11 @@
       "descricao": "GABINETE CARRINHO DE RECARGA PRETO 24U COMPLETO 3 BAND 1 REGUA 36 1 KIT VENT C2",
       "tipo": "PA",
       "grupo_cod": "017",
-      "quantidade": 5,
+      "quantidade": 4,
       "custo_unitario": 1798,
       "preco_venda": 3659,
-      "custo_total": 8990,
-      "valor_total_venda": 18295
+      "custo_total": 7192,
+      "valor_total_venda": 14636
     },
     {
       "empresa_cod": "14",
@@ -7185,11 +7417,11 @@
       "descricao": "ARMARIO CORTA FOGO GSI 200X100X45 CM - VERMELHO - P/ INFLAMAVEIS",
       "tipo": "PA",
       "grupo_cod": "018",
-      "quantidade": 12,
+      "quantidade": 18,
       "custo_unitario": 2830.38,
       "preco_venda": 6600,
-      "custo_total": 33964.56,
-      "valor_total_venda": 79200
+      "custo_total": 50946.84,
+      "valor_total_venda": 118800
     },
     {
       "empresa_cod": "14",
@@ -8273,6 +8505,19 @@
     {
       "empresa_cod": "16",
       "empresa_sigla": "OACO",
+      "codigo": "00101010001B012",
+      "descricao": "COFRE ELETRONICO COMPANY 2.0 50X41X42 (AXLXP)",
+      "tipo": "PA",
+      "grupo_cod": "001",
+      "quantidade": 10,
+      "custo_unitario": 952.01,
+      "preco_venda": 2199,
+      "custo_total": 9520.1,
+      "valor_total_venda": 21990
+    },
+    {
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
       "codigo": "00101010001B015",
       "descricao": "COFRE ELETRONICO OFFICE TOP 2.0",
       "tipo": "PA",
@@ -8329,11 +8574,11 @@
       "descricao": "COFRE ELETRONICO BOX 2.0 16X30X20 (AXLXP)",
       "tipo": "PA",
       "grupo_cod": "001",
-      "quantidade": 6,
+      "quantidade": 5,
       "custo_unitario": 352.79,
       "preco_venda": 869,
-      "custo_total": 2116.74,
-      "valor_total_venda": 5214
+      "custo_total": 1763.95,
+      "valor_total_venda": 4345
     },
     {
       "empresa_cod": "16",
@@ -8498,11 +8743,11 @@
       "descricao": "KIT EXTRA DE ENERGIA GOLD SAFE (SP4005BW1PR)",
       "tipo": "PA",
       "grupo_cod": "001",
-      "quantidade": 18,
+      "quantidade": 48,
       "custo_unitario": 6.49,
       "preco_venda": 99,
-      "custo_total": 116.82,
-      "valor_total_venda": 1782
+      "custo_total": 311.52,
+      "valor_total_venda": 4752
     },
     {
       "empresa_cod": "16",
@@ -8585,33 +8830,33 @@
   ],
   "metricasCalculadas": {
     "consolidado": {
-      "ativoCirculante": 1381880.52,
-      "passivoCirculante": 474899,
-      "ativoSeco": 1124122.72,
-      "liquidezCorrente": 2.9098,
-      "liquidezSeca": 2.3671,
-      "liquidezImediata": 1.6551,
+      "ativoCirculante": 1411475.52,
+      "passivoCirculante": 479030.7,
+      "ativoSeco": 1129171.43,
+      "liquidezCorrente": 2.9465,
+      "liquidezSeca": 2.3572,
+      "liquidezImediata": 1.6607,
       "componentes": {
         "estoque": {
-          "custoTotal": 257757.8,
-          "vendaTotal": 600541.4,
-          "totalItens": 183
+          "custoTotal": 282304.09,
+          "vendaTotal": 660573.4,
+          "totalItens": 184
         },
         "disponibilidades": {
-          "saldoTotal": 786010.02,
+          "saldoTotal": 795517.58,
           "totalContas": 22
         },
         "contasReceber": {
-          "totalAberto": 399025.31,
-          "validoIndice": 338112.7,
+          "totalAberto": 394566.46,
+          "validoIndice": 333653.85,
           "inadimplente5d": 60912.61,
-          "totalTitulos": 97
+          "totalTitulos": 98
         },
         "contasPagar": {
-          "totalAberto": 474899,
+          "totalAberto": 479030.7,
           "provisoriosPR": 225149.05,
-          "definitivos": 249749.95,
-          "totalTitulos": 183
+          "definitivos": 253881.65,
+          "totalTitulos": 193
         }
       }
     },
@@ -8620,33 +8865,33 @@
         "empresa_cod": "14",
         "empresa_sigla": "MP",
         "empresa_nome": "Metal Pleno / S4BW",
-        "ativoCirculante": 654679.91,
-        "passivoCirculante": 103124.11,
-        "ativoSeco": 524946.11,
-        "liquidezCorrente": 6.3485,
-        "liquidezSeca": 5.0904,
-        "liquidezImediata": 2.7597,
+        "ativoCirculante": 669486.7,
+        "passivoCirculante": 104687.67,
+        "ativoSeco": 524568.62,
+        "liquidezCorrente": 6.3951,
+        "liquidezSeca": 5.0108,
+        "liquidezImediata": 2.7794,
         "componentes": {
           "estoque": {
-            "custoTotal": 129733.8,
-            "vendaTotal": 285611.81,
+            "custoTotal": 144918.08,
+            "vendaTotal": 321552.81,
             "totalItens": 81
           },
           "disponibilidades": {
-            "saldoTotal": 284587.62,
+            "saldoTotal": 290972.13,
             "totalContas": 6
           },
           "contasReceber": {
-            "totalAberto": 243158.49,
-            "validoIndice": 240358.49,
+            "totalAberto": 236396.49,
+            "validoIndice": 233596.49,
             "inadimplente5d": 2800,
             "totalTitulos": 49
           },
           "contasPagar": {
-            "totalAberto": 103124.11,
+            "totalAberto": 104687.67,
             "provisoriosPR": 36044.74,
-            "definitivos": 67079.37,
-            "totalTitulos": 36
+            "definitivos": 68642.93,
+            "totalTitulos": 38
           }
         }
       },
@@ -8655,10 +8900,10 @@
         "empresa_sigla": "GSI",
         "empresa_nome": "GSI Cofres",
         "ativoCirculante": 112568.11,
-        "passivoCirculante": 205574.4,
+        "passivoCirculante": 205609.78,
         "ativoSeco": 48670.62,
-        "liquidezCorrente": 0.5476,
-        "liquidezSeca": 0.2368,
+        "liquidezCorrente": 0.5475,
+        "liquidezSeca": 0.2367,
         "liquidezImediata": 0.1925,
         "componentes": {
           "estoque": {
@@ -8677,10 +8922,10 @@
             "totalTitulos": 19
           },
           "contasPagar": {
-            "totalAberto": 205574.4,
+            "totalAberto": 205609.78,
             "provisoriosPR": 79531.66,
-            "definitivos": 126042.74,
-            "totalTitulos": 46
+            "definitivos": 126078.12,
+            "totalTitulos": 47
           }
         }
       },
@@ -8688,38 +8933,38 @@
         "empresa_cod": "16",
         "empresa_sigla": "OACO",
         "empresa_nome": "OAÇO Produtos de Aço",
-        "ativoCirculante": 614632.5,
-        "passivoCirculante": 166200.49,
-        "ativoSeco": 550505.99,
-        "liquidezCorrente": 3.6981,
-        "liquidezSeca": 3.3123,
-        "liquidezImediata": 2.7789,
+        "ativoCirculante": 629420.71,
+        "passivoCirculante": 168733.25,
+        "ativoSeco": 555932.19,
+        "liquidezCorrente": 3.7303,
+        "liquidezSeca": 3.2947,
+        "liquidezImediata": 2.7557,
         "componentes": {
           "estoque": {
-            "custoTotal": 64126.51,
-            "vendaTotal": 166890,
-            "totalItens": 24
+            "custoTotal": 73488.52,
+            "vendaTotal": 190981,
+            "totalItens": 25
           },
           "disponibilidades": {
-            "saldoTotal": 461847.17,
+            "saldoTotal": 464970.22,
             "totalContas": 9
           },
           "contasReceber": {
-            "totalAberto": 105976.31,
-            "validoIndice": 88658.82,
+            "totalAberto": 108279.46,
+            "validoIndice": 90961.97,
             "inadimplente5d": 17317.49,
-            "totalTitulos": 29
+            "totalTitulos": 30
           },
           "contasPagar": {
-            "totalAberto": 166200.49,
+            "totalAberto": 168733.25,
             "provisoriosPR": 109572.65,
-            "definitivos": 56627.84,
-            "totalTitulos": 101
+            "definitivos": 59160.6,
+            "totalTitulos": 108
           }
         }
       }
     },
-    "timestamp": "2026-09-02T15:02:54.068Z"
+    "timestamp": "2026-09-03T01:14:31.967Z"
   },
   "historicoSnapshots": [
     {
@@ -9045,8 +9290,116 @@
       "pagar_definitivos": 56627.84,
       "total_titulos_pagar": 101,
       "triggered_by": "ADMIN_ALEXANDRE"
+    },
+    {
+      "data_registro": "2026-09-03",
+      "timestamp_registro": "2026-09-03T01:14:31.967Z",
+      "empresa_cod": "CONSOLIDADO",
+      "empresa_sigla": "ALL",
+      "empresa_nome": "🌐 Consolidado (3 Empresas)",
+      "liquidez_corrente": 2.9465,
+      "liquidez_seca": 2.3572,
+      "liquidez_imediata": 1.6607,
+      "ativo_circulante": 1411475.52,
+      "ativo_seco": 1129171.43,
+      "passivo_circulante": 479030.7,
+      "estoque_custo": 282304.09,
+      "estoque_venda": 660573.4,
+      "total_itens_estoque": 184,
+      "disponibilidades": 795517.58,
+      "total_contas_bancarias": 22,
+      "receber_valido": 333653.85,
+      "receber_inadimplente": 60912.61,
+      "receber_total": 394566.46,
+      "total_titulos_receber": 98,
+      "pagar_total": 479030.7,
+      "pagar_provisorios_pr": 225149.05,
+      "pagar_definitivos": 253881.65,
+      "total_titulos_pagar": 193,
+      "triggered_by": "ADMIN_ALEXANDRE"
+    },
+    {
+      "data_registro": "2026-09-03",
+      "timestamp_registro": "2026-09-03T01:14:31.967Z",
+      "empresa_cod": "14",
+      "empresa_sigla": "MP",
+      "empresa_nome": "Metal Pleno / S4BW",
+      "liquidez_corrente": 6.3951,
+      "liquidez_seca": 5.0108,
+      "liquidez_imediata": 2.7794,
+      "ativo_circulante": 669486.7,
+      "ativo_seco": 524568.62,
+      "passivo_circulante": 104687.67,
+      "estoque_custo": 144918.08,
+      "estoque_venda": 321552.81,
+      "total_itens_estoque": 81,
+      "disponibilidades": 290972.13,
+      "total_contas_bancarias": 6,
+      "receber_valido": 233596.49,
+      "receber_inadimplente": 2800,
+      "receber_total": 236396.49,
+      "total_titulos_receber": 49,
+      "pagar_total": 104687.67,
+      "pagar_provisorios_pr": 36044.74,
+      "pagar_definitivos": 68642.93,
+      "total_titulos_pagar": 38,
+      "triggered_by": "ADMIN_ALEXANDRE"
+    },
+    {
+      "data_registro": "2026-09-03",
+      "timestamp_registro": "2026-09-03T01:14:31.967Z",
+      "empresa_cod": "15",
+      "empresa_sigla": "GSI",
+      "empresa_nome": "GSI Cofres",
+      "liquidez_corrente": 0.5475,
+      "liquidez_seca": 0.2367,
+      "liquidez_imediata": 0.1925,
+      "ativo_circulante": 112568.11,
+      "ativo_seco": 48670.62,
+      "passivo_circulante": 205609.78,
+      "estoque_custo": 63897.49,
+      "estoque_venda": 148039.59,
+      "total_itens_estoque": 78,
+      "disponibilidades": 39575.23,
+      "total_contas_bancarias": 7,
+      "receber_valido": 9095.39,
+      "receber_inadimplente": 40795.12,
+      "receber_total": 49890.51,
+      "total_titulos_receber": 19,
+      "pagar_total": 205609.78,
+      "pagar_provisorios_pr": 79531.66,
+      "pagar_definitivos": 126078.12,
+      "total_titulos_pagar": 47,
+      "triggered_by": "ADMIN_ALEXANDRE"
+    },
+    {
+      "data_registro": "2026-09-03",
+      "timestamp_registro": "2026-09-03T01:14:31.967Z",
+      "empresa_cod": "16",
+      "empresa_sigla": "OACO",
+      "empresa_nome": "OAÇO Produtos de Aço",
+      "liquidez_corrente": 3.7303,
+      "liquidez_seca": 3.2947,
+      "liquidez_imediata": 2.7557,
+      "ativo_circulante": 629420.71,
+      "ativo_seco": 555932.19,
+      "passivo_circulante": 168733.25,
+      "estoque_custo": 73488.52,
+      "estoque_venda": 190981,
+      "total_itens_estoque": 25,
+      "disponibilidades": 464970.22,
+      "total_contas_bancarias": 9,
+      "receber_valido": 90961.97,
+      "receber_inadimplente": 17317.49,
+      "receber_total": 108279.46,
+      "total_titulos_receber": 30,
+      "pagar_total": 168733.25,
+      "pagar_provisorios_pr": 109572.65,
+      "pagar_definitivos": 59160.6,
+      "total_titulos_pagar": 108,
+      "triggered_by": "ADMIN_ALEXANDRE"
     }
   ],
-  "syncedAt": "2026-09-02T15:02:54.077Z",
+  "syncedAt": "2026-09-03T01:14:31.972Z",
   "triggeredBy": "ADMIN_ALEXANDRE"
 }

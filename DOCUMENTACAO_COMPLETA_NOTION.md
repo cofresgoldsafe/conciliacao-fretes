@@ -212,17 +212,18 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 5. **`analise_credito_history`:** Histórico completo de análises de crédito com extrato auditável.
 6. **`user_activities`:** Feed de auditoria de uso e telemetria.
 7. **`inter_webhook_events`:** Eventos bancários idempotentes com chave composta `(empresa_codigo, event_id)`.
-8. **`system_configs`:** Configurações dinâmicas e calibração de pesos de score.
-9. **`history`:** Histórico de conciliações e uploads.
+8. **`system_configs`:** Configurações dinâmicas, calibração de pesos de score e metas de vendas vigentes.
+9. **`fechamentos_vendedores`:** Fechamentos mensais consolidados dos vendedores (26 a 25), comissões líquidas, metas, faturamento por empresa e snapshots imutáveis.
+10. **`history`:** Histórico de conciliações e uploads.
 
 ---
 
 ## 📍 5. Status de Entregas & Próximos Passos
 
-1. 🟢 **Aba 1 (Logística - Rodonaves & Correios/ViPP):** 100% Concluída com auto-sync FTP e regras de OS.
+1. 🟢 **Aba 1 (Logística - Rodonaves & Correios/ViPP, Pedidos pra Faturar, Pedidos Bloq Estoque e Fila FIFO):** 100% Concluída com auto-sync FTP e regras de OS.
 2. 🟢 **Aba 2 (Consulta - Ped/NF Multi-Empresa):** 100% Concluída com busca tripartite.
-3. 🟢 **Aba 3 (Vendedores - Estoque, Pedidos, Compras, Comissões):** 100% Concluída com visual Power BI, job Supabase, CRM Pipedrive e tema claro/escuro.
+3. 🟢 **Aba 3 (Vendedores - Estoque, Pedidos, Compras, Comissões, Gordura Frete e Fechamento Mensal 26 a 25):** 100% Concluída com visual Power BI, job Supabase, CRM Pipedrive, tema claro/escuro, gamificação com troféu e snapshots imutáveis.
 4. 🟢 **Aba 4 (Assist. Financ. - Conciliação Inter & Análise Crédito):** 100% Concluída com agrupamento N:1, webhooks, Serasa PDF efêmero, maturidade digital e extrato auditável.
-5. 🟢 **Aba 5 (Configurações - Usuários, 2FA, Auditoria, Score):** 100% Concluída com 2FA via Mailjet HTTPS 443 / SMTP, telemetria e calibração de pesos.
+5. 🟢 **Aba 5 (Configurações - Usuários, 2FA, Auditoria, Score e Metas de Vendas):** 100% Concluída com 2FA via Mailjet HTTPS 443 / SMTP, telemetria, calibração de pesos de score e parametrização de metas comerciais.
 6. 🔵 **Gravação Direta no Protheus (ExecAuto):** Rotina AdvPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) pronta, botão aguardando ativação no AppServer TOTVS.
 7. 🌐 **Subdomínio no Render (`[INFRA-01]`):** Configuração de CNAME `portal.gsi.com.br` e SSL.

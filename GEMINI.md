@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Aba "Gordura Frete" Ativa no Módulo Vendedores com Fechamento 26 a 25, Consulta Protheus Otimizada em Tempo Real e 18 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 20:30 (v8.130 - Sub-Aba Gordura Frete no Módulo Vendedores Integrada com Protheus Multi-Empresas 14, 15 e 16, Regra Oficial de Fechamento 26 a 25, KPIs de Superávit/Déficit, Exportação Excel e Testes Automatizados 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Job Automático Noturno Dia 26 às 00:30, Gamificação com Troféu e 19 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 22:15 (v8.140 - Sub-Aba Fechamento Mensal no Módulo Vendedores Integrada com Protheus Multi-Empresas 14, 15 e 16, Regra Oficial de Fechamento 26 a 25, Dedução de C5_VLR_FRT e Inadimplência SE1, Premiações de Metas de Vendas e Gordura de Frete, Faturamento por Empresa, Benchmarking da Equipe, Snapshots Imutáveis, Configuração de Metas e Testes Automatizados 100% Aprovados)  
 
 ---
 
@@ -477,6 +477,37 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Botão `📥 Exp. Excel` gerando arquivo CSV com BOM UTF-8 (`\uFEFF`) e delimitador `;` contendo todos os 17 campos detalhados de faturamento e custos de frete.
     - **Suíte de Testes Automatizados (11/11 Aprovados):**
       - Script `test_gordura_frete.js` cobrindo regras de data, limites temporais, query T-SQL, cálculos matemáticos e integridade léxica/sintática via Node.js `vm.Script`.
+45. [x] **Sub-Aba "Fechamento" no Módulo Vendedores & Sub-Aba "Metas Vendas" em Configurações (`fechamento_vendedores_engine.js`, `postgres_db.js`, `server.js`, `public/js/fechamento_vendedores.js`, `public/js/vendedores.js`, `public/index.html`, `public/style.css`, `sql/fechamentos/01_tabela_fechamentos_vendedores.sql`, `test_fechamento_vendedores.js`):**
+    - **Regra Temporal Estrita de Fechamento (26 a 25) & Job Noturno:**
+      - Até o dia 25 de cada mês (23:59:59), a interface exibe o último fechamento consolidado oficial disponível (ciclo encerrado no dia 25 do mês anterior).
+      - No dia 26 às 00:30 de Brasília, a rotina noturna agendada (`startFechamentoVendedoresJob` / `executarJobFechamentoMensal`) consolida e persiste no banco de dados o ciclo recém-encerrado (`26/M-1` a `25/M`), que passa a ser o novo fechamento ativo disponível na tela até o próximo dia 25.
+    - **Fórmulas Matemáticas Oficiais, Dedução de Frete Embutido e Inadimplência:**
+      - **1. Venda Base Bruta:** Soma de `SE3.E3_BASE` das empresas 14 (Metal Pleno), 15 (GSI) e 16 (OACO).
+      - **2. Dedução de Frete Embutido (`C5_VLR_FRT`):** Deduplicado por `DISTINCT D2_PEDIDO` na `SD2` para notas com múltiplos itens. Subtraído da Venda Bruta para compor a **Base Líquida de Vendas** (`Venda Líquida = Venda Bruta - C5_VLR_FRT`).
+      - **3. Base de Metas e Comissões:** A Base Líquida de Vendas é a base oficial para apuração da Meta de Vendas e do cálculo da comissão de 1,3% (`Comissão Bruta = Venda Líquida * 0,013`).
+      - **4. Dedução de Inadimplentes (`SE1`):** Títulos vencidos e não baixados (`E1_SALDO > 0.01` e vencimento &le; data final do ciclo) são deduzidos da Comissão Bruta (`Comissão Líquida = max(0, Comissão Bruta - Inadimplência)`).
+      - **5. Premiações de Metas de Vendas (Base Parametrizável = R$ 120.000,00):**
+        - $\ge$ 100% (R$ 120k a R$ 179.999): **R$ 400,00**
+        - $\ge$ 150% (R$ 180k a R$ 239.999): **R$ 600,00**
+        - $\ge$ 200% (R$ 240k+): **R$ 1.000,00**
+      - **6. Premiações de Gordura de Frete:**
+        - $\ge$ R$ 700: **R$ 200,00** | $\ge$ R$ 1.100: **R$ 300,00** | $\ge$ R$ 1.500: **R$ 400,00** | $\ge$ R$ 2.100: **R$ 500,00** | $\ge$ R$ 3.000: **R$ 600,00**
+      - **7. Total Geral a Receber:** `Comissão Líquida + Prêmio Meta Vendas + Prêmio Gordura Frete`.
+    - **Sub-Aba "Metas Vendas" na Aba Configurações & Snapshots Imutáveis:**
+      - Sub-aba `#tab-config-metas-vendas` com 8 campos parametrizáveis (Meta Base de Vendas, Prêmios 100%, 150%, 200% e Prêmios de Gordura de Frete R$ 700 a R$ 3.000).
+      - Persistência na tabela `system_configs` (`key = 'metas_vendas'`) no Supabase / PostgreSQL com fallback em `data/config_metas_vendas.json`.
+      - No ato da consolidação, o fechamento grava um snapshot JSON imutável das regras vigentes (`metas_snapshot_json`), garantindo integridade histórica caso as metas sejam alteradas futuramente.
+    - **Faturamento por Empresa & Benchmarking da Equipe de Vendas:**
+      - Extração e rateio multi-empresa do faturamento do período (GSI 15, OACO 16, Metal Pleno 14 e Total Geral).
+      - Gravação e exibição comparativa da performance do vendedor contra a média da equipe de vendas em Vendas Líquidas e Gordura de Frete (`diffVendasPct` e `diffGorduraPct`).
+    - **UI Gamificada, Confetes em Canvas & Ficha com Auditoria:**
+      - Hero card gamificado com Troféu dourado brilhante com animação de pulso `@keyframes pulseTrofeu`, badges de conquistas, barras de metas com degraus visuais e animação leve de confetes em micro-canvas puro (3,5 segundos, com descarte total e zero memory leak).
+      - 4 Stat Cards de alto impacto e tabela de extrato auditável detalhando cada componente financeiro.
+      - Seletor de histórico de fechamentos passados e seletor de vendedor para administradores/gestores.
+    - **Segurança RBAC Zero-Trust, DDL Supabase com RLS & Testes:**
+      - Tabela relacional `fechamentos_vendedores` no Supabase com RLS ativo e chave única `(ciclo_id, cod_vendedor)`.
+      - Vendedores autenticados acessam exclusivamente seus próprios números; administradores acessam visão global e individual.
+      - Suíte automatizada `test_fechamento_vendedores.js` com **18 asserções 100% aprovadas**.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
