@@ -456,17 +456,17 @@
         elBadgePremioVendas.innerHTML = `🎁 Prêmio Vendas: <strong>${formatCurrency(premioVendas)}</strong> (${formatPct(pctVendas)})`;
         elBadgePremioVendas.className = 'conquista-badge-ativa';
       } else {
-        elBadgePremioVendas.innerHTML = `Meta Vendas: <strong>${formatPct(pctVendas)}</strong> (< 100%)`;
+        elBadgePremioVendas.innerHTML = `🎁 Prêmio Vendas: <strong>${formatCurrency(0)}</strong> (${formatPct(pctVendas)})`;
         elBadgePremioVendas.className = 'conquista-badge-inativa';
       }
     }
 
     if (elBadgePremioFrete) {
       if (premioGordura > 0) {
-        elBadgePremioFrete.innerHTML = `🚚 Prêmio Frete: <strong>${formatCurrency(premioGordura)}</strong> (${formatCurrency(gorduraTotal)})`;
+        elBadgePremioFrete.innerHTML = `🚚 Prêmio Gordura Frete: <strong>${formatCurrency(premioGordura)}</strong>`;
         elBadgePremioFrete.className = 'conquista-badge-ativa';
       } else {
-        elBadgePremioFrete.innerHTML = `Gordura Frete: <strong>${formatCurrency(gorduraTotal)}</strong> (< R$ 700)`;
+        elBadgePremioFrete.innerHTML = `🚚 Prêmio Gordura Frete: <strong>${formatCurrency(0)}</strong>`;
         elBadgePremioFrete.className = 'conquista-badge-inativa';
       }
     }

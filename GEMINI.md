@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Troféu Dourado Exclusivo para Metas Batidas e 19 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 23:18 (v8.145 - Sub-Aba Fechamento Mensal no Módulo Vendedores Integrada com Protheus Multi-Empresas 14, 15 e 16, Regra Oficial 26 a 25, Inversão de Cards Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas e Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete e 19 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 23:30 (v8.147 - Ajustes de UI: Sigla MP 14 no Faturamento por Empresa e Exibição de Prêmio Gordura Frete no Hero Card e Testes 100% Aprovados)  
 
 ---
 
