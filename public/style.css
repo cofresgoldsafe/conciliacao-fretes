@@ -2930,46 +2930,87 @@ body {
   white-space: nowrap;
 }
 
-/* Tema Claro para Gordura de Frete */
+/* ==========================================================================
+   TEMA CLARO: GORDURA DE FRETE & FECHAMENTO DOS VENDEDORES
+   ========================================================================== */
+
+/* Gordura de Frete - Tema Claro */
+#tab-vend-gordura-frete.tab-theme-light,
+.tab-theme-light #tab-vend-gordura-frete {
+  background-color: #f8fafc;
+}
+
+#tab-vend-gordura-frete.tab-theme-light .card,
+.tab-theme-light #tab-vend-gordura-frete .card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+#tab-vend-gordura-frete.tab-theme-light h2,
+#tab-vend-gordura-frete.tab-theme-light h3,
+#tab-vend-gordura-frete.tab-theme-light h4,
+.tab-theme-light #tab-vend-gordura-frete h2,
+.tab-theme-light #tab-vend-gordura-frete h3,
+.tab-theme-light #tab-vend-gordura-frete h4 {
+  color: #0f172a !important;
+}
+
+#tab-vend-gordura-frete.tab-theme-light .vend-search-form,
 .tab-theme-light #tab-vend-gordura-frete .vend-search-form {
-  background: #f8fafc !important;
+  background: #f1f5f9 !important;
   border: 1px solid #e2e8f0 !important;
 }
 
+#tab-vend-gordura-frete.tab-theme-light .vend-search-form label,
 .tab-theme-light #tab-vend-gordura-frete .vend-search-form label {
   color: #334155 !important;
 }
 
-.tab-theme-light #tab-vend-gordura-frete .vend-search-form input,
-.tab-theme-light #tab-vend-gordura-frete .vend-search-form select {
+#tab-vend-gordura-frete.tab-theme-light input,
+#tab-vend-gordura-frete.tab-theme-light select,
+.tab-theme-light #tab-vend-gordura-frete input,
+.tab-theme-light #tab-vend-gordura-frete select {
   background-color: #ffffff !important;
   color: #0f172a !important;
   border: 1px solid #cbd5e1 !important;
 }
 
-.tab-theme-light #tab-vend-gordura-frete .vend-search-form input:focus,
-.tab-theme-light #tab-vend-gordura-frete .vend-search-form select:focus {
+#tab-vend-gordura-frete.tab-theme-light input:focus,
+#tab-vend-gordura-frete.tab-theme-light select:focus,
+.tab-theme-light #tab-vend-gordura-frete input:focus,
+.tab-theme-light #tab-vend-gordura-frete select:focus {
   border-color: #0284c7 !important;
   outline: none;
 }
 
+#tab-vend-gordura-frete.tab-theme-light .stat-card,
 .tab-theme-light #tab-vend-gordura-frete .stat-card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
+#tab-vend-gordura-frete.tab-theme-light .data-table,
+.tab-theme-light #tab-vend-gordura-frete .data-table {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+#tab-vend-gordura-frete.tab-theme-light .data-table th,
 .tab-theme-light #tab-vend-gordura-frete .data-table th {
   background-color: #f1f5f9 !important;
   color: #475569 !important;
   border-bottom: 2px solid #cbd5e1 !important;
 }
 
+#tab-vend-gordura-frete.tab-theme-light .data-table td,
 .tab-theme-light #tab-vend-gordura-frete .data-table td {
   border-bottom: 1px solid #f1f5f9 !important;
   color: #1e293b !important;
 }
 
+#tab-vend-gordura-frete.tab-theme-light .data-table tbody tr:hover,
 .tab-theme-light #tab-vend-gordura-frete .data-table tbody tr:hover {
   background-color: #f8fafc !important;
 }
@@ -3034,34 +3075,83 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Tema Claro para Fechamento dos Vendedores */
+/* Fechamento dos Vendedores - Tema Claro */
+#tab-vend-fechamento.tab-theme-light,
+.tab-theme-light #tab-vend-fechamento {
+  background-color: #f8fafc;
+}
+
+#tab-vend-fechamento.tab-theme-light .fechamento-card,
+.tab-theme-light #tab-vend-fechamento .fechamento-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+#tab-vend-fechamento.tab-theme-light h2,
+#tab-vend-fechamento.tab-theme-light h3,
+#tab-vend-fechamento.tab-theme-light h4,
+.tab-theme-light #tab-vend-fechamento h2,
+.tab-theme-light #tab-vend-fechamento h3,
+.tab-theme-light #tab-vend-fechamento h4 {
+  color: #0f172a !important;
+}
+
+#tab-vend-fechamento.tab-theme-light select,
+#tab-vend-fechamento.tab-theme-light input,
+.tab-theme-light #tab-vend-fechamento select,
+.tab-theme-light #tab-vend-fechamento input {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#tab-vend-fechamento.tab-theme-light .fechamento-hero-card,
 .tab-theme-light #tab-vend-fechamento .fechamento-hero-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%) !important;
   border: 1px solid #cbd5e1 !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
 }
 
-.tab-theme-light #tab-vend-fechamento .fechamento-hero-card h3 {
-  color: #d97706 !important;
+#tab-vend-fechamento.tab-theme-light .progress-bar-container,
+.tab-theme-light #tab-vend-fechamento .progress-bar-container {
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
+#tab-vend-fechamento.tab-theme-light .stat-card,
 .tab-theme-light #tab-vend-fechamento .stat-card {
   background: #ffffff !important;
   border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
 }
 
+#tab-vend-fechamento.tab-theme-light div[style*="background: rgba(15, 23, 42"],
+.tab-theme-light #tab-vend-fechamento div[style*="background: rgba(15, 23, 42"] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+#tab-vend-fechamento.tab-theme-light .data-table,
+.tab-theme-light #tab-vend-fechamento .data-table {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+#tab-vend-fechamento.tab-theme-light .data-table th,
 .tab-theme-light #tab-vend-fechamento .data-table th {
   background-color: #f1f5f9 !important;
   color: #475569 !important;
   border-bottom: 2px solid #cbd5e1 !important;
 }
 
+#tab-vend-fechamento.tab-theme-light .data-table td,
 .tab-theme-light #tab-vend-fechamento .data-table td {
   border-bottom: 1px solid #f1f5f9 !important;
   color: #1e293b !important;
 }
 
+#tab-vend-fechamento.tab-theme-light .data-table tbody tr:hover,
 .tab-theme-light #tab-vend-fechamento .data-table tbody tr:hover {
   background-color: #f8fafc !important;
 }

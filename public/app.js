@@ -3867,7 +3867,9 @@ document.addEventListener('DOMContentLoaded', () => {
     'tab-vend-pedidos-abertos',
     'tab-compras-pedidos-abertos',
     'tab-vend-pedidos-compras',
-    'tab-vend-comissoes'
+    'tab-vend-comissoes',
+    'tab-vend-gordura-frete',
+    'tab-vend-fechamento'
   ];
 
   function aplicarTemaVendedores(modo) {
@@ -3906,15 +3908,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function toggleVendedoresTheme() {
-    const container = document.getElementById('tab-vend-saldos-estoque');
-    const isCurrentlyLight = container && container.classList.contains('tab-theme-light');
-    const novoModo = isCurrentlyLight ? 'dark' : 'light';
+    const currentTheme = localStorage.getItem('theme_vendedores') || localStorage.getItem('theme_saldos_estoque') || 'dark';
+    const novoModo = currentTheme === 'light' ? 'dark' : 'light';
     localStorage.setItem('theme_saldos_estoque', novoModo);
     localStorage.setItem('theme_vendedores', novoModo);
     aplicarTemaVendedores(novoModo);
 
-    // Re-renderiza a tabela de estoque
-    renderSaldosEstoqueTable();
+    // Re-renderiza as tabelas se necessário
+    if (typeof renderSaldosEstoqueTable === 'function') {
+      renderSaldosEstoqueTable();
+    }
     if (typeof pedidosAbertosCache !== 'undefined' && pedidosAbertosCache && pedidosAbertosCache.length > 0) {
       renderPedidosAbertosTable(pedidosAbertosCache);
     }
