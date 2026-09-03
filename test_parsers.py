@@ -149,6 +149,73 @@ class TestRodonavesParser:
         assert res["isWrongFormat"] is True
         assert "Esta tela é específica para faturas da transportadora Rodonaves" in res["message"]
 
+    @patch('pdfplumber.open')
+    def test_parse_rodonaves_layout_com_une_e_volumes(self, mock_pdfplumber):
+        """Valida que coluna UnE (ex: 207) não é capturada como NF e extrai Doc Originário real"""
+        mock_pdf = MagicMock()
+        mock_page = MagicMock()
+        mock_page.extract_text.return_value = """
+        RODONAVES TRANSPORTES E ENCOMENDAS LTDA
+        CNPJ: 44.914.992/0001-38
+        Fatura 14129230-26
+        Emitida em 31/08/2026 às 21:05
+        Data de vencimento
+        R$ 1.517,21 R$ 0,00 R$ 0,00 R$ 1.517,21 15/09/2026
+        OACO PRODUTOS DE ACO LTDA
+        """
+        mock_page.extract_tables.return_value = [
+            [
+                ["Doc", "Nº frete", "UnE", "Data emissão", "Doc originário (QTD)", "Valor R$", "Valor cobrado R$", "ICMS/ISS R$", "Cliente", "T"],
+                ["CT-e", "62786020-1", "207", "19/08/2026", "000000665 (1)", "50,47", "50,47", "6,05", "JR2 COMERCIO DE VARIEDADES LTDA", "D"],
+                ["CT-e", "62819205-1", "207", "20/08/2026", "000000672 (1)", "118,50", "118,50", "14,22", "METAL TRADER LTDA", "D"]
+            ]
+        ]
+        mock_pdf.pages = [mock_page]
+        mock_pdfplumber.return_value.__enter__.return_value = mock_pdf
+
+        res = parse_rodonaves_pdf("mock_rodonaves_une.pdf")
+
+        assert res["success"] is True
+        assert res["fatura"]["numeroFatura"] == "14129230-26"
+        assert res["fatura"]["dataVencimento"] == "15/09/2026"
+        assert res["fatura"]["dataEmissao"] == "31/08/2026"
+        assert len(res["items"]) == 2
+        # Garante que NÃO extraiu '207' (UnE)
+        assert res["items"][0]["docOriginario"] == "000000665"
+        assert res["items"][0]["docOriginarioRaw"] == "000000665 (1)"
+        assert res["items"][0]["cliente"] == "JR2 COMERCIO DE VARIEDADES LTDA"
+        assert res["items"][1]["docOriginario"] == "000000672"
+        assert res["items"][1]["cliente"] == "METAL TRADER LTDA"
+
+    def test_parse_rodonaves_pdf_real_fat_15_09_26(self):
+        """Valida regressão completa no arquivo real FAT RODONAVES 15 09 26.pdf"""
+        pdf_path = os.path.join(os.path.dirname(__file__), "FAT RODONAVES 15 09 26.pdf")
+        if not os.path.exists(pdf_path):
+            pytest.skip("Arquivo FAT RODONAVES 15 09 26.pdf não encontrado no ambiente")
+
+        res = parse_rodonaves_pdf(pdf_path)
+
+        assert res["success"] is True
+        assert res["fatura"]["empresaKey"] == "OACO"
+        assert res["fatura"]["empresaCodigo"] == "16"
+        assert res["fatura"]["numeroFatura"] == "14129230-26"
+        assert res["fatura"]["dataVencimento"] == "15/09/2026"
+        assert res["fatura"]["qtdFretes"] == 12
+        assert res["fatura"]["valorTotal"] == 1517.21
+
+        nfs = [it["docOriginario"] for it in res["items"]]
+        # As 12 NFs devem ser distintas
+        assert len(nfs) == 12
+        assert len(set(nfs)) == 12
+        # UnE 207 não pode estar presente como NF
+        assert "000000207" not in nfs
+        # Validação de NFs específicas
+        assert res["items"][0]["docOriginario"] == "000000665"
+        assert res["items"][1]["docOriginario"] == "000000672"
+        assert res["items"][2]["docOriginario"] == "000000670"
+        assert res["items"][3]["docOriginario"] == "000000674"
+        assert res["items"][11]["docOriginario"] == "000000698"
+
 
 # =========================================================================
 # 3. TESTES DO PARSER TIPO 2 / VIPP (parser_tipo2.py)

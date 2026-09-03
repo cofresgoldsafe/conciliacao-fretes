@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.157 (Homologada em 03/09/2026 12:25)  
+> **Versão da Documentação:** v8.158 (Homologada em 03/09/2026 15:40)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas", Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas, Popup de Detalhamento de Fretes, Agendamento Externo via GitHub Actions Cron com Endpoint Protegido por CRON_SECRET Homologado, 9 Asserções de Cron 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 12:25 (v8.157 - Automação Externa do Fechamento Mensal via GitHub Actions no Dia 26 às 00:30 BRT com CRON_SECRET e Endpoint Seguro)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas", Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas, Popup de Detalhamento de Fretes, Agendamento Externo via GitHub Actions Cron com Endpoint Protegido por CRON_SECRET Homologado, Parser Rodonaves Corrigido com Mapeamento Dinâmico de Colunas e Descarte de UnE/207, 9 Asserções Pytest e E2E Protheus 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 15:40 (v8.158 - Correção da Extração de NF (Doc Originário) e Metadados no Parser Rodonaves eliminando Duplicação de NFe e CodCli no Batimento Protheus)  
 
 ---
 
@@ -548,6 +548,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Em `public/js/tarefas.js`: inicialização de `tarefasState.filterStatus = 'PENDENTE'`, sincronização do seletor e do botão de pauta rápida `btnVerTarefasAtivas` (⏳ Pauta Ativa) e redefinição no botão de limpeza `btnLimparFiltrosTarefas`.
     - **Testes Automatizados (24/24 Aprovados):**
       - Expansão de `test_minhas_tarefas.js` com testes para agregação de status no helper DB (1.5), rota REST `GET /api/tarefas?status=PENDENTE` (2.11) e integridade dos contratos de frontend (4.4 e 4.5).
+48. [x] **Correção da Extração de Nota Fiscal (Doc Originário) e Metadados no Parser Rodonaves (`parser_rodonaves.py`, `test_parsers.py`):**
+    - **Causa Raiz & Resolução do Erro de NFe e CodCli Repetidos:**
+      - No processamento de faturas Rodonaves (ex: `FAT RODONAVES 15 09 26.pdf`), a tabela de CT-es contém 10 colunas: `[0] Doc`, `[1] Nº frete`, `[2] UnE`, `[3] Data emissão`, `[4] Doc originário (QTD)`, `[5] Valor R$`, `[6] Valor cobrado R$`, `[7] ICMS/ISS R$`, `[8] Cliente`, `[9] T`.
+      - O loop anterior (`for item in row_clean[2:]: if re.search(r'\d+', item): doc_orig = item; break`) capturava cegamente a coluna `UnE` (`207` - filial da transportadora) por conter dígitos, preenchendo com zeros à esquerda (`000000207`) para todas as linhas da fatura.
+      - Na consulta ao ERP Protheus (`consultarProtheusNF`), a NF `000000207` retornava repetidamente o mesmo Pedido de Venda (`000298`), mesmo Cliente (`144228`) e mesmo Frete Cobrado (`R$ 385,00`) para todos os conhecimentos de transporte na tela de batimento.
+    - **Mapeamento Dinâmico de Colunas (`col_map`) & Heurística de Fallback:**
+      - O parser agora lê o cabeçalho da tabela identificando posições de colunas (`doc_orig` / `nf`, `num_frete`, `une`, `data_emissao`, `valor_cobrado`, `cliente`).
+      - Heurística de fallback resiliente descartando explicitamente datas (`\d{2}/\d{2}/\d{4}`), valores monetários e códigos de filial `UnE` de 3 dígitos, capturando a Nota Fiscal real mesmo em páginas secundárias ou variações de layout.
+      - Sanitização da NF descartando a contagem de volumes entre parênteses (`000000665 (1)` ➔ `000000665`).
+    - **Aprimoramento na Extração de Metadados da Fatura:**
+      - `dataVencimento`: Regex multi-linha e boleto capturando a data de vencimento real da fatura (`15/09/2026`) em vez de manter o valor default legado hardcoded (`31/07/2026`).
+      - `dataEmissao`, `numeroFatura` e identificação automática da empresa sem campos estáticos mockados.
+    - **Homologação e Testes:**
+      - Atualização de `test_parsers.py` com testes unitários para a coluna `UnE` e teste de regressão ponta a ponta com `FAT RODONAVES 15 09 26.pdf` (**9/9 testes pytest aprovados**).
+      - Validação de 100% dos 5 arquivos de amostra Rodonaves do projeto com zero duplicações.
+      - Teste E2E de batimento Protheus confirmando 12 NFs únicas, 12 pedidos de venda e clientes distintos.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
