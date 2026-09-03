@@ -498,12 +498,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Persistência na tabela `system_configs` (`key = 'metas_vendas'`) no Supabase / PostgreSQL com fallback em `data/config_metas_vendas.json`.
       - No ato da consolidação, o fechamento grava um snapshot JSON imutável das regras vigentes (`metas_snapshot_json`), garantindo integridade histórica caso as metas sejam alteradas futuramente.
     - **Faturamento por Empresa & Benchmarking da Equipe de Vendas:**
-      - Extração e rateio multi-empresa do faturamento do período (GSI 15, OACO 16, Metal Pleno 14 e Total Geral).
+      - Extração e rateio multi-empresa do faturamento do período (GSI 15, OACO 16, MP 14 e Total Geral).
       - Gravação e exibição comparativa da performance do vendedor contra a média da equipe de vendas em Vendas Líquidas e Gordura de Frete (`diffVendasPct` e `diffGorduraPct`).
-    - **UI Gamificada, Confetes em Canvas & Ficha com Auditoria:**
-      - Hero card gamificado com Troféu dourado brilhante com animação de pulso `@keyframes pulseTrofeu`, badges de conquistas, barras de metas com degraus visuais e animação leve de confetes em micro-canvas puro (3,5 segundos, com descarte total e zero memory leak).
-      - 4 Stat Cards de alto impacto e tabela de extrato auditável detalhando cada componente financeiro.
-      - Seletor de histórico de fechamentos passados e seletor de vendedor para administradores/gestores.
+    - **UI Gamificada, Troféu Dourado Exclusivo, Inversão de Cards & Confetes:**
+      - **Troféu Dourado 🏆 Exclusivo:** O troféu dourado brilhante com animação de pulso `@keyframes pulseTrofeu` e chuva de confetes em micro-canvas é exibido exclusivamente para vendedores que bateram a meta de vendas ($\ge 100\%$).
+      - **Inversão de Cards:** Card superior (Hero Card - Topo Direito - Amarelo `#fbbf24`) destaca **💵 Total a Receber**, enquanto o Card 4 (Stat Card - Baixo Direito - Verde `#10b981`) discrimina **🎁 Total Premiações** (Meta de Vendas + Prêmio Gordura de Frete).
+      - **Badges do Hero Card:** Exibição explícita do valor conquistado no badge de frete: `🚚 Prêmio Gordura Frete: R$ <valor>` (ou `R$ 0,00` quando sem prêmio).
+      - **Centralização do Botão de Recálculo:** Botão `🔄 Recalcular Fechamento` posicionado na sub-aba *Configurações > Metas Vendas (Configuração)*, permitindo reprocessar e consolidar no Protheus o fechamento oficial de todos os vendedores com 1 clique.
+      - **Tema Claro / Escuro 100% Funcional:** Integração e correção completa dos seletores CSS e lista JS em todas as 7 sub-abas comerciais (*Saldos em Estoque, Consulta Ped Venda, Ped Vendas Abertos, Prod x Ped Compras, Comissões, Gordura Frete e Fechamento*) e modais.
     - **Segurança RBAC Zero-Trust, DDL Supabase com RLS & Testes:**
       - Tabela relacional `fechamentos_vendedores` no Supabase com RLS ativo e chave única `(ciclo_id, cod_vendedor)`.
       - Vendedores autenticados acessam exclusivamente seus próprios números; administradores acessam visão global e individual.
