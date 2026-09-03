@@ -411,7 +411,8 @@
     const elTrofeuSub = document.getElementById('fechamentoTrofeuSub');
     const elBadgePremioVendas = document.getElementById('fechamentoBadgePremioVendas');
     const elBadgePremioFrete = document.getElementById('fechamentoBadgePremioFrete');
-    const elTotalPremiosDestaque = document.getElementById('fechamentoTotalPremiosDestaque');
+    const elTotalReceberDestaque = document.getElementById('fechamentoTotalReceberDestaque') || document.getElementById('fechamentoTotalPremiosDestaque');
+    const elTotalReceberSub = document.getElementById('fechamentoTotalReceberSub');
 
     // Troféu e Conquistas
     let trofeuEmoji = '📊';
@@ -470,8 +471,17 @@
       }
     }
 
-    if (elTotalPremiosDestaque) {
-      elTotalPremiosDestaque.textContent = formatCurrency(totalPremios);
+    // Destaque Topo Direito: TOTAL GERAL A RECEBER (Amarelo)
+    const comBruta = parseFloat(f.comissao_bruta ?? f.comissaoBruta ?? (vBaseLiq * 0.013));
+    const inadimplentes = parseFloat(f.inadimplentes_total ?? f.inadimplentesTotal ?? 0);
+    const comLiquida = parseFloat(f.comissao_liquida ?? f.comissaoLiquida ?? Math.max(0, comBruta - inadimplentes));
+    const totalGeral = parseFloat(f.total_geral_receber ?? f.totalGeralReceber ?? (comLiquida + totalPremios));
+
+    if (elTotalReceberDestaque) {
+      elTotalReceberDestaque.textContent = formatCurrency(totalGeral);
+    }
+    if (elTotalReceberSub) {
+      elTotalReceberSub.textContent = `Comissão Líq: ${formatCurrency(comLiquida)} + Prêmios: ${formatCurrency(totalPremios)}`;
     }
 
     // Barras de Progresso
@@ -515,8 +525,8 @@
 
     const gorduraTotal = parseFloat(f.gordura_frete_total ?? f.gorduraFreteTotal ?? 0);
     const premioFrete = parseFloat(f.premio_gordura_frete ?? f.premioGorduraFrete ?? 0);
-
-    const totalGeral = parseFloat(f.total_geral_receber ?? f.totalGeralReceber ?? 0);
+    const premioVendas = parseFloat(f.premio_meta_vendas ?? f.premioMetaVendas ?? 0);
+    const totalPremios = parseFloat(f.total_premios ?? f.totalPremios ?? (premioVendas + premioFrete));
 
     // Card 1: Vendas Líquidas
     const elVendaLiq = document.getElementById('cardFechamentoVendaLiquida');
@@ -539,14 +549,12 @@
     }
     if (elGorduraSub) elGorduraSub.innerHTML = `Prêmio de Frete: <strong style="color: #10b981;">${formatCurrency(premioFrete)}</strong>`;
 
-    // Card 4: Total Geral a Receber
-    const elTotalGeral = document.getElementById('cardFechamentoTotalGeral');
-    const elTotalGeralSub = document.getElementById('cardFechamentoTotalGeralSub');
-    if (elTotalGeral) elTotalGeral.textContent = formatCurrency(totalGeral);
-    if (elTotalGeralSub) {
-      const premioVendas = parseFloat(f.premio_meta_vendas ?? f.premioMetaVendas ?? 0);
-      const totalPremios = premioVendas + premioFrete;
-      elTotalGeralSub.innerHTML = `Comissão Líq: ${formatCurrency(comLiquida)} + Prêmios: ${formatCurrency(totalPremios)}`;
+    // Card 4: Total Premiações (Verde)
+    const elTotalPremiosCard = document.getElementById('cardFechamentoTotalPremios') || document.getElementById('cardFechamentoTotalGeral');
+    const elTotalPremiosSub = document.getElementById('cardFechamentoTotalPremiosSub') || document.getElementById('cardFechamentoTotalGeralSub');
+    if (elTotalPremiosCard) elTotalPremiosCard.textContent = formatCurrency(totalPremios);
+    if (elTotalPremiosSub) {
+      elTotalPremiosSub.innerHTML = `Metas Vendas: ${formatCurrency(premioVendas)} + Frete: ${formatCurrency(premioFrete)}`;
     }
   }
 

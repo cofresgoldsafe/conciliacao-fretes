@@ -1452,24 +1452,30 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
     }
 
     const cicloAtivo = calcularCicloFechamentoDisponivel();
+    const forceRecalc = req.query.force === 'true' || req.query.recalc === 'true';
 
-    // 1. Tenta carregar do banco / snapshot gravado primeiro
+    // 1. Tenta carregar do banco / snapshot gravado primeiro se não forçado
     let fechamentoDoBanco = null;
-    let todosDoCiclo = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
+    let todosDoCiclo = null;
 
-    if (codVend) {
-      fechamentoDoBanco = await obterFechamentoPorCicloEVendedorDB(cicloAtivo.cicloId, codVend);
-    } else if (todosDoCiclo && todosDoCiclo.length > 0) {
-      fechamentoDoBanco = todosDoCiclo[0];
+    if (!forceRecalc) {
+      todosDoCiclo = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
+      if (codVend) {
+        fechamentoDoBanco = await obterFechamentoPorCicloEVendedorDB(cicloAtivo.cicloId, codVend);
+      } else if (todosDoCiclo && todosDoCiclo.length > 0) {
+        fechamentoDoBanco = todosDoCiclo[0];
+      }
     }
 
-    // 2. Se não houver dados gravados ainda (ou se solicitado todos os vendedores), consolida em tempo real
-    if (!fechamentoDoBanco) {
+    // 2. Se não houver dados gravados ainda, se forçado, ou se o registro gravado estiver com comissão zerada por inadimplência desatualizada
+    const precisaRecalcular = !fechamentoDoBanco || forceRecalc || (fechamentoDoBanco && parseFloat(fechamentoDoBanco.inadimplentes_total) > 0 && parseFloat(fechamentoDoBanco.comissao_liquida) === 0);
+
+    if (precisaRecalcular) {
       const consolidado = await consolidarFechamentoMensal({
         dataIni: cicloAtivo.dtIni,
         dataFim: cicloAtivo.dtFim,
         codVend: codVend,
-        triggeredBy: 'ON_DEMAND',
+        triggeredBy: forceRecalc ? 'RECALC_MANUAL' : 'AUTO_CORRECTION',
         persist: true
       });
       return res.json({ success: true, ciclo: cicloAtivo, ...consolidado });
@@ -4386,24 +4392,22 @@ function startFechamentoVendedoresJob() {
     fechamentoJobInterval.unref();
   }
 
-  // No startup, verifica se já existe fechamento do ciclo atual gravado; se não, consolida em background após 7 segundos
+  // No startup, consolida os dados de fechamento em background após 5 segundos para garantir dados frescos no Supabase/PostgreSQL
   setTimeout(async () => {
     try {
       const cicloAtivo = calcularCicloFechamentoDisponivel();
-      const salvos = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
-      if (!salvos || salvos.length === 0) {
-        console.log(`🏆 [Job Fechamento] Carga inicial de fechamento (${cicloAtivo.label}). Consolidando dados do Protheus...`);
-        await consolidarFechamentoMensal({
-          dataIni: cicloAtivo.dtIni,
-          dataFim: cicloAtivo.dtFim,
-          triggeredBy: 'JOB_STARTUP',
-          persist: true
-        });
-      }
+      console.log(`🏆 [Job Fechamento] Sincronização de startup (${cicloAtivo.label}). Consolidando dados do Protheus...`);
+      await consolidarFechamentoMensal({
+        dataIni: cicloAtivo.dtIni,
+        dataFim: cicloAtivo.dtFim,
+        triggeredBy: 'JOB_STARTUP',
+        persist: true
+      });
+      console.log(`✅ [Job Fechamento] Sincronização do ciclo ${cicloAtivo.label} gravada com sucesso!`);
     } catch (e) {
-      console.warn('⚠️ [Job Fechamento] Falha na carga inicial do fechamento:', e.message);
+      console.warn('⚠️ [Job Fechamento] Falha na sincronização inicial do fechamento:', e.message);
     }
-  }, 7000);
+  }, 5000);
 }
 
 if (require.main === module) {
