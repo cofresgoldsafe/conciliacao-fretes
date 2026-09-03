@@ -355,11 +355,19 @@
 
     const curVend = currentFechamento ? (currentFechamento.cod_vendedor || currentFechamento.codVendedor) : '';
 
+    const defaultVendedores = [
+      { cod_vendedor: '000004', nome_vendedor: 'Figueiredo' },
+      { cod_vendedor: '000064', nome_vendedor: 'Andrea' },
+      { cod_vendedor: '000074', nome_vendedor: 'Juliana' }
+    ];
+
+    const lista = (todosVendedoresCiclo && todosVendedoresCiclo.length > 0) ? todosVendedoresCiclo : defaultVendedores;
+
     select.innerHTML = '';
-    todosVendedoresCiclo.forEach(v => {
+    lista.forEach(v => {
       const opt = document.createElement('option');
-      const vCode = v.cod_vendedor || v.codVendedor;
-      const vName = v.nome_vendedor || v.nomeVendedor || vCode;
+      const vCode = v.cod_vendedor || v.codVendedor || v.cod;
+      const vName = v.nome_vendedor || v.nomeVendedor || v.nome || vCode;
       opt.value = vCode;
       opt.textContent = `${vName} (${vCode})`;
       if (vCode === curVend) opt.selected = true;
@@ -406,8 +414,8 @@
     const elTotalPremiosDestaque = document.getElementById('fechamentoTotalPremiosDestaque');
 
     // Troféu e Conquistas
-    let trofeuEmoji = '🏅';
-    let trofeuTexto = 'Fechamento Concluído';
+    let trofeuEmoji = '📊';
+    let trofeuTexto = 'Fechamento do Período';
     let temConquista = false;
 
     if (pctVendas >= 200) {
@@ -428,11 +436,21 @@
       temConquista = true;
     }
 
-    if (elTrofeuIcon) elTrofeuIcon.textContent = trofeuEmoji;
-    if (elTrofeuTitle) elTrofeuTitle.textContent = trofeuTexto;
+    if (elTrofeuIcon) {
+      elTrofeuIcon.textContent = trofeuEmoji;
+      elTrofeuIcon.style.animation = temConquista ? 'pulseTrofeu 2s infinite ease-in-out' : 'none';
+    }
+    if (elTrofeuTitle) {
+      elTrofeuTitle.textContent = trofeuTexto;
+      elTrofeuTitle.style.color = temConquista ? '#fbbf24' : '#38bdf8';
+    }
     if (elTrofeuSub) {
       const nomeV = f.nome_vendedor || f.nomeVendedor || 'Vendedor';
-      elTrofeuSub.textContent = `Parabéns, ${nomeV}! Confira o extrato de premiações e comissões consolidadas do seu período.`;
+      if (temConquista) {
+        elTrofeuSub.textContent = `Parabéns, ${nomeV}! Confira o extrato de premiações e comissões consolidadas do seu período.`;
+      } else {
+        elTrofeuSub.textContent = `${nomeV}, acompanhe o extrato de vendas líquidas, metas e comissões consolidadas do seu período.`;
+      }
     }
 
     if (elBadgePremioVendas) {

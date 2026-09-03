@@ -1455,8 +1455,12 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
 
     // 1. Tenta carregar do banco / snapshot gravado primeiro
     let fechamentoDoBanco = null;
+    let todosDoCiclo = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
+
     if (codVend) {
       fechamentoDoBanco = await obterFechamentoPorCicloEVendedorDB(cicloAtivo.cicloId, codVend);
+    } else if (todosDoCiclo && todosDoCiclo.length > 0) {
+      fechamentoDoBanco = todosDoCiclo[0];
     }
 
     // 2. Se não houver dados gravados ainda (ou se solicitado todos os vendedores), consolida em tempo real
@@ -1471,13 +1475,12 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
       return res.json({ success: true, ciclo: cicloAtivo, ...consolidado });
     }
 
-    // Se achou no banco para vendedor específico, carrega também todos do ciclo para compor a visão geral
-    const todosDoCiclo = await obterFechamentosPorCicloDB(cicloAtivo.cicloId);
+    // Se achou no banco, retorna o fechamento e todos os vendedores do ciclo
     res.json({
       success: true,
       ciclo: cicloAtivo,
       fechamento: fechamentoDoBanco,
-      todosVendedores: todosDoCiclo,
+      todosVendedores: todosDoCiclo || [fechamentoDoBanco],
       faturamentoGlobalPorEmpresa: fechamentoDoBanco.faturamento_empresas_json || {},
       metasSnapshot: fechamentoDoBanco.metas_snapshot_json || {},
       benchmarking: fechamentoDoBanco.benchmarking_json || {}

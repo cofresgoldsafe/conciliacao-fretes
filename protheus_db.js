@@ -3203,6 +3203,7 @@ module.exports = {
   obterHistoricoFinanceiroCliente,
   buscarComissoesPeriodo,
   executeRailwayQuery,
+  sanitizeSqlParam,
   TABELAS_EMPRESA,
   VENDEDORES_MAP,
   getNomeVendedor,

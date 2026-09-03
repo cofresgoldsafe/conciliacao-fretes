@@ -2075,8 +2075,10 @@
             <!-- Seletor de Vendedor (Gestão/Admin) -->
             <div id="fechamentoVendedorWrapper" style="display: flex; align-items: center; gap: 6px;">
               <label for="fechamentoVendedorSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">👤 Vendedor:</label>
-              <select id="fechamentoVendedorSelect" class="form-select" style="height: 34px; padding: 2px 8px; font-size: 0.82rem; min-width: 140px; font-weight: 600;">
-                <!-- Preenchido via JS -->
+              <select id="fechamentoVendedorSelect" class="form-select" style="height: 34px; padding: 2px 8px; font-size: 0.82rem; min-width: 150px; font-weight: 600;">
+                <option value="000004">Figueiredo (000004)</option>
+                <option value="000064">Andrea (000064)</option>
+                <option value="000074">Juliana (000074)</option>
               </select>
             </div>
 
@@ -2120,22 +2122,22 @@
           <canvas id="fechamentoConfettiCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 260px; pointer-events: none; z-index: 10;"></canvas>
 
           <!-- HERO CARD GAMIFICADO: CONQUISTAS, TROFÉU & METAS -->
-          <div class="fechamento-hero-card" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
+          <div class="fechamento-hero-card" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
               <!-- Bloco do Troféu -->
               <div style="display: flex; align-items: center; gap: 1.25rem;">
-                <div id="fechamentoTrofeuIcon" style="font-size: 3.2rem; filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.4)); animation: pulseTrofeu 2s infinite ease-in-out;">🏆</div>
+                <div id="fechamentoTrofeuIcon" style="font-size: 3.2rem; filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.4));">📊</div>
                 <div>
-                  <h3 id="fechamentoTrofeuTitle" style="font-size: 1.35rem; font-weight: 800; color: #fbbf24; margin: 0; display: flex; align-items: center; gap: 6px;">
-                    🎉 Nível Ouro: Meta Superada!
+                  <h3 id="fechamentoTrofeuTitle" style="font-size: 1.35rem; font-weight: 800; color: #38bdf8; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    Fechamento do Período
                   </h3>
                   <p id="fechamentoTrofeuSub" style="font-size: 0.88rem; color: var(--text-muted); margin: 4px 0 0 0;">
-                    Parabéns pelo excelente desempenho no fechamento comercial do período.
+                    Acompanhe as vendas líquidas, metas atingidas e comissões consolidadas.
                   </p>
                   <!-- Badges de Conquistas -->
                   <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 8px;">
-                    <span id="fechamentoBadgePremioVendas" class="conquista-badge-ativa">🎁 Prêmio Vendas: <strong>R$ 0,00</strong></span>
-                    <span id="fechamentoBadgePremioFrete" class="conquista-badge-ativa">🚚 Prêmio Frete: <strong>R$ 0,00</strong></span>
+                    <span id="fechamentoBadgePremioVendas" class="conquista-badge-inativa">🎯 Meta Vendas: <strong>0,00%</strong></span>
+                    <span id="fechamentoBadgePremioFrete" class="conquista-badge-inativa">🚚 Superávit Frete: <strong>R$ 0,00</strong></span>
                   </div>
                 </div>
               </div>

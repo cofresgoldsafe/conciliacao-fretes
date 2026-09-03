@@ -1,5 +1,67 @@
 [
   {
+    "id": "ACT-1788398915718",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "empresa": "MP",
+      "count": 5
+    },
+    "createdAt": "2026-09-03T01:28:35.718Z"
+  },
+  {
+    "id": "ACT-1788398913922",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
+    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 14
+    },
+    "createdAt": "2026-09-03T01:28:33.922Z"
+  },
+  {
+    "id": "ACT-1788398908390",
+    "username": "andrea",
+    "userName": "Andrea",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (2 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "codVend": "000004",
+      "count": 2
+    },
+    "createdAt": "2026-09-03T01:28:28.390Z"
+  },
+  {
+    "id": "ACT-1788398905327",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T01:28:25.327Z"
+  },
+  {
+    "id": "ACT-1788398901209",
+    "username": "juliana",
+    "userName": "Juliana",
+    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
+    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "count": 34
+    },
+    "createdAt": "2026-09-03T01:28:21.209Z"
+  },
+  {
     "id": "ACT-1788398071986",
     "username": "alexandre",
     "userName": "Alexandre Admin",
@@ -2225,70 +2287,5 @@
       "source": "CACHE_JSON"
     },
     "createdAt": "2026-09-01T11:11:54.301Z"
-  },
-  {
-    "id": "ACT-1788200711869",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_COMISSOES",
-    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "dataIni": "2026-08-01",
-      "dataFim": "2026-08-25",
-      "codVend": "000004",
-      "totalRegistros": 15
-    },
-    "createdAt": "2026-08-31T18:25:11.869Z"
-  },
-  {
-    "id": "ACT-1788200709579",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (16 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 16
-    },
-    "createdAt": "2026-08-31T18:25:09.579Z"
-  },
-  {
-    "id": "ACT-1788200669091",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "MP",
-      "count": 5
-    },
-    "createdAt": "2026-08-31T18:24:29.091Z"
-  },
-  {
-    "id": "ACT-1788200667133",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (11 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 11
-    },
-    "createdAt": "2026-08-31T18:24:27.133Z"
-  },
-  {
-    "id": "ACT-1788200645239",
-    "username": "andrea",
-    "userName": "Andrea",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (1 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "codVend": "000004",
-      "count": 1
-    },
-    "createdAt": "2026-08-31T18:24:05.239Z"
   }
 ]

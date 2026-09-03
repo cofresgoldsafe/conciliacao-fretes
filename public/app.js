@@ -809,6 +809,23 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-pedidos-bloq-estoque') {
         carregarPedidosBloqEstoque();
       }
+      if (targetTab === 'tab-vend-gordura-frete') {
+        if (typeof inicializarTemaVendedores === 'function') inicializarTemaVendedores();
+        if (window.GorduraFreteModule && typeof window.GorduraFreteModule.consultar === 'function') {
+          window.GorduraFreteModule.consultar();
+        }
+      }
+      if (targetTab === 'tab-vend-fechamento') {
+        if (typeof inicializarTemaVendedores === 'function') inicializarTemaVendedores();
+        if (window.FechamentoVendedoresModule && typeof window.FechamentoVendedoresModule.carregarFechamentoAtual === 'function') {
+          window.FechamentoVendedoresModule.carregarFechamentoAtual();
+        }
+      }
+      if (targetTab === 'tab-config-metas-vendas') {
+        if (window.FechamentoVendedoresModule && typeof window.FechamentoVendedoresModule.carregarConfigMetasUI === 'function') {
+          window.FechamentoVendedoresModule.carregarConfigMetasUI();
+        }
+      }
     });
   });
 

@@ -26,7 +26,7 @@
  * 11. Snapshot Imutável de Metas no ato da gravação no banco de dados.
  */
 
-const { executeRailwayQuery, getNomeVendedor, VENDEDORES_MAP, sanitizeSqlParam } = require('./protheus_db');
+const { executeRailwayQuery, getNomeVendedor, VENDEDORES_MAP } = require('./protheus_db');
 const { consultarGorduraFrete } = require('./gordura_frete_engine');
 const {
   getConfigMetasVendasDB,
@@ -43,6 +43,14 @@ const EMPRESAS_FECHAMENTO = [
   { cod: '15', sigla: 'GSI', nome: 'GSI', se3: 'SE3150', sf2: 'SF2150', sd2: 'SD2150', sc5: 'SC5150', se1: 'SE1150' },
   { cod: '16', sigla: 'OACO', nome: 'OACO', se3: 'SE3160', sf2: 'SF2160', sd2: 'SD2160', sc5: 'SC5160', se1: 'SE1160' }
 ];
+
+/**
+ * Sanitiza parâmetros contra injeção SQL
+ */
+function sanitizeSqlParam(param) {
+  if (param === null || param === undefined) return '';
+  return String(param).replace(/['";\\]/g, '').trim();
+}
 
 /**
  * Arredonda valor para 2 casas decimais
@@ -571,7 +579,7 @@ async function consolidarFechamentoMensal({ dataIni, dataFim, codVend, triggered
 
     // 2.6 Metas e Premiações
     const metasCalc = calcularMetasEPremios({
-      vendaBaseLiquida,
+      vendaBaseLiquida: vendasBaseLiquida,
       gorduraFreteTotal,
       configMetas
     });
@@ -656,6 +664,8 @@ async function consolidarFechamentoMensal({ dataIni, dataFim, codVend, triggered
   }
 
   return {
+    fechamento: fechamentosPorVendedor[0] || null,
+    todosVendedores: fechamentosPorVendedor,
     fechamentos: fechamentosPorVendedor,
     periodo,
     faturamentoGlobalPorEmpresa,
