@@ -601,5 +601,28 @@
     "comentarios": [],
     "created_at": "2026-09-02T16:52:36.034Z",
     "updated_at": "2026-09-02T16:52:36.034Z"
+  },
+  {
+    "id": 23,
+    "titulo": "Configurar Secrets (API_BASE_URL e CRON_SECRET) no GitHub Actions e Render",
+    "descricao": "1) Cadastrar API_BASE_URL e CRON_SECRET nas Secrets do GitHub. 2) Adicionar CRON_SECRET no painel do Render/servidor. 3) Disparar teste manual via workflow_dispatch para validar fechamento mensal.",
+    "status": "PENDENTE",
+    "prioridade": "ALTA",
+    "responsavel_username": "alexandre",
+    "responsavel_nome": "Alexandre Gestor",
+    "criado_por_username": "sistema",
+    "criado_por_nome": "Sistema",
+    "data_limite": "2026-09-25",
+    "comentarios": [
+      {
+        "id": 1788460000000,
+        "autor_username": "sistema",
+        "autor_nome": "Sistema",
+        "mensagem": "📌 Passo a passo disponível em docs/GUIA_SETUP_GITHUB_CRON.md e no GEMINI.md (Item 53).",
+        "created_at": "2026-09-03T18:25:00.000Z"
+      }
+    ],
+    "created_at": "2026-09-03T18:25:00.000Z",
+    "updated_at": "2026-09-03T18:25:00.000Z"
   }
 ]

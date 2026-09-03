@@ -733,6 +733,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Manual criado em `docs/GUIA_SETUP_GITHUB_CRON.md` detalhando a configuração das secrets `API_BASE_URL` e `CRON_SECRET` no repositório GitHub.
     - **Suíte de Testes Automatizados:**
       - Arquivo `test_cron_fechamento.js` homologado com 9 asserções cobrindo integridade do YAML, timingSafeEqual, bloqueio 401 sem secret/com secret inválido, aceitação 200 via Bearer e x-cron-secret, fallback admin JWT e testes assíncronos (100% aprovados).
+53. [ ] **Configuração das Secrets de Produção e Homologação E2E do GitHub Actions Cron (`API_BASE_URL` e `CRON_SECRET`):**
+    - **Status:** Pendente de parametrização no ambiente de nuvem pelo administrador.
+    - **Passos Necessários:**
+      1. *Cadastro no GitHub:* Em `Settings > Secrets and variables > Actions > New repository secret`, cadastrar:
+         - `API_BASE_URL`: URL pública oficial da aplicação (ex: `https://portal-faturas.onrender.com`).
+         - `CRON_SECRET`: Chave secreta alfanumérica forte compartilhada para autorizar o cron.
+      2. *Cadastro no Servidor / Render:* Incluir a chave `CRON_SECRET` idêntica nas variáveis de ambiente (*Environment Variables*) da hospedagem.
+      3. *Disparo Teste em Produção:* Ir até a aba **Actions** no GitHub, selecionar `Fechamento Mensal dos Vendedores (Dia 26 às 00:30 BRT)`, acionar via `Run workflow` e confirmar HTTP 200 com consolidação no banco.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
