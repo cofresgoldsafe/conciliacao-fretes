@@ -205,6 +205,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Análise de Crédito</span>
         </button>
+        <button class="nav-tab-btn" data-tab="tab-holerites" id="btnTabHolerites">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Documentos DP</span>
+        </button>
       </div>
 
       <!-- Sub-abas de Configurações -->
@@ -3795,6 +3799,224 @@
       </section>
     </div>
 
+    <!-- ABA: UPLOAD, GESTÃO & EMISSÃO DE HOLERITES PERSONALIZADOS -->
+    <div id="tab-holerites" class="tab-pane hidden">
+      <!-- CABEÇALHO DA ABA -->
+      <section class="card" style="margin-bottom: 1.25rem;">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(56, 189, 248, 0.12); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+              📄
+            </div>
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-color, #f8fafc);">
+                Gestão & Emissão de Documentos DP (Holerites & Recibos)
+              </h2>
+              <p class="desc" style="margin: 3px 0 0 0; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+                Importação de Folha Contábil (GSI, OAÇO) e Recibos Avulsos (Sem Registro) com Personalização de Mensagens e Emissão Executiva.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button id="btnScrollToUploadHolerite" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; height: 38px; font-weight: 600;">
+              <span>📤 Novo Upload</span>
+            </button>
+            <button id="btnRefreshHolerites" class="btn btn-outline" style="height: 38px; display: flex; align-items: center; gap: 6px;" title="Recarregar holerites salvos">
+              <span>🔄 Atualizar</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- BLOCO DE UPLOAD DRAG-AND-DROP -->
+      <section class="card" id="secaoUploadHolerites" style="margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="font-size: 1.05rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span>📥 Área de Upload de Holerites & Recibos</span>
+            <span style="font-size: 0.75rem; background: rgba(148, 163, 184, 0.15); padding: 2px 8px; border-radius: 6px; font-weight: 500;">Multi-Arquivos (PDF / XLSX)</span>
+          </h3>
+          <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8);">GSI BW, OAÇO e Colaboradores Sem Registro</span>
+        </div>
+
+        <div id="holeriteDropZone" style="border: 2px dashed rgba(56, 189, 248, 0.4); border-radius: 12px; padding: 2rem 1.5rem; text-align: center; background: rgba(15, 23, 42, 0.35); cursor: pointer; transition: all 0.2s ease;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📂</div>
+          <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 600; color: #38bdf8;">
+            Arraste os arquivos aqui ou clique para selecionar
+          </h4>
+          <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted, #94a3b8); max-width: 650px; margin: 0 auto;">
+            Suporta <strong>PDFs da contabilidade</strong> (GSI e OAÇO com múltiplos funcionários ou avulsos) e <strong>Planilhas Excel (.xlsx)</strong> de pagamentos/vales sem registro. O sistema detecta a empresa, competência e tipo de recibo de forma 100% autônoma.
+          </p>
+          <input type="file" id="inputFilesHolerite" multiple accept=".pdf,.xlsx,.xls" style="display: none;">
+        </div>
+
+        <!-- Lista de Arquivos Selecionados / Barra de Ação de Upload -->
+        <div id="holeriteUploadQueue" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(15, 23, 42, 0.5); border-radius: 8px; border: 1px solid var(--panel-border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <strong id="holeriteQueueTitle" style="font-size: 0.9rem;">Arquivos prontos para importação:</strong>
+            <button id="btnClearHoleriteQueue" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 2px 8px;">Limpar Fila</button>
+          </div>
+          <div id="holeriteQueueList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 1rem; max-height: 180px; overflow-y: auto;"></div>
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; align-items: center;">
+            <span id="holeriteUploadStatusMsg" style="font-size: 0.85rem; color: #38bdf8; display: none;">⏳ Processando arquivos no servidor...</span>
+            <button id="btnConfirmarUploadHolerite" class="btn btn-primary" style="font-weight: 600; padding: 8px 20px;">
+              🚀 Processar e Gravar no Supabase
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- BARRA DE KPIS DO MÊS ATIVO -->
+      <div id="holeritesKpiBar" class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+        <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #38bdf8;">
+          <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500;">👥 Total Colaboradores</span>
+          <strong id="kpiHoleritesTotalDocs" style="font-size: 1.45rem; font-weight: 700; color: #38bdf8;">0</strong>
+          <span id="kpiHoleritesSubCompetencia" style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Competência ativa</span>
+        </div>
+
+        <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #0284c7;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500;">🟦 GSI BW (Líquido)</span>
+            <span id="kpiHoleritesQtdGsi" style="font-size: 0.72rem; background: rgba(2, 132, 199, 0.2); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-weight: 600;">0 funcs</span>
+          </div>
+          <strong id="kpiHoleritesLiqGsi" style="font-size: 1.35rem; font-weight: 700; color: #38bdf8;">R$ 0,00</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Empresa 15 Protheus</span>
+        </div>
+
+        <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #f59e0b;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500;">🟨 OAÇO (Líquido)</span>
+            <span id="kpiHoleritesQtdOaco" style="font-size: 0.72rem; background: rgba(245, 158, 11, 0.2); color: #fbbf24; padding: 1px 6px; border-radius: 4px; font-weight: 600;">0 funcs</span>
+          </div>
+          <strong id="kpiHoleritesLiqOaco" style="font-size: 1.35rem; font-weight: 700; color: #fbbf24;">R$ 0,00</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Empresa 16 Protheus</span>
+        </div>
+
+        <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #a855f7;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500;">🟪 Sem Registro (Líquido)</span>
+            <span id="kpiHoleritesQtdSemReg" style="font-size: 0.72rem; background: rgba(168, 85, 247, 0.2); color: #c084fc; padding: 1px 6px; border-radius: 4px; font-weight: 600;">0 funcs</span>
+          </div>
+          <strong id="kpiHoleritesLiqSemReg" style="font-size: 1.35rem; font-weight: 700; color: #c084fc;">R$ 0,00</strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Avulsos / Prestadores</span>
+        </div>
+
+        <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #10b981;">
+          <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500;">💰 Folha Total (Líquido)</span>
+          <strong id="kpiHoleritesLiqTotal" style="font-size: 1.45rem; font-weight: 700; color: #34d399;">R$ 0,00</strong>
+          <span id="kpiHoleritesBrutoSub" style="font-size: 0.75rem; color: var(--text-muted, #94a3b8);">Bruto: R$ 0,00</span>
+        </div>
+      </div>
+
+      <!-- PAINEL DE CONTROLE DE FILTROS & SELEÇÃO DE DOCUMENTOS -->
+      <section class="card" style="margin-bottom: 1.25rem;">
+        <!-- LINHA 1: NAVEGAÇÃO TEMPORAL (COMPETÊNCIAS / MESES DISPONÍVEIS) -->
+        <div style="margin-bottom: 1rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--panel-border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-color, #f8fafc); display: flex; align-items: center; gap: 6px;">
+              <span>📅 Mês de Referência (Competência):</span>
+            </span>
+            <span id="holeriteInfoCompetenciaLabel" style="font-size: 0.8rem; color: var(--text-muted, #94a3b8);">Selecione um mês para focar ou veja todos</span>
+          </div>
+          <div id="holeritesCompetenciasBotoes" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button class="btn btn-sm btn-primary active btn-comp-pill" data-ano="" data-mes="" id="btnCompTodos">
+              🌐 Todos os Meses
+            </button>
+          </div>
+        </div>
+
+        <!-- LINHA 2: FILTROS FACETADOS E BUSCA UNIVERSAL -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <!-- Filtro Empresa -->
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8); font-weight: 600;">🏢 EMPRESA:</span>
+              <div class="btn-group" id="groupFiltroEmpresaHolerites" style="display: flex; gap: 4px;">
+                <button class="btn btn-sm btn-primary active btn-filtro-empresa" data-empresa="TODAS">Todas</button>
+                <button class="btn btn-sm btn-outline btn-filtro-empresa" data-empresa="GSI">🟦 GSI</button>
+                <button class="btn btn-sm btn-outline btn-filtro-empresa" data-empresa="OACO">🟨 OAÇO</button>
+                <button class="btn btn-sm btn-outline btn-filtro-empresa" data-empresa="SEM_REGISTRO">🟪 Sem Registro</button>
+              </div>
+            </div>
+
+            <!-- Filtro Tipo de Documento -->
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8); font-weight: 600;">📑 TIPO DE RECIBO:</span>
+              <div class="btn-group" id="groupFiltroTipoHolerites" style="display: flex; gap: 4px;">
+                <button class="btn btn-sm btn-primary active btn-filtro-tipo" data-tipo="TODOS">Todos</button>
+                <button class="btn btn-sm btn-outline btn-filtro-tipo" data-tipo="FOLHA_MENSAL">💵 Salário Mensal</button>
+                <button class="btn btn-sm btn-outline btn-filtro-tipo" data-tipo="ADIANTAMENTO">🪙 Adiantamento</button>
+                <button class="btn btn-sm btn-outline btn-filtro-tipo" data-tipo="13_PRIMEIRA_PARCELA">🎁 13º 1ª Parc</button>
+                <button class="btn btn-sm btn-outline btn-filtro-tipo" data-tipo="13_SEGUNDA_PARCELA">🎁 13º 2ª Parc</button>
+                <button class="btn btn-sm btn-outline btn-filtro-tipo" data-tipo="FERIAS">🏖️ Férias</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Busca Instantânea -->
+          <div style="display: flex; align-items: flex-end; gap: 8px; flex: 1; max-width: 320px; min-width: 200px;">
+            <div style="width: 100%;">
+              <span style="font-size: 0.75rem; color: var(--text-muted, #94a3b8); font-weight: 600; display: block; margin-bottom: 4px;">🔍 BUSCAR COLABORADOR:</span>
+              <input type="text" id="inputBuscaHolerite" class="form-control" placeholder="Nome, cargo ou CPF..." style="height: 34px; font-size: 0.85rem;">
+            </div>
+            <button id="btnClearBuscaHolerite" class="btn btn-outline btn-sm" style="height: 34px; padding: 0 10px;" title="Limpar busca">
+              ✕
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- BARRA DE AÇÕES EM LOTE E TABELA DE DOCUMENTOS -->
+      <section class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" id="chkSelectAllHolerites" style="cursor: pointer; width: 16px; height: 16px;">
+              <span style="font-weight: 600;">Selecionar Todos</span>
+            </label>
+            <span id="lblHoleritesSelecionadosCount" style="font-size: 0.8rem; color: #38bdf8; font-weight: 600;">(0 selecionados)</span>
+          </div>
+
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button id="btnImprimirSelecionadosHolerite" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; height: 34px; font-weight: 600;">
+              <span>🖨️ Imprimir Selecionados</span>
+            </button>
+            <button id="btnMensagemLoteHolerite" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px; height: 34px; font-weight: 600;">
+              <span>💬 Mensagem em Lote</span>
+            </button>
+            <button id="btnExportarExcelHolerites" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px; height: 34px; font-weight: 600;">
+              <span>📥 Exportar Tabela</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive" style="overflow-x: auto;">
+          <table class="data-table" id="tableHolerites" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--panel-border); text-align: left;">
+                <th style="width: 36px; text-align: center;"></th>
+                <th style="width: 90px;">Empresa</th>
+                <th style="width: 110px;">Competência</th>
+                <th style="width: 130px;">Tipo de Recibo</th>
+                <th style="min-width: 220px;">Colaborador / Cargo</th>
+                <th style="width: 110px; text-align: right;">Vencimentos</th>
+                <th style="width: 110px; text-align: right;">Descontos</th>
+                <th style="width: 120px; text-align: right;">Líquido a Receber</th>
+                <th style="min-width: 180px;">Mensagem Personalizada</th>
+                <th style="width: 110px; text-align: center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="holeritesTableBody">
+              <tr>
+                <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                  ⏳ Carregando holerites...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
     <!-- ABA 1 BI: Índices Financeiros de Liquidez -->
     <div id="tab-bi-indices" class="tab-pane hidden">
       <div class="bi-wrapper" id="biIndicesWrapper">
@@ -5268,12 +5490,74 @@
     </div>
   </div>
 
+  <!-- MODAL: VISUALIZAÇÃO & IMPRESSÃO DO HOLERITE PERSONALIZADO -->
+  <div id="modalHoleritePreview" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
+    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 900px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      
+      <!-- Modal Header (Não impresso) -->
+      <div class="modal-header-tools no-print" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--panel-border); background: var(--panel-header-bg, rgba(15, 23, 42, 0.8));">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.2rem;">📄</span>
+          <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-color, #f8fafc);">
+            Pré-visualização do Holerite Executivo
+          </h3>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="btnImprimirModalHolerite" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px;">
+            <span>🖨️ Imprimir / Salvar PDF</span>
+          </button>
+          <button type="button" id="btnSalvarMsgModalHolerite" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px;" title="Salvar alteração da mensagem no banco">
+            <span>💾 Salvar Mensagem</span>
+          </button>
+          <button type="button" id="btnFecharModalHolerite" class="btn btn-outline btn-sm" style="padding: 6px 12px;">
+            ✕ Fechar
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Área do Holerite Formatado) -->
+      <div class="modal-body-scroll" style="overflow-y: auto; padding: 20px; background: #f8fafc; color: #0f172a;">
+        <div id="holeriteDocumentoContainer" class="holerite-folha-a4">
+          <!-- Conteúdo gerado dinamicamente via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MENSAGEM EM LOTE (MÚLTIPLOS COLABORADORES) -->
+  <div id="modalHoleriteMensagemLote" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 550px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;">💬 Mensagem Personalizada em Lote</h3>
+        <button type="button" id="btnFecharModalMsgLote" class="btn btn-outline btn-sm" style="padding: 2px 8px;">✕</button>
+      </div>
+      <div style="padding: 20px;">
+        <p id="msgLoteAlvoDesc" style="margin: 0 0 1rem 0; font-size: 0.88rem; color: var(--text-muted);">
+          A mensagem abaixo será aplicada a todos os <strong>0</strong> holerites selecionados:
+        </p>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 6px;">
+            Texto da Mensagem / Comunicado Oficial:
+          </label>
+          <textarea id="txtMensagemLoteHolerite" class="form-control" rows="4" placeholder="Ex: Desejamos a todos um excelente mês! Lembramos que as férias coletivas iniciam no dia 22/12..." style="width: 100%; font-size: 0.9rem; padding: 10px;"></textarea>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" id="btnCancelarMsgLote" class="btn btn-outline">Cancelar</button>
+          <button type="button" id="btnAplicarMsgLote" class="btn btn-primary" style="font-weight: 600;">
+            Salvar Mensagem nos Selecionados
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/bi.js?v=8.158"></script>
   <script src="js/bi_indices.js?v=8.158"></script>
   <script src="js/bi_autorizacoes.js?v=8.158"></script>
   <script src="js/gordura_frete.js?v=8.158"></script>
   <script src="js/fechamento_vendedores.js?v=8.158"></script>
   <script type="module" src="js/tarefas.js?v=8.158"></script>
-  <script src="app.js?v=8.158"></script>
+  <script src="js/holerites.js?v=8.159"></script>
+  <script src="app.js?v=8.159"></script>
 </body>
 </html>

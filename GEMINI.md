@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.158 (Homologada em 03/09/2026 15:40)  
+> **Versão da Documentação:** v8.159 (Homologada em 03/09/2026 18:35)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas", Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas, Popup de Detalhamento de Fretes, Agendamento Externo via GitHub Actions Cron com Endpoint Protegido por CRON_SECRET Homologado, Parser Rodonaves Corrigido com Mapeamento Dinâmico de Colunas e Descarte de UnE/207, 9 Asserções Pytest e E2E Protheus 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 15:40 (v8.158 - Correção da Extração de NF (Doc Originário) e Metadados no Parser Rodonaves eliminando Duplicação de NFe e CodCli no Batimento Protheus)  
+> **Status:** Estável / Operacional em Produção (Módulo de Holerites & Recibos Personalizados Homologado com Suporte a GSI, OAÇO e Sem Registro, Parser Python Autônomo com stdlib/pdfplumber, Persistência Estruturada no Supabase, Filtros Facetados de Competência, Edição de Mensagens Personalizadas em Lote/Individual, Emissão Executiva em A4 com Logotipos Oficiais e 13 Asserções Pytest/Node 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 18:35 (v8.159 - Implementação da sub-aba Upload de Holerites sob AN. FINANCEIRO com motor de parsing e emissão executiva)  
 
 ---
 
@@ -755,6 +755,36 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       1. [x] *Cadastro no GitHub Actions:* `API_BASE_URL` (`https://conciliacao-fretes.onrender.com`) e `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) cadastrados com sucesso via GitHub CLI (`gh secret set`).
       2. [ ] *Cadastro no Servidor / Render:* Incluir `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) nas Environment Variables do serviço `conciliacao-fretes` no painel do Render (`dashboard.render.com`).
       3. [ ] *Disparo de Teste em Produção:* Acionar via `gh workflow run fechamento_mensal.yml -f force=true` ou botão `Run workflow` no GitHub Actions e validar consolidação com HTTP 200.
+54. [x] **Módulo de Upload, Gestão e Geração de Holerites Personalizados (GSI, OAÇO e Sem Registro):**
+    - **Visão Geral e Propósito:**
+      - Sub-aba criada sob `💰 ASSIST. FINANC.` (`#subGroupFinanceiro` ➔ `#tab-holerites`) para centralizar a recepção de relatórios de folha da contabilidade (GSI BW e OAÇO) e planilhas de colaboradores sem registro/avulsos, gerando holerites executivos em formato moderno, padronizado, com logotipos oficiais e quadro para comunicados personalizados.
+    - **Suporte Multi-Formato & Parser Autônomo (`parser_holerites.py`):**
+      - *PDFs Contábeis (GSI e OAÇO):* Leitura geométrica via `pdfplumber` recortando a metade superior (`p.crop((0, 0, width, height/2))`), neutralizando duplicação dos recibos superior/inferior. Detecção autônoma de razão social, CNPJ, competência, funcionário, cargo, CBO, admissão, eventos de proventos/descontos e bases de cálculo de INSS, FGTS e IRRF.
+      - *Planilhas Excel Sem Registro (.xlsx):* Leitura nativa via stdlib (`zipfile` e `xml.etree.ElementTree`) sem dependência de pacotes pesados de terceiros, extraindo proventos, vales de adiantamento, dados cadastrais e valor líquido.
+      - *Valor por Extenso Automático:* Função `numero_por_extenso` em português para preenchimento formal de recibos.
+    - **Persistência Estruturada no Supabase (`postgres_db.js`):**
+      - Tabela relacional `holerites_documentos` com DDL idempotente, índices de busca por competência e restrição UNIQUE (`empresa, tipo_documento, competencia_ano, competencia_mes, funcionario_nome`).
+      - Estratégia de `UPSERT` que atualiza valores e eventos ao reimportar uma folha corrigida, mas preserva a `mensagem_personalizada` previamente gravada.
+      - Fallback resiliente em disco em `data/holerites_documentos.json` mantendo integridade mesmo em modo offline do banco.
+    - **API REST Robusta (`server.js`):**
+      - `POST /api/financeiro/holerites/upload`: Upload multi-arquivos com `multer.memoryStorage()`, orquestração do parser Python e persistência com sanitização.
+      - `GET /api/financeiro/holerites`: Listagem filtrada por competência (`ano`, `mes`), empresa (`GSI`, `OACO`, `SEM_REGISTRO`), tipo de recibo e busca instantânea.
+      - `GET /api/financeiro/holerites/competencias`: Agregação dinâmica de meses disponíveis com contadores de colaboradores.
+      - `GET /api/financeiro/holerites/:id`: Obtenção do documento completo para renderização.
+      - `PATCH /api/financeiro/holerites/:id/mensagem`: Atualização de comunicado específico individual.
+      - `PATCH /api/financeiro/holerites/mensagem-lote`: Aplicação de recado institucional a múltiplos colaboradores selecionados.
+      - `DELETE /api/financeiro/holerites/:id`: Exclusão lógica/física de recibo.
+    - **Interface de Usuário & Experiência de Navegação (`index.html`, `style.css`, `public/js/holerites.js`):**
+      - *Área de Upload Drag-and-Drop:* Feedback visual instantâneo, fila de arquivos e upload em 1 clique.
+      - *5 Cards de KPIs Dinâmicos:* Total de Colaboradores, Líquido GSI, Líquido OAÇO, Líquido Sem Registro e Folha Total Líquida recalculados em tempo real.
+      - *Resolução da Escolha do Documento Certo:* Carrossel dinâmico de competências (`[ Mês Ativo ] [ Anteriores ] [ Todos ]`), filtros rápidos por Empresa e Tipo de Folha (Salário Mensal, Adiantamento, 13º, Férias) e campo de busca por nome/CPF.
+      - *Holerite Executivo em Folha A4:* Modal com cabeçalho com logo oficial da empresa (`logo-gsi.png` / `logo-oaco.png`), grade de eventos estilizada (verde esmeralda para créditos e coral para descontos), card de valor líquido em destaque, bases de cálculo legais, quadro de aviso/mensagem e canhoto de quitação destacável para assinatura.
+      - *Regras de Impressão (@media print):* Oculta menus, sidebars e botões, formatando a folha em formato A4 perfeito para impressão física ou geração direta de PDF.
+      - *Exportação Excel:* Botão de exportação universal de tabela em CSV com BOM UTF-8 e delimitador `;`.
+    - **Testes Automatizados:**
+      - 6 Testes Pytest em `test_parser_holerites.py` cobrindo 100% dos modelos de amostra de PDFs e planilhas.
+      - 7 Testes de API em `test_holerites_api.js` validando gravação, filtros, busca por nome/CPF, atualização de mensagens individual/lote, agregação de competências e exclusão.
+      - Validação de integridade sintática e modular em `test_frontend_modules.js` (100% aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

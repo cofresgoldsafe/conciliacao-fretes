@@ -41,6 +41,7 @@ const tarefasFile = path.join(dataDir, 'tarefas.json');
 const biAutorizacoesCacheFile = path.join(dataDir, 'bi_autorizacoes_cache.json');
 const fechamentosCacheFile = path.join(dataDir, 'fechamentos_vendedores_cache.json');
 const configMetasVendasFile = path.join(dataDir, 'config_metas_vendas.json');
+const holeritesCacheFile = path.join(dataDir, 'holerites_documentos.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -839,6 +840,54 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_fechamentos_ciclo ON fechamentos_vendedores(ciclo_id);
         CREATE INDEX IF NOT EXISTS idx_fechamentos_vendedor ON fechamentos_vendedores(cod_vendedor);
         CREATE INDEX IF NOT EXISTS idx_fechamentos_datas ON fechamentos_vendedores(data_ini, data_fim);
+
+        -- 10.8 Cria Tabela de Documentos de Folha de Pagamento e Holerites
+        CREATE TABLE IF NOT EXISTS holerites_documentos (
+          id SERIAL PRIMARY KEY,
+          empresa VARCHAR(50) NOT NULL,
+          empresa_razao_social VARCHAR(255),
+          empresa_cnpj VARCHAR(30),
+          tipo_documento VARCHAR(50) NOT NULL,
+          tipo_documento_label VARCHAR(100),
+          competencia_mes INTEGER NOT NULL,
+          competencia_ano INTEGER NOT NULL,
+          competencia_formatada VARCHAR(50),
+          data_pagamento VARCHAR(50),
+          funcionario_codigo VARCHAR(30),
+          funcionario_nome VARCHAR(200) NOT NULL,
+          funcionario_cpf VARCHAR(20),
+          funcionario_cargo VARCHAR(100),
+          funcionario_cbo VARCHAR(20),
+          funcionario_departamento VARCHAR(50),
+          funcionario_filial VARCHAR(50),
+          funcionario_tipo_contrato VARCHAR(50),
+          funcionario_admissao VARCHAR(30),
+          salario_base NUMERIC(15,2) DEFAULT 0.00,
+          sal_contr_inss NUMERIC(15,2) DEFAULT 0.00,
+          base_calc_fgts NUMERIC(15,2) DEFAULT 0.00,
+          fgts_mes NUMERIC(15,2) DEFAULT 0.00,
+          base_calc_irrf NUMERIC(15,2) DEFAULT 0.00,
+          faixa_irrf NUMERIC(15,2) DEFAULT 0.00,
+          total_vencimentos NUMERIC(15,2) DEFAULT 0.00,
+          total_descontos NUMERIC(15,2) DEFAULT 0.00,
+          valor_liquido NUMERIC(15,2) DEFAULT 0.00,
+          valor_liquido_extenso TEXT,
+          eventos JSONB DEFAULT '[]'::jsonb,
+          mensagem_contabilidade TEXT,
+          mensagem_personalizada TEXT,
+          origem_arquivo_nome VARCHAR(255),
+          origem_arquivo_tipo VARCHAR(20),
+          origem_pagina INTEGER DEFAULT 1,
+          status VARCHAR(30) DEFAULT 'ATIVO',
+          created_by VARCHAR(100),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_holerite_comp_func UNIQUE (empresa, tipo_documento, competencia_ano, competencia_mes, funcionario_nome)
+        );
+        CREATE INDEX IF NOT EXISTS idx_holerites_comp ON holerites_documentos(competencia_ano, competencia_mes);
+        CREATE INDEX IF NOT EXISTS idx_holerites_empresa ON holerites_documentos(empresa);
+        CREATE INDEX IF NOT EXISTS idx_holerites_func ON holerites_documentos(funcionario_nome);
+        CREATE INDEX IF NOT EXISTS idx_holerites_tipo ON holerites_documentos(tipo_documento);
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
@@ -3400,6 +3449,382 @@ async function obterUltimosFechamentosDB({ limite = 12, codVendedor } = {}) {
   return result.slice(0, lim);
 }
 
+/**
+ * Módulo de Holerites e Recibos de Pagamento
+ */
+async function salvarHoleritesDB(docs, username) {
+  if (!Array.isArray(docs) || docs.length === 0) return [];
+  const cleanUser = String(username || 'sistema').trim();
+  const saved = [];
+
+  // Salva no banco se conectado
+  if (getPool()) {
+    for (const doc of docs) {
+      try {
+        const sql = `
+          INSERT INTO holerites_documentos (
+            empresa, empresa_razao_social, empresa_cnpj, tipo_documento, tipo_documento_label,
+            competencia_mes, competencia_ano, competencia_formatada, data_pagamento,
+            funcionario_codigo, funcionario_nome, funcionario_cpf, funcionario_cargo,
+            funcionario_cbo, funcionario_departamento, funcionario_filial, funcionario_tipo_contrato,
+            funcionario_admissao, salario_base, sal_contr_inss, base_calc_fgts, fgts_mes,
+            base_calc_irrf, faixa_irrf, total_vencimentos, total_descontos, valor_liquido,
+            valor_liquido_extenso, eventos, mensagem_contabilidade, mensagem_personalizada,
+            origem_arquivo_nome, origem_arquivo_tipo, origem_pagina, status, created_by, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+            $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, NOW()
+          )
+          ON CONFLICT (empresa, tipo_documento, competencia_ano, competencia_mes, funcionario_nome)
+          DO UPDATE SET
+            empresa_razao_social = EXCLUDED.empresa_razao_social,
+            empresa_cnpj = EXCLUDED.empresa_cnpj,
+            tipo_documento_label = EXCLUDED.tipo_documento_label,
+            competencia_formatada = EXCLUDED.competencia_formatada,
+            data_pagamento = COALESCE(NULLIF(EXCLUDED.data_pagamento, ''), holerites_documentos.data_pagamento),
+            funcionario_codigo = EXCLUDED.funcionario_codigo,
+            funcionario_cpf = COALESCE(NULLIF(EXCLUDED.funcionario_cpf, ''), holerites_documentos.funcionario_cpf),
+            funcionario_cargo = EXCLUDED.funcionario_cargo,
+            funcionario_cbo = EXCLUDED.funcionario_cbo,
+            funcionario_departamento = EXCLUDED.funcionario_departamento,
+            funcionario_filial = EXCLUDED.funcionario_filial,
+            funcionario_tipo_contrato = EXCLUDED.funcionario_tipo_contrato,
+            funcionario_admissao = EXCLUDED.funcionario_admissao,
+            salario_base = EXCLUDED.salario_base,
+            sal_contr_inss = EXCLUDED.sal_contr_inss,
+            base_calc_fgts = EXCLUDED.base_calc_fgts,
+            fgts_mes = EXCLUDED.fgts_mes,
+            base_calc_irrf = EXCLUDED.base_calc_irrf,
+            faixa_irrf = EXCLUDED.faixa_irrf,
+            total_vencimentos = EXCLUDED.total_vencimentos,
+            total_descontos = EXCLUDED.total_descontos,
+            valor_liquido = EXCLUDED.valor_liquido,
+            valor_liquido_extenso = EXCLUDED.valor_liquido_extenso,
+            eventos = EXCLUDED.eventos,
+            mensagem_contabilidade = EXCLUDED.mensagem_contabilidade,
+            mensagem_personalizada = COALESCE(NULLIF(EXCLUDED.mensagem_personalizada, ''), holerites_documentos.mensagem_personalizada),
+            origem_arquivo_nome = EXCLUDED.origem_arquivo_nome,
+            origem_arquivo_tipo = EXCLUDED.origem_arquivo_tipo,
+            origem_pagina = EXCLUDED.origem_pagina,
+            status = 'ATIVO',
+            updated_at = NOW()
+          RETURNING *;
+        `;
+        const params = [
+          doc.empresa || 'GSI',
+          doc.empresa_razao_social || '',
+          doc.empresa_cnpj || '',
+          doc.tipo_documento || 'FOLHA_MENSAL',
+          doc.tipo_documento_label || 'Folha Mensal',
+          parseInt(doc.competencia_mes, 10) || 1,
+          parseInt(doc.competencia_ano, 10) || 2026,
+          doc.competencia_formatada || '',
+          doc.data_pagamento || '',
+          doc.funcionario_codigo || '',
+          doc.funcionario_nome || '',
+          doc.funcionario_cpf || '',
+          doc.funcionario_cargo || '',
+          doc.funcionario_cbo || '',
+          doc.funcionario_departamento || '',
+          doc.funcionario_filial || '',
+          doc.funcionario_tipo_contrato || 'Mensalista',
+          doc.funcionario_admissao || '',
+          parseFloat(doc.salario_base) || 0.0,
+          parseFloat(doc.sal_contr_inss) || 0.0,
+          parseFloat(doc.base_calc_fgts) || 0.0,
+          parseFloat(doc.fgts_mes) || 0.0,
+          parseFloat(doc.base_calc_irrf) || 0.0,
+          parseFloat(doc.faixa_irrf) || 0.0,
+          parseFloat(doc.total_vencimentos) || 0.0,
+          parseFloat(doc.total_descontos) || 0.0,
+          parseFloat(doc.valor_liquido) || 0.0,
+          doc.valor_liquido_extenso || '',
+          JSON.stringify(doc.eventos || []),
+          doc.mensagem_contabilidade || '',
+          doc.mensagem_personalizada || '',
+          doc.origem_arquivo_nome || '',
+          doc.origem_arquivo_tipo || 'PDF',
+          parseInt(doc.origem_pagina, 10) || 1,
+          doc.status || 'ATIVO',
+          cleanUser
+        ];
+        const res = await safeQuery(sql, params);
+        if (res && res.rows && res.rows[0]) {
+          saved.push(res.rows[0]);
+        }
+      } catch (errDb) {
+        console.warn('⚠️ [Postgres] Erro ao gravar holerite no banco:', errDb.message);
+      }
+    }
+  }
+
+  // Fallback JSON local
+  const list = safeReadJsonSync(holeritesCacheFile, []);
+  for (const doc of docs) {
+    const idx = list.findIndex(x =>
+      x.empresa === doc.empresa &&
+      x.tipo_documento === doc.tipo_documento &&
+      parseInt(x.competencia_ano, 10) === parseInt(doc.competencia_ano, 10) &&
+      parseInt(x.competencia_mes, 10) === parseInt(doc.competencia_mes, 10) &&
+      x.funcionario_nome === doc.funcionario_nome
+    );
+    const rec = {
+      id: idx >= 0 ? list[idx].id : Date.now() + Math.floor(Math.random() * 1000),
+      ...doc,
+      status: doc.status || 'ATIVO',
+      mensagem_personalizada: (idx >= 0 && list[idx].mensagem_personalizada) ? list[idx].mensagem_personalizada : (doc.mensagem_personalizada || ''),
+      updated_at: new Date().toISOString(),
+      created_by: cleanUser
+    };
+    if (idx >= 0) {
+      list[idx] = rec;
+    } else {
+      list.push(rec);
+    }
+    if (!saved.some(s => s.id === rec.id)) {
+      saved.push(rec);
+    }
+  }
+  safeWriteJsonSync(holeritesCacheFile, list);
+  return saved;
+}
+
+async function obterHoleritesDB(filtros = {}) {
+  const { ano, mes, empresa, tipo_documento, busca, status = 'ATIVO', limit = 500, offset = 0 } = filtros;
+  
+  if (getPool()) {
+    try {
+      let conditions = [];
+      let params = [];
+      let pIdx = 1;
+
+      if (status) {
+        conditions.push(`status = $${pIdx++}`);
+        params.push(status);
+      }
+      if (ano) {
+        conditions.push(`competencia_ano = $${pIdx++}`);
+        params.push(parseInt(ano, 10));
+      }
+      if (mes) {
+        conditions.push(`competencia_mes = $${pIdx++}`);
+        params.push(parseInt(mes, 10));
+      }
+      if (empresa && empresa !== 'TODAS') {
+        conditions.push(`empresa = $${pIdx++}`);
+        params.push(empresa);
+      }
+      if (tipo_documento && tipo_documento !== 'TODOS') {
+        conditions.push(`tipo_documento = $${pIdx++}`);
+        params.push(tipo_documento);
+      }
+      if (busca) {
+        conditions.push(`(funcionario_nome ILIKE $${pIdx} OR funcionario_cpf ILIKE $${pIdx} OR funcionario_cargo ILIKE $${pIdx} OR funcionario_codigo ILIKE $${pIdx})`);
+        params.push(`%${busca}%`);
+        pIdx++;
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const sql = `
+        SELECT * FROM holerites_documentos
+        ${whereClause}
+        ORDER BY competencia_ano DESC, competencia_mes DESC, funcionario_nome ASC
+        LIMIT $${pIdx++} OFFSET $${pIdx++};
+      `;
+      params.push(parseInt(limit, 10) || 500);
+      params.push(parseInt(offset, 10) || 0);
+
+      const res = await safeQuery(sql, params);
+      if (res && res.rows) {
+        return res.rows;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar holerites:', err.message);
+    }
+  }
+
+  // Fallback JSON local
+  let list = safeReadJsonSync(holeritesCacheFile, []);
+  list = list.filter(item => {
+    const itemStatus = item.status || 'ATIVO';
+    if (status && itemStatus !== status) return false;
+    if (ano && parseInt(item.competencia_ano, 10) !== parseInt(ano, 10)) return false;
+    if (mes && parseInt(item.competencia_mes, 10) !== parseInt(mes, 10)) return false;
+    if (empresa && empresa !== 'TODAS' && item.empresa !== empresa) return false;
+    if (tipo_documento && tipo_documento !== 'TODOS' && item.tipo_documento !== tipo_documento) return false;
+    if (busca) {
+      const q = busca.toLowerCase();
+      const match = (item.funcionario_nome || '').toLowerCase().includes(q) ||
+                    (item.funcionario_cpf || '').toLowerCase().includes(q) ||
+                    (item.funcionario_cargo || '').toLowerCase().includes(q) ||
+                    (item.funcionario_codigo || '').toLowerCase().includes(q);
+      if (!match) return false;
+    }
+    return true;
+  });
+
+  list.sort((a, b) => {
+    const compA = (b.competencia_ano || 0) - (a.competencia_ano || 0);
+    if (compA !== 0) return compA;
+    const mesA = (b.competencia_mes || 0) - (a.competencia_mes || 0);
+    if (mesA !== 0) return mesA;
+    return (a.funcionario_nome || '').localeCompare(b.funcionario_nome || '');
+  });
+
+  const off = parseInt(offset, 10) || 0;
+  const lim = parseInt(limit, 10) || 500;
+  return list.slice(off, off + lim);
+}
+
+async function obterHoleritePorIdDB(id) {
+  const cleanId = parseInt(id, 10);
+  if (!cleanId) return null;
+
+  if (getPool()) {
+    try {
+      const res = await safeQuery('SELECT * FROM holerites_documentos WHERE id = $1 LIMIT 1;', [cleanId]);
+      if (res && res.rows && res.rows[0]) return res.rows[0];
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar holerite por ID:', err.message);
+    }
+  }
+
+  const list = safeReadJsonSync(holeritesCacheFile, []);
+  return list.find(x => x.id === cleanId) || null;
+}
+
+async function atualizarMensagemHoleriteDB(id, mensagem, username) {
+  const cleanId = parseInt(id, 10);
+  const cleanMsg = String(mensagem || '').trim();
+
+  if (getPool()) {
+    try {
+      const res = await safeQuery(`
+        UPDATE holerites_documentos
+        SET mensagem_personalizada = $1, updated_at = NOW()
+        WHERE id = $2
+        RETURNING *;
+      `, [cleanMsg, cleanId]);
+      if (res && res.rows && res.rows[0]) return res.rows[0];
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao atualizar mensagem do holerite:', err.message);
+    }
+  }
+
+  const list = safeReadJsonSync(holeritesCacheFile, []);
+  const item = list.find(x => x.id === cleanId);
+  if (item) {
+    item.mensagem_personalizada = cleanMsg;
+    item.updated_at = new Date().toISOString();
+    safeWriteJsonSync(holeritesCacheFile, list);
+    return item;
+  }
+  return null;
+}
+
+async function atualizarMensagemHoleritesLoteDB(ids, mensagem, username) {
+  if (!Array.isArray(ids) || ids.length === 0) return 0;
+  const cleanIds = ids.map(x => parseInt(x, 10)).filter(Boolean);
+  const cleanMsg = String(mensagem || '').trim();
+
+  if (getPool()) {
+    try {
+      const res = await safeQuery(`
+        UPDATE holerites_documentos
+        SET mensagem_personalizada = $1, updated_at = NOW()
+        WHERE id = ANY($2::int[]);
+      `, [cleanMsg, cleanIds]);
+      return res.rowCount || cleanIds.length;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao atualizar mensagens em lote:', err.message);
+    }
+  }
+
+  const list = safeReadJsonSync(holeritesCacheFile, []);
+  let count = 0;
+  for (const item of list) {
+    if (cleanIds.includes(item.id)) {
+      item.mensagem_personalizada = cleanMsg;
+      item.updated_at = new Date().toISOString();
+      count++;
+    }
+  }
+  safeWriteJsonSync(holeritesCacheFile, list);
+  return count;
+}
+
+async function excluirHoleriteDB(id, username) {
+  const cleanId = parseInt(id, 10);
+
+  if (getPool()) {
+    try {
+      await safeQuery('DELETE FROM holerites_documentos WHERE id = $1;', [cleanId]);
+      return true;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao excluir holerite:', err.message);
+    }
+  }
+
+  let list = safeReadJsonSync(holeritesCacheFile, []);
+  list = list.filter(x => x.id !== cleanId);
+  safeWriteJsonSync(holeritesCacheFile, list);
+  return true;
+}
+
+async function obterCompetenciasHoleritesDB() {
+  if (getPool()) {
+    try {
+      const sql = `
+        SELECT
+          competencia_ano,
+          competencia_mes,
+          competencia_formatada,
+          COUNT(*) as total_docs,
+          COUNT(*) FILTER (WHERE empresa = 'GSI') as gsi_docs,
+          COUNT(*) FILTER (WHERE empresa = 'OACO') as oaco_docs,
+          COUNT(*) FILTER (WHERE empresa = 'SEM_REGISTRO') as sem_registro_docs
+        FROM holerites_documentos
+        WHERE status = 'ATIVO'
+        GROUP BY competencia_ano, competencia_mes, competencia_formatada
+        ORDER BY competencia_ano DESC, competencia_mes DESC;
+      `;
+      const res = await safeQuery(sql);
+      if (res && res.rows) return res.rows;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar competências:', err.message);
+    }
+  }
+
+  const list = safeReadJsonSync(holeritesCacheFile, []);
+  const map = new Map();
+  for (const item of list) {
+    if (item.status && item.status !== 'ATIVO') continue;
+    const key = `${item.competencia_ano}-${item.competencia_mes}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        competencia_ano: parseInt(item.competencia_ano, 10) || 2026,
+        competencia_mes: parseInt(item.competencia_mes, 10) || 1,
+        competencia_formatada: item.competencia_formatada || `${item.competencia_mes}/${item.competencia_ano}`,
+        total_docs: 0,
+        gsi_docs: 0,
+        oaco_docs: 0,
+        sem_registro_docs: 0
+      });
+    }
+    const entry = map.get(key);
+    entry.total_docs++;
+    if (item.empresa === 'GSI') entry.gsi_docs++;
+    else if (item.empresa === 'OACO') entry.oaco_docs++;
+    else if (item.empresa === 'SEM_REGISTRO') entry.sem_registro_docs++;
+  }
+  const result = Array.from(map.values());
+  result.sort((a, b) => {
+    if (b.competencia_ano !== a.competencia_ano) return b.competencia_ano - a.competencia_ano;
+    return b.competencia_mes - a.competencia_mes;
+  });
+  return result;
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -3461,6 +3886,13 @@ module.exports = {
   obterFechamentoPorCicloEVendedorDB,
   obterFechamentosPorCicloDB,
   obterUltimosFechamentosDB,
+  salvarHoleritesDB,
+  obterHoleritesDB,
+  obterHoleritePorIdDB,
+  atualizarMensagemHoleriteDB,
+  atualizarMensagemHoleritesLoteDB,
+  excluirHoleriteDB,
+  obterCompetenciasHoleritesDB,
   DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool

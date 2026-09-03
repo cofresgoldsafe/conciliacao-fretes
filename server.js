@@ -98,6 +98,13 @@ const {
   obterFechamentoPorCicloEVendedorDB,
   obterFechamentosPorCicloDB,
   obterUltimosFechamentosDB,
+  salvarHoleritesDB,
+  obterHoleritesDB,
+  obterHoleritePorIdDB,
+  atualizarMensagemHoleriteDB,
+  atualizarMensagemHoleritesLoteDB,
+  excluirHoleriteDB,
+  obterCompetenciasHoleritesDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -451,6 +458,62 @@ const memoryUpload = multer({
     }
   }
 });
+
+// Configuração de Upload para Holerites e Recibos (PDF e XLSX até 30MB)
+const holeritesUpload = multer({
+  storage: multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'holerite-' + uniqueSuffix + '-' + file.originalname.replace(/[^a-zA-Z0-9\._\-]/g, '_'));
+    }
+  }),
+  limits: {
+    fileSize: 30 * 1024 * 1024 // 30MB
+  },
+  fileFilter: function (req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.pdf', '.xlsx', '.xls'].includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Formato inválido. Apenas arquivos .pdf, .xlsx e .xls são aceitos para holerites.'));
+    }
+  }
+});
+
+function runPythonParserHolerites(filePaths) {
+  return new Promise((resolve, reject) => {
+    const pythonScript = path.join(__dirname, 'parser_holerites.py');
+    const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+    const paths = Array.isArray(filePaths) ? filePaths : [filePaths];
+
+    execFile(pythonBin, [pythonScript, ...paths], { maxBuffer: 15 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Exec Error with ${pythonBin} on holerites:`, error, stderr);
+        if (pythonBin === 'python3') {
+          return execFile('python', [pythonScript, ...paths], { maxBuffer: 15 * 1024 * 1024 }, (err2, out2, errOut2) => {
+            if (err2) return reject(err2);
+            try {
+              resolve(JSON.parse(out2));
+            } catch (e) {
+              reject(new Error('Falha ao interpretar saída: ' + out2));
+            }
+          });
+        }
+        return reject(error);
+      }
+      try {
+        const jsonResult = JSON.parse(stdout);
+        resolve(jsonResult);
+      } catch (err) {
+        console.error('JSON Parse error on holerites:', err, stdout);
+        reject(new Error('Erro na interpretação do JSON retornado pelo extrator de holerites.'));
+      }
+    });
+  });
+}
 
 function runPythonParser(scriptName, filePath) {
   return new Promise((resolve, reject) => {
@@ -3624,6 +3687,163 @@ app.get('/api/financeiro/analise-credito/historico', async (req, res) => {
     res.json({ success: true, historico: hist });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- MÓDULO DE HOLERITES E RECIBOS DE PAGAMENTO ---
+
+// 1. Upload de Holerites e Recibos (PDFs da Contabilidade ou Planilhas Excel)
+app.post('/api/financeiro/holerites/upload', requireAuth, holeritesUpload.array('holeriteFiles', 30), async (req, res) => {
+  const user = getUserFromReq(req);
+  const files = req.files || (req.file ? [req.file] : []);
+
+  if (!files || files.length === 0) {
+    return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado para processamento.' });
+  }
+
+  const filePaths = files.map(f => f.path);
+
+  try {
+    const parseResult = await runPythonParserHolerites(filePaths);
+
+    // Remove arquivos temporários de upload
+    for (const f of files) {
+      try {
+        if (fs.existsSync(f.path)) fs.unlinkSync(f.path);
+      } catch (errUnlink) {
+        console.warn('Falha ao remover arquivo temporário:', f.path, errUnlink.message);
+      }
+    }
+
+    if (!parseResult || !parseResult.documentos || parseResult.documentos.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nenhum documento ou holerite válido pôde ser extraído dos arquivos fornecidos.',
+        detalhes: parseResult ? parseResult.erros : []
+      });
+    }
+
+    // Salva no banco de dados / fallback local
+    const savedDocs = await salvarHoleritesDB(parseResult.documentos, user ? user.username : 'sistema');
+
+    // Registra atividade no feed de auditoria
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'UPLOAD_HOLERITES',
+      description: `Importou ${savedDocs.length} holerites/recibos de pagamento via ${files.length} arquivo(s).`,
+      ip: req.ip,
+      metadata: {
+        totalDocumentos: savedDocs.length,
+        arquivos: files.map(f => f.originalname),
+        erros: parseResult.erros || []
+      }
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      total_importados: savedDocs.length,
+      documentos: savedDocs,
+      erros: parseResult.erros || []
+    });
+  } catch (err) {
+    for (const f of files) {
+      try {
+        if (fs.existsSync(f.path)) fs.unlinkSync(f.path);
+      } catch {}
+    }
+    console.error('Erro no upload de holerites:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Consulta e Listagem de Holerites com Filtros Facetados
+app.get('/api/financeiro/holerites', requireAuth, async (req, res) => {
+  try {
+    const { ano, mes, empresa, tipo_documento, busca, status, limit, offset } = req.query;
+    const docs = await obterHoleritesDB({
+      ano,
+      mes,
+      empresa,
+      tipo_documento,
+      busca,
+      status,
+      limit,
+      offset
+    });
+    return res.json({ success: true, documentos: docs, total: docs.length });
+  } catch (err) {
+    console.error('Erro ao listar holerites:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. Obter Competências Disponíveis (Anos/Meses e Totais por Empresa)
+app.get('/api/financeiro/holerites/competencias', requireAuth, async (req, res) => {
+  try {
+    const comps = await obterCompetenciasHoleritesDB();
+    return res.json({ success: true, competencias: comps });
+  } catch (err) {
+    console.error('Erro ao obter competências:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Detalhes de um Holerite por ID
+app.get('/api/financeiro/holerites/:id', requireAuth, async (req, res) => {
+  try {
+    const doc = await obterHoleritePorIdDB(req.params.id);
+    if (!doc) {
+      return res.status(404).json({ success: false, error: 'Holerite não encontrado.' });
+    }
+    return res.json({ success: true, documento: doc });
+  } catch (err) {
+    console.error('Erro ao buscar holerite por ID:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Atualizar Mensagem Personalizada de Holerite Individual
+app.patch('/api/financeiro/holerites/:id/mensagem', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { mensagem } = req.body || {};
+    const updated = await atualizarMensagemHoleriteDB(req.params.id, mensagem, user ? user.username : 'sistema');
+    if (!updated) {
+      return res.status(404).json({ success: false, error: 'Holerite não encontrado para atualização.' });
+    }
+    return res.json({ success: true, documento: updated });
+  } catch (err) {
+    console.error('Erro ao atualizar mensagem do holerite:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6. Atualizar Mensagem Personalizada em Lote (Múltiplos Colaboradores)
+app.patch('/api/financeiro/holerites/mensagem-lote', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { ids, mensagem } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum holerite selecionado para atualização em lote.' });
+    }
+    const count = await atualizarMensagemHoleritesLoteDB(ids, mensagem, user ? user.username : 'sistema');
+    return res.json({ success: true, total_atualizados: count });
+  } catch (err) {
+    console.error('Erro ao atualizar mensagens em lote:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Excluir / Desativar Holerite
+app.delete('/api/financeiro/holerites/:id', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    await excluirHoleriteDB(req.params.id, user ? user.username : 'sistema');
+    return res.json({ success: true, message: 'Holerite excluído com sucesso.' });
+  } catch (err) {
+    console.error('Erro ao excluir holerite:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

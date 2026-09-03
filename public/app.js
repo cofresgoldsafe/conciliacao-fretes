@@ -780,6 +780,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-analise-credito') {
         carregarHistoricoCredito();
       }
+      if (targetTab === 'tab-holerites') {
+        if (window.holeritesModule && typeof window.holeritesModule.carregarHolerites === 'function') {
+          window.holeritesModule.carregarCompetencias();
+          window.holeritesModule.carregarHolerites();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 
