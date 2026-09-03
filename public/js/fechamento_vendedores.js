@@ -286,7 +286,7 @@
       }
 
       renderizarTelaCompleta();
-      alert('✅ Fechamento recalculado e consolidado no banco com sucesso!');
+      alert('✅ Fechamento de todos os vendedores recalculado no ERP Protheus e consolidado com sucesso!');
     } catch (err) {
       mostrarErro(err.message || 'Falha ao recalcular fechamento.');
     } finally {

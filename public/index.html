@@ -2090,10 +2090,7 @@
               </select>
             </div>
 
-            <!-- Botões de Ação -->
-            <button id="btnRecalcularFechamento" class="btn btn-outline btn-sm" style="height: 34px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="Recalcular e consolidar fechamento em tempo real">
-              🔄 Recalcular Fechamento
-            </button>
+            <!-- Botão de Impressão -->
             <button id="btnImprimirFechamento" class="btn btn-outline btn-sm" style="height: 34px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="Imprimir ou Salvar Ficha em PDF">
               🖨️ Imprimir Ficha
             </button>
@@ -2863,6 +2860,9 @@
             <p class="desc">Defina os valores das metas de vendas e prêmios de gordura de frete válidas para os fechamentos mensais dos vendedores. No momento do fechamento, um snapshot imutável destas regras é gravado no banco de dados.</p>
           </div>
           <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <button id="btnRecalcularFechamento" class="btn btn-outline btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="Recalcular e consolidar fechamento oficial de todos os vendedores no Protheus">
+              🔄 Recalcular Fechamento
+            </button>
             <button id="btnRestaurarConfigMetas" class="btn btn-outline btn-sm">
               🔄 Restaurar Padrões
             </button>
