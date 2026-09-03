@@ -3079,6 +3079,57 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* Números de Pódio / Ranking da Equipe */
+.ranking-num-ouro {
+  color: #fbbf24 !important;
+  text-shadow: 0 0 16px rgba(251, 191, 36, 0.55), 0 2px 4px rgba(0, 0, 0, 0.4);
+  filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+}
+
+.ranking-num-prata {
+  color: #e2e8f0 !important;
+  text-shadow: 0 0 16px rgba(226, 232, 240, 0.45), 0 2px 4px rgba(0, 0, 0, 0.4);
+  filter: drop-shadow(0 2px 8px rgba(148, 163, 184, 0.35));
+}
+
+.ranking-num-bronze {
+  color: #f97316 !important;
+  text-shadow: 0 0 16px rgba(249, 115, 22, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
+  filter: drop-shadow(0 2px 8px rgba(234, 88, 12, 0.4));
+}
+
+.ranking-num-neutro {
+  color: #94a3b8 !important;
+}
+
+.fechamento-gamificado-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.25s ease-in-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.fechamento-gamificado-card:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.fechamento-gamificado-card.card-atingido {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.75) 100%);
+}
+
+.fechamento-gamificado-card.card-nao-atingido {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(15, 23, 42, 0.75) 100%);
+}
+
 /* Fechamento dos Vendedores - Tema Claro */
 #tab-vend-fechamento.tab-theme-light,
 .tab-theme-light #tab-vend-fechamento {

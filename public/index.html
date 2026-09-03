@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.151">
+  <link rel="stylesheet" href="style.css?v=8.152">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 03/09/2026 00:16 (Dropdown de Histórico com 12 Ciclos de Fechamento Predefinidos e Consolidacao Sob Demanda)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 03/09/2026 00:34 (Regra de elegibilidade da meta de gordura de frete condicionada a 85% de vendas, badges e extrato de fechamento)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -2122,21 +2122,17 @@
           <!-- HERO CARD GAMIFICADO: CONQUISTAS, TROFÉU & METAS -->
           <div class="fechamento-hero-card" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.25rem;">
-              <!-- Bloco do Troféu -->
-              <div style="display: flex; align-items: center; gap: 1.25rem;">
-                <div id="fechamentoTrofeuIcon" style="font-size: 3.2rem; filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.4));">📊</div>
-                <div>
-                  <h3 id="fechamentoTrofeuTitle" style="font-size: 1.35rem; font-weight: 800; color: #38bdf8; margin: 0; display: flex; align-items: center; gap: 6px;">
-                    Fechamento do Período
-                  </h3>
-                  <p id="fechamentoTrofeuSub" style="font-size: 0.88rem; color: var(--text-muted); margin: 4px 0 0 0;">
-                    Acompanhe as vendas líquidas, metas atingidas e comissões consolidadas.
-                  </p>
-                  <!-- Badges de Conquistas -->
-                  <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 8px;">
-                    <span id="fechamentoBadgePremioVendas" class="conquista-badge-inativa">🎁 Prêmio Vendas: <strong>R$ 0,00</strong></span>
-                    <span id="fechamentoBadgePremioFrete" class="conquista-badge-inativa">🚚 Prêmio Gordura Frete: <strong>R$ 0,00</strong></span>
-                  </div>
+              <div>
+                <h3 id="fechamentoTrofeuTitle" style="font-size: 1.35rem; font-weight: 800; color: #38bdf8; margin: 0; display: flex; align-items: center; gap: 6px;">
+                  Fechamento do Período
+                </h3>
+                <p id="fechamentoTrofeuSub" style="font-size: 0.88rem; color: var(--text-muted); margin: 4px 0 0 0;">
+                  Acompanhe as vendas líquidas, metas atingidas e comissões consolidadas.
+                </p>
+                <!-- Badges de Conquistas -->
+                <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 8px;">
+                  <span id="fechamentoBadgePremioVendas" class="conquista-badge-inativa">🎁 Prêmio Vendas: <strong>R$ 0,00</strong></span>
+                  <span id="fechamentoBadgePremioFrete" class="conquista-badge-inativa">🚚 Prêmio Gordura Frete: <strong>R$ 0,00</strong></span>
                 </div>
               </div>
 
@@ -2150,42 +2146,87 @@
               </div>
             </div>
 
-            <!-- BARRAS DE PROGRESSO DAS METAS -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
-              <!-- 1. Meta de Vendas -->
-              <div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px;">
-                  <span style="color: #38bdf8;">🎯 Meta de Vendas (Base R$ 120k)</span>
-                  <span id="fechamentoProgressLabelVendas" style="color: var(--text-muted);">0,00% Atingida</span>
+            <!-- GRID DOS 3 CARDS GAMIFICADOS: METAS E DESEMPENHO -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+              
+              <!-- 1. Card Meta de Vendas -->
+              <div id="fechamentoCardVendas" class="fechamento-gamificado-card">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.75rem;">
+                    <div id="fechamentoVendasIcon" style="font-size: 2.8rem; line-height: 1; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">🏆</div>
+                    <div style="min-width: 0; flex: 1;">
+                      <span style="color: #38bdf8; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: block;">🎯 Meta de Vendas</span>
+                      <div id="fechamentoProgressLabelVendas" style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; margin-top: 2px;">0,00% Atingida</div>
+                      <div id="fechamentoVendasSub" style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">R$ 0,00 / R$ 120.000,00</div>
+                    </div>
+                  </div>
+
+                  <!-- Barra de Progresso (0 a 1ª Faixa da Meta = 100%) -->
+                  <div class="progress-bar-container" style="background: rgba(15, 23, 42, 0.8); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); position: relative;">
+                    <div id="fechamentoProgressBarVendas" style="background: linear-gradient(90deg, #38bdf8 0%, #10b981 100%); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                    <span>R$ 0,00 (0%)</span>
+                    <span id="fechamentoVendasReguaFim" style="font-weight: 600;">100% Meta Base (R$ 120k)</span>
+                  </div>
                 </div>
-                <div class="progress-bar-container" style="background: rgba(15, 23, 42, 0.8); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); position: relative;">
-                  <div id="fechamentoProgressBarVendas" style="background: linear-gradient(90deg, #38bdf8 0%, #10b981 100%); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
-                  <span>0%</span>
-                  <span>100% (R$ 400)</span>
-                  <span>150% (R$ 600)</span>
-                  <span>200% (R$ 1.000)</span>
+
+                <div id="fechamentoVendasStatusFoot" style="font-size: 0.74rem; margin-top: 0.85rem; padding: 6px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.04); font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                  <span>Aguardando apuração...</span>
                 </div>
               </div>
 
-              <!-- 2. Meta de Gordura de Frete -->
-              <div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px;">
-                  <span style="color: #10b981;">🚚 Meta de Gordura de Frete</span>
-                  <span id="fechamentoProgressLabelFrete" style="color: var(--text-muted);">Superávit: R$ 0,00</span>
+              <!-- 2. Card Meta de Gordura de Frete -->
+              <div id="fechamentoCardFrete" class="fechamento-gamificado-card">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.75rem;">
+                    <div id="fechamentoFreteIcon" style="font-size: 2.8rem; line-height: 1; flex-shrink: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));">🏆</div>
+                    <div style="min-width: 0; flex: 1;">
+                      <span style="color: #10b981; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: block;" title="Prêmio válido exclusivamente para vendedores com &ge; 85% da meta de vendas atingida">🚚 Gordura de Frete <span style="font-size: 0.68rem; color: #94a3b8; font-weight: 500;">(Gatilho &ge; 85%)</span></span>
+                      <div id="fechamentoProgressLabelFrete" style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; margin-top: 2px;">Superávit: R$ 0,00</div>
+                      <div id="fechamentoFreteSub" style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">1ª Faixa da Meta: R$ 700,00</div>
+                    </div>
+                  </div>
+
+                  <!-- Barra de Progresso (0 a 1ª Faixa da Meta = R$ 700,00) -->
+                  <div class="progress-bar-container" style="background: rgba(15, 23, 42, 0.8); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); position: relative;">
+                    <div id="fechamentoProgressBarFrete" style="background: linear-gradient(90deg, #10b981 0%, #fbbf24 100%); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+                    <span>R$ 0,00</span>
+                    <span id="fechamentoFreteReguaFim" style="font-weight: 600;">1ª Faixa (R$ 700 - Prêmio R$ 200)</span>
+                  </div>
                 </div>
-                <div class="progress-bar-container" style="background: rgba(15, 23, 42, 0.8); height: 12px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.1); position: relative;">
-                  <div id="fechamentoProgressBarFrete" style="background: linear-gradient(90deg, #10b981 0%, #fbbf24 100%); height: 100%; width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
-                  <span>R$ 700 (200)</span>
-                  <span>R$ 1.100 (300)</span>
-                  <span>R$ 1.500 (400)</span>
-                  <span>R$ 2.100 (500)</span>
-                  <span>R$ 3.000 (600)</span>
+
+                <div id="fechamentoFreteStatusFoot" style="font-size: 0.74rem; margin-top: 0.85rem; padding: 6px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.04); font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                  <span>Aguardando apuração...</span>
                 </div>
               </div>
+
+              <!-- 3. Card Desempenho / Competição (Ranking da Equipe) -->
+              <div id="fechamentoCardRanking" class="fechamento-gamificado-card">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.75rem;">
+                    <div id="fechamentoRankingNumero" class="ranking-num-ouro" style="font-size: 2.8rem; font-weight: 900; line-height: 1; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; min-width: 45px; text-align: center;">1</div>
+                    <div style="min-width: 0; flex: 1;">
+                      <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700; display: block;">Este mês você ficou em</span>
+                      <h4 id="fechamentoRankingTitulo" style="margin: 2px 0 0 0; font-size: 1.05rem; font-weight: 800; color: #fbbf24;">1º Lugar da Equipe</h4>
+                      <div id="fechamentoRankingSub" style="font-size: 0.73rem; color: var(--text-muted); margin-top: 2px;">Líder em Vendas Líquidas no período</div>
+                    </div>
+                  </div>
+
+                  <!-- Comparativo com a Média da Equipe -->
+                  <div id="fechamentoRankingMediaBox" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 6px 10px; font-size: 0.74rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-muted);">Média da Equipe: <strong id="fechamentoRankingMediaVal" style="color: #f8fafc; font-family: 'JetBrains Mono', monospace;">R$ 0,00</strong></span>
+                    <span id="fechamentoRankingDiffBadge" class="bench-badge-pos">▲ +0,00%</span>
+                  </div>
+                </div>
+
+                <div id="fechamentoRankingStatusFoot" style="font-size: 0.74rem; margin-top: 0.85rem; padding: 6px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.04); font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                  <span>Ranking apurado no ciclo</span>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -2904,7 +2945,7 @@
           <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border);">
             <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
               <span>2. 🚚 Premiações por Gordura de Frete Conquistada</span>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Escala Progressiva</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Escala Progressiva (Exige &ge; 85% Meta Vendas)</span>
             </h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
               <div class="form-group">
@@ -5077,12 +5118,12 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.151"></script>
-  <script src="js/bi_indices.js?v=8.151"></script>
-  <script src="js/bi_autorizacoes.js?v=8.151"></script>
-  <script src="js/gordura_frete.js?v=8.151"></script>
-  <script src="js/fechamento_vendedores.js?v=8.151"></script>
-  <script type="module" src="js/tarefas.js?v=8.151"></script>
-  <script src="app.js?v=8.151"></script>
+  <script src="js/bi.js?v=8.152"></script>
+  <script src="js/bi_indices.js?v=8.152"></script>
+  <script src="js/bi_autorizacoes.js?v=8.152"></script>
+  <script src="js/gordura_frete.js?v=8.152"></script>
+  <script src="js/fechamento_vendedores.js?v=8.152"></script>
+  <script type="module" src="js/tarefas.js?v=8.152"></script>
+  <script src="app.js?v=8.152"></script>
 </body>
 </html>

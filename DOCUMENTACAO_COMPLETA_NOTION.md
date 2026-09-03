@@ -1,5 +1,6 @@
 # 📘 Documentação Completa: Plataforma de Apoio GSI Multi-Empresas & Protheus
 
+> **Versão da Documentação:** v8.153 (Homologada em 03/09/2026 09:30)  
 > **Documento de Gestão, Arquitetura e Aperfeiçoamento (Pronto para Notion)**  
 > **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA e Job de Estoque)  
 > **Link do Sistema:** `https://conciliacao-fretes.onrender.com`  
@@ -227,3 +228,4 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 5. 🟢 **Aba 5 (Configurações - Usuários, 2FA, Auditoria, Score e Metas de Vendas):** 100% Concluída com 2FA via Mailjet HTTPS 443 / SMTP, telemetria, calibração de pesos de score e parametrização de metas comerciais.
 6. 🔵 **Gravação Direta no Protheus (ExecAuto):** Rotina AdvPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) pronta, botão aguardando ativação no AppServer TOTVS.
 7. 🌐 **Subdomínio no Render (`[INFRA-01]`):** Configuração de CNAME `portal.gsi.com.br` e SSL.
+8. 🟡 **Evolução do Módulo de Inadimplentes (Fechamento Comercial):** Regras de carência, títulos recuperados/estornos retroativos e extrato analítico de títulos vencidos SE1.

@@ -15,12 +15,14 @@
  *    - >= 100% (R$ 120.000): R$ 400,00
  *    - >= 150% (R$ 180.000): R$ 600,00
  *    - >= 200% (R$ 240.000): R$ 1.000,00
- * 8. Prêmio Gordura de Frete:
- *    - >= R$ 700: R$ 200,00
- *    - >= R$ 1.100: R$ 300,00
- *    - >= R$ 1.500: R$ 400,00
- *    - >= R$ 2.100: R$ 500,00
- *    - >= R$ 3.000: R$ 600,00
+ * 8. Prêmio Gordura de Frete (Condicionado a atingir >= 85% da Meta Base de Vendas):
+ *    - Bloqueado se Venda Base Líquida < 85% da Meta Base: R$ 0,00
+ *    - Se >= 85% da Meta de Vendas:
+ *      - >= R$ 700: R$ 200,00
+ *      - >= R$ 1.100: R$ 300,00
+ *      - >= R$ 1.500: R$ 400,00
+ *      - >= R$ 2.100: R$ 500,00
+ *      - >= R$ 3.000: R$ 600,00
  * 9. Total Geral a Receber: Comissão Líquida + Total de Prêmios.
  * 10. Faturamento por Empresa e Benchmarking da Equipe.
  * 11. Snapshot Imutável de Metas no ato da gravação no banco de dados.
@@ -504,31 +506,46 @@ function calcularMetasEPremios(params = {}) {
   }
 
   // 2. Meta de Gordura de Frete
+  // REGRA DE NEGÓCIO CONDICIONAL: A meta e premiação de gordura de frete só é válida
+  // para vendedores que atingem no mínimo 85% da meta cheia de vendas (pctMetaVendas >= 85%).
+  // Se pctMetaVendas < 85%, não ganha prêmio sobre a gordura mesmo superando os valores de faixa.
   const gFrete = roundVal(params.gorduraFreteTotal ?? 0);
   let premioGorduraFrete = 0;
   let faixaGorduraFrete = 'Sem Premiação (< R$ 700)';
   let gorduraStatus = 'SEM_PREMIO';
+  const elegivelGorduraPorMetaVendas = pctMetaVendas >= 85.0;
 
-  if (gFrete >= 3000) {
-    premioGorduraFrete = parseFloat(cfg.premioGordura3000) || 600;
-    faixaGorduraFrete = '>= R$ 3.000,00';
-    gorduraStatus = 'NIVEL_5';
-  } else if (gFrete >= 2100) {
-    premioGorduraFrete = parseFloat(cfg.premioGordura2100) || 500;
-    faixaGorduraFrete = '>= R$ 2.100,00';
-    gorduraStatus = 'NIVEL_4';
-  } else if (gFrete >= 1500) {
-    premioGorduraFrete = parseFloat(cfg.premioGordura1500) || 400;
-    faixaGorduraFrete = '>= R$ 1.500,00';
-    gorduraStatus = 'NIVEL_3';
-  } else if (gFrete >= 1100) {
-    premioGorduraFrete = parseFloat(cfg.premioGordura1100) || 300;
-    faixaGorduraFrete = '>= R$ 1.100,00';
-    gorduraStatus = 'NIVEL_2';
-  } else if (gFrete >= 700) {
-    premioGorduraFrete = parseFloat(cfg.premioGordura700) || 200;
-    faixaGorduraFrete = '>= R$ 700,00';
-    gorduraStatus = 'NIVEL_1';
+  if (!elegivelGorduraPorMetaVendas) {
+    premioGorduraFrete = 0;
+    if (gFrete >= 700) {
+      faixaGorduraFrete = 'Bloqueado (< 85% Meta Vendas)';
+      gorduraStatus = 'BLOQUEADO_META_VENDAS';
+    } else {
+      faixaGorduraFrete = 'Sem Premiação (< R$ 700)';
+      gorduraStatus = 'SEM_PREMIO';
+    }
+  } else {
+    if (gFrete >= 3000) {
+      premioGorduraFrete = parseFloat(cfg.premioGordura3000) || 600;
+      faixaGorduraFrete = '>= R$ 3.000,00';
+      gorduraStatus = 'NIVEL_5';
+    } else if (gFrete >= 2100) {
+      premioGorduraFrete = parseFloat(cfg.premioGordura2100) || 500;
+      faixaGorduraFrete = '>= R$ 2.100,00';
+      gorduraStatus = 'NIVEL_4';
+    } else if (gFrete >= 1500) {
+      premioGorduraFrete = parseFloat(cfg.premioGordura1500) || 400;
+      faixaGorduraFrete = '>= R$ 1.500,00';
+      gorduraStatus = 'NIVEL_3';
+    } else if (gFrete >= 1100) {
+      premioGorduraFrete = parseFloat(cfg.premioGordura1100) || 300;
+      faixaGorduraFrete = '>= R$ 1.100,00';
+      gorduraStatus = 'NIVEL_2';
+    } else if (gFrete >= 700) {
+      premioGorduraFrete = parseFloat(cfg.premioGordura700) || 200;
+      faixaGorduraFrete = '>= R$ 700,00';
+      gorduraStatus = 'NIVEL_1';
+    }
   }
 
   const totalPremios = roundVal(premioMetaVendas + premioGorduraFrete);
@@ -539,9 +556,12 @@ function calcularMetasEPremios(params = {}) {
     premioMetaVendas: roundVal(premioMetaVendas),
     faixaMetaVendas,
     metaVendasStatus,
+    gorduraFreteTotal: gFrete,
     premioGorduraFrete: roundVal(premioGorduraFrete),
     faixaGorduraFrete,
     gorduraStatus,
+    elegivelGorduraPorMetaVendas,
+    gatilhoMetaVendasGorduraPct: 85.0,
     totalPremios
   };
 }

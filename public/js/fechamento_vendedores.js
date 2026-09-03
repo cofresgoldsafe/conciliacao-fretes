@@ -473,9 +473,9 @@
     const premioGordura = parseFloat(f.premio_gordura_frete ?? f.premioGorduraFrete ?? 0);
 
     const totalPremios = parseFloat(f.total_premios ?? f.totalPremios ?? (premioVendas + premioGordura));
+    const elegivelGordura = pctVendas >= 85.0;
 
-    // Elementos da UI
-    const elTrofeuIcon = document.getElementById('fechamentoTrofeuIcon');
+    // Elementos do Topo
     const elTrofeuTitle = document.getElementById('fechamentoTrofeuTitle');
     const elTrofeuSub = document.getElementById('fechamentoTrofeuSub');
     const elBadgePremioVendas = document.getElementById('fechamentoBadgePremioVendas');
@@ -483,40 +483,20 @@
     const elTotalReceberDestaque = document.getElementById('fechamentoTotalReceberDestaque') || document.getElementById('fechamentoTotalPremiosDestaque');
     const elTotalReceberSub = document.getElementById('fechamentoTotalReceberSub');
 
-    // Troféu e Conquistas
-    let trofeuEmoji = '📊';
-    let trofeuTexto = 'Fechamento do Período';
-    let temConquista = false;
+    const bateuVendas = pctVendas >= 100.0 && vBaseLiq > 0;
+    const bateuFrete = gorduraTotal >= 700.0 && elegivelGordura;
+    const temConquista = bateuVendas || bateuFrete;
 
-    // Troféu Dourado 🏆 com animação de pulso: EXCLUSIVO para quem bateu a meta de vendas (>= 100%)
-    if (pctVendas >= 200) {
-      trofeuEmoji = '🏆';
-      trofeuTexto = '🎉 Nível Lendário: Meta 200% Batida!';
-      temConquista = true;
-    } else if (pctVendas >= 150) {
-      trofeuEmoji = '🏆';
-      trofeuTexto = '🚀 Nível Ouro: Meta 150% Superada!';
-      temConquista = true;
-    } else if (pctVendas >= 100) {
-      trofeuEmoji = '🏆';
-      trofeuTexto = '🎯 Meta de Vendas 100% Atingida!';
-      temConquista = true;
-    }
-
-    if (elTrofeuIcon) {
-      elTrofeuIcon.textContent = trofeuEmoji;
-      elTrofeuIcon.style.animation = temConquista ? 'pulseTrofeu 2s infinite ease-in-out' : 'none';
-    }
     if (elTrofeuTitle) {
-      elTrofeuTitle.textContent = trofeuTexto;
+      elTrofeuTitle.textContent = 'Fechamento do Período';
       elTrofeuTitle.style.color = temConquista ? '#fbbf24' : '#38bdf8';
     }
     if (elTrofeuSub) {
       const nomeV = f.nome_vendedor || f.nomeVendedor || 'Vendedor';
       if (temConquista) {
-        elTrofeuSub.textContent = `Parabéns, ${nomeV}! Confira o extrato de premiações e comissões consolidadas do seu período.`;
+        elTrofeuSub.textContent = `Parabéns, ${nomeV}! Você conquistou premiações no ciclo oficial. Confira seu extrato abaixo.`;
       } else {
-        elTrofeuSub.textContent = `${nomeV}, acompanhe o extrato de vendas líquidas, metas e comissões consolidadas do seu período.`;
+        elTrofeuSub.textContent = `${nomeV}, acompanhe suas vendas líquidas, metas e comissões consolidadas do ciclo.`;
       }
     }
 
@@ -534,6 +514,9 @@
       if (premioGordura > 0) {
         elBadgePremioFrete.innerHTML = `🚚 Prêmio Gordura Frete: <strong>${formatCurrency(premioGordura)}</strong>`;
         elBadgePremioFrete.className = 'conquista-badge-ativa';
+      } else if (f.gordura_status === 'BLOQUEADO_META_VENDAS' || f.gorduraStatus === 'BLOQUEADO_META_VENDAS' || (!elegivelGordura && gorduraTotal >= 700)) {
+        elBadgePremioFrete.innerHTML = `🚚 Prêmio Gordura Frete: <strong>${formatCurrency(0)}</strong> <span style="font-size: 0.72rem; color: #fca5a5; margin-left: 4px;">(Bloqueado: Vendas ${formatPct(pctVendas)} &lt; 85%)</span>`;
+        elBadgePremioFrete.className = 'conquista-badge-inativa';
       } else {
         elBadgePremioFrete.innerHTML = `🚚 Prêmio Gordura Frete: <strong>${formatCurrency(0)}</strong>`;
         elBadgePremioFrete.className = 'conquista-badge-inativa';
@@ -553,25 +536,267 @@
       elTotalReceberSub.textContent = `Comissão Líq: ${formatCurrency(comLiquida)} + Prêmios: ${formatCurrency(totalPremios)}`;
     }
 
-    // Barras de Progresso
+    // ─── CARD 1: META DE VENDAS (0 a 1ª Faixa = 100% da Meta Base R$ 120k) ──
+    const cardVendas = document.getElementById('fechamentoCardVendas');
+    const iconVendas = document.getElementById('fechamentoVendasIcon');
+    const labelVendas = document.getElementById('fechamentoProgressLabelVendas');
+    const subVendas = document.getElementById('fechamentoVendasSub');
     const barVendas = document.getElementById('fechamentoProgressBarVendas');
-    const barVendasLabel = document.getElementById('fechamentoProgressLabelVendas');
+    const reguaVendas = document.getElementById('fechamentoVendasReguaFim');
+    const footVendas = document.getElementById('fechamentoVendasStatusFoot');
+
+    // Calibração: 0 a 100% da Meta Base (R$ 120k). Ao bater 100%, preenche 100% da barra!
+    const pctBarVendas = vBaseLiq <= 0 ? 0 : Math.min(100, Math.max(0, (vBaseLiq / metaValor) * 100));
+
     if (barVendas) {
-      const pctBar = Math.min(100, (pctVendas / 200) * 100);
-      barVendas.style.width = `${pctBar}%`;
-    }
-    if (barVendasLabel) {
-      barVendasLabel.textContent = `${formatPct(pctVendas)} da Meta (${formatCurrency(vBaseLiq)} / ${formatCurrency(metaValor)})`;
+      barVendas.style.width = `${pctBarVendas}%`;
+      if (bateuVendas) {
+        barVendas.style.background = 'linear-gradient(90deg, #38bdf8 0%, #10b981 100%)';
+      } else {
+        barVendas.style.background = 'linear-gradient(90deg, #f59e0b 0%, #38bdf8 100%)';
+      }
     }
 
-    const barFrete = document.getElementById('fechamentoProgressBarFrete');
-    const barFreteLabel = document.getElementById('fechamentoProgressLabelFrete');
-    if (barFrete) {
-      const pctBarFrete = Math.max(0, Math.min(100, (gorduraTotal / 3000) * 100));
-      barFrete.style.width = `${pctBarFrete}%`;
+    if (iconVendas) {
+      if (bateuVendas) {
+        iconVendas.textContent = '🏆';
+        iconVendas.style.animation = 'pulseTrofeu 2s infinite ease-in-out';
+      } else {
+        iconVendas.textContent = '😞';
+        iconVendas.style.animation = 'none';
+      }
     }
-    if (barFreteLabel) {
-      barFreteLabel.textContent = `Superávit: ${formatCurrency(gorduraTotal)} (Meta Máx: R$ 3.000,00)`;
+
+    if (cardVendas) {
+      cardVendas.classList.remove('card-atingido', 'card-nao-atingido');
+      cardVendas.classList.add(bateuVendas ? 'card-atingido' : 'card-nao-atingido');
+    }
+
+    if (labelVendas) {
+      if (bateuVendas) {
+        labelVendas.textContent = `${formatPct(pctVendas)} Batida! 🎯`;
+        labelVendas.style.color = '#10b981';
+      } else {
+        labelVendas.textContent = `${formatPct(pctVendas)} Atingida`;
+        labelVendas.style.color = '#38bdf8';
+      }
+    }
+
+    if (subVendas) {
+      subVendas.textContent = `${formatCurrency(vBaseLiq)} / ${formatCurrency(metaValor)}`;
+    }
+
+    if (reguaVendas) {
+      reguaVendas.textContent = `100% Meta Base (${formatCurrency(metaValor)}) ${bateuVendas ? '✓' : ''}`;
+    }
+
+    if (footVendas) {
+      if (pctVendas >= 200) {
+        footVendas.innerHTML = `<span style="color: #10b981;">🎉 Nível Lendário (200%) Atingido!</span> <strong style="color: #fbbf24;">+${formatCurrency(premioVendas)}</strong>`;
+      } else if (pctVendas >= 150) {
+        const falta200 = Math.max(0, (metaValor * 2.0) - vBaseLiq);
+        footVendas.innerHTML = `<span style="color: #10b981;">🚀 Nível Ouro (150%) Batido!</span> <strong style="color: #10b981;">+${formatCurrency(premioVendas)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Faltam ${formatCurrency(falta200)} p/ 200%)</span>`;
+      } else if (pctVendas >= 100) {
+        const falta150 = Math.max(0, (metaValor * 1.5) - vBaseLiq);
+        footVendas.innerHTML = `<span style="color: #10b981;">✓ Meta Batida!</span> <strong style="color: #10b981;">+${formatCurrency(premioVendas)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Faltam ${formatCurrency(falta150)} p/ 150%)</span>`;
+      } else if (vBaseLiq > 0) {
+        const faltaMeta = Math.max(0, metaValor - vBaseLiq);
+        footVendas.innerHTML = `<span style="color: #f59e0b;">⚠️ Faltam ${formatCurrency(faltaMeta)} para atingir a meta</span>`;
+      } else {
+        footVendas.innerHTML = `<span style="color: #ef4444;">⚠️ Nenhuma venda líquida no período</span>`;
+      }
+    }
+
+    // ─── CARD 2: META DE GORDURA DE FRETE (0 a 1ª Faixa = R$ 700,00) ─────────
+    const cardFrete = document.getElementById('fechamentoCardFrete');
+    const iconFrete = document.getElementById('fechamentoFreteIcon');
+    const labelFrete = document.getElementById('fechamentoProgressLabelFrete');
+    const subFrete = document.getElementById('fechamentoFreteSub');
+    const barFrete = document.getElementById('fechamentoProgressBarFrete');
+    const reguaFrete = document.getElementById('fechamentoFreteReguaFim');
+    const footFrete = document.getElementById('fechamentoFreteStatusFoot');
+
+    // Calibração: 0 a 1ª Faixa da Gordura (R$ 700,00). R$ 700 preenche 100% da barra!
+    const pctBarFrete = gorduraTotal <= 0 ? 0 : Math.min(100, Math.max(0, (gorduraTotal / 700) * 100));
+
+    if (barFrete) {
+      barFrete.style.width = `${pctBarFrete}%`;
+      if (bateuFrete) {
+        barFrete.style.background = 'linear-gradient(90deg, #10b981 0%, #fbbf24 100%)';
+      } else if (!elegivelGordura && gorduraTotal >= 700) {
+        barFrete.style.background = 'linear-gradient(90deg, #ef4444 0%, #f59e0b 100%)';
+      } else {
+        barFrete.style.background = 'linear-gradient(90deg, #38bdf8 0%, #10b981 100%)';
+      }
+    }
+
+    if (iconFrete) {
+      if (bateuFrete) {
+        iconFrete.textContent = '🏆';
+        iconFrete.style.animation = 'pulseTrofeu 2s infinite ease-in-out';
+      } else {
+        iconFrete.textContent = '😞';
+        iconFrete.style.animation = 'none';
+      }
+    }
+
+    if (cardFrete) {
+      cardFrete.classList.remove('card-atingido', 'card-nao-atingido');
+      cardFrete.classList.add(bateuFrete ? 'card-atingido' : 'card-nao-atingido');
+    }
+
+    if (labelFrete) {
+      if (gorduraTotal > 0) {
+        labelFrete.textContent = `Superávit: ${formatCurrency(gorduraTotal)}`;
+        labelFrete.style.color = bateuFrete ? '#10b981' : '#f8fafc';
+      } else {
+        labelFrete.textContent = `Déficit: ${formatCurrency(gorduraTotal)}`;
+        labelFrete.style.color = '#ef4444';
+      }
+    }
+
+    if (subFrete) {
+      if (!elegivelGordura && gorduraTotal >= 700) {
+        subFrete.innerHTML = `<span style="color: #ef4444; font-weight: 600;">Bloqueado: Vendas ${formatPct(pctVendas)} &lt; 85%</span>`;
+      } else {
+        subFrete.textContent = `1ª Faixa da Meta: R$ 700,00 (Gatilho ≥ 85% Vendas)`;
+      }
+    }
+
+    if (reguaFrete) {
+      reguaFrete.textContent = `1ª Faixa (${formatCurrency(700)} - Prêmio R$ 200) ${bateuFrete ? '✓' : ''}`;
+    }
+
+    if (footFrete) {
+      if (!elegivelGordura && gorduraTotal >= 700) {
+        footFrete.innerHTML = `<span style="color: #ef4444;">Bloqueado: Meta de vendas &lt; 85%</span>`;
+      } else if (bateuFrete) {
+        if (gorduraTotal >= 3000) {
+          footFrete.innerHTML = `<span style="color: #10b981;">✓ Nível 5 (Máx) Batido!</span> <strong style="color: #fbbf24;">+${formatCurrency(premioGordura)}</strong>`;
+        } else if (gorduraTotal >= 2100) {
+          const f3000 = 3000 - gorduraTotal;
+          footFrete.innerHTML = `<span style="color: #10b981;">✓ Nível 4 Batido!</span> <strong style="color: #10b981;">+${formatCurrency(premioGordura)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Falta ${formatCurrency(f3000)} p/ N5)</span>`;
+        } else if (gorduraTotal >= 1500) {
+          const f2100 = 2100 - gorduraTotal;
+          footFrete.innerHTML = `<span style="color: #10b981;">✓ Nível 3 Batido!</span> <strong style="color: #10b981;">+${formatCurrency(premioGordura)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Falta ${formatCurrency(f2100)} p/ N4)</span>`;
+        } else if (gorduraTotal >= 1100) {
+          const f1500 = 1500 - gorduraTotal;
+          footFrete.innerHTML = `<span style="color: #10b981;">✓ Nível 2 Batido!</span> <strong style="color: #10b981;">+${formatCurrency(premioGordura)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Falta ${formatCurrency(f1500)} p/ N3)</span>`;
+        } else {
+          const f1100 = 1100 - gorduraTotal;
+          footFrete.innerHTML = `<span style="color: #10b981;">✓ 1ª Faixa Batida!</span> <strong style="color: #10b981;">+${formatCurrency(premioGordura)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Falta ${formatCurrency(f1100)} p/ N2)</span>`;
+        }
+      } else if (gorduraTotal > 0) {
+        const falta700 = Math.max(0, 700 - gorduraTotal);
+        footFrete.innerHTML = `<span style="color: #f59e0b;">⚠️ Falta apenas ${formatCurrency(falta700)} para a 1ª faixa</span>`;
+      } else {
+        footFrete.innerHTML = `<span style="color: #ef4444;">⚠️ Déficit ou sem gordura de frete</span>`;
+      }
+    }
+
+    // ─── CARD 3: DESEMPENHO / RANKING DA EQUIPE ──────────────────────────────
+    const cardRanking = document.getElementById('fechamentoCardRanking');
+    const numRanking = document.getElementById('fechamentoRankingNumero');
+    const titRanking = document.getElementById('fechamentoRankingTitulo');
+    const subRanking = document.getElementById('fechamentoRankingSub');
+    const mediaValRanking = document.getElementById('fechamentoRankingMediaVal');
+    const diffBadgeRanking = document.getElementById('fechamentoRankingDiffBadge');
+    const footRanking = document.getElementById('fechamentoRankingStatusFoot');
+
+    const listaVendedores = (todosVendedoresCiclo && todosVendedoresCiclo.length > 0)
+      ? [...todosVendedoresCiclo]
+      : [f];
+
+    listaVendedores.sort((a, b) => {
+      const vA = parseFloat(a.vendas_base_liquida ?? a.vendasBaseLiquida ?? 0);
+      const vB = parseFloat(b.vendas_base_liquida ?? b.vendasBaseLiquida ?? 0);
+      return vB - vA;
+    });
+
+    const curCod = String(f.cod_vendedor || f.codVendedor || '').trim();
+    const rankIdx = listaVendedores.findIndex(x => {
+      const c = String(x.cod_vendedor || x.codVendedor || '').trim();
+      return c === curCod || c === curCod.padStart(6, '0') || curCod === c.padStart(6, '0');
+    });
+    const posicao = rankIdx >= 0 ? rankIdx + 1 : 1;
+
+    if (numRanking) {
+      numRanking.textContent = posicao;
+      numRanking.className = '';
+      if (posicao === 1) {
+        numRanking.className = 'ranking-num-ouro';
+      } else if (posicao === 2) {
+        numRanking.className = 'ranking-num-prata';
+      } else if (posicao === 3) {
+        numRanking.className = 'ranking-num-bronze';
+      } else {
+        numRanking.className = 'ranking-num-neutro';
+      }
+    }
+
+    if (titRanking) {
+      if (posicao === 1) {
+        titRanking.textContent = '1º Lugar da Equipe 🥇';
+        titRanking.style.color = '#fbbf24';
+      } else if (posicao === 2) {
+        titRanking.textContent = '2º Lugar da Equipe 🥈';
+        titRanking.style.color = '#e2e8f0';
+      } else if (posicao === 3) {
+        titRanking.textContent = '3º Lugar da Equipe 🥉';
+        titRanking.style.color = '#f97316';
+      } else {
+        titRanking.textContent = `${posicao}º Lugar da Equipe`;
+        titRanking.style.color = '#94a3b8';
+      }
+    }
+
+    if (subRanking) {
+      if (posicao === 1) {
+        subRanking.textContent = 'Líder em Vendas Líquidas no período';
+      } else if (posicao === 2) {
+        subRanking.textContent = 'Vice-líder em Vendas Líquidas';
+      } else if (posicao === 3) {
+        subRanking.textContent = '3ª posição no ranking da equipe';
+      } else {
+        subRanking.textContent = `${posicao}ª posição na equipe`;
+      }
+    }
+
+    // Média de Vendas da Equipe
+    const bench = f?.benchmarking_json || f?.benchmarking || {};
+    let mediaVendas = parseFloat(bench.mediaVendasEquipe || 0);
+    if (!mediaVendas && listaVendedores.length > 0) {
+      const totalSoma = listaVendedores.reduce((acc, x) => acc + parseFloat(x.vendas_base_liquida ?? x.vendasBaseLiquida ?? 0), 0);
+      mediaVendas = totalSoma / listaVendedores.length;
+    }
+
+    const diffVendas = mediaVendas > 0 ? ((vBaseLiq - mediaVendas) / mediaVendas) * 100 : 0;
+
+    if (mediaValRanking) {
+      mediaValRanking.textContent = formatCurrency(mediaVendas);
+    }
+
+    if (diffBadgeRanking) {
+      if (diffVendas >= 0) {
+        diffBadgeRanking.className = 'bench-badge-pos';
+        diffBadgeRanking.textContent = `▲ +${diffVendas.toFixed(2)}%`;
+      } else {
+        diffBadgeRanking.className = 'bench-badge-neg';
+        diffBadgeRanking.textContent = `▼ ${diffVendas.toFixed(2)}%`;
+      }
+    }
+
+    if (footRanking) {
+      const totalVend = listaVendedores.length;
+      if (posicao === 1) {
+        footRanking.innerHTML = `<span style="color: #fbbf24;">🏆 Top 1! Parabéns pela liderança no período.</span>`;
+      } else if (posicao === 2) {
+        footRanking.innerHTML = `<span style="color: #e2e8f0;">🥈 No pódio! Excelente ritmo de vendas (${posicao}/${totalVend}).</span>`;
+      } else if (posicao === 3) {
+        footRanking.innerHTML = `<span style="color: #f97316;">🥉 No pódio! Continue acelerando (${posicao}/${totalVend}).</span>`;
+      } else {
+        footRanking.innerHTML = `<span style="color: var(--text-muted);">Ranking apurado entre ${totalVend} vendedores.</span>`;
+      }
     }
 
     // Dispara animação suave de confetes se bateu metas
@@ -616,7 +841,15 @@
       elGorduraVal.textContent = formatCurrency(gorduraTotal);
       elGorduraVal.style.color = gorduraTotal > 0 ? '#10b981' : (gorduraTotal < 0 ? '#ef4444' : 'inherit');
     }
-    if (elGorduraSub) elGorduraSub.innerHTML = `Prêmio de Frete: <strong style="color: #10b981;">${formatCurrency(premioFrete)}</strong>`;
+    if (elGorduraSub) {
+      if (premioFrete > 0) {
+        elGorduraSub.innerHTML = `Prêmio de Frete: <strong style="color: #10b981;">${formatCurrency(premioFrete)}</strong>`;
+      } else if (f.gordura_status === 'BLOQUEADO_META_VENDAS' || f.gorduraStatus === 'BLOQUEADO_META_VENDAS') {
+        elGorduraSub.innerHTML = `Prêmio de Frete: <strong style="color: #ef4444;">${formatCurrency(0)}</strong> <span style="color: #ef4444; font-size: 0.72rem;">(Bloqueado: Vendas &lt; 85%)</span>`;
+      } else {
+        elGorduraSub.innerHTML = `Prêmio de Frete: <strong style="color: #94a3b8;">${formatCurrency(0)}</strong>`;
+      }
+    }
 
     // Card 4: Total Premiações (Verde)
     const elTotalPremiosCard = document.getElementById('cardFechamentoTotalPremios') || document.getElementById('cardFechamentoTotalGeral');

@@ -139,11 +139,11 @@ runTest('2.4 - Vendas >= 200% (R$ 240k+) recebem R$ 1.000,00', () => {
   assert.strictEqual(r.metaVendasStatus, 'BATEU_200');
 });
 
-// ─── TESTE 3: Metas de Gordura de Frete ───────────────────────────────────────
+// ─── TESTE 3: Metas de Gordura de Frete (Gatilho de 85% da Meta de Vendas) ────
 
-runTest('3.1 - Gordura de frete menor que R$ 700 não gera prêmio', () => {
+runTest('3.1 - Gordura de frete menor que R$ 700 não gera prêmio mesmo com 100% de vendas', () => {
   const r = calcularMetasEPremios({
-    vendasBaseLiquida: 0,
+    vendasBaseLiquida: 120000.00, // 100% da Meta
     gorduraFreteTotal: 699.99,
     metasConfig: DEFAULT_METAS_VENDAS
   });
@@ -151,29 +151,32 @@ runTest('3.1 - Gordura de frete menor que R$ 700 não gera prêmio', () => {
   assert.strictEqual(r.gorduraStatus, 'SEM_PREMIO');
 });
 
-runTest('3.2 - Gordura de frete >= R$ 700 e < R$ 1.100 gera R$ 200 de prêmio', () => {
+runTest('3.2 - Gordura de frete >= R$ 700 com Vendas >= 85% (R$ 102.000) gera R$ 200 de prêmio (Nível 1)', () => {
   const r = calcularMetasEPremios({
-    vendasBaseLiquida: 0,
+    vendasBaseLiquida: 102000.00, // Exatamente 85,00% da Meta
     gorduraFreteTotal: 700.00,
     metasConfig: DEFAULT_METAS_VENDAS
   });
+  assert.strictEqual(r.elegivelGorduraPorMetaVendas, true);
   assert.strictEqual(r.premioGorduraFrete, 200);
   assert.strictEqual(r.gorduraStatus, 'NIVEL_1');
+  assert.strictEqual(r.faixaGorduraFrete, '>= R$ 700,00');
 });
 
-runTest('3.3 - Gordura de frete >= R$ 1.100 e < R$ 1.500 gera R$ 300 de prêmio', () => {
+runTest('3.3 - Gordura de frete >= R$ 1.100 com Vendas >= 85% gera R$ 300 de prêmio (Nível 2)', () => {
   const r = calcularMetasEPremios({
-    vendasBaseLiquida: 0,
+    vendasBaseLiquida: 105000.00, // 87.5% da Meta
     gorduraFreteTotal: 1100.00,
     metasConfig: DEFAULT_METAS_VENDAS
   });
+  assert.strictEqual(r.elegivelGorduraPorMetaVendas, true);
   assert.strictEqual(r.premioGorduraFrete, 300);
   assert.strictEqual(r.gorduraStatus, 'NIVEL_2');
 });
 
-runTest('3.4 - Gordura de frete >= R$ 1.500 e < R$ 2.100 gera R$ 400 de prêmio', () => {
+runTest('3.4 - Gordura de frete >= R$ 1.500 com Vendas >= 85% gera R$ 400 de prêmio (Nível 3)', () => {
   const r = calcularMetasEPremios({
-    vendasBaseLiquida: 0,
+    vendasBaseLiquida: 120000.00, // 100% da Meta
     gorduraFreteTotal: 1550.00,
     metasConfig: DEFAULT_METAS_VENDAS
   });
@@ -181,9 +184,9 @@ runTest('3.4 - Gordura de frete >= R$ 1.500 e < R$ 2.100 gera R$ 400 de prêmio'
   assert.strictEqual(r.gorduraStatus, 'NIVEL_3');
 });
 
-runTest('3.5 - Gordura de frete >= R$ 2.100 e < R$ 3.000 gera R$ 500 de prêmio', () => {
+runTest('3.5 - Gordura de frete >= R$ 2.100 com Vendas >= 85% gera R$ 500 de prêmio (Nível 4)', () => {
   const r = calcularMetasEPremios({
-    vendasBaseLiquida: 0,
+    vendasBaseLiquida: 140000.00,
     gorduraFreteTotal: 2100.00,
     metasConfig: DEFAULT_METAS_VENDAS
   });
@@ -191,14 +194,38 @@ runTest('3.5 - Gordura de frete >= R$ 2.100 e < R$ 3.000 gera R$ 500 de prêmio'
   assert.strictEqual(r.gorduraStatus, 'NIVEL_4');
 });
 
-runTest('3.6 - Gordura de frete >= R$ 3.000 gera R$ 600 de prêmio', () => {
+runTest('3.6 - Gordura de frete >= R$ 3.000 com Vendas >= 85% gera R$ 600 de prêmio (Nível 5)', () => {
   const r = calcularMetasEPremios({
-    vendasBaseLiquida: 0,
+    vendasBaseLiquida: 180000.00,
     gorduraFreteTotal: 3450.00,
     metasConfig: DEFAULT_METAS_VENDAS
   });
   assert.strictEqual(r.premioGorduraFrete, 600);
   assert.strictEqual(r.gorduraStatus, 'NIVEL_5');
+});
+
+runTest('3.7 - TRAVA 85%: Vendedor com Gordura R$ 2.382,74 mas Vendas 84.99% (R$ 101.990) tem Prêmio R$ 0,00 e status BLOQUEADO_META_VENDAS', () => {
+  const r = calcularMetasEPremios({
+    vendasBaseLiquida: 101990.00, // 84.99% da Meta (Abaixo de 85%)
+    gorduraFreteTotal: 2382.74,
+    metasConfig: DEFAULT_METAS_VENDAS
+  });
+  assert.strictEqual(r.elegivelGorduraPorMetaVendas, false);
+  assert.strictEqual(r.premioGorduraFrete, 0.00, 'Prêmio deve ser 0 quando vendas < 85%');
+  assert.strictEqual(r.gorduraStatus, 'BLOQUEADO_META_VENDAS');
+  assert.strictEqual(r.faixaGorduraFrete, 'Bloqueado (< 85% Meta Vendas)');
+});
+
+runTest('3.8 - TRAVA 85%: Juliana com Gordura R$ 1.073,21 e Vendas 70% (R$ 84.000) tem Prêmio R$ 0,00 e status BLOQUEADO_META_VENDAS', () => {
+  const r = calcularMetasEPremios({
+    vendasBaseLiquida: 84000.00, // 70% da Meta
+    gorduraFreteTotal: 1073.21,
+    metasConfig: DEFAULT_METAS_VENDAS
+  });
+  assert.strictEqual(r.elegivelGorduraPorMetaVendas, false);
+  assert.strictEqual(r.premioGorduraFrete, 0.00);
+  assert.strictEqual(r.gorduraStatus, 'BLOQUEADO_META_VENDAS');
+  assert.strictEqual(r.faixaGorduraFrete, 'Bloqueado (< 85% Meta Vendas)');
 });
 
 // ─── TESTE 4: Dedução de Frete Embutido e Inadimplência ───────────────────────
@@ -260,18 +287,34 @@ runTest('4.2 - Juliana (000074): Frete Embutido deve ser exatamente R$ 2.776,00 
 
 // ─── TESTE 5: Inadimplência superior à Comissão não gera comissão negativa ────
 
-runTest('5.1 - Comissão líquida é truncada em zero se a inadimplência for superior', () => {
+runTest('5.1 - Comissão líquida é truncada em zero se a inadimplência for superior (Vendas >= 85% com prêmio de frete)', () => {
   const resultado = calcularComissoesEPremiosVendedor({
-    vendasBaseBruta: 10000.00,
+    vendasBaseBruta: 105000.00, // 87.5% da meta (elegível para prêmio de frete)
+    fretesEmbutidos: 0,
+    inadimplentesTotal: 2000.00, // Comissão Bruta: R$ 1.365,00 (Inadimplência R$ 2.000 > R$ 1.365)
+    gorduraFreteTotal: 800.00, // Prêmio Frete: R$ 200 (>= R$ 700)
+    metasConfig: DEFAULT_METAS_VENDAS
+  });
+
+  assert.strictEqual(resultado.comissaoBruta, 1365.00);
+  assert.strictEqual(resultado.comissaoLiquida, 0.00, 'Comissão líquida não pode ser negativa');
+  assert.strictEqual(resultado.premioGorduraFrete, 200.00, 'Deve receber R$ 200 de prêmio pois vendas >= 85%');
+  assert.strictEqual(resultado.totalGeralReceber, 200.00, 'Total a receber deve ser composto pelo prêmio');
+});
+
+runTest('5.2 - Inadimplência superior à comissão com Vendas < 85% resulta em Total a Receber = R$ 0,00', () => {
+  const resultado = calcularComissoesEPremiosVendedor({
+    vendasBaseBruta: 10000.00, // 8.33% da meta (não elegível para prêmio de frete)
     fretesEmbutidos: 0,
     inadimplentesTotal: 500.00, // Comissão Bruta: R$ 130,00
-    gorduraFreteTotal: 800.00, // Prêmio Frete: R$ 200
+    gorduraFreteTotal: 800.00, // Bloqueado pois vendas < 85%
     metasConfig: DEFAULT_METAS_VENDAS
   });
 
   assert.strictEqual(resultado.comissaoBruta, 130.00);
-  assert.strictEqual(resultado.comissaoLiquida, 0.00, 'Comissão líquida não pode ser negativa');
-  assert.strictEqual(resultado.totalGeralReceber, 200.00, 'Total a receber deve ser composto pelo prêmio');
+  assert.strictEqual(resultado.comissaoLiquida, 0.00, 'Comissão líquida truncada em zero');
+  assert.strictEqual(resultado.premioGorduraFrete, 0.00, 'Prêmio de frete bloqueado (< 85% meta vendas)');
+  assert.strictEqual(resultado.totalGeralReceber, 0.00, 'Total a receber deve ser 0');
 });
 
 // ─── TESTE 6: Integridade Léxica e Sintática dos Arquivos Frontend e Backend ──

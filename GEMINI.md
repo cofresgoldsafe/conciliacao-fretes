@@ -1,8 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
+> **Versão da Documentação:** v8.153 (Homologada em 03/09/2026 09:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Dropdown de 12 Ciclos Predefinidos com Consolidação Sob Demanda, Ciclo 26/06 a 25/07 Homologado, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Inversão de Cards de Total a Receber/Premiações, Recálculo em Configurações > Metas Vendas, Sigla MP 14, Badge Prêmio Gordura Frete, Coluna e Card de "Total Gordura de Frete Embut." [C5_VLR_FRT] em Comissões, Paridade Exata de Frete Embutido no Fechamento Mensal e 20 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 00:16 (v8.151 - Dropdown com 12 Ciclos de Fechamento Predefinidos, Consolidação Sob Demanda, Ciclo Anterior 26/06 a 25/07 Persistido e Testes 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas com Calibração 0 a 1ª Faixa, Emojis Dinâmicos 🏆/😞, Card de Desempenho e Ranking da Equipe 1º Dourado, 2º Prateado, 3º Bronze e 17 Novas Asserções Automatizadas 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 09:30 (v8.153 - Cards Gamificados de Metas Vendas/Frete de 0 à 1ª Faixa, Troféu vs Cara Triste e Ranking da Equipe Ouro/Prata/Bronze Homologados)  
 
 ---
 
@@ -626,6 +627,38 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Consolidação Automática Sob Demanda:** Rota `/api/vendedores/fechamento/ciclo/:cicloId` atualizada para, caso um ciclo selecionado ainda não esteja no banco de dados, invocar automaticamente `consolidarFechamentoMensal` com `triggeredBy: 'ON_DEMAND'` e persistir no banco e cache em tempo real.
     - **Ciclo Anterior 26/06/2026 a 25/07/2026 Consolidado & Script Utilitário:** Executada e homologada a extração completa do ciclo anterior com faturamento global de R$ 409.691,88 (MP 14: R$ 304.886,63, OACO 16: R$ 100.198,25, GSI 15: R$ 4.607,00), metas (Andrea: R$ 3.475,97, Figueiredo: R$ 2.169,24, Juliana: R$ 1.048,16), persistido no cache/banco e disponibilizado o utilitário `scripts/gerar_fechamento_manual.js`.
     - **Suíte de Testes Automatizados:** Teste 1.4 adicionado a `test_fechamento_vendedores.js` totalizando 20/20 testes (100% de aprovação).
+48. [x] **Regra de Elegibilidade da Meta de Gordura de Frete Condicionada a &ge; 85% da Meta Cheia de Vendas (`fechamento_vendedores_engine.js`, `public/js/fechamento_vendedores.js`, `public/index.html`, `test_fechamento_vendedores.js`):**
+    - **Regra de Negócio Mandatória de Condicionalidade:**
+      - A premiação sobre Gordura de Frete (R$ 200 a R$ 600 nas faixas $\ge$ R$ 700 a $\ge$ R$ 3.000) **só é concedida para vendedores que atingem no mínimo 85,00% da Meta Base de Vendas** ($VendaBaseLiquida \ge MetaBase \times 0.85$).
+      - Vendedores com vendas inferiores a 85% (ex: 84,99% ou menos) recebem **R$ 0,00 de prêmio de gordura de frete**, com status `BLOQUEADO_META_VENDAS` e faixa `Bloqueado (< 85% Meta Vendas)`, mesmo que tenham superado os patamares de gordura líquida.
+    - **Transparência Visual no Frontend:**
+      - Badge do Hero Card (`#fechamentoBadgePremioFrete`), Stat Card de Gordura (`#cardFechamentoGorduraSub`) e Extrato Detalhado do Fechamento (`#fechamentoExtratoTableBody` linha 8) atualizados para informar claramente quando o prêmio de frete está bloqueado devido a vendas $< 85\%$.
+      - Textos informativos e badges adicionados na sub-aba de Configuração de Metas Comerciais (`#tab-config-metas-vendas`) e na aba Fechamento.
+    - **Exemplo Real do Mês 12/2025 Homologado:**
+      - Ciclo 26/11/2025 a 25/12/2025 validado com exatidão: Luiz Figueiredo (Gordura R$ 2.382,74) e Juliana Barbosa (Gordura R$ 1.073,21) com vendas abaixo de 85% recebem R$ 0,00 de prêmio de frete.
+49. [x] **Cards Gamificados de Metas (Vendas e Frete de 0 à 1ª Faixa) e Ranking de Desempenho da Equipe (`public/index.html`, `public/style.css`, `public/js/fechamento_vendedores.js`, `test_fechamento_cards_gamificados.js`):**
+    - **Diagnóstico do Problema & Calibração Exata:**
+      - As barras de progresso anteriores usavam escalas desproporcionais (0 a 200% em vendas, 0 a R$ 3.000 em frete) associadas a réguas com `justify-content: space-between`, gerando descalibração visual grave (ex: venda de 133,46% parava em cima do rótulo 150%, e superávit de R$ 689,56 parecia preencher até R$ 1.100).
+      - Além disso, exigia a supermeta para encher a barra, transmitindo constante sensação de "dever não cumprido" mesmo para vendedores que bateram a meta estipulada (100% de vendas ou R$ 700 de frete).
+    - **Nova Régua de 0 à 1ª Faixa da Meta ("Dever Cumprido"):**
+      - **Card 1 (Meta de Vendas):** Escala calibrada de 0 a 100% da Meta Base (R$ 120.000,00). Ao atingir R$ 120k ou superior (ex: 133,46% como no print de homologação), a barra enche 100% com gradiente esmeralda/celeste e exibe o **Troféu Dourado 🏆** pulsante. Se $< 100\%$ ou negativa, exibe **Cara Triste 😞** e indica exatamente o valor que falta.
+      - **Card 2 (Meta de Gordura de Frete):** Escala calibrada de 0 a R$ 700,00 (1ª Faixa de premiação). No print de homologação com superávit de R$ 689,56, a barra preenche exatamente 98,51% (quase cheia, a apenas R$ 10,44 da meta) com **Cara Triste 😞** por ainda não ter batido. Ao alcançar R$ 700 (com vendas $\ge 85\%$), enche 100% com **Troféu Dourado 🏆**.
+    - **Card 3: Desempenho e Ranking da Equipe (Competição Saudável):**
+      - Exibição de destaque: *"Este mês você ficou em:"* acompanhado de número grande (~2.8rem, mesmo tamanho dos emojis/troféus):
+        - **1º Lugar:** Número `1` dourado (`.ranking-num-ouro`, `#fbbf24` com glow metálico), medalha 🥇 e destaque de liderança.
+        - **2º Lugar:** Número `2` prateado (`.ranking-num-prata`, `#e2e8f0` com glow prateado) e medalha 🥈.
+        - **3º Lugar:** Número `3` bronze (`.ranking-num-bronze`, `#f97316` com glow bronze) e medalha 🥉.
+        - **4º+ Lugar:** Número neutro (`#94a3b8`) estimulando o avanço rumo ao Top 3.
+      - Bloco comparativo com média de vendas da equipe e badge de percentual (▲ / ▼).
+    - **Suíte de Testes Automatizados:** Script dedicado `test_fechamento_cards_gamificados.js` com 17 asserções automatizadas cobrindo calibrações matemáticas, cenários de trava 85%, ordenação de pódio e sintaxe (100% aprovados).
+50. [ ] **Evolução e Regras de Negócio do Módulo de Inadimplentes no Fechamento dos Vendedores (`fechamento_vendedores_engine.js`, `public/js/fechamento_vendedores.js`, `test_fechamento_vendedores.js`):**
+    - **Contexto & Escopo:**
+      - Revisão aprofundada do cálculo e das deduções de títulos inadimplentes (`SE1140`, `SE1150`, `SE1160`) na apuração das comissões mensais dos vendedores.
+      - **Tópicos Prioritários para Tratamento em Breve:**
+        1. *Regras de Carência e Tolerância:* Avaliar faixa de dias de atraso/tolerância para enquadramento como inadimplente.
+        2. *Tratamento de Títulos Recuperados/Pagos após a Data de Corte:* Definir a mecânica de estorno/crédito retroativo da dedução em fechamentos futuros.
+        3. *Impacto na Composição da Renda:* Alinhamento se a inadimplência deve abater exclusivamente a comissão líquida ou se impacta também a elegibilidade das premiações de metas.
+        4. *Drilldown Visual & Extrato Auditável:* Interface para consulta analítica dos títulos vencidos com filtros por cliente, vencimento e empresa filial.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
