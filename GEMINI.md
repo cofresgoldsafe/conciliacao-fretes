@@ -1,8 +1,8 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Job Automático Noturno Dia 26 às 00:30, Gamificação com Troféu e 19 Suítes de Testes Automatizados 100% Aprovadas)  
-> **Data da Última Auditoria:** 02/09/2026 22:15 (v8.140 - Sub-Aba Fechamento Mensal no Módulo Vendedores Integrada com Protheus Multi-Empresas 14, 15 e 16, Regra Oficial de Fechamento 26 a 25, Dedução de C5_VLR_FRT e Inadimplência SE1, Premiações de Metas de Vendas e Gordura de Frete, Faturamento por Empresa, Benchmarking da Equipe, Snapshots Imutáveis, Configuração de Metas e Testes Automatizados 100% Aprovados)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas [Índices, Metabase e Autorizações de Desconto/Margem Pipedrive], Análise de Crédito Homologados, Central "Minhas Tarefas" Ativa, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Sub-Aba "Metas Vendas" em Configurações, Inadimplência Restrita ao Período, Troféu Dourado Exclusivo para Metas Batidas e 19 Suítes de Testes Automatizados 100% Aprovadas)  
+> **Data da Última Auditoria:** 02/09/2026 22:50 (v8.143 - Sub-Aba Fechamento Mensal no Módulo Vendedores Integrada com Protheus Multi-Empresas 14, 15 e 16, Regra Oficial 26 a 25, Dedução de C5_VLR_FRT e SE1 do Período, Troféu Dourado Exclusivo para Metas Batidas, Benchmarking e Testes 100% Aprovados)  
 
 ---
 
