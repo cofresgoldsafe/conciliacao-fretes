@@ -751,9 +751,9 @@ async function consolidarFechamentoMensal({ dataIni, dataFim, codVend, triggered
 }
 
 /**
- * Job Automático executado mensalmente no Dia 26 às 00:30
+ * Job Automático executado mensalmente no Dia 26 às 00:30 (ou disparado via GitHub Actions / Cron externo)
  */
-async function executarJobFechamentoMensal({ force = false } = {}) {
+async function executarJobFechamentoMensal({ force = false, triggeredBy = null, dataIni = null, dataFim = null } = {}) {
   const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
   const nowBrasilia = new Date(nowStr);
   const dia = nowBrasilia.getDate();
@@ -767,16 +767,24 @@ async function executarJobFechamentoMensal({ force = false } = {}) {
     }
   }
 
-  console.log('🏆 [Job Fechamento] Iniciando consolidação mensal oficial dos vendedores (Dia 26 às 00:30)...');
-  const cicloDisponivel = calcularCicloFechamentoDisponivel(nowBrasilia);
+  const triggerOrigin = triggeredBy || (force ? 'MANUAL_FORCE' : 'JOB_AUTO');
+  console.log(`🏆 [Job Fechamento (${triggerOrigin})] Iniciando consolidação mensal oficial dos vendedores...`);
+
+  let cicloDisponivel;
+  if (dataIni && dataFim) {
+    cicloDisponivel = normalizarPeriodo(dataIni, dataFim);
+  } else {
+    cicloDisponivel = calcularCicloFechamentoDisponivel(nowBrasilia);
+  }
+
   const resultado = await consolidarFechamentoMensal({
     dataIni: cicloDisponivel.dtIni,
     dataFim: cicloDisponivel.dtFim,
-    triggeredBy: force ? 'MANUAL_FORCE' : 'JOB_AUTO',
+    triggeredBy: triggerOrigin,
     persist: true
   });
 
-  console.log(`✅ [Job Fechamento] Fechamento do ciclo ${cicloDisponivel.label} concluído e persistido com sucesso!`);
+  console.log(`✅ [Job Fechamento (${triggerOrigin})] Fechamento do ciclo ${cicloDisponivel.label} concluído e persistido com sucesso!`);
   return { executado: true, ciclo: cicloDisponivel, resultado };
 }
 

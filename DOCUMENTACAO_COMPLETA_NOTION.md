@@ -144,7 +144,7 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
   * Ciclo padrão oficial do dia 26 ao dia 25 com atalhos rápidos (`Ciclo Atual`, `Ciclo Anterior`, `2 Ciclos Atrás`).
   * **Filtro Exclusor de CFOPs 5916 e 6916 (Assistência Técnica):** Elimina notas fiscais de retorno de conserto/troca, impedindo déficits indevidos decorrentes de custos de transporte de manutenção.
 * **Sub-aba `[ Fechamento Mensal (26 a 25) ]`:**
-  * Painel consolidado mensal de comissões, metas e premiações com job noturno agendado às 00:30 do dia 26.
+  * Painel consolidado mensal de comissões, metas e premiações com automação externa desacoplada via GitHub Actions (`cron: '30 3 26 * *'`), job noturno interno de backup às 00:30 do dia 26 e endpoint seguro protegido por `CRON_SECRET`.
   * Dedução de frete embutido (`C5_VLR_FRT`) para cálculo da Base Líquida de Vendas e comissão de 1,3%.
   * Dedução de títulos inadimplentes (`SE1`) vencidos e em aberto até o fechamento.
   * **Gamificação e Pódio:** Troféu Dourado 🏆 animado para metas $\ge 100\%$, confetes e ranking com 1º Dourado, 2º Prateado e 3º Bronze.

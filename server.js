@@ -263,6 +263,49 @@ function requireRole(...allowedRoles) {
   };
 }
 
+/**
+ * Middleware de Segurança para endpoints acionados por Cron externo (ex: GitHub Actions)
+ * Valida o token contra CRON_SECRET com crypto.timingSafeEqual ou token JWT de Admin.
+ */
+function requireCronAuth(req, res, next) {
+  const cronSecret = process.env.CRON_SECRET;
+
+  const authHeader = req.headers['authorization'];
+  const customCronHeader = req.headers['x-cron-secret'];
+  let providedToken = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    providedToken = authHeader.slice(7).trim();
+  } else if (customCronHeader) {
+    providedToken = String(customCronHeader).trim();
+  }
+
+  if (cronSecret && providedToken) {
+    const bufProvided = Buffer.from(providedToken);
+    const bufExpected = Buffer.from(cronSecret);
+    if (bufProvided.length === bufExpected.length && crypto.timingSafeEqual(bufProvided, bufExpected)) {
+      req.cronUser = { username: 'github-actions-cron', role: 'cron_runner', name: 'GitHub Actions Cron' };
+      return next();
+    }
+  }
+
+  // Fallback: Permite administradores autenticados com JWT
+  if (providedToken) {
+    try {
+      const decoded = jwt.verify(providedToken, JWT_SECRET);
+      if (decoded && (decoded.role === 'admin' || decoded.role === 'diretoria')) {
+        req.user = decoded;
+        return next();
+      }
+    } catch {}
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: 'Acesso não autorizado ao gatilho de cron. Forneça um CRON_SECRET válido ou token JWT de administrador.'
+  });
+}
+
 function handleServerError(res, err, defaultMsg = 'Ocorreu um erro interno ao processar a solicitação.') {
   console.error('❌ [Server Error]:', err);
   return res.status(500).json({
@@ -1629,6 +1672,44 @@ app.post('/api/vendedores/fechamento/gerar', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'Fechamento consolidado e persistido com sucesso!', data: resultado });
   } catch (err) {
     handleServerError(res, err, 'Erro ao gerar fechamento.');
+  }
+});
+
+// Endpoint seguro para disparos agendados externos (ex: GitHub Actions, Render Cron, Webhooks)
+app.post(['/api/cron/fechamento-mensal', '/api/vendedores/fechamento/cron'], requireCronAuth, async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { force = true, dataIni, dataFim } = req.body || {};
+    const runner = req.cronUser ? req.cronUser.name : (req.user ? req.user.username : 'Cron Externo');
+
+    console.log(`⏰ [Cron Endpoint] Disparo de fechamento mensal recebido de: ${runner} (Force: ${force})`);
+
+    const resultadoJob = await executarJobFechamentoMensal({
+      force: force === true || force === 'true',
+      triggeredBy: 'GITHUB_ACTIONS',
+      dataIni,
+      dataFim
+    });
+
+    const durationMs = Date.now() - startTime;
+
+    logUserActivity({
+      username: req.cronUser ? req.cronUser.username : (req.user ? req.user.username : 'cron_runner'),
+      userName: runner,
+      actionType: 'CRON_FECHAMENTO_MENSAL',
+      description: `Disparo externo de fechamento mensal concluído em ${durationMs}ms (Ciclo: ${resultadoJob?.ciclo?.label || 'N/A'})`,
+      ip: req.ip,
+      metadata: { durationMs, force, ciclo: resultadoJob?.ciclo }
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: 'Fechamento mensal acionado e consolidado com sucesso via Cron externo!',
+      durationMs,
+      ...resultadoJob
+    });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao executar fechamento mensal via cron.');
   }
 });
 

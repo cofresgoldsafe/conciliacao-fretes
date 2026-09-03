@@ -1,0 +1,106 @@
+name: Fechamento Mensal dos Vendedores (Dia 26 às 00:30 BRT)
+
+on:
+  schedule:
+    # 00:30 BRT (Horário Oficial de Brasília, UTC-3) equivale exatamente a 03:30 UTC.
+    # Executa pontualmente no dia 26 de todo mês:
+    - cron: '30 3 26 * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Forçar execução imediata (ignora checagem de dia/hora)'
+        required: true
+        type: boolean
+        default: true
+      data_ini:
+        description: 'Data Inicial customizada (opcional: YYYYMMDD ou YYYY-MM-DD)'
+        required: false
+        type: string
+        default: ''
+      data_fim:
+        description: 'Data Final customizada (opcional: YYYYMMDD ou YYYY-MM-DD)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  executar-fechamento:
+    name: Consolidar Fechamento Mensal Oficial
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Registrar Timestamp e Fuso Horário
+        run: |
+          echo "=========================================================="
+          echo "🏆 GSI / Gemini-Cli - Fechamento Mensal de Vendedores"
+          echo "=========================================================="
+          echo "Horário UTC: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Horário BRT: $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "Disparo: ${{ github.event_name }}"
+          echo "=========================================================="
+
+      - name: Disparar Fechamento via API com Retry
+        env:
+          API_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE: ${{ github.event.inputs.force || 'true' }}
+          DATA_INI: ${{ github.event.inputs.data_ini || '' }}
+          DATA_FIM: ${{ github.event.inputs.data_fim || '' }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "❌ ERRO: A secret 'API_BASE_URL' não está configurada no repositório GitHub!"
+            echo "👉 Configure em: Repository Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ ERRO: A secret 'CRON_SECRET' não está configurada no repositório GitHub!"
+            echo "👉 Configure em: Repository Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+
+          # Normaliza URL base removendo barras finais
+          CLEAN_URL=$(echo "$API_URL" | sed 's:/*$::')
+          ENDPOINT="$CLEAN_URL/api/cron/fechamento-mensal"
+
+          echo "📡 Enviando requisição para o endpoint: $ENDPOINT"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "force": $FORCE,
+            "dataIni": "$DATA_INI",
+            "dataFim": "$DATA_FIM",
+            "triggeredBy": "GITHUB_ACTIONS"
+          }
+          EOF
+          )
+
+          # Dispara curl com retry caso a aplicação em nuvem (ex: Render) esteja em spin-up/hibernação
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            --connect-timeout 30 \
+            --max-time 180 \
+            --retry 3 \
+            --retry-delay 10 \
+            --retry-connrefused \
+            -X POST "$ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "User-Agent: GitHubActions-FechamentoMensal/1.0" \
+            -d "$PAYLOAD")
+
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n1)
+
+          echo "----------------------------------------------------------"
+          echo "HTTP Status Retornado: $HTTP_STATUS"
+          echo "Resposta do Servidor:"
+          echo "$HTTP_BODY"
+          echo "----------------------------------------------------------"
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ SUCESSO: Fechamento mensal consolidado e persistido no Supabase/PostgreSQL com sucesso!"
+          else
+            echo "❌ ERRO: A chamada à API de fechamento falhou com HTTP $HTTP_STATUS"
+            exit 1
+          fi

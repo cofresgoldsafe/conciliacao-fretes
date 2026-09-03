@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.156 (Homologada em 03/09/2026 10:52)  
+> **Versão da Documentação:** v8.157 (Homologada em 03/09/2026 12:25)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas" com Filtro Padrão Pendente & Reaberta Unificados, Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas, Popup de Detalhamento de Fretes, Filtro Exclusor de CFOPs 5916/6916 de Assistência Técnica Homologado, 24 Asserções de Tarefas 100% Aprovadas)  
-> **Data da Última Auditoria:** 03/09/2026 10:52 (v8.156 - Unificação de Filtro de Status Pendente/Reaberta e Padrão Ativo na Central "Minhas Tarefas" Homologado com Auditoria Automatizada)  
+> **Status:** Estável / Operacional em Produção (Vulnerabilidades Críticas P0 Mitigadas, RLS Habilitado, Faróis SRE, Módulo BI Executivo com 3 Sub-Abas, Análise de Crédito Homologados, Central "Minhas Tarefas", Sub-Abas "Gordura Frete" e "Fechamento Mensal" Ativas no Módulo Vendedores com Fechamento 26 a 25, Cards Gamificados de Metas, Popup de Detalhamento de Fretes, Agendamento Externo via GitHub Actions Cron com Endpoint Protegido por CRON_SECRET Homologado, 9 Asserções de Cron 100% Aprovadas)  
+> **Data da Última Auditoria:** 03/09/2026 12:25 (v8.157 - Automação Externa do Fechamento Mensal via GitHub Actions no Dia 26 às 00:30 BRT com CRON_SECRET e Endpoint Seguro)  
 
 ---
 
@@ -714,6 +714,25 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
         2. *Tratamento de Títulos Recuperados/Pagos após a Data de Corte:* Definir a mecânica de estorno/crédito retroativo da dedução em fechamentos futuros.
         3. *Impacto na Composição da Renda:* Alinhamento se a inadimplência deve abater exclusivamente a comissão líquida ou se impacta também a elegibilidade das premiações de metas.
         4. *Drilldown Visual & Extrato Auditável:* Interface para consulta analítica dos títulos vencidos com filtros por cliente, vencimento e empresa filial.
+52. [x] **Agendamento Externo do Fechamento Mensal via GitHub Actions Cron & Endpoint Seguro (`.github/workflows/fechamento_mensal.yml`, `server.js`, `fechamento_vendedores_engine.js`, `docs/GUIA_SETUP_GITHUB_CRON.md`, `test_cron_fechamento.js`):**
+    - **Contexto e Motivação Operacional:**
+      - Desacoplamento da rotina mensal oficial de fechamento dos vendedores (ciclo 26 a 25) do processo em memória do Node.js (`setInterval`). Em plataformas de nuvem com suspensão por inatividade (*sleep/spin-down* do Render plano gratuito), o processo hiberna na madrugada e o timer interno não acorda pontualmente às 00:30 BRT.
+    - **Workflow GitHub Actions (`.github/workflows/fechamento_mensal.yml`):**
+      - Agendamento cron universal: `cron: '30 3 26 * *'` (03:30 UTC = 00:30 Horário Oficial de Brasília todo dia 26 do mês).
+      - Disparo manual em 1 clique (`workflow_dispatch`) com inputs configuráveis (`force: boolean`, `data_ini: string`, `data_fim: string`).
+      - Chamada HTTP resiliente com `curl` e política de retries contra spin-down da nuvem (`--retry 3 --retry-delay 10 --connect-timeout 30 --max-time 180`).
+      - Tratamento seguro de falhas com saída estruturada e logs de status HTTP.
+    - **Endpoint Seguro no Backend Express (`server.js`):**
+      - Rotas gêmeas: `POST /api/cron/fechamento-mensal` e alias `POST /api/vendedores/fechamento/cron`.
+      - Middleware de segurança `requireCronAuth` com validação de segredo compartilhado (`CRON_SECRET`) em tempo constante via `crypto.timingSafeEqual` (defesa ativa contra timing attacks).
+      - Suporte a cabeçalhos `Authorization: Bearer <token>` e `x-cron-secret: <token>`, com fallback para JWT administrativo (`admin` / `diretoria`).
+      - Registro de telemetria e auditoria perene via `logUserActivity` com tipo `CRON_FECHAMENTO_MENSAL` e medição de duração em ms.
+    - **Motor Atualizado (`fechamento_vendedores_engine.js`):**
+      - Função `executarJobFechamentoMensal` aprimorada para suportar identificação de origem (`triggeredBy: 'GITHUB_ACTIONS'`), execução forçada e consolidação transparente do ciclo recém-encerrado.
+    - **Documentação e Guia Operacional:**
+      - Manual criado em `docs/GUIA_SETUP_GITHUB_CRON.md` detalhando a configuração das secrets `API_BASE_URL` e `CRON_SECRET` no repositório GitHub.
+    - **Suíte de Testes Automatizados:**
+      - Arquivo `test_cron_fechamento.js` homologado com 9 asserções cobrindo integridade do YAML, timingSafeEqual, bloqueio 401 sem secret/com secret inválido, aceitação 200 via Bearer e x-cron-secret, fallback admin JWT e testes assíncronos (100% aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
