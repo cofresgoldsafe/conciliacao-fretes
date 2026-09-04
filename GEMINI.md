@@ -230,6 +230,7 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Badge informativo automático com Razão Social histórica retornada pela Caixa, situação cadastral e validade do CRF.
      - Botão assistido 1-Clique na Caixa mantido como contingência operacional.
    - **Suíte de Testes:** Script `test_infosimples_fgts.js` com 10 asserções automatizadas cobrindo todos os cenários de score, persistência de token string, rota HTTP `POST /api/financeiro/analise-credito/consultar-fgts`, exportação de `sendAlertEmail` e tratamento estrito de erro 601 com disparo de alerta.
+   - **Homologação em Produção Concluída (04/09/2026):** Confirmado o processamento de consulta real no painel de controle da InfoSimples (contabilização de 1 consulta, recepção dos dados do CRF da Caixa e cálculo de pontuação no Score em Tempo Real homologados).
 31. [x] **Aprimoramento Visual e Rastreabilidade na Tabela de Histórico de Crédito (`public/index.html`, `public/app.js`):**
    - **Compactação e Abreviatura de Empresa:**
      - Cabeçalho reduzido de `Empresa` para **`Emp`** com alinhamento centralizado e largura otimizada (`55px`).
