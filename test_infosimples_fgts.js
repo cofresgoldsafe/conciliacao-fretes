@@ -145,13 +145,13 @@ console.log('================================================================\n'
   });
 
   // 8. Servidor HTTP: Endpoint POST /api/financeiro/analise-credito/consultar-fgts
-  await asyncTest('8. Servidor HTTP expõe endpoint POST /api/financeiro/analise-credito/consultar-fgts', async () => {
-    const app = require('./server');
-    const server = http.createServer(app);
-    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-    const port = server.address().port;
+  const app = require('./server');
+  const server = http.createServer(app);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
 
-    try {
+  try {
+    await asyncTest('8. Servidor HTTP expõe endpoint POST /api/financeiro/analise-credito/consultar-fgts', async () => {
       // Teste sem CNPJ (deve retornar 400)
       const postSemCnpj = JSON.stringify({});
       const resSemCnpj = await new Promise((resolve, reject) => {
@@ -200,10 +200,63 @@ console.log('================================================================\n'
       assert.strictEqual(resComCnpj.data.success, true);
       assert(resComCnpj.data.resultado !== undefined);
       assert.strictEqual(typeof resComCnpj.data.resultado.executado, 'boolean');
-    } finally {
-      await new Promise(resolve => server.close(resolve));
-    }
-  });
+    });
+
+    // 9. mailer.js: sendAlertEmail
+    await asyncTest('9. mailer.js exporta e executa sendAlertEmail com parâmetros e templates HTML/Text', async () => {
+      const { sendAlertEmail } = require('./mailer');
+      assert.strictEqual(typeof sendAlertEmail, 'function', 'sendAlertEmail deve ser uma função exportada');
+      const res = await sendAlertEmail({
+        to: 'alexandre@oaco.com.br',
+        subject: '🧪 Teste Unitário sendAlertEmail',
+        title: 'Teste de Alerta',
+        message: 'Mensagem de teste de alerta do sistema',
+        details: { 'Teste': '123', 'Status': 'OK' }
+      });
+      assert(res.success === true || res.mode !== undefined, 'Deve retornar resultado de sucesso ou modo de envio');
+    });
+
+    // 10. Tratamento estrito de Erro 601 na rota /consultar-fgts
+    await asyncTest('10. Código 601 da InfoSimples é tratado como erro de autenticação (executado=false, auth_error=true, alerta por e-mail)', async () => {
+      // Força token inválido para que a InfoSimples retorne code: 601
+      process.env.INFOSIMPLES_TOKEN = 'token_invalido_teste_unitario_601';
+      try {
+        const postBody = JSON.stringify({ cnpj: '02021647000125', razao_social: 'EMPRESA TESTE' });
+        const res601 = await new Promise((resolve, reject) => {
+          const req = http.request({
+            hostname: '127.0.0.1',
+            port: port,
+            path: '/api/financeiro/analise-credito/consultar-fgts',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postBody)
+            }
+          }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => resolve({ status: res.statusCode, data: JSON.parse(body) }));
+          });
+          req.on('error', reject);
+          req.write(postBody);
+          req.end();
+        });
+
+        assert.strictEqual(res601.status, 200);
+        assert.strictEqual(res601.data.success, true);
+        const resultado = res601.data.resultado;
+        assert.strictEqual(resultado.executado, false, 'Erro 601 NÃO pode ter executado=true');
+        assert.strictEqual(resultado.auth_error, true, 'Erro 601 DEVE ter auth_error=true');
+        assert.strictEqual(resultado.code, 601, 'Código retornado deve ser 601');
+        assert.strictEqual(resultado._status.status, 'ERRO', 'Status deve ser ERRO');
+        assert(resultado.motivo.includes('601') || resultado.motivo.includes('autenticação'), 'Motivo deve citar 601 ou autenticação');
+      } finally {
+        delete process.env.INFOSIMPLES_TOKEN;
+      }
+    });
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
 
   console.log('\n================================================================');
   console.log(`📊 RESULTADOS: ${passCount}/${passCount + failCount} aprovados (${Math.round((passCount / (passCount + failCount)) * 100)}%)`);
@@ -211,7 +264,5 @@ console.log('================================================================\n'
 
   if (failCount > 0) {
     process.exit(1);
-  } else {
-    process.exit(0);
   }
 })();

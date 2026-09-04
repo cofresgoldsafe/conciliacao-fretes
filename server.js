@@ -115,6 +115,7 @@ const {
 
 const {
   send2FACodeEmail,
+  sendAlertEmail,
   maskEmail,
   isValidEmail,
   testSmtpConnection
@@ -3094,6 +3095,10 @@ async function consultarMx(dominio) {
   };
 }
 
+// Rate-limiting / Cooldown anti-flood para disparos de e-mail de alerta da InfoSimples (máx 1 a cada 15 min)
+let lastInfoSimplesAlertSent = 0;
+const INFOSIMPLES_ALERT_COOLDOWN_MS = 15 * 60 * 1000;
+
 // Função utilitária para consulta de Regularidade do FGTS (CRF) na Caixa via API InfoSimples
 async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
   if (!cnpjStr) return null;
@@ -3108,7 +3113,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
   if (!token) {
     return {
       executado: false,
-      motivo: 'Token da API InfoSimples não configurado. Configure em Configurações de Score ou via INFOSIMPLES_TOKEN.',
+      motivo: 'Token da API InfoSimples não configurado. Configure em Configurações de Score ou via INFOSIMPLES_TOKEN no Render.',
       _status: {
         status: 'ALERTA',
         provedor: 'InfoSimples / Caixa',
@@ -3194,8 +3199,94 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
         };
       }
 
-      // Código 601 / 602 / "não encontrada": Empresa não possui cadastro no FGTS / Nunca registrou funcionários
-      if (code === 601 || code === 602 || codeMessage.toLowerCase().includes('não encontrada') || codeMessage.toLowerCase().includes('nao encontrada') || dataList.length === 0) {
+      // Código 601: Falha de Autenticação / Token Inválido na InfoSimples
+      if (code === 601) {
+        const authErrorMsg = `Falha de autenticação na InfoSimples (Código 601): ${codeMessage || 'Não foi possível se autenticar com o token informado'}.`;
+        console.error(`🚨 [InfoSimples FGTS] ${authErrorMsg} (CNPJ consultado: ${digits})`);
+
+        // Dispara e-mail de alerta para o administrador (com proteção de cooldown contra flood)
+        const now = Date.now();
+        if (now - lastInfoSimplesAlertSent > INFOSIMPLES_ALERT_COOLDOWN_MS) {
+          lastInfoSimplesAlertSent = now;
+          sendAlertEmail({
+            subject: '🚨 [Alerta Gemini-Cli] Erro 601 — Falha de Autenticação no Token InfoSimples',
+            title: 'Erro de Autenticação — Token InfoSimples (Código 601)',
+            message: 'A consulta de Regularidade do FGTS (Caixa CRF) falhou porque a InfoSimples rejeitou a autenticação do token informado.',
+            details: {
+              'Código InfoSimples': '601',
+              'Mensagem': codeMessage || 'Não foi possível se autenticar com o token informado.',
+              'CNPJ Consultado': digits,
+              'Cliente Protheus': razaoClienteProtheus || 'Não informado',
+              'Ação Recomendada': 'Acesse o dashboard da InfoSimples (api.infosimples.com), verifique se o token está correto e configure-o na variável de ambiente INFOSIMPLES_TOKEN no Render ou nas Configurações de Score.'
+            }
+          }).then(() => {
+            console.log('🟢 [InfoSimples FGTS] E-mail de alerta sobre erro 601 enviado com sucesso ao administrador.');
+          }).catch(mailErr => {
+            console.warn('⚠️ [InfoSimples FGTS] Falha ao disparar e-mail de alerta:', mailErr.message);
+          });
+        }
+
+        return {
+          executado: false,
+          encontrado: false,
+          auth_error: true,
+          motivo: authErrorMsg,
+          code,
+          codeMessage,
+          _status: {
+            status: 'ERRO',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 601: Token Inválido'
+          }
+        };
+      }
+
+      // Código 602: Saldo Insuficiente / Limite Excedido na InfoSimples
+      if (code === 602) {
+        const saldoMsg = `InfoSimples (Código 602): ${codeMessage || 'Saldo insuficiente ou limite mensal excedido na conta'}.`;
+        console.error(`🚨 [InfoSimples FGTS] ${saldoMsg}`);
+
+        const now = Date.now();
+        if (now - lastInfoSimplesAlertSent > INFOSIMPLES_ALERT_COOLDOWN_MS) {
+          lastInfoSimplesAlertSent = now;
+          sendAlertEmail({
+            subject: '🚨 [Alerta Gemini-Cli] Erro 602 — Saldo/Limite na InfoSimples',
+            title: 'Saldo Insuficiente na InfoSimples (Código 602)',
+            message: 'A consulta de Regularidade do FGTS falhou porque a conta InfoSimples atingiu o limite de consultas ou está sem saldo.',
+            details: {
+              'Código InfoSimples': '602',
+              'Mensagem': codeMessage,
+              'CNPJ': digits,
+              'Ação Recomendada': 'Acesse o painel da InfoSimples e recarregue créditos para a API Caixa CRF.'
+            }
+          }).catch(() => {});
+        }
+
+        return {
+          executado: false,
+          motivo: saldoMsg,
+          code,
+          codeMessage,
+          _status: {
+            status: 'ERRO',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 602: Saldo/Limite Insuficiente'
+          }
+        };
+      }
+
+      // Empresa não possui cadastro no FGTS / Nunca registrou funcionários
+      const msgLower = (codeMessage || '').toLowerCase();
+      const isNaoEncontrada = msgLower.includes('não encontrada') || 
+                              msgLower.includes('nao encontrada') || 
+                              msgLower.includes('não cadastrada') || 
+                              msgLower.includes('nao cadastrada') || 
+                              msgLower.includes('sem registro') ||
+                              ((code === 200 || code === 201) && dataList.length === 0);
+
+      if (isNaoEncontrada) {
         return {
           executado: true,
           encontrado: false,

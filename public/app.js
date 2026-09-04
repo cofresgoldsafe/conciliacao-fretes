@@ -5741,10 +5741,17 @@ document.addEventListener('DOMContentLoaded', () => {
             setVal('cr_razao_fgts_igual', '');
             if (fgtsBadge) {
               fgtsBadge.style.display = 'block';
-              fgtsBadge.style.background = 'rgba(245, 158, 11, 0.12)';
-              fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.35)';
-              fgtsBadge.style.color = '#fbbf24';
-              fgtsBadge.innerHTML = `ℹ️ <strong>FGTS Caixa Não Consultado:</strong> ${escapeHtml(fInfo.motivo || 'Serviço temporariamente indisponível')}`;
+              if (fInfo.auth_error || fInfo.code === 601) {
+                fgtsBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                fgtsBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+                fgtsBadge.style.color = '#f87171';
+                fgtsBadge.innerHTML = `🚨 <strong>InfoSimples (Erro 601):</strong> Token inválido ou não autenticado. E-mail de alerta enviado ao administrador.`;
+              } else {
+                fgtsBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+                fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+                fgtsBadge.style.color = '#fbbf24';
+                fgtsBadge.innerHTML = `ℹ️ <strong>FGTS Caixa Não Consultado:</strong> ${escapeHtml(fInfo.motivo || 'Serviço temporariamente indisponível')}`;
+              }
             }
           }
         } else {
@@ -5930,6 +5937,20 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           alert('✓ Consulta de FGTS na InfoSimples concluída e preenchida com sucesso!');
         } else {
+          if (fgtsBadge) {
+            fgtsBadge.style.display = 'block';
+            if (fInfo.auth_error || fInfo.code === 601) {
+              fgtsBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+              fgtsBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+              fgtsBadge.style.color = '#f87171';
+              fgtsBadge.innerHTML = `🚨 <strong>InfoSimples (Erro 601):</strong> Token inválido ou não autenticado. E-mail de alerta enviado ao administrador.`;
+            } else {
+              fgtsBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+              fgtsBadge.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+              fgtsBadge.style.color = '#fbbf24';
+              fgtsBadge.innerHTML = `ℹ️ <strong>FGTS Caixa Não Consultado:</strong> ${escapeHtml(fInfo.motivo || 'Serviço temporariamente indisponível')}`;
+            }
+          }
           alert(`⚠️ ${fInfo.motivo || 'Não foi possível consultar o FGTS na InfoSimples.'}`);
         }
       } catch (err) {

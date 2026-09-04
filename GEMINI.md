@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.161 (Homologada em 03/09/2026 22:15)  
+> **Versão da Documentação:** v8.162 (Homologada em 04/09/2026 11:10)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Nova Aba Principal Independente "ANALISTA FIN" com Sub-Abas "Documentos DP" e "Cadastro Funcion.", Desacoplada de ASSIST. FINANC., Controle RBAC, Portas Dinâmicas de Testes e 100% de Testes Aprovados)  
-> **Data da Última Auditoria:** 03/09/2026 22:15 (v8.161 - Reorganização estrutural: criação da aba principal ANALISTA FIN e isolamento de Documentos DP / Cadastro Funcion.)  
+> **Status:** Estável / Operacional em Produção (Tratamento Estrito de Erro 601 da API InfoSimples, Fim da Falha Silenciosa no FGTS Caixa, Alerta por E-mail via Mailjet/SMTP, 100% de Testes Aprovados)  
+> **Data da Última Auditoria:** 04/09/2026 11:10 (v8.162 - Autenticação InfoSimples, Alertas SMTP e Testes Unitários)  
 
 ---
 
@@ -209,10 +209,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Inclusão dos novos campos na aba de Configurações de Score (`#tab-config-score`) para parametrização livre pelo gestor.
      - Renderização de badges explicativos na Ficha do Pedido e linhas discriminadas no Extrato de Conferência Matemática do Score.
      - Sincronização dinâmica de rótulos (`atualizarRotulosSelectsCredito`) e persistência segura tanto no PostgreSQL (`dados_completos JSONB`) quanto no backup local em disco (`analise_credito_history.json`).
-30. [x] **Automação da Consulta FGTS / CRF Caixa via API InfoSimples (`server.js`, `analise_credito_engine.js`, `public/index.html`, `public/app.js`, `test_infosimples_fgts.js`):**
+30. [x] **Automação da Consulta FGTS / CRF Caixa via API InfoSimples (`server.js`, `analise_credito_engine.js`, `mailer.js`, `public/index.html`, `public/app.js`, `test_infosimples_fgts.js`):**
    - **Integração REST JSON com API InfoSimples:**
      - Consumo do endpoint oficial da Caixa CRF (`POST https://api.infosimples.com/api/v2/consultas/caixa/crf`) de forma assíncrona e paralela com as demais consultas de inteligência no Protheus.
      - Suporte a credencial flexível via `INFOSIMPLES_TOKEN` (variável de ambiente) ou campo dedicado em tela na aba **Configurações de Score (`#tab-config-score`)**.
+   - **Tratamento Estrito de Autenticação & Alerta por E-mail (Erro 601 / 602):**
+     - Tratamento estrito do código `601` (`Não foi possível se autenticar com o token informado`) e `602` (`Saldo insuficiente`) como falha de autenticação/token (`executado = false`, `auth_error = true`), eliminando a falha silenciosa que anteriormente tratava o erro 601 como "empresa não localizada".
+     - Disparo automático de e-mail de alerta em HTML de alta prioridade para o administrador (`alexandre@oaco.com.br` / `ALERT_EMAIL`) via `mailer.js` (`sendAlertEmail` com suporte a Mailjet REST API HTTPS 443 e Nodemailer SMTP clássico), com cooldown anti-flood de 15 minutos entre alertas.
+     - Destaque visual em vermelho no badge de FGTS (`cr_fgts_badge`) informando claramente erro de token e aviso de e-mail enviado.
    - **Novas Regras de Pontuação Antifraude para o FGTS:**
      - **Empresa Regular com Razão Social Idêntica:** `fgts_situacao_regular = 'S'` (0 pts) e `razao_fgts_igual = 'S'` (**`+3 pts`**).
      - **Empresa Localizada com Razão Social Divergente (Empresa Alterada/Comprada):** `razao_fgts_igual = 'N'` (**`-15 pts`**).
@@ -224,7 +228,7 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Botão `⚡ Consultar FGTS (InfoSimples)` no Bloco 6 permitindo reconsultas sob demanda sem recarregar o pedido.
      - Badge informativo automático com Razão Social histórica retornada pela Caixa, situação cadastral e validade do CRF.
      - Botão assistido 1-Clique na Caixa mantido como contingência operacional.
-   - **Suíte de Testes:** Script `test_infosimples_fgts.js` com 8 asserções automatizadas cobrindo todos os cenários de score, persistência de token string e rota HTTP `POST /api/financeiro/analise-credito/consultar-fgts`.
+   - **Suíte de Testes:** Script `test_infosimples_fgts.js` com 10 asserções automatizadas cobrindo todos os cenários de score, persistência de token string, rota HTTP `POST /api/financeiro/analise-credito/consultar-fgts`, exportação de `sendAlertEmail` e tratamento estrito de erro 601 com disparo de alerta.
 31. [x] **Aprimoramento Visual e Rastreabilidade na Tabela de Histórico de Crédito (`public/index.html`, `public/app.js`):**
    - **Compactação e Abreviatura de Empresa:**
      - Cabeçalho reduzido de `Empresa` para **`Emp`** com alinhamento centralizado e largura otimizada (`55px`).

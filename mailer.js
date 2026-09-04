@@ -425,9 +425,165 @@ async function testSmtpConnection(targetEmail) {
   return diagnostic;
 }
 
+/**
+ * Envia E-mail de Alerta Administrativo / Operacional (Erros de Integração, APIs, etc.)
+ */
+async function sendAlertEmail({ to, subject, title, message, details = {}, html, text }) {
+  const targetEmail = (to || process.env.ALERT_EMAIL || process.env.ADMIN_EMAIL || 'alexandre@oaco.com.br').trim();
+  if (!targetEmail || !isValidEmail(targetEmail)) {
+    return { success: false, error: 'E-mail de destinatário inválido ou ausente.' };
+  }
+
+  const host = (process.env.SMTP_server || process.env.SMTP_SERVER || process.env.SMTP_HOST || process.env.SMTP_host || '').trim();
+  const apiKey = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || '').trim();
+  const secretKey = (process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim();
+  const senderUser = apiKey || 'nao-responda@oaco.com.br';
+
+  let rawFrom = (process.env.SMTP_from || process.env.SMTP_FROM || senderUser).trim();
+  let fromEmailOnly = rawFrom;
+  let fromNameOnly = 'Plataforma de Apoio GSI - Alertas';
+
+  if (rawFrom.includes('<') && rawFrom.includes('>')) {
+    const match = rawFrom.match(/^(.*?)\s*<([^>]+)>/);
+    if (match) {
+      fromNameOnly = match[1].replace(/["']/g, '').trim() || fromNameOnly;
+      fromEmailOnly = match[2].trim();
+    }
+  }
+
+  const fromAddress = rawFrom.includes('<') ? rawFrom : `"${fromNameOnly}" <${fromEmailOnly}>`;
+  const emailSubject = subject || '🚨 [Alerta Gemini-Cli] Notificação do Sistema';
+
+  // Constrói tabela HTML para os detalhes
+  let detailsHtml = '';
+  if (details && typeof details === 'object' && Object.keys(details).length > 0) {
+    detailsHtml = `
+      <table style="width: 100%; border-collapse: collapse; margin: 16px 0; background: rgba(15, 23, 42, 0.6); border-radius: 8px; overflow: hidden;">
+        <tbody>
+          ${Object.entries(details).map(([k, v]) => `
+            <tr style="border-bottom: 1px solid #334155;">
+              <td style="padding: 10px 14px; font-weight: 600; color: #94a3b8; font-size: 13px; width: 35%;">${k}</td>
+              <td style="padding: 10px 14px; color: #f8fafc; font-size: 13px; font-family: monospace;">${v}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  const htmlContent = html || `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .wrapper { width: 100%; max-width: 580px; margin: 24px auto; background-color: #1e293b; border-radius: 12px; border: 1px solid #334155; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 20px 24px; border-bottom: 1px solid #334155; }
+        .header h1 { margin: 0; font-size: 18px; font-weight: 700; color: #f87171; letter-spacing: -0.02em; }
+        .header p { margin: 4px 0 0 0; font-size: 12px; color: #94a3b8; }
+        .content { padding: 24px; }
+        .alert-box { background: rgba(239, 68, 68, 0.12); border-left: 4px solid #ef4444; padding: 14px 18px; border-radius: 6px; font-size: 14px; color: #fecaca; line-height: 1.5; margin-bottom: 18px; }
+        .footer { background-color: #0f172a; padding: 14px 24px; border-top: 1px solid #334155; font-size: 11px; color: #64748b; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="wrapper">
+        <div class="header">
+          <h1>🚨 ${title || 'Alerta de Integração do Sistema'}</h1>
+          <p>Plataforma de Apoio GSI (Gemini-Cli)</p>
+        </div>
+        <div class="content">
+          <div class="alert-box">
+            <strong>${title || 'Atenção Necessária'}:</strong><br>
+            ${message || 'Ocorreu um evento crítico no processamento de integrações.'}
+          </div>
+          ${detailsHtml}
+          <div style="font-size: 12px; color: #94a3b8; margin-top: 16px;">
+            Horário do Evento: <strong>${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (Horário de Brasília)</strong>
+          </div>
+        </div>
+        <div class="footer">
+          Notificação automática gerada pelo servidor Gemini-Cli. Por favor, não responda a este e-mail.
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textContent = text || `
+[ALERTA GEMINI-CLI] ${title || 'Notificação do Sistema'}
+${message || ''}
+
+Detalhes:
+${Object.entries(details).map(([k, v]) => `- ${k}: ${v}`).join('\n')}
+
+Data: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+  `.trim();
+
+  // 1. Mailjet REST API (HTTPS 443)
+  if (host.includes('mailjet') && apiKey && secretKey) {
+    try {
+      const httpRes = await sendViaMailjetHttpApi({
+        apiKey,
+        secretKey,
+        fromEmail: fromEmailOnly,
+        fromName: fromNameOnly,
+        toEmail: targetEmail,
+        toName: 'Administrador',
+        subject: emailSubject,
+        text: textContent,
+        html: htmlContent
+      });
+      console.log(`🟢 [Mailer Alert] Alerta enviado para ${maskEmail(targetEmail)} via Mailjet (ID: ${httpRes.messageId})`);
+      return httpRes;
+    } catch (httpErr) {
+      console.warn(`⚠️ [Mailer Alert Warning] Falha na API HTTP do Mailjet (${httpErr.message}). Tentando SMTP...`);
+    }
+  }
+
+  // 2. Fallback Nodemailer SMTP
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.log('---------------------------------------------------------');
+    console.log(`🚨 [MAILER ALERT DEV] Alerta para: ${targetEmail}`);
+    console.log(`Assunto: ${emailSubject}`);
+    console.log(`Mensagem: ${message}`);
+    console.log('---------------------------------------------------------');
+    return {
+      success: true,
+      mode: 'dev_console',
+      messageId: `dev-alert-${Date.now()}`
+    };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: targetEmail,
+      subject: emailSubject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log(`🟢 [Mailer Alert SMTP] Alerta enviado para ${maskEmail(targetEmail)} (MessageID: ${info.messageId})`);
+    return {
+      success: true,
+      mode: 'smtp',
+      messageId: info.messageId
+    };
+  } catch (err) {
+    console.error(`❌ [Mailer Alert Error] Falha ao enviar alerta para ${targetEmail}:`, err.message);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+}
+
 module.exports = {
   maskEmail,
   isValidEmail,
   send2FACodeEmail,
+  sendAlertEmail,
   testSmtpConnection
 };
