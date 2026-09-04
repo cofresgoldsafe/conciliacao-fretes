@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.162 (Homologada em 04/09/2026 11:10)  
+> **Versão da Documentação:** v8.163 (Homologada em 04/09/2026 12:05)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Tratamento Estrito de Erro 601 da API InfoSimples, Fim da Falha Silenciosa no FGTS Caixa, Alerta por E-mail via Mailjet/SMTP, 100% de Testes Aprovados)  
-> **Data da Última Auditoria:** 04/09/2026 11:10 (v8.162 - Autenticação InfoSimples, Alertas SMTP e Testes Unitários)  
+> **Status:** Estável / Operacional em Produção (Endpoint Oficial Caixa FGTS /caixa/regularidade da InfoSimples, Resolução do Código 602, Tratamento de Erro 601, Alerta por E-mail via Mailjet/SMTP, 100% de Testes Aprovados)  
+> **Data da Última Auditoria:** 04/09/2026 12:05 (v8.163 - Endpoint Oficial InfoSimples /caixa/regularidade, Cache Buster e Suíte Unitária)  
 
 ---
 
@@ -211,12 +211,13 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Sincronização dinâmica de rótulos (`atualizarRotulosSelectsCredito`) e persistência segura tanto no PostgreSQL (`dados_completos JSONB`) quanto no backup local em disco (`analise_credito_history.json`).
 30. [x] **Automação da Consulta FGTS / CRF Caixa via API InfoSimples (`server.js`, `analise_credito_engine.js`, `mailer.js`, `public/index.html`, `public/app.js`, `test_infosimples_fgts.js`):**
    - **Integração REST JSON com API InfoSimples:**
-     - Consumo do endpoint oficial da Caixa CRF (`POST https://api.infosimples.com/api/v2/consultas/caixa/crf`) de forma assíncrona e paralela com as demais consultas de inteligência no Protheus.
+     - Consumo do endpoint oficial da Caixa Regularidade (`POST https://api.infosimples.com/api/v2/consultas/caixa/regularidade`) de forma assíncrona e paralela com as demais consultas de inteligência no Protheus.
+     - Resolução do Código `602` (*O serviço informado na URL não é válido*): A validação em produção confirmou a autenticação com sucesso do token (`INFOSIMPLES_TOKEN`), apontando que a URL do serviço exigia o slug oficial `/caixa/regularidade` (conforme especificação da SDK oficial InfoSimples).
      - Suporte a credencial flexível via `INFOSIMPLES_TOKEN` (variável de ambiente) ou campo dedicado em tela na aba **Configurações de Score (`#tab-config-score`)**.
-   - **Tratamento Estrito de Autenticação & Alerta por E-mail (Erro 601 / 602):**
-     - Tratamento estrito do código `601` (`Não foi possível se autenticar com o token informado`) e `602` (`Saldo insuficiente`) como falha de autenticação/token (`executado = false`, `auth_error = true`), eliminando a falha silenciosa que anteriormente tratava o erro 601 como "empresa não localizada".
-     - Disparo automático de e-mail de alerta em HTML de alta prioridade para o administrador (`alexandre@oaco.com.br` / `ALERT_EMAIL`) via `mailer.js` (`sendAlertEmail` com suporte a Mailjet REST API HTTPS 443 e Nodemailer SMTP clássico), com cooldown anti-flood de 15 minutos entre alertas.
-     - Destaque visual em vermelho no badge de FGTS (`cr_fgts_badge`) informando claramente erro de token e aviso de e-mail enviado.
+   - **Tratamento Estrito de Códigos da InfoSimples & Alertas por E-mail:**
+     - Tratamento estrito do código `601` (*Falha de Autenticação*) e `603` (*Serviço não autorizado ou limite excedido*) com disparo de e-mail de alerta em HTML para o administrador (`alexandre@oaco.com.br`) via `mailer.js` com cooldown anti-flood de 15 minutos.
+     - Tratamento específico dos códigos `600` (Indisponibilidade Caixa), `602` (Serviço Inválido), `604` (Validação de Parâmetros), `606` (Parâmetros Faltantes - prevenidos por pré-validação de 14 dígitos no CNPJ) e `622` (Tentativas Repetidas).
+     - Destaque visual em vermelho/laranja no badge de FGTS (`cr_fgts_badge`) informando claramente o motivo retornado pela API sem falha silenciosa.
    - **Novas Regras de Pontuação Antifraude para o FGTS:**
      - **Empresa Regular com Razão Social Idêntica:** `fgts_situacao_regular = 'S'` (0 pts) e `razao_fgts_igual = 'S'` (**`+3 pts`**).
      - **Empresa Localizada com Razão Social Divergente (Empresa Alterada/Comprada):** `razao_fgts_igual = 'N'` (**`-15 pts`**).

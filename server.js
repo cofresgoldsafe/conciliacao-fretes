@@ -3133,7 +3133,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
       timeout: 30
     };
 
-    const res = await fetch('https://api.infosimples.com/api/v2/consultas/caixa/crf', {
+    const res = await fetch('https://api.infosimples.com/api/v2/consultas/caixa/regularidade', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3153,11 +3153,12 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
       // Código 200/201: Sucesso na consulta com dados retornados
       if ((code === 200 || code === 201) && dataList.length > 0 && dataList[0]) {
         const item = dataList[0];
-        const razaoCaixa = String(item.razao_social || item.nome || '').trim();
-        const situacao = String(item.situacao || '').trim().toUpperCase();
+        const razaoCaixa = String(item.razao_social || item.nome || item.empregador || '').trim();
+        const situacao = String(item.situacao || item.situacao_descricao || item.mensagem || '').trim().toUpperCase();
         const isRegular = situacao.includes('REGULAR') && !situacao.includes('NÃO') && !situacao.includes('IRREGULAR');
-        const validade = item.validade_fim_data || item.validade_fim || '';
-        const endereco = item.endereco || '';
+        const validade = item.validade_fim_data || item.validade_fim || item.validade_ate || item.validade || item.data_validade || '';
+        const endereco = item.endereco || item.logradouro || '';
+        const numeroCrf = item.numero_crf || item.crf || item.certificado || '';
 
         // Comparação de similaridade entre Razão Social da Caixa e do Protheus/Receita
         let razaoFgtsIgual = 'N';
@@ -3189,6 +3190,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           situacao_caixa: situacao,
           validade_crf: validade,
           endereco_caixa: endereco,
+          numero_crf: numeroCrf,
           similarity,
           _status: {
             status: isRegular && razaoFgtsIgual === 'S' ? 'OK' : 'ALERTA',
