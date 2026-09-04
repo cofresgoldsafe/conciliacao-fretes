@@ -3199,12 +3199,14 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
         };
       }
 
-      // Código 601: Falha de Autenticação / Token Inválido na InfoSimples
+      const errorsList = Array.isArray(dataJson.errors) && dataJson.errors.length > 0 ? ` (${dataJson.errors.join('; ')})` : '';
+      const isBillable = Boolean(dataJson.header && dataJson.header.billable);
+
+      // Código 601: Falha de Autenticação / Token Inválido na InfoSimples (billable: false)
       if (code === 601) {
-        const authErrorMsg = `Falha de autenticação na InfoSimples (Código 601): ${codeMessage || 'Não foi possível se autenticar com o token informado'}.`;
+        const authErrorMsg = `Falha de autenticação na InfoSimples (Código 601): ${codeMessage || 'Não foi possível se autenticar com o token informado'}.${errorsList}`;
         console.error(`🚨 [InfoSimples FGTS] ${authErrorMsg} (CNPJ consultado: ${digits})`);
 
-        // Dispara e-mail de alerta para o administrador (com proteção de cooldown contra flood)
         const now = Date.now();
         if (now - lastInfoSimplesAlertSent > INFOSIMPLES_ALERT_COOLDOWN_MS) {
           lastInfoSimplesAlertSent = now;
@@ -3215,6 +3217,8 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
             details: {
               'Código InfoSimples': '601',
               'Mensagem': codeMessage || 'Não foi possível se autenticar com o token informado.',
+              'Erros Adicionais': errorsList || 'Nenhum',
+              'Tarifado (Billable)': isBillable ? 'Sim' : 'Não',
               'CNPJ Consultado': digits,
               'Cliente Protheus': razaoClienteProtheus || 'Não informado',
               'Ação Recomendada': 'Acesse o dashboard da InfoSimples (api.infosimples.com), verifique se o token está correto e configure-o na variável de ambiente INFOSIMPLES_TOKEN no Render ou nas Configurações de Score.'
@@ -3233,6 +3237,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           motivo: authErrorMsg,
           code,
           codeMessage,
+          billable: isBillable,
           _status: {
             status: 'ERRO',
             provedor: 'InfoSimples / Caixa',
@@ -3242,37 +3247,126 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
         };
       }
 
-      // Código 602: Saldo Insuficiente / Limite Excedido na InfoSimples
-      if (code === 602) {
-        const saldoMsg = `InfoSimples (Código 602): ${codeMessage || 'Saldo insuficiente ou limite mensal excedido na conta'}.`;
-        console.error(`🚨 [InfoSimples FGTS] ${saldoMsg}`);
+      // Código 603: Token sem autorização ao serviço ou limite de uso excedido (billable: false)
+      if (code === 603) {
+        const authServiceMsg = `InfoSimples (Código 603): ${codeMessage || 'Token não tem autorização para o serviço Caixa CRF ou atingiu limite de uso'}.${errorsList}`;
+        console.error(`🚨 [InfoSimples FGTS] ${authServiceMsg}`);
 
         const now = Date.now();
         if (now - lastInfoSimplesAlertSent > INFOSIMPLES_ALERT_COOLDOWN_MS) {
           lastInfoSimplesAlertSent = now;
           sendAlertEmail({
-            subject: '🚨 [Alerta Gemini-Cli] Erro 602 — Saldo/Limite na InfoSimples',
-            title: 'Saldo Insuficiente na InfoSimples (Código 602)',
-            message: 'A consulta de Regularidade do FGTS falhou porque a conta InfoSimples atingiu o limite de consultas ou está sem saldo.',
+            subject: '🚨 [Alerta Gemini-Cli] Erro 603 — Serviço Não Autorizado ou Limite Excedido na InfoSimples',
+            title: 'Serviço Não Autorizado ou Limite Excedido (Código 603)',
+            message: 'O token informado não tem autorização para a API Caixa CRF ou atingiu a cota de uso contratada.',
             details: {
-              'Código InfoSimples': '602',
+              'Código InfoSimples': '603',
               'Mensagem': codeMessage,
-              'CNPJ': digits,
-              'Ação Recomendada': 'Acesse o painel da InfoSimples e recarregue créditos para a API Caixa CRF.'
+              'CNPJ Consultado': digits,
+              'Ação Recomendada': 'Acesse o painel da InfoSimples e verifique se o serviço Caixa CRF está habilitado no token ou se a cota do plano precisa de recarga.'
             }
           }).catch(() => {});
         }
 
         return {
           executado: false,
-          motivo: saldoMsg,
+          motivo: authServiceMsg,
           code,
           codeMessage,
+          billable: isBillable,
           _status: {
             status: 'ERRO',
             provedor: 'InfoSimples / Caixa',
             tempoMs: Date.now() - t0,
-            mensagem: 'Erro 602: Saldo/Limite Insuficiente'
+            mensagem: 'Erro 603: Serviço Não Autorizado / Limite'
+          }
+        };
+      }
+
+      // Código 602: O serviço informado na URL não é válido (billable: false)
+      if (code === 602) {
+        const urlMsg = `InfoSimples (Código 602): O serviço informado na URL não é válido.${errorsList}`;
+        console.error(`🚨 [InfoSimples FGTS] ${urlMsg}`);
+        return {
+          executado: false,
+          motivo: urlMsg,
+          code,
+          codeMessage,
+          billable: isBillable,
+          _status: {
+            status: 'ERRO',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 602: Endpoint/Serviço Inválido'
+          }
+        };
+      }
+
+      // Código 604: A consulta não foi validada antes de pesquisar a fonte de origem (billable: false)
+      if (code === 604) {
+        return {
+          executado: false,
+          motivo: `InfoSimples (Código 604): Consulta não validada antes da fonte de origem.${errorsList}`,
+          code,
+          codeMessage,
+          billable: isBillable,
+          _status: {
+            status: 'ERRO',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 604: Falha Pré-Validação'
+          }
+        };
+      }
+
+      // Código 606: Parâmetros obrigatórios não foram enviados (billable: true — cobrado pela InfoSimples!)
+      if (code === 606) {
+        console.warn(`⚠️ [InfoSimples FGTS] Código 606 (Parâmetros obrigatórios faltantes — Cobrança tarifada!): ${codeMessage}${errorsList}`);
+        return {
+          executado: false,
+          motivo: `InfoSimples (Código 606): Parâmetros obrigatórios ausentes.${errorsList}`,
+          code,
+          codeMessage,
+          billable: true,
+          _status: {
+            status: 'ERRO',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 606: Parâmetro Obrigatório Ausente'
+          }
+        };
+      }
+
+      // Código 622: Tentativa de realizar a mesma consulta diversas vezes seguidas (billable: false)
+      if (code === 622) {
+        return {
+          executado: false,
+          motivo: `InfoSimples (Código 622): Consulta repetida em sequência para o mesmo CNPJ. Aguarde alguns instantes antes de tentar novamente.`,
+          code,
+          codeMessage,
+          billable: isBillable,
+          _status: {
+            status: 'ALERTA',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 622: Consulta Repetida (Aguarde)'
+          }
+        };
+      }
+
+      // Código 600: Erro inesperado no robô/fonte de origem (billable: false)
+      if (code === 600) {
+        return {
+          executado: false,
+          motivo: `InfoSimples (Código 600): Instabilidade temporária no portal da Caixa. ${codeMessage || ''}${errorsList}`,
+          code,
+          codeMessage,
+          billable: isBillable,
+          _status: {
+            status: 'ALERTA',
+            provedor: 'InfoSimples / Caixa',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Erro 600: Instabilidade Caixa Econômica'
           }
         };
       }
@@ -3295,6 +3389,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
           code,
           codeMessage,
+          billable: isBillable,
           _status: {
             status: 'ALERTA',
             provedor: 'InfoSimples / Caixa',
@@ -3306,9 +3401,10 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
 
       return {
         executado: false,
-        motivo: `InfoSimples retornou código ${code}: ${codeMessage}`,
+        motivo: `InfoSimples retornou código ${code}: ${codeMessage}${errorsList}`,
         code,
         codeMessage,
+        billable: isBillable,
         _status: {
           status: 'ERRO',
           provedor: 'InfoSimples / Caixa',
