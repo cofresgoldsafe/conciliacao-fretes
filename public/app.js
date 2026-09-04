@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const subGroupVendedores = document.getElementById('subGroupVendedores');
   const subGroupCompras = document.getElementById('subGroupCompras');
   const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
+  const subGroupAnalistaFin = document.getElementById('subGroupAnalistaFin');
   const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
   // Função global de sanitização contra DOM-based XSS
@@ -227,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTabVendedores = document.getElementById('mainTabVendedores');
     const mainTabCompras = document.getElementById('mainTabCompras');
     const mainTabFinanceiro = document.getElementById('mainTabFinanceiro');
+    const mainTabAnalistaFin = document.getElementById('mainTabAnalistaFin');
     const mainTabBi = document.getElementById('mainTabBi');
     const mainTabConfig = document.getElementById('mainTabConfig');
     
@@ -234,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isAdmin = (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin');
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
     if (!perms || isAdmin) {
-      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'configuracoes'];
+      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'analista-fin', 'configuracoes'];
     }
 
     if (mainTabTarefas) mainTabTarefas.style.display = ''; // Sempre visível para todos os colaboradores
@@ -243,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
     if (mainTabCompras) mainTabCompras.style.display = perms.includes('compras') ? '' : 'none';
     if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
+    if (mainTabAnalistaFin) mainTabAnalistaFin.style.display = (perms.includes('analista-fin') || perms.includes('financeiro')) ? '' : 'none';
     if (mainTabBi) mainTabBi.style.display = isAdmin ? '' : 'none';
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
@@ -669,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const subGroupVendedores = document.getElementById('subGroupVendedores');
     const subGroupCompras = document.getElementById('subGroupCompras');
     const subGroupFinanceiro = document.getElementById('subGroupFinanceiro');
+    const subGroupAnalistaFin = document.getElementById('subGroupAnalistaFin');
     const subGroupBi = document.getElementById('subGroupBi');
     const subGroupConfiguracoes = document.getElementById('subGroupConfiguracoes');
 
@@ -679,6 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (subGroupVendedores) subGroupVendedores.classList.add('hidden');
     if (subGroupCompras) subGroupCompras.classList.add('hidden');
     if (subGroupFinanceiro) subGroupFinanceiro.classList.add('hidden');
+    if (subGroupAnalistaFin) subGroupAnalistaFin.classList.add('hidden');
     if (subGroupBi) subGroupBi.classList.add('hidden');
     if (subGroupConfiguracoes) subGroupConfiguracoes.classList.add('hidden');
 
@@ -716,6 +721,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (subGroupFinanceiro) subGroupFinanceiro.classList.remove('hidden');
       firstSubBtn = subGroupFinanceiro ? subGroupFinanceiro.querySelector('.nav-tab-btn') : null;
       initConciliacaoBancaria();
+    } else if (targetMain === 'analista-fin') {
+      if (subGroupAnalistaFin) subGroupAnalistaFin.classList.remove('hidden');
+      firstSubBtn = subGroupAnalistaFin ? subGroupAnalistaFin.querySelector('.nav-tab-btn') : null;
     } else if (targetMain === 'bi') {
       if (subGroupBi) subGroupBi.classList.remove('hidden');
       firstSubBtn = subGroupBi ? subGroupBi.querySelector('.nav-tab-btn') : null;
@@ -1792,6 +1800,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const permVendedores = document.getElementById('permVendedores');
   const permCompras = document.getElementById('permCompras');
   const permFinanceiro = document.getElementById('permFinanceiro');
+  const permAnalistaFin = document.getElementById('permAnalistaFin');
   const permConfiguracoes = document.getElementById('permConfiguracoes');
   const userModalMsg = document.getElementById('userModalMsg');
   const usersTableBody = document.getElementById('usersTableBody');
@@ -1906,6 +1915,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (permVendedores) permVendedores.checked = true;
     if (permCompras) permCompras.checked = true;
     if (permFinanceiro) permFinanceiro.checked = false;
+    if (permAnalistaFin) permAnalistaFin.checked = false;
     if (permConfiguracoes) permConfiguracoes.checked = false;
     if (userModalMsg) userModalMsg.classList.add('hidden');
     if (userModal) userModal.classList.remove('hidden');
@@ -1931,6 +1941,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (permVendedores) permVendedores.checked = perms.includes('vendedores');
     if (permCompras) permCompras.checked = perms.includes('compras');
     if (permFinanceiro) permFinanceiro.checked = perms.includes('financeiro');
+    if (permAnalistaFin) permAnalistaFin.checked = perms.includes('analista-fin') || perms.includes('financeiro');
     if (permConfiguracoes) permConfiguracoes.checked = perms.includes('configuracoes');
 
     if (userModalMsg) userModalMsg.classList.add('hidden');
@@ -1967,6 +1978,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (permVendedores && permVendedores.checked) selectedPerms.push('vendedores');
       if (permCompras && permCompras.checked) selectedPerms.push('compras');
       if (permFinanceiro && permFinanceiro.checked) selectedPerms.push('financeiro');
+      if (permAnalistaFin && permAnalistaFin.checked) selectedPerms.push('analista-fin');
       if (permConfiguracoes && permConfiguracoes.checked) selectedPerms.push('configuracoes');
 
       if (selectedPerms.length === 0) {

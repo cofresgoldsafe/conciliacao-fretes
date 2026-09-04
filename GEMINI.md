@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.160 (Homologada em 03/09/2026 18:45)  
+> **Versão da Documentação:** v8.161 (Homologada em 03/09/2026 22:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-Aba Independente "Cadastro Funcion." sob AN. FINANCEIRO Homologada com Suporte a GSI, OAÇO e Sem Registro, Gestão de Chaves Pix com Cópia Rápida, CTPS, Contatos e Endereço, Auto-Sync com Módulo de Holerites, Enriquecimento Cruzado na Emissão de Recibos e 25 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 03/09/2026 18:45 (v8.160 - Implementação da sub-aba independente Cadastro Funcion. sob AN. FINANCEIRO e auto-sync de colaboradores)  
+> **Status:** Estável / Operacional em Produção (Nova Aba Principal Independente "ANALISTA FIN" com Sub-Abas "Documentos DP" e "Cadastro Funcion.", Desacoplada de ASSIST. FINANC., Controle RBAC, Portas Dinâmicas de Testes e 100% de Testes Aprovados)  
+> **Data da Última Auditoria:** 03/09/2026 22:15 (v8.161 - Reorganização estrutural: criação da aba principal ANALISTA FIN e isolamento de Documentos DP / Cadastro Funcion.)  
 
 ---
 
@@ -810,6 +810,18 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - *Exportação CSV Excel:* Exportação completa com BOM UTF-8 e delimitador `;`.
     - **Suíte de Testes Automatizados:**
       - `test_funcionarios_dp.js` com 5 asserções automatizadas cobrindo CRUD, filtros por PIX/empresa, atualização de ficha funcional, auto-sincronização a partir de holerites e exclusão segura (100% aprovados).
+56. [x] **Aba Principal Independente "ANALISTA FIN" com Sub-Abas "Documentos DP" e "Cadastro Funcion." (`public/index.html`, `public/app.js`, `test_frontend_modules.js`, `test_pedidos_compras.js`):**
+    - **Demanda Operacional & Arquitetura:**
+      - Atendendo à especificação do usuário, foi criada a nova aba principal de 1º nível **`📑 ANALISTA FIN`** (`#mainTabAnalistaFin`, `data-main-tab="analista-fin"`), posicionada estrategicamente no menu de navegação da SPA.
+      - Desacoplamento e extração total das sub-abas **`Documentos DP`** (`tab-holerites`) e **`Cadastro Funcion.`** (`tab-funcionarios`) de dentro de `💰 ASSIST. FINANC.`, alocando-as no seu container dedicado **`#subGroupAnalistaFin`**.
+      - A aba `💰 ASSIST. FINANC.` permanece focada em rotinas estritamente bancárias e crédito (*Conciliação Bancária, Extrato API Inter, Webhooks Pix Inter e Análise de Crédito*).
+    - **Navegação & RBAC (Controle de Acesso):**
+      - Integração completa em `switchMainTab` para ativação reativa de `#subGroupAnalistaFin` com foco automático na primeira sub-aba (*Documentos DP*).
+      - Controle de permissões (`applyUserPermissions`): visível para quem possuir permissão `analista-fin` ou herança de `financeiro` / perfil `admin`.
+      - Checkbox `permAnalistaFin` adicionado ao modal de usuários para atribuição granular de acessos.
+    - **Qualidade & Testes Automatizados:**
+      - Adicionado Teste 7 em `test_frontend_modules.js` validando a existência de `#mainTabAnalistaFin`, `#subGroupAnalistaFin`, a presença exclusiva das duas sub-abas no novo grupo e sua ausência em `#subGroupFinanceiro`.
+      - Correção de porta dinâmica em `test_pedidos_compras.js` prevenindo conflitos EADDRINUSE com servidores em background.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

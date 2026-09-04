@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.158">
+  <link rel="stylesheet" href="style.css?v=8.160">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 03/09/2026 15:58 (Correção Extração NF Parser Rodonaves v8.158)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 03/09/2026 22:09 (aba ANALISTA FIN independente com sub-abas Documentos DP e Cadastro Funcion.)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -59,6 +59,9 @@
       </button>
       <button class="main-tab-btn" data-main-tab="financeiro" id="mainTabFinanceiro">
         <span>💰 ASSIST. FINANC.</span>
+      </button>
+      <button class="main-tab-btn" data-main-tab="analista-fin" id="mainTabAnalistaFin">
+        <span>📑 ANALISTA FIN</span>
       </button>
       <button class="main-tab-btn" data-main-tab="bi" id="mainTabBi" style="display: none;">
         <span>📊 BI EXECUTIVO</span>
@@ -205,7 +208,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Análise de Crédito</span>
         </button>
-        <button class="nav-tab-btn" data-tab="tab-holerites" id="btnTabHolerites">
+      </div>
+
+      <!-- Sub-abas de Analista Financeiro -->
+      <div class="sub-tabs-group hidden" id="subGroupAnalistaFin" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+        <button class="nav-tab-btn active" data-tab="tab-holerites" id="btnTabHolerites">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>Documentos DP</span>
         </button>
@@ -4990,8 +4997,12 @@
                 <span>💰 5ª Aba: <strong>ASSIST. FINANC.</strong> (Conciliação Bancária Inter x Protheus)</span>
               </label>
               <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                <input type="checkbox" id="permAnalistaFin" value="analista-fin" checked />
+                <span>📑 6ª Aba: <strong>ANALISTA FIN</strong> (Documentos DP & Cadastro Funcion.)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
                 <input type="checkbox" id="permConfiguracoes" value="configuracoes" />
-                <span>⚙️ 6ª Aba: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
+                <span>⚙️ 7ª Aba: <strong>CONFIGURAÇÕES</strong> (Gerenciamento de Usuários)</span>
               </label>
             </div>
           </div>
@@ -5978,12 +5989,12 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.158"></script>
-  <script src="js/bi_indices.js?v=8.158"></script>
-  <script src="js/bi_autorizacoes.js?v=8.158"></script>
-  <script src="js/gordura_frete.js?v=8.158"></script>
-  <script src="js/fechamento_vendedores.js?v=8.158"></script>
-  <script type="module" src="js/tarefas.js?v=8.158"></script>
+  <script src="js/bi.js?v=8.160"></script>
+  <script src="js/bi_indices.js?v=8.160"></script>
+  <script src="js/bi_autorizacoes.js?v=8.160"></script>
+  <script src="js/gordura_frete.js?v=8.160"></script>
+  <script src="js/fechamento_vendedores.js?v=8.160"></script>
+  <script type="module" src="js/tarefas.js?v=8.160"></script>
   <script src="js/holerites.js?v=8.160"></script>
   <script src="js/funcionarios_dp.js?v=8.160"></script>
   <script src="app.js?v=8.160"></script>

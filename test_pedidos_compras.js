@@ -189,12 +189,11 @@ function makeRequest(options, postData = null) {
   });
 }
 
-// 6. Testes HTTP de Segurança e Resposta da API
-async function runHttpSecurityTests() {
+async function runHttpSecurityTests(portToUse = 3000) {
   const adminToken = jwt.sign({ username: 'alexandre', name: 'Alexandre', role: 'admin', permissions: ['vendedores'] }, JWT_SECRET);
   const vendorToken = jwt.sign({ username: 'juliana', name: 'Juliana', role: 'vendedor', vendorCode: '000074', permissions: ['vendedores'] }, JWT_SECRET);
 
-  const testPort = 3000;
+  const testPort = portToUse;
 
   // 6.1. Requisição não autenticada deve ser rejeitada com 401
   await asyncTest('GET /api/vendedores/pedidos/compras sem token é bloqueado com 401 Unauthorized', async () => {
@@ -250,8 +249,9 @@ async function runHttpSecurityTests() {
 
 // Inicia servidor temporário para testes HTTP se não estiver ouvindo
 const tempServer = http.createServer(server);
-tempServer.listen(3000, () => {
-  runHttpSecurityTests().then(() => {
+tempServer.listen(0, () => {
+  const dynamicPort = tempServer.address().port;
+  runHttpSecurityTests(dynamicPort).then(() => {
     tempServer.close();
   }).catch((err) => {
     console.error('Erro nos testes HTTP:', err);

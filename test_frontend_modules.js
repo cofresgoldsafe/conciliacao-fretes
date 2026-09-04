@@ -214,6 +214,47 @@ async function runFrontendModulesTests() {
   }
 
   // -------------------------------------------------------------
+  // Teste 7: Validação da Aba ANALISTA FIN e Sub-Abas Dedicadas
+  // -------------------------------------------------------------
+  console.log('\n--- 7. Validação da Aba ANALISTA FIN & Sub-Abas Dedicadas ---');
+  try {
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    const html = fs.readFileSync(indexPath, 'utf-8');
+    const appJsPath = path.join(__dirname, 'public', 'app.js');
+    const appJsCode = fs.readFileSync(appJsPath, 'utf-8');
+
+    // Aba principal ANALISTA FIN
+    assert.ok(html.includes('id="mainTabAnalistaFin"'), 'Deve conter aba principal #mainTabAnalistaFin');
+    assert.ok(html.includes('data-main-tab="analista-fin"'), 'Aba deve ter data-main-tab="analista-fin"');
+    assert.ok(html.includes('ANALISTA FIN'), 'Rótulo deve conter ANALISTA FIN');
+
+    // Sub-grupo Analista Fin
+    assert.ok(html.includes('id="subGroupAnalistaFin"'), 'Deve conter container de sub-abas #subGroupAnalistaFin');
+
+    // Sub-abas no subGroupAnalistaFin
+    const subGroupAnalistaMatch = html.match(/id="subGroupAnalistaFin"[^>]*>([\s\S]*?)<\/div>/);
+    assert.ok(subGroupAnalistaMatch, 'Deve encontrar bloco #subGroupAnalistaFin');
+    const subGroupAnalistaContent = subGroupAnalistaMatch[1];
+    assert.ok(subGroupAnalistaContent.includes('id="btnTabHolerites"'), 'Documentos DP deve estar em subGroupAnalistaFin');
+    assert.ok(subGroupAnalistaContent.includes('id="btnTabFuncionarios"'), 'Cadastro Funcion. deve estar em subGroupAnalistaFin');
+
+    // Garantir que foram REMOVIDAS de subGroupFinanceiro
+    const subGroupFinMatch = html.match(/id="subGroupFinanceiro"[^>]*>([\s\S]*?)<\/div>/);
+    assert.ok(subGroupFinMatch, 'Deve encontrar bloco #subGroupFinanceiro');
+    const subGroupFinContent = subGroupFinMatch[1];
+    assert.ok(!subGroupFinContent.includes('id="btnTabHolerites"'), 'Documentos DP NÃO deve estar em subGroupFinanceiro');
+    assert.ok(!subGroupFinContent.includes('id="btnTabFuncionarios"'), 'Cadastro Funcion. NÃO deve estar em subGroupFinanceiro');
+
+    // Validação no app.js
+    assert.ok(appJsCode.includes('mainTabAnalistaFin'), 'app.js deve gerenciar mainTabAnalistaFin');
+    assert.ok(appJsCode.includes('subGroupAnalistaFin'), 'app.js deve gerenciar subGroupAnalistaFin');
+
+    report('Aba principal ANALISTA FIN e sub-abas Documentos DP / Cadastro Funcion. isoladas e validadas', true);
+  } catch (err) {
+    report('Aba principal ANALISTA FIN e sub-abas Documentos DP / Cadastro Funcion. isoladas e validadas', false, err.message);
+  }
+
+  // -------------------------------------------------------------
   // Resumo Final
   // -------------------------------------------------------------
   console.log('\n=============================================================');
