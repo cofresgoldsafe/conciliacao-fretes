@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.164 (Homologada em 04/09/2026 13:30)  
+> **Versão da Documentação:** v8.165 (Homologada em 04/09/2026 13:46)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (Consulta Automática Dívida Ativa PGFN via InfoSimples /receita-federal/pgfn-devedores, Motor de Score PGFN com Fail-Neutral, Ciclo de Vida do DOM Blindado, 100% de Testes Aprovados)  
-> **Data da Última Auditoria:** 04/09/2026 13:30 (v8.164 - Dívida Ativa PGFN InfoSimples, Verificação Adversarial Aprovada, 11 Testes Unitários)  
+> **Data da Última Auditoria:** 04/09/2026 13:46 (v8.165 - Deploy de Produção Dívida Ativa PGFN InfoSimples, 11 Testes Unitários)  
 
 ---
 
