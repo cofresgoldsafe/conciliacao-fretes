@@ -174,7 +174,8 @@ sequenceDiagram
 * **Validade Efêmera:** Os tokens de incorporação expiram em **10 minutos** (`exp: Math.floor(Date.now() / 1000) + 600`), prevenindo reutilização de URLs em histórico.
 * **Bloqueio Anti-IDOR / RBAC:** Usuários com perfil `vendedor` ou `user` recebem **HTTP 403 Forbidden** ao tentar acessar a rota `/api/bi/dashboard-executivo`.
 * **Interface Restrita:** O botão `mainTabBi` só é visível no DOM caso `user.role === 'admin'` ou `user.username === 'alexandre'`.
-* **Limpeza de UI (Seamless UX):** O iframe é gerado com os parâmetros `#bordered=false&titled=false&theme=<light|night>`, integrando-se visualmente como se fosse um componente nativo da SPA.
+* **Compatibilidade RLS no Supabase:** As tabelas públicas possuem `FORCE ROW LEVEL SECURITY` ativo com políticas concedidas para `service_role, postgres` (`sql/fix_supabase_metabase_permissions.sql`). A role `postgres` (usada pelo Metabase na conexão JDBC direta) possui acesso liberado para leitura (`ALL`), enquanto `anon` e `authenticated` permanecem estritamente bloqueadas no PostgREST.
+* **Controles de Carga & Cooldown SRE:** O endpoint `POST /api/bi/sync-faturamento` conta com trava de cooldown de 60 segundos (`FATURAMENTO_SYNC_COOLDOWN_MS = 60000`) para evitar sobrecarga de consultas concorrentes no ERP Protheus.
 
 ---
 
@@ -201,15 +202,13 @@ sequenceDiagram
 
 ## 7. Suíte de Testes Automatizados (`test_bi_embed.js`)
 
-Para assegurar estabilidade contínua e prevenir regressões, foi criada uma suíte de testes com **7 asserções automatizadas**:
+Para assegurar estabilidade contínua e prevenir regressões, foi criada uma suíte de testes com **24 asserções automatizadas** distribuídas em 5 blocos de auditoria:
 
-1. `Detecta status não configurado graciosamente quando envs estão ausentes`
-2. `Detecta status configurado corretamente e gera URL assinada`
-3. `Rejeita acesso não autenticado com 401 Unauthorized`
-4. `Bloqueia acesso de Vendedor com 403 Forbidden`
-5. `Bloqueia acesso de Usuário Operador com 403 Forbidden`
-6. `Permite acesso de Administrador (CEO/CFO) com 200 OK e URL assinada`
-7. `Endpoint /api/bi/status retorna metadados de configuração para admin`
+1. **Bloco 1 (Segurança & Red Team):** Rejeição 401 para requisições anônimas, bloqueios RBAC 403 para vendedor e user comum, proteção das rotas `/status` e `/sync-faturamento`.
+2. **Bloco 2 (Serviço & Criptografia):** Tratamento gracioso de envs, normalização de URL, geração de signed JWT HMAC-SHA256, suporte a tema light/night, retorno de URL assinada para admin e **suporte a `req.query.dashboardId` dinâmico**.
+3. **Bloco 3 (Clean Code & Arquitetura):** Encapsulamento IIFE estrito em `public/js/bi.js`, roteamento modular no `public/app.js`, isolamento backend em `services/bi_service.js` e telemetria.
+4. **Bloco 4 (SRE & Resiliência):** Sanitização DOM XSS com `escapeHtml`, `referrerpolicy="no-referrer"`, title acessível e controle anti-concorrência `isBiLoading`.
+5. **Bloco 5 (UI/UX & Acessibilidade):** Integridade de elementos DOM no `index.html`, estilos CSS responsivos e de tela cheia, importação com cache-busting, botões de sincronização e **seletor interativo de Dashboard ID (`#btnBiChangeDashboardId`)**.
 
 Para rodar a suíte localmente:
 ```bash

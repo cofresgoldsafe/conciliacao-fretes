@@ -4374,7 +4374,8 @@ app.get('/api/bi/dashboard-executivo', requireAuth, requireRole('admin'), (req, 
   try {
     const user = getUserFromReq(req);
     const theme = req.query.theme || 'night';
-    const result = generateSignedDashboardUrl({ theme });
+    const dashboardId = req.query.dashboardId ? parseInt(req.query.dashboardId, 10) : undefined;
+    const result = generateSignedDashboardUrl({ theme, dashboardId });
 
     // Registra auditoria de consulta ao BI no feed de auditoria
     logUserActivity({
@@ -4396,9 +4397,23 @@ app.get('/api/bi/status', requireAuth, requireRole('admin'), (req, res) => {
   return res.json({ success: true, ...getMetabaseConfigStatus() });
 });
 
+let lastFaturamentoSyncTimestamp = 0;
+const FATURAMENTO_SYNC_COOLDOWN_MS = 60 * 1000; // 1 minuto entre sincronizações manuais
+
 app.post('/api/bi/sync-faturamento', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const user = getUserFromReq(req);
+    const now = Date.now();
+
+    if (now - lastFaturamentoSyncTimestamp < FATURAMENTO_SYNC_COOLDOWN_MS) {
+      const waitSec = Math.ceil((FATURAMENTO_SYNC_COOLDOWN_MS - (now - lastFaturamentoSyncTimestamp)) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Sincronização de faturamento em cooldown. Por favor, aguarde ${waitSec} segundos para nova requisição.`
+      });
+    }
+
+    lastFaturamentoSyncTimestamp = now;
     const { dataIni, dataFim } = req.body || {};
 
     const resultado = await sincronizarFaturamentoConsolidado({

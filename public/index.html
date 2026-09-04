@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.165">
+  <link rel="stylesheet" href="style.css?v=8.168">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 04/09/2026 13:46 (consulta automatica divida ativa pgfn infosimples v8.164)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 04/09/2026 17:01 (Homologação Concluída Metabase Signed Embed e Seletor Dashboard ID)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -4448,13 +4448,33 @@
           </div>
           <div class="bi-actions">
             <span id="biLastUpdated" class="bi-last-updated"></span>
+            <button id="btnBiSyncFaturamento" class="btn btn-outline btn-sm" title="Sincronizar histórico de notas e faturamento do Protheus para o Metabase">
+              📥 Sync Faturamento
+            </button>
+            <button id="btnBiSyncIndices" class="btn btn-outline btn-sm" title="Sincronizar índices de liquidez, bancos e contas do Protheus para o Metabase">
+              📊 Sync Índices
+            </button>
             <button id="btnBiRefresh" class="btn btn-outline btn-sm" title="Recarregar dados do painel">
               🔄 Atualizar
             </button>
+            <a id="btnBiOpenExternal" class="btn btn-outline btn-sm" href="https://bi-gsi.onrender.com" target="_blank" rel="noopener noreferrer" title="Abrir Metabase em nova aba">
+              ↗️ Abrir Metabase
+            </a>
             <button id="btnBiFullscreen" class="btn btn-outline btn-sm" title="Alternar modo Tela Cheia">
               ⛶ Tela Cheia
             </button>
           </div>
+        </div>
+
+        <!-- Barra de Telemetria e Status dos Dados de BI -->
+        <div id="biTelemetryBar" class="card" style="padding: 0.65rem 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; font-size: 0.85rem; border-left: 4px solid var(--primary-color, #3b82f6);">
+          <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;" id="biTelemetryMetrics">
+            <span>📦 <strong>Faturamento:</strong> <span id="biTelFaturamento">Carregando...</span></span>
+            <span>📊 <strong>Índices Liquidez:</strong> <span id="biTelIndices">Carregando...</span></span>
+            <span>🛡️ <strong>Banco Supabase:</strong> <span id="biTelSupabase" class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">RLS Seguro</span></span>
+            <span>🎯 <strong>Dashboard:</strong> <button id="btnBiChangeDashboardId" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.4); cursor: pointer; padding: 2px 8px; border-radius: 4px; font-weight: bold;" title="Clique para testar outro ID de Dashboard (ex: 1, 2, 3...)"><span id="biTelDashboardId">1</span> ✏️</button></span>
+          </div>
+          <div id="biTelemetryMsg" style="color: var(--text-muted, #94a3b8); font-size: 0.8rem;"></div>
         </div>
 
         <!-- Container de Status / Guia de Configuração (Exibido se Metabase não configurado) -->
@@ -6009,14 +6029,14 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.165"></script>
-  <script src="js/bi_indices.js?v=8.165"></script>
-  <script src="js/bi_autorizacoes.js?v=8.165"></script>
-  <script src="js/gordura_frete.js?v=8.165"></script>
-  <script src="js/fechamento_vendedores.js?v=8.165"></script>
-  <script type="module" src="js/tarefas.js?v=8.165"></script>
-  <script src="js/holerites.js?v=8.165"></script>
-  <script src="js/funcionarios_dp.js?v=8.165"></script>
-  <script src="app.js?v=8.165"></script>
+  <script src="js/bi.js?v=8.168"></script>
+  <script src="js/bi_indices.js?v=8.168"></script>
+  <script src="js/bi_autorizacoes.js?v=8.168"></script>
+  <script src="js/gordura_frete.js?v=8.168"></script>
+  <script src="js/fechamento_vendedores.js?v=8.168"></script>
+  <script type="module" src="js/tarefas.js?v=8.168"></script>
+  <script src="js/holerites.js?v=8.168"></script>
+  <script src="js/funcionarios_dp.js?v=8.168"></script>
+  <script src="app.js?v=8.168"></script>
 </body>
 </html>

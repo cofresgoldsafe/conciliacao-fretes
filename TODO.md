@@ -40,6 +40,8 @@
 - [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
 - [x] [CRED-04] Painel de Calibração de Pesos do Score em 6 blocos com sincronização dinâmica de rótulos dos seletores.
 - [x] [CRED-05] Auditoria Completa da Sub-aba Análise de Crédito: 12 suítes automatizadas, 78 testes 100% aprovados, resolução de reatribuição de const no histórico, contratos de API em `credito.js`, view BI SQL híbrida JSONB, mascaramento de token InfoSimples e robustez de decimais com ponto flutuante.
+- [x] [BI-01] Resolução de Lockout RLS no Metabase Analytics Supabase: Diagnóstico de 0 linhas, política unificada para `postgres, service_role`, script `sql/fix_supabase_metabase_permissions.sql`, botões de sincronização de Faturamento e Índices, link externo, telemetria de dados e cooldown SRE em `POST /api/bi/sync-faturamento` (22 testes aprovados em `test_bi_embed.js`).
+- [x] [BI-02] Homologação em Produção da Incorporação Estática Metabase, Publicação do Dashboard Executivo GSI, Seletor Dinâmico de Dashboard ID no Portal e 24 Testes Aprovados em `test_bi_embed.js`.
 - [ ] [INT-01] Ativação da gravação contábil direta no ERP Protheus via rotina AdvPL ExecAuto (`REST_AMARFRET.PRW` / `MATA116`) no AppServer TOTVS.
 
 ## 🌐 Infraestrutura & Domínio

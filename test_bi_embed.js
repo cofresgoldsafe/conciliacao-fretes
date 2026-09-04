@@ -211,6 +211,21 @@ async function runTests() {
       assert.strictEqual(res.body.dashboardId, 15);
     });
 
+    await runAsyncAssertion('2.6 Endpoint /api/bi/dashboard-executivo aceita sobrescrita de dashboardId via query param', async () => {
+      const res = await makeRequest(server, {
+        path: '/api/bi/dashboard-executivo?dashboardId=42',
+        headers: { 'Authorization': `Bearer ${adminToken}` }
+      });
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.dashboardId, 42);
+
+      const tokenMatch = res.body.embedUrl.match(/\/embed\/dashboard\/([^#]+)/);
+      assert.ok(tokenMatch, 'Deve conter token JWT');
+      const decoded = jwt.verify(tokenMatch[1], TEST_METABASE_SECRET);
+      assert.strictEqual(decoded.resource.dashboard, 42, 'JWT deve conter dashboard ID 42');
+    });
+
     // -------------------------------------------------------------
     // BLOCO 3: AUDITOR DE CLEAN CODE & ARQUITETURA MODULAR
     // -------------------------------------------------------------
@@ -296,6 +311,39 @@ async function runTests() {
     runAssertion('5.3 Script public/js/bi.js é importado em public/index.html com cache busting', () => {
       const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
       assert.ok(htmlContent.includes('<script src="js/bi.js?v='), 'Deve importar js/bi.js com parâmetro de versão');
+    });
+
+    runAssertion('5.4 Toolbar do Metabase inclui botões de sincronização (btnBiSyncFaturamento, btnBiSyncIndices, btnBiOpenExternal) e barra de telemetria', () => {
+      const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+      assert.ok(htmlContent.includes('id="btnBiSyncFaturamento"'), 'Deve conter #btnBiSyncFaturamento');
+      assert.ok(htmlContent.includes('id="btnBiSyncIndices"'), 'Deve conter #btnBiSyncIndices');
+      assert.ok(htmlContent.includes('id="btnBiOpenExternal"'), 'Deve conter #btnBiOpenExternal');
+      assert.ok(htmlContent.includes('id="biTelemetryBar"'), 'Deve conter #biTelemetryBar');
+      assert.ok(htmlContent.includes('id="biTelFaturamento"'), 'Deve conter #biTelFaturamento');
+      assert.ok(htmlContent.includes('id="biTelIndices"'), 'Deve conter #biTelIndices');
+    });
+
+    runAssertion('5.5 public/index.html e public/js/bi.js incluem seletor e indicador dinâmico de Dashboard ID', () => {
+      const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+      const biJsContent = fs.readFileSync(path.join(__dirname, 'public', 'js', 'bi.js'), 'utf8');
+      assert.ok(htmlContent.includes('id="btnBiChangeDashboardId"'), 'Deve conter #btnBiChangeDashboardId');
+      assert.ok(htmlContent.includes('id="biTelDashboardId"'), 'Deve conter #biTelDashboardId');
+      assert.ok(biJsContent.includes('getActiveDashboardId'), 'Deve implementar getActiveDashboardId');
+      assert.ok(biJsContent.includes('setActiveDashboardId'), 'Deve implementar setActiveDashboardId');
+      assert.ok(biJsContent.includes('window.getActiveBIDashboardId'), 'Deve exportar getActiveBIDashboardId');
+    });
+
+    runAssertion('3.4 public/js/bi.js implementa rotinas de sincronização e telemetria', () => {
+      const biJsContent = fs.readFileSync(path.join(__dirname, 'public', 'js', 'bi.js'), 'utf8');
+      assert.ok(biJsContent.includes('syncFaturamentoProtheus'), 'Deve implementar syncFaturamentoProtheus');
+      assert.ok(biJsContent.includes('syncIndicesProtheus'), 'Deve implementar syncIndicesProtheus');
+      assert.ok(biJsContent.includes('loadBITelemetry'), 'Deve implementar loadBITelemetry');
+      assert.ok(biJsContent.includes('getAuthToken'), 'Deve implementar getAuthToken');
+    });
+
+    runAssertion('1.6 Audit de RLS: postgres_db.js define política unificada contemplando as roles service_role E postgres', () => {
+      const pgDbContent = fs.readFileSync(path.join(__dirname, 'postgres_db.js'), 'utf8');
+      assert.ok(pgDbContent.includes('TO service_role, postgres'), 'A política de RLS deve contemplar as roles service_role e postgres para permitir consultas do Metabase');
     });
 
     // Restaura variáveis de ambiente originais

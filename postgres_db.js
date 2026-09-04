@@ -1039,11 +1039,13 @@ async function initPostgres() {
           await client.query(`
             DO $$
             BEGIN
-              IF NOT EXISTS (
+              -- Recria política unificada concedendo acesso irrestrito ao backend e ao Metabase (roles service_role e postgres)
+              IF EXISTS (
                 SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = '${tbl}' AND policyname = 'Acesso exclusivo backend'
               ) THEN
-                CREATE POLICY "Acesso exclusivo backend" ON public."${tbl}" TO service_role USING (true) WITH CHECK (true);
+                DROP POLICY "Acesso exclusivo backend" ON public."${tbl}";
               END IF;
+              CREATE POLICY "Acesso exclusivo backend" ON public."${tbl}" TO service_role, postgres USING (true) WITH CHECK (true);
             END $$;
           `);
         } catch (errRls) {

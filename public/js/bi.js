@@ -12,10 +12,27 @@
   let currentEmbedUrl = null;
 
   /**
+   * Obtém token de autorização da sessão
+   */
+  function getAuthToken() {
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) return sess.token;
+      }
+      return localStorage.getItem('gsi_auth_token') || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Inicializa o módulo de BI Executivo quando a aba for aberta
    */
   function initBITab() {
     setupBIEvents();
+    loadBITelemetry();
     if (!currentEmbedUrl) {
       loadBIDashboard(false);
     }
@@ -32,12 +49,249 @@
     if (btnRefresh) {
       btnRefresh.addEventListener('click', () => {
         loadBIDashboard(true);
+        loadBITelemetry();
       });
+    }
+
+    const btnSyncFat = document.getElementById('btnBiSyncFaturamento');
+    if (btnSyncFat) {
+      btnSyncFat.addEventListener('click', syncFaturamentoProtheus);
+    }
+
+    const btnSyncInd = document.getElementById('btnBiSyncIndices');
+    if (btnSyncInd) {
+      btnSyncInd.addEventListener('click', syncIndicesProtheus);
     }
 
     const btnFullscreen = document.getElementById('btnBiFullscreen');
     if (btnFullscreen) {
       btnFullscreen.addEventListener('click', toggleBIFullscreen);
+    }
+
+    const btnChangeDash = document.getElementById('btnBiChangeDashboardId');
+    if (btnChangeDash) {
+      btnChangeDash.addEventListener('click', () => {
+        const current = getActiveDashboardId() || document.getElementById('biTelDashboardId')?.textContent?.trim() || '1';
+        const novoId = prompt(
+          '🎯 Alterar / Testar ID do Dashboard Metabase:\n\n' +
+          'Informe o número do Dashboard (conforme aparece na URL do Metabase, ex: https://bi-gsi.onrender.com/dashboard/2):\n\n' +
+          '• Digite o número do Dashboard desejado (ex: 1, 2, 3...)\n' +
+          '• Ou deixe em branco para restaurar o padrão configurado nas variáveis de ambiente.',
+          current
+        );
+        if (novoId === null) return;
+        const parsed = parseInt(novoId.trim(), 10);
+        if (isNaN(parsed) || parsed <= 0) {
+          setActiveDashboardId(null);
+          alert('Padrão do servidor restaurado.');
+        } else {
+          setActiveDashboardId(parsed);
+          alert(`ID do Dashboard definido para ${parsed}. Recarregando painel...`);
+        }
+        loadBIDashboard(true);
+      });
+    }
+  }
+
+  /**
+   * Obtém o ID do Dashboard ativo (localStorage ou padrão do servidor)
+   */
+  function getActiveDashboardId() {
+    try {
+      const saved = localStorage.getItem('metabase_active_dashboard_id');
+      if (saved && !isNaN(parseInt(saved, 10))) {
+        return parseInt(saved, 10);
+      }
+    } catch {}
+    return null;
+  }
+
+  /**
+   * Define o ID do Dashboard ativo no localStorage
+   */
+  function setActiveDashboardId(id) {
+    try {
+      if (id && !isNaN(parseInt(id, 10))) {
+        localStorage.setItem('metabase_active_dashboard_id', String(id));
+      } else {
+        localStorage.removeItem('metabase_active_dashboard_id');
+      }
+    } catch {}
+  }
+
+  /**
+   * Sincroniza faturamento consolidado do Protheus para o Supabase / Metabase
+   */
+  async function syncFaturamentoProtheus() {
+    const btn = document.getElementById('btnBiSyncFaturamento');
+    const msgEl = document.getElementById('biTelemetryMsg');
+    const token = getAuthToken();
+
+    if (!token) {
+      alert('Sessão expirada. Por favor, faça login novamente.');
+      return;
+    }
+
+    const conf = confirm(
+      '📥 Sincronização de Faturamento para o Metabase:\n\n' +
+      'Deseja extrair as notas fiscais de vendas do Protheus das empresas MP (14), GSI (15) e OACO (16) ' +
+      'e atualizar o banco Supabase para alimentar os gráficos de vendas por mês, grupo e vendedor?\n\n' +
+      'Clique em OK para iniciar.'
+    );
+    if (!conf) return;
+
+    const originalText = btn ? btn.innerHTML : '';
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Sincronizando...';
+      }
+      if (msgEl) msgEl.textContent = '⏳ Sincronizando faturamento consolidado com o Protheus...';
+
+      const res = await fetch('/api/bi/sync-faturamento', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Falha na sincronização de faturamento.');
+      }
+
+      const count = data.data?.count || data.count || 0;
+      const duracao = data.data?.duracao_ms || data.duracao_ms || 0;
+      alert(`✅ Faturamento sincronizado com sucesso!\n\nTotal de itens faturados: ${count}\nDuração: ${(duracao / 1000).toFixed(1)}s\n\nO painel analítico do Metabase agora possui dados atualizados.`);
+      
+      await loadBITelemetry();
+      loadBIDashboard(true);
+    } catch (err) {
+      console.error('❌ [BI] Erro ao sincronizar faturamento:', err);
+      alert(`❌ Erro ao sincronizar faturamento: ${err.message}`);
+      if (msgEl) msgEl.textContent = `❌ Erro: ${err.message}`;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+  }
+
+  /**
+   * Sincroniza índices financeiros e saldos do Protheus para o Supabase / Metabase
+   */
+  async function syncIndicesProtheus() {
+    const btn = document.getElementById('btnBiSyncIndices');
+    const msgEl = document.getElementById('biTelemetryMsg');
+    const token = getAuthToken();
+
+    if (!token) {
+      alert('Sessão expirada. Por favor, faça login novamente.');
+      return;
+    }
+
+    const conf = confirm(
+      '📊 Sincronização de Índices para o Metabase:\n\n' +
+      'Deseja extrair disponibilidades bancárias (SE8), contas a receber (SE1), contas a pagar (SE2) ' +
+      'e estoque físico (SB2) das 3 empresas e registrar um novo snapshot no Supabase?\n\n' +
+      'Clique em OK para iniciar.'
+    );
+    if (!conf) return;
+
+    const originalText = btn ? btn.innerHTML : '';
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Sincronizando...';
+      }
+      if (msgEl) msgEl.textContent = '⏳ Sincronizando índices e contas com o Protheus...';
+
+      const res = await fetch('/api/bi/indices/sync', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Falha na sincronização de índices.');
+      }
+
+      alert('✅ Índices de liquidez sincronizados com sucesso!\n\nSnapshot diário atualizado no Supabase.');
+      
+      await loadBITelemetry();
+      loadBIDashboard(true);
+    } catch (err) {
+      console.error('❌ [BI] Erro ao sincronizar índices:', err);
+      alert(`❌ Erro ao sincronizar índices: ${err.message}`);
+      if (msgEl) msgEl.textContent = `❌ Erro: ${err.message}`;
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+  }
+
+  /**
+   * Carrega telemetria e contadores das tabelas analíticas no cabeçalho
+   */
+  async function loadBITelemetry() {
+    const token = getAuthToken();
+    if (!token) return;
+
+    const elFat = document.getElementById('biTelFaturamento');
+    const elInd = document.getElementById('biTelIndices');
+    const btnOpen = document.getElementById('btnBiOpenExternal');
+
+    try {
+      // 1. Estatísticas de faturamento
+      const resFat = await fetch(`/api/bi/faturamento-stats?_t=${Date.now()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resFat.ok) {
+        const dataFat = await resFat.json();
+        if (elFat) {
+          const totalItens = dataFat.stats?.totalItens || 0;
+          const totalValor = dataFat.stats?.totalValor || 0;
+          const valorFmt = totalValor ? ` (R$ ${Number(totalValor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : '';
+          elFat.innerHTML = totalItens > 0 
+            ? `<span style="color: #10b981; font-weight: 600;">${totalItens} itens</span>${valorFmt}`
+            : '<span style="color: #f59e0b; font-weight: 600;">0 itens (Clique em Sync Faturamento)</span>';
+        }
+      }
+
+      // 2. Estatísticas de histórico de índices
+      const resInd = await fetch(`/api/bi/indices/historico?limit=30&_t=${Date.now()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resInd.ok) {
+        const dataInd = await resInd.json();
+        if (elInd) {
+          const hist = Array.isArray(dataInd.historico) ? dataInd.historico : [];
+          elInd.innerHTML = hist.length > 0
+            ? `<span style="color: #10b981; font-weight: 600;">${hist.length} snapshots diários</span>`
+            : '<span style="color: #f59e0b; font-weight: 600;">0 snapshots (Clique em Sync Índices)</span>';
+        }
+      }
+
+      // 3. Status e URL do Metabase
+      const resStat = await fetch(`/api/bi/status?_t=${Date.now()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resStat.ok) {
+        const dataStat = await resStat.json();
+        if (btnOpen && dataStat.siteUrl) {
+          btnOpen.href = dataStat.siteUrl;
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ [BI Telemetria] Aviso ao consultar telemetria:', e.message);
     }
   }
 
@@ -48,15 +302,7 @@
   async function loadBIDashboard(forceRefresh = false) {
     if (isBiLoading) return;
 
-    let token = null;
-    try {
-      const rawSession = localStorage.getItem('conciliacao_fretes_session');
-      if (rawSession) {
-        const sess = JSON.parse(rawSession);
-        if (sess && sess.token) token = sess.token;
-      }
-      if (!token) token = localStorage.getItem('gsi_auth_token');
-    } catch {}
+    const token = getAuthToken();
 
     const biIframeContainer = document.getElementById('biIframeContainer');
     const biLoadingSpinner = document.getElementById('biLoadingSpinner');
@@ -75,10 +321,12 @@
       if (biStatusContainer) biStatusContainer.classList.add('hidden');
       if (btnRefresh) btnRefresh.disabled = true;
 
-      // Detecta preferência de tema atual do portal
+      // Detecta preferência de tema atual do portal e ID do Dashboard
       const currentTheme = document.body.classList.contains('light-theme') ? 'light' : 'night';
+      const activeDashId = getActiveDashboardId();
+      const dashQuery = activeDashId ? `&dashboardId=${encodeURIComponent(activeDashId)}` : '';
 
-      const res = await fetch(`/api/bi/dashboard-executivo?theme=${currentTheme}&_t=${Date.now()}`, {
+      const res = await fetch(`/api/bi/dashboard-executivo?theme=${currentTheme}${dashQuery}&_t=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -105,6 +353,10 @@
       if (data.success && data.embedUrl) {
         currentEmbedUrl = data.embedUrl;
         renderBIIframe(data.embedUrl);
+        const elDashId = document.getElementById('biTelDashboardId');
+        if (elDashId && data.dashboardId) {
+          elDashId.textContent = data.dashboardId;
+        }
         if (biLastUpdated) {
           const now = new Date();
           biLastUpdated.textContent = `Atualizado às ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
@@ -291,5 +543,7 @@
   window.initBITab = initBITab;
   window.loadBIDashboard = loadBIDashboard;
   window.toggleBIFullscreen = toggleBIFullscreen;
+  window.getActiveBIDashboardId = getActiveDashboardId;
+  window.setActiveBIDashboardId = setActiveDashboardId;
 
 })();

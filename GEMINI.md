@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.165 (Homologada em 04/09/2026 13:46)  
+> **Versão da Documentação:** v8.167 (Homologada em 04/09/2026 17:00)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Consulta Automática Dívida Ativa PGFN via InfoSimples /receita-federal/pgfn-devedores, Motor de Score PGFN com Fail-Neutral, Ciclo de Vida do DOM Blindado, 100% de Testes Aprovados)  
-> **Data da Última Auditoria:** 04/09/2026 13:46 (v8.165 - Deploy de Produção Dívida Ativa PGFN InfoSimples, 11 Testes Unitários)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Incorporação Estática do Metabase Analytics, Publicação do Dashboard Executivo GSI, Seletor Dinâmico de Dashboard ID, 24 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 04/09/2026 17:00 (v8.167 - Homologação Metabase Signed Embed e Seletor de Dashboard ID, 24 Testes Aprovados)  
 
 ---
 
@@ -851,8 +851,41 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - *Ficha do Pedido & Extrato Matemático:* Apresentação clara do valor devido com máscara monetária brasileira, badge de pontuação contextual (`+2 pts`, `-7 pts`, `-20 pts`, `0 pts`) e linha discriminada na tabela de auditoria de pontuação.
       - *Configurações do Score (`#tab-config-score`):* Bloco de parâmetros parametrizável com os inputs `cfg_peso_pgfn_zero`, `cfg_peso_pgfn_gt_50k` e `cfg_peso_pgfn_gt_capital`, sincronizados em tempo real com o motor de pontuação.
     - **Garantia de Qualidade & Verificação Adversarial:**
-      - Suíte automatizada `test_infosimples_pgfn.js` com 11 testes unitários cobrindo regras de risco, casos de borda (dívida zero, R$ 50k exato, prevalência de capital, capital nulo, fail-neutral), integridade do DOM (inputs irmãos), rotulagem e integridade HTTP.
-      - 100% de testes aprovados nas suítes `test_infosimples_pgfn.js`, `test_infosimples_fgts.js` e `test_frontend_modules.js`.
+58. [x] **Diagnóstico da Tela Metabase Analytics, Resolução do Lockout RLS no Supabase, Telemetria e Sincronização de Faturamento (`postgres_db.js`, `server.js`, `sql/fix_supabase_metabase_permissions.sql`, `public/index.html`, `public/js/bi.js`, `test_bi_embed.js`):**
+    - **Causa Raiz & Diagnóstico Aprofundado (0 Linhas no Metabase):**
+      - O usuário relatou que a tela `📈 Metabase Analytics` não estava trazendo nenhuma informação. Na captura `metabase-01.png`, queries diretas em `indices_liquidez_historico` retornavam *"Nenhum resultado! Mostrando 0 linhas"*.
+      - *Causa Técnica:* O script de hardening anterior ativou `FORCE ROW LEVEL SECURITY` com a política `CREATE POLICY "Acesso exclusivo backend" ON public.<tabela> TO service_role`.
+      - O Metabase (hospedado em `bi-gsi.onrender.com`) conecta via driver PostgreSQL padrão (porta 5432) com o usuário `postgres`. Como a tabela possuía `FORCE RLS` e o usuário `postgres` não é superuser no Supabase gerenciado, o PostgreSQL aplicou o *Default Deny* silencioso do RLS em todas as consultas `SELECT`, retornando conjunto vazio sem emitir erro de permissão.
+    - **Correção da Política de RLS no Backend (`postgres_db.js`):**
+      - Rotina `initDB` atualizada para recriar a política com as roles unificadas: `CREATE POLICY "Acesso exclusivo backend" ON public."${tbl}" TO service_role, postgres USING (true) WITH CHECK (true);`.
+      - As roles anônimas e públicas (`anon`, `authenticated`) continuam 100% bloqueadas via `REVOKE ALL` e sem política no PostgREST, mantendo íntegros os requisitos de segurança e os alertas do Supabase.
+    - **Script SQL de Remediação para o Supabase (`sql/fix_supabase_metabase_permissions.sql`):**
+      - Script SQL autônomo com aspas duplas estritas (`"Acesso exclusivo backend"`), concessão de privilégios de schema para `postgres, service_role`, atualização dinâmica de RLS em todas as tabelas e concessão de `GRANT SELECT` em todas as views analíticas (`vw_bi_faturamento_mensal`, `vw_bi_faturamento_grupo_mes`, `vw_bi_produtos_estoque`, `vw_indices_liquidez_diario`, etc.).
+    - **Controles de Sincronização e Telemetria no Frontend (`public/index.html` & `public/js/bi.js`):**
+      - Toolbar da sub-aba `📈 Metabase Analytics` enriquecida com os botões:
+        * `📥 Sync Faturamento` (`#btnBiSyncFaturamento`): dispara a carga Protheus -> Supabase das notas fiscais e vendas consolidadas das empresas MP (14), GSI (15) e OACO (16).
+        * `📊 Sync Índices` (`#btnBiSyncIndices`): dispara o recálculo e snapshot diário de liquidez e saldos bancários.
+        * `↗️ Abrir Metabase` (`#btnBiOpenExternal`): link dinâmico para acesso direto em nova aba ao painel do Metabase (`bi-gsi.onrender.com`).
+      - Barra de telemetria visual (`#biTelemetryBar`) abaixo da toolbar exibindo a quantidade de itens faturados sincronizados, contagem de snapshots de índices e status de RLS.
+    - **Resiliência SRE e Proteção de Concorrência (`server.js`):**
+      - Adicionada trava de cooldown de 60 segundos (`FATURAMENTO_SYNC_COOLDOWN_MS = 60 * 1000`) no endpoint `POST /api/bi/sync-faturamento`, evitando sobrecarga de consultas concorrentes pesadas no Protheus.
+    - **Auditoria Adversarial & Suíte de Testes:**
+      - Parecer formal do auditor aprovando a solução e garantindo conformidade com o princípio de menor privilégio.
+      - Expansão de `test_bi_embed.js` de 19 para 22 asserções cobrindo política de RLS para a role `postgres`, validação DOM dos novos botões e verificação dos métodos em `bi.js` (100% aprovados).
+59. [x] **Homologação em Produção da Incorporação Estática Metabase, Resolução de Erro de Incorporação e Switcher Dinâmico de Dashboard ID (`services/bi_service.js`, `server.js`, `public/index.html`, `public/js/bi.js`, `test_bi_embed.js`):**
+    - **Diagnóstico & Causa Raiz do Erro de Iframe (*"Incorporação não está habilitada para esse projeto"*):**
+      - O token assinado HMAC-SHA256 gerado pelo portal era matematicamente válido com a chave `METABASE_SECRET_KEY`.
+      - No Metabase, a criação do Dashboard "Dashboard Executivo GSI" (`/dashboard/1-dashboard-executivo-gsi`) não ativa a incorporação estática por padrão. O Metabase exige ação explícita de publicação individual do dashboard através do menu *Compartilhamento/Incorporação* ➔ *Incorporação Estática* ➔ Botão azul **"Publicar"** (*Publish*).
+      - Enquanto o botão "Publicar" não for acionado, o Metabase bloqueia consultas externas com a mensagem *"Incorporação não está habilitada para esse projeto"*.
+    - **Backend com Suporte a `dashboardId` Sobrecarregável (`server.js` & `services/bi_service.js`):**
+      - Endpoint `/api/bi/dashboard-executivo` atualizado para receber `req.query.dashboardId`, permitindo testes e alternância imediata de painéis analíticos sem necessidade de redeploy ou alteração de variáveis no Render.
+    - **Frontend com Seletor Interativo e Telemetria no Portal (`public/index.html` & `public/js/bi.js`):**
+      - Barra de telemetria enriquecida com o badge interativo `🎯 Dashboard: [ 1 ✏️ ]` (`#btnBiChangeDashboardId` e `#biTelDashboardId`).
+      - Ao clicar, o administrador pode digitar o número do Dashboard (ex: `1`, `2`, `3`) ou limpar para restaurar o padrão do servidor. A preferência é memorizada no `localStorage ('metabase_active_dashboard_id')` e o iframe é recarregado instantaneamente em tempo real.
+      - Funções `getActiveDashboardId()` e `setActiveDashboardId(id)` exportadas globalmente no objeto `window` (`window.getActiveBIDashboardId`, `window.setActiveBIDashboardId`).
+    - **Garantia de Qualidade & Suíte Automatizada (`test_bi_embed.js`):**
+      - Expansão da esteira de testes com as novas asserções `2.6` (validação de sobreposição de `dashboardId` via query param no endpoint REST e verificação do payload JWT decodificado) e `5.5` (validação DOM e exportações das funções de seleção de ID no cliente).
+      - 24 de 24 asserções aprovadas com 100% de sucesso.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
