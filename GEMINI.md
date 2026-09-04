@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.163 (Homologada em 04/09/2026 12:05)  
+> **Versão da Documentação:** v8.164 (Homologada em 04/09/2026 13:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Endpoint Oficial Caixa FGTS /caixa/regularidade da InfoSimples, Resolução do Código 602, Tratamento de Erro 601, Alerta por E-mail via Mailjet/SMTP, 100% de Testes Aprovados)  
-> **Data da Última Auditoria:** 04/09/2026 12:05 (v8.163 - Endpoint Oficial InfoSimples /caixa/regularidade, Cache Buster e Suíte Unitária)  
+> **Status:** Estável / Operacional em Produção (Consulta Automática Dívida Ativa PGFN via InfoSimples /receita-federal/pgfn-devedores, Motor de Score PGFN com Fail-Neutral, Ciclo de Vida do DOM Blindado, 100% de Testes Aprovados)  
+> **Data da Última Auditoria:** 04/09/2026 13:30 (v8.164 - Dívida Ativa PGFN InfoSimples, Verificação Adversarial Aprovada, 11 Testes Unitários)  
 
 ---
 
@@ -828,6 +828,31 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Qualidade & Testes Automatizados:**
       - Adicionado Teste 7 em `test_frontend_modules.js` validando a existência de `#mainTabAnalistaFin`, `#subGroupAnalistaFin`, a presença exclusiva das duas sub-abas no novo grupo e sua ausência em `#subGroupFinanceiro`.
       - Correção de porta dinâmica em `test_pedidos_compras.js` prevenindo conflitos EADDRINUSE com servidores em background.
+57. [x] **Consulta Automática de Dívida Ativa da União e FGTS (PGFN / Receita Federal via InfoSimples) (`server.js`, `analise_credito_engine.js`, `public/index.html`, `public/app.js`, `test_infosimples_pgfn.js`):**
+    - **Demanda de Negócio & Especificação:**
+      - Inclusão da verificação de débitos inscritos na Dívida Ativa da União e FGTS mantida pela Procuradoria-Geral da Fazenda Nacional (PGFN) e Receita Federal do Brasil via API oficial da InfoSimples (`/receita-federal/pgfn-devedores`).
+      - Identificação transparente de valores em aberto que representam risco severo de execução fiscal e penhora de contas bancárias.
+    - **Regras Matemáticas e Pesos no Motor de Risco (`analise_credito_engine.js`):**
+      - *Nada Consta (Dívida = R$ 0,00):* `+2.0 pts` (`peso_pgfn_zero`).
+      - *Dívida Ativa > R$ 50.000,00:* `-7.0 pts` (`peso_pgfn_gt_50k`).
+      - *Dívida Ativa > Capital Social:* `-20.0 pts` (`peso_pgfn_gt_capital`). Precedência estrita e não-cumulativa sobre os -7 pts quando ambas as condições forem verdadeiras.
+      - *Dívida Intermediária (R$ 0,01 a R$ 50.000,00 quando $\le$ Capital Social):* `0 pts` (neutro).
+      - *Arquitetura Fail-Neutral:* Em caso de timeout (25s), token não configurado ou instabilidade externa da InfoSimples/PGFN, a pontuação é fixada em `0 pts`, prevenindo qualquer penalização indevida ao cliente.
+      - A pontuação da PGFN integra-se ao sub-índice `subGrandeFalindo`.
+    - **Backend & Unificação HTTP (`server.js`):**
+      - Refatoração estrutural com a extração de `executarConsultaInfoSimples(servicoSlug, postBody, servicoNome)` genérica, eliminando ~130 linhas de duplicação entre as consultas de CRF Caixa e PGFN Devedores.
+      - Endpoint dedicado `POST /api/financeiro/analise-credito/consultar-pgfn`.
+      - Inclusão da promessa `consultarPgfnInfoSimples(cnpj)` no `Promise.allSettled` da rota `/protheus`, telemetria de latência no farol SRE `status_conexoes.pgfn_uniao` e retorno dos campos `pgfn_info`, `pgfn_total_divida`, `pgfn_executado`, `pgfn_tem_divida` e `pgfn_total_divida_formatado`.
+      - Reuso estrito do `INFOSIMPLES_TOKEN`, timeouts de 25s (`AbortController`), tratamento de códigos 600 a 622 e disparador de e-mail de alerta para erros 601/603 com cooldown de 15 minutos.
+    - **Interface, Acessibilidade WCAG e Ciclo de Vida do DOM (`public/index.html` & `public/app.js`):**
+      - *Bloco 6:* Botão outline âmbar `#btnConsultarPgfnInfoSimples` (`⚡ Consultar PGFN (InfoSimples)`), com feedback visual de carregamento (`⏳ Consultando PGFN...`).
+      - *Blindagem do DOM:* Container visual `#cr_pgfn_badge` desacoplado dos inputs `<input type="hidden" id="cr_pgfn_total_divida">` e `<input type="hidden" id="cr_pgfn_executado">`, garantindo que atualizações de `innerHTML` não destruam os nós de formulário do DOM.
+      - *Contraste WCAG:* Cores calibradas com fundo translúcido e texto esmeralda `#22c55e` para nada consta (AAA), vermelho `#f87171` para dívida ativa (AA) e amarelo `#fbbf24` para indisponibilidade.
+      - *Ficha do Pedido & Extrato Matemático:* Apresentação clara do valor devido com máscara monetária brasileira, badge de pontuação contextual (`+2 pts`, `-7 pts`, `-20 pts`, `0 pts`) e linha discriminada na tabela de auditoria de pontuação.
+      - *Configurações do Score (`#tab-config-score`):* Bloco de parâmetros parametrizável com os inputs `cfg_peso_pgfn_zero`, `cfg_peso_pgfn_gt_50k` e `cfg_peso_pgfn_gt_capital`, sincronizados em tempo real com o motor de pontuação.
+    - **Garantia de Qualidade & Verificação Adversarial:**
+      - Suíte automatizada `test_infosimples_pgfn.js` com 11 testes unitários cobrindo regras de risco, casos de borda (dívida zero, R$ 50k exato, prevalência de capital, capital nulo, fail-neutral), integridade do DOM (inputs irmãos), rotulagem e integridade HTTP.
+      - 100% de testes aprovados nas suítes `test_infosimples_pgfn.js`, `test_infosimples_fgts.js` e `test_frontend_modules.js`.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
@@ -850,6 +875,7 @@ A tabela abaixo define o comportamento formal de cada serviço externo consumido
 | **Wayback Machine** *(Archive.org)* | 5.000 ms | Captura erro HTTP/timeout e sinaliza `wayback_offline = true`. | `0 pts` (Neutro) | 🔴 Vermelho ou 🟡 Alerta | Informa `Indisponível (Archive.org)` na maturidade digital. |
 | **Servidor MX** *(DNS Resolution)* | 5.000 ms | Captura `SERVFAIL`/`ETIMEOUT` e sinaliza `servidor_mx_offline = true`. | `0 pts` (Elimina penalidade de `-4 pts`) | 🔴 Vermelho | Informa `Falha DNS` sem taxar o domínio corporativo como inexistente. |
 | **FGTS Caixa** *(InfoSimples REST API)* | 25.000 ms | Retorna `executado = false` com mensagem descritiva do motivo da recusa/latência. | `0 pts` (Neutro) | 🟡 Alerta ou 🔵 Info | Renderiza badge explicativo em amarelo com motivo (`Token não configurado`, `Timeout Caixa`) em vez de ocultar. |
+| **PGFN Dívida Ativa** *(InfoSimples REST API)* | 25.000 ms | Retorna `executado = false` com motivo descritivo da recusa/latência. | `0 pts` (Neutro) | 🟡 Alerta ou 🔵 Info | Exibe badge explicativo em amarelo/vermelho com motivo sem penalizar pontuação. |
 | **ERP TOTVS Protheus** *(Railway SQL Relay)* | 15.000 ms | Distingue `404` (Pedido não existe) de `500/504` (Instabilidade de infraestrutura). | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Exibe banner informativo de erro de rede sem induzir operador a crer que digitou pedido errado. |
 | **Parser Serasa PDF** *(Python in-memory)* | 15.000 ms | Processo Python cancelado com `SIGKILL` após 15s se PDF travar ou for corrompido. | N/A | N/A | Exibe mensagem de erro orientando reenvio de PDF válido. |
 

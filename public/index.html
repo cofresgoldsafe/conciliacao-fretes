@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.162">
+  <link rel="stylesheet" href="style.css?v=8.164">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 04/09/2026 12:05 (endpoint oficial infosimples caixa/regularidade v8.163)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 04/09/2026 13:30 (Consulta Dívida Ativa PGFN InfoSimples Finalizada)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -2885,7 +2885,7 @@
               </div>
               <div class="form-group" style="grid-column: 1 / -1; background: rgba(15, 23, 42, 0.4); padding: 0.85rem; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.3);">
                 <label for="cfg_infosimples_token" style="display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: #38bdf8;">
-                  <span>🔑 Token da API InfoSimples (Automação Consulta FGTS / CRF Caixa)</span>
+                  <span>🔑 Token da API InfoSimples (Automação Consulta FGTS / CRF Caixa & PGFN Dívida Ativa)</span>
                   <a href="https://api.infosimples.com/" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: #38bdf8; text-decoration: underline;">Painel InfoSimples ↗</a>
                 </label>
                 <input type="text" id="cfg_infosimples_token" class="form-input" placeholder="Cole seu token de autenticação da InfoSimples aqui..." style="font-family: var(--font-mono); font-size: 0.85rem;" />
@@ -2905,6 +2905,18 @@
               <div class="form-group">
                 <label for="cfg_peso_razao_fgts_nao_encontrado">Razão Não Encontrada no FGTS (-pts)</label>
                 <input type="number" id="cfg_peso_razao_fgts_nao_encontrado" class="form-input" value="-5" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pgfn_zero">Dívida Ativa PGFN = R$ 0 (+pts)</label>
+                <input type="number" id="cfg_peso_pgfn_zero" class="form-input" value="2" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pgfn_gt_50k">Dívida Ativa PGFN &gt; R$ 50k (-pts)</label>
+                <input type="number" id="cfg_peso_pgfn_gt_50k" class="form-input" value="-7" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_pgfn_gt_capital">Dívida Ativa PGFN &gt; Capital Social (-pts)</label>
+                <input type="number" id="cfg_peso_pgfn_gt_capital" class="form-input" value="-20" />
               </div>
             </div>
           </div>
@@ -3654,6 +3666,9 @@
             <h3 style="font-size: 0.95rem; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
               <span>6. FGTS, Sócios & Certidões Comerciais</span>
               <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="btnConsultarPgfnInfoSimples" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.65rem; border-color: #f59e0b; color: #f59e0b; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer;" title="Consultar Dívida Ativa PGFN automaticamente via API InfoSimples">
+                  ⚡ Consultar PGFN (InfoSimples)
+                </button>
                 <button type="button" id="btnConsultarFgtsInfoSimples" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.65rem; border-color: #38bdf8; color: #38bdf8; display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer;" title="Consultar FGTS automaticamente via API InfoSimples">
                   ⚡ Consultar FGTS (InfoSimples)
                 </button>
@@ -3664,7 +3679,12 @@
             </h3>
 
             <!-- Badge de Status Automático da Consulta FGTS Caixa -->
-            <div id="cr_fgts_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 1rem;"></div>
+            <div id="cr_fgts_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 0.75rem;"></div>
+
+            <!-- Badge de Status Automático da Dívida Ativa PGFN -->
+            <div id="cr_pgfn_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 1rem;"></div>
+            <input type="hidden" id="cr_pgfn_total_divida" value="" />
+            <input type="hidden" id="cr_pgfn_executado" value="" />
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
               <div class="form-group">
@@ -5989,14 +6009,14 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.163"></script>
-  <script src="js/bi_indices.js?v=8.163"></script>
-  <script src="js/bi_autorizacoes.js?v=8.163"></script>
-  <script src="js/gordura_frete.js?v=8.163"></script>
-  <script src="js/fechamento_vendedores.js?v=8.163"></script>
-  <script type="module" src="js/tarefas.js?v=8.163"></script>
-  <script src="js/holerites.js?v=8.163"></script>
-  <script src="js/funcionarios_dp.js?v=8.163"></script>
-  <script src="app.js?v=8.163"></script>
+  <script src="js/bi.js?v=8.164"></script>
+  <script src="js/bi_indices.js?v=8.164"></script>
+  <script src="js/bi_autorizacoes.js?v=8.164"></script>
+  <script src="js/gordura_frete.js?v=8.164"></script>
+  <script src="js/fechamento_vendedores.js?v=8.164"></script>
+  <script type="module" src="js/tarefas.js?v=8.164"></script>
+  <script src="js/holerites.js?v=8.164"></script>
+  <script src="js/funcionarios_dp.js?v=8.164"></script>
+  <script src="app.js?v=8.164"></script>
 </body>
 </html>

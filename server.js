@@ -3099,24 +3099,20 @@ async function consultarMx(dominio) {
 let lastInfoSimplesAlertSent = 0;
 const INFOSIMPLES_ALERT_COOLDOWN_MS = 15 * 60 * 1000;
 
-// Função utilitária para consulta de Regularidade do FGTS (CRF) na Caixa via API InfoSimples
-async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
-  if (!cnpjStr) return null;
-  const digits = String(cnpjStr).replace(/\D/g, '');
-  if (digits.length !== 14) return null;
+// Função genérica e resiliente para execução de consultas na API InfoSimples v2
+async function executarConsultaInfoSimples(servicoSlug, postBody, servicoNome = 'InfoSimples') {
   const t0 = Date.now();
-
-  // Busca token nas variáveis de ambiente ou nas configurações de score do sistema
   const cfg = typeof getScoreConfig === 'function' ? getScoreConfig() : {};
   const token = (process.env.INFOSIMPLES_TOKEN || cfg.infosimples_token || '').trim();
 
   if (!token) {
     return {
+      sucesso: false,
       executado: false,
       motivo: 'Token da API InfoSimples não configurado. Configure em Configurações de Score ou via INFOSIMPLES_TOKEN no Render.',
       _status: {
         status: 'ALERTA',
-        provedor: 'InfoSimples / Caixa',
+        provedor: servicoNome,
         tempoMs: 0,
         mensagem: 'Token da API InfoSimples não configurado'
       }
@@ -3126,88 +3122,46 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
-    
-    const postBody = {
-      token: token,
-      cnpj: digits,
-      timeout: 30
-    };
 
-    const res = await fetch('https://api.infosimples.com/api/v2/consultas/caixa/regularidade', {
+    const fullBody = Object.assign({ token: token, timeout: 30 }, postBody);
+
+    const res = await fetch(`https://api.infosimples.com/api/v2/consultas/${servicoSlug}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'Gemini-Cli/1.0'
       },
-      body: JSON.stringify(postBody),
+      body: JSON.stringify(fullBody),
       signal: controller.signal
     });
     clearTimeout(timeout);
+
+    const tempoMs = Date.now() - t0;
 
     if (res.ok) {
       const dataJson = await res.json();
       const code = dataJson.code;
       const codeMessage = dataJson.code_message || '';
       const dataList = Array.isArray(dataJson.data) ? dataJson.data : (dataJson.data ? [dataJson.data] : []);
-
-      // Código 200/201: Sucesso na consulta com dados retornados
-      if ((code === 200 || code === 201) && dataList.length > 0 && dataList[0]) {
-        const item = dataList[0];
-        const razaoCaixa = String(item.razao_social || item.nome || item.empregador || '').trim();
-        const situacao = String(item.situacao || item.situacao_descricao || item.mensagem || '').trim().toUpperCase();
-        const isRegular = situacao.includes('REGULAR') && !situacao.includes('NÃO') && !situacao.includes('IRREGULAR');
-        const validade = item.validade_fim_data || item.validade_fim || item.validade_ate || item.validade || item.data_validade || '';
-        const endereco = item.endereco || item.logradouro || '';
-        const numeroCrf = item.numero_crf || item.crf || item.certificado || '';
-
-        // Comparação de similaridade entre Razão Social da Caixa e do Protheus/Receita
-        let razaoFgtsIgual = 'N';
-        let similarity = 0;
-        if (razaoClienteProtheus && razaoCaixa) {
-          const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/\b(LTDA|EIRELI|EPP|ME|SA|S\/A|CIA|COMPANHIA|SOCIEDADE|IND|COM|DISTRIBUIDORA)\b/g, '');
-          const n1 = norm(razaoClienteProtheus);
-          const n2 = norm(razaoCaixa);
-          
-          if (n1 === n2 || (n1.length > 3 && n2.length > 3 && (n1.includes(n2) || n2.includes(n1)))) {
-            razaoFgtsIgual = 'S';
-            similarity = 1.0;
-          } else {
-            let matches = 0;
-            const w1 = razaoClienteProtheus.toUpperCase().split(/\s+/).filter(w => w.length > 2);
-            const w2 = razaoCaixa.toUpperCase().split(/\s+/).filter(w => w.length > 2);
-            w1.forEach(w => { if (w2.includes(w)) matches++; });
-            similarity = w1.length > 0 && w2.length > 0 ? (matches / Math.max(w1.length, w2.length)) : 0;
-            razaoFgtsIgual = similarity >= 0.5 ? 'S' : 'N';
-          }
-        }
-
-        return {
-          executado: true,
-          encontrado: true,
-          fgts_situacao_regular: isRegular ? 'S' : 'N',
-          razao_fgts_igual: razaoFgtsIgual,
-          razao_social_caixa: razaoCaixa,
-          situacao_caixa: situacao,
-          validade_crf: validade,
-          endereco_caixa: endereco,
-          numero_crf: numeroCrf,
-          similarity,
-          _status: {
-            status: isRegular && razaoFgtsIgual === 'S' ? 'OK' : 'ALERTA',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
-            mensagem: isRegular ? (razaoFgtsIgual === 'S' ? `CRF Regular (Validade: ${validade || 'Válido'})` : 'Razão Social divergente na Caixa') : 'Certidão Irregular na Caixa'
-          }
-        };
-      }
-
       const errorsList = Array.isArray(dataJson.errors) && dataJson.errors.length > 0 ? ` (${dataJson.errors.join('; ')})` : '';
       const isBillable = Boolean(dataJson.header && dataJson.header.billable);
+
+      // Código 200/201: Sucesso na consulta
+      if (code === 200 || code === 201) {
+        return {
+          sucesso: true,
+          code,
+          codeMessage,
+          data: dataList,
+          header: dataJson.header,
+          tempoMs
+        };
+      }
 
       // Código 601: Falha de Autenticação / Token Inválido na InfoSimples (billable: false)
       if (code === 601) {
         const authErrorMsg = `Falha de autenticação na InfoSimples (Código 601): ${codeMessage || 'Não foi possível se autenticar com o token informado'}.${errorsList}`;
-        console.error(`🚨 [InfoSimples FGTS] ${authErrorMsg} (CNPJ consultado: ${digits})`);
+        console.error(`🚨 [${servicoNome}] ${authErrorMsg} (Parâmetros: ${JSON.stringify(postBody)})`);
 
         const now = Date.now();
         if (now - lastInfoSimplesAlertSent > INFOSIMPLES_ALERT_COOLDOWN_MS) {
@@ -3215,24 +3169,24 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           sendAlertEmail({
             subject: '🚨 [Alerta Gemini-Cli] Erro 601 — Falha de Autenticação no Token InfoSimples',
             title: 'Erro de Autenticação — Token InfoSimples (Código 601)',
-            message: 'A consulta de Regularidade do FGTS (Caixa CRF) falhou porque a InfoSimples rejeitou a autenticação do token informado.',
+            message: `A consulta ${servicoNome} falhou porque a InfoSimples rejeitou a autenticação do token informado.`,
             details: {
+              'Serviço': servicoNome,
               'Código InfoSimples': '601',
               'Mensagem': codeMessage || 'Não foi possível se autenticar com o token informado.',
               'Erros Adicionais': errorsList || 'Nenhum',
               'Tarifado (Billable)': isBillable ? 'Sim' : 'Não',
-              'CNPJ Consultado': digits,
-              'Cliente Protheus': razaoClienteProtheus || 'Não informado',
               'Ação Recomendada': 'Acesse o dashboard da InfoSimples (api.infosimples.com), verifique se o token está correto e configure-o na variável de ambiente INFOSIMPLES_TOKEN no Render ou nas Configurações de Score.'
             }
           }).then(() => {
-            console.log('🟢 [InfoSimples FGTS] E-mail de alerta sobre erro 601 enviado com sucesso ao administrador.');
+            console.log(`🟢 [${servicoNome}] E-mail de alerta sobre erro 601 enviado com sucesso ao administrador.`);
           }).catch(mailErr => {
-            console.warn('⚠️ [InfoSimples FGTS] Falha ao disparar e-mail de alerta:', mailErr.message);
+            console.warn(`⚠️ [${servicoNome}] Falha ao disparar e-mail de alerta:`, mailErr.message);
           });
         }
 
         return {
+          sucesso: false,
           executado: false,
           encontrado: false,
           auth_error: true,
@@ -3242,8 +3196,8 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           billable: isBillable,
           _status: {
             status: 'ERRO',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
+            provedor: servicoNome,
+            tempoMs,
             mensagem: 'Erro 601: Token Inválido'
           }
         };
@@ -3251,8 +3205,8 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
 
       // Código 603: Token sem autorização ao serviço ou limite de uso excedido (billable: false)
       if (code === 603) {
-        const authServiceMsg = `InfoSimples (Código 603): ${codeMessage || 'Token não tem autorização para o serviço Caixa CRF ou atingiu limite de uso'}.${errorsList}`;
-        console.error(`🚨 [InfoSimples FGTS] ${authServiceMsg}`);
+        const authServiceMsg = `InfoSimples (Código 603): ${codeMessage || 'Token não tem autorização para o serviço ou atingiu limite de uso'}.${errorsList}`;
+        console.error(`🚨 [${servicoNome}] ${authServiceMsg}`);
 
         const now = Date.now();
         if (now - lastInfoSimplesAlertSent > INFOSIMPLES_ALERT_COOLDOWN_MS) {
@@ -3260,17 +3214,18 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           sendAlertEmail({
             subject: '🚨 [Alerta Gemini-Cli] Erro 603 — Serviço Não Autorizado ou Limite Excedido na InfoSimples',
             title: 'Serviço Não Autorizado ou Limite Excedido (Código 603)',
-            message: 'O token informado não tem autorização para a API Caixa CRF ou atingiu a cota de uso contratada.',
+            message: `O token informado não tem autorização para o serviço ${servicoNome} ou atingiu a cota de uso contratada.`,
             details: {
+              'Serviço': servicoNome,
               'Código InfoSimples': '603',
               'Mensagem': codeMessage,
-              'CNPJ Consultado': digits,
-              'Ação Recomendada': 'Acesse o painel da InfoSimples e verifique se o serviço Caixa CRF está habilitado no token ou se a cota do plano precisa de recarga.'
+              'Ação Recomendada': 'Acesse o painel da InfoSimples e verifique se o serviço está habilitado no token ou se a cota do plano precisa de recarga.'
             }
           }).catch(() => {});
         }
 
         return {
+          sucesso: false,
           executado: false,
           motivo: authServiceMsg,
           code,
@@ -3278,8 +3233,8 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           billable: isBillable,
           _status: {
             status: 'ERRO',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
+            provedor: servicoNome,
+            tempoMs,
             mensagem: 'Erro 603: Serviço Não Autorizado / Limite'
           }
         };
@@ -3288,8 +3243,9 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
       // Código 602: O serviço informado na URL não é válido (billable: false)
       if (code === 602) {
         const urlMsg = `InfoSimples (Código 602): O serviço informado na URL não é válido.${errorsList}`;
-        console.error(`🚨 [InfoSimples FGTS] ${urlMsg}`);
+        console.error(`🚨 [${servicoNome}] ${urlMsg}`);
         return {
+          sucesso: false,
           executado: false,
           motivo: urlMsg,
           code,
@@ -3297,8 +3253,8 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           billable: isBillable,
           _status: {
             status: 'ERRO',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
+            provedor: servicoNome,
+            tempoMs,
             mensagem: 'Erro 602: Endpoint/Serviço Inválido'
           }
         };
@@ -3307,6 +3263,7 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
       // Código 604: A consulta não foi validada antes de pesquisar a fonte de origem (billable: false)
       if (code === 604) {
         return {
+          sucesso: false,
           executado: false,
           motivo: `InfoSimples (Código 604): Consulta não validada antes da fonte de origem.${errorsList}`,
           code,
@@ -3314,17 +3271,18 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           billable: isBillable,
           _status: {
             status: 'ERRO',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
+            provedor: servicoNome,
+            tempoMs,
             mensagem: 'Erro 604: Falha Pré-Validação'
           }
         };
       }
 
-      // Código 606: Parâmetros obrigatórios não foram enviados (billable: true — cobrado pela InfoSimples!)
+      // Código 606: Parâmetros obrigatórios não foram enviados (billable: true)
       if (code === 606) {
-        console.warn(`⚠️ [InfoSimples FGTS] Código 606 (Parâmetros obrigatórios faltantes — Cobrança tarifada!): ${codeMessage}${errorsList}`);
+        console.warn(`⚠️ [${servicoNome}] Código 606 (Parâmetros obrigatórios faltantes — Cobrança tarifada!): ${codeMessage}${errorsList}`);
         return {
+          sucesso: false,
           executado: false,
           motivo: `InfoSimples (Código 606): Parâmetros obrigatórios ausentes.${errorsList}`,
           code,
@@ -3332,8 +3290,8 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
           billable: true,
           _status: {
             status: 'ERRO',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
+            provedor: servicoNome,
+            tempoMs,
             mensagem: 'Erro 606: Parâmetro Obrigatório Ausente'
           }
         };
@@ -3342,15 +3300,16 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
       // Código 622: Tentativa de realizar a mesma consulta diversas vezes seguidas (billable: false)
       if (code === 622) {
         return {
+          sucesso: false,
           executado: false,
-          motivo: `InfoSimples (Código 622): Consulta repetida em sequência para o mesmo CNPJ. Aguarde alguns instantes antes de tentar novamente.`,
+          motivo: `InfoSimples (Código 622): Consulta repetida em sequência. Aguarde alguns instantes antes de tentar novamente.`,
           code,
           codeMessage,
           billable: isBillable,
           _status: {
             status: 'ALERTA',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
+            provedor: servicoNome,
+            tempoMs,
             mensagem: 'Erro 622: Consulta Repetida (Aguarde)'
           }
         };
@@ -3359,88 +3318,284 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
       // Código 600: Erro inesperado no robô/fonte de origem (billable: false)
       if (code === 600) {
         return {
+          sucesso: false,
           executado: false,
-          motivo: `InfoSimples (Código 600): Instabilidade temporária no portal da Caixa. ${codeMessage || ''}${errorsList}`,
+          motivo: `InfoSimples (Código 600): Instabilidade temporária na fonte de origem. ${codeMessage || ''}${errorsList}`,
           code,
           codeMessage,
           billable: isBillable,
           _status: {
             status: 'ALERTA',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
-            mensagem: 'Erro 600: Instabilidade Caixa Econômica'
-          }
-        };
-      }
-
-      // Empresa não possui cadastro no FGTS / Nunca registrou funcionários
-      const msgLower = (codeMessage || '').toLowerCase();
-      const isNaoEncontrada = msgLower.includes('não encontrada') || 
-                              msgLower.includes('nao encontrada') || 
-                              msgLower.includes('não cadastrada') || 
-                              msgLower.includes('nao cadastrada') || 
-                              msgLower.includes('sem registro') ||
-                              ((code === 200 || code === 201) && dataList.length === 0);
-
-      if (isNaoEncontrada) {
-        return {
-          executado: true,
-          encontrado: false,
-          fgts_situacao_regular: 'NE',
-          razao_fgts_igual: 'NE',
-          motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
-          code,
-          codeMessage,
-          billable: isBillable,
-          _status: {
-            status: 'ALERTA',
-            provedor: 'InfoSimples / Caixa',
-            tempoMs: Date.now() - t0,
-            mensagem: 'Empresa sem funcionários / Nunca recolheu FGTS'
+            provedor: servicoNome,
+            tempoMs,
+            mensagem: 'Erro 600: Instabilidade Fonte de Origem'
           }
         };
       }
 
       return {
+        sucesso: false,
         executado: false,
-        motivo: `InfoSimples retornou código ${code}: ${codeMessage}${errorsList}`,
         code,
         codeMessage,
+        data: dataList,
+        errors: dataJson.errors,
         billable: isBillable,
+        motivo: `InfoSimples retornou código ${code}: ${codeMessage}${errorsList}`,
         _status: {
           status: 'ERRO',
-          provedor: 'InfoSimples / Caixa',
-          tempoMs: Date.now() - t0,
+          provedor: servicoNome,
+          tempoMs,
           mensagem: `InfoSimples código ${code}: ${codeMessage}`
         }
       };
     } else {
       const errText = await res.text();
       return {
+        sucesso: false,
         executado: false,
         motivo: `Erro HTTP ${res.status} ao consultar InfoSimples`,
         detalhe: errText,
         _status: {
           status: 'ERRO',
-          provedor: 'InfoSimples / Caixa',
-          tempoMs: Date.now() - t0,
+          provedor: servicoNome,
+          tempoMs,
           mensagem: `Erro HTTP ${res.status} na API InfoSimples`
         }
       };
     }
   } catch (err) {
-    console.warn('⚠️ [InfoSimples FGTS] Erro ao consultar API:', err.message);
+    console.warn(`⚠️ [${servicoNome}] Erro ao consultar API:`, err.message);
     return {
+      sucesso: false,
       executado: false,
       motivo: `Falha na requisição InfoSimples: ${err.message}`,
       _status: {
         status: 'ERRO',
-        provedor: 'InfoSimples / Caixa',
+        provedor: servicoNome,
         tempoMs: Date.now() - t0,
         mensagem: `Timeout / Falha de conexão (${err.message})`
       }
     };
   }
+}
+
+// Função utilitária para consulta de Regularidade do FGTS (CRF) na Caixa via API InfoSimples
+async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
+  if (!cnpjStr) return null;
+  const digits = String(cnpjStr).replace(/\D/g, '');
+  if (digits.length !== 14) return null;
+
+  const resultadoRaw = await executarConsultaInfoSimples('caixa/regularidade', { cnpj: digits }, 'InfoSimples / Caixa');
+  if (!resultadoRaw.sucesso) {
+    // Tratamento para empresas sem histórico de recolhimento de FGTS
+    const msgLower = (resultadoRaw.codeMessage || '').toLowerCase();
+    const isNaoEncontrada = msgLower.includes('não encontrada') || 
+                            msgLower.includes('nao encontrada') || 
+                            msgLower.includes('não cadastrada') || 
+                            msgLower.includes('nao cadastrada') || 
+                            msgLower.includes('sem registro');
+    if (isNaoEncontrada) {
+      return {
+        executado: true,
+        encontrado: false,
+        fgts_situacao_regular: 'NE',
+        razao_fgts_igual: 'NE',
+        motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
+        code: resultadoRaw.code,
+        codeMessage: resultadoRaw.codeMessage,
+        billable: resultadoRaw.billable,
+        _status: {
+          status: 'ALERTA',
+          provedor: 'InfoSimples / Caixa',
+          tempoMs: resultadoRaw.tempoMs || 0,
+          mensagem: 'Empresa sem funcionários / Nunca recolheu FGTS'
+        }
+      };
+    }
+    return resultadoRaw;
+  }
+
+  const dataList = resultadoRaw.data || [];
+  if (dataList.length === 0) {
+    return {
+      executado: true,
+      encontrado: false,
+      fgts_situacao_regular: 'NE',
+      razao_fgts_igual: 'NE',
+      motivo: 'Empresa não localizada na Caixa (Sem registro de funcionários / Nunca recolheu FGTS)',
+      code: resultadoRaw.code,
+      codeMessage: resultadoRaw.codeMessage,
+      billable: resultadoRaw.billable,
+      _status: {
+        status: 'ALERTA',
+        provedor: 'InfoSimples / Caixa',
+        tempoMs: resultadoRaw.tempoMs,
+        mensagem: 'Empresa sem funcionários / Nunca recolheu FGTS'
+      }
+    };
+  }
+
+  const item = dataList[0];
+  const razaoCaixa = String(item.razao_social || item.nome || item.empregador || '').trim();
+  const situacao = String(item.situacao || item.situacao_descricao || item.mensagem || '').trim().toUpperCase();
+  const isRegular = situacao.includes('REGULAR') && !situacao.includes('NÃO') && !situacao.includes('IRREGULAR');
+  const validade = item.validade_fim_data || item.validade_fim || item.validade_ate || item.validade || item.data_validade || '';
+  const endereco = item.endereco || item.logradouro || '';
+  const numeroCrf = item.numero_crf || item.crf || item.certificado || '';
+
+  // Comparação de similaridade entre Razão Social da Caixa e do Protheus/Receita
+  let razaoFgtsIgual = 'N';
+  let similarity = 0;
+  if (razaoClienteProtheus && razaoCaixa) {
+    const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/\b(LTDA|EIRELI|EPP|ME|SA|S\/A|CIA|COMPANHIA|SOCIEDADE|IND|COM|DISTRIBUIDORA)\b/g, '');
+    const n1 = norm(razaoClienteProtheus);
+    const n2 = norm(razaoCaixa);
+    
+    if (n1 === n2 || (n1.length > 3 && n2.length > 3 && (n1.includes(n2) || n2.includes(n1)))) {
+      razaoFgtsIgual = 'S';
+      similarity = 1.0;
+    } else {
+      let matches = 0;
+      const w1 = razaoClienteProtheus.toUpperCase().split(/\s+/).filter(w => w.length > 2);
+      const w2 = razaoCaixa.toUpperCase().split(/\s+/).filter(w => w.length > 2);
+      w1.forEach(w => { if (w2.includes(w)) matches++; });
+      similarity = w1.length > 0 && w2.length > 0 ? (matches / Math.max(w1.length, w2.length)) : 0;
+      razaoFgtsIgual = similarity >= 0.5 ? 'S' : 'N';
+    }
+  }
+
+  return {
+    executado: true,
+    encontrado: true,
+    fgts_situacao_regular: isRegular ? 'S' : 'N',
+    razao_fgts_igual: razaoFgtsIgual,
+    razao_social_caixa: razaoCaixa,
+    situacao_caixa: situacao,
+    validade_crf: validade,
+    endereco_caixa: endereco,
+    numero_crf: numeroCrf,
+    similarity,
+    _status: {
+      status: isRegular && razaoFgtsIgual === 'S' ? 'OK' : 'ALERTA',
+      provedor: 'InfoSimples / Caixa',
+      tempoMs: resultadoRaw.tempoMs,
+      mensagem: isRegular ? (razaoFgtsIgual === 'S' ? `CRF Regular (Validade: ${validade || 'Válido'})` : 'Razão Social divergente na Caixa') : 'Certidão Irregular na Caixa'
+    }
+  };
+}
+
+// Parser seguro de valores monetários retornados pela PGFN / InfoSimples
+function parseValorMonetarioPgfn(val) {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : Math.max(0, val);
+  const str = String(val).trim();
+  if (!str) return 0;
+  let limpo = str.replace(/[^\d.,]/g, '').trim();
+  if (!limpo) return 0;
+  if (limpo.includes(',') && limpo.includes('.')) {
+    limpo = limpo.replace(/\./g, '').replace(',', '.');
+  } else if (limpo.includes(',')) {
+    limpo = limpo.replace(',', '.');
+  }
+  const n = parseFloat(limpo);
+  return isNaN(n) ? 0 : Math.max(0, n);
+}
+
+// Função utilitária para consulta de Dívida Ativa da União (PGFN Devedores) via API InfoSimples
+async function consultarPgfnInfoSimples(cnpjStr) {
+  if (!cnpjStr) return null;
+  const digits = String(cnpjStr).replace(/\D/g, '');
+  if (digits.length !== 14) return null;
+
+  const resultadoRaw = await executarConsultaInfoSimples('receita-federal/pgfn-devedores', { cnpj: digits }, 'InfoSimples / PGFN');
+  if (!resultadoRaw.sucesso) {
+    const msgLower = (resultadoRaw.codeMessage || '').toLowerCase();
+    const isNadaConsta = msgLower.includes('não foram encontrados') || 
+                         msgLower.includes('nao foram encontrados') || 
+                         msgLower.includes('não consta') || 
+                         msgLower.includes('nao consta') || 
+                         msgLower.includes('nada consta') ||
+                         msgLower.includes('sem devedor') ||
+                         msgLower.includes('sem registro') ||
+                         msgLower.includes('sem débito') ||
+                         msgLower.includes('sem debito');
+    if (isNadaConsta) {
+      return {
+        executado: true,
+        encontrado: true,
+        tem_divida: false,
+        total_divida: 0,
+        total_divida_formatado: 'R$ 0,00',
+        qtd_inscricoes: 0,
+        motivo: 'Nada Consta na Dívida Ativa PGFN',
+        _status: {
+          status: 'OK',
+          provedor: 'InfoSimples / PGFN',
+          tempoMs: resultadoRaw.tempoMs || 0,
+          mensagem: 'Dívida Ativa PGFN: R$ 0,00 (Nada Consta)'
+        }
+      };
+    }
+    return resultadoRaw;
+  }
+
+  const dataList = resultadoRaw.data || [];
+  if (dataList.length === 0) {
+    return {
+      executado: true,
+      encontrado: true,
+      tem_divida: false,
+      total_divida: 0,
+      total_divida_formatado: 'R$ 0,00',
+      qtd_inscricoes: 0,
+      motivo: 'Nada Consta na Dívida Ativa PGFN',
+      _status: {
+        status: 'OK',
+        provedor: 'InfoSimples / PGFN',
+        tempoMs: resultadoRaw.tempoMs,
+        mensagem: 'Dívida Ativa PGFN: R$ 0,00 (Nada Consta)'
+      }
+    };
+  }
+
+  let totalDivida = 0;
+  let debitosEncontrados = [];
+  const primeiroItem = dataList[0] || {};
+
+  if (primeiroItem.total_divida !== undefined || primeiroItem.total !== undefined || primeiroItem.valor_total !== undefined || primeiroItem.valor_consolidado !== undefined) {
+    totalDivida = parseValorMonetarioPgfn(primeiroItem.total_divida || primeiroItem.total || primeiroItem.valor_total || primeiroItem.valor_consolidado);
+  }
+
+  if (Array.isArray(primeiroItem.debitos) && primeiroItem.debitos.length > 0) {
+    debitosEncontrados = primeiroItem.debitos;
+    if (totalDivida === 0) {
+      totalDivida = debitosEncontrados.reduce((acc, deb) => acc + parseValorMonetarioPgfn(deb.valor || deb.valor_consolidado || deb.valor_total || 0), 0);
+    }
+  } else if (dataList.length > 1 || (totalDivida === 0 && (primeiroItem.valor || primeiroItem.valor_consolidado))) {
+    totalDivida = dataList.reduce((acc, it) => acc + parseValorMonetarioPgfn(it.valor || it.valor_consolidado || it.total_divida || it.total || 0), 0);
+    debitosEncontrados = dataList;
+  }
+
+  const temDivida = totalDivida > 0;
+  const formatadorMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const totalFormatado = formatadorMoeda.format(totalDivida);
+
+  return {
+    executado: true,
+    encontrado: true,
+    tem_divida: temDivida,
+    total_divida: parseFloat(totalDivida.toFixed(2)),
+    total_divida_formatado: totalFormatado,
+    qtd_inscricoes: debitosEncontrados.length || (temDivida ? 1 : 0),
+    debitos: debitosEncontrados.slice(0, 10),
+    _status: {
+      status: temDivida ? (totalDivida > 50000 ? 'ERRO' : 'ALERTA') : 'OK',
+      provedor: 'InfoSimples / PGFN',
+      tempoMs: resultadoRaw.tempoMs,
+      mensagem: temDivida ? `Dívida Ativa PGFN: ${totalFormatado}` : 'Dívida Ativa PGFN: R$ 0,00 (Nada Consta)'
+    }
+  };
 }
 
 // 0. Leitura e Validação em Memória do Laudo Serasa Experian (PDF)
@@ -3507,6 +3662,24 @@ app.post('/api/financeiro/analise-credito/consultar-fgts', async (req, res) => {
   } catch (err) {
     console.error('Erro ao consultar FGTS InfoSimples:', err);
     res.status(500).json({ success: false, error: 'Erro ao consultar FGTS: ' + err.message });
+  }
+});
+
+// 1C. Consulta Direta de Dívida Ativa PGFN via API InfoSimples
+app.post('/api/financeiro/analise-credito/consultar-pgfn', async (req, res) => {
+  try {
+    const { cnpj } = req.body;
+    if (!cnpj) {
+      return res.status(400).json({ success: false, error: 'CNPJ é obrigatório para consultar a PGFN.' });
+    }
+    const resultado = await consultarPgfnInfoSimples(cnpj);
+    res.json({
+      success: true,
+      resultado
+    });
+  } catch (err) {
+    console.error('Erro ao consultar PGFN InfoSimples:', err);
+    res.status(500).json({ success: false, error: 'Erro ao consultar PGFN: ' + err.message });
   }
 });
 
@@ -3610,24 +3783,27 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     // Análise Automática de E-mails & Site Corporativo (A1_EMAIL e A1_HPAGE do Protheus)
     const infoEmails = analisarEmailsCliente(cli.email, cli.site);
 
-    // Consulta de Inteligência Digital Paralela (RDAP Registro.br, Wayback Machine, DNS MX, FGTS InfoSimples)
+    // Consulta de Inteligência Digital Paralela (RDAP Registro.br, Wayback Machine, DNS MX, FGTS InfoSimples, PGFN InfoSimples)
     let infoRDAP = null;
     let infoWayback = null;
     let infoMx = null;
     let infoFgts = null;
+    let infoPgfn = null;
 
     const cnpjFgts = cli.cnpj || (dadosCnpj && !dadosCnpj._erroTecnico && dadosCnpj.cnpj) || cli.codigo || '';
 
-    const [resRdap, resWayback, resMx, resFgts] = await Promise.allSettled([
+    const [resRdap, resWayback, resMx, resFgts, resPgfn] = await Promise.allSettled([
       infoEmails.dominioPrincipal ? consultarRDAP(infoEmails.dominioPrincipal) : Promise.resolve(null),
       infoEmails.dominioPrincipal ? consultarWayback(infoEmails.dominioPrincipal) : Promise.resolve(null),
       infoEmails.dominioPrincipal ? consultarMx(infoEmails.dominioPrincipal) : Promise.resolve(null),
-      cnpjFgts ? consultarFgtsInfoSimples(cnpjFgts, cli.nome) : Promise.resolve(null)
+      cnpjFgts ? consultarFgtsInfoSimples(cnpjFgts, cli.nome) : Promise.resolve(null),
+      cnpjFgts ? consultarPgfnInfoSimples(cnpjFgts) : Promise.resolve(null)
     ]);
     infoRDAP = resRdap.status === 'fulfilled' ? resRdap.value : null;
     infoWayback = resWayback.status === 'fulfilled' ? resWayback.value : null;
     infoMx = resMx.status === 'fulfilled' ? resMx.value : null;
     infoFgts = resFgts.status === 'fulfilled' ? resFgts.value : null;
+    infoPgfn = resPgfn.status === 'fulfilled' ? resPgfn.value : null;
 
     // Detecção Automática de Endereço de Entrega Diferente (Dupla Regra: C5_MENNOTA ou C5_TRANSP = '000009')
     const entregaDiferenteInfo = detalhes.comercial?.entregaDiferenteInfo || detectarEnderecoEntregaDiferente(detalhes.comercial?.observacoes, detalhes.comercial?.codTransp || detalhes.comercial?.transportadora);
@@ -3668,6 +3844,12 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
         provedor: infoFgts?._status?.provedor || 'InfoSimples / Caixa',
         tempoMs: infoFgts?._status?.tempoMs || 0,
         mensagem: infoFgts?._status?.mensagem || (infoFgts?.motivo || 'FGTS não executado')
+      },
+      pgfn_uniao: {
+        status: infoPgfn?._status?.status || (infoPgfn?.executado ? 'OK' : 'ALERTA'),
+        provedor: infoPgfn?._status?.provedor || 'InfoSimples / PGFN',
+        tempoMs: infoPgfn?._status?.tempoMs || 0,
+        mensagem: infoPgfn?._status?.mensagem || (infoPgfn?.motivo || 'PGFN não executado')
       },
       protheus_db: {
         status: 'OK',
@@ -3748,6 +3930,13 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       fgts_situacao_regular: infoFgts && infoFgts.executado ? (infoFgts.fgts_situacao_regular || '') : '',
       razao_fgts_igual: infoFgts && infoFgts.executado ? (infoFgts.razao_fgts_igual || '') : '',
       razao_social_caixa: infoFgts && infoFgts.executado ? (infoFgts.razao_social_caixa || '') : '',
+
+      // Dívida Ativa PGFN / Receita Federal (InfoSimples API)
+      pgfn_info: infoPgfn,
+      pgfn_total_divida: (infoPgfn && infoPgfn.executado && infoPgfn.total_divida !== undefined) ? infoPgfn.total_divida : null,
+      pgfn_executado: Boolean(infoPgfn && infoPgfn.executado),
+      pgfn_tem_divida: infoPgfn && infoPgfn.executado ? Boolean(infoPgfn.tem_divida) : false,
+      pgfn_total_divida_formatado: infoPgfn && infoPgfn.executado ? (infoPgfn.total_divida_formatado || 'R$ 0,00') : '',
 
       // Telemetria SRE de Faróis de Conectividade
       status_conexoes: statusConexoes,

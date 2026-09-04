@@ -109,6 +109,9 @@ const DEFAULT_CONFIG = {
   peso_razao_fgts_igual_sim: 3.0,
   peso_razao_fgts_igual_nao: -15.0,
   peso_razao_fgts_nao_encontrado: -5.0,
+  peso_pgfn_zero: 2.0,
+  peso_pgfn_gt_50k: -7.0,
+  peso_pgfn_gt_capital: -20.0,
   infosimples_token: '',
 };
 
@@ -328,6 +331,20 @@ function calcularScore(dados, config = getScoreConfig()) {
   pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? (config.peso_alteracao_recente_socios_sim !== undefined ? config.peso_alteracao_recente_socios_sim : -8.0) : 0;
   pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? (config.peso_aumento_expressivo_capital_sim !== undefined ? config.peso_aumento_expressivo_capital_sim : -20.0) : 0;
 
+  // Dívida Ativa da União (PGFN / Receita Federal via InfoSimples) - Fail-Neutral
+  const dividaPgfn = (dados.pgfn_total_divida !== undefined && dados.pgfn_total_divida !== null && dados.pgfn_total_divida !== '') ? Number(dados.pgfn_total_divida) : null;
+  if (dividaPgfn === null || dados.pgfn_executado === false) {
+    pontos.pgfn_divida_ativa = 0; // Fail-Neutral: Falha de conexão ou não consultado não desconta nem soma
+  } else if (dividaPgfn === 0) {
+    pontos.pgfn_divida_ativa = config.peso_pgfn_zero !== undefined ? config.peso_pgfn_zero : 2.0;
+  } else if (capitalSocial > 0 && dividaPgfn > capitalSocial) {
+    pontos.pgfn_divida_ativa = config.peso_pgfn_gt_capital !== undefined ? config.peso_pgfn_gt_capital : -20.0;
+  } else if (dividaPgfn > 50000) {
+    pontos.pgfn_divida_ativa = config.peso_pgfn_gt_50k !== undefined ? config.peso_pgfn_gt_50k : -7.0;
+  } else {
+    pontos.pgfn_divida_ativa = 0;
+  }
+
   const totalScore = Object.values(pontos).reduce((acc, curr) => acc + curr, 0);
 
   const subEmpresinha = pontos.capital_social + pontos.mail_gratuito + pontos.casa_sala_conj + pontos.empresa_grande_conhecida;
@@ -343,7 +360,7 @@ function calcularScore(dados, config = getScoreConfig()) {
     pontos.razao_fgts_igual +
     pontos.alteracao_recente_socios +
     pontos.aumento_expressivo_capital;
-  const subGrandeFalindo = pontos.protestos + pontos.empresa_grande_conhecida + pontos.idade_empresa;
+  const subGrandeFalindo = pontos.protestos + pontos.empresa_grande_conhecida + pontos.idade_empresa + (pontos.pgfn_divida_ativa || 0);
 
   let risco = 'SEM-RISCO';
   let sugestao = 'LIBERADO';

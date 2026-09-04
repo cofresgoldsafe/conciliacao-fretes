@@ -5308,6 +5308,60 @@ document.addEventListener('DOMContentLoaded', () => {
   let listaHistoricoCredito = [];
   let scoreConfigActive = null;
   let dadosSerasaAtual = null;
+  const btnConsultarPgfnInfoSimples = document.getElementById('btnConsultarPgfnInfoSimples');
+
+  // Renderizador centralizado do Badge de Dívida Ativa PGFN
+  function renderPgfnBadge(pInfo) {
+    const pgfnBadge = document.getElementById('cr_pgfn_badge');
+    const inputDivida = document.getElementById('cr_pgfn_total_divida');
+    const inputExecutado = document.getElementById('cr_pgfn_executado');
+
+    if (!pgfnBadge) return;
+
+    if (!pInfo) {
+      pgfnBadge.style.display = 'none';
+      if (inputDivida) inputDivida.value = '';
+      if (inputExecutado) inputExecutado.value = '';
+      return;
+    }
+
+    pgfnBadge.style.display = 'block';
+
+    if (pInfo.executado) {
+      const totalDivida = pInfo.total_divida !== undefined && pInfo.total_divida !== null ? Number(pInfo.total_divida) : 0;
+      const totalFmt = pInfo.total_divida_formatado || (new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDivida));
+      if (inputDivida) inputDivida.value = String(totalDivida);
+      if (inputExecutado) inputExecutado.value = 'true';
+
+      if (totalDivida === 0) {
+        pgfnBadge.style.background = 'rgba(34, 197, 94, 0.12)';
+        pgfnBadge.style.border = '1px solid rgba(34, 197, 94, 0.3)';
+        pgfnBadge.style.color = '#22c55e';
+        pgfnBadge.innerHTML = `✓ <strong>🏛️ Dívida Ativa PGFN: R$ 0,00</strong> (Nada Consta na Receita Federal / PGFN — +2 pts)`;
+      } else {
+        pgfnBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        pgfnBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        pgfnBadge.style.color = '#f87171';
+        const qtdStr = pInfo.qtd_inscricoes ? ` (${pInfo.qtd_inscricoes} inscrição/ões)` : '';
+        pgfnBadge.innerHTML = `🚨 <strong>🏛️ Dívida Ativa PGFN: ${escapeHtml(totalFmt)}</strong>${qtdStr} — Consta como devedor na União!`;
+      }
+    } else {
+      if (inputDivida) inputDivida.value = '';
+      if (inputExecutado) inputExecutado.value = 'false';
+
+      if (pInfo.auth_error || pInfo.code === 601) {
+        pgfnBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+        pgfnBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        pgfnBadge.style.color = '#f87171';
+        pgfnBadge.innerHTML = `🚨 <strong>InfoSimples PGFN (Erro 601):</strong> Token inválido ou não autenticado. E-mail de alerta enviado ao administrador.`;
+      } else {
+        pgfnBadge.style.background = 'rgba(245, 158, 11, 0.12)';
+        pgfnBadge.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+        pgfnBadge.style.color = '#fbbf24';
+        pgfnBadge.innerHTML = `ℹ️ <strong>🏛️ Dívida Ativa PGFN Não Consultada:</strong> ${escapeHtml(pInfo.motivo || 'Serviço indisponível ou pendente')}`;
+      }
+    }
+  }
 
   // 0. Leitura e Validação do Laudo Serasa Experian em Memória
   if (btnSelectSerasaPdf && serasaPdfInput) {
@@ -5760,6 +5814,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (fgtsBadge) fgtsBadge.style.display = 'none';
         }
 
+        // Auto-preenchimento e Renderização de Badge Dívida Ativa PGFN via InfoSimples API
+        renderPgfnBadge(data.pgfn_info || null);
+
         // Campos manuais que permanecem para o analista preencher
         setVal('cr_alteracao_recente_socios', 'N');
         setVal('cr_aumento_expressivo_capital', 'N');
@@ -5870,6 +5927,56 @@ document.addEventListener('DOMContentLoaded', () => {
         crCapitalSocialInput.focus();
       }
       atualizarScoreEmTempoReal();
+    });
+  }
+
+  // Listener para o Botão de Consulta Automática PGFN via API InfoSimples
+  if (btnConsultarPgfnInfoSimples) {
+    btnConsultarPgfnInfoSimples.addEventListener('click', async () => {
+      const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+      };
+      let cnpj = getVal('cr_cliente_codigo') || (dadosSerasaAtual ? dadosSerasaAtual.cnpj : '');
+      const digits = String(cnpj).replace(/\D/g, '');
+      if (!digits) {
+        alert('⚠️ Nenhum CNPJ identificado na tela. Realize primeiro a consulta do pedido ou informe o CNPJ do cliente.');
+        return;
+      }
+
+      const originalText = btnConsultarPgfnInfoSimples.innerHTML;
+      btnConsultarPgfnInfoSimples.disabled = true;
+      btnConsultarPgfnInfoSimples.innerHTML = '⏳ Consultando PGFN...';
+
+      try {
+        const res = await fetch('/api/financeiro/analise-credito/consultar-pgfn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cnpj: digits })
+        });
+        const d = await res.json();
+        if (!d.success || !d.resultado) {
+          throw new Error(d.error || 'Falha ao consultar Dívida Ativa PGFN na InfoSimples.');
+        }
+
+        renderPgfnBadge(d.resultado);
+
+        if (typeof atualizarScoreEmTempoReal === 'function') {
+          atualizarScoreEmTempoReal();
+        }
+
+        if (d.resultado.executado) {
+          const totalFmt = d.resultado.total_divida_formatado || (d.resultado.total_divida === 0 ? 'R$ 0,00' : `R$ ${d.resultado.total_divida}`);
+          alert(`✓ Consulta de Dívida Ativa PGFN concluída com sucesso!\n\nSituação: ${d.resultado.tem_divida ? 'Consta Dívida: ' + totalFmt : 'Nada Consta (R$ 0,00)'}`);
+        } else {
+          alert(`⚠️ ${d.resultado.motivo || 'Não foi possível consultar a PGFN na InfoSimples.'}`);
+        }
+      } catch (err) {
+        alert('Erro ao consultar PGFN na InfoSimples: ' + err.message);
+      } finally {
+        btnConsultarPgfnInfoSimples.disabled = false;
+        btnConsultarPgfnInfoSimples.innerHTML = originalText;
+      }
     });
   }
 
@@ -6061,6 +6168,8 @@ document.addEventListener('DOMContentLoaded', () => {
       comprou_pagou_5x: getVal('cr_comprou_pagou_5x'),
       fgts_situacao_regular: getVal('cr_fgts_situacao_regular'),
       razao_fgts_igual: getVal('cr_razao_fgts_igual'),
+      pgfn_total_divida: getVal('cr_pgfn_total_divida') !== '' ? parseMoeda(getVal('cr_pgfn_total_divida')) : null,
+      pgfn_executado: getVal('cr_pgfn_executado') === 'true',
       alteracao_recente_socios: getVal('cr_alteracao_recente_socios') || 'N',
       aumento_expressivo_capital: getVal('cr_aumento_expressivo_capital') || 'N',
       obs: getVal('cr_obs'),
@@ -6273,10 +6382,24 @@ document.addEventListener('DOMContentLoaded', () => {
     pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? getCfg('peso_alteracao_recente_socios_sim', -8) : 0;
     pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? getCfg('peso_aumento_expressivo_capital_sim', -20) : 0;
 
+    // Dívida Ativa da União (PGFN / Receita Federal via InfoSimples) - Fail-Neutral
+    const dividaPgfn = (dados.pgfn_total_divida !== undefined && dados.pgfn_total_divida !== null && dados.pgfn_total_divida !== '') ? Number(dados.pgfn_total_divida) : null;
+    if (dividaPgfn === null || dados.pgfn_executado === false) {
+      pontos.pgfn_divida_ativa = 0; // Fail-Neutral: Falha de conexão ou não consultado não desconta nem soma
+    } else if (dividaPgfn === 0) {
+      pontos.pgfn_divida_ativa = getCfg('peso_pgfn_zero', 2.0);
+    } else if (capSocial > 0 && dividaPgfn > capSocial) {
+      pontos.pgfn_divida_ativa = getCfg('peso_pgfn_gt_capital', -20.0);
+    } else if (dividaPgfn > 50000) {
+      pontos.pgfn_divida_ativa = getCfg('peso_pgfn_gt_50k', -7.0);
+    } else {
+      pontos.pgfn_divida_ativa = 0;
+    }
+
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
 
     const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0) + (pontos.alteracao_recente_socios || 0) + (pontos.aumento_expressivo_capital || 0);
-    const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0);
+    const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0) + (pontos.pgfn_divida_ativa || 0);
 
     let risco = 'MÉDIO RISCO';
     let sugestao = 'VER E-MAIL CORPORATIVO SITE REFERENC COML NFE 3S ALTO VALOR FATURADO';
@@ -6829,6 +6952,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Certidão FGTS Regular', val: item.fgts_situacao_regular === 'S' ? 'Regular' : (item.fgts_situacao_regular === 'N' ? 'Irregular' : (item.fgts_situacao_regular === 'NE' ? 'Não Encontrado' : '-')), pts: pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Razão Social = FGTS', val: item.razao_fgts_igual === 'S' ? 'Igual' : (item.razao_fgts_igual === 'N' ? 'Divergente' : (item.razao_fgts_igual === 'NE' ? 'Não Encontrado' : '-')), pts: pts.razao_fgts_igual },
+      { 
+        cat: '6. FGTS, Sócios & Certidões', 
+        nome: '🏛️ Dívida Ativa PGFN', 
+        val: item.pgfn_total_divida !== undefined && item.pgfn_total_divida !== null && item.pgfn_total_divida !== '' 
+          ? (Number(item.pgfn_total_divida) === 0 ? 'R$ 0,00 (Nada Consta)' : (item.pgfn_total_divida_formatado || `R$ ${Number(item.pgfn_total_divida).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`)) 
+          : (item.pgfn_executado === false ? 'Não consultado (Neutro)' : '-'), 
+        pts: pts.pgfn_divida_ativa 
+      },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Alteração Recente de Sócios', val: item.alteracao_recente_socios === 'S' ? 'Sim (Alterado)' : 'Não', pts: pts.alteracao_recente_socios },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital }
     ];
@@ -6855,18 +6986,21 @@ document.addEventListener('DOMContentLoaded', () => {
         <div>
           <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Score Obtido</div>
           <div style="font-size: 1.6rem; font-weight: 900; color: ${scoreColor}; font-family: var(--font-mono);">${totalScoreVal} <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-muted);">pts</span></div>
-        </div>
-        <div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Grau de Risco</div>
-          <div style="margin-top: 4px;"><span class="badge" style="font-size: 0.9rem; font-weight: 800; padding: 4px 12px;">${escapeHtml(item.risco || '-')}</span></div>
+          <div style="font-size: 0.8rem; margin-top: 0.25rem;">
+            ${(item.risco === 'SEM-RISCO') ? '<span class="badge" style="background:rgba(34, 197, 94, 0.2);color:#22c55e;">SEM RISCO</span>' :
+              (item.risco === 'MÉDIO RISCO') ? '<span class="badge" style="background:rgba(234, 179, 8, 0.2);color:#eab308;">MÉDIO RISCO</span>' :
+              '<span class="badge" style="background:rgba(239, 68, 68, 0.2);color:#f87171;">' + escapeHtml(item.risco || 'ALTO RISCO') + '</span>'}
+          </div>
         </div>
         <div>
           <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Decisão do Analista</div>
-          <div style="font-size: 1.1rem; font-weight: 700; color: #38bdf8; margin-top: 4px;">${escapeHtml(item.decisao_final || 'Liberado')}</div>
+          <div style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-top: 0.25rem;">${escapeHtml(item.decisao_final || 'Pendente')}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Sugestão Sistema: <strong>${escapeHtml(item.sugestao || 'N/A')}</strong></div>
         </div>
         <div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total do Pedido</div>
-          <div style="font-size: 1.2rem; font-weight: 800; color: #f8fafc; font-family: var(--font-mono); margin-top: 4px;">R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Valor Total Pedido</div>
+          <div style="font-size: 1.2rem; font-weight: 800; color: #38bdf8; font-family: var(--font-mono); margin-top: 0.25rem;">R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Condição: <strong>${item.faturado === 'N' ? 'À Vista' : 'A Prazo (Faturado)'}${item.entrada === 'S' ? ' c/ Entrada' : ''}</strong></div>
         </div>
       </div>
 
@@ -6883,48 +7017,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <!-- Bloco 1: Venda & Identificação -->
       <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-        <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação do Cliente, Pedido e CNPJ Receita</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-          <div><strong style="color:var(--text-muted)">Nº Pedido:</strong> #${escapeHtml(item.pedido_venda)}</div>
-          <div><strong style="color:var(--text-muted)">Cód. Web:</strong> ${escapeHtml(item.cod_web || '-')}</div>
-          <div><strong style="color:var(--text-muted)">Cód. Cliente:</strong> ${escapeHtml(item.cliente_codigo || '-')}</div>
-          <div style="grid-column: span 2;"><strong style="color:var(--text-muted)">Razão Social:</strong> ${escapeHtml(item.cliente_nome)}</div>
-          <div><strong style="color:var(--text-muted)">Total Pedido:</strong> R$ ${Number(item.total_pedido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} ${formatarBadgePontos(pts.total_pedido)}</div>
-          <div><strong style="color:var(--text-muted)">Desconto:</strong> ${escapeHtml(item.desconto_ped || 'OK')}</div>
-          <div><strong style="color:var(--text-muted)">CNPJ Ativo na RF:</strong> ${fmtSimNao(item.cnpj_ativo)} ${formatarBadgePontos(pts.cnpj_ativo)}</div>
-          <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${fmtSimNao(item.cadastro_igual_receita)} ${formatarBadgePontos(pts.cadastro_igual_receita)}</div>
-          <div><strong style="color:var(--text-muted)">Casa/Sala no End.:</strong> ${fmtSimNao(item.casa_sala_conj_end)} ${formatarBadgePontos(pts.casa_sala_conj)}</div>
-          <div><strong style="color:var(--text-muted)">Fundação Matriz:</strong> ${escapeHtml(item.fundacao_matriz || '-')} ${formatarBadgePontos(pts.idade_empresa)}</div>
-          <div><strong style="color:var(--text-muted)">Capital Social:</strong> ${capSocialFormatado} ${formatarBadgePontos(pts.capital_social)}</div>
-          <div><strong style="color:var(--text-muted)">Empresa Grande / Notória:</strong> ${fmtSimNao(item.empresa_grande_conhecida)} ${formatarBadgePontos(pts.empresa_grande_conhecida)}</div>
+        <h4 style="margin: 0 0 0.75rem 0; color: #38bdf8; font-size: 0.9rem;">1. Identificação Geral do Pedido & Cliente</h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+          <div><strong style="color:var(--text-muted)">Pedido Venda:</strong> #${item.pedido_venda || '-'} ${item.cod_web ? `(Web: #${item.cod_web})` : ''}</div>
+          <div><strong style="color:var(--text-muted)">Empresa:</strong> Filial ${item.empresa || '-'}</div>
+          <div><strong style="color:var(--text-muted)">Código Cliente:</strong> ${item.cliente_codigo || '-'}</div>
+          <div><strong style="color:var(--text-muted)">UF Destino:</strong> ${item.uf_cliente || '-'} ${formatarBadgePontos(pts.uf_cliente)}</div>
+          <div><strong style="color:var(--text-muted)">Desconto Aplicado:</strong> ${item.desconto_ped || 'OK'}</div>
+          <div><strong style="color:var(--text-muted)">CNPJ Ativo RF:</strong> ${fmtSimNao(item.cnpj_ativo)} ${formatarBadgePontos(pts.cnpj_ativo)}</div>
+          <div><strong style="color:var(--text-muted)">Data Fundação:</strong> ${item.fundacao_matriz || '-'} ${formatarBadgePontos(pts.idade_empresa)}</div>
+          <div><strong style="color:var(--text-muted)">Capital Social:</strong> ${item.sem_capital_social === 'S' ? 'Não Informado' : (item.capital_social ? 'R$ ' + Number(item.capital_social).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '-')} ${formatarBadgePontos(pts.capital_social)}</div>
         </div>
       </div>
 
       <!-- Bloco 2: Comercial & Pagamento -->
       <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-        <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Condições Comerciais & Histórico de Pagamentos</h4>
+        <h4 style="margin: 0 0 0.75rem 0; color: #22c55e; font-size: 0.9rem;">2. Comercial, Pagamentos & Histórico Protheus</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
-          <div><strong style="color:var(--text-muted)">Faturado a Prazo:</strong> ${item.faturado === 'N' ? '<span style="color:#22c55e;font-weight:700;">Não (À Vista)</span>' : '<span style="color:#38bdf8;font-weight:700;">Sim (A Prazo)</span>'} ${formatarBadgePontos(pts.faturado)}</div>
+          <div><strong style="color:var(--text-muted)">Faturado (A Prazo):</strong> ${fmtSimNao(item.faturado)} ${formatarBadgePontos(pts.faturado)}</div>
           <div><strong style="color:var(--text-muted)">Possui Entrada:</strong> ${fmtSimNao(item.entrada)} ${formatarBadgePontos(pts.entrada)}</div>
-          <div><strong style="color:var(--text-muted)">Pgtos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)} ${formatarBadgePontos(pts.pgtos_abertos)}</div>
-          <div><strong style="color:var(--text-muted)">Comprou e Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)} ${formatarBadgePontos(pts.comprou_pagou)}</div>
-          <div><strong style="color:var(--text-muted)">Comprou e Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)} ${formatarBadgePontos(pts.comprou_pagou_5x)}</div>
-          <div><strong style="color:var(--text-muted)">Qtd. Grande:</strong> ${fmtSimNao(item.quant_grande)} ${formatarBadgePontos(pts.quant_grande)}</div>
-          <div><strong style="color:var(--text-muted)">Prod. Ñ Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)} ${formatarBadgePontos(pts.prod_nao_combinam)}</div>
+          <div><strong style="color:var(--text-muted)">Comprou/Pagou 2x+:</strong> ${fmtSimNao(item.comprou_pagou)} ${formatarBadgePontos(pts.comprou_pagou)}</div>
+          <div><strong style="color:var(--text-muted)">Comprou/Pagou 5x+:</strong> ${fmtSimNao(item.comprou_pagou_5x)} ${formatarBadgePontos(pts.comprou_pagou_5x)}</div>
+          <div><strong style="color:var(--text-muted)">Títulos em Aberto:</strong> ${fmtSimNao(item.pgtos_abertos)} ${formatarBadgePontos(pts.pgtos_abertos)}</div>
+          <div><strong style="color:var(--text-muted)">Quantidade Grande (>15):</strong> ${fmtSimNao(item.quant_grande)} ${formatarBadgePontos(pts.quant_grande)}</div>
+          <div><strong style="color:var(--text-muted)">Itens Não Combinam:</strong> ${fmtSimNao(item.prod_nao_combinam)} ${formatarBadgePontos(pts.prod_nao_combinam)}</div>
           <div><strong style="color:var(--text-muted)">Item Unitário > 2k:</strong> ${fmtSimNao(item.armario_cofre_gt_2000)}</div>
-          <div><strong style="color:var(--text-muted)">UF do Cliente:</strong> ${escapeHtml(item.uf_cliente || '-')} ${formatarBadgePontos(pts.uf_cliente)}</div>
         </div>
       </div>
 
       <!-- Bloco 3: Endereço, Localização & Maturidade Digital -->
       <div style="background: rgba(15, 23, 42, 0.35); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
-        <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Localização & Maturidade Digital</h4>
+        <h4 style="margin: 0 0 0.75rem 0; color: #a855f7; font-size: 0.9rem;">3. Endereço, Registro.br & Inteligência Digital</h4>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
           <div><strong style="color:var(--text-muted)">Entrega = Cadastro:</strong> ${fmtSimNao(item.entrega_igual_cadastro)} ${formatarBadgePontos(pts.entrega_igual_cadastro)}</div>
-          <div><strong style="color:var(--text-muted)">Registro.Br Confere:</strong> ${fmtSimNao(item.registro_br)} ${formatarBadgePontos(pts.registro_br)}${item.cnpj_registro_br ? ` <span style="font-size:0.75rem; color:#38bdf8;" title="Titular: ${escapeHtml(item.titular_registro_br || '')}">(${escapeHtml(item.cnpj_registro_br)})</span>` : ''}</div>
-          <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? item.idade_dominio_rdap + ' anos' : (item.possui_site === 'N' ? 'Sem Site' : (item.dominio_principal || '-'))} ${formatarBadgePontos(pts.idade_dominio)}</div>
-          <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${escapeHtml(item.wayback_primeiro_snapshot || '-')} ${formatarBadgePontos(pts.wayback)}</div>
-          <div><strong style="color:var(--text-muted)">Servidor MX:</strong> ${escapeHtml(item.tipo_servidor_mx || item.servidor_mx || '-')} ${formatarBadgePontos(pts.servidor_mx)}</div>
+          <div><strong style="color:var(--text-muted)">Cadastro = Receita:</strong> ${item.cadastro_igual_receita === 'S' ? '<span style="color:#22c55e">Sim</span>' : (item.cadastro_igual_receita === 'N' ? '<span style="color:#f87171">Divergente</span>' : (item.cadastro_igual_receita === 'INDISPONIVEL' ? '<span style="color:#94a3b8">Indisponível (RF Offline)</span>' : '-'))} ${formatarBadgePontos(pts.cadastro_igual_receita)}</div>
+          <div><strong style="color:var(--text-muted)">Casa / Sala / Conjunto:</strong> ${item.casa_sala_conj_end === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.casa_sala_conj)}</div>
+          <div><strong style="color:var(--text-muted)">Registro.br Confere:</strong> ${fmtSimNao(item.registro_br)} ${formatarBadgePontos(pts.registro_br)}</div>
+          <div><strong style="color:var(--text-muted)">Idade Domínio (RDAP):</strong> ${item.idade_dominio_rdap !== undefined && item.idade_dominio_rdap !== null && item.idade_dominio_rdap !== '' ? `${item.idade_dominio_rdap} anos` : '-'} ${formatarBadgePontos(pts.idade_dominio)}</div>
+          <div><strong style="color:var(--text-muted)">1º Snapshot Wayback:</strong> ${item.wayback_primeiro_snapshot || '-'} ${formatarBadgePontos(pts.wayback)}</div>
+          <div><strong style="color:var(--text-muted)">Servidor MX:</strong> ${item.tipo_servidor_mx || item.servidor_mx || '-'} ${formatarBadgePontos(pts.servidor_mx)}</div>
+          <div><strong style="color:var(--text-muted)">Domínio Principal:</strong> ${item.dominio_principal || '-'}</div>
         </div>
       </div>
 
@@ -6963,6 +7095,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
           <div><strong style="color:var(--text-muted)">FGTS Regular:</strong> ${item.fgts_situacao_regular === 'S' ? '<span style="color:#22c55e">Regular</span>' : (item.fgts_situacao_regular === 'N' ? '<span style="color:#f87171">Irregular</span>' : (item.fgts_situacao_regular === 'NE' ? '<span style="color:#fbbf24">Não Encontrado</span>' : '-'))} ${formatarBadgePontos(pts.fgts_regular !== undefined ? pts.fgts_regular : pts.fgts_situacao_regular)}</div>
           <div><strong style="color:var(--text-muted)">Razão = FGTS:</strong> ${item.razao_fgts_igual === 'S' ? '<span style="color:#22c55e">Igual</span>' : (item.razao_fgts_igual === 'N' ? '<span style="color:#f87171">Divergente</span>' : (item.razao_fgts_igual === 'NE' ? '<span style="color:#fbbf24">Não Encontrado</span>' : '-'))} ${formatarBadgePontos(pts.razao_fgts_igual)}</div>
+          <div><strong style="color:var(--text-muted)">🏛️ Dívida Ativa PGFN:</strong> ${item.pgfn_total_divida !== undefined && item.pgfn_total_divida !== null && item.pgfn_total_divida !== '' ? (Number(item.pgfn_total_divida) === 0 ? '<span style="color:#22c55e">R$ 0,00 (Nada Consta)</span>' : `<span style="color:#f87171">${item.pgfn_total_divida_formatado || `R$ ${Number(item.pgfn_total_divida).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}</span>`) : (item.pgfn_executado === false ? '<span style="color:#94a3b8">Não consultado</span>' : '-')} ${formatarBadgePontos(pts.pgfn_divida_ativa)}</div>
           <div><strong style="color:var(--text-muted)">Troca Recente Sócios:</strong> ${item.alteracao_recente_socios === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.alteracao_recente_socios)}</div>
           <div><strong style="color:var(--text-muted)">Aumento Expressivo Cap.:</strong> ${item.aumento_expressivo_capital === 'S' ? '<span style="color:#f87171">Sim</span>' : '<span style="color:#22c55e">Não</span>'} ${formatarBadgePontos(pts.aumento_expressivo_capital)}</div>
         </div>
@@ -7154,6 +7287,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_aumento_expressivo_capital', item.aumento_expressivo_capital !== undefined ? item.aumento_expressivo_capital : 'N');
         setVal('cr_obs', item.obs || '');
         setVal('cr_decisao_final', item.decisao_final || 'Decisão (atenção ao gravar)');
+
+        // Restaura Dívida Ativa PGFN no formulário
+        if (item.pgfn_total_divida !== undefined || item.pgfn_info) {
+          renderPgfnBadge(item.pgfn_info || {
+            executado: item.pgfn_executado !== false,
+            encontrado: true,
+            total_divida: item.pgfn_total_divida !== null && item.pgfn_total_divida !== undefined ? Number(item.pgfn_total_divida) : 0,
+            total_divida_formatado: item.pgfn_total_divida_formatado,
+            tem_divida: Number(item.pgfn_total_divida) > 0
+          });
+        } else {
+          renderPgfnBadge(null);
+        }
 
         if (creditoProtheusBadge) {
           creditoProtheusBadge.classList.remove('hidden');
