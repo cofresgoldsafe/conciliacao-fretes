@@ -1583,6 +1583,148 @@
     });
   }
 
+  /**
+   * Configura busca automática de endereço pelo CEP ao digitar e teclar TAB ou sair do campo.
+   * Preenche Logradouro, Bairro, Cidade e UF, mantendo Número e Complemento livres para digitação.
+   */
+  function setupCepAutoLookup() {
+    const cepInput = document.getElementById('crmClienteCep');
+    const statusSpan = document.getElementById('crmCepLookupStatus');
+    if (!cepInput || cepInput._hasCepListener) return;
+    cepInput._hasCepListener = true;
+
+    let lastCheckedCep = '';
+    let isFetching = false;
+
+    async function buscarCep() {
+      const rawVal = cepInput.value || '';
+      const digits = rawVal.replace(/\D/g, '').slice(0, 8);
+      if (digits.length !== 8) return;
+      if (digits === lastCheckedCep || isFetching) return;
+
+      isFetching = true;
+      lastCheckedCep = digits;
+      cepInput.value = `${digits.slice(0, 5)}-${digits.slice(5)}`;
+
+      if (statusSpan) {
+        statusSpan.style.display = 'inline';
+        statusSpan.textContent = '⏳ Buscando...';
+        statusSpan.style.color = '#38bdf8';
+      }
+
+      try {
+        let data = null;
+        const token = getToken();
+
+        // 1. Tenta rota interna do backend (com cache e RLS)
+        try {
+          const res = await fetch(`/api/bi/crm/cep/${digits}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data) {
+              data = json.data;
+            }
+          }
+        } catch {}
+
+        // 2. Fallback resiliente direto no ViaCEP se a rota interna falhou
+        if (!data) {
+          const resDirect = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+          if (resDirect.ok) {
+            const jsonDirect = await resDirect.json();
+            if (!jsonDirect.erro) {
+              data = {
+                logradouro: jsonDirect.logradouro || '',
+                bairro: jsonDirect.bairro || '',
+                cidade: jsonDirect.localidade || '',
+                uf: jsonDirect.uf || ''
+              };
+            }
+          }
+        }
+
+        if (data) {
+          const inpLog = document.getElementById('crmClienteLogradouro');
+          const inpBairro = document.getElementById('crmClienteBairro');
+          const inpCidade = document.getElementById('crmClienteCidade');
+          const inpUf = document.getElementById('crmClienteUf');
+          const details = document.getElementById('crmClienteDetailsEndereco');
+          const inpNum = document.getElementById('crmClienteNumero');
+
+          if (inpLog) inpLog.value = data.logradouro || '';
+          if (inpBairro) inpBairro.value = data.bairro || '';
+          if (inpCidade) inpCidade.value = data.cidade || data.localidade || '';
+          if (inpUf) inpUf.value = (data.uf || '').toUpperCase();
+
+          // Abre a seção retrátil de endereço caso esteja colapsada
+          if (details) details.open = true;
+
+          if (statusSpan) {
+            statusSpan.textContent = '✅ Endereço preenchido';
+            statusSpan.style.color = '#10b981';
+            setTimeout(() => {
+              if (statusSpan) statusSpan.style.display = 'none';
+            }, 3000);
+          }
+
+          // Foca automaticamente no campo Número para digitação contínua
+          if (inpNum && !inpNum.value) {
+            setTimeout(() => {
+              try { inpNum.focus(); } catch {}
+            }, 60);
+          }
+        } else {
+          if (statusSpan) {
+            statusSpan.textContent = '⚠️ Não localizado';
+            statusSpan.style.color = '#f59e0b';
+            setTimeout(() => {
+              if (statusSpan) statusSpan.style.display = 'none';
+            }, 3000);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ [CRM] Falha ao consultar CEP:', err);
+        if (statusSpan) {
+          statusSpan.textContent = '⚠️ Erro na consulta';
+          statusSpan.style.color = '#ef4444';
+          setTimeout(() => {
+            if (statusSpan) statusSpan.style.display = 'none';
+          }, 3000);
+        }
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    // Eventos: blur, change e keydown (Tab / Enter)
+    cepInput.addEventListener('blur', buscarCep);
+    cepInput.addEventListener('change', buscarCep);
+    cepInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' || e.key === 'Enter') {
+        const digits = (cepInput.value || '').replace(/\D/g, '');
+        if (digits.length === 8) {
+          buscarCep();
+        }
+      }
+    });
+
+    // Máscara dinâmica durante digitação
+    cepInput.addEventListener('input', () => {
+      let v = cepInput.value.replace(/\D/g, '').slice(0, 8);
+      if (v.length > 5) {
+        cepInput.value = `${v.slice(0, 5)}-${v.slice(5)}`;
+      } else {
+        cepInput.value = v;
+      }
+      if (v.length < 8) {
+        lastCheckedCep = '';
+        if (statusSpan) statusSpan.style.display = 'none';
+      }
+    });
+  }
+
   // ============================================================================
   // GESTÃO DE CLIENTES CADASTRO & CARTEIRA COMERCIAL
   // ============================================================================
@@ -1929,6 +2071,10 @@
     const detailsEndereco = document.getElementById('crmClienteDetailsEndereco');
     if (detailsEndereco) detailsEndereco.open = false;
 
+    const statusCep = document.getElementById('crmCepLookupStatus');
+    if (statusCep) statusCep.style.display = 'none';
+
+    setupCepAutoLookup();
     await loadVendedoresOptions();
 
     if (clienteId) {
@@ -2014,6 +2160,19 @@
       btnSalvar.textContent = 'Gravando...';
     }
 
+    let siteUrlRaw = (document.getElementById('crmClienteSiteUrl')?.value || '').trim();
+    let cleanSite = siteUrlRaw.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    if (cleanSite) {
+      if (!cleanSite.includes('.') || cleanSite.length < 4 || /\s/.test(cleanSite)) {
+        mostrarNotificacao('Por favor, informe um endereço de site corporativo válido (ex: www.cliente.com.br ou cliente.com.br).', 'info');
+        if (btnSalvar) {
+          btnSalvar.disabled = false;
+          btnSalvar.textContent = '💾 Salvar Cliente';
+        }
+        return;
+      }
+    }
+
     const payload = {
       id: document.getElementById('crmClienteId').value || undefined,
       tipo_pessoa: document.getElementById('crmClienteTipoPessoa').value,
@@ -2026,15 +2185,15 @@
       celular_whatsapp: document.getElementById('crmClienteCelularWhatsapp').value.trim(),
       telefone: document.getElementById('crmClienteTelefone').value.trim(),
       email: document.getElementById('crmClienteEmail').value.trim(),
-      site_url: (document.getElementById('crmClienteSiteUrl')?.value || '').trim(),
-      email_nfe: (document.getElementById('crmClienteEmailNfe')?.value || '').trim(),
-      email_boleto: (document.getElementById('crmClienteEmailBoleto')?.value || '').trim(),
-      contato_financeiro_nome: (document.getElementById('crmClienteContatoFinNome')?.value || '').trim(),
-      contato_financeiro_tel: (document.getElementById('crmClienteContatoFinTel')?.value || '').trim(),
-      contato_financeiro_email: (document.getElementById('crmClienteContatoFinEmail')?.value || '').trim(),
+      site_url: cleanSite,
+      email_nfe: document.getElementById('crmClienteEmailNfe')?.value.trim() || '',
+      email_boleto: document.getElementById('crmClienteEmailBoleto')?.value.trim() || '',
+      contato_financeiro_nome: document.getElementById('crmClienteContatoFinNome')?.value.trim() || '',
+      contato_financeiro_tel: document.getElementById('crmClienteContatoFinTel')?.value.trim() || '',
+      contato_financeiro_email: document.getElementById('crmClienteContatoFinEmail')?.value.trim() || '',
       vendedor_responsavel: document.getElementById('crmClienteSelectVendedor').value,
       origem: document.getElementById('crmClienteSelectOrigem').value,
-      cep: document.getElementById('crmClienteCep').value.trim(),
+      cep: document.getElementById('crmClienteCep').value.trim().replace(/\D/g, ''),
       logradouro: document.getElementById('crmClienteLogradouro').value.trim(),
       numero: document.getElementById('crmClienteNumero').value.trim(),
       complemento: document.getElementById('crmClienteComplemento').value.trim(),
@@ -2375,6 +2534,7 @@
     }
 
     setupClientAutocomplete();
+    setupCepAutoLookup();
   }
 
   /**

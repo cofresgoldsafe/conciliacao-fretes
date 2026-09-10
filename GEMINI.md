@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.170 (Homologada em 10/09/2026 12:15)  
+> **Versão da Documentação:** v8.172 (Homologada em 10/09/2026 12:25)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Expansão Cadastral de Clientes B2B no CRM Comercial com Mapeamento SA1 Protheus, Campos Fiscais/Cobrança NF-e/Boleto, Contatos do Contas a Pagar, Site Corporativo, RLS Supabase e Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 10/09/2026 12:15 (v8.170 - Expansão Cadastral de Clientes CRM com Campos Fiscais e Financeiro Protheus SA1)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso do Auto-preenchimento de Endereço por CEP no Tab sem Número/Complemento, Normalização de Site Corporativo com/sem WWW sem Necessidade de HTTP/HTTPS no CRM Comercial, RLS Supabase e 10 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 10/09/2026 12:25 (v8.172 - Auto-lookup CEP ViaCEP e Normalização de Site Corporativo no CRM)  
 
 ---
 
@@ -608,7 +608,11 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Ao salvar o novo cliente, os dados (Razão, CNPJ e Código) são injetados automaticamente nos campos da oportunidade sem fechar o formulário e sem perder nenhum dado já digitado pelo vendedor.
     - **Autocomplete Híbrido com Deduplicação e Precedência CRM:**
       - Endpoint `/api/bi/crm/clientes/autocomplete` busca prioritariamente na base `crm_clientes` (badge verde `[CRM]`) e complementa com clientes históricos do Protheus `SA1010` (badge roxo `[Protheus]`), retornando os 7 novos campos Protheus mapeados e usando `Map` por CNPJ para deduplicação automática.
-    - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação com campos fiscais e financeiro, edição, busca por ID, listagem paginada, autocomplete prioritário e soft delete (100% de sucesso).
+    - **Auto-preenchimento de Endereço por CEP (ViaCEP / Tab Key) & Normalização de Site Corporativo:**
+      - **Busca Automática de CEP (`setupCepAutoLookup` & `consultarCep`):** Ao digitar os 8 dígitos do CEP e pressionar `TAB` ou `Enter` (ou sair do campo), o sistema consulta o endpoint `/api/bi/crm/cep/:cep` (com cache em memória `Map` e fallback no ViaCEP), preenchendo automaticamente Logradouro, Bairro, Cidade e UF.
+      - **Sem Número ou Complemento:** Mantém Número e Complemento estritamente livres/vazios para preenchimento manual pelo operador, expande o bloco colapsável de endereço e foca automaticamente no campo `Número` para digitação contínua.
+      - **Normalização de Site Corporativo (`normalizarSiteUrl`):** Campo `crmClienteSiteUrl` alterado para `type="text"` (eliminando travas nativas do browser), aceitando endereços com ou sem `www` (ex: `www.cliente.com.br` ou `cliente.com.br`), sem necessidade de `http://` ou `https://`, higienizando protocolos e gerando links clicáveis `https://${site}` na interface.
+    - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com 10 asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação, edição, busca por ID, listagem paginada, autocomplete prioritário, soft delete, busca de CEP no ViaCEP (com e sem hífen, validação de 8 dígitos) e normalização de site corporativo (100% de sucesso).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

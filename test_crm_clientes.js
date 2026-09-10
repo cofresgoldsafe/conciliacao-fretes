@@ -129,7 +129,7 @@ async function runTests() {
   assert.strictEqual(clienteCriado.cnpj_cpf, '12345678000199');
   assert.strictEqual(clienteCriado.cnpj_cpf_fmt, '12.345.678/0001-99');
   assert.strictEqual(clienteCriado.tipo_cliente_protheus, 'F');
-  assert.strictEqual(clienteCriado.site_url, 'https://www.segurancatotal.com.br');
+  assert.strictEqual(clienteCriado.site_url, 'www.segurancatotal.com.br');
   assert.strictEqual(clienteCriado.email_nfe, 'nfe@segurancatotal.com.br');
   assert.strictEqual(clienteCriado.email_boleto, 'cobranca@segurancatotal.com.br');
   assert.strictEqual(clienteCriado.contato_financeiro_nome, 'Amilton Financeiro');
@@ -145,7 +145,7 @@ async function runTests() {
   assert.strictEqual(resGet.status, 200);
   assert.strictEqual(resGet.body.data.id, clienteCriado.id);
   assert.strictEqual(resGet.body.data.contato_nome, 'Carlos Gerente');
-  assert.strictEqual(resGet.body.data.site_url, 'https://www.segurancatotal.com.br');
+  assert.strictEqual(resGet.body.data.site_url, 'www.segurancatotal.com.br');
   assert.strictEqual(resGet.body.data.email_nfe, 'nfe@segurancatotal.com.br');
   assert.strictEqual(resGet.body.data.email_boleto, 'cobranca@segurancatotal.com.br');
   assert.strictEqual(resGet.body.data.contato_financeiro_nome, 'Amilton Financeiro');
@@ -167,7 +167,7 @@ async function runTests() {
   assert.strictEqual(resEditar.status, 200);
   assert.strictEqual(resEditar.body.data.nome_razao, 'EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA');
   assert.strictEqual(resEditar.body.data.vendedor_responsavel, '000074');
-  assert.strictEqual(resEditar.body.data.site_url, 'https://www.segurancavip.com.br');
+  assert.strictEqual(resEditar.body.data.site_url, 'www.segurancavip.com.br');
   assert.strictEqual(resEditar.body.data.contato_financeiro_nome, 'Joyce Contas a Pagar');
   console.log('   ✅ Cliente editado com sucesso.');
 
@@ -210,6 +210,38 @@ async function runTests() {
   });
   assert.strictEqual(resCheck.status, 404, 'Cliente excluído deve retornar 404');
   console.log('   ✅ Soft delete validado com sucesso.');
+
+  // 9. Teste: Consulta de CEP via GET /api/bi/crm/cep/:cep
+  console.log('9️⃣  Teste: Consulta de CEP no ViaCEP via GET /api/bi/crm/cep/:cep');
+  const resCep = await makeRequest(app, 'GET', `/api/bi/crm/cep/01001-000`, {
+    'Authorization': `Bearer ${tokenAlexandre}`
+  });
+  assert.strictEqual(resCep.status, 200, `Esperado status 200 no CEP, recebido ${resCep.status}`);
+  assert.strictEqual(resCep.body.success, true);
+  assert(resCep.body.data, 'deve retornar objeto data');
+  assert.strictEqual(resCep.body.data.uf, 'SP');
+  assert.strictEqual(resCep.body.data.cidade, 'São Paulo');
+  assert.strictEqual(resCep.body.data.logradouro, 'Praça da Sé');
+  assert.strictEqual(resCep.body.data.bairro, 'Sé');
+  // Garante que número e complemento não são retornados/forçados
+  assert.strictEqual(resCep.body.data.numero, undefined, 'numero deve ser indefinido');
+  assert.strictEqual(resCep.body.data.complemento, undefined, 'complemento deve ser indefinido');
+
+  // Teste de CEP inválido
+  const resCepInvalido = await makeRequest(app, 'GET', `/api/bi/crm/cep/123`, {
+    'Authorization': `Bearer ${tokenAlexandre}`
+  });
+  assert.strictEqual(resCepInvalido.status, 400, 'CEP menor que 8 dígitos deve retornar 400');
+  console.log('   ✅ Consulta de CEP e validação de 8 dígitos aprovadas com sucesso.');
+
+  // 10. Teste: Normalização e validação de Site sem necessidade de http/https
+  console.log('🔟 Teste: Normalização de site_url com e sem www / http / https');
+  assert.strictEqual(crmEngine.normalizarSiteUrl('https://www.cliente.com.br/'), 'www.cliente.com.br');
+  assert.strictEqual(crmEngine.normalizarSiteUrl('http://cliente.com.br'), 'cliente.com.br');
+  assert.strictEqual(crmEngine.normalizarSiteUrl('www.cliente.com.br'), 'www.cliente.com.br');
+  assert.strictEqual(crmEngine.normalizarSiteUrl('cliente.com.br'), 'cliente.com.br');
+  assert.strictEqual(crmEngine.normalizarSiteUrl(''), '');
+  console.log('   ✅ Normalização de site corporativo validada com perfeição.');
 
   // Limpeza do cache para manter data/crm_clientes_cache.json limpo
   try {

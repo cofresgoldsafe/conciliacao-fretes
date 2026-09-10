@@ -609,4 +609,27 @@ router.post('/clientes/:id/restore', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/bi/crm/cep/:cep
+ * Consulta endereço a partir do CEP via ViaCEP com cache
+ */
+router.get('/cep/:cep', requireAuth, requireAdminOrAlexandre, async (req, res) => {
+  try {
+    const { cep } = req.params;
+    const endereco = await crmEngine.consultarCep(cep);
+
+    return res.json({
+      success: true,
+      data: endereco
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao consultar CEP',
+      detail: err.message,
+      code: err.code || 'CEP_ERROR'
+    });
+  }
+});
+
 module.exports = router;

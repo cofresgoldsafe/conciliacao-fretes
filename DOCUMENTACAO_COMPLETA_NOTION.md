@@ -224,7 +224,8 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
   * **Segmented Control & Tabela Paginada:** Alternância no topo do CRM entre Funil e Clientes, busca instantânea, filtro por vendedor, contadores de novos prospects e ações de edição, exclusão lógica e criação imediata de Deals.
   * **WhatsApp 1-Clique (`wa.me`):** Conversa direta sem custos de API externa.
   * **Cadastro Rápido Inline no Deal:** Botão `➕ Novo Cliente` dentro da modal de oportunidade para criar e vincular clientes instantaneamente sem perda de digitação.
-  * **Autocomplete Híbrido:** Prioriza a base `crm_clientes` (`[CRM]`) e complementa com `SA1010` (`[Protheus]`), já trazendo contatos fiscais e financeiros preenchidos.
+  * **Auto-preenchimento de Endereço por CEP no TAB:** Ao digitar o CEP e teclar TAB, consulta o ViaCEP (/api/bi/crm/cep/:cep) e preenche automaticamente Logradouro, Bairro, Cidade e UF. Deixa Número e Complemento livres para preenchimento manual e foca o cursor diretamente no campo Número.
+  * **Site Corporativo sem Exigência de HTTP/HTTPS:** Campo aceita endereços com ou sem `www` (ex: `www.cliente.com.br` ou `cliente.com.br`), higienizando protocolos e gerando links seguros `https://` ao clicar.
   * **Persistência ACID & RLS:** Tabela `crm_clientes` com RLS ativo no Supabase e fallback JSON seguro.
 
 ---

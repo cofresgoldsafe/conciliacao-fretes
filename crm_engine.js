@@ -55,6 +55,16 @@ function formatarTelefone(tel) {
 }
 
 /**
+ * Normaliza URL de site corporativo aceitando com ou sem www e removendo http:// ou https://
+ */
+function normalizarSiteUrl(url) {
+  if (!url) return '';
+  let str = String(url).trim();
+  str = str.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  return str;
+}
+
+/**
  * Lê cache local de contingência do CRM
  */
 async function readCache() {
@@ -433,7 +443,7 @@ function mapClienteRow(row) {
     celular_whatsapp: row.celular_whatsapp || '',
     celular_whatsapp_fmt: formatarTelefone(row.celular_whatsapp),
     email: row.email || '',
-    site_url: row.site_url || '',
+    site_url: normalizarSiteUrl(row.site_url),
     email_nfe: row.email_nfe || '',
     email_boleto: row.email_boleto || '',
     contato_financeiro_nome: row.contato_financeiro_nome || '',
@@ -1339,7 +1349,7 @@ async function salvarCliente(dados, usuario) {
   const telefone = dados.telefone ? String(dados.telefone).trim() : '';
   const celularWhatsapp = dados.celular_whatsapp ? String(dados.celular_whatsapp).trim() : '';
   const email = dados.email ? String(dados.email).trim().toLowerCase() : '';
-  const siteUrl = dados.site_url ? String(dados.site_url).trim() : '';
+  const siteUrl = normalizarSiteUrl(dados.site_url);
   const emailNfe = dados.email_nfe ? String(dados.email_nfe).trim().toLowerCase() : '';
   const emailBoleto = dados.email_boleto ? String(dados.email_boleto).trim().toLowerCase() : '';
   const contatoFinNome = dados.contato_financeiro_nome ? String(dados.contato_financeiro_nome).trim() : '';
@@ -1975,6 +1985,73 @@ async function autocompleteClientes(termo) {
   return Array.from(clientesMap.values()).slice(0, 15);
 }
 
+const cepCache = new Map();
+
+/**
+ * Consulta endereço a partir do CEP via ViaCEP com cache em memória
+ * Preenche Logradouro, Bairro, Cidade e UF (sem número e sem complemento)
+ * @param {string} cepParam 
+ * @returns {Promise<object>} Endereço normalizado
+ */
+async function consultarCep(cepParam) {
+  const cepDigits = String(cepParam || '').replace(/\D/g, '').slice(0, 8);
+  if (cepDigits.length !== 8) {
+    const err = new Error('CEP deve conter exatamente 8 dígitos numéricos.');
+    err.status = 400;
+    err.code = 'INVALID_CEP';
+    throw err;
+  }
+
+  if (cepCache.has(cepDigits)) {
+    return cepCache.get(cepDigits);
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`, {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      throw new Error(`ViaCEP retornou status ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (data.erro === true || data.erro === 'true') {
+      const err = new Error(`CEP ${cepDigits} não foi localizado na base postal.`);
+      err.status = 404;
+      err.code = 'CEP_NOT_FOUND';
+      throw err;
+    }
+
+    const cepFmt = `${cepDigits.slice(0, 5)}-${cepDigits.slice(5)}`;
+    const resultado = {
+      cep: cepFmt,
+      cep_raw: cepDigits,
+      logradouro: (data.logradouro || '').trim(),
+      bairro: (data.bairro || '').trim(),
+      cidade: (data.localidade || '').trim(),
+      uf: (data.uf || '').trim().toUpperCase(),
+      ibge: (data.ibge || '').trim(),
+      ddd: (data.ddd || '').trim()
+    };
+
+    cepCache.set(cepDigits, resultado);
+    return resultado;
+  } catch (err) {
+    if (err.code === 'CEP_NOT_FOUND' || err.code === 'INVALID_CEP') throw err;
+    console.error(`❌ [CRM] Erro ao consultar CEP ${cepDigits}:`, err.message);
+    const wrapErr = new Error(`Não foi possível consultar o CEP no momento: ${err.message}`);
+    wrapErr.status = 502;
+    wrapErr.code = 'CEP_SERVICE_UNAVAILABLE';
+    throw wrapErr;
+  }
+}
+
 module.exports = {
   CANONICAL_STAGES,
   initCrmTables,
@@ -1992,5 +2069,7 @@ module.exports = {
   listarClientes,
   obterClientePorId,
   excluirCliente,
-  restaurarCliente
+  restaurarCliente,
+  consultarCep,
+  normalizarSiteUrl
 };
