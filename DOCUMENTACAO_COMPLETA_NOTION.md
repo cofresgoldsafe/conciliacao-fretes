@@ -1,8 +1,8 @@
 # 📘 Documentação Completa: Plataforma de Apoio GSI Multi-Empresas & Protheus
 
-> **Versão da Documentação:** v8.158 (Homologada em 03/09/2026 15:45)  
+> **Versão da Documentação:** v8.168 (Homologada em 10/09/2026 09:30)  
 > **Documento de Gestão, Arquitetura e Aperfeiçoamento (Pronto para Notion)**  
-> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque, Fechamento Mensal 26 a 25 via GitHub Actions Cron, Parser Rodonaves Corrigido e Filtro Exclusor de CFOPs 5916/6916)  
+> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque, Fechamento Mensal 26 a 25 via GitHub Actions Cron, BI Executivo com Metabase Embed e CRM Comercial Nativo com Pipeline Kanban de 5 Estágios)  
 > **Link do Sistema:** `https://conciliacao-fretes.onrender.com`  
 > **Repositório GitHub:** `https://github.com/cofresgoldsafe/conciliacao-fretes`  
 > **Segurança:** Documento livre de credenciais sensíveis, senhas ou tokens de API.
@@ -25,6 +25,7 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 │    ├─ Motor de Análise de Crédito & Score Comercial         │
 │    ├─ Sincronizador Agendado de Estoque (Job 60min)         │
 │    ├─ Integração mTLS Banco Inter & Webhooks idempotentes   │
+│    ├─ Motor CRM Comercial Nativo (Kanban, Deals, Timeline) │
 │    └─ Driver de E-mail 2FA (Mailjet REST API 443 / SMTP)   │
 └──────────────┬───────────────────────────────┬──────────────┘
                │                               │
@@ -33,14 +34,15 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 │ 2. PostgreSQL (Supabase)     │ │ 3. API Protheus (Railway)    │
 │    ├─ users (RBAC, 2FA, vend)│ │    FastAPI + ODBC SQL Server │
 │    ├─ produtos_saldo_estoque │ └──────────────┬───────────────┘
-│    ├─ estoque_sync_logs      │                │
-│    ├─ analise_credito_history│                ▼ (Consultas Otimizadas)
-│    ├─ user_activities        │ ┌──────────────────────────────┐
-│    ├─ user_2fa_tokens        │ │ 4. Banco SQL Server Protheus │
-│    ├─ inter_webhook_events   │ │    Base: CNVYB3_184594_PR_PD │
-│    ├─ system_configs         │ │    Empresas: 14 (MP),        │
-│    └─ history                │ │              15 (GSI),       │
-│    * Row-Level Security (RLS)│ │              16 (OACO)       │
+│    ├─ crm_deals (JSONB, RLS) │                │
+│    ├─ crm_atividades (RLS)   │                ▼ (Consultas Otimizadas)
+│    ├─ analise_credito_history│ ┌──────────────────────────────┐
+│    ├─ user_activities        │ │ 4. Banco SQL Server Protheus │
+│    ├─ user_2fa_tokens        │ │    Base: CNVYB3_184594_PR_PD │
+│    ├─ inter_webhook_events   │ │    Empresas: 14 (MP),        │
+│    ├─ system_configs         │ │              15 (GSI),       │
+│    └─ history                │ │              16 (OACO)       │
+│    * Row-Level Security (RLS)│ │                              │
 └──────────────────────────────┘ └──────────────────────────────┘
 ```
 
@@ -50,16 +52,17 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 
 | Componente / Portal | URL / Endereço | Descrição & Função |
 | :--- | :--- | :--- |
-| **Portal Web & API (Render)** | `https://conciliacao-fretes.onrender.com` | Interface Web 24/7 com autenticação JWT/2FA, conciliação, estoque, pedidos, crédito e comissões. |
+| **Portal Web & API (Render)** | `https://conciliacao-fretes.onrender.com` | Interface Web 24/7 com autenticação JWT/2FA, conciliação, estoque, pedidos, crédito, comissões, BI e CRM. |
 | **Ambiente Local** | `http://localhost:3000` | Servidor Node.js de desenvolvimento e testes. |
 | **Repositório GitHub** | `https://github.com/cofresgoldsafe/conciliacao-fretes` | Código-fonte versionado em Node.js, HTML5, CSS3, JavaScript e Python. |
 | **API Protheus (Railway)** | `https://protheus-api-production.up.railway.app` | Backend FastAPI que executa queries seguras de leitura no banco SQL Server Protheus. |
 | **Banco Protheus (SQL Server)** | `CNVYB3_184594_PR_PD` | Base de dados do ERP Protheus contendo as empresas Metal Pleno (14), GSI (15) e OACO (16). |
-| **Banco Relacional (Supabase)** | PostgreSQL Nuvem com Pooler SSL | Persistência de usuários, tokens 2FA, saldos de estoque sincronizados, auditoria e crédito com RLS. |
+| **Banco Relacional (Supabase)** | PostgreSQL Nuvem com Pooler SSL | Persistência de usuários, tokens 2FA, saldos de estoque sincronizados, CRM Comercial, auditoria e crédito com RLS. |
+| **Metabase Analytics (Render)** | `https://bi-gsi.onrender.com` | Plataforma de BI executivo integrada via Signed Embed JWT e conectada ao Supabase. |
 
 ---
 
-## 🧭 2. Estrutura de Navegação da Plataforma (6 Abas Principais & 17 Sub-Abas)
+## 🧭 2. Estrutura de Navegação da Plataforma (7 Abas Principais & 22 Sub-Abas)
 
 ---
 
@@ -183,11 +186,41 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 
 ---
 
+### 📊 6. ABA BI EXECUTIVO & CRM COMERCIAL
+* **Controle de Acesso Restrito:** Aba visível e acessível exclusivamente para o usuário administrador **`alexandre`** (`requireRole('admin')`). Tentativas de acesso por vendedores ou outros operadores são bloqueadas no backend com **HTTP 403 Forbidden**.
+* **Sub-aba `[ Índices Financeiros ]`:**
+  * Cálculo em tempo real dos índices matemáticos de liquidez: **Liquidez Corrente ($LC$)**, **Liquidez Seca ($LS$)** e **Liquidez Imediata ($LI$)** consolidados e multi-empresa (Metal Pleno 14, GSI 15, OACO 16).
+  * Confronto direto de Ativo Circulante (Estoque PA pelo custo unitário `SB1`/`SB2`, Disponibilidades Bancárias `SE8` e Contas a Receber `SE1` $\le$ 5 dias) contra Passivo Circulante (Contas a Pagar `SE2` incluindo provisórios `PR` e excluindo adiantamentos `PA`).
+  * Modal rico de Drilldown com 5 guias analíticas e busca instantânea.
+* **Sub-aba `[ Metabase Analytics ]`:**
+  * Incorporação segura (*Signed Embed*) de dashboards executivos do Metabase hospedado no Render (`bi-gsi.onrender.com`), autenticado via token JWT assinado criptograficamente com `METABASE_SECRET_KEY` (HMAC-SHA256) e TTL efêmero.
+  * Seletor dinâmico de Dashboard ID (`#btnBiChangeDashboardId`) e botões de sincronização manual de Faturamento e Índices.
+* **Sub-aba `[ Autorizações de Desconto ]`:**
+  * Cruzamento analítico de oportunidades do Pipedrive com o Protheus ERP (`SB1090` / `SA1010`), calculando margem líquida e desconto médio ponderado.
+  * Regra estrita de frete embutido: frete pago pela empresa (`C5_VLR_FRT`) é deduzido do valor vendido, nunca somado.
+  * Botões oficiais de decisão (`AUTORIZADO` / `NÃO AUTORIZADO`) com gravação de nota auditável fixada no Deal do CRM.
+* **Sub-aba `[ CRM Comercial Nativo ]` (Pipeline Kanban & Deals):**
+  * **Objetivo de Negócio:** Substituição planejada do Pipedrive (~R$ 800/mês para os 3 vendedores: Juliana, Andrea e Figueiredo) por uma ferramenta nativa sem custos de infraestrutura adicional.
+  * **Pipeline Kanban Fluido com 5 Fases Oficiais:**
+    1. 📥 *Novos Info Pendentes* (`lead`)
+    2. ⏳ *Sem Contato Não Responde* (`contato`)
+    3. 📋 *Proposta feita* (`proposta`)
+    4. 🔥 *Negociação Quente* (`negociacao`)
+    5. 🏆 *Venda Efetuada* (`ganho`)
+  * **Contadores em Tempo Real:** Cabeçalhos de coluna exibem total de oportunidades e somatório monetário formatado (R$).
+  * **HTML5 Drag and Drop Nativo:** Transição rápida de fases com arraste fluido, animações visuais e persistência imediata no backend.
+  * **Campos Comerciais Mapeados do Pipedrive:** Autocomplete em tempo real de clientes no Protheus (`SA1010`), vendedor responsável, valor total, condição de pagamento, frete cobrado, frete embutido, frete CIF/FOB, transportadora, número do pedido de compra do cliente, prazo de entrega e observações fiscais para a NF-e.
+  * **Ficha da Oportunidade & Timeline:** Modal com dados completos do negócio e feed cronológico de follow-ups (ligações, reuniões, anotações, mensagens WhatsApp e tarefas).
+  * **Governança de Perda:** Modal dedicado com justificativa de perda obrigatória antes de mover para o estágio `perdido`.
+  * **Segurança e Resiliência:** Row-Level Security no Supabase (`crm_deals` e `crm_atividades`), fallback atômico em disco (`data/crm_deals_cache.json`) via `safe_json_storage.js`, sanitização contra DOM XSS (`escapeHtml`) e reversibilidade total de exclusão (`restaurarDeal`).
+
+---
+
 ## 👥 3. Tabela de Perfis e Usuários Cadastrados
 
 | Usuário | Perfil | Código Vendedor | Abas Autorizadas |
 | :--- | :---: | :---: | :--- |
-| **`alexandre`** | Administrador | *(Geral)* | `📦 Logística`, `🔍 Consulta`, `💼 Vendedores`, `💰 Assist. Financ.`, `⚙️ Configurações` (Acesso Total) |
+| **`alexandre`** | Administrador | *(Geral)* | `📦 Logística`, `🔍 Consulta`, `💼 Vendedores`, `💰 Assist. Financ.`, `📊 BI Executivo`, `⚙️ Configurações` (Acesso Total) |
 | **`juliana`** | Vendedor | `000074` | `💼 Vendedores` (Visão Unificada: Estoque, Compras, Pedidos Abertos e Comissões de toda a equipe) |
 | **`andrea`** | Vendedor | `000064` | `💼 Vendedores` (Visão Unificada: Estoque, Compras, Pedidos Abertos e Comissões de toda a equipe) |
 | **`figueiredo`** | Vendedor | `000004` | `💼 Vendedores` (Visão Unificada: Estoque, Compras, Pedidos Abertos e Comissões de toda a equipe) |
@@ -226,7 +259,9 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 7. **`inter_webhook_events`:** Eventos bancários idempotentes com chave composta `(empresa_codigo, event_id)`.
 8. **`system_configs`:** Configurações dinâmicas, calibração de pesos de score e metas de vendas vigentes.
 9. **`fechamentos_vendedores`:** Fechamentos mensais consolidados dos vendedores (26 a 25), comissões líquidas, metas, faturamento por empresa e snapshots imutáveis.
-10. **`history`:** Histórico de conciliações e uploads.
+10. **`crm_deals`:** Oportunidades comerciais do CRM, dados cadastrais de clientes, campos de frete, observações, itens cotados via JSONB e identificadores `VARCHAR(64)` (`CRM-...`).
+11. **`crm_atividades`:** Linha do tempo cronológica de follow-ups do CRM (ligações, reuniões, anotações, tarefas, WhatsApp).
+12. **`history`:** Histórico de conciliações e uploads.
 
 ---
 
@@ -237,6 +272,7 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 3. 🟢 **Aba 3 (Vendedores - Estoque, Pedidos, Compras, Comissões, Gordura Frete e Fechamento Mensal 26 a 25):** 100% Concluída com visual Power BI, job Supabase, CRM Pipedrive, tema claro/escuro, gamificação com troféu e snapshots imutáveis.
 4. 🟢 **Aba 4 (Assist. Financ. - Conciliação Inter & Análise Crédito):** 100% Concluída com agrupamento N:1, webhooks, Serasa PDF efêmero, maturidade digital e extrato auditável.
 5. 🟢 **Aba 5 (Configurações - Usuários, 2FA, Auditoria, Score e Metas de Vendas):** 100% Concluída com 2FA via Mailjet HTTPS 443 / SMTP, telemetria, calibração de pesos de score e parametrização de metas comerciais.
-6. 🔵 **Gravação Direta no Protheus (ExecAuto):** Rotina AdvPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) pronta, botão aguardando ativação no AppServer TOTVS.
-7. 🌐 **Subdomínio no Render (`[INFRA-01]`):** Configuração de CNAME `portal.gsi.com.br` e SSL.
-8. 🟡 **Evolução do Módulo de Inadimplentes (Fechamento Comercial):** Regras de carência, títulos recuperados/estornos retroativos e extrato analítico de títulos vencidos SE1.
+6. 🟢 **Aba 6 (BI Executivo & CRM Comercial Nativo):** 100% Concluída com Índices de Liquidez multi-empresa, Metabase Analytics Embedded (JWT HMAC-SHA256), Autorizações de Desconto e CRM Comercial Nativo com Pipeline Kanban de 5 fases, Ficha de Oportunidade, Autocomplete Protheus `SA1010`, Linha do Tempo e RLS Supabase.
+7. 🔵 **Gravação Direta no Protheus (ExecAuto):** Rotina AdvPL ([`REST_AMARFRET.PRW`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/REST_AMARFRET.PRW)) pronta, botão aguardando ativação no AppServer TOTVS.
+8. 🌐 **Subdomínio no Render (`[INFRA-01]`):** Configuração de CNAME `portal.gsi.com.br` e SSL.
+9. 🟡 **Evolução do Módulo de Inadimplentes (Fechamento Comercial):** Regras de carência, títulos recuperados/estornos retroativos e extrato analítico de títulos vencidos SE1.

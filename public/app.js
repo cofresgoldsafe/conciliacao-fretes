@@ -247,6 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
     if (mainTabAnalistaFin) mainTabAnalistaFin.style.display = (perms.includes('analista-fin') || perms.includes('financeiro')) ? '' : 'none';
     if (mainTabBi) mainTabBi.style.display = isAdmin ? '' : 'none';
+    const btnTabBiCrm = document.getElementById('btnTabBiCrm');
+    if (btnTabBiCrm) btnTabBiCrm.style.display = isAdmin ? '' : 'none';
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
@@ -782,6 +784,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.initBIAutorizacoesTab();
         }
       }
+      if (targetTab === 'tab-bi-crm') {
+        if (window.CRMModule && typeof window.CRMModule.init === 'function') {
+          window.CRMModule.init();
+        }
+      }
       if (targetTab === 'tab-config-logs') {
         loadAuditDashboard();
       }
@@ -847,6 +854,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
+  // Listener explícito para o botão do CRM Comercial
+  const btnTabBiCrmEl = document.getElementById('btnTabBiCrm');
+  if (btnTabBiCrmEl) {
+    btnTabBiCrmEl.addEventListener('click', () => {
+      tabPanes.forEach(pane => pane.classList.add('hidden'));
+      const targetPane = document.getElementById('tab-bi-crm');
+      if (targetPane) targetPane.classList.remove('hidden');
+      const parentGroup = btnTabBiCrmEl.closest('.sub-tabs-group');
+      if (parentGroup) {
+        parentGroup.querySelectorAll('.nav-tab-btn, .subtab-btn').forEach(b => b.classList.remove('active'));
+      }
+      btnTabBiCrmEl.classList.add('active');
+      if (window.CRMModule && typeof window.CRMModule.init === 'function') {
+        window.CRMModule.init();
+      }
+    });
+  }
 
   // Check auth session on application start
   checkAuthSession();

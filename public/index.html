@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.168">
+  <link rel="stylesheet" href="style.css?v=8.169">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 04/09/2026 17:01 (Homologação Concluída Metabase Signed Embed e Seletor Dashboard ID)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 09:33 (Módulo CRM Comercial Nativo no BI Executivo com Kanban e RLS)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -256,6 +256,10 @@
           <button class="nav-tab-btn" data-tab="tab-bi-autorizacoes" id="btnTabBiAutorizacoes">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             <span>🎯 Autorizações de Desconto</span>
+          </button>
+          <button class="nav-tab-btn subtab-btn" id="btnTabBiCrm" data-tab="tab-bi-crm" data-target="tab-bi-crm" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            <span>💼 CRM Comercial</span>
           </button>
         </div>
       </div>
@@ -4602,7 +4606,401 @@
         </div>
       </div>
     </div>
+
+    <!-- ABA 4 BI: CRM Comercial Nativo (Pipeline & Kanban) -->
+    <div id="tab-bi-crm" class="tab-pane hidden">
+      <div class="bi-wrapper crm-wrapper">
+        <!-- Header Card: Título, KPIs Consolidados e Ações Globais -->
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 1.8rem;">💼</span>
+              <div>
+                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main);">CRM Comercial Nativo</h2>
+                <p class="desc" style="margin: 0; font-size: 0.85rem;">Gestão de pipeline de vendas, cotações de clientes, prazos e follow-up de negociações</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <button id="btnCrmNovaOportunidade" type="button" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; font-weight: 600; height: 38px;">
+                <span>➕ Nova Oportunidade</span>
+              </button>
+              <button id="btnCrmRefresh" type="button" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 38px;" title="Atualizar dados do pipeline">
+                <span>🔄 Atualizar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Barra de KPIs Resumidos -->
+          <div class="crm-kpis-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--panel-border);">
+            <div class="crm-kpi-box">
+              <span class="crm-kpi-label">Pipeline em Negociação</span>
+              <strong id="crmKpiTotalPipeline" class="crm-kpi-val" style="color: #38bdf8;">R$ 0,00</strong>
+            </div>
+            <div class="crm-kpi-box">
+              <span class="crm-kpi-label">Vendas Efetuadas (Mês)</span>
+              <strong id="crmKpiTotalGanho" class="crm-kpi-val" style="color: #10b981;">R$ 0,00</strong>
+            </div>
+            <div class="crm-kpi-box">
+              <span class="crm-kpi-label">Ticket Médio</span>
+              <strong id="crmKpiTicketMedio" class="crm-kpi-val" style="color: #fbbf24;">R$ 0,00</strong>
+            </div>
+            <div class="crm-kpi-box">
+              <span class="crm-kpi-label">Total de Oportunidades</span>
+              <strong id="crmKpiTotalDeals" class="crm-kpi-val" style="color: var(--text-main);">0 oportunidades</strong>
+            </div>
+          </div>
+
+          <!-- Filtros de Busca e Visualização -->
+          <div class="crm-filter-bar" style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--panel-border);">
+            <div style="flex: 1; min-width: 240px;">
+              <input type="text" id="crmSearchInput" class="form-control" placeholder="🔍 Buscar por cliente, título, CNPJ ou pedido..." style="width: 100%; height: 38px;">
+            </div>
+            <div style="min-width: 180px;">
+              <select id="crmFilterVendedor" class="form-control" style="width: 100%; height: 38px;">
+                <option value="TODOS">Todos os Vendedores</option>
+              </select>
+            </div>
+            <div style="min-width: 170px;">
+              <select id="crmFilterStatus" class="form-control" style="width: 100%; height: 38px;">
+                <option value="ATIVOS">Oportunidades Ativas</option>
+                <option value="TODOS">Todas (inclui Perdidos)</option>
+                <option value="PERDIDO">Somente Perdidos</option>
+              </select>
+            </div>
+            <button id="btnCrmLimparFiltros" type="button" class="btn btn-outline" style="height: 38px;" title="Limpar filtros">
+              ✕ Limpar
+            </button>
+          </div>
+        </div>
+
+        <!-- Quadro Kanban (5 Colunas Canônicas) -->
+        <div id="crmKanbanContainer" class="crm-kanban-container">
+          <!-- Gerado dinamicamente via crm.js -->
+        </div>
+      </div>
+    </div>
   </main>
+
+  <!-- MODAL CRM: NOVA / EDITAR OPORTUNIDADE COM CAMPOS COMERCIAIS E ITENS COTADOS -->
+  <div id="modalCrmOportunidade" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmOportunidadeTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
+    <div class="modal-content modal-large" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 980px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <!-- Header do Modal -->
+      <div class="modal-header" style="padding: 16px 22px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="modalCrmOportunidadeTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+          ➕ Nova Oportunidade Comercial
+        </h3>
+        <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal" style="background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+      </div>
+
+      <!-- Corpo com Formulário -->
+      <form id="formCrmOportunidade" style="flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 1.25rem;">
+        <input type="hidden" id="crmDealId">
+        <input type="hidden" id="crmInputClienteCod">
+        <input type="hidden" id="crmInputClienteLoja">
+        <input type="hidden" id="crmInputClienteCnpj">
+
+        <!-- BLOCO 1: DADOS PRINCIPAIS DO NEGÓCIO -->
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 12px;">
+            📌 1. Identificação da Oportunidade
+          </strong>
+          <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Título da Oportunidade: *</label>
+              <input type="text" id="crmInputTitulo" class="form-control" placeholder="Ex: Cofres Digitais 40x40 - Rede Farmácias" required style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Vendedor Responsável: *</label>
+              <select id="crmSelectVendedor" class="form-control" required style="width: 100%;">
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Fase do Funil:</label>
+              <select id="crmSelectFase" class="form-control" style="width: 100%;">
+                <option value="LEAD">📥 Novos Info Pendentes</option>
+                <option value="CONTATO">⏳ Sem Contato Não Responde</option>
+                <option value="PROPOSTA">📄 Proposta feita</option>
+                <option value="NEGOCIACAO">🔥 Negociação Quente</option>
+                <option value="GANHO">🏆 Venda Efetuada</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cliente com Autocomplete -->
+          <div style="position: relative;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Cliente (Razão Social / Nome Fantasia / CNPJ): *</label>
+              <input type="text" id="crmInputCliente" class="form-control" placeholder="Digite 2 ou mais letras para buscar cliente do Protheus..." required autocomplete="off" style="width: 100%;">
+            </div>
+            <!-- Dropdown Autocomplete -->
+            <div id="crmClienteSuggestions" class="crm-autocomplete-dropdown hidden" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg, #1e293b); border: 1px solid var(--panel-border, #334155); border-radius: 6px; max-height: 220px; overflow-y: auto; z-index: 10000; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
+          </div>
+        </div>
+
+        <!-- BLOCO 2: CAMPOS COMERCIAIS -->
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: #10b981; display: block; margin-bottom: 12px;">
+            💼 2. Condições Comerciais & Faturamento
+          </strong>
+          <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Condição de Pagamento:</label>
+              <input type="text" id="crmInputCondPgto" class="form-control" list="crmDatalistCondPgto" placeholder="Ex: 28 DDL, 30/60, À Vista" value="28 DDL" style="width: 100%;">
+              <datalist id="crmDatalistCondPgto">
+                <option value="À Vista">
+                <option value="28 DDL">
+                <option value="30/60 DDL">
+                <option value="30/60/90 DDL">
+                <option value="14/28 DDL">
+                <option value="Antecipado">
+                <option value="45 DDL">
+              </datalist>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Frete:</label>
+              <select id="crmSelectTipoFrete" class="form-control" style="width: 100%;">
+                <option value="CIF">CIF (Por conta do emitente)</option>
+                <option value="FOB">FOB (Por conta do destinatário)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Frete Cobrado (R$):</label>
+              <input type="number" min="0" step="0.01" id="crmInputFreteCobrado" class="form-control" placeholder="0.00" value="0" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Frete Embutido (R$):</label>
+              <input type="number" min="0" step="0.01" id="crmInputFreteEmbutido" class="form-control" placeholder="0.00" value="0" style="width: 100%;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 1.3fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Transportadora Indicada:</label>
+              <input type="text" id="crmInputTransportadora" class="form-control" placeholder="Ex: Braspress, Rodonaves..." style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Prazo de Entrega:</label>
+              <input type="text" id="crmInputPrazoEntrega" class="form-control" placeholder="Ex: 7 a 10 dias úteis" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Nº Pedido Compra Cliente:</label>
+              <input type="text" id="crmInputPedidoCompraCliente" class="form-control" placeholder="Ex: PO-2026-9812" style="width: 100%;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Observações para Emissão da NFe:</label>
+            <textarea id="crmInputObsNfe" class="form-control" rows="2" placeholder="Informações fiscais, agendamento de descarga, dados da ordem de compra..." style="width: 100%;"></textarea>
+          </div>
+        </div>
+
+        <!-- BLOCO 3: ITENS COTADOS -->
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="font-size: 0.88rem; color: #fbbf24; display: block;">
+              📦 3. Tabela de Itens Cotados
+            </strong>
+            <button type="button" id="btnCrmAddItemCotado" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
+              ➕ Adicionar Item
+            </button>
+          </div>
+
+          <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+            <table class="data-table" style="font-size: 0.82rem; width: 100%;">
+              <thead>
+                <tr>
+                  <th style="width: 120px;">Código</th>
+                  <th>Descrição do Produto</th>
+                  <th style="width: 75px; text-align: right;">Qtd</th>
+                  <th style="width: 115px; text-align: right;">P. Tabela</th>
+                  <th style="width: 115px; text-align: right;">P. Negociado</th>
+                  <th style="width: 110px; text-align: right;">Total</th>
+                  <th style="width: 45px; text-align: center;">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="crmTbodyItensCotados">
+                <!-- Preenchido via crm.js -->
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--panel-border);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Total Oportunidade:</span>
+              <input type="number" min="0" step="0.01" id="crmInputValor" class="form-control" style="width: 140px; font-weight: 700; color: #38bdf8; text-align: right;" value="0">
+            </div>
+            <div>
+              <span style="font-size: 0.82rem; color: var(--text-muted);">Soma Itens:</span>
+              <strong id="crmItensCotadosTotalDisplay" style="font-size: 1rem; color: #10b981; margin-left: 6px;">R$ 0,00</strong>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <!-- Rodapé do Modal -->
+      <div class="modal-footer" style="padding: 14px 22px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8));">
+        <button type="button" class="btn-close-crm-modal btn btn-outline">Cancelar</button>
+        <button type="submit" form="formCrmOportunidade" id="btnSalvarCrmOportunidade" class="btn btn-primary" style="font-weight: 600; padding: 8px 24px;">
+          💾 Salvar Oportunidade
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CRM: DETALHES DA OPORTUNIDADE & TIMELINE DE FOLLOW-UP -->
+  <div id="modalCrmDetalhes" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="crmDetalhesTitulo" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
+    <div class="modal-content modal-large" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 940px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <!-- Header do Modal -->
+      <div class="modal-header" style="padding: 16px 22px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3 id="crmDetalhesTitulo" style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main);">Detalhes do Negócio</h3>
+            <span id="crmDetalhesFaseBadge"></span>
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+            Cliente: <strong id="crmDetalhesCliente" style="color: var(--text-main);">-</strong> | Vendedor: <span id="crmDetalhesVendedor">-</span> | Valor: <strong id="crmDetalhesValor" style="color: #38bdf8;">R$ 0,00</strong>
+          </div>
+        </div>
+        <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal" style="background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+      </div>
+
+      <!-- Corpo com 2 Seções: Ficha Comercial + Linha do Tempo -->
+      <div style="flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- Seção Comercial & Itens -->
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 10px;">
+            📋 Condições Comerciais & Faturamento
+          </strong>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 0.82rem;">
+            <div><span style="color: var(--text-muted);">Cond. Pgto:</span> <strong id="crmDetalhesCondPgto">-</strong></div>
+            <div><span style="color: var(--text-muted);">Frete:</span> <strong id="crmDetalhesFrete">-</strong></div>
+            <div><span style="color: var(--text-muted);">Transportadora:</span> <strong id="crmDetalhesTransportadora">-</strong></div>
+            <div><span style="color: var(--text-muted);">Prazo:</span> <strong id="crmDetalhesPrazo">-</strong></div>
+            <div><span style="color: var(--text-muted);">Pedido Compra:</span> <strong id="crmDetalhesPedidoCliente">-</strong></div>
+          </div>
+          <div style="margin-top: 8px; font-size: 0.82rem; color: var(--text-muted);">
+            Obs NFe: <span id="crmDetalhesObsNfe" style="color: var(--text-main);">-</span>
+          </div>
+
+          <!-- Tabela de Itens Cotados -->
+          <div style="margin-top: 12px; border-top: 1px solid var(--panel-border); padding-top: 10px;">
+            <span style="font-size: 0.82rem; font-weight: 600; color: #fbbf24; display: block; margin-bottom: 6px;">Itens Cotados:</span>
+            <div class="table-responsive" style="max-height: 150px; overflow-y: auto;">
+              <table class="data-table" style="font-size: 0.8rem; width: 100%;">
+                <thead>
+                  <tr>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th style="text-align: right;">Qtd</th>
+                    <th style="text-align: right;">Preço Unit.</th>
+                    <th style="text-align: right;">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="crmDetalhesTbodyItens"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção Linha do Tempo & Follow-up -->
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: #ec4899; display: block; margin-bottom: 12px;">
+            ⏱️ Linha do Tempo & Follow-up de Atividades
+          </strong>
+
+          <!-- Formulário Rápido de Nova Atividade -->
+          <form id="formCrmAtividade" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+            <div style="display: grid; grid-template-columns: 180px 1fr 180px auto; gap: 10px; align-items: end;">
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Interação:</label>
+                <select id="crmActivityType" class="form-control form-control-sm" style="width: 100%;">
+                  <option value="NOTA">📝 Anotação Interna</option>
+                  <option value="LIGACAO">📞 Ligação Telefônica</option>
+                  <option value="REUNIAO">🤝 Reunião Comercial</option>
+                  <option value="WHATSAPP">💬 WhatsApp / Mensagem</option>
+                  <option value="TAREFA">📅 Tarefa / Agendamento</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Resumo / Anotações:</label>
+                <input type="text" id="crmActivityDesc" class="form-control form-control-sm" placeholder="Ex: Cliente solicitou amostra do manual de instrução..." required style="width: 100%;">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Próximo Passo (Data/Hora):</label>
+                <input type="datetime-local" id="crmActivityDataAgendamento" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <button type="submit" id="btnCrmRegistrarAtividade" class="btn btn-primary btn-sm" style="height: 32px; font-weight: 600; white-space: nowrap;">
+                ➕ Registrar Atividade
+              </button>
+            </div>
+          </form>
+
+          <!-- Timeline Feed -->
+          <div id="crmActivitiesTimeline" class="crm-timeline-container" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
+            <!-- Renderizado dinamicamente -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Rodapé com Ações Rápidas -->
+      <div class="modal-footer" style="padding: 14px 22px; border-top: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8)); flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnCrmPerdidoDoDetalhes" class="btn btn-outline" style="color: #f87171; border-color: rgba(248, 113, 113, 0.4);">
+            ❌ Marcar como Perdido
+          </button>
+          <button type="button" id="btnCrmGanhoDoDetalhes" class="btn btn-outline" style="color: #34d399; border-color: rgba(52, 211, 153, 0.4);">
+            🏆 Marcar como Ganho
+          </button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnCrmEditarDoDetalhes" class="btn btn-secondary">
+            ✏️ Editar Oportunidade
+          </button>
+          <button type="button" class="btn-close-crm-modal btn btn-primary">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CRM: MARCAR COMO PERDIDO (MOTIVO OBRIGATÓRIO) -->
+  <div id="modalCrmPerdido" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmPerdidoTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="modalCrmPerdidoTitle" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #f87171; display: flex; align-items: center; gap: 8px;">
+          ❌ Marcar como Oportunidade Perdida
+        </h3>
+        <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal">&times;</button>
+      </div>
+      <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+        <input type="hidden" id="crmPerdidoDealId">
+        <div class="form-group" style="margin: 0;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 4px;">Motivo Principal da Perda: *</label>
+          <select id="crmSelectMotivoPerda" class="form-control" required style="width: 100%;">
+            <option value="Preço elevado">Preço elevado / Fora do orçamento</option>
+            <option value="Prazo de entrega longo">Prazo de entrega muito longo</option>
+            <option value="Concorrente venceu">Concorrente venceu cotação</option>
+            <option value="Desistência / Projeto cancelado">Cliente desistiu / Projeto cancelado</option>
+            <option value="Sem orçamento / Financeiro">Sem orçamento financeiro disponível</option>
+            <option value="Produto não atende especificação">Produto não atende às especificações técnicas</option>
+            <option value="Outro">Outro motivo</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 4px;">Observações / Detalhes:</label>
+          <textarea id="crmInputObsPerda" class="form-control" rows="3" placeholder="Insira detalhes sobre o que motivou a perda..." style="width: 100%;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8));">
+        <button type="button" class="btn-close-crm-modal btn btn-outline">Cancelar</button>
+        <button type="button" id="btnConfirmarCrmPerda" class="btn btn-primary" style="background: #ef4444; border-color: #ef4444; font-weight: 600;">
+          Confirmar Perda
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Ficha Completa da Análise de Crédito -->
   <div id="modalDetalhesAnaliseCredito" class="modal hidden">
@@ -6029,14 +6427,15 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.168"></script>
-  <script src="js/bi_indices.js?v=8.168"></script>
-  <script src="js/bi_autorizacoes.js?v=8.168"></script>
-  <script src="js/gordura_frete.js?v=8.168"></script>
-  <script src="js/fechamento_vendedores.js?v=8.168"></script>
-  <script type="module" src="js/tarefas.js?v=8.168"></script>
-  <script src="js/holerites.js?v=8.168"></script>
-  <script src="js/funcionarios_dp.js?v=8.168"></script>
-  <script src="app.js?v=8.168"></script>
+  <script src="js/bi.js?v=8.169"></script>
+  <script src="js/bi_indices.js?v=8.169"></script>
+  <script src="js/bi_autorizacoes.js?v=8.169"></script>
+  <script src="js/gordura_frete.js?v=8.169"></script>
+  <script src="js/fechamento_vendedores.js?v=8.169"></script>
+  <script type="module" src="js/tarefas.js?v=8.169"></script>
+  <script src="js/holerites.js?v=8.169"></script>
+  <script src="js/funcionarios_dp.js?v=8.169"></script>
+  <script src="js/crm.js?v=8.169"></script>
+  <script src="app.js?v=8.169"></script>
 </body>
 </html>

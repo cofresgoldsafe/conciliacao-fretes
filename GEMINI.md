@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.167 (Homologada em 04/09/2026 17:00)  
+> **Versão da Documentação:** v8.168 (Homologada em 10/09/2026 09:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Incorporação Estática do Metabase Analytics, Publicação do Dashboard Executivo GSI, Seletor Dinâmico de Dashboard ID, 24 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 04/09/2026 17:00 (v8.167 - Homologação Metabase Signed Embed e Seletor de Dashboard ID, 24 Testes Aprovados)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso do Módulo CRM Comercial Nativo no BI Executivo, Pipeline Kanban de 5 Estágios Canônicos, Ficha de Oportunidade, Autocomplete de Clientes Protheus SA1, Linha do Tempo de Atividades, Isolamento Estrito Alexandre/Admin, RLS Supabase com Fallback JSON Seguro e 10 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 10/09/2026 09:30 (v8.168 - Módulo CRM Comercial Nativo no BI Executivo com Kanban e RLS, 10 Testes Aprovados)  
 
 ---
 
@@ -886,6 +886,44 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Garantia de Qualidade & Suíte Automatizada (`test_bi_embed.js`):**
       - Expansão da esteira de testes com as novas asserções `2.6` (validação de sobreposição de `dashboardId` via query param no endpoint REST e verificação do payload JWT decodificado) e `5.5` (validação DOM e exportações das funções de seleção de ID no cliente).
       - 24 de 24 asserções aprovadas com 100% de sucesso.
+60. [x] **Módulo de CRM Comercial Nativo no BI Executivo, Kanban de 5 Fases, RLS Supabase & Acesso Restrito Alexandre (`sql/bi/07_tabelas_crm.sql`, `crm_engine.js`, `crm_routes.js`, `public/js/crm.js`, `public/index.html`, `public/style.css`, `public/app.js`, `server.js`, `test_crm_module.js`):**
+    - **Visão Geral e Propósito de Negócio:**
+      - Substituição progressiva do CRM Pipedrive (custo recorrente de ~R$ 800/mês para 3 vendedores: Figueiredo, Andrea e Juliana) por uma solução nativa, sem custos adicionais de infraestrutura externa e totalmente integrada ao portal e ao banco Protheus.
+      - Fase de prototipação, homologação e validação de UX restrita exclusivamente ao administrador (`alexandre` / `admin`) sob a aba `📊 BI EXECUTIVO` (`#tab-bi-crm` / `#btnTabBiCrm`), mantendo os dados no Supabase / cache local sem inserção precoce no ERP Protheus (`SC5`/`SC6`).
+    - **Modelagem Relacional Enxuta & RLS no Supabase (`sql/bi/07_tabelas_crm.sql`):**
+      - Topologia mínima baseada na poda YAGNI (de 7 tabelas para 2 entidades principais):
+        1. `crm_deals`: Armazena oportunidades comerciais, dados cadastrais de clientes, campos de frete, observações e itens cotados via JSONB (`itens_cotados JSONB`). Identificadores em formato `VARCHAR(64)` (`CRM-...`) compatíveis entre Postgres e fallback JSON.
+        2. `crm_atividades`: Linha do tempo cronológica de follow-ups (ligações, reuniões, anotações, tarefas, mensagens de WhatsApp).
+      - Row-Level Security ativado compulsoriamente (`ENABLE` e `FORCE ROW LEVEL SECURITY`) com políticas de acesso irrestrito para `service_role` e `postgres`, prevenindo o lockout silencioso do pooler Supabase.
+      - Índices B-Tree em `estagio`, `vendedor_nome`, `cliente_cod`, `deleted_at` e `created_at DESC`, além de índice GIN na coluna JSONB `itens_cotados`.
+    - **Motor de Negócio Resiliente & Fallback ACID (`crm_engine.js`):**
+      - Suporte dual transparente: Supabase PostgreSQL em nuvem com fallback atômico em `data/crm_deals_cache.json` através do módulo `safe_json_storage.js`.
+      - Autocomplete de clientes ao vivo consultando a tabela `SA1010` do Protheus (com sanitização defensiva contra caracteres especiais e colchetes T-SQL) e histórico de contatos gravados no CRM.
+      - **Regra Oficial de Frete Embutido:** O campo `frete_embutido` é registrado para fins de cálculo de margem, mas **nunca é somado** ao `valor_total` do pedido/deal, preservando a coerência comercial com o Protheus.
+      - Validação canônica de estágios (`lead`, `contato`, `proposta`, `negociacao`, `ganho`, `perdido`).
+      - Suporte a soft-delete (`deleted_at`) e reversibilidade total de exclusão através da função `restaurarDeal(id)`.
+      - Telemetria e auditoria de ações do operador registradas via `logUserActivity` (`CRIACAO_DEAL`, `TRANSICAO_KANBAN`, `FOLLOWUP_CRM`, `EXCLUSAO_DEAL`).
+    - **Segurança RBAC Zero-Trust & Endpoints REST (`crm_routes.js`):**
+      - Middleware de segurança com tripla barreira: `requireAuth`, `requireRole('admin')` e bloqueio estrito para vendedores comuns (`403 FORBIDDEN_VENDOR`), garantindo que apenas `alexandre` acesse os dados durante a fase de validação.
+      - Endpoints RESTful em `/api/bi/crm`: `GET/POST /deals`, `GET/PUT/DELETE /deals/:id`, `PATCH /deals/:id/stage`, `POST /deals/:id/restore`, `GET/POST /deals/:id/activities`, `GET /clientes/autocomplete` e `GET /vendedores`.
+    - **Interface Kanban Reativa & Design do Módulo (`public/js/crm.js`, `public/style.css`, `public/index.html`):**
+      - Quadro Kanban fluido com os 5 estágios canônicos oficiais da operação:
+        1. 📥 *Novos Info Pendentes* (`lead`)
+        2. ⏳ *Sem Contato Não Responde* (`contato`)
+        3. 📋 *Proposta feita* (`proposta`)
+        4. 🔥 *Negociação Quente* (`negociacao`)
+        5. 🏆 *Venda Efetuada* (`ganho`)
+      - Cabeçalhos de colunas com contadores dinâmicos de quantidade de negócios e somatório de valores (R$).
+      - Drag and Drop nativo HTML5 (`dragstart`, `dragover`, `dragleave`, `drop`) com animações de elevação de card e realce da coluna destino.
+      - Modais dedicados acessíveis (`role="dialog"`, `aria-modal="true"`):
+        * *Modal Nova/Editar Oportunidade:* Autocomplete de cliente, vendedor responsável, campos comerciais (condição de pagamento, frete cobrado, frete embutido, frete CIF/FOB, transportadora, número do pedido de compra do cliente, prazo e observações de NFe).
+        * *Modal Ficha de Oportunidade & Timeline:* Histórico completo de interações com adição de novas anotações, status e transições rápidas.
+        * *Modal Marcar como Perdido:* Exigência obrigatória de justificativa de perda antes de arquivar a oportunidade.
+      - Sanitização contextual contra DOM XSS em todos os campos via `escapeHtml()`.
+      - Compatibilidade total de contraste WCAG com Tema Claro (`tab-theme-light` / `modal-theme-light`) e Tema Escuro.
+    - **Garantia de Qualidade & Verificação Adversarial (10/10 Testes Aprovados):**
+      - Suíte automatizada em `test_crm_module.js` cobrindo 10 baterias de testes: criação de deal, transição de estágio Kanban, registro de atividades na timeline, autocomplete com caracteres especiais, bloqueios de segurança RBAC (401/403/200), soft-delete, restauração de deals, listagem de vendedores, rejeição de estágios inválidos e regra estrita de frete embutido.
+      - Testes de integridade sintática e modular em `test_frontend_modules.js` 100% aprovados.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

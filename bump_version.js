@@ -44,6 +44,7 @@ html = html.replace(/js\/fechamento_vendedores\.js\?v=[0-9.]+/g, `js/fechamento_
 html = html.replace(/js\/tarefas\.js\?v=[0-9.]+/g, `js/tarefas.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/holerites\.js\?v=[0-9.]+/g, `js/holerites.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/funcionarios_dp\.js\?v=[0-9.]+/g, `js/funcionarios_dp.js?v=${novaVersaoNum}`);
+html = html.replace(/js\/crm\.js\?v=[0-9.]+/g, `js/crm.js?v=${novaVersaoNum}`);
 
 fs.writeFileSync(indexPath, html, 'utf-8');
 console.log(`✅ Versão atualizada no index.html: ${dataHoraStr} (${description}) | Cache: ?v=${novaVersaoNum}`);

@@ -154,6 +154,9 @@ const {
   saveConfigMetas
 } = require('./fechamento_vendedores_engine');
 
+const crmRoutes = require('./crm_routes');
+const crmEngine = require('./crm_engine');
+
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
 
@@ -4745,6 +4748,9 @@ app.get('/api/bi/autorizacoes/historico', requireAuth, requireRole('admin'), asy
   }
 });
 
+// --- ROTAS DO MÓDULO DE CRM COMERCIAL NATIVO (DEALS, ATIVIDADES E AUTOCOMPLETE) ---
+app.use('/api/bi/crm', crmRoutes);
+
 /**
  * ----------------------------------------------------------------------------
  * ENDPOINTS REST: MÓDULO "MINHAS TAREFAS" & GESTÃO DE DELEGAÇÃO / CHECK
@@ -5293,6 +5299,7 @@ if (require.main === module) {
     console.log(`👉 Acesse: http://localhost:3000`);
     console.log(`=================================================`);
     await initPostgres();
+    await crmEngine.initCrmTables().catch(err => console.warn('⚠️ [CRM Engine] Falha ao inicializar tabelas:', err.message));
     startEstoqueSyncJob();
     startIndicesSyncJob();
     startFechamentoVendedoresJob();
