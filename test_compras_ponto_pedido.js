@@ -104,8 +104,12 @@ async function asyncTest(name, fn) {
     assert.ok(estudo.resultado.pontoPedidoRecomendado >= 0, 'Ponto de pedido recomendado não pode ser negativo');
     assert.ok(estudo.resultado.mensagemSimples.includes('De acordo com o histórico consolidado'), 'Mensagem simples deve conter introdução padrão');
 
-    // Integridade de estoque e SC6
+    // Integridade de estoque e SC6 (estritamente as 3 empresas ativas: 14, 15 e 16)
     assert.ok(typeof estudo.estoque.saldoFisicoTotal === 'number', 'Saldo físico deve ser numérico');
+    assert.deepStrictEqual(Object.keys(estudo.estoque.porEmpresa).sort(), ['14', '15', '16'], 'porEmpresa deve conter exatamente e apenas as chaves das 3 empresas ativas');
+    assert.strictEqual(estudo.estoque.porEmpresa['09'], undefined, 'Empresa 09 não deve estar em estoque.porEmpresa');
+    const soma3Ativas = (estudo.estoque.porEmpresa['14'] || 0) + (estudo.estoque.porEmpresa['15'] || 0) + (estudo.estoque.porEmpresa['16'] || 0);
+    assert.strictEqual(estudo.estoque.saldoFisicoTotal, soma3Ativas, 'Saldo físico total deve ser a soma exata das 3 empresas ativas (14, 15 e 16)');
     assert.ok(typeof estudo.estoque.pedidosAbertosQtd === 'number', 'Pedidos em aberto deve ser numérico');
     assert.ok(Array.isArray(estudo.estoque.ultimasEntradasSD3), 'ultimasEntradasSD3 deve ser array');
   });
@@ -182,6 +186,12 @@ async function asyncTest(name, fn) {
     assert.ok(html.includes('max-height: 90vh;'), 'Falta max-height: 90vh no modal-content');
     assert.ok(html.includes('id="pontoPedidoModalBody"'), 'Falta id="pontoPedidoModalBody" no corpo do modal');
     assert.ok(html.includes('overflow-y: auto; flex: 1;'), 'Falta overflow-y: auto; flex: 1; no corpo do modal');
+
+    // Saldos Físicos (3 empresas ativas: 14, 15 e 16 — desconsiderando empresa 09)
+    assert.ok(html.includes('id="infoSaldoMP"'), 'Falta id="infoSaldoMP"');
+    assert.ok(html.includes('id="infoSaldoGSI"'), 'Falta id="infoSaldoGSI"');
+    assert.ok(html.includes('id="infoSaldoOACO"'), 'Falta id="infoSaldoOACO"');
+    assert.ok(!html.includes('id="infoSaldo09"'), 'infoSaldo09 não deve existir no HTML');
   });
 
   // 6. Teste de Estilos em public/style.css e Contraste

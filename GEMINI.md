@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.175 (Homologada em 10/09/2026 14:05)  
+> **Versão da Documentação:** v8.176 (Homologada em 10/09/2026 14:18)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Barra de Rolagem Vertical no Modal de Ponto de Pedido, Exibição de Ponto de Pedido Atual, Fallback Resiliente de Cópia, Proteção de Estado e Suíte de Testes 100% Aprovada)  
-> **Data da Última Auditoria:** 10/09/2026 14:05 (v8.175 - Rolagem Vertical no Modal Ponto de Pedido, Exibição de PP Atual e Blindagem Adversarial)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Restrição Estrita de Saldos Físicos às 3 Empresas Ativas Metal Pleno 14, GSI 15 e OAÇO 16, Desconsiderando Empresa 09 no Ponto de Pedido Ideal, Rolagem Vertical e Suíte de Testes 100% Aprovada)  
+> **Data da Última Auditoria:** 10/09/2026 14:18 (v8.176 - Restrição de Saldos Físicos às 3 Empresas Ativas 14/15/16 no Ponto de Pedido e Exclusão da Empresa 09)  
 
 ---
 
@@ -1015,6 +1015,10 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Resiliência e Fallback de Cópia (Área de Transferência):** Detecção de disponibilidade de `navigator.clipboard` com fallback para `textarea` efêmero e `document.execCommand('copy')` para uso em conexões HTTP sem TLS na intranet corporativa.
       - **Blindagem de Estado (Anti-Stale State):** Reset compulsório de `currentEstudoData = null` em `abrirModalLoading()` e `renderErro()`, desabilitando o botão de cópia de markdown durante o processamento.
       - **Contraste de Alto Nível & Mobile:** Sobrescritas para fundos translúcidos em `.modal-theme-light`, scrollbar estilizada e regras de colapso de colunas para telas móveis (`@media (max-width: 640px)`).
+    - **Restrição Estrita de Saldos Físicos às 3 Empresas Ativas (v8.176):**
+      - **Escopo Exclusivo de Estoque:** Consulta de saldos físicos `SB2` e consolidação de `saldoFisicoTotal` reconfiguradas para considerar única e exclusivamente as 3 empresas ativas de operação: **Metal Pleno (14)** (`SB2140`), **GSI (15)** (`SB2150`) e **OAÇO (16)** (`SB2160`).
+      - **Expurgo Total da Empresa 09:** Desconsideração completa dos saldos da `SB2090` e de quaisquer filiais não operacionais na rotina analítica de compras.
+      - **Ajustes de UI & Relatório:** Bloco do modal renomeado para *"Saldos Físicos (3 Empresas Ativas)"* com expurgo da linha `Empresa 09` (`#infoSaldo09`), e relatório Markdown atualizado para explicitar o saldo segregado por empresa ativa (`Estoque atual (SB2 - 14/15/16)`).
     - **Suíte de Testes Automatizados:** 9 testes em `test_compras_ponto_pedido.js`, 6 testes em `test_compras_tab.js` e 8 testes em `test_frontend_modules.js` (100% de aprovação).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)

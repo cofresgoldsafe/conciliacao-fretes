@@ -307,16 +307,15 @@ async function executarEstudoPontoPedido(entradaProduto, { leadTimeCustom } = {}
   `;
 
   // --------------------------------------------------------------------------
-  // 3.5 Estoque Atual (SB2) nas empresas 14, 15, 16 e 09
+  // 3.5 Estoque Atual (SB2) nas 3 empresas ativas: Metal Pleno (14), GSI (15) e OAÇO (16)
+  // Desconsiderar saldos da empresa 09 ou de outras empresas
   // --------------------------------------------------------------------------
   const sqlEstoqueSB2 = `
     SELECT '14' AS EMPRESA, ISNULL(SUM(B2_QATU), 0) AS SALDO FROM SB2140 WHERE D_E_L_E_T_ = ' ' AND B2_COD = '${codProduto}'
     UNION ALL
     SELECT '15' AS EMPRESA, ISNULL(SUM(B2_QATU), 0) AS SALDO FROM SB2150 WHERE D_E_L_E_T_ = ' ' AND B2_COD = '${codProduto}'
     UNION ALL
-    SELECT '16' AS EMPRESA, ISNULL(SUM(B2_QATU), 0) AS SALDO FROM SB2160 WHERE D_E_L_E_T_ = ' ' AND B2_COD = '${codProduto}'
-    UNION ALL
-    SELECT '09' AS EMPRESA, ISNULL(SUM(B2_QATU), 0) AS SALDO FROM SB2090 WHERE D_E_L_E_T_ = ' ' AND B2_COD = '${codProduto}';
+    SELECT '16' AS EMPRESA, ISNULL(SUM(B2_QATU), 0) AS SALDO FROM SB2160 WHERE D_E_L_E_T_ = ' ' AND B2_COD = '${codProduto}';
   `;
 
   // --------------------------------------------------------------------------
@@ -463,15 +462,17 @@ async function executarEstudoPontoPedido(entradaProduto, { leadTimeCustom } = {}
   const possuiDevolucoes = Number(qualidadeRow.QTD_DEVOLUCOES || 0) > 0;
 
   // --------------------------------------------------------------------------
-  // Estoque Atual e Carteira SC6
+  // Estoque Atual (SB2) — Somente 3 empresas ativas: Metal Pleno (14), GSI (15) e OAÇO (16)
   // --------------------------------------------------------------------------
-  const estoquePorEmpresa = { '14': 0, '15': 0, '16': 0, '09': 0 };
+  const estoquePorEmpresa = { '14': 0, '15': 0, '16': 0 };
   let saldoFisicoTotal = 0;
   estoqueRows.forEach(e => {
     const emp = String(e.EMPRESA || '').trim();
     const s = Number(e.SALDO) || 0;
-    if (estoquePorEmpresa[emp] !== undefined) estoquePorEmpresa[emp] = s;
-    saldoFisicoTotal += s;
+    if (estoquePorEmpresa[emp] !== undefined) {
+      estoquePorEmpresa[emp] = s;
+      saldoFisicoTotal += s;
+    }
   });
 
   let pedidosAbertosQtd = 0;
@@ -559,7 +560,7 @@ async function executarEstudoPontoPedido(entradaProduto, { leadTimeCustom } = {}
   // --------------------------------------------------------------------------
   // Diagnóstico de Ruptura e Ação Imediata
   // --------------------------------------------------------------------------
-  const rupturaEmCurso = saldoFisicoTotal === 0 && pedidosAbertosQtd > 0;
+  const rupturaEmCurso = saldoFisicoTotal <= 0 && pedidosAbertosQtd > 0;
   const deficitCarteira = Math.max(0, pedidosAbertosQtd - saldoFisicoTotal);
   const saldoAposCarteira = Math.max(0, saldoFisicoTotal - pedidosAbertosQtd);
   const deficitPP = Math.max(0, ppRecomendado - saldoAposCarteira);
@@ -606,7 +607,7 @@ async function executarEstudoPontoPedido(entradaProduto, { leadTimeCustom } = {}
 **Código Protheus:** \`${codProduto}\`
 **Código Pipedrive:** \`${produtoPrincipal.B1_XCODPD || '-'}\`
 **Data do cálculo:** ${hoje.toLocaleDateString('pt-BR')}
-**Fonte:** SD2 (NF de saída) empresas 14/15/16 + SB1090 + SB2 + SC6 — via Railway API (dados ao vivo)
+**Fonte:** SD2 (NF de saída) empresas 14/15/16 + SB1090 + SB2 (empresas ativas 14/15/16) + SC6 — via Railway API (dados ao vivo)
 
 ---
 
@@ -622,7 +623,7 @@ async function executarEstudoPontoPedido(entradaProduto, { leadTimeCustom } = {}
 | **PP pela fórmula oficial** | **${cenario1_PP} un** |
 | **PP recomendado** | **${ppRecomendado} un** |
 | PP cadastrado hoje (\`B1_EMIN\`) | **${ppCadastradoHoje} un** ${ppCadastradoHoje === 0 ? '— não existe ponto de pedido' : ''} |
-| **Estoque atual (SB2)** | **${saldoFisicoTotal} un** ${rupturaEmCurso ? '— ⚠️ RUPTURA EM CURSO' : (saldoFisicoTotal === 0 ? '— Zerado' : '')} |
+| **Estoque atual (SB2 - 14/15/16)** | **${saldoFisicoTotal} un** (MP: ${estoquePorEmpresa['14']} · GSI: ${estoquePorEmpresa['15']} · OAÇO: ${estoquePorEmpresa['16']}) ${rupturaEmCurso ? '— ⚠️ RUPTURA EM CURSO' : (saldoFisicoTotal <= 0 ? '— Zerado' : '')} |
 | Pedidos de venda em aberto (SC6) | **${pedidosAbertosQtd} un** |
 
 ---

@@ -408,12 +408,11 @@
       setTxt('infoCenario3_95', `${cen.cenario3_95 || 0} un`);
       setTxt('infoJustificativaDecisao', res.justificativaCenario || 'Critério baseado na estabilidade da demanda.');
 
-      // Saldos por Filial
+      // Saldos por Filial (Somente 3 empresas ativas: 14, 15 e 16)
       const porEmp = est.porEmpresa || {};
       setTxt('infoSaldoMP', `${porEmp['14'] || 0} un`);
       setTxt('infoSaldoGSI', `${porEmp['15'] || 0} un`);
       setTxt('infoSaldoOACO', `${porEmp['16'] || 0} un`);
-      setTxt('infoSaldo09', `${porEmp['09'] || 0} un`);
 
       // Financeiro
       setTxt('infoCustoUnit', this.formatMoney(prod.custoUnitario));
