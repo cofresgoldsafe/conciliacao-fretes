@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.177 (Homologada em 10/09/2026 15:25)  
+> **Versão da Documentação:** v8.178 (Homologada em 10/09/2026 15:55)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Renomeação para Holerites DP, Logos Oficiais Base64 Síncronos OAÇO e GSI, Espaçamento Amplo para Assinaturas Digitais e Layout Centralizado)  
-> **Data da Última Auditoria:** 10/09/2026 15:25 (v8.177 - Holerites DP, Logos Base64 OAÇO/GSI e Layout de Assinatura Digital)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Ingestão dos 22 Colaboradores DP, Suporte a Sócios, Prestadores PJ e Sem Registro, Datas de Aniversário, Chaves PIX e Badges MP/PJ)  
+> **Data da Última Auditoria:** 10/09/2026 15:55 (v8.178 - Ingestão dos 22 Colaboradores DP, Datas de Aniversário, PIX e Filtros MP/PJ)  
 
 ---
 
@@ -1035,6 +1035,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Verificação Visual Adversarial & Suíte de Testes:**
       - Captura de telas reais via navegador headless Edge confrontando os laudos `adiantamento-salario.png` e `salario-01.png`, confirmando visualmente a presença nítida do logo OAÇO e o posicionamento ergonômico da assinatura.
       - Suíte automatizada dedicada `test_holerites_visual_signature.js` com 3 asserções (100% aprovados) e atualização de `test_frontend_modules.js` (8/8 aprovados).
+63. [x] **Cadastro e Ingestão de 22 Colaboradores DP (Funcionários, Sócios e Prestadores PJ) com Datas de Aniversário e Chaves PIX (`data/dp_colaboradores.json`, `postgres_db.js`, `public/index.html`, `public/style.css`, `public/js/funcionarios_dp.js`, `test_funcionarios_dp.js`):**
+    - **Demanda Operacional & Ingestão da Planilha (`funcionarios-2026-10.png`):**
+      - Cadastro dos 22 colaboradores na sub-aba **`Cadastro Funcion.`** sob a aba principal `📑 ANALISTA FIN`.
+      - Mapeamento abrangente de todas as categorias: colaboradores CLT, prestadores de serviços com emissão de NF (`PJ`), colaboradores sem registro formal (`SEM_REGISTRO` / Avulsos) e sócios/diretores das empresas do grupo.
+      - Preservação estrita das datas de nascimento no formato `DD/MM/AAAA` para viabilizar rotinas de felicitações e votos de feliz aniversário nos holerites executivos e mensagens automatizadas.
+    - **Persistência Perene & Auto-Seeder no Supabase (`data/dp_colaboradores.json`, `postgres_db.js`):**
+      - Gravação atômica de todos os 22 registros no armazenamento local `data/dp_colaboradores.json` via módulo `safe_json_storage`.
+      - Rotina de auto-seeder / migração em `postgres_db.js` (`initDB()`), garantindo que a tabela `dp_colaboradores` receba automaticamente os 22 colaboradores no startup caso a tabela esteja vazia no Supabase PostgreSQL.
+      - Inclusão das tabelas `dp_colaboradores` e `holerites_documentos` na matriz `knownTablesToSecure` do Row-Level Security (RLS).
+    - **Interface, Badges de Empresa e Ficha Executiva (`public/index.html`, `public/style.css`, `public/js/funcionarios_dp.js`):**
+      - Inclusão dos seletores de filtro por empresa **`🟧 MP`** (Metal Pleno / Filial 14) e **`🟩 PJ`** (Prestador PJ), além de `GSI`, `OACO` e `SEM_REGISTRO`.
+      - Estilização de badges `.badge-mp` e `.badge-pj` em conformidade visual com o design system do portal.
+      - Inclusão da opção `SOCIO` no select de tipo de contrato do formulário de cadastro.
+      - Exibição destacada da data de nascimento (`🎂 Nascim.: DD/MM/AAAA`) e tipo de vínculo no cabeçalho e corpo da Ficha Executiva do Colaborador.
+    - **Qualidade & Testes Automatizados (`test_funcionarios_dp.js`, `test_frontend_modules.js`):**
+      - Criação do Teste 6 em `test_funcionarios_dp.js` validando a presença e integridade dos 22 colaboradores, presença dos sócios (Alexandre, Leticia, Marina), prestadores PJ (Luis Carlos, Vanessa Mary), colaboradores Sem Registro (Adriano, Juliana, Odair, etc.), preenchimento obrigatório de data de nascimento e filtros por empresa (100% aprovados, 6 testes).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

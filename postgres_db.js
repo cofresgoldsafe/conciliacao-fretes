@@ -996,6 +996,48 @@ async function initPostgres() {
         console.warn('⚠️ [Postgres] Aviso na autocura de vendedores:', errAutoHeal.message);
       }
 
+      // 11.2. Auto-Seeder / Migração de Colaboradores Existentes do JSON para o Banco
+      try {
+        const colabCountRes = await client.query('SELECT COUNT(*) FROM dp_colaboradores;');
+        const colabCount = parseInt(colabCountRes.rows[0].count, 10);
+        if (colabCount === 0 && fs.existsSync(colaboradoresCacheFile)) {
+          console.log('📦 [Postgres] Tabela "dp_colaboradores" vazia. Iniciando migração de dp_colaboradores.json...');
+          const localColabs = safeReadJsonSync(colaboradoresCacheFile, []);
+          for (const c of localColabs) {
+            await client.query(`
+              INSERT INTO dp_colaboradores (
+                empresa, codigo_interno, nome_completo, cpf, rg, ctps_numero, ctps_serie,
+                pis_pasep, data_nascimento, cargo, cbo, departamento, data_admissao,
+                data_demissao, tipo_contrato, status, salario_base, telefone_celular,
+                telefone_fixo, email_pessoal, endereco_logradouro, endereco_numero,
+                endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf,
+                endereco_cep, tipo_chave_pix, chave_pix, banco_nome, banco_codigo,
+                agencia, conta_corrente, tipo_conta, observacoes, created_by
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31,
+                $32, $33, $34, $35, $36
+              );
+            `, [
+              c.empresa || 'GSI', c.codigo_interno || null, c.nome_completo, c.cpf || null, c.rg || null,
+              c.ctps_numero || null, c.ctps_serie || null, c.pis_pasep || null, c.data_nascimento || null,
+              c.cargo || null, c.cbo || null, c.departamento || null, c.data_admissao || null,
+              c.data_demissao || null, c.tipo_contrato || 'CLT', c.status || 'ATIVO',
+              parseFloat(c.salario_base) || 0.0, c.telefone_celular || null, c.telefone_fixo || null,
+              c.email_pessoal || null, c.endereco_logradouro || null, c.endereco_numero || null,
+              c.endereco_complemento || null, c.endereco_bairro || null, c.endereco_cidade || null,
+              c.endereco_uf || null, c.endereco_cep || null, c.tipo_chave_pix || null,
+              c.chave_pix || null, c.banco_nome || null, c.banco_codigo || null,
+              c.agencia || null, c.conta_corrente || null, c.tipo_conta || 'CORRENTE',
+              c.observacoes || null, c.created_by || 'migracao_inicial'
+            ]);
+          }
+          console.log(`✅ [Postgres] Migrados com sucesso ${localColabs.length} colaboradores para o Supabase PostgreSQL.`);
+        }
+      } catch (errColabSeeder) {
+        console.warn('⚠️ [Postgres] Aviso no auto-seeder de colaboradores:', errColabSeeder.message);
+      }
+
       // 12. Habilita Row-Level Security (RLS) e Políticas de Backend no Supabase (Security Advisor Check 0013 & 0008)
       const knownTablesToSecure = [
         'users',
@@ -1017,7 +1059,9 @@ async function initPostgres() {
         'indices_liquidez_historico',
         'grupos_produtos_sbm',
         'tarefas',
-        'fechamentos_vendedores'
+        'fechamentos_vendedores',
+        'holerites_documentos',
+        'dp_colaboradores'
       ];
 
       // Busca dinamicamente todas as tabelas do schema public para garantir 100% de cobertura

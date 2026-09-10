@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.177">
+  <link rel="stylesheet" href="style.css?v=8.178">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 15:25 (Holerites DP, Logos Base64 OAÇO/GSI e Espaço para Assinatura Digital)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 15:53 (Cadastro de 22 Colaboradores DP com Datas de Aniversário, PIX e Vínculos)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -4188,6 +4188,8 @@
                 <button class="btn btn-sm btn-primary active btn-colab-filtro-empresa" data-empresa="TODAS">Todas</button>
                 <button class="btn btn-sm btn-outline btn-colab-filtro-empresa" data-empresa="GSI">🟦 GSI</button>
                 <button class="btn btn-sm btn-outline btn-colab-filtro-empresa" data-empresa="OACO">🟨 OAÇO</button>
+                <button class="btn btn-sm btn-outline btn-colab-filtro-empresa" data-empresa="MP">🟧 MP</button>
+                <button class="btn btn-sm btn-outline btn-colab-filtro-empresa" data-empresa="PJ">🟩 PJ</button>
                 <button class="btn btn-sm btn-outline btn-colab-filtro-empresa" data-empresa="SEM_REGISTRO">🟪 Sem Registro</button>
               </div>
             </div>
@@ -6519,6 +6521,8 @@
                 <select id="colabInputEmpresa" class="form-control" style="font-size: 0.85rem;" required>
                   <option value="GSI">🟦 GSI BW (Empresa 15)</option>
                   <option value="OACO">🟨 OAÇO (Empresa 16)</option>
+                  <option value="MP">🟧 Metal Pleno / S4BW (Empresa 14)</option>
+                  <option value="PJ">🟩 Prestador PJ (Nota Fiscal)</option>
                   <option value="SEM_REGISTRO">🟪 Sem Registro / Avulso</option>
                 </select>
               </div>
@@ -6575,8 +6579,9 @@
                 <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Contrato</label>
                 <select id="colabInputTipoContrato" class="form-control" style="font-size: 0.85rem;">
                   <option value="CLT">CLT (Mensalista)</option>
+                  <option value="SOCIO">Sócio / Pró-labore</option>
                   <option value="AUTONOMO">Autônomo / Prestador</option>
-                  <option value="PJ">PJ (Pessoa Jurídica)</option>
+                  <option value="PJ">PJ (Pessoa Jurídica / NF)</option>
                   <option value="ESTAGIO">Estágio</option>
                 </select>
               </div>
@@ -6997,16 +7002,16 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.177"></script>
-  <script src="js/bi_indices.js?v=8.177"></script>
-  <script src="js/bi_autorizacoes.js?v=8.177"></script>
-  <script src="js/gordura_frete.js?v=8.177"></script>
-  <script src="js/fechamento_vendedores.js?v=8.177"></script>
-  <script type="module" src="js/tarefas.js?v=8.177"></script>
-  <script src="js/holerites.js?v=8.177"></script>
-  <script src="js/funcionarios_dp.js?v=8.177"></script>
-  <script src="js/crm.js?v=8.177"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.177"></script>
-  <script src="app.js?v=8.177"></script>
+  <script src="js/bi.js?v=8.178"></script>
+  <script src="js/bi_indices.js?v=8.178"></script>
+  <script src="js/bi_autorizacoes.js?v=8.178"></script>
+  <script src="js/gordura_frete.js?v=8.178"></script>
+  <script src="js/fechamento_vendedores.js?v=8.178"></script>
+  <script type="module" src="js/tarefas.js?v=8.178"></script>
+  <script src="js/holerites.js?v=8.178"></script>
+  <script src="js/funcionarios_dp.js?v=8.178"></script>
+  <script src="js/crm.js?v=8.178"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.178"></script>
+  <script src="app.js?v=8.178"></script>
 </body>
 </html>

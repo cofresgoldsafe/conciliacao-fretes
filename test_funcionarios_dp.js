@@ -9,6 +9,7 @@ const {
   obterColaboradorPorIdDB,
   excluirColaboradorDB,
   salvarHoleritesDB,
+  excluirHoleriteDB,
   sincronizarColaboradoresDosHoleritesDB
 } = require('./postgres_db');
 
@@ -107,7 +108,7 @@ async function runTests() {
     valor_liquido: 3000.00,
     eventos: []
   };
-  await salvarHoleritesDB([mockHolerite], 'test');
+  const savedHolerites = await salvarHoleritesDB([mockHolerite], 'test');
 
   // Dispara auto-sincronização
   const syncRes = await sincronizarColaboradoresDosHoleritesDB('sync_test');
@@ -130,10 +131,70 @@ async function runTests() {
   if (autoColab && autoColab.id) {
     await excluirColaboradorDB(autoColab.id, 'admin_test');
   }
+  if (savedHolerites && Array.isArray(savedHolerites)) {
+    for (const h of savedHolerites) {
+      await excluirHoleriteDB(h.id, 'admin_test');
+    }
+  }
 
   const checkDeleted = await obterColaboradorPorIdDB(salvo.id);
   assert.strictEqual(checkDeleted, null, 'Colaborador deveria ter sido excluído');
   console.log('  ✅ [PASS] Exclusão de colaboradores operando perfeitamente');
+  passed++;
+
+  // Teste 6: Validação da Base Completa dos 22 Colaboradores (Planilha/Print 2026-10)
+  console.log('\n--- 6. Validação dos 22 Colaboradores Cadastrados (Sócios, CLT, PJ, Sem Registro) ---');
+  const baseCompleta = await obterColaboradoresDB({});
+  assert.ok(baseCompleta.length >= 22, `Base de colaboradores deve conter ao menos 22 cadastros (encontrados: ${baseCompleta.length})`);
+
+  // Verifica sócios
+  const socioGsi = baseCompleta.find(c => c.nome_completo === 'ALEXANDRE RODRIGUES ARRAIS');
+  assert.ok(socioGsi, 'Alexandre Rodrigues Arrais deve estar cadastrado');
+  assert.strictEqual(socioGsi.empresa, 'GSI');
+  assert.strictEqual(socioGsi.data_nascimento, '19/09/1975');
+  assert.strictEqual(socioGsi.chave_pix, '11998431909');
+
+  const sociaMp = baseCompleta.find(c => c.nome_completo === 'MARINA MADEIRA LAGE');
+  assert.ok(sociaMp, 'Marina Madeira Lage deve estar cadastrada');
+  assert.strictEqual(sociaMp.empresa, 'MP');
+  assert.strictEqual(sociaMp.data_nascimento, '02/09/2003');
+
+  // Verifica prestadores PJ
+  const pjLuis = baseCompleta.find(c => c.nome_completo === 'LUIS CARLOS DA SILVA');
+  assert.ok(pjLuis, 'Luis Carlos da Silva deve estar cadastrado');
+  assert.strictEqual(pjLuis.empresa, 'PJ');
+  assert.strictEqual(pjLuis.tipo_contrato, 'PJ');
+  assert.strictEqual(pjLuis.data_nascimento, '18/02/1973');
+
+  const pjVanessa = baseCompleta.find(c => c.nome_completo === 'VANESSA MARY DA SILVA SANTOS CARLOS');
+  assert.ok(pjVanessa, 'Vanessa Mary da Silva deve estar cadastrada');
+  assert.strictEqual(pjVanessa.empresa, 'PJ');
+  assert.strictEqual(pjVanessa.data_nascimento, '01/08/1988');
+
+  // Verifica colaboradores Sem Registro
+  const semRegAdriano = baseCompleta.find(c => c.nome_completo === 'ADRIANO ROVARIS');
+  assert.ok(semRegAdriano, 'Adriano Rovaris deve estar cadastrado');
+  assert.strictEqual(semRegAdriano.empresa, 'SEM_REGISTRO');
+  assert.strictEqual(semRegAdriano.data_nascimento, '09/02/1989');
+
+  // Valida que todos os 22 possuem data_nascimento preenchida para rotinas de aniversário
+  const semDataNasc = baseCompleta.filter(c => !c.data_nascimento || !c.data_nascimento.includes('/'));
+  assert.strictEqual(semDataNasc.length, 0, 'Todos os colaboradores devem ter data de nascimento válida (DD/MM/AAAA)');
+
+  // Valida filtros por empresa
+  const gsiList = await obterColaboradoresDB({ empresa: 'GSI' });
+  const oacoList = await obterColaboradoresDB({ empresa: 'OACO' });
+  const semList = await obterColaboradoresDB({ empresa: 'SEM_REGISTRO' });
+  const mpList = await obterColaboradoresDB({ empresa: 'MP' });
+  const pjList = await obterColaboradoresDB({ empresa: 'PJ' });
+
+  assert.ok(gsiList.length >= 6, 'GSI deve ter pelo menos 6 colaboradores');
+  assert.ok(oacoList.length >= 5, 'OACO deve ter pelo menos 5 colaboradores');
+  assert.ok(semList.length >= 8, 'Sem Registro deve ter pelo menos 8 colaboradores');
+  assert.ok(mpList.length >= 1, 'MP deve ter pelo menos 1 colaboradora');
+  assert.ok(pjList.length >= 2, 'PJ deve ter pelo menos 2 prestadores');
+
+  console.log('  ✅ [PASS] 22 Colaboradores validados com datas de aniversário, PIX e empresas');
   passed++;
 
   console.log('\n=============================================================');

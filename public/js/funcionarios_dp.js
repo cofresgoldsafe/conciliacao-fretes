@@ -216,7 +216,9 @@
       // Badge Empresa
       let badgeEmpresa = `<span class="badge-gsi">GSI BW</span>`;
       if (c.empresa === 'OACO') badgeEmpresa = `<span class="badge-oaco">OAÇO</span>`;
-      else if (c.empresa === 'SEM_REGISTRO') badgeEmpresa = `<span class="badge-sem-reg">Sem Registro</span>`;
+      else if (c.empresa === 'MP') badgeEmpresa = `<span class="badge-mp">Metal Pleno</span>`;
+      else if (c.empresa === 'PJ') badgeEmpresa = `<span class="badge-pj">Prestador PJ</span>`;
+      else if (c.empresa === 'SEM_REGISTRO' || c.empresa === 'SEM') badgeEmpresa = `<span class="badge-sem-reg">Sem Registro</span>`;
 
       // Badge Status
       let badgeStatus = `<span class="badge-status-ativo">🟢 Ativo</span>`;
@@ -302,7 +304,7 @@
 
       if (c.empresa === 'GSI') gsi++;
       else if (c.empresa === 'OACO') oaco++;
-      else if (c.empresa === 'SEM_REGISTRO') semReg++;
+      else if (c.empresa === 'SEM_REGISTRO' || c.empresa === 'SEM' || c.empresa === 'PJ' || c.empresa === 'MP') semReg++;
     }
 
     const elTotal = document.getElementById('kpiColabTotal');
@@ -494,7 +496,9 @@
 
       let badgeEmpresa = `<span class="badge-gsi">GSI BW (Filial 15)</span>`;
       if (c.empresa === 'OACO') badgeEmpresa = `<span class="badge-oaco">OAÇO (Filial 16)</span>`;
-      else if (c.empresa === 'SEM_REGISTRO') badgeEmpresa = `<span class="badge-sem-reg">Sem Registro / Avulso</span>`;
+      else if (c.empresa === 'MP') badgeEmpresa = `<span class="badge-mp">Metal Pleno (Filial 14)</span>`;
+      else if (c.empresa === 'PJ') badgeEmpresa = `<span class="badge-pj">Prestador PJ (Nota Fiscal)</span>`;
+      else if (c.empresa === 'SEM_REGISTRO' || c.empresa === 'SEM') badgeEmpresa = `<span class="badge-sem-reg">Sem Registro / Avulso</span>`;
 
       body.innerHTML = `
         <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
@@ -508,6 +512,7 @@
           <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.8rem; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
             <span>CPF: <strong style="color: #f8fafc;">${c.cpf || '-'}</strong></span>
             <span>RG: <strong style="color: #f8fafc;">${c.rg || '-'}</strong></span>
+            <span>🎂 Nascim.: <strong style="color: #38bdf8;">${c.data_nascimento || '-'}</strong></span>
             <span>Cód: <strong style="color: #f8fafc;">${c.codigo_interno || '-'}</strong></span>
             <span>Status: <strong style="color: #34d399;">${c.status || 'ATIVO'}</strong></span>
           </div>
@@ -517,6 +522,7 @@
           <!-- Vínculo -->
           <div style="background: rgba(30, 41, 59, 0.3); border: 1px solid var(--panel-border); border-radius: 6px; padding: 10px;">
             <strong style="color: #10b981; font-size: 0.8rem; display: block; margin-bottom: 6px;">💼 Vínculo & Documentos</strong>
+            <p style="margin: 3px 0; font-size: 0.8rem;">Tipo de Vínculo: <strong>${c.tipo_contrato || 'CLT'}</strong></p>
             <p style="margin: 3px 0; font-size: 0.8rem;">Admissão: <strong>${c.data_admissao || '-'}</strong></p>
             <p style="margin: 3px 0; font-size: 0.8rem;">CTPS: <strong>${c.ctps_numero || '-'} ${c.ctps_serie ? `Série ${c.ctps_serie}` : ''}</strong></p>
             <p style="margin: 3px 0; font-size: 0.8rem;">PIS/PASEP: <strong>${c.pis_pasep || '-'}</strong></p>
