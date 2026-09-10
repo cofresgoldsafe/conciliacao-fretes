@@ -250,23 +250,32 @@ async function runTests() {
   console.log('  ✅ [PASS] Algoritmo de deduplicação e fusão de registros duplicados homologado com sucesso');
   passed++;
 
-  // Teste 8: Validação dos Códigos Protheus Comerciais
-  console.log('\n--- 8. Validação de Cód Protheus da Equipe Comercial ---');
-  const baseVendedores = await obterColaboradoresDB({});
-  const juliana = baseVendedores.find(c => c.nome_completo.includes('JULIANA'));
-  const andrea = baseVendedores.find(c => c.nome_completo.includes('ANDREA') || c.nome_completo.includes('ANDRÉA'));
-  const figueiredo = baseVendedores.find(c => c.nome_completo.includes('FIGUEIREDO'));
+  // Teste 8: Validação dos Códigos Protheus de Fornecedores (Contas a Pagar)
+  console.log('\n--- 8. Validação dos Códigos Protheus de Fornecedores (Contas a Pagar) ---');
+  const baseColabs = await obterColaboradoresDB({});
+  assert.strictEqual(baseColabs.length, 22, 'Deve conter exatamente os 22 colaboradores');
 
-  assert.ok(juliana, 'Juliana deve existir na base');
-  assert.strictEqual(juliana.cod_protheus, '000074', 'Juliana deve ter Cód Protheus 000074');
+  const juliana = baseColabs.find(c => c.nome_completo.includes('JULIANA'));
+  const andrea = baseColabs.find(c => c.nome_completo.includes('ANDREA') || c.nome_completo.includes('ANDRÉA'));
+  const figueiredo = baseColabs.find(c => c.nome_completo.includes('FIGUEIREDO'));
+  const alexandre = baseColabs.find(c => c.nome_completo.includes('ALEXANDRE RODRIGUES'));
+  const adriano = baseColabs.find(c => c.nome_completo.includes('ADRIANO ROVARIS'));
+  const vanessa = baseColabs.find(c => c.nome_completo.includes('VANESSA MARY'));
+  const yan = baseColabs.find(c => c.nome_completo.includes('YAN LUCAS'));
 
-  assert.ok(andrea, 'Andrea deve existir na base');
-  assert.strictEqual(andrea.cod_protheus, '000064', 'Andrea deve ter Cód Protheus 000064');
+  assert.ok(juliana && juliana.cod_protheus === '001501', 'Juliana deve ter Cód Fornecedor Protheus 001501');
+  assert.ok(andrea && andrea.cod_protheus === '001132', 'Andrea deve ter Cód Fornecedor Protheus 001132');
+  assert.ok(figueiredo && figueiredo.cod_protheus === '000271', 'Figueiredo deve ter Cód Fornecedor Protheus 000271');
+  assert.ok(alexandre && alexandre.cod_protheus === '000221', 'Alexandre deve ter Cód Fornecedor Protheus 000221');
+  assert.ok(adriano && adriano.cod_protheus === '120946', 'Adriano deve ter Cód Fornecedor Protheus 120946');
+  assert.ok(vanessa && vanessa.cod_protheus === '120278', 'Vanessa deve ter Cód Fornecedor Protheus 120278');
+  assert.ok(yan && yan.cod_protheus === '121166', 'Yan deve ter Cód Fornecedor Protheus 121166');
 
-  assert.ok(figueiredo, 'Figueiredo deve existir na base');
-  assert.strictEqual(figueiredo.cod_protheus, '000004', 'Figueiredo deve ter Cód Protheus 000004');
+  // Valida que TODOS os 22 colaboradores possuem cod_protheus preenchido
+  const semCodProtheus = baseColabs.filter(c => !c.cod_protheus || String(c.cod_protheus).trim() === '');
+  assert.strictEqual(semCodProtheus.length, 0, 'Todos os 22 colaboradores devem ter Cód Fornecedor Protheus preenchido');
 
-  console.log('  ✅ [PASS] Códigos Protheus vinculados aos vendedores oficiais com sucesso (000074, 000064, 000004)');
+  console.log('  ✅ [PASS] 100% dos 22 colaboradores possuem Códigos de Fornecedor Protheus cadastrados para geração do Contas a Pagar');
   passed++;
 
   console.log('\n=============================================================');

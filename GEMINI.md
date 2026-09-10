@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.180 (Homologada em 10/09/2026 16:36)  
+> **Versão da Documentação:** v8.181 (Homologada em 10/09/2026 16:49)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída da Deduplicação de Funcionários, Concatenação Inteligente de Dados, Campo Cód Protheus e Botão de Limpeza em 1 Clique)  
-> **Data da Última Auditoria:** 10/09/2026 16:36 (v8.180 - Deduplicação e Concatenação de Funcionários DP, Campo Cód Protheus e Botão de Limpeza)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída da Vinculação de 100% dos Códigos de Fornecedor Protheus SA2 nos Colaboradores para Geração de Contas a Pagar)  
+> **Data da Última Auditoria:** 10/09/2026 16:49 (v8.181 - Cadastro de Códigos de Fornecedor Protheus SA2 nos 22 Colaboradores DP)  
 
 ---
 
@@ -642,16 +642,38 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Agrupamento em clusters conexos e ranqueamento de registro master (preferência para cadastros que possuem data de nascimento, PIX, CPF, Cód Protheus ou menor ID).
       - Função `mesclarColaboradores(principal, secundario)` que absorve e concatena todos os dados complementares (aniversários, PIX, bancos, salários reais dos holerites, Cód Protheus, datas de admissão/demissão, CTPS, PIS, contatos e observações concatenadas com `|`), atualizando o registro mestre e excluindo os secundários redundantes no banco e no JSON local.
       - Execução automática da deduplicação no startup (`initDB`), após sync da planilha oficial e após sync de holerites.
-    - **Campo "Cód Protheus" em Todas as Camadas:**
+    - **Campo "Cód Protheus" & Mapeamento 100% dos Códigos de Fornecedor Protheus (SA2):**
       - DDL relacional `ALTER TABLE dp_colaboradores ADD COLUMN IF NOT EXISTS cod_protheus VARCHAR(30);` com índice `idx_dp_colab_cod_protheus`.
       - Campo integrado no CRUD do PostgreSQL e no cache JSON local com suporte a busca textual insensível a acentos (`ILIKE` / `removerAcentos`).
-      - Vinculação dos códigos comerciais conhecidos: Juliana (`000074`), Andréa (`000064`), Figueiredo (`000004`).
       - Inclusão da coluna `Cód Protheus` na tabela HTML, no formulário de inclusão/edição (`#colabInputCodProtheus`), na Ficha Executiva (`#modalColaboradorFicha`) e na exportação CSV (`exportarColaboradoresCsv`).
+      - **Vinculação de 100% dos Códigos Oficiais de Fornecedores (`SA2010`) para Geração Futura de Contas a Pagar (`SE2`):**
+        * *Adriano Rovaris:* `120946`
+        * *Alexandre Rodrigues Arrais:* `000221`
+        * *Anderson Toshio Tama:* `120892`
+        * *Andréa Da Conceição Ferreira:* `001132`
+        * *Beatriz Negrão Arrais:* `121046`
+        * *Carlos Henrique da Silva Rossi:* `120428`
+        * *Erica Santos Silva:* `000826`
+        * *Juliana Barbosa Ferreira Lopes:* `001501`
+        * *Leticia Arrais Gonçalves:* `120255`
+        * *Lucas da Silva Borges de Oliveira:* `121179`
+        * *Lucas Santana da Silva:* `121181`
+        * *Lucas Wenderson Silva Santos:* `120948`
+        * *Luis Antonio Bernardino Gomes:* `120980`
+        * *Luis Carlos da Silva (tec assistência):* `000687`
+        * *Luiz Claudio Figueiredo:* `000271`
+        * *Marina Madeira Lage (sócia MP):* `121136`
+        * *Odair Barbosa do Carmo:* `120565`
+        * *Rubens da Silva:* `120897`
+        * *Vanessa Mary da Silva Santos Carlos (diarista):* `120278`
+        * *Wallerson Eustáquio de Souza:* `120351`
+        * *William Conceição Pinheiro:* `121148`
+        * *Yan Lucas Madureira e Sousa Belline Cabral:* `121166`
     - **Ação Rápida de Limpeza em 1 Clique na UI:**
       - Botão `🧹 Limpar / Unificar Duplicados` (`#btnDeduplicarColaboradores`) no topo da sub-aba DP.
       - Endpoint seguro `POST /api/dp/colaboradores/limpar-duplicados` com autenticação JWT e registro de telemetria/auditoria (`DEDUPLICAR_COLABORADORES`).
     - **Suíte de Testes Automatizados (8/8 Aprovados):**
-      - Expansão de `test_funcionarios_dp.js` com Teste 7 (validação de fusão de campos complementares e eliminação de duplicatas) e Teste 8 (persistência e vínculos de `cod_protheus`), 100% aprovados.
+      - Expansão de `test_funcionarios_dp.js` com Teste 7 (validação de fusão de campos complementares e eliminação de duplicatas) e Teste 8 (validação dos códigos de fornecedor Protheus para os 22 colaboradores com asserções estritas), 100% aprovados.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
