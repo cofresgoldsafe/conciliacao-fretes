@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.174 (Homologada em 10/09/2026 13:45)  
+> **Versão da Documentação:** v8.175 (Homologada em 10/09/2026 14:05)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Sub-aba Ponto de Pedido Ideal no Módulo Compras, Motor Analítico Protheus Consolidado, Preenchimento Obrigatório de Zeros, 3 Cenários, Detecção de Ruptura, Modal Acessível A11y, Proteção Anti-Leak de Credenciais e Suíte de Testes 100% Aprovada)  
-> **Data da Última Auditoria:** 10/09/2026 13:45 (v8.174 - Sub-aba Ponto de Pedido Ideal no Módulo Compras, Motor Analítico Protheus Consolidado e Blindagem Adversarial)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Barra de Rolagem Vertical no Modal de Ponto de Pedido, Exibição de Ponto de Pedido Atual, Fallback Resiliente de Cópia, Proteção de Estado e Suíte de Testes 100% Aprovada)  
+> **Data da Última Auditoria:** 10/09/2026 14:05 (v8.175 - Rolagem Vertical no Modal Ponto de Pedido, Exibição de PP Atual e Blindagem Adversarial)  
 
 ---
 
@@ -1007,10 +1007,14 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Proteção contra Memory Leak e duplicação de requisições: flag `_initialized` no frontend prevenindo multiplicação de listeners na alternância de abas.
       - Sanitização com `escapeHtml()` em todos os parâmetros interpolados (prevenção contra DOM XSS).
       - Tratamento fail-safe: falhas no Railway API em tabelas vitais (SD2/SB2/SC6) não mascaram dados falsos de estoque zero.
-    - **Acessibilidade WCAG 2.1 & Tema Claro/Escuro:**
-      - `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `role="listbox"`, suporte a fechar no `Escape` e clique no backdrop.
-      - Classes `.ponto-pedido-item-title` e `.ponto-pedido-mes-qtd` garantindo alto contraste no tema claro (`#0f172a !important`).
-      - Media queries `@media (max-width: 640px)` para layout responsivo em mobile.
+    - **Acessibilidade WCAG 2.1, Tema Claro/Escuro & Refinamento de UX (v8.175):**
+      - `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `role="listbox"`, `aria-expanded`, `aria-controls`, suporte a fechar no `Escape` e clique no backdrop.
+      - **Rolagem Vertical sem Corte de Dados:** `.modal-content` com `max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;`, corpo do modal com `id="pontoPedidoModalBody"` (`overflow-y: auto; flex: 1;`), cabeçalho e rodapé sempre fixos e visíveis (`flex-shrink: 0;`).
+      - **Exibição do Ponto de Pedido Atual:** Elemento `#pontoPedidoPPAtualDestaque` exibindo `Ponto de Pedido Atual: xx unidades` logo abaixo da quantidade recomendada em evidência, extraído de `B1_EMIN` com tratamento seguro para não cadastrado (`0 unidades (não cadastrado)`).
+      - **Scroll Suave & Ergonomia Visual:** Alternância suave no `+info` com `block: 'nearest'`, evitando que o botão de recolher seja empurrado para fora da tela.
+      - **Resiliência e Fallback de Cópia (Área de Transferência):** Detecção de disponibilidade de `navigator.clipboard` com fallback para `textarea` efêmero e `document.execCommand('copy')` para uso em conexões HTTP sem TLS na intranet corporativa.
+      - **Blindagem de Estado (Anti-Stale State):** Reset compulsório de `currentEstudoData = null` em `abrirModalLoading()` e `renderErro()`, desabilitando o botão de cópia de markdown durante o processamento.
+      - **Contraste de Alto Nível & Mobile:** Sobrescritas para fundos translúcidos em `.modal-theme-light`, scrollbar estilizada e regras de colapso de colunas para telas móveis (`@media (max-width: 640px)`).
     - **Suíte de Testes Automatizados:** 9 testes em `test_compras_ponto_pedido.js`, 6 testes em `test_compras_tab.js` e 8 testes em `test_frontend_modules.js` (100% de aprovação).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)

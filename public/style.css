@@ -4655,14 +4655,76 @@ body.theme-light .crm-bloco-titulo-cinza {
   color: #0f172a !important;
 }
 
+#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoPPAtualDestaque {
+  color: #475569 !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoPPAtualQtd {
+  color: #0284c7 !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light div[style*="background: rgba(15, 23, 42"],
+#modalPontoPedidoIdeal.modal-theme-light div[style*="background:rgba(15, 23, 42"] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light div[style*="background: rgba(15, 23, 42, 0.4)"],
+#modalPontoPedidoIdeal.modal-theme-light div[style*="background:rgba(15, 23, 42, 0.4)"] {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Barra de Rolagem Vertical Elegante para o Corpo do Modal */
+#pontoPedidoModalBody {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 rgba(15, 23, 42, 0.4);
+}
+
+#pontoPedidoModalBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+#pontoPedidoModalBody::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 4px;
+}
+
+#pontoPedidoModalBody::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+#pontoPedidoModalBody::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoModalBody {
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoModalBody::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoModalBody::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoModalBody::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Responsividade Mobile para Ponto de Pedido */
 @media (max-width: 640px) {
-  #tab-compras-ponto-pedido div[style*="grid-template-columns: 1fr 1fr"] {
+  #tab-compras-ponto-pedido div[style*="grid-template-columns: 1fr 1fr"],
+  #modalPontoPedidoIdeal div[style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: 1fr !important;
   }
   #modalPontoPedidoIdeal .modal-content {
     margin: 10px;
     max-width: 100% !important;
+    max-height: 95vh !important;
   }
 }
 

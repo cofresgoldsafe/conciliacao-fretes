@@ -230,18 +230,26 @@
     },
 
     abrirModalLoading: function (termo) {
+      currentEstudoData = null;
       const modal = document.getElementById('modalPontoPedidoIdeal');
       const loadingState = document.getElementById('pontoPedidoLoadingState');
       const resultState = document.getElementById('pontoPedidoResultState');
       const errorState = document.getElementById('pontoPedidoErrorState');
       const termoEl = document.getElementById('pontoPedidoLoadingTermo');
+      const btnCopiar = document.getElementById('btnCopiarMarkdownPontoPedido');
+      const modalBody = document.getElementById('pontoPedidoModalBody');
 
       if (!modal) return;
 
+      if (modalBody) modalBody.scrollTop = 0;
       if (termoEl) termoEl.textContent = termo;
       if (loadingState) loadingState.style.display = 'flex';
       if (resultState) resultState.style.display = 'none';
       if (errorState) errorState.style.display = 'none';
+      if (btnCopiar) {
+        btnCopiar.style.opacity = '0.5';
+        btnCopiar.setAttribute('disabled', 'true');
+      }
 
       // Sincroniza tema Claro/Escuro
       this.sincronizarTemaModal();
@@ -253,10 +261,12 @@
       const loadingState = document.getElementById('pontoPedidoLoadingState');
       const resultState = document.getElementById('pontoPedidoResultState');
       const errorState = document.getElementById('pontoPedidoErrorState');
+      const modalBody = document.getElementById('pontoPedidoModalBody');
 
       if (loadingState) loadingState.style.display = 'none';
       if (errorState) errorState.style.display = 'none';
       if (resultState) resultState.style.display = 'block';
+      if (modalBody) modalBody.scrollTop = 0;
 
       // 1. Informações do Produto
       const prod = data.produto || {};
@@ -302,6 +312,14 @@
         } else {
           qtdDestaqueEl.style.color = '#10b981'; // Verde esmeralda
         }
+      }
+
+      // Ponto de Pedido Atual cadastrado no Protheus (B1_EMIN)
+      const ppAtualQtdEl = document.getElementById('pontoPedidoPPAtualQtd');
+      if (ppAtualQtdEl) {
+        const emin = Number(prod.eminCadastrado) || 0;
+        const un = res.unidadeMedida || 'unidades';
+        ppAtualQtdEl.textContent = `${emin} ${un}${emin === 0 ? ' (não cadastrado)' : ''}`;
       }
 
       // 3. Alerta de Ruptura ou Estoque Crítico
@@ -359,6 +377,13 @@
       const cen = data.cenarios || {};
       const fin = data.financeiro || {};
 
+      // Habilita botão de cópia de markdown
+      const btnCopiar = document.getElementById('btnCopiarMarkdownPontoPedido');
+      if (btnCopiar) {
+        btnCopiar.style.opacity = '1';
+        btnCopiar.removeAttribute('disabled');
+      }
+
       // Tabela de Métricas Resumo
       const setTxt = (id, txt) => {
         const el = document.getElementById(id);
@@ -370,7 +395,8 @@
       setTxt('infoMediaDiaria', `${met.mediaDiaria || 0} un/dia`);
       setTxt('infoRunRate', `${met.runRateRecente || 0} un/mês`);
       setTxt('infoLeadTime', `${cen.leadTimeDias || 30} dias ${cen.leadTimeNaoCadastrado ? '(padrão)' : ''}`);
-      setTxt('infoPPCadastrado', `${prod.eminCadastrado || 0} un ${prod.eminCadastrado === 0 ? '(Sem ponto cadastrado)' : ''}`);
+      const eminCad = Number(prod.eminCadastrado) || 0;
+      setTxt('infoPPCadastrado', `${eminCad} un ${eminCad === 0 ? '(Sem ponto cadastrado)' : ''}`);
       setTxt('infoSaldoFisico', `${est.saldoFisicoTotal || 0} un`);
       setTxt('infoPedidosSC6', `${est.pedidosAbertosQtd || 0} un`);
 
@@ -445,6 +471,9 @@
         infoContainer.style.display = 'block';
         btnToggle.innerHTML = `<span>ℹ️ -info (Recolher estudo completo)</span> <span>▲</span>`;
         btnToggle.setAttribute('aria-expanded', 'true');
+        setTimeout(() => {
+          infoContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 50);
       } else {
         infoContainer.style.display = 'none';
         btnToggle.innerHTML = `<span>ℹ️ +info (Ver estudo completo e números que geraram o resultado)</span> <span>▼</span>`;
@@ -453,15 +482,21 @@
     },
 
     renderErro: function (msg) {
+      currentEstudoData = null;
       const loadingState = document.getElementById('pontoPedidoLoadingState');
       const resultState = document.getElementById('pontoPedidoResultState');
       const errorState = document.getElementById('pontoPedidoErrorState');
       const errorMsgEl = document.getElementById('pontoPedidoErrorMsg');
+      const btnCopiar = document.getElementById('btnCopiarMarkdownPontoPedido');
 
       if (loadingState) loadingState.style.display = 'none';
       if (resultState) resultState.style.display = 'none';
       if (errorState) errorState.style.display = 'flex';
       if (errorMsgEl) errorMsgEl.textContent = msg;
+      if (btnCopiar) {
+        btnCopiar.style.opacity = '0.5';
+        btnCopiar.setAttribute('disabled', 'true');
+      }
     },
 
     fecharModal: function () {
@@ -479,15 +514,51 @@
         return;
       }
 
-      navigator.clipboard.writeText(currentEstudoData.markdownRelatorio).then(() => {
+      const mdText = currentEstudoData.markdownRelatorio;
+      const onCopiedSuccess = () => {
         if (typeof showToast === 'function') {
           showToast('📋 Estudo de Ponto de Pedido copiado com sucesso em Markdown!', 'success');
         } else {
           alert('Estudo copiado com sucesso para a área de transferência!');
         }
-      }).catch(err => {
-        console.error('Falha ao copiar markdown:', err);
-      });
+      };
+
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(mdText).then(onCopiedSuccess).catch(() => {
+          this.copiarFallbackTextarea(mdText, onCopiedSuccess);
+        });
+      } else {
+        this.copiarFallbackTextarea(mdText, onCopiedSuccess);
+      }
+    },
+
+    copiarFallbackTextarea: function (text, callback) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        ta.style.width = '2em';
+        ta.style.height = '2em';
+        ta.style.padding = '0';
+        ta.style.border = 'none';
+        ta.style.outline = 'none';
+        ta.style.boxShadow = 'none';
+        ta.style.background = 'transparent';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (successful && typeof callback === 'function') {
+          callback();
+        } else if (typeof showToast === 'function') {
+          showToast('Pressione Ctrl+C para copiar.', 'info');
+        }
+      } catch (err) {
+        console.error('Falha no fallback de cópia:', err);
+      }
     },
 
     sincronizarTemaModal: function () {

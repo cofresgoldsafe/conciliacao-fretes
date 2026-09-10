@@ -172,12 +172,20 @@ async function asyncTest(name, fn) {
     assert.ok(html.includes('id="pontoPedidoLoadingState"'), 'Falta estado de loading #pontoPedidoLoadingState');
     assert.ok(html.includes('Verificando histórico... Calculando...'), 'Falta texto de loading na modal');
     assert.ok(html.includes('id="pontoPedidoQtdDestaque"'), 'Falta elemento com quantidade em destaque');
+    assert.ok(html.includes('id="pontoPedidoPPAtualDestaque"'), 'Falta container #pontoPedidoPPAtualDestaque');
+    assert.ok(html.includes('id="pontoPedidoPPAtualQtd"'), 'Falta elemento #pontoPedidoPPAtualQtd');
+    assert.ok(html.includes('Ponto de Pedido Atual:'), 'Falta rótulo "Ponto de Pedido Atual:"');
     assert.ok(html.includes('id="btnToggleInfoPontoPedido"'), 'Falta botão #btnToggleInfoPontoPedido');
     assert.ok(html.includes('id="pontoPedidoDetalhesInfo"'), 'Falta container de detalhes #pontoPedidoDetalhesInfo');
+
+    // Rolagem Vertical do Modal (Evita corte de dados ao expandir +info)
+    assert.ok(html.includes('max-height: 90vh;'), 'Falta max-height: 90vh no modal-content');
+    assert.ok(html.includes('id="pontoPedidoModalBody"'), 'Falta id="pontoPedidoModalBody" no corpo do modal');
+    assert.ok(html.includes('overflow-y: auto; flex: 1;'), 'Falta overflow-y: auto; flex: 1; no corpo do modal');
   });
 
   // 6. Teste de Estilos em public/style.css e Contraste
-  test('6. public/style.css contém estilos dedicados para autocomplete, quantidade em destaque e tema claro de alto contraste', () => {
+  test('6. public/style.css contém estilos dedicados para autocomplete, scrollbar, PP Atual e tema claro', () => {
     const cssPath = path.join(__dirname, 'public', 'style.css');
     const css = fs.readFileSync(cssPath, 'utf8');
 
@@ -188,6 +196,8 @@ async function asyncTest(name, fn) {
     assert.ok(css.includes('#modalPontoPedidoIdeal.modal-theme-light'), 'Falta tema claro para #modalPontoPedidoIdeal');
     assert.ok(css.includes('.ponto-pedido-item-title'), 'Falta .ponto-pedido-item-title para contraste claro');
     assert.ok(css.includes('.ponto-pedido-mes-qtd'), 'Falta .ponto-pedido-mes-qtd para contraste claro');
+    assert.ok(css.includes('#pontoPedidoModalBody'), 'Falta estilização de scrollbar para #pontoPedidoModalBody');
+    assert.ok(css.includes('#modalPontoPedidoIdeal.modal-theme-light #pontoPedidoPPAtualQtd'), 'Falta contraste claro para #pontoPedidoPPAtualQtd');
   });
 
   // 7. Teste de Sintaxe dos Scripts via vm.Script

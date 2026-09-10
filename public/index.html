@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.174">
+  <link rel="stylesheet" href="style.css?v=8.175">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 13:41 (Sub-aba Ponto de Pedido Ideal no Modulo Compras e Motor Analitico Protheus)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 14:01 (Barra de rolagem vertical no modal de Ponto de Pedido e exibicao de PP Atual)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -6776,17 +6776,17 @@
 
   <!-- MODAL: ESTUDO DE PONTO DE PEDIDO IDEAL -->
   <div id="modalPontoPedidoIdeal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalPontoPedidoTitulo" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
-    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 720px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);">
+    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);">
       
       <!-- Cabeçalho -->
-      <div style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border, #334155); display: flex; justify-content: space-between; align-items: center;">
+      <div style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border, #334155); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
         <h3 id="modalPontoPedidoTitulo" style="margin: 0; font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
           <span>🎯 Estudo de Ponto de Pedido</span>
         </h3>
         <button type="button" id="btnFecharModalPontoPedido" class="btn btn-outline btn-sm" aria-label="Fechar modal" style="padding: 2px 8px; font-size: 1rem;">✕</button>
       </div>
 
-      <div style="padding: 24px; font-size: 0.9rem;">
+      <div id="pontoPedidoModalBody" style="padding: 24px; font-size: 0.9rem; overflow-y: auto; flex: 1;">
         <!-- ESTADO 1: LOADING IMEDIATO -->
         <div id="pontoPedidoLoadingState" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center;">
           <div class="spinner" style="width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.2); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px;"></div>
@@ -6829,6 +6829,9 @@
             <div id="pontoPedidoQtdDestaque" class="ponto-pedido-qtd-destaque" style="font-size: 2.8rem; font-weight: 800; line-height: 1.1; margin: 8px 0; letter-spacing: -0.5px;">
               - unidades
             </div>
+            <div id="pontoPedidoPPAtualDestaque" style="font-size: 0.88rem; color: var(--text-muted, #94a3b8); margin-top: 6px; font-weight: 500;">
+              Ponto de Pedido Atual: <span id="pontoPedidoPPAtualQtd" style="font-weight: 700; color: #38bdf8;">- unidades</span>
+            </div>
           </div>
 
           <!-- Box de Alerta de Ruptura (Se houver) -->
@@ -6836,7 +6839,7 @@
 
           <!-- Botão / Link +info -->
           <div style="text-align: center; margin-bottom: 14px;">
-            <button type="button" id="btnToggleInfoPontoPedido" class="btn btn-outline" style="font-size: 0.85rem; padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+            <button type="button" id="btnToggleInfoPontoPedido" class="btn btn-outline" aria-expanded="false" aria-controls="pontoPedidoDetalhesInfo" style="font-size: 0.85rem; padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
               <span>ℹ️ +info (Ver estudo completo e números que geraram o resultado)</span>
               <span>▼</span>
             </button>
@@ -6983,7 +6986,7 @@
       </div>
 
       <!-- Rodapé -->
-      <div style="padding: 12px 20px; border-top: 1px solid var(--panel-border, #334155); display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.4);">
+      <div style="padding: 12px 20px; border-top: 1px solid var(--panel-border, #334155); display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.4); flex-shrink: 0;">
         <button type="button" id="btnCopiarMarkdownPontoPedido" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px;">
           <span>📋 Copiar Relatório (Markdown)</span>
         </button>
@@ -6995,16 +6998,16 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.174"></script>
-  <script src="js/bi_indices.js?v=8.174"></script>
-  <script src="js/bi_autorizacoes.js?v=8.174"></script>
-  <script src="js/gordura_frete.js?v=8.174"></script>
-  <script src="js/fechamento_vendedores.js?v=8.174"></script>
-  <script type="module" src="js/tarefas.js?v=8.174"></script>
-  <script src="js/holerites.js?v=8.174"></script>
-  <script src="js/funcionarios_dp.js?v=8.174"></script>
-  <script src="js/crm.js?v=8.174"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.174"></script>
-  <script src="app.js?v=8.174"></script>
+  <script src="js/bi.js?v=8.175"></script>
+  <script src="js/bi_indices.js?v=8.175"></script>
+  <script src="js/bi_autorizacoes.js?v=8.175"></script>
+  <script src="js/gordura_frete.js?v=8.175"></script>
+  <script src="js/fechamento_vendedores.js?v=8.175"></script>
+  <script type="module" src="js/tarefas.js?v=8.175"></script>
+  <script src="js/holerites.js?v=8.175"></script>
+  <script src="js/funcionarios_dp.js?v=8.175"></script>
+  <script src="js/crm.js?v=8.175"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.175"></script>
+  <script src="app.js?v=8.175"></script>
 </body>
 </html>
