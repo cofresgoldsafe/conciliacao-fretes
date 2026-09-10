@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.178 (Homologada em 10/09/2026 15:55)  
+> **Versão da Documentação:** v8.179 (Homologada em 10/09/2026 16:10)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Ingestão dos 22 Colaboradores DP, Suporte a Sócios, Prestadores PJ e Sem Registro, Datas de Aniversário, Chaves PIX e Badges MP/PJ)  
-> **Data da Última Auditoria:** 10/09/2026 15:55 (v8.178 - Ingestão dos 22 Colaboradores DP, Datas de Aniversário, PIX e Filtros MP/PJ)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída da Sincronização da Base Oficial de 22 Colaboradores DP com Aniversários e PIX, Botão Sync Planilha e Resolução da Origem dos 11 Holerites)  
+> **Data da Última Auditoria:** 10/09/2026 16:10 (v8.179 - Sincronização Base Oficial de 22 Colaboradores DP e Endpoint Sync Planilha)  
 
 ---
 
@@ -613,6 +613,23 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Sem Número ou Complemento:** Mantém Número e Complemento estritamente livres/vazios para preenchimento manual pelo operador, expande o bloco colapsável de endereço e foca automaticamente no campo `Número` para digitação contínua.
       - **Normalização de Site Corporativo (`normalizarSiteUrl`):** Campo `crmClienteSiteUrl` alterado para `type="text"` (eliminando travas nativas do browser), aceitando endereços com ou sem `www` (ex: `www.cliente.com.br` ou `cliente.com.br`), sem necessidade de `http://` ou `https://`, higienizando protocolos e gerando links clicáveis `https://${site}` na interface.
     - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com 10 asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação, edição, busca por ID, listagem paginada, autocomplete prioritário, soft delete, busca de CEP no ViaCEP (com e sem hífen, validação de 8 dígitos) e normalização de site corporativo (100% de sucesso).
+
+51. [x] **Módulo de Cadastro Geral de Funcionários & Colaboradores DP (`postgres_db.js`, `server.js`, `public/js/funcionarios_dp.js`, `public/index.html`, `public/style.css`, `data/dp_colaboradores.json`, `test_funcionarios_dp.js`):**
+    - **Aba "ANALISTA FIN > Cadastro Funcion." e Sub-abas de DP:**
+      - Sub-aba dedicada `#tab-dp-colaboradores` para gestão de colaboradores do Departamento Pessoal.
+      - Suporte integral a todas as modalidades contratuais: CLT, Sócios (`SOCIO`), Prestadores PJ (`PJ`) e Colaboradores Sem Registro (`SEM`).
+      - Badges de identificação visual de empresa e regime: `GSI`, `OAÇO`, `MP` (Metal Pleno), `PJ` (Prestador de Serviços) e `SEM` (Sem Registro).
+    - **Ingestão e Sincronização dos 22 Colaboradores Oficiais da Planilha:**
+      - Cadastro integral dos 22 colaboradores com datas de aniversário, chaves PIX, bancos, agências, contas correntes e telefones.
+      - **Resolução da Causa Raiz dos 11 Colaboradores dos Holerites:**
+        * A sincronização anterior extraía colaboradores exclusivamente dos arquivos PDF de holerites contábeis (`holerites_documentos`), que continham apenas os 11 funcionários CLT registrados da GSI/OAÇO (sem Sócios, sem prestadores PJ e sem colaboradores sem registro, além de não conterem datas de aniversário e dados bancários).
+        * Como a tabela já possuía 11 registros, a condição anterior `if (colabCount === 0)` impedia a carga automática em produção.
+        * Implementada rotina de consolidação e UPSERT automático no startup (`initDB`), além do endpoint `POST /api/dp/colaboradores/sync-planilha` e botão visual `📋 Base Oficial (22 Colab.)` na interface para enriquecimento e carga instantânea sob demanda.
+    - **Filtros Dinâmicos, Modal de Ficha, Edição, Exportação CSV e Cópia de PIX:**
+      - Filtros por Empresa (`TODAS`, `GSI`, `OAÇO`, `MP`, `PJ`, `SEM`), filtros por Status (`TODOS`, `ATIVO`, `AFASTADO`, `DEMITIDO`) e busca universal instantânea.
+      - Modal de Ficha Completa do Colaborador, formulário de edição/inclusão com validações, botão de cópia de chave PIX em 1 clique e exportação completa em CSV com codificação UTF-8 (`\uFEFF`).
+    - **Suíte de Testes Automatizados (6/6 Aprovados):**
+      - `test_funcionarios_dp.js` validando persistência, filtros, busca universal, edição funcional, auto-sincronização de holerites, exclusão e os 22 registros oficiais.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

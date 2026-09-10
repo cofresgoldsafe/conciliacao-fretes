@@ -45,6 +45,12 @@
       btnSync.addEventListener('click', executarSyncHolerites);
     }
 
+    // 2.1 Sincronizar Base Oficial (22 Colaboradores da Planilha)
+    const btnSyncBase = document.getElementById('btnSyncBaseColaboradores');
+    if (btnSyncBase) {
+      btnSyncBase.addEventListener('click', executarSyncBaseOficial);
+    }
+
     // 3. Atualizar Lista
     const btnRefresh = document.getElementById('btnRefreshColaboradores');
     if (btnRefresh) {
@@ -592,6 +598,27 @@
     }
   }
 
+  async function executarSyncBaseOficial() {
+    const btn = document.getElementById('btnSyncBaseColaboradores');
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/dp/colaboradores/sync-planilha', {
+        method: 'POST',
+        headers: getAuthHeader()
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      alert(`✅ Sincronização da Base Oficial concluída!\n\n• Total processados: ${data.total}\n• Novos colaboradores inseridos: ${data.inseridos}\n• Colaboradores enriquecidos/atualizados: ${data.atualizados}\n\n(Base completa com 22 colaboradores, aniversários, chaves PIX, sócios e prestadores).`);
+      await carregarColaboradores();
+    } catch (err) {
+      alert('Falha na sincronização da base oficial: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function excluirColaborador(id) {
     const colab = state.colaboradores.find(x => x.id === id);
     const nome = colab ? colab.nome_completo : `ID ${id}`;
@@ -691,7 +718,9 @@
     abrirModalEditar,
     abrirFicha,
     excluirColaborador,
-    copiarChavePix
+    copiarChavePix,
+    executarSyncBaseOficial,
+    executarSyncHolerites
   };
 
   // Inicializa quando o DOM estiver pronto

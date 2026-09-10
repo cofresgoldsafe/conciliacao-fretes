@@ -110,6 +110,7 @@ const {
   obterColaboradorPorIdDB,
   excluirColaboradorDB,
   sincronizarColaboradoresDosHoleritesDB,
+  sincronizarColaboradoresBaseOficialDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -4444,6 +4445,28 @@ app.post('/api/dp/colaboradores/sync-holerites', requireAuth, async (req, res) =
     return res.json({ success: true, ...resultado });
   } catch (err) {
     console.error('Erro ao sincronizar colaboradores:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Sincronizar Base Oficial (Planilha dos 22 Colaboradores com Aniversários e PIX)
+app.post('/api/dp/colaboradores/sync-planilha', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const resultado = await sincronizarColaboradoresBaseOficialDB(user ? user.username : 'sistema');
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'SYNC_COLABORADORES_PLANILHA',
+      description: `Sincronizou a base oficial de 22 colaboradores: ${resultado.total} processados (${resultado.inseridos} novos, ${resultado.atualizados} enriquecidos/atualizados).`,
+      ip: req.ip,
+      metadata: resultado
+    }).catch(() => {});
+
+    return res.json({ success: true, ...resultado });
+  } catch (err) {
+    console.error('Erro ao sincronizar base oficial de colaboradores:', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
