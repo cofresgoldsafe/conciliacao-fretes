@@ -1,8 +1,8 @@
 # 📘 Documentação Completa: Plataforma de Apoio GSI Multi-Empresas & Protheus
 
-> **Versão da Documentação:** v8.168 (Homologada em 10/09/2026 09:30)  
+> **Versão da Documentação:** v8.169 (Homologada em 10/09/2026 11:30)  
 > **Documento de Gestão, Arquitetura e Aperfeiçoamento (Pronto para Notion)**  
-> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque, Fechamento Mensal 26 a 25 via GitHub Actions Cron, BI Executivo com Metabase Embed e CRM Comercial Nativo com Pipeline Kanban de 5 Estágios)  
+> **Status:** Operacional e Publicado na Nuvem 24/7 (Alta Disponibilidade com Supabase RLS, Autenticação 2FA, Job de Estoque, Fechamento Mensal 26 a 25 via GitHub Actions Cron, BI Executivo com Metabase Embed, CRM Comercial Nativo com Pipeline Kanban de 5 Estágios e Cadastro/Gestão de Clientes B2B com Autocomplete Híbrido)  
 > **Link do Sistema:** `https://conciliacao-fretes.onrender.com`  
 > **Repositório GitHub:** `https://github.com/cofresgoldsafe/conciliacao-fretes`  
 > **Segurança:** Documento livre de credenciais sensíveis, senhas ou tokens de API.
@@ -25,7 +25,7 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 │    ├─ Motor de Análise de Crédito & Score Comercial         │
 │    ├─ Sincronizador Agendado de Estoque (Job 60min)         │
 │    ├─ Integração mTLS Banco Inter & Webhooks idempotentes   │
-│    ├─ Motor CRM Comercial Nativo (Kanban, Deals, Timeline) │
+│    ├─ Motor CRM Comercial Nativo (Kanban, Clientes, Deals)  │
 │    └─ Driver de E-mail 2FA (Mailjet REST API 443 / SMTP)   │
 └──────────────┬───────────────────────────────┬──────────────┘
                │                               │
@@ -34,14 +34,15 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
 │ 2. PostgreSQL (Supabase)     │ │ 3. API Protheus (Railway)    │
 │    ├─ users (RBAC, 2FA, vend)│ │    FastAPI + ODBC SQL Server │
 │    ├─ produtos_saldo_estoque │ └──────────────┬───────────────┘
-│    ├─ crm_deals (JSONB, RLS) │                │
-│    ├─ crm_atividades (RLS)   │                ▼ (Consultas Otimizadas)
-│    ├─ analise_credito_history│ ┌──────────────────────────────┐
-│    ├─ user_activities        │ │ 4. Banco SQL Server Protheus │
-│    ├─ user_2fa_tokens        │ │    Base: CNVYB3_184594_PR_PD │
-│    ├─ inter_webhook_events   │ │    Empresas: 14 (MP),        │
-│    ├─ system_configs         │ │              15 (GSI),       │
-│    └─ history                │ │              16 (OACO)       │
+│    ├─ crm_clientes (RLS)     │                │
+│    ├─ crm_deals (JSONB, RLS) │                ▼ (Consultas Otimizadas)
+│    ├─ crm_atividades (RLS)   │ ┌──────────────────────────────┐
+│    ├─ analise_credito_history│ │ 4. Banco SQL Server Protheus │
+│    ├─ user_activities        │ │    Base: CNVYB3_184594_PR_PD │
+│    ├─ user_2fa_tokens        │ │    Empresas: 14 (MP),        │
+│    ├─ inter_webhook_events   │ │              15 (GSI),       │
+│    ├─ system_configs         │ │              16 (OACO)       │
+│    └─ history                │ │                              │
 │    * Row-Level Security (RLS)│ │                              │
 └──────────────────────────────┘ └──────────────────────────────┘
 ```

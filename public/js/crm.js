@@ -24,6 +24,17 @@
   let autocompleteDebounceTimer = null;
   let draggedDealId = null;
 
+  // Estado de Clientes Cadastrados (CRM)
+  let activeView = 'kanban'; // 'kanban' | 'clientes'
+  let clientesList = [];
+  let clientesPage = 1;
+  let clientesTotalPages = 1;
+  let clientesTotalCount = 0;
+  let clientesFiltroBusca = '';
+  let clientesFiltroVendedor = 'TODOS';
+  let clienteSearchDebounceTimer = null;
+  let clienteModalOrigin = null; // 'deal' | 'tab' | null
+
   // Lista de Vendedores Padrão
   const DEFAULT_VENDEDORES = [
     'Alexandre',
@@ -447,7 +458,8 @@
   async function loadVendedoresOptions() {
     const selectFilter = document.getElementById('crmFilterVendedor');
     const selectModal = document.getElementById('crmSelectVendedor');
-    if (!selectFilter && !selectModal) return;
+    const selectFilterCliente = document.getElementById('crmClienteFilterVendedor');
+    const selectModalCliente = document.getElementById('crmClienteSelectVendedor');
 
     let lista = DEFAULT_VENDEDORES;
 
@@ -466,15 +478,39 @@
       // Fallback gracioso
     }
 
+    const nomesVendedores = lista.map(v => {
+      if (typeof v === 'object' && v !== null) {
+        return v.nome || v.codigo || '';
+      }
+      return String(v);
+    }).filter(Boolean);
+
+    // 1. Filtro do Kanban
     if (selectFilter) {
       const current = selectFilter.value || 'TODOS';
       selectFilter.innerHTML = '<option value="TODOS">Todos os Vendedores</option>' +
-        lista.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
     }
 
+    // 2. Select do Modal de Oportunidade
     if (selectModal) {
+      const current = selectModal.value || '';
       selectModal.innerHTML = '<option value="">Selecione o Vendedor Responsável...</option>' +
-        lista.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+    }
+
+    // 3. Filtro da Tabela de Clientes
+    if (selectFilterCliente) {
+      const current = selectFilterCliente.value || 'TODOS';
+      selectFilterCliente.innerHTML = '<option value="TODOS">Todos os Vendedores</option>' +
+        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+    }
+
+    // 4. Select do Modal de Cliente
+    if (selectModalCliente) {
+      const current = selectModalCliente.value || '';
+      selectModalCliente.innerHTML = '<option value="">Selecione o Vendedor Responsável...</option>' +
+        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
     }
   }
 
@@ -1496,11 +1532,18 @@
               const loja = cli.loja || cli.cliente_loja || cli.A1_LOJA || '01';
               const nome = cli.nome || cli.nome_fantasia || cli.razao_social || cli.razaoSocial || cli.A1_NOME || '';
               const cnpj = cli.cnpj || cli.cpf || cli.cliente_cnpj || cli.A1_CGC || '';
+              const isCrm = (cli.origem_fonte === 'CRM') || (cli.is_novo_crm === true) || (!cod || String(cod).startsWith('CLI-'));
+              const badgeOrigem = isCrm
+                ? '<span class="crm-badge-crm" style="font-size: 0.68rem; padding: 1px 6px; margin-left: 6px;">[CRM]</span>'
+                : '<span class="crm-badge-protheus" style="font-size: 0.68rem; padding: 1px 6px; margin-left: 6px;">[Protheus]</span>';
 
               return `
                 <div class="crm-autocomplete-item" data-cod="${escapeHtml(cod)}" data-loja="${escapeHtml(loja)}" data-nome="${escapeHtml(nome)}" data-cnpj="${escapeHtml(cnpj)}">
-                  <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(nome)}</div>
-                  <div style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono);">
+                  <div style="font-weight: 600; color: var(--text-main); display: flex; align-items: center;">
+                    <span>${escapeHtml(nome)}</span>
+                    ${badgeOrigem}
+                  </div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono, monospace);">
                     ${cod ? `Cód: ${escapeHtml(cod)}-${escapeHtml(loja)} | ` : ''}${cnpj ? `CNPJ/CPF: ${escapeHtml(cnpj)}` : ''}
                   </div>
                 </div>
@@ -1540,10 +1583,603 @@
     });
   }
 
+  // ============================================================================
+  // GESTÃO DE CLIENTES CADASTRO & CARTEIRA COMERCIAL
+  // ============================================================================
+
+  /**
+   * Alterna entre a visão Kanban de Oportunidades e a visão de Clientes Cadastrados
+   */
+  function switchCrmView(view) {
+    activeView = view === 'clientes' ? 'clientes' : 'kanban';
+
+    const btnKanban = document.getElementById('btnCrmViewKanban');
+    const btnClientes = document.getElementById('btnCrmViewClientes');
+    const containerKanban = document.getElementById('crmViewKanbanContainer');
+    const containerClientes = document.getElementById('crmViewClientesContainer');
+
+    if (activeView === 'kanban') {
+      if (btnKanban) {
+        btnKanban.classList.remove('btn-outline');
+        btnKanban.classList.add('btn-primary');
+        btnKanban.setAttribute('aria-pressed', 'true');
+      }
+      if (btnClientes) {
+        btnClientes.classList.remove('btn-primary');
+        btnClientes.classList.add('btn-outline');
+        btnClientes.setAttribute('aria-pressed', 'false');
+      }
+      if (containerKanban) {
+        containerKanban.classList.remove('hidden');
+        containerKanban.style.display = 'block';
+      }
+      if (containerClientes) {
+        containerClientes.classList.add('hidden');
+        containerClientes.style.display = 'none';
+      }
+    } else {
+      if (btnClientes) {
+        btnClientes.classList.remove('btn-outline');
+        btnClientes.classList.add('btn-primary');
+        btnClientes.setAttribute('aria-pressed', 'true');
+      }
+      if (btnKanban) {
+        btnKanban.classList.remove('btn-primary');
+        btnKanban.classList.add('btn-outline');
+        btnKanban.setAttribute('aria-pressed', 'false');
+      }
+      if (containerClientes) {
+        containerClientes.classList.remove('hidden');
+        containerClientes.style.display = 'block';
+      }
+      if (containerKanban) {
+        containerKanban.classList.add('hidden');
+        containerKanban.style.display = 'none';
+      }
+      carregarClientes(clientesPage || 1);
+    }
+  }
+
+  /**
+   * Carrega a lista paginada de clientes comerciais do CRM
+   */
+  async function carregarClientes(pagina = 1) {
+    clientesPage = Math.max(1, parseInt(pagina, 10) || 1);
+
+    const tbody = document.getElementById('crmClientesTbody');
+    const emptyState = document.getElementById('crmClientesEmptyState');
+    const btnRefresh = document.getElementById('btnCrmRefreshClientes');
+    const paginationInfo = document.getElementById('crmClientesPaginationInfo');
+    const btnPrev = document.getElementById('btnCrmClientesPrev');
+    const btnNext = document.getElementById('btnCrmClientesNext');
+    const pageCurrent = document.getElementById('crmClientesPageCurrent');
+
+    if (btnRefresh) {
+      btnRefresh.disabled = true;
+      btnRefresh.innerHTML = '<span>⏳ Atualizando...</span>';
+    }
+
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--text-muted);">Carregando carteira de clientes...</td></tr>';
+    }
+
+    try {
+      const token = getToken();
+      const params = new URLSearchParams();
+      if (clientesFiltroBusca) params.append('busca', clientesFiltroBusca);
+      if (clientesFiltroVendedor && clientesFiltroVendedor !== 'TODOS') params.append('vendedor', clientesFiltroVendedor);
+      params.append('page', String(clientesPage));
+      params.append('limit', '15');
+
+      const res = await fetch(`/api/bi/crm/clientes?${params.toString()}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+
+      if (!res.ok) {
+        throw new Error(`Falha HTTP ${res.status} ao carregar clientes.`);
+      }
+
+      const json = await res.json();
+      const items = Array.isArray(json.data) ? json.data : [];
+      const pagination = json.pagination || { total: items.length, page: clientesPage, totalPages: 1 };
+
+      clientesList = items;
+      clientesTotalCount = pagination.total !== undefined ? pagination.total : items.length;
+      clientesTotalPages = pagination.totalPages || 1;
+      clientesPage = pagination.page || 1;
+
+      atualizarKpisClientes(clientesTotalCount, items);
+      renderizarTabelaClientes(items);
+
+      // Paginação
+      const limit = pagination.limit || 15;
+      const from = clientesTotalCount > 0 ? (clientesPage - 1) * limit + 1 : 0;
+      const to = Math.min(clientesPage * limit, clientesTotalCount);
+      if (paginationInfo) {
+        paginationInfo.textContent = `Exibindo ${from} a ${to} de ${clientesTotalCount} clientes`;
+      }
+      if (pageCurrent) {
+        pageCurrent.textContent = `${clientesPage} / ${clientesTotalPages}`;
+      }
+      if (btnPrev) btnPrev.disabled = (clientesPage <= 1);
+      if (btnNext) btnNext.disabled = (clientesPage >= clientesTotalPages);
+
+    } catch (err) {
+      console.warn('⚠️ [CRM] Erro ao carregar clientes:', err.message);
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: #f87171;">Erro ao carregar clientes: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    } finally {
+      if (btnRefresh) {
+        btnRefresh.disabled = false;
+        btnRefresh.innerHTML = '<span>🔄 Atualizar</span>';
+      }
+    }
+  }
+
+  /**
+   * Atualiza os 3 Mini KPIs da visão de clientes
+   */
+  function atualizarKpisClientes(total, items) {
+    const kpiTotal = document.getElementById('crmKpiTotalClientes');
+    const kpiCrm = document.getElementById('crmKpiClientesCrm');
+    const kpiProtheus = document.getElementById('crmKpiClientesProtheus');
+
+    if (kpiTotal) kpiTotal.textContent = `${total} ${total === 1 ? 'cliente' : 'clientes'}`;
+
+    let crmCount = 0;
+    let protheusCount = 0;
+    items.forEach(c => {
+      const isProtheus = !!c.protheus_cod || c.origem === 'PROTHEUS';
+      if (isProtheus) protheusCount++;
+      else crmCount++;
+    });
+
+    if (kpiCrm) kpiCrm.textContent = `${crmCount} prospects (página)`;
+    if (kpiProtheus) kpiProtheus.textContent = `${protheusCount} Protheus (página)`;
+  }
+
+  /**
+   * Renderiza as linhas da tabela de clientes
+   */
+  function renderizarTabelaClientes(items) {
+    const tbody = document.getElementById('crmClientesTbody');
+    const emptyState = document.getElementById('crmClientesEmptyState');
+    if (!tbody) return;
+
+    if (!items || items.length === 0) {
+      tbody.innerHTML = '';
+      if (emptyState) {
+        emptyState.classList.remove('hidden');
+        emptyState.style.display = 'block';
+      }
+      return;
+    }
+
+    if (emptyState) {
+      emptyState.classList.add('hidden');
+      emptyState.style.display = 'none';
+    }
+
+    tbody.innerHTML = items.map(c => {
+      const id = escapeHtml(c.id);
+      const nomeRazao = escapeHtml(c.nome_razao || 'Sem Razão Social');
+      const nomeFantasia = c.nome_fantasia ? escapeHtml(c.nome_fantasia) : '';
+      const cnpjCpfFmt = escapeHtml(c.cnpj_cpf_fmt || c.cnpj_cpf || '-');
+      const contatoNome = c.contato_nome ? escapeHtml(c.contato_nome) : '-';
+      const email = c.email ? escapeHtml(c.email) : '';
+      const localidade = (c.cidade || c.uf) ? escapeHtml([c.cidade, c.uf].filter(Boolean).join(' - ')) : '';
+      const vendedor = c.vendedor_responsavel ? escapeHtml(c.vendedor_responsavel) : 'Não atribuído';
+
+      // WhatsApp / Telefone com link clicável
+      let contatoHtml = '';
+      const celDigits = (c.celular_whatsapp || '').replace(/\D/g, '');
+      if (celDigits) {
+        const celFmt = escapeHtml(c.celular_whatsapp_fmt || c.celular_whatsapp);
+        contatoHtml += `
+          <div>
+            <a href="https://wa.me/55${celDigits}" target="_blank" rel="noopener noreferrer" class="crm-btn-whatsapp" title="Conversar no WhatsApp">
+              <span>💬</span> ${celFmt}
+            </a>
+          </div>
+        `;
+      }
+      if (c.telefone) {
+        const telFmt = escapeHtml(c.telefone_fmt || c.telefone);
+        contatoHtml += `<div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 3px;">📞 ${telFmt}</div>`;
+      }
+      if (!contatoHtml) {
+        contatoHtml = '<span style="color: var(--text-muted);">-</span>';
+      }
+
+      // Origem
+      const isCrmNovo = !c.protheus_cod;
+      let badgeOrigem = isCrmNovo
+        ? '<span class="crm-badge-crm" title="Cadastrado no CRM">[CRM]</span>'
+        : '<span class="crm-badge-protheus" title="Cliente da base ERP Protheus">[Protheus]</span>';
+
+      if (c.origem && c.origem !== 'OUTRO' && c.origem !== 'PROTHEUS' && c.origem !== 'CRM') {
+        badgeOrigem += `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${escapeHtml(c.origem)}</div>`;
+      }
+
+      return `
+        <tr data-cliente-id="${id}">
+          <td>
+            <strong style="color: var(--text-main); font-size: 0.88rem; display: block;">${nomeRazao}</strong>
+            ${nomeFantasia ? `<div style="font-size: 0.78rem; color: var(--text-muted);">${nomeFantasia}</div>` : ''}
+            ${localidade ? `<div style="font-size: 0.74rem; color: #38bdf8; margin-top: 2px;">📍 ${localidade}</div>` : ''}
+          </td>
+          <td>
+            <span style="font-family: var(--font-mono, monospace); font-size: 0.82rem; color: var(--text-muted);">${cnpjCpfFmt}</span>
+            ${c.protheus_cod ? `<div style="font-size: 0.72rem; color: #a855f7; font-family: var(--font-mono, monospace);">Cód: ${escapeHtml(c.protheus_cod)}-${escapeHtml(c.protheus_loja || '01')}</div>` : ''}
+          </td>
+          <td>
+            <div style="font-weight: 500;">${contatoNome}</div>
+            ${email ? `<div style="font-size: 0.74rem; color: var(--text-muted);"><a href="mailto:${email}" style="color: #38bdf8; text-decoration: none;">${email}</a></div>` : ''}
+          </td>
+          <td>${contatoHtml}</td>
+          <td>
+            <span style="font-size: 0.82rem; color: var(--text-main);">${vendedor}</span>
+          </td>
+          <td style="text-align: center;">${badgeOrigem}</td>
+          <td style="text-align: center;">
+            <div style="display: inline-flex; gap: 4px;">
+              <button type="button" class="crm-btn-action btn-edit-cliente" data-id="${id}" title="Editar cliente">
+                ✏️ Editar
+              </button>
+              <button type="button" class="crm-btn-action crm-btn-action-deal btn-deal-cliente" data-id="${id}" title="Criar oportunidade comercial">
+                ➕ Deal
+              </button>
+              <button type="button" class="crm-btn-action crm-btn-action-delete btn-del-cliente" data-id="${id}" data-nome="${nomeRazao}" title="Excluir cliente">
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Listeners de ações da tabela
+    tbody.querySelectorAll('.btn-edit-cliente').forEach(b => {
+      b.addEventListener('click', () => {
+        const id = b.getAttribute('data-id');
+        abrirModalCliente(id, 'tab');
+      });
+    });
+
+    tbody.querySelectorAll('.btn-deal-cliente').forEach(b => {
+      b.addEventListener('click', () => {
+        const id = b.getAttribute('data-id');
+        const cli = clientesList.find(c => String(c.id) === String(id));
+        if (cli) {
+          criarDealParaCliente(cli);
+        }
+      });
+    });
+
+    tbody.querySelectorAll('.btn-del-cliente').forEach(b => {
+      b.addEventListener('click', () => {
+        const id = b.getAttribute('data-id');
+        const nome = b.getAttribute('data-nome');
+        excluirCliente(id, nome);
+      });
+    });
+  }
+
+  /**
+   * Abre o modal de nova oportunidade pré-preenchendo dados do cliente
+   */
+  function criarDealParaCliente(cliente) {
+    if (!cliente) return;
+    switchCrmView('kanban');
+    openNewDealModal();
+
+    const inputTitulo = document.getElementById('crmInputTitulo');
+    const inputCliente = document.getElementById('crmInputCliente');
+    const inputCod = document.getElementById('crmInputClienteCod');
+    const inputLoja = document.getElementById('crmInputClienteLoja');
+    const inputCnpj = document.getElementById('crmInputClienteCnpj');
+    const selectVend = document.getElementById('crmSelectVendedor');
+
+    if (inputCliente) inputCliente.value = cliente.nome_razao || '';
+    if (inputCod) inputCod.value = cliente.protheus_cod || cliente.id || '';
+    if (inputLoja) inputLoja.value = cliente.protheus_loja || '01';
+    if (inputCnpj) inputCnpj.value = cliente.cnpj_cpf || '';
+    if (inputTitulo && cliente.nome_razao) {
+      inputTitulo.value = `Cotação Comercial - ${cliente.nome_razao}`;
+    }
+    if (selectVend && cliente.vendedor_responsavel) {
+      selectVend.value = cliente.vendedor_responsavel;
+    }
+  }
+
+  /**
+   * Abre o modal de cadastro ou edição de cliente
+   */
+  async function abrirModalCliente(clienteId = null, origin = 'tab') {
+    clienteModalOrigin = origin;
+    const modal = document.getElementById('modalCrmCliente');
+    const title = document.getElementById('modalCrmClienteTitle');
+    const form = document.getElementById('formCrmCliente');
+    if (!modal || !form) return;
+
+    form.reset();
+    document.getElementById('crmClienteId').value = '';
+
+    const detailsEndereco = document.getElementById('crmClienteDetailsEndereco');
+    if (detailsEndereco) detailsEndereco.open = false;
+
+    await loadVendedoresOptions();
+
+    if (clienteId) {
+      if (title) title.innerHTML = '✏️ Editar Cliente (CRM)';
+      let cliente = clientesList.find(c => String(c.id) === String(clienteId));
+
+      try {
+        const token = getToken();
+        const res = await fetch(`/api/bi/crm/clientes/${encodeURIComponent(clienteId)}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.data) cliente = json.data;
+        }
+      } catch {}
+
+      if (cliente) {
+        document.getElementById('crmClienteId').value = cliente.id || '';
+        document.getElementById('crmClienteTipoPessoa').value = cliente.tipo_pessoa || 'PJ';
+        document.getElementById('crmClienteNomeRazao').value = cliente.nome_razao || '';
+        document.getElementById('crmClienteNomeFantasia').value = cliente.nome_fantasia || '';
+        document.getElementById('crmClienteCnpjCpf').value = cliente.cnpj_cpf_fmt || cliente.cnpj_cpf || '';
+        document.getElementById('crmClienteIe').value = cliente.ie || '';
+        document.getElementById('crmClienteContatoNome').value = cliente.contato_nome || '';
+        document.getElementById('crmClienteCelularWhatsapp').value = cliente.celular_whatsapp_fmt || cliente.celular_whatsapp || '';
+        document.getElementById('crmClienteTelefone').value = cliente.telefone_fmt || cliente.telefone || '';
+        document.getElementById('crmClienteEmail').value = cliente.email || '';
+        document.getElementById('crmClienteSelectVendedor').value = cliente.vendedor_responsavel || '';
+        document.getElementById('crmClienteSelectOrigem').value = cliente.origem || 'OUTRO';
+        document.getElementById('crmClienteCep').value = cliente.cep || '';
+        document.getElementById('crmClienteLogradouro').value = cliente.logradouro || '';
+        document.getElementById('crmClienteNumero').value = cliente.numero || '';
+        document.getElementById('crmClienteComplemento').value = cliente.complemento || '';
+        document.getElementById('crmClienteBairro').value = cliente.bairro || '';
+        document.getElementById('crmClienteCidade').value = cliente.cidade || '';
+        document.getElementById('crmClienteUf').value = cliente.uf || '';
+        document.getElementById('crmClienteObservacoes').value = cliente.observacoes || '';
+
+        if (cliente.logradouro || cliente.cep || cliente.cidade) {
+          if (detailsEndereco) detailsEndereco.open = true;
+        }
+      }
+    } else {
+      if (title) title.innerHTML = '👤 Cadastro de Cliente (CRM)';
+      if (origin === 'deal') {
+        const inpDeal = document.getElementById('crmInputCliente');
+        if (inpDeal && inpDeal.value.trim()) {
+          document.getElementById('crmClienteNomeRazao').value = inpDeal.value.trim();
+        }
+        const selVendDeal = document.getElementById('crmSelectVendedor');
+        if (selVendDeal && selVendDeal.value) {
+          document.getElementById('crmClienteSelectVendedor').value = selVendDeal.value;
+        }
+      }
+    }
+
+    openModal(modal);
+  }
+
+  /**
+   * Salva ou atualiza um cliente comercial via POST /api/bi/crm/clientes
+   */
+  async function salvarCliente(e) {
+    if (e) e.preventDefault();
+    const btnSalvar = document.getElementById('btnSalvarCrmCliente');
+    const nomeRazao = document.getElementById('crmClienteNomeRazao').value.trim();
+
+    if (!nomeRazao) {
+      mostrarNotificacao('Por favor, informe a Razão Social ou Nome do cliente.', 'info');
+      return;
+    }
+
+    if (btnSalvar) {
+      btnSalvar.disabled = true;
+      btnSalvar.textContent = 'Gravando...';
+    }
+
+    const payload = {
+      id: document.getElementById('crmClienteId').value || undefined,
+      tipo_pessoa: document.getElementById('crmClienteTipoPessoa').value,
+      nome_razao: nomeRazao,
+      nome_fantasia: document.getElementById('crmClienteNomeFantasia').value.trim(),
+      cnpj_cpf: document.getElementById('crmClienteCnpjCpf').value.trim(),
+      ie: document.getElementById('crmClienteIe').value.trim(),
+      contato_nome: document.getElementById('crmClienteContatoNome').value.trim(),
+      celular_whatsapp: document.getElementById('crmClienteCelularWhatsapp').value.trim(),
+      telefone: document.getElementById('crmClienteTelefone').value.trim(),
+      email: document.getElementById('crmClienteEmail').value.trim(),
+      vendedor_responsavel: document.getElementById('crmClienteSelectVendedor').value,
+      origem: document.getElementById('crmClienteSelectOrigem').value,
+      cep: document.getElementById('crmClienteCep').value.trim(),
+      logradouro: document.getElementById('crmClienteLogradouro').value.trim(),
+      numero: document.getElementById('crmClienteNumero').value.trim(),
+      complemento: document.getElementById('crmClienteComplemento').value.trim(),
+      bairro: document.getElementById('crmClienteBairro').value.trim(),
+      cidade: document.getElementById('crmClienteCidade').value.trim(),
+      uf: document.getElementById('crmClienteUf').value.trim().toUpperCase(),
+      observacoes: document.getElementById('crmClienteObservacoes').value.trim()
+    };
+
+    try {
+      const token = getToken();
+      const res = await fetch('/api/bi/crm/clientes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || errJson.message || `Erro ${res.status} ao salvar cliente.`);
+      }
+
+      const json = await res.json();
+      const clienteSalvo = json.data || payload;
+
+      closeModal(document.getElementById('modalCrmCliente'));
+
+      if (clienteModalOrigin === 'deal') {
+        // Injeta automaticamente no formulário do Deal sem perder campos já digitados
+        const inputCliente = document.getElementById('crmInputCliente');
+        const inputCod = document.getElementById('crmInputClienteCod');
+        const inputLoja = document.getElementById('crmInputClienteLoja');
+        const inputCnpj = document.getElementById('crmInputClienteCnpj');
+        const selectVend = document.getElementById('crmSelectVendedor');
+
+        if (inputCliente) inputCliente.value = clienteSalvo.nome_razao || nomeRazao;
+        if (inputCod) inputCod.value = clienteSalvo.protheus_cod || clienteSalvo.id || '';
+        if (inputLoja) inputLoja.value = clienteSalvo.protheus_loja || '01';
+        if (inputCnpj) inputCnpj.value = clienteSalvo.cnpj_cpf || '';
+        if (selectVend && !selectVend.value && clienteSalvo.vendedor_responsavel) {
+          selectVend.value = clienteSalvo.vendedor_responsavel;
+        }
+
+        mostrarNotificacao('Cliente cadastrado e vinculado à oportunidade!', 'success');
+      } else {
+        mostrarNotificacao(json.message || 'Cliente salvo com sucesso!', 'success');
+        await carregarClientes(clientesPage);
+      }
+    } catch (err) {
+      console.error('❌ [CRM] Erro ao salvar cliente:', err);
+      mostrarNotificacao(err.message || 'Falha ao salvar cliente.', 'info');
+    } finally {
+      if (btnSalvar) {
+        btnSalvar.disabled = false;
+        btnSalvar.textContent = '💾 Salvar Cliente';
+      }
+      clienteModalOrigin = null;
+    }
+  }
+
+  /**
+   * Exclui um cliente comercial com confirmação amigável
+   */
+  async function excluirCliente(id, nome) {
+    if (!id) return;
+    const confirmMsg = `Deseja realmente excluir o cliente "${nome || 'selecionado'}"?\n\nEsta ação removerá o cliente da listagem comercial do CRM.`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/bi/crm/clientes/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || errJson.message || `Erro ${res.status} ao excluir.`);
+      }
+
+      mostrarNotificacao(`Cliente "${nome || id}" excluído com sucesso.`, 'success');
+      await carregarClientes(clientesPage);
+    } catch (err) {
+      console.error('❌ [CRM] Erro ao excluir cliente:', err);
+      mostrarNotificacao(err.message || 'Falha ao excluir cliente.', 'info');
+    }
+  }
+
   /**
    * Configuração geral de Event Listeners da interface do CRM
    */
   function setupEventListeners() {
+    // 1. Toggles de Visão (Kanban / Clientes)
+    const btnKanbanView = document.getElementById('btnCrmViewKanban');
+    if (btnKanbanView && !btnKanbanView._hasListener) {
+      btnKanbanView._hasListener = true;
+      btnKanbanView.addEventListener('click', () => switchCrmView('kanban'));
+    }
+
+    const btnClientesView = document.getElementById('btnCrmViewClientes');
+    if (btnClientesView && !btnClientesView._hasListener) {
+      btnClientesView._hasListener = true;
+      btnClientesView.addEventListener('click', () => switchCrmView('clientes'));
+    }
+
+    // 2. Toolbar da Visão de Clientes
+    const clienteSearchInput = document.getElementById('crmClienteSearchInput');
+    if (clienteSearchInput && !clienteSearchInput._hasListener) {
+      clienteSearchInput._hasListener = true;
+      clienteSearchInput.addEventListener('input', () => {
+        clearTimeout(clienteSearchDebounceTimer);
+        clienteSearchDebounceTimer = setTimeout(() => {
+          clientesFiltroBusca = clienteSearchInput.value.trim();
+          carregarClientes(1);
+        }, 300);
+      });
+    }
+
+    const clienteFilterVend = document.getElementById('crmClienteFilterVendedor');
+    if (clienteFilterVend && !clienteFilterVend._hasListener) {
+      clienteFilterVend._hasListener = true;
+      clienteFilterVend.addEventListener('change', () => {
+        clientesFiltroVendedor = clienteFilterVend.value;
+        carregarClientes(1);
+      });
+    }
+
+    const btnNovoClienteTab = document.getElementById('btnCrmNovoClienteTab');
+    if (btnNovoClienteTab && !btnNovoClienteTab._hasListener) {
+      btnNovoClienteTab._hasListener = true;
+      btnNovoClienteTab.addEventListener('click', () => abrirModalCliente(null, 'tab'));
+    }
+
+    const btnEmptyNovoCliente = document.getElementById('btnCrmEmptyNovoCliente');
+    if (btnEmptyNovoCliente && !btnEmptyNovoCliente._hasListener) {
+      btnEmptyNovoCliente._hasListener = true;
+      btnEmptyNovoCliente.addEventListener('click', () => abrirModalCliente(null, 'tab'));
+    }
+
+    const btnRefreshClientes = document.getElementById('btnCrmRefreshClientes');
+    if (btnRefreshClientes && !btnRefreshClientes._hasListener) {
+      btnRefreshClientes._hasListener = true;
+      btnRefreshClientes.addEventListener('click', () => carregarClientes(clientesPage));
+    }
+
+    // Botão Novo Cliente acionado de dentro do Deal
+    const btnNovoClienteFromDeal = document.getElementById('btnCrmNovoClienteFromDeal');
+    if (btnNovoClienteFromDeal && !btnNovoClienteFromDeal._hasListener) {
+      btnNovoClienteFromDeal._hasListener = true;
+      btnNovoClienteFromDeal.addEventListener('click', () => abrirModalCliente(null, 'deal'));
+    }
+
+    // Paginação de Clientes
+    const btnPrevClientes = document.getElementById('btnCrmClientesPrev');
+    if (btnPrevClientes && !btnPrevClientes._hasListener) {
+      btnPrevClientes._hasListener = true;
+      btnPrevClientes.addEventListener('click', () => {
+        if (clientesPage > 1) carregarClientes(clientesPage - 1);
+      });
+    }
+
+    const btnNextClientes = document.getElementById('btnCrmClientesNext');
+    if (btnNextClientes && !btnNextClientes._hasListener) {
+      btnNextClientes._hasListener = true;
+      btnNextClientes.addEventListener('click', () => {
+        if (clientesPage < clientesTotalPages) carregarClientes(clientesPage + 1);
+      });
+    }
+
+    // Submissão do Modal de Cliente
+    const formCliente = document.getElementById('formCrmCliente');
+    if (formCliente && !formCliente._hasListener) {
+      formCliente._hasListener = true;
+      formCliente.addEventListener('submit', salvarCliente);
+    }
+
     // Botão Nova Oportunidade
     const btnNova = document.getElementById('btnCrmNovaOportunidade');
     if (btnNova && !btnNova._hasListener) {
@@ -1551,14 +2187,14 @@
       btnNova.addEventListener('click', openNewDealModal);
     }
 
-    // Botão Atualizar
+    // Botão Atualizar Kanban
     const btnRefresh = document.getElementById('btnCrmRefresh');
     if (btnRefresh && !btnRefresh._hasListener) {
       btnRefresh._hasListener = true;
       btnRefresh.addEventListener('click', loadDeals);
     }
 
-    // Filtros de busca e vendedor
+    // Filtros de busca e vendedor do Kanban
     const searchInput = document.getElementById('crmSearchInput');
     if (searchInput && !searchInput._hasListener) {
       searchInput._hasListener = true;
@@ -1663,6 +2299,47 @@
       }
     });
 
+    // Fechamento de modais ao clicar no backdrop (overlay)
+    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmMarcarPerdido'].forEach(id => {
+      const m = document.getElementById(id);
+      if (m && !m._hasBackdropListener) {
+        m._hasBackdropListener = true;
+        m.addEventListener('click', (e) => {
+          if (e.target === m) closeModal(m);
+        });
+      }
+    });
+
+    // Fechamento com tecla Escape
+    if (!document._hasCrmEscapeListener) {
+      document._hasCrmEscapeListener = true;
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          // Fecha na ordem inversa de precedência (modal de cliente primeiro se estiver aberto)
+          const modalCliente = document.getElementById('modalCrmCliente');
+          if (modalCliente && modalCliente.style.display !== 'none' && !modalCliente.classList.contains('hidden')) {
+            closeModal(modalCliente);
+            return;
+          }
+          const modalPerda = document.getElementById('modalCrmMarcarPerdido');
+          if (modalPerda && modalPerda.style.display !== 'none' && !modalPerda.classList.contains('hidden')) {
+            closeModal(modalPerda);
+            return;
+          }
+          const modalDetalhes = document.getElementById('modalCrmDetalhes');
+          if (modalDetalhes && modalDetalhes.style.display !== 'none' && !modalDetalhes.classList.contains('hidden')) {
+            closeModal(modalDetalhes);
+            return;
+          }
+          const modalOportunidade = document.getElementById('modalCrmOportunidade');
+          if (modalOportunidade && modalOportunidade.style.display !== 'none' && !modalOportunidade.classList.contains('hidden')) {
+            closeModal(modalOportunidade);
+            return;
+          }
+        }
+      });
+    }
+
     setupClientAutocomplete();
   }
 
@@ -1711,12 +2388,17 @@
   window.CRMModule = {
     init,
     loadDeals,
+    switchView: switchCrmView,
+    loadClientes: carregarClientes,
+    openClienteModal: abrirModalCliente,
+    deleteCliente: excluirCliente,
     openNewDealModal,
     openEditDealModal,
     openDealDetails: openDealDetailsModal,
     moveDealStage,
     markLost: openMarkLostModal,
     getDeals: () => deals,
+    getClientes: () => clientesList,
     isInitialized: () => isInitialized
   };
 

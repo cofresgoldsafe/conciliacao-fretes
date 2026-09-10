@@ -18,6 +18,7 @@ const { safeReadJson, safeReadJsonSync, safeWriteJson } = require('./safe_json_s
 
 const dataDir = path.join(__dirname, 'data');
 const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
+const crmClientesCacheFile = path.join(dataDir, 'crm_clientes_cache.json');
 const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.json');
 
 // Estágios Canônicos Oficiais
@@ -89,6 +90,42 @@ async function writeCache(data) {
     await safeWriteJson(crmCacheFile, payload);
   } catch (err) {
     console.error('❌ [CRM Cache] Erro ao gravar cache local:', err.message);
+  }
+}
+
+/**
+ * Lê cache local de contingência dos Clientes do CRM
+ */
+async function readClientesCache() {
+  try {
+    const data = await safeReadJson(crmClientesCacheFile, null);
+    if (data && typeof data === 'object' && Array.isArray(data.clientes)) {
+      return {
+        updated_at: data.updated_at || new Date().toISOString(),
+        clientes: data.clientes
+      };
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Clientes Cache] Aviso ao ler cache local:', err.message);
+  }
+  return {
+    updated_at: new Date().toISOString(),
+    clientes: []
+  };
+}
+
+/**
+ * Grava cache local de contingência de Clientes de forma atômica
+ */
+async function writeClientesCache(data) {
+  try {
+    const payload = {
+      updated_at: new Date().toISOString(),
+      clientes: Array.isArray(data?.clientes) ? data.clientes : []
+    };
+    await safeWriteJson(crmClientesCacheFile, payload);
+  } catch (err) {
+    console.error('❌ [CRM Clientes Cache] Erro ao gravar cache local:', err.message);
   }
 }
 
@@ -208,6 +245,34 @@ async function initCrmTables() {
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS crm_clientes (
+        id VARCHAR(64) PRIMARY KEY,
+        tipo_pessoa VARCHAR(2) DEFAULT 'PJ',
+        nome_razao VARCHAR(255) NOT NULL,
+        nome_fantasia VARCHAR(255),
+        cnpj_cpf VARCHAR(20),
+        ie VARCHAR(20),
+        contato_nome VARCHAR(150),
+        telefone VARCHAR(50),
+        celular_whatsapp VARCHAR(50),
+        email VARCHAR(150),
+        cep VARCHAR(10),
+        logradouro VARCHAR(255),
+        numero VARCHAR(50),
+        complemento VARCHAR(100),
+        bairro VARCHAR(100),
+        cidade VARCHAR(100),
+        uf VARCHAR(2),
+        origem VARCHAR(50) DEFAULT 'OUTRO',
+        vendedor_responsavel VARCHAR(100),
+        protheus_cod VARCHAR(20),
+        protheus_loja VARCHAR(10),
+        observacoes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ NULL
+      );
+
       CREATE INDEX IF NOT EXISTS idx_crm_deals_estagio ON crm_deals(estagio);
       CREATE INDEX IF NOT EXISTS idx_crm_deals_cod_vendedor ON crm_deals(cod_vendedor);
       CREATE INDEX IF NOT EXISTS idx_crm_deals_cliente_cod ON crm_deals(cliente_cod);
@@ -222,6 +287,35 @@ async function initCrmTables() {
       CREATE INDEX IF NOT EXISTS idx_crm_atividades_status ON crm_atividades(status);
       CREATE INDEX IF NOT EXISTS idx_crm_atividades_data_agendada ON crm_atividades(data_agendada);
       CREATE INDEX IF NOT EXISTS idx_crm_atividades_responsavel ON crm_atividades(responsavel_usuario);
+
+      CREATE INDEX IF NOT EXISTS idx_crm_clientes_cnpj_cpf ON crm_clientes(cnpj_cpf);
+      CREATE INDEX IF NOT EXISTS idx_crm_clientes_nome ON crm_clientes(nome_razao);
+      CREATE INDEX IF NOT EXISTS idx_crm_clientes_vendedor ON crm_clientes(vendedor_responsavel);
+      CREATE INDEX IF NOT EXISTS idx_crm_clientes_deleted_at ON crm_clientes(deleted_at);
+
+      -- Harmonização de colunas para IDs de clientes do CRM (VARCHAR(64))
+      ALTER TABLE IF EXISTS crm_deals ALTER COLUMN cliente_cod TYPE VARCHAR(64);
+
+      -- RLS Estrito para crm_clientes
+      ALTER TABLE crm_clientes ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE crm_clientes FORCE ROW LEVEL SECURITY;
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+          GRANT ALL ON TABLE crm_clientes TO service_role;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+          GRANT ALL ON TABLE crm_clientes TO postgres;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+          REVOKE ALL ON TABLE crm_clientes FROM anon;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+          REVOKE ALL ON TABLE crm_clientes FROM authenticated;
+        END IF;
+        DROP POLICY IF EXISTS "Acesso exclusivo backend crm_clientes" ON crm_clientes;
+        CREATE POLICY "Acesso exclusivo backend crm_clientes" ON crm_clientes TO service_role, postgres USING (true) WITH CHECK (true);
+      END $$;
     `);
     console.log('🟢 [CRM Engine] Schema do CRM verificado/inicializado com sucesso no Supabase PostgreSQL.');
   } catch (err) {
@@ -299,6 +393,44 @@ function mapAtividadeRow(row) {
     created_by: row.created_by || 'alexandre',
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString()
+  };
+}
+
+/**
+ * Mapeia registro de cliente para formato padronizado da API
+ */
+function mapClienteRow(row) {
+  if (!row) return null;
+  const cnpjLimpo = row.cnpj_cpf ? String(row.cnpj_cpf).replace(/\D/g, '') : '';
+  return {
+    id: String(row.id),
+    tipo_pessoa: row.tipo_pessoa || 'PJ',
+    nome_razao: row.nome_razao || '',
+    nome_fantasia: row.nome_fantasia || '',
+    cnpj_cpf: cnpjLimpo,
+    cnpj_cpf_fmt: formatarCgc(cnpjLimpo),
+    ie: row.ie || '',
+    contato_nome: row.contato_nome || '',
+    telefone: row.telefone || '',
+    telefone_fmt: formatarTelefone(row.telefone),
+    celular_whatsapp: row.celular_whatsapp || '',
+    celular_whatsapp_fmt: formatarTelefone(row.celular_whatsapp),
+    email: row.email || '',
+    cep: row.cep || '',
+    logradouro: row.logradouro || '',
+    numero: row.numero || '',
+    complemento: row.complemento || '',
+    bairro: row.bairro || '',
+    cidade: row.cidade || '',
+    uf: (row.uf || '').toUpperCase(),
+    origem: row.origem || 'OUTRO',
+    vendedor_responsavel: row.vendedor_responsavel || '',
+    protheus_cod: row.protheus_cod || '',
+    protheus_loja: row.protheus_loja || '01',
+    observacoes: row.observacoes || '',
+    created_at: row.created_at || new Date().toISOString(),
+    updated_at: row.updated_at || new Date().toISOString(),
+    deleted_at: row.deleted_at || null
   };
 }
 
@@ -1146,7 +1278,436 @@ async function criarAtividadeDeal(dealId, dados, usuario) {
 }
 
 /**
- * 10. AUTOCOMPLETE DE CLIENTES (PROTHEUS SA1010 + CACHE RESILIENTE)
+ * 10. SALVAR CLIENTE (CRIAÇÃO OU EDIÇÃO)
+ */
+async function salvarCliente(dados, usuario) {
+  const u = normalizeUser(usuario);
+  const nomeRazao = String(dados?.nome_razao || '').trim();
+
+  if (!nomeRazao) {
+    const err = new Error("O campo 'nome_razao' é obrigatório.");
+    err.status = 400;
+    err.code = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  const cleanId = dados.id ? String(dados.id).trim() : '';
+  const isEdicao = !!cleanId;
+
+  if (isEdicao) {
+    const clienteExistente = await obterClientePorId(cleanId);
+    if (!clienteExistente) {
+      const err = new Error(`Cliente #${cleanId} não encontrado para edição.`);
+      err.status = 404;
+      err.code = 'NOT_FOUND';
+      throw err;
+    }
+  }
+
+  const clienteId = isEdicao ? cleanId : ('CLI-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 899 + 100).toString(36));
+
+  const cnpjLimpo = dados.cnpj_cpf ? String(dados.cnpj_cpf).replace(/\D/g, '').slice(0, 20) : '';
+  const tipoPessoa = (dados.tipo_pessoa || (cnpjLimpo.length === 11 ? 'PF' : 'PJ')).toUpperCase().slice(0, 2);
+  const nomeFantasia = dados.nome_fantasia ? String(dados.nome_fantasia).trim() : '';
+  const ie = dados.ie ? String(dados.ie).trim() : '';
+  const contatoNome = dados.contato_nome ? String(dados.contato_nome).trim() : '';
+  const telefone = dados.telefone ? String(dados.telefone).trim() : '';
+  const celularWhatsapp = dados.celular_whatsapp ? String(dados.celular_whatsapp).trim() : '';
+  const email = dados.email ? String(dados.email).trim().toLowerCase() : '';
+  const cep = dados.cep ? String(dados.cep).trim().replace(/\D/g, '') : '';
+  const logradouro = dados.logradouro ? String(dados.logradouro).trim() : '';
+  const numero = dados.numero ? String(dados.numero).trim() : '';
+  const complemento = dados.complemento ? String(dados.complemento).trim() : '';
+  const bairro = dados.bairro ? String(dados.bairro).trim() : '';
+  const cidade = dados.cidade ? String(dados.cidade).trim() : '';
+  const uf = dados.uf ? String(dados.uf).trim().toUpperCase().slice(0, 2) : '';
+  const origem = dados.origem ? String(dados.origem).trim().toUpperCase() : 'OUTRO';
+  const vendedorResp = dados.vendedor_responsavel ? String(dados.vendedor_responsavel).trim() : '';
+  const protheusCod = dados.protheus_cod ? String(dados.protheus_cod).trim() : '';
+  const protheusLoja = dados.protheus_loja ? String(dados.protheus_loja).trim() : '01';
+  const observacoes = dados.observacoes ? String(dados.observacoes).trim() : '';
+
+  let clienteSalvo = null;
+
+  // 1. Tenta Supabase Postgres
+  try {
+    if (isEdicao) {
+      const res = await safeQuery(`
+        UPDATE crm_clientes SET
+          tipo_pessoa = $1,
+          nome_razao = $2,
+          nome_fantasia = $3,
+          cnpj_cpf = $4,
+          ie = $5,
+          contato_nome = $6,
+          telefone = $7,
+          celular_whatsapp = $8,
+          email = $9,
+          cep = $10,
+          logradouro = $11,
+          numero = $12,
+          complemento = $13,
+          bairro = $14,
+          cidade = $15,
+          uf = $16,
+          origem = $17,
+          vendedor_responsavel = $18,
+          protheus_cod = $19,
+          protheus_loja = $20,
+          observacoes = $21,
+          updated_at = NOW()
+        WHERE id = $22 AND deleted_at IS NULL
+        RETURNING *;
+      `, [
+        tipoPessoa, nomeRazao, nomeFantasia, cnpjLimpo, ie,
+        contatoNome, telefone, celularWhatsapp, email, cep,
+        logradouro, numero, complemento, bairro, cidade, uf,
+        origem, vendedorResp, protheusCod, protheusLoja, observacoes,
+        clienteId
+      ]);
+      if (res && res.rows && res.rows.length > 0) {
+        clienteSalvo = mapClienteRow(res.rows[0]);
+      }
+    } else {
+      const res = await safeQuery(`
+        INSERT INTO crm_clientes (
+          id, tipo_pessoa, nome_razao, nome_fantasia, cnpj_cpf, ie,
+          contato_nome, telefone, celular_whatsapp, email, cep,
+          logradouro, numero, complemento, bairro, cidade, uf,
+          origem, vendedor_responsavel, protheus_cod, protheus_loja,
+          observacoes, created_at, updated_at, deleted_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, $9, $10, $11,
+          $12, $13, $14, $15, $16, $17,
+          $18, $19, $20, $21,
+          $22, NOW(), NOW(), NULL
+        ) RETURNING *;
+      `, [
+        clienteId, tipoPessoa, nomeRazao, nomeFantasia, cnpjLimpo, ie,
+        contatoNome, telefone, celularWhatsapp, email, cep,
+        logradouro, numero, complemento, bairro, cidade, uf,
+        origem, vendedorResp, protheusCod, protheusLoja, observacoes
+      ]);
+      if (res && res.rows && res.rows.length > 0) {
+        clienteSalvo = mapClienteRow(res.rows[0]);
+      }
+    }
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro ao salvar cliente #${clienteId} no Postgres:`, err.message);
+  }
+
+  // 2. Cache Local / Fallback Atômico
+  const cache = await readClientesCache();
+  const idx = cache.clientes.findIndex(c => String(c.id) === clienteId);
+
+  if (!clienteSalvo) {
+    clienteSalvo = {
+      id: clienteId,
+      tipo_pessoa: tipoPessoa,
+      nome_razao: nomeRazao,
+      nome_fantasia: nomeFantasia,
+      cnpj_cpf: cnpjLimpo,
+      cnpj_cpf_fmt: formatarCgc(cnpjLimpo),
+      ie,
+      contato_nome: contatoNome,
+      telefone,
+      telefone_fmt: formatarTelefone(telefone),
+      celular_whatsapp: celularWhatsapp,
+      celular_whatsapp_fmt: formatarTelefone(celularWhatsapp),
+      email,
+      cep,
+      logradouro,
+      numero,
+      complemento,
+      bairro,
+      cidade,
+      uf,
+      origem,
+      vendedor_responsavel: vendedorResp,
+      protheus_cod: protheusCod,
+      protheus_loja: protheusLoja,
+      observacoes,
+      created_at: (idx !== -1 && cache.clientes[idx].created_at) ? cache.clientes[idx].created_at : new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      deleted_at: null
+    };
+  }
+
+  if (idx !== -1) {
+    cache.clientes[idx] = clienteSalvo;
+  } else {
+    cache.clientes.unshift(clienteSalvo);
+  }
+  await writeClientesCache(cache);
+
+  // 3. Telemetria
+  const actionType = isEdicao ? 'EDICAO_CRM_CLIENTE' : 'CADASTRO_CRM_CLIENTE';
+  const desc = isEdicao
+    ? `Atualizou o cadastro do cliente comercial #${clienteId} ("${clienteSalvo.nome_razao}")`
+    : `Cadastrou o novo cliente comercial #${clienteId} ("${clienteSalvo.nome_razao}")`;
+
+  await recordTelemetry(u, actionType, desc, {
+    clienteId,
+    nomeRazao: clienteSalvo.nome_razao,
+    cnpjCpf: clienteSalvo.cnpj_cpf,
+    vendedor: clienteSalvo.vendedor_responsavel
+  });
+
+  return clienteSalvo;
+}
+
+/**
+ * 11. LISTAR CLIENTES (PAGINADO)
+ */
+async function listarClientes(filtros = {}) {
+  const { busca, vendedor, order } = filtros;
+  const limit = Math.min(Math.max(parseInt(filtros.limit, 10) || 50, 1), 200);
+  let page = parseInt(filtros.page, 10);
+  let offset = parseInt(filtros.offset, 10);
+
+  if (!isNaN(page) && page >= 1) {
+    offset = (page - 1) * limit;
+  } else {
+    offset = (!isNaN(offset) && offset >= 0) ? offset : 0;
+    page = Math.floor(offset / limit) + 1;
+  }
+
+  let items = [];
+  let total = 0;
+  let fromDb = false;
+
+  try {
+    const params = [];
+    let whereClause = 'WHERE deleted_at IS NULL';
+
+    if (vendedor && vendedor !== 'TODOS') {
+      params.push(String(vendedor).trim());
+      whereClause += ` AND (vendedor_responsavel = $${params.length} OR protheus_cod = $${params.length})`;
+    }
+
+    if (busca && String(busca).trim()) {
+      const b = `%${String(busca).trim().toLowerCase()}%`;
+      const digitsOnly = String(busca).replace(/\D/g, '');
+      params.push(b);
+      const bIdx = params.length;
+      let cnpjFilter = '';
+      if (digitsOnly.length >= 3) {
+        params.push(`%${digitsOnly}%`);
+        cnpjFilter = ` OR cnpj_cpf LIKE $${params.length}`;
+      }
+      whereClause += ` AND (
+        LOWER(nome_razao) LIKE $${bIdx}
+        OR LOWER(COALESCE(nome_fantasia, '')) LIKE $${bIdx}
+        OR LOWER(COALESCE(email, '')) LIKE $${bIdx}
+        OR LOWER(COALESCE(cidade, '')) LIKE $${bIdx}
+        OR LOWER(COALESCE(contato_nome, '')) LIKE $${bIdx}
+        OR LOWER(COALESCE(protheus_cod, '')) LIKE $${bIdx}
+        ${cnpjFilter}
+      )`;
+    }
+
+    // Contagem total
+    const countRes = await safeQuery(`SELECT COUNT(*) as total FROM crm_clientes ${whereClause};`, params);
+    if (countRes && countRes.rows && countRes.rows.length > 0) {
+      total = parseInt(countRes.rows[0].total, 10) || 0;
+    }
+
+    // Ordenação
+    let orderBy = 'updated_at DESC, id DESC';
+    if (order) {
+      const ordClean = String(order).trim().toLowerCase();
+      if (ordClean === 'nome_asc') orderBy = 'nome_razao ASC';
+      else if (ordClean === 'nome_desc') orderBy = 'nome_razao DESC';
+      else if (ordClean === 'created_desc') orderBy = 'created_at DESC';
+      else if (ordClean === 'created_asc') orderBy = 'created_at ASC';
+    }
+
+    // Consulta paginada
+    const listParams = [...params, limit, offset];
+    const dataRes = await safeQuery(`
+      SELECT * FROM crm_clientes
+      ${whereClause}
+      ORDER BY ${orderBy}
+      LIMIT $${listParams.length - 1} OFFSET $${listParams.length};
+    `, listParams);
+
+    if (dataRes && Array.isArray(dataRes.rows)) {
+      items = dataRes.rows.map(mapClienteRow);
+      fromDb = true;
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Engine] Erro ao listar clientes no Postgres. Recorrendo ao cache local:', err.message);
+  }
+
+  // Fallback em Cache Local
+  if (!fromDb) {
+    const cache = await readClientesCache();
+    let filtrados = (cache.clientes || []).filter(c => !c.deleted_at);
+
+    if (vendedor && vendedor !== 'TODOS') {
+      const v = String(vendedor).trim();
+      filtrados = filtrados.filter(c => c.vendedor_responsavel === v || c.protheus_cod === v);
+    }
+
+    if (busca && String(busca).trim()) {
+      const b = String(busca).trim().toLowerCase();
+      const digitsOnly = b.replace(/\D/g, '');
+      filtrados = filtrados.filter(c => 
+        (c.nome_razao && c.nome_razao.toLowerCase().includes(b)) ||
+        (c.nome_fantasia && c.nome_fantasia.toLowerCase().includes(b)) ||
+        (c.email && c.email.toLowerCase().includes(b)) ||
+        (c.cidade && c.cidade.toLowerCase().includes(b)) ||
+        (c.contato_nome && c.contato_nome.toLowerCase().includes(b)) ||
+        (c.protheus_cod && c.protheus_cod.toLowerCase().includes(b)) ||
+        (digitsOnly.length >= 3 && c.cnpj_cpf && c.cnpj_cpf.includes(digitsOnly))
+      );
+    }
+
+    total = filtrados.length;
+    if (order === 'nome_asc') {
+      filtrados.sort((a, b) => (a.nome_razao || '').localeCompare(b.nome_razao || ''));
+    } else if (order === 'nome_desc') {
+      filtrados.sort((a, b) => (b.nome_razao || '').localeCompare(a.nome_razao || ''));
+    } else if (order === 'created_asc') {
+      filtrados.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    } else {
+      filtrados.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    }
+    items = filtrados.slice(offset, offset + limit).map(mapClienteRow);
+  }
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return {
+    items,
+    pagination: {
+      total,
+      limit,
+      offset,
+      page,
+      totalPages
+    }
+  };
+}
+
+/**
+ * 13. RESTAURAR CLIENTE (REVERSIBILIDADE DE SOFT DELETE)
+ */
+async function restaurarCliente(id, usuario) {
+  const u = normalizeUser(usuario);
+  const cleanId = String(id).trim();
+
+  let clienteRestaurado = null;
+
+  // 1. Tenta Postgres
+  try {
+    const res = await safeQuery(`
+      UPDATE crm_clientes
+      SET deleted_at = NULL, updated_at = NOW()
+      WHERE id = $1 AND deleted_at IS NOT NULL
+      RETURNING *;
+    `, [cleanId]);
+    if (res && res.rows && res.rows.length > 0) {
+      clienteRestaurado = mapClienteRow(res.rows[0]);
+    }
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro ao restaurar cliente #${cleanId} no Postgres:`, err.message);
+  }
+
+  // 2. Atualiza Cache Local
+  const cache = await readClientesCache();
+  const idx = cache.clientes.findIndex(c => String(c.id) === cleanId);
+  if (idx !== -1) {
+    cache.clientes[idx].deleted_at = null;
+    cache.clientes[idx].updated_at = new Date().toISOString();
+    clienteRestaurado = cache.clientes[idx];
+    await writeClientesCache(cache);
+  }
+
+  if (!clienteRestaurado) {
+    const err = new Error(`Cliente #${cleanId} não encontrado para restauração.`);
+    err.status = 404;
+    err.code = 'CLIENTE_NOT_FOUND';
+    throw err;
+  }
+
+  // 3. Telemetria
+  await recordTelemetry(u, 'RESTAURACAO_CRM_CLIENTE', `Restaurou o cliente comercial #${cleanId} ("${clienteRestaurado.nome_razao}")`, {
+    clienteId: cleanId,
+    nomeRazao: clienteRestaurado.nome_razao,
+    cnpjCpf: clienteRestaurado.cnpj_cpf
+  });
+
+  return clienteRestaurado;
+}
+
+/**
+ * 12. OBTER CLIENTE POR ID
+ */
+async function obterClientePorId(id) {
+  if (!id) return null;
+  const cleanId = String(id).trim();
+
+  // 1. Tenta Postgres
+  try {
+    const res = await safeQuery('SELECT * FROM crm_clientes WHERE id = $1 AND deleted_at IS NULL;', [cleanId]);
+    if (res && res.rows && res.rows.length > 0) {
+      return mapClienteRow(res.rows[0]);
+    }
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro ao buscar cliente #${cleanId} no Postgres:`, err.message);
+  }
+
+  // 2. Cache Local
+  const cache = await readClientesCache();
+  const cliente = (cache.clientes || []).find(c => String(c.id) === cleanId && !c.deleted_at);
+  return cliente ? mapClienteRow(cliente) : null;
+}
+
+/**
+ * 13. EXCLUIR CLIENTE (SOFT DELETE)
+ */
+async function excluirCliente(id, usuario) {
+  const u = normalizeUser(usuario);
+  const cleanId = String(id).trim();
+
+  const existente = await obterClientePorId(cleanId);
+  if (!existente) {
+    const err = new Error(`Cliente #${cleanId} não localizado para exclusão.`);
+    err.status = 404;
+    err.code = 'CLIENTE_NOT_FOUND';
+    throw err;
+  }
+
+  // 1. Tenta Postgres
+  try {
+    await safeQuery('UPDATE crm_clientes SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1;', [cleanId]);
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro no soft delete do cliente #${cleanId} no Postgres:`, err.message);
+  }
+
+  // 2. Atualiza Cache Local
+  const cache = await readClientesCache();
+  const idx = cache.clientes.findIndex(c => String(c.id) === cleanId);
+  if (idx !== -1) {
+    cache.clientes[idx].deleted_at = new Date().toISOString();
+    cache.clientes[idx].updated_at = new Date().toISOString();
+    await writeClientesCache(cache);
+  }
+
+  // 3. Telemetria
+  await recordTelemetry(u, 'EXCLUSAO_CRM_CLIENTE', `Excluiu o cliente comercial #${cleanId} ("${existente.nome_razao}")`, {
+    clienteId: cleanId,
+    nomeRazao: existente.nome_razao,
+    cnpjCpf: existente.cnpj_cpf
+  });
+
+  return { success: true, id: cleanId, message: 'Cliente excluído com sucesso.' };
+}
+
+/**
+ * 14. AUTOCOMPLETE DE CLIENTES (CRM_CLIENTES + PROTHEUS SA1010 + CACHE RESILIENTE)
  */
 async function autocompleteClientes(termo) {
   if (!termo || String(termo).trim().length < 2) {
@@ -1156,12 +1717,82 @@ async function autocompleteClientes(termo) {
   // Sanitização estrita contra quebra de T-SQL (remove colchetes desbalanceados)
   const cleanTerm = sanitizeSqlParam(String(termo).trim()).replace(/[\[\]]/g, '');
   const digitsOnly = cleanTerm.replace(/\D/g, '');
-  let clientes = [];
+  const termoLower = cleanTerm.toLowerCase();
 
-  // 1. Tenta consulta ao vivo no Protheus SA1010 via Railway
+  const clientesMap = new Map();
+
+  // 1. Busca prioritária em crm_clientes (limite 10)
+  try {
+    let crmRows = [];
+    const params = [`%${termoLower}%`];
+    let query = `
+      SELECT * FROM crm_clientes
+      WHERE deleted_at IS NULL
+        AND (
+          LOWER(nome_razao) LIKE $1
+          OR LOWER(COALESCE(nome_fantasia, '')) LIKE $1
+    `;
+    if (digitsOnly.length >= 3) {
+      params.push(`%${digitsOnly}%`);
+      query += ` OR cnpj_cpf LIKE $${params.length}`;
+    }
+    query += `) ORDER BY updated_at DESC LIMIT 10;`;
+
+    const resCrm = await safeQuery(query, params);
+    if (resCrm && Array.isArray(resCrm.rows) && resCrm.rows.length > 0) {
+      crmRows = resCrm.rows;
+    } else {
+      // Fallback cache local se Postgres não retornar
+      const cache = await readClientesCache();
+      crmRows = (cache.clientes || []).filter(c => {
+        if (c.deleted_at) return false;
+        const n = (c.nome_razao || '').toLowerCase();
+        const f = (c.nome_fantasia || '').toLowerCase();
+        const doc = (c.cnpj_cpf || '').replace(/\D/g, '');
+        return n.includes(termoLower) || f.includes(termoLower) || (digitsOnly.length >= 3 && doc.includes(digitsOnly));
+      }).slice(0, 10);
+    }
+
+    for (const c of crmRows) {
+      const cnpjLimpo = c.cnpj_cpf ? String(c.cnpj_cpf).replace(/\D/g, '') : '';
+      const cod = (c.protheus_cod || c.id || '').trim();
+      const key = cnpjLimpo && cnpjLimpo.length >= 11 ? cnpjLimpo : (cod || c.nome_razao);
+
+      clientesMap.set(key, {
+        id: c.id,
+        cod: c.protheus_cod || c.id,
+        loja: c.protheus_loja || '01',
+        nome: c.nome_razao,
+        nome_fantasia: c.nome_fantasia || '',
+        cnpj: cnpjLimpo,
+        cnpj_fmt: formatarCgc(cnpjLimpo),
+        endereco: (c.logradouro ? (c.logradouro + (c.numero ? ', ' + c.numero : '')) : '') || '',
+        logradouro: c.logradouro || '',
+        numero: c.numero || '',
+        complemento: c.complemento || '',
+        bairro: c.bairro || '',
+        cidade: c.cidade || '',
+        uf: c.uf || '',
+        cep: c.cep || '',
+        telefone: c.telefone || '',
+        telefone_fmt: formatarTelefone(c.telefone),
+        celular_whatsapp: c.celular_whatsapp || '',
+        celular_whatsapp_fmt: formatarTelefone(c.celular_whatsapp),
+        email: c.email || '',
+        contato: c.contato_nome || '',
+        cod_vendedor: c.vendedor_responsavel || '',
+        origem_fonte: 'CRM',
+        is_novo_crm: true
+      });
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Engine] Erro ao buscar crm_clientes no autocomplete:', err.message);
+  }
+
+  // 2. Busca secundária em SA1010 do Protheus (limite 10)
   try {
     const sql = `
-      SELECT TOP 15
+      SELECT TOP 10
         RTRIM(A1_COD) AS A1_COD,
         RTRIM(ISNULL(A1_LOJA, '01')) AS A1_LOJA,
         RTRIM(A1_NOME) AS A1_NOME,
@@ -1189,81 +1820,82 @@ async function autocompleteClientes(termo) {
 
     const res = await executeRailwayQuery(sql);
     if (res && Array.isArray(res.rows) && res.rows.length > 0) {
-      clientes = res.rows.map(r => ({
-        cod: r.A1_COD,
-        loja: r.A1_LOJA || '01',
-        nome: r.A1_NOME,
-        nome_fantasia: r.A1_NREDUZ || '',
-        cnpj: r.A1_CGC,
-        cnpj_fmt: formatarCgc(r.A1_CGC),
-        endereco: r.A1_END || '',
-        bairro: r.A1_BAIRRO || '',
-        cidade: r.A1_MUN || '',
-        uf: r.A1_EST || '',
-        cep: r.A1_CEP || '',
-        telefone: r.A1_TEL || '',
-        telefone_fmt: formatarTelefone(r.A1_TEL),
-        email: r.A1_EMAIL || '',
-        contato: r.A1_CONTATO || '',
-        cod_vendedor: r.A1_VEND || ''
-      }));
-      return clientes;
+      for (const r of res.rows) {
+        const cnpjLimpo = r.A1_CGC ? String(r.A1_CGC).replace(/\D/g, '') : '';
+        const cod = (r.A1_COD || '').trim();
+        const key = cnpjLimpo && cnpjLimpo.length >= 11 ? cnpjLimpo : (cod || r.A1_NOME);
+
+        // Se já existe no map vindo do CRM, prioriza o registro do CRM
+        if (!clientesMap.has(key)) {
+          clientesMap.set(key, {
+            cod: r.A1_COD,
+            loja: r.A1_LOJA || '01',
+            nome: r.A1_NOME,
+            nome_fantasia: r.A1_NREDUZ || '',
+            cnpj: cnpjLimpo,
+            cnpj_fmt: formatarCgc(cnpjLimpo),
+            endereco: r.A1_END || '',
+            bairro: r.A1_BAIRRO || '',
+            cidade: r.A1_MUN || '',
+            uf: r.A1_EST || '',
+            cep: r.A1_CEP || '',
+            telefone: r.A1_TEL || '',
+            telefone_fmt: formatarTelefone(r.A1_TEL),
+            email: r.A1_EMAIL || '',
+            contato: r.A1_CONTATO || '',
+            cod_vendedor: r.A1_VEND || '',
+            origem_fonte: 'PROTHEUS'
+          });
+        }
+      }
     }
   } catch (err) {
     console.warn('⚠️ [CRM Engine] Erro ao consultar SA1010 no Protheus. Tentando fallback local:', err.message);
-  }
+    // Fallback histórico de análise de crédito se Protheus falhar
+    try {
+      const rawHist = await safeReadJson(analiseCreditoHistoryFile, []);
+      if (Array.isArray(rawHist) && rawHist.length > 0) {
+        for (const item of rawHist) {
+          const nome = String(item.cliente_nome || item.nome_cliente || '').trim();
+          const cnpj = String(item.cnpj || item.cliente_cnpj || '').replace(/\D/g, '');
+          const cod = String(item.cliente_cod || item.codigo || '').trim();
 
-  // 2. Fallback em histórico de análise de crédito e cache local
-  try {
-    const rawHist = await safeReadJson(analiseCreditoHistoryFile, []);
-    if (Array.isArray(rawHist) && rawHist.length > 0) {
-      const b = cleanTerm.toLowerCase();
-      const unicos = new Map();
-
-      for (const item of rawHist) {
-        const nome = String(item.cliente_nome || item.nome_cliente || '').trim();
-        const cnpj = String(item.cnpj || item.cliente_cnpj || '').replace(/\D/g, '');
-        const cod = String(item.cliente_cod || item.codigo || '').trim();
-
-        if (
-          nome.toLowerCase().includes(b) ||
-          cnpj.includes(digitsOnly || b) ||
-          cod.toLowerCase().includes(b)
-        ) {
-          const key = `${cod}_${cnpj}`;
-          if (!unicos.has(key)) {
-            unicos.set(key, {
-              cod: cod || '999999',
-              loja: '01',
-              nome: nome || 'Cliente Sem Razão',
-              nome_fantasia: nome,
-              cnpj,
-              cnpj_fmt: formatarCgc(cnpj),
-              endereco: item.endereco || '',
-              bairro: item.bairro || '',
-              cidade: item.cidade || '',
-              uf: item.uf || '',
-              cep: item.cep || '',
-              telefone: item.telefone || '',
-              telefone_fmt: formatarTelefone(item.telefone),
-              email: item.email || '',
-              contato: '',
-              cod_vendedor: item.cod_vendedor || ''
-            });
+          if (
+            nome.toLowerCase().includes(termoLower) ||
+            (digitsOnly && cnpj.includes(digitsOnly)) ||
+            cod.toLowerCase().includes(termoLower)
+          ) {
+            const key = cnpj && cnpj.length >= 11 ? cnpj : (cod || nome);
+            if (!clientesMap.has(key)) {
+              clientesMap.set(key, {
+                cod: cod || '999999',
+                loja: '01',
+                nome: nome || 'Cliente Sem Razão',
+                nome_fantasia: nome,
+                cnpj,
+                cnpj_fmt: formatarCgc(cnpj),
+                endereco: item.endereco || '',
+                bairro: item.bairro || '',
+                cidade: item.cidade || '',
+                uf: item.uf || '',
+                cep: item.cep || '',
+                telefone: item.telefone || '',
+                telefone_fmt: formatarTelefone(item.telefone),
+                email: item.email || '',
+                contato: '',
+                cod_vendedor: item.cod_vendedor || '',
+                origem_fonte: 'PROTHEUS'
+              });
+            }
           }
+          if (clientesMap.size >= 15) break;
         }
-        if (unicos.size >= 15) break;
       }
-
-      if (unicos.size > 0) {
-        return Array.from(unicos.values());
-      }
-    }
-  } catch (err) {
-    console.warn('⚠️ [CRM Engine] Falha no fallback de clientes:', err.message);
+    } catch {}
   }
 
-  return [];
+  // Retorna até 15 resultados mesclados
+  return Array.from(clientesMap.values()).slice(0, 15);
 }
 
 module.exports = {
@@ -1278,5 +1910,10 @@ module.exports = {
   restaurarDeal,
   listarAtividadesDeal,
   criarAtividadeDeal,
-  autocompleteClientes
+  autocompleteClientes,
+  salvarCliente,
+  listarClientes,
+  obterClientePorId,
+  excluirCliente,
+  restaurarCliente
 };

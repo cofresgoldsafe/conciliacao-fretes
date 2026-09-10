@@ -460,4 +460,153 @@ router.post('/deals/:id/restore', async (req, res) => {
   }
 });
 
+// ============================================================================
+// ENDPOINTS DE CADASTRO DE CLIENTES DO CRM
+// ============================================================================
+
+/**
+ * GET /api/bi/crm/clientes
+ * Lista os clientes cadastrados com suporte a busca, filtro por vendedor e paginação
+ */
+router.get('/clientes', async (req, res) => {
+  try {
+    const { busca, vendedor, limit, offset, page, order } = req.query;
+    const resultado = await crmEngine.listarClientes({
+      busca: busca ? String(busca).trim() : undefined,
+      vendedor: vendedor ? String(vendedor).trim() : undefined,
+      limit,
+      offset,
+      page,
+      order
+    });
+
+    return res.json({
+      success: true,
+      data: resultado.items,
+      pagination: resultado.pagination
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao listar clientes',
+      detail: err.message,
+      code: 'LIST_CLIENTES_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/clientes/:id
+ * Consulta os detalhes de um cliente específico pelo ID
+ */
+router.get('/clientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cliente = await crmEngine.obterClientePorId(id);
+
+    if (!cliente) {
+      return sendRfcError(res, {
+        status: 404,
+        title: 'Cliente Não Encontrado',
+        detail: `Cliente #${id} não foi localizado no sistema ou foi excluído.`,
+        code: 'CLIENTE_NOT_FOUND'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: cliente
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao obter cliente',
+      detail: err.message,
+      code: 'GET_CLIENTE_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/clientes
+ * Cadastra ou atualiza um cliente comercial no CRM
+ */
+router.post('/clientes', async (req, res) => {
+  try {
+    const dados = req.body;
+    if (!dados || !dados.nome_razao || !String(dados.nome_razao).trim()) {
+      return sendRfcError(res, {
+        status: 400,
+        title: 'Dados Inválidos',
+        detail: "O campo 'nome_razao' é obrigatório para cadastrar o cliente.",
+        code: 'VALIDATION_ERROR'
+      });
+    }
+
+    const isEdicao = !!dados.id;
+    const clienteSalvo = await crmEngine.salvarCliente(dados, req.user);
+
+    return res.status(isEdicao ? 200 : 201).json({
+      success: true,
+      message: isEdicao ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!',
+      data: clienteSalvo
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao salvar cliente',
+      detail: err.message,
+      code: err.code || 'SAVE_CLIENTE_ERROR'
+    });
+  }
+});
+
+/**
+ * DELETE /api/bi/crm/clientes/:id
+ * Exclusão lógica (soft delete) do cliente comercial
+ */
+router.delete('/clientes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const resultado = await crmEngine.excluirCliente(id, req.user);
+
+    return res.json({
+      success: true,
+      message: 'Cliente excluído com sucesso.',
+      data: resultado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao excluir cliente',
+      detail: err.message,
+      code: err.code || 'DELETE_CLIENTE_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/clientes/:id/restore
+ * Restauração lógica (reversibilidade) do cliente comercial
+ */
+router.post('/clientes/:id/restore', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cliente = await crmEngine.restaurarCliente(id, req.user);
+
+    return res.json({
+      success: true,
+      message: `Cliente #${id} restaurado com sucesso.`,
+      data: cliente
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao restaurar cliente',
+      detail: err.message,
+      code: err.code || 'RESTORE_CLIENTE_ERROR'
+    });
+  }
+});
+
 module.exports = router;

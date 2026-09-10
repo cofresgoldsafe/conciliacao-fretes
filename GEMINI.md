@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.168 (Homologada em 10/09/2026 09:30)  
+> **Versão da Documentação:** v8.169 (Homologada em 10/09/2026 11:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso do Módulo CRM Comercial Nativo no BI Executivo, Pipeline Kanban de 5 Estágios Canônicos, Ficha de Oportunidade, Autocomplete de Clientes Protheus SA1, Linha do Tempo de Atividades, Isolamento Estrito Alexandre/Admin, RLS Supabase com Fallback JSON Seguro e 10 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 10/09/2026 09:30 (v8.168 - Módulo CRM Comercial Nativo no BI Executivo com Kanban e RLS, 10 Testes Aprovados)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso do Módulo de Gestão e Cadastro de Clientes B2B no CRM Comercial, Autocomplete Híbrido CRM x Protheus SA1, Cadastro Rápido Inline no Deal, WhatsApp 1-Clique wa.me, RLS Supabase, Fallback JSON Seguro e 18 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 10/09/2026 11:30 (v8.169 - Gestão e Cadastro de Clientes no CRM Comercial com Autocomplete Híbrido e RLS, 18 Testes Aprovados)  
 
 ---
 
@@ -570,6 +570,36 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Atualização de `test_parsers.py` com testes unitários para a coluna `UnE` e teste de regressão ponta a ponta com `FAT RODONAVES 15 09 26.pdf` (**9/9 testes pytest aprovados**).
       - Validação de 100% dos 5 arquivos de amostra Rodonaves do projeto com zero duplicações.
       - Teste E2E de batimento Protheus confirmando 12 NFs únicas, 12 pedidos de venda e clientes distintos.
+49. [x] **Módulo CRM Comercial Nativo no BI Executivo (`sql/bi/07_tabelas_crm.sql`, `crm_engine.js`, `crm_routes.js`, `public/js/crm.js`, `public/index.html`, `public/style.css`, `test_crm_module.js`):**
+    - **Pipeline Kanban Canônico de 5 Fases:**
+      - *Novos Info Pendentes* (`LEAD`), *Sem Contato Não Responde* (`CONTATO`), *Proposta feita* (`PROPOSTA`), *Negociação Quente* (`NEGOCIACAO`) e *Venda Efetuada* (`GANHO`), além de suporte completo a *Perdido* (`PERDIDO`) com justificativa.
+      - Drag and Drop nativo HTML5 para movimentação ágil entre colunas com cálculo dinâmico de quantidade e somatório financeiro (R$) em cada etapa.
+    - **Ficha Completa de Oportunidade (Deal):**
+      - Cadastro detalhado com Título, Vendedor responsável, Condição de Pagamento (`SE4`), Tipo de Frete (`CIF`/`FOB`), Frete Cobrado vs Frete Embutido (respeitando a regra do pedido de venda), Transportadora, Pedido de Compra do Cliente, Observações da NF-e e Grade de Itens Cotados.
+    - **Linha do Tempo de Atividades & Follow-up:**
+      - Registro cronológico de interações comerciais (Notas internas, Reuniões, Ligações telefônicas, mensagens de WhatsApp e Tarefas de retorno), com identificação auditável do autor e timestamp.
+    - **Segurança RBAC e Isolamento Estrito:**
+      - Acesso restrito exclusivamente ao usuário `alexandre` / `admin` dentro da aba `📊 BI EXECUTIVO > 💼 CRM Comercial` (`#tab-bi-crm`). Vendedores recebem HTTP 403 Forbidden.
+    - **Persistência ACID no Supabase Postgres & Fallback JSON:**
+      - Tabelas `crm_deals` e `crm_atividades` com Row-Level Security (RLS) habilitado e fallback atômico em `data/crm_deals_cache.json` via `safe_json_storage.js`.
+    - **Suíte de Testes:** Script `test_crm_module.js` com 10 asserções 100% aprovadas.
+50. [x] **Módulo de Gestão e Cadastro de Clientes B2B no CRM Comercial (`sql/bi/08_tabela_crm_clientes.sql`, `crm_engine.js`, `crm_routes.js`, `public/js/crm.js`, `public/index.html`, `public/style.css`, `test_crm_clientes.js`):**
+    - **Independência do Protheus para Novos Prospects / Leads (75% da Base):**
+      - Mapeamento da regra real de negócio: 75% dos contatos no CRM são novos prospects B2B que ainda não existem no ERP Protheus `SA1010`.
+      - Modelagem relacional da tabela `crm_clientes` no Supabase com RLS ativo (`ENABLE/FORCE ROW LEVEL SECURITY`), índices B-Tree e chave primária resiliente (`id VARCHAR(64)`).
+      - Campos essenciais de negócio: Tipo PJ/PF, Razão Social / Nome, Nome Fantasia, CNPJ/CPF, Inscrição Estadual, Pessoa de Contato, Celular / WhatsApp, Telefone Fixo, E-mail, Origem do Lead, Vendedor Responsável, Endereço completo (seção retrátil) e Observações.
+    - **Segmented Control no Topo do CRM & Visualização de Clientes:**
+      - Alternância instantânea de contexto no topo da aba: `📊 Funil de Oportunidades` vs `👥 Clientes Cadastrados` com atributos de acessibilidade `aria-pressed`.
+      - Tabela paginada de clientes com busca textual instantânea (debounce), filtro por vendedor responsável e 3 Mini KPIs no topo (*Total de Clientes Cadastrados*, *Novos Prospects CRM*, *Clientes Protheus*).
+      - Ações na linha: `✏️ Editar`, `➕ Deal` (abre oportunidade com dados pré-preenchidos) e `🗑️ Excluir` (soft delete com confirmação amigável).
+    - **Botão de WhatsApp 1-Clique (`wa.me`):**
+      - Link nativo direto `https://wa.me/55<celular>` que abre a conversa com o comprador diretamente no WhatsApp Desktop ou Web sem intermediários pagos.
+    - **Cadastro Rápido Inline no Deal (Sem Perda de Contexto):**
+      - Botão `➕ Novo Cliente` (`#btnCrmNovoClienteFromDeal`) inserido no modal de Oportunidade imediatamente acima do autocomplete.
+      - Ao salvar o novo cliente, os dados (Razão, CNPJ e Código) são injetados automaticamente nos campos da oportunidade sem fechar o formulário e sem perder nenhum dado já digitado pelo vendedor.
+    - **Autocomplete Híbrido com Deduplicação e Precedência CRM:**
+      - Endpoint `/api/bi/crm/clientes/autocomplete` busca prioritariamente na base `crm_clientes` (badge verde `[CRM]`) e complementa com clientes históricos do Protheus `SA1010` (badge roxo `[Protheus]`), usando `Map` por CNPJ para deduplicação automática.
+    - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com 8 asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação, edição, busca por ID, listagem paginada, autocomplete prioritário e soft delete (100% de sucesso).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
