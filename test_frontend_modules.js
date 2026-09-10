@@ -235,7 +235,8 @@ async function runFrontendModulesTests() {
     const subGroupAnalistaMatch = html.match(/id="subGroupAnalistaFin"[^>]*>([\s\S]*?)<\/div>/);
     assert.ok(subGroupAnalistaMatch, 'Deve encontrar bloco #subGroupAnalistaFin');
     const subGroupAnalistaContent = subGroupAnalistaMatch[1];
-    assert.ok(subGroupAnalistaContent.includes('id="btnTabHolerites"'), 'Documentos DP deve estar em subGroupAnalistaFin');
+    assert.ok(subGroupAnalistaContent.includes('id="btnTabHolerites"'), 'Holerites DP deve estar em subGroupAnalistaFin');
+    assert.ok(subGroupAnalistaContent.includes('Holerites DP'), 'Sub-aba deve conter o rótulo Holerites DP');
     assert.ok(subGroupAnalistaContent.includes('id="btnTabFuncionarios"'), 'Cadastro Funcion. deve estar em subGroupAnalistaFin');
 
     // Garantir que foram REMOVIDAS de subGroupFinanceiro

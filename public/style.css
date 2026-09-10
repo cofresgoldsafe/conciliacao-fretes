@@ -3493,9 +3493,10 @@ body {
 }
 
 .holerite-empresa-logo {
-  max-height: 48px;
+  max-height: 52px;
   max-width: 180px;
   object-fit: contain;
+  display: inline-block;
 }
 
 .holerite-dados-colaborador {
@@ -3664,17 +3665,28 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-top: 24px;
-  padding: 0 10px;
+  margin: 80px auto 0 auto;
+  max-width: 620px;
+  padding: 0 15px;
+  box-sizing: border-box;
+}
+
+.holerite-canhoto-data {
+  font-size: 0.84rem;
+  color: #1e293b;
+  font-weight: 500;
+  padding-bottom: 6px;
 }
 
 .holerite-linha-assinatura {
-  border-top: 1px solid #0f172a;
-  width: 240px;
+  border-top: 1.5px solid #0f172a;
+  width: 280px;
   text-align: center;
-  padding-top: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  padding-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #0f172a;
 }
 
 /* ==========================================================================
@@ -3712,6 +3724,16 @@ body {
     max-width: 100% !important;
     page-break-after: always !important;
     break-after: page !important;
+  }
+
+  .holerite-canhoto-linhas {
+    margin: 24mm auto 0 auto !important;
+    max-width: 160mm !important;
+    padding: 0 8mm !important;
+  }
+
+  .holerite-linha-assinatura {
+    width: 75mm !important;
   }
 
   .no-print {

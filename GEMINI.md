@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.176 (Homologada em 10/09/2026 14:18)  
+> **Versão da Documentação:** v8.177 (Homologada em 10/09/2026 15:25)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Restrição Estrita de Saldos Físicos às 3 Empresas Ativas Metal Pleno 14, GSI 15 e OAÇO 16, Desconsiderando Empresa 09 no Ponto de Pedido Ideal, Rolagem Vertical e Suíte de Testes 100% Aprovada)  
-> **Data da Última Auditoria:** 10/09/2026 14:18 (v8.176 - Restrição de Saldos Físicos às 3 Empresas Ativas 14/15/16 no Ponto de Pedido e Exclusão da Empresa 09)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Renomeação para Holerites DP, Logos Oficiais Base64 Síncronos OAÇO e GSI, Espaçamento Amplo para Assinaturas Digitais e Layout Centralizado)  
+> **Data da Última Auditoria:** 10/09/2026 15:25 (v8.177 - Holerites DP, Logos Base64 OAÇO/GSI e Layout de Assinatura Digital)  
 
 ---
 
@@ -1020,6 +1020,21 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Expurgo Total da Empresa 09:** Desconsideração completa dos saldos da `SB2090` e de quaisquer filiais não operacionais na rotina analítica de compras.
       - **Ajustes de UI & Relatório:** Bloco do modal renomeado para *"Saldos Físicos (3 Empresas Ativas)"* com expurgo da linha `Empresa 09` (`#infoSaldo09`), e relatório Markdown atualizado para explicitar o saldo segregado por empresa ativa (`Estoque atual (SB2 - 14/15/16)`).
     - **Suíte de Testes Automatizados:** 9 testes em `test_compras_ponto_pedido.js`, 6 testes em `test_compras_tab.js` e 8 testes em `test_frontend_modules.js` (100% de aprovação).
+62. [x] **Renomeação da Sub-Aba para "Holerites DP", Logos Oficiais Base64 Síncronos (OAÇO e GSI) e Layout de Assinatura Digital Espaçado e Centralizado (`public/index.html`, `public/js/holerites.js`, `public/style.css`, `test_frontend_modules.js`, `test_holerites_visual_signature.js`):**
+    - **Demanda Operacional & Ajustes de Interface:**
+      - Renomeação oficial da sub-aba sob `📑 ANALISTA FIN` de `Documentos DP` para **`Holerites DP`** (`#btnTabHolerites`), além da atualização dos cabeçalhos de tela e do modal de permissões de usuários.
+    - **Resolução Definitiva do Logo OAÇO (Disponibilidade Perene em Base64):**
+      - *Causa Raiz:* Nos recibos de adiantamento e holerites da empresa OAÇO, o logo corporativo falhava silenciosamente em decorrência de restrições de cache, latência de rede assíncrona ou acionamento prematuro do diálogo de impressão/exportação com `onerror="this.style.display='none'"`.
+      - *Solução:* Incorporação síncrona dos logos oficiais em Base64 Data URI (`LOGO_GSI_B64` e `LOGO_OACO_B64`) diretamente no gerador de template HTML (`public/js/holerites.js`). O carregamento é 100% imediato e imune a erros de rede, CORS, 404, bloqueadores de rastreamento ou timing de drivers de impressão.
+      - Detecção tolerante a variações contábeis e de cadastro (`OACO`, `OAÇO`, razão social contendo GSI/OAÇO) e fallback automático para arquivo estático em caso de anomalia.
+    - **Espaçamento e Ergonomia para Assinatura Digital ("Bem mais pra baixo" & Centralizado):**
+      - *Causa Raiz:* A distância vertical de apenas 24px entre a declaração de quitação e o traço de assinatura provocava sobreposição e colisão visual quando carimbos, rubricas e certificados de plataformas de assinatura digital (Clicksign, ZapSign, DocuSign, D4Sign, Adobe Sign) eram aplicados.
+      - *Solução:* Aumento substancial do espaçamento superior para **80px** (`margin: 80px auto 0 auto;` no desktop/modal e `margin: 24mm auto 0 auto;` em `@media print`), criando uma área livre e generosa de ~24mm para assinaturas eletrônicas.
+      - *Centralização Estética:* Limitação de largura em `max-width: 620px` (e `160mm` na impressão) com centralização automática horizontal (`margin: ... auto`), puxando tanto a data quanto o traço de assinatura para longe das extremidades da folha A4.
+      - Traço de assinatura expandido para `280px` (`75mm` na impressão) com tipografia em caixa alta para perfeita legibilidade do nome do colaborador.
+    - **Verificação Visual Adversarial & Suíte de Testes:**
+      - Captura de telas reais via navegador headless Edge confrontando os laudos `adiantamento-salario.png` e `salario-01.png`, confirmando visualmente a presença nítida do logo OAÇO e o posicionamento ergonômico da assinatura.
+      - Suíte automatizada dedicada `test_holerites_visual_signature.js` com 3 asserções (100% aprovados) e atualização de `test_frontend_modules.js` (8/8 aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
