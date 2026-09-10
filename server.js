@@ -154,6 +154,11 @@ const {
   saveConfigMetas
 } = require('./fechamento_vendedores_engine');
 
+const {
+  resolverProdutoProtheus,
+  executarEstudoPontoPedido
+} = require('./ponto_pedido_engine');
+
 const crmRoutes = require('./crm_routes');
 const crmEngine = require('./crm_engine');
 
@@ -1293,6 +1298,77 @@ app.get('/api/compras/pedidos/detalhes', requireAuth, async (req, res) => {
     res.json({ success: true, data });
   } catch (err) {
     handleServerError(res, err, 'Erro ao consultar detalhes do pedido de compra.');
+  }
+});
+
+// API: Compras - Busca / Autocomplete de Produtos para Ponto de Pedido
+app.get('/api/compras/ponto-pedido/produtos', requireAuth, async (req, res) => {
+  try {
+    const { q } = req.query || {};
+    const termo = (q || '').trim();
+    if (!termo || termo.length < 2) {
+      return res.json({ success: true, produtos: [] });
+    }
+
+    // Tenta primeiro consultar saldos locais no postgres/cache (rápido e indexado)
+    let produtos = await getSaldosEstoqueDB({ search: termo });
+    if (produtos && produtos.length > 0) {
+      const formatados = produtos.slice(0, 15).map(p => ({
+        codigo: p.codigo,
+        descricao: p.descricao,
+        grupo: p.grupo,
+        preco: p.preco,
+        saldo: p.saldo,
+        ponto_ped: p.ponto_ped
+      }));
+      return res.json({ success: true, produtos: formatados });
+    }
+
+    // Se não encontrar no cache/saldo local, resolve na SB1090
+    const protheusProds = await resolverProdutoProtheus(termo);
+    const formatados = (protheusProds || []).slice(0, 15).map(p => ({
+      codigo: p.B1_COD,
+      descricao: p.B1_DESC,
+      grupo: p.B1_GRUPO,
+      preco: Number(p.B1_PRV1) || 0,
+      saldo: 0,
+      ponto_ped: Number(p.B1_EMIN) || 0
+    }));
+
+    res.json({ success: true, produtos: formatados });
+  } catch (err) {
+    handleServerError(res, err, 'Erro ao buscar produtos para ponto de pedido.');
+  }
+});
+
+// API: Compras - Calcular Ponto de Pedido Ideal (Estudo Consolidado Protheus)
+app.post('/api/compras/ponto-pedido/calcular', requireAuth, async (req, res) => {
+  try {
+    const { identificador, leadTimeCustom } = req.body || {};
+    const user = getUserFromReq(req);
+
+    if (!identificador || !String(identificador).trim()) {
+      return res.status(400).json({ success: false, message: 'O código, ID do Pipedrive ou nome do produto é obrigatório.' });
+    }
+
+    const resultado = await executarEstudoPontoPedido(identificador, { leadTimeCustom });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CALCULO_PONTO_PEDIDO',
+      description: `Calculou Ponto de Pedido Ideal para ${resultado.produto.codigo} - ${resultado.produto.descricao}: PP Recomendado ${resultado.resultado.pontoPedidoRecomendado} un`,
+      ip: req.ip,
+      metadata: { 
+        codigo: resultado.produto.codigo,
+        ppRecomendado: resultado.resultado.pontoPedidoRecomendado,
+        ruptura: resultado.resultado.rupturaEmCurso
+      }
+    }).catch(() => {});
+
+    res.json(resultado);
+  } catch (err) {
+    handleServerError(res, err, err.message || 'Erro ao calcular ponto de pedido ideal.');
   }
 });
 

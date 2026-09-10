@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.172 (Homologada em 10/09/2026 12:25)  
+> **Versão da Documentação:** v8.174 (Homologada em 10/09/2026 13:45)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso do Auto-preenchimento de Endereço por CEP no Tab sem Número/Complemento, Normalização de Site Corporativo com/sem WWW sem Necessidade de HTTP/HTTPS no CRM Comercial, RLS Supabase e 10 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 10/09/2026 12:25 (v8.172 - Auto-lookup CEP ViaCEP e Normalização de Site Corporativo no CRM)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Sub-aba Ponto de Pedido Ideal no Módulo Compras, Motor Analítico Protheus Consolidado, Preenchimento Obrigatório de Zeros, 3 Cenários, Detecção de Ruptura, Modal Acessível A11y, Proteção Anti-Leak de Credenciais e Suíte de Testes 100% Aprovada)  
+> **Data da Última Auditoria:** 10/09/2026 13:45 (v8.174 - Sub-aba Ponto de Pedido Ideal no Módulo Compras, Motor Analítico Protheus Consolidado e Blindagem Adversarial)  
 
 ---
 
@@ -967,6 +967,51 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Garantia de Qualidade & Verificação Adversarial (10/10 Testes Aprovados):**
       - Suíte automatizada em `test_crm_module.js` cobrindo 10 baterias de testes: criação de deal, transição de estágio Kanban, registro de atividades na timeline, autocomplete com caracteres especiais, bloqueios de segurança RBAC (401/403/200), soft-delete, restauração de deals, listagem de vendedores, rejeição de estágios inválidos e regra estrita de frete embutido.
       - Testes de integridade sintática e modular em `test_frontend_modules.js` 100% aprovados.
+61. [x] **Sub-Aba "Ponto de Pedido Ideal" no Módulo COMPRAS & Motor Analítico Protheus Consolidado (`ponto_pedido_engine.js`, `server.js`, `public/js/compras_ponto_pedido.js`, `public/index.html`, `public/style.css`, `public/app.js`, `test_compras_ponto_pedido.js`):**
+    - **Objetivo & Demanda de Negócio do Comprador:**
+      - Nova sub-aba isolada e modular dentro do menu de 1º nível `COMPRAS` (`#tab-compras-ponto-pedido` / `#btnTabComprasPontoPedido`), permitindo ao comprador digitar o código de um produto, ID do Pipedrive ou descrição parcial com autocomplete debounceado (300ms) sem onerar o banco.
+      - **Popup de 2 Fases com Quantidade em Destaque:**
+        1. *Fase A (Loading Imediato):* Modal responsivo `#modalPontoPedidoIdeal` abre instantaneamente exibindo: *"Verificando histórico... Calculando..."* com spinner animado enquanto consulta o Protheus via Railway.
+        2. *Fase B (Resultado Claro & Quantidade em Evidência):* Exibição do texto simples *"De acordo com o histórico consolidado, o ponto de pedido recomendado: 8 unidades"* com o número em destaque tipográfico gigante (~2.6rem) e cor semântica (verde esmeralda para normal, âmbar para crítico e vermelho para ruptura).
+    - **Alinhamento com Diretrizes Operacionais Oficiais da IA Especialista:**
+      - Leitura minuciosa e aplicação estrita das regras de `ponto-de-pedido-instrucao-analise.md` e caso real `ponto-de-pedido-cofre-box-2-0-black.md`.
+      - **Resolução Inteligente de Identificadores (Passo 1):** Suporte a código puro (`00101010102B009`), código com prefixo de empresa (`15-...` ➔ extração do sufixo pós-hífen), ID de produto do Pipedrive (`11569` ou URL `benetroncomercial.pipedrive.com/product/11569` via `B1_XCODPD`) e busca textual por descrição na `SB1090` (Filial 01).
+      - **As 6 Consultas Protheus Via Gateway Railway (Passos 3.1 a 3.6):**
+        1. `SB1090`: Catálogo mestre oficial da empresa 09, filial 01 (`B1_COD`, `B1_DESC`, `B1_PE`, `B1_LE`, `B1_VLUNIT`, `B1_PRV1`, `B1_EMIN`).
+        2. `SD2`: Vendas mês a mês dos últimos 24 meses com `UNION ALL` nas empresas 14 (Metal Pleno), 15 (GSI) e 16 (OACO).
+        3. `SD2`: Clientes distintos unificados na janela 12M e detecção de devoluções.
+        4. `SD2`: Data da primeira venda histórica do item.
+        5. `SB2`: Estoques físicos atuais varrendo filiais 140, 150, 160 e 090.
+        6. `SC6`: Carteira de pedidos de venda em aberto não faturados (`C6_QTDVEN > C6_QTDENT`) e `SD3`: últimas entradas (TM < 500).
+      - **Preenchimento Mandatório de Meses Zerados (Passo 4):**
+        - O Protheus omite linhas para meses sem venda na `SD2`. O motor preenche compulsoriamente os meses ausentes com `0` na série móvel de 12 meses (`listaMeses12`), evitando distorção artificial do desvio-padrão e CV.
+      - **Os Três Cenários Matemáticos (Passo 5):**
+        - *Cenário 1 (Oficial do ERP):* $PP = \text{Consumo Médio Diário} \times \text{Lead Time (dias)}$.
+        - *Cenário 2 (Média 12M + Estoque de Segurança):* $PP = \text{Demanda no Lead Time} + (Z \times \sigma_{LT})$ nas confianças de 90% (Z=1.28), 95% (Z=1.65) e 98% (Z=2.05).
+        - *Cenário 3 (Run Rate Recente + Estoque de Segurança 95%):* Projeção sobre a média dos últimos 3 a 4 meses + $1.65 \times \sigma_{LT}$.
+      - **Regra Oficial de Decisão:**
+        - Tendência de alta (> +15% no 2º semestre) ➔ Cenário 3 a 95%.
+        - Tendência de queda (< -15%) ➔ Cenário 2 a 90% conservador.
+        - Demanda estável ➔ Cenário 2 a 95% clássico. Alta volatilidade ($CV > 60\%$) com ressalva explícita.
+        - Vendas zeradas nos 12 meses ➔ PP = 0 un para não imobilizar capital.
+      - **Diagnóstico de Ruptura em Curso & Compra Urgente:**
+        - Detecção ativa quando `saldoFisicoTotal === 0` e `pedidosAbertosQtd > 0`.
+        - Cálculo de reposição urgente cobrindo o déficit da carteira atrasada da SC6 + PP de segurança + consumo estimado durante o lead time.
+      - **Impacto Financeiro:** Avaliação de Capital Imobilizado no PP ($PP \times B1\_VLUNIT$) confrontado com Margem de Contribuição e Lucro Bruto Unitário.
+    - **Botão Expansível `+info` & Cópia Markdown 1-Clique:**
+      - Botão reativo `#btnToggleInfoPontoPedido` revela/recolhe a memória de cálculo completa com os 3 cenários, lead time, saldos físicos por filial, tabela mês a mês com meses zerados explicitados e pedidos em aberto na SC6.
+      - Botão `📋 Copiar Relatório Markdown` copia instantaneamente o estudo completo formatado em Markdown com padrão executivo para envio no Pipedrive, WhatsApp ou e-mail.
+    - **Auditoria Adversarial (Red Team) & Hardening de Segurança:**
+      - Zero credenciais hardcoded no repositório: leitura dinâmica de `PROTHEUS_API_KEY` com suporte universal (Windows/Linux) a `claude_desktop_config.json`.
+      - Sanitização estrita contra SQL injection e wildcard blast (`cleanTermo.length >= 2`, expurgo de caracteres perigosos e `TOP 20`).
+      - Proteção contra Memory Leak e duplicação de requisições: flag `_initialized` no frontend prevenindo multiplicação de listeners na alternância de abas.
+      - Sanitização com `escapeHtml()` em todos os parâmetros interpolados (prevenção contra DOM XSS).
+      - Tratamento fail-safe: falhas no Railway API em tabelas vitais (SD2/SB2/SC6) não mascaram dados falsos de estoque zero.
+    - **Acessibilidade WCAG 2.1 & Tema Claro/Escuro:**
+      - `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `role="listbox"`, suporte a fechar no `Escape` e clique no backdrop.
+      - Classes `.ponto-pedido-item-title` e `.ponto-pedido-mes-qtd` garantindo alto contraste no tema claro (`#0f172a !important`).
+      - Media queries `@media (max-width: 640px)` para layout responsivo em mobile.
+    - **Suíte de Testes Automatizados:** 9 testes em `test_compras_ponto_pedido.js`, 6 testes em `test_compras_tab.js` e 8 testes em `test_frontend_modules.js` (100% de aprovação).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

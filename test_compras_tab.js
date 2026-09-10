@@ -67,8 +67,10 @@ test('2. Sub-grupos #subGroupCompras e #subGroupVendedores contêm sub-abas "Con
   // Localiza o bloco do subGroupCompras
   const subGroupStart = html.indexOf('id="subGroupCompras"');
   assert.ok(subGroupStart !== -1, 'subGroupCompras não encontrado');
-  const subGroupEnd = html.indexOf('<!-- Sub-abas de Assistente Financeiro -->', subGroupStart);
-  const subGroupBlock = html.substring(subGroupStart, subGroupEnd !== -1 ? subGroupEnd : subGroupStart + 2500);
+  const subGroupEnd = html.indexOf('<!-- Sub-abas de Financeiro -->', subGroupStart) !== -1 
+    ? html.indexOf('<!-- Sub-abas de Financeiro -->', subGroupStart) 
+    : html.indexOf('<!-- Sub-abas de Assistente Financeiro -->', subGroupStart);
+  const subGroupBlock = html.substring(subGroupStart, subGroupEnd !== -1 ? subGroupEnd : subGroupStart + 4000);
 
   // Verifica as 4 sub-abas e os rótulos atualizados
   assert.ok(subGroupBlock.includes('data-tab="tab-vend-saldos-estoque"'), 'Falta sub-aba apontando para tab-vend-saldos-estoque');

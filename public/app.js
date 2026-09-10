@@ -810,6 +810,7 @@ document.addEventListener('DOMContentLoaded', () => {
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 
           targetTab === 'tab-compras-pedidos-abertos' || 
+          targetTab === 'tab-compras-ponto-pedido' || 
           targetTab === 'tab-vend-pedidos-compras' || 
           targetTab === 'tab-vend-comissoes') {
         if (typeof inicializarTemaVendedores === 'function') inicializarTemaVendedores();
@@ -822,6 +823,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (targetTab === 'tab-compras-pedidos-abertos') {
         carregarPedidosComprasAbertos();
+      }
+      if (targetTab === 'tab-compras-ponto-pedido') {
+        if (window.ComprasPontoPedidoModule && typeof window.ComprasPontoPedidoModule.init === 'function') {
+          window.ComprasPontoPedidoModule.init();
+        }
       }
       if (targetTab === 'tab-vend-pedidos-compras') {
         carregarPedidosCompras();
@@ -3921,6 +3927,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'tab-vend-pedidos',
     'tab-vend-pedidos-abertos',
     'tab-compras-pedidos-abertos',
+    'tab-compras-ponto-pedido',
     'tab-vend-pedidos-compras',
     'tab-vend-comissoes',
     'tab-vend-gordura-frete',
@@ -3942,6 +3949,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalPedido = document.getElementById('pedidoDetalhesModal');
     const modalPedCompra = document.getElementById('modalPedidoCompraDetalhes');
     const modalFretes = document.getElementById('modalFretesFechamento');
+    const modalPontoPedido = document.getElementById('modalPontoPedidoIdeal');
     if (modalEstoque) {
       if (isLight) modalEstoque.classList.add('modal-theme-light');
       else modalEstoque.classList.remove('modal-theme-light');
@@ -3957,6 +3965,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (modalFretes) {
       if (isLight) modalFretes.classList.add('modal-theme-light');
       else modalFretes.classList.remove('modal-theme-light');
+    }
+    if (modalPontoPedido) {
+      if (isLight) modalPontoPedido.classList.add('modal-theme-light');
+      else modalPontoPedido.classList.remove('modal-theme-light');
     }
 
     if (themeIconEstoque) themeIconEstoque.textContent = isLight ? '🌙' : '☀️';

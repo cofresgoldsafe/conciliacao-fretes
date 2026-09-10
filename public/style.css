@@ -4536,6 +4536,137 @@ body.theme-light .crm-bloco-titulo-cinza {
   }
 }
 
+/* ==========================================================================
+   ESTILOS: SUB-ABA PONTO DE PEDIDO IDEAL (COMPRAS)
+   ========================================================================== */
+
+.ponto-pedido-autocomplete-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--panel-bg, #0f172a);
+  border: 1px solid var(--panel-border, #334155);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  max-height: 260px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.ponto-pedido-autocomplete-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+.ponto-pedido-autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.ponto-pedido-autocomplete-item:hover {
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.ponto-pedido-qtd-destaque {
+  font-family: var(--font-mono, monospace);
+  letter-spacing: -0.5px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Tema Claro para Sub-Aba Ponto de Pedido */
+#tab-compras-ponto-pedido.tab-theme-light,
+.tab-theme-light #tab-compras-ponto-pedido {
+  background-color: #f8fafc;
+}
+
+#tab-compras-ponto-pedido.tab-theme-light .card,
+.tab-theme-light #tab-compras-ponto-pedido .card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+#tab-compras-ponto-pedido.tab-theme-light h2,
+#tab-compras-ponto-pedido.tab-theme-light h3,
+.tab-theme-light #tab-compras-ponto-pedido h2,
+.tab-theme-light #tab-compras-ponto-pedido h3 {
+  color: #0f172a !important;
+}
+
+#tab-compras-ponto-pedido.tab-theme-light input,
+.tab-theme-light #tab-compras-ponto-pedido input {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#tab-compras-ponto-pedido.tab-theme-light .ponto-pedido-autocomplete-list,
+.tab-theme-light #tab-compras-ponto-pedido .ponto-pedido-autocomplete-list {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+#tab-compras-ponto-pedido.tab-theme-light .ponto-pedido-autocomplete-item:hover,
+.tab-theme-light #tab-compras-ponto-pedido .ponto-pedido-autocomplete-item:hover {
+  background: #f1f5f9 !important;
+}
+
+/* Tema Claro para a Modal de Ponto de Pedido */
+#modalPontoPedidoIdeal.modal-theme-light .modal-content {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light h3,
+#modalPontoPedidoIdeal.modal-theme-light h4,
+#modalPontoPedidoIdeal.modal-theme-light h5 {
+  color: #0f172a !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light div,
+#modalPontoPedidoIdeal.modal-theme-light p,
+#modalPontoPedidoIdeal.modal-theme-light td,
+#modalPontoPedidoIdeal.modal-theme-light th {
+  border-color: #e2e8f0 !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light .btn-outline {
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+/* Ajustes de Contraste e Legibilidade WCAG no Tema Claro */
+#tab-compras-ponto-pedido.tab-theme-light .ponto-pedido-item-title,
+.tab-theme-light #tab-compras-ponto-pedido .ponto-pedido-item-title {
+  color: #0f172a !important;
+}
+
+#tab-compras-ponto-pedido.tab-theme-light .ponto-pedido-item-meta,
+.tab-theme-light #tab-compras-ponto-pedido .ponto-pedido-item-meta {
+  color: #64748b !important;
+}
+
+#modalPontoPedidoIdeal.modal-theme-light .ponto-pedido-mes-qtd {
+  color: #0f172a !important;
+}
+
+/* Responsividade Mobile para Ponto de Pedido */
+@media (max-width: 640px) {
+  #tab-compras-ponto-pedido div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  #modalPontoPedidoIdeal .modal-content {
+    margin: 10px;
+    max-width: 100% !important;
+  }
+}
+
+
 
 
 
