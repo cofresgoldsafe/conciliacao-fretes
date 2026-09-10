@@ -12,6 +12,7 @@
 CREATE TABLE IF NOT EXISTS crm_clientes (
     id VARCHAR(64) PRIMARY KEY,
     tipo_pessoa VARCHAR(2) DEFAULT 'PJ',
+    tipo_cliente_protheus VARCHAR(2) DEFAULT 'F',
     nome_razao VARCHAR(255) NOT NULL,
     nome_fantasia VARCHAR(255),
     cnpj_cpf VARCHAR(20),
@@ -20,6 +21,12 @@ CREATE TABLE IF NOT EXISTS crm_clientes (
     telefone VARCHAR(50),
     celular_whatsapp VARCHAR(50),
     email VARCHAR(150),
+    site_url VARCHAR(255),
+    email_nfe VARCHAR(150),
+    email_boleto VARCHAR(150),
+    contato_financeiro_nome VARCHAR(150),
+    contato_financeiro_tel VARCHAR(50),
+    contato_financeiro_email VARCHAR(150),
     cep VARCHAR(10),
     logradouro VARCHAR(255),
     numero VARCHAR(50),
@@ -36,6 +43,15 @@ CREATE TABLE IF NOT EXISTS crm_clientes (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     deleted_at TIMESTAMPTZ NULL
 );
+
+-- Migrações idempotentes para tabelas já existentes
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS tipo_cliente_protheus VARCHAR(2) DEFAULT 'F';
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS site_url VARCHAR(255);
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS email_nfe VARCHAR(150);
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS email_boleto VARCHAR(150);
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS contato_financeiro_nome VARCHAR(150);
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS contato_financeiro_tel VARCHAR(50);
+ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS contato_financeiro_email VARCHAR(150);
 
 -- ============================================================================
 -- Harmonização de Chaves Estrangeiras Lógicas com a Tabela crm_deals

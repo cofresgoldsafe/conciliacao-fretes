@@ -1802,12 +1802,16 @@
         badgeOrigem += `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">${escapeHtml(c.origem)}</div>`;
       }
 
+      const siteUrl = c.site_url ? escapeHtml(c.site_url) : '';
+      const siteHref = c.site_url ? (c.site_url.startsWith('http') ? escapeHtml(c.site_url) : 'https://' + escapeHtml(c.site_url)) : '';
+
       return `
         <tr data-cliente-id="${id}">
           <td>
             <strong style="color: var(--text-main); font-size: 0.88rem; display: block;">${nomeRazao}</strong>
             ${nomeFantasia ? `<div style="font-size: 0.78rem; color: var(--text-muted);">${nomeFantasia}</div>` : ''}
             ${localidade ? `<div style="font-size: 0.74rem; color: #38bdf8; margin-top: 2px;">📍 ${localidade}</div>` : ''}
+            ${siteUrl ? `<div style="font-size: 0.74rem; margin-top: 2px;"><a href="${siteHref}" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: none;" title="Abrir site corporativo">🌐 ${siteUrl}</a></div>` : ''}
           </td>
           <td>
             <span style="font-family: var(--font-mono, monospace); font-size: 0.82rem; color: var(--text-muted);">${cnpjCpfFmt}</span>
@@ -1816,6 +1820,8 @@
           <td>
             <div style="font-weight: 500;">${contatoNome}</div>
             ${email ? `<div style="font-size: 0.74rem; color: var(--text-muted);"><a href="mailto:${email}" style="color: #38bdf8; text-decoration: none;">${email}</a></div>` : ''}
+            ${c.email_nfe ? `<div style="font-size: 0.72rem; color: #a78bfa; margin-top: 2px;" title="NF-e (XML/DANFE)">📄 ${escapeHtml(c.email_nfe)}</div>` : ''}
+            ${c.contato_financeiro_nome ? `<div style="font-size: 0.72rem; color: #c084fc; margin-top: 2px;" title="Contas a Pagar / Financeiro">💳 ${escapeHtml(c.contato_financeiro_nome)}${c.contato_financeiro_tel_fmt || c.contato_financeiro_tel ? ` (${escapeHtml(c.contato_financeiro_tel_fmt || c.contato_financeiro_tel)})` : ''}</div>` : ''}
           </td>
           <td>${contatoHtml}</td>
           <td>
@@ -1905,6 +1911,20 @@
 
     form.reset();
     document.getElementById('crmClienteId').value = '';
+    const inpTipoProtheus = document.getElementById('crmClienteTipoProtheus');
+    if (inpTipoProtheus) inpTipoProtheus.value = 'F';
+    const inpSite = document.getElementById('crmClienteSiteUrl');
+    if (inpSite) inpSite.value = '';
+    const inpMailNfe = document.getElementById('crmClienteEmailNfe');
+    if (inpMailNfe) inpMailNfe.value = '';
+    const inpMailBol = document.getElementById('crmClienteEmailBoleto');
+    if (inpMailBol) inpMailBol.value = '';
+    const inpFinNome = document.getElementById('crmClienteContatoFinNome');
+    if (inpFinNome) inpFinNome.value = '';
+    const inpFinTel = document.getElementById('crmClienteContatoFinTel');
+    if (inpFinTel) inpFinTel.value = '';
+    const inpFinEmail = document.getElementById('crmClienteContatoFinEmail');
+    if (inpFinEmail) inpFinEmail.value = '';
 
     const detailsEndereco = document.getElementById('crmClienteDetailsEndereco');
     if (detailsEndereco) detailsEndereco.open = false;
@@ -1929,6 +1949,7 @@
       if (cliente) {
         document.getElementById('crmClienteId').value = cliente.id || '';
         document.getElementById('crmClienteTipoPessoa').value = cliente.tipo_pessoa || 'PJ';
+        if (inpTipoProtheus) inpTipoProtheus.value = cliente.tipo_cliente_protheus || 'F';
         document.getElementById('crmClienteNomeRazao').value = cliente.nome_razao || '';
         document.getElementById('crmClienteNomeFantasia').value = cliente.nome_fantasia || '';
         document.getElementById('crmClienteCnpjCpf').value = cliente.cnpj_cpf_fmt || cliente.cnpj_cpf || '';
@@ -1937,6 +1958,12 @@
         document.getElementById('crmClienteCelularWhatsapp').value = cliente.celular_whatsapp_fmt || cliente.celular_whatsapp || '';
         document.getElementById('crmClienteTelefone').value = cliente.telefone_fmt || cliente.telefone || '';
         document.getElementById('crmClienteEmail').value = cliente.email || '';
+        if (inpSite) inpSite.value = cliente.site_url || '';
+        if (inpMailNfe) inpMailNfe.value = cliente.email_nfe || '';
+        if (inpMailBol) inpMailBol.value = cliente.email_boleto || '';
+        if (inpFinNome) inpFinNome.value = cliente.contato_financeiro_nome || '';
+        if (inpFinTel) inpFinTel.value = cliente.contato_financeiro_tel_fmt || cliente.contato_financeiro_tel || '';
+        if (inpFinEmail) inpFinEmail.value = cliente.contato_financeiro_email || '';
         document.getElementById('crmClienteSelectVendedor').value = cliente.vendedor_responsavel || '';
         document.getElementById('crmClienteSelectOrigem').value = cliente.origem || 'OUTRO';
         document.getElementById('crmClienteCep').value = cliente.cep || '';
@@ -1990,6 +2017,7 @@
     const payload = {
       id: document.getElementById('crmClienteId').value || undefined,
       tipo_pessoa: document.getElementById('crmClienteTipoPessoa').value,
+      tipo_cliente_protheus: (document.getElementById('crmClienteTipoProtheus')?.value || 'F').trim(),
       nome_razao: nomeRazao,
       nome_fantasia: document.getElementById('crmClienteNomeFantasia').value.trim(),
       cnpj_cpf: document.getElementById('crmClienteCnpjCpf').value.trim(),
@@ -1998,6 +2026,12 @@
       celular_whatsapp: document.getElementById('crmClienteCelularWhatsapp').value.trim(),
       telefone: document.getElementById('crmClienteTelefone').value.trim(),
       email: document.getElementById('crmClienteEmail').value.trim(),
+      site_url: (document.getElementById('crmClienteSiteUrl')?.value || '').trim(),
+      email_nfe: (document.getElementById('crmClienteEmailNfe')?.value || '').trim(),
+      email_boleto: (document.getElementById('crmClienteEmailBoleto')?.value || '').trim(),
+      contato_financeiro_nome: (document.getElementById('crmClienteContatoFinNome')?.value || '').trim(),
+      contato_financeiro_tel: (document.getElementById('crmClienteContatoFinTel')?.value || '').trim(),
+      contato_financeiro_email: (document.getElementById('crmClienteContatoFinEmail')?.value || '').trim(),
       vendedor_responsavel: document.getElementById('crmClienteSelectVendedor').value,
       origem: document.getElementById('crmClienteSelectOrigem').value,
       cep: document.getElementById('crmClienteCep').value.trim(),

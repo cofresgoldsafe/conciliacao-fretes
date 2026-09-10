@@ -98,6 +98,13 @@ async function runTests() {
     telefone: '1133334444',
     celular_whatsapp: '11999998888',
     email: 'carlos@segurancatotal.com.br',
+    tipo_cliente_protheus: 'F',
+    site_url: 'https://www.segurancatotal.com.br',
+    email_nfe: 'nfe@segurancatotal.com.br',
+    email_boleto: 'cobranca@segurancatotal.com.br',
+    contato_financeiro_nome: 'Amilton Financeiro',
+    contato_financeiro_tel: '11988887777',
+    contato_financeiro_email: 'financeiro@segurancatotal.com.br',
     cep: '01001-000',
     logradouro: 'Praça da Sé',
     numero: '100',
@@ -121,7 +128,14 @@ async function runTests() {
   assert.strictEqual(clienteCriado.nome_razao, 'EMPRESA TESTE SEGURANCA LTDA');
   assert.strictEqual(clienteCriado.cnpj_cpf, '12345678000199');
   assert.strictEqual(clienteCriado.cnpj_cpf_fmt, '12.345.678/0001-99');
-  console.log(`   ✅ Cliente #${clienteCriado.id} criado com sucesso.`);
+  assert.strictEqual(clienteCriado.tipo_cliente_protheus, 'F');
+  assert.strictEqual(clienteCriado.site_url, 'https://www.segurancatotal.com.br');
+  assert.strictEqual(clienteCriado.email_nfe, 'nfe@segurancatotal.com.br');
+  assert.strictEqual(clienteCriado.email_boleto, 'cobranca@segurancatotal.com.br');
+  assert.strictEqual(clienteCriado.contato_financeiro_nome, 'Amilton Financeiro');
+  assert.strictEqual(clienteCriado.contato_financeiro_tel, '11988887777');
+  assert.strictEqual(clienteCriado.contato_financeiro_email, 'financeiro@segurancatotal.com.br');
+  console.log(`   ✅ Cliente #${clienteCriado.id} criado com sucesso com campos fiscais e financeiro.`);
 
   // 4. Teste: Consulta por ID via GET /api/bi/crm/clientes/:id
   console.log('4️⃣  Teste: Consulta por ID via GET /api/bi/crm/clientes/:id');
@@ -131,7 +145,12 @@ async function runTests() {
   assert.strictEqual(resGet.status, 200);
   assert.strictEqual(resGet.body.data.id, clienteCriado.id);
   assert.strictEqual(resGet.body.data.contato_nome, 'Carlos Gerente');
-  console.log('   ✅ Cliente obtido com sucesso por ID.');
+  assert.strictEqual(resGet.body.data.site_url, 'https://www.segurancatotal.com.br');
+  assert.strictEqual(resGet.body.data.email_nfe, 'nfe@segurancatotal.com.br');
+  assert.strictEqual(resGet.body.data.email_boleto, 'cobranca@segurancatotal.com.br');
+  assert.strictEqual(resGet.body.data.contato_financeiro_nome, 'Amilton Financeiro');
+  assert.strictEqual(resGet.body.data.contato_financeiro_email, 'financeiro@segurancatotal.com.br');
+  console.log('   ✅ Cliente obtido com sucesso por ID com campos estendidos.');
 
   // 5. Teste: Edição de cliente via POST /api/bi/crm/clientes com ID
   console.log('5️⃣  Teste: Edição de cliente via POST com id');
@@ -141,11 +160,15 @@ async function runTests() {
     id: clienteCriado.id,
     nome_razao: 'EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA',
     nome_fantasia: 'SEGURANCA VIP',
-    vendedor_responsavel: '000074'
+    vendedor_responsavel: '000074',
+    site_url: 'https://www.segurancavip.com.br',
+    contato_financeiro_nome: 'Joyce Contas a Pagar'
   });
   assert.strictEqual(resEditar.status, 200);
   assert.strictEqual(resEditar.body.data.nome_razao, 'EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA');
   assert.strictEqual(resEditar.body.data.vendedor_responsavel, '000074');
+  assert.strictEqual(resEditar.body.data.site_url, 'https://www.segurancavip.com.br');
+  assert.strictEqual(resEditar.body.data.contato_financeiro_nome, 'Joyce Contas a Pagar');
   console.log('   ✅ Cliente editado com sucesso.');
 
   // 6. Teste: Listagem paginada e com filtros

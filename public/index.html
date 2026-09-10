@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.170">
+  <link rel="stylesheet" href="style.css?v=8.171">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 11:24 (Cadastro de Clientes B2B no CRM Comercial com Autocomplete Híbrido e WhatsApp 1-Clique)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 12:09 (Expansão Cadastral de Clientes CRM com Campos Fiscais e Financeiro Protheus SA1)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -5113,6 +5113,7 @@
       <!-- Formulário do Cliente -->
       <form id="formCrmCliente" style="flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 1.2rem;">
         <input type="hidden" id="crmClienteId">
+        <input type="hidden" id="crmClienteTipoProtheus" value="F">
 
         <!-- BLOCO 1: IDENTIFICAÇÃO BÁSICA -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
@@ -5151,32 +5152,69 @@
         <!-- BLOCO 2: CONTATOS -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
           <strong class="crm-bloco-titulo-emerald" style="font-size: 0.88rem; color: #10b981; display: block; margin-bottom: 12px;">
-            📞 2. Contatos & Comunicação
+            📞 2. Contatos &amp; Comunicação
           </strong>
-          <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr 1.3fr; gap: 12px;">
+          <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
             <div class="form-group" style="margin: 0;">
-              <label for="crmClienteContatoNome" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Pessoa de Contato:</label>
+              <label for="crmClienteContatoNome" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Pessoa de Contato Comercial:</label>
               <input type="text" id="crmClienteContatoNome" class="form-control" placeholder="Ex: Carlos Oliveira (Comprador)" style="width: 100%;">
             </div>
             <div class="form-group" style="margin: 0;">
-              <label for="crmClienteCelularWhatsapp" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Celular / WhatsApp:</label>
+              <label for="crmClienteCelularWhatsapp" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Celular / WhatsApp Comercial:</label>
               <input type="text" id="crmClienteCelularWhatsapp" class="form-control" placeholder="(11) 99999-9999" style="width: 100%;">
             </div>
             <div class="form-group" style="margin: 0;">
-              <label for="crmClienteTelefone" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Telefone Fixo:</label>
+              <label for="crmClienteTelefone" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Telefone Fixo Comercial:</label>
               <input type="text" id="crmClienteTelefone" class="form-control" placeholder="(11) 3333-3333" style="width: 100%;">
             </div>
+          </div>
+          <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group" style="margin: 0;">
               <label for="crmClienteEmail" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">E-mail Comercial:</label>
               <input type="email" id="crmClienteEmail" class="form-control" placeholder="compras@cliente.com.br" style="width: 100%;">
             </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmClienteSiteUrl" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Site / Home Page Corporativa:</label>
+              <input type="url" id="crmClienteSiteUrl" class="form-control" placeholder="https://www.cliente.com.br" style="width: 100%;">
+            </div>
           </div>
         </div>
 
-        <!-- BLOCO 3: COMERCIAL -->
+        <!-- BLOCO 3: FATURAMENTO, BOLETOS & CONTAS A PAGAR -->
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong class="crm-bloco-titulo-purple" style="font-size: 0.88rem; color: #c084fc; display: block; margin-bottom: 12px;">
+            💳 3. Faturamento, Boletos &amp; Contas a Pagar
+          </strong>
+          <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label for="crmClienteEmailNfe" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">E-mail para Envio da NF-e (XML/DANFE):</label>
+              <input type="email" id="crmClienteEmailNfe" class="form-control" placeholder="nfe@cliente.com.br" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmClienteEmailBoleto" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">E-mail para Envio de Boletos:</label>
+              <input type="email" id="crmClienteEmailBoleto" class="form-control" placeholder="cobranca@cliente.com.br" style="width: 100%;">
+            </div>
+          </div>
+          <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1.2fr 1fr 1.3fr; gap: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label for="crmClienteContatoFinNome" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Pessoa do Contas a Pagar:</label>
+              <input type="text" id="crmClienteContatoFinNome" class="form-control" placeholder="Ex: Amilton / Joyce" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmClienteContatoFinTel" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Telefone / Celular Financeiro:</label>
+              <input type="text" id="crmClienteContatoFinTel" class="form-control" placeholder="(11) 98888-8888" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmClienteContatoFinEmail" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">E-mail do Contas a Pagar:</label>
+              <input type="email" id="crmClienteContatoFinEmail" class="form-control" placeholder="financeiro@cliente.com.br" style="width: 100%;">
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOCO 4: COMERCIAL -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
           <strong class="crm-bloco-titulo-amber" style="font-size: 0.88rem; color: #fbbf24; display: block; margin-bottom: 12px;">
-            💼 3. Responsável & Origem
+            💼 4. Responsável &amp; Origem
           </strong>
           <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group" style="margin: 0;">
@@ -5199,10 +5237,10 @@
           </div>
         </div>
 
-        <!-- BLOCO 4: ENDEREÇO E OBSERVAÇÕES (COLAPSÁVEL) -->
+        <!-- BLOCO 5: ENDEREÇO E OBSERVAÇÕES (COLAPSÁVEL) -->
         <details id="crmClienteDetailsEndereco" style="border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px 14px; background: rgba(15, 23, 42, 0.3);">
           <summary style="cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #94a3b8; outline: none; user-select: none;">
-            📍 Endereço &amp; Observações Complementares (Clique para expandir)
+            📍 5. Endereço &amp; Observações Complementares (Clique para expandir)
           </summary>
           <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
             <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 140px 2fr 100px; gap: 12px;">
@@ -6682,15 +6720,15 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.170"></script>
-  <script src="js/bi_indices.js?v=8.170"></script>
-  <script src="js/bi_autorizacoes.js?v=8.170"></script>
-  <script src="js/gordura_frete.js?v=8.170"></script>
-  <script src="js/fechamento_vendedores.js?v=8.170"></script>
-  <script type="module" src="js/tarefas.js?v=8.170"></script>
-  <script src="js/holerites.js?v=8.170"></script>
-  <script src="js/funcionarios_dp.js?v=8.170"></script>
-  <script src="js/crm.js?v=8.170"></script>
-  <script src="app.js?v=8.170"></script>
+  <script src="js/bi.js?v=8.171"></script>
+  <script src="js/bi_indices.js?v=8.171"></script>
+  <script src="js/bi_autorizacoes.js?v=8.171"></script>
+  <script src="js/gordura_frete.js?v=8.171"></script>
+  <script src="js/fechamento_vendedores.js?v=8.171"></script>
+  <script type="module" src="js/tarefas.js?v=8.171"></script>
+  <script src="js/holerites.js?v=8.171"></script>
+  <script src="js/funcionarios_dp.js?v=8.171"></script>
+  <script src="js/crm.js?v=8.171"></script>
+  <script src="app.js?v=8.171"></script>
 </body>
 </html>

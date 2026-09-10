@@ -4486,18 +4486,33 @@ body.theme-light .crm-btn-whatsapp:hover {
 }
 
 .tab-theme-light .crm-bloco-titulo-azul,
-body.theme-light .crm-bloco-titulo-azul {
+body.theme-light .crm-bloco-titulo-azul,
+.tab-theme-light .crm-bloco-titulo-blue,
+body.theme-light .crm-bloco-titulo-blue,
+.modal-theme-light .crm-bloco-titulo-blue {
   color: #0284c7 !important;
 }
 
 .tab-theme-light .crm-bloco-titulo-verde,
-body.theme-light .crm-bloco-titulo-verde {
+body.theme-light .crm-bloco-titulo-verde,
+.tab-theme-light .crm-bloco-titulo-emerald,
+body.theme-light .crm-bloco-titulo-emerald,
+.modal-theme-light .crm-bloco-titulo-emerald {
   color: #059669 !important;
 }
 
 .tab-theme-light .crm-bloco-titulo-roxo,
-body.theme-light .crm-bloco-titulo-roxo {
+body.theme-light .crm-bloco-titulo-roxo,
+.tab-theme-light .crm-bloco-titulo-purple,
+body.theme-light .crm-bloco-titulo-purple,
+.modal-theme-light .crm-bloco-titulo-purple {
   color: #7e22ce !important;
+}
+
+.tab-theme-light .crm-bloco-titulo-amber,
+body.theme-light .crm-bloco-titulo-amber,
+.modal-theme-light .crm-bloco-titulo-amber {
+  color: #d97706 !important;
 }
 
 .tab-theme-light .crm-bloco-titulo-cinza,

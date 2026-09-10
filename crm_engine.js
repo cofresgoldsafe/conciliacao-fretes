@@ -248,6 +248,7 @@ async function initCrmTables() {
       CREATE TABLE IF NOT EXISTS crm_clientes (
         id VARCHAR(64) PRIMARY KEY,
         tipo_pessoa VARCHAR(2) DEFAULT 'PJ',
+        tipo_cliente_protheus VARCHAR(2) DEFAULT 'F',
         nome_razao VARCHAR(255) NOT NULL,
         nome_fantasia VARCHAR(255),
         cnpj_cpf VARCHAR(20),
@@ -256,6 +257,12 @@ async function initCrmTables() {
         telefone VARCHAR(50),
         celular_whatsapp VARCHAR(50),
         email VARCHAR(150),
+        site_url VARCHAR(255),
+        email_nfe VARCHAR(150),
+        email_boleto VARCHAR(150),
+        contato_financeiro_nome VARCHAR(150),
+        contato_financeiro_tel VARCHAR(50),
+        contato_financeiro_email VARCHAR(150),
         cep VARCHAR(10),
         logradouro VARCHAR(255),
         numero VARCHAR(50),
@@ -295,6 +302,15 @@ async function initCrmTables() {
 
       -- Harmonização de colunas para IDs de clientes do CRM (VARCHAR(64))
       ALTER TABLE IF EXISTS crm_deals ALTER COLUMN cliente_cod TYPE VARCHAR(64);
+
+      -- Migrações idempotentes de colunas em crm_clientes
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS tipo_cliente_protheus VARCHAR(2) DEFAULT 'F';
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS site_url VARCHAR(255);
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS email_nfe VARCHAR(150);
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS email_boleto VARCHAR(150);
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS contato_financeiro_nome VARCHAR(150);
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS contato_financeiro_tel VARCHAR(50);
+      ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS contato_financeiro_email VARCHAR(150);
 
       -- RLS Estrito para crm_clientes
       ALTER TABLE crm_clientes ENABLE ROW LEVEL SECURITY;
@@ -405,6 +421,7 @@ function mapClienteRow(row) {
   return {
     id: String(row.id),
     tipo_pessoa: row.tipo_pessoa || 'PJ',
+    tipo_cliente_protheus: row.tipo_cliente_protheus || 'F',
     nome_razao: row.nome_razao || '',
     nome_fantasia: row.nome_fantasia || '',
     cnpj_cpf: cnpjLimpo,
@@ -416,6 +433,13 @@ function mapClienteRow(row) {
     celular_whatsapp: row.celular_whatsapp || '',
     celular_whatsapp_fmt: formatarTelefone(row.celular_whatsapp),
     email: row.email || '',
+    site_url: row.site_url || '',
+    email_nfe: row.email_nfe || '',
+    email_boleto: row.email_boleto || '',
+    contato_financeiro_nome: row.contato_financeiro_nome || '',
+    contato_financeiro_tel: row.contato_financeiro_tel || '',
+    contato_financeiro_tel_fmt: formatarTelefone(row.contato_financeiro_tel),
+    contato_financeiro_email: row.contato_financeiro_email || '',
     cep: row.cep || '',
     logradouro: row.logradouro || '',
     numero: row.numero || '',
@@ -1308,12 +1332,19 @@ async function salvarCliente(dados, usuario) {
 
   const cnpjLimpo = dados.cnpj_cpf ? String(dados.cnpj_cpf).replace(/\D/g, '').slice(0, 20) : '';
   const tipoPessoa = (dados.tipo_pessoa || (cnpjLimpo.length === 11 ? 'PF' : 'PJ')).toUpperCase().slice(0, 2);
+  const tipoClienteProtheus = dados.tipo_cliente_protheus ? String(dados.tipo_cliente_protheus).trim().toUpperCase().slice(0, 2) : 'F';
   const nomeFantasia = dados.nome_fantasia ? String(dados.nome_fantasia).trim() : '';
   const ie = dados.ie ? String(dados.ie).trim() : '';
   const contatoNome = dados.contato_nome ? String(dados.contato_nome).trim() : '';
   const telefone = dados.telefone ? String(dados.telefone).trim() : '';
   const celularWhatsapp = dados.celular_whatsapp ? String(dados.celular_whatsapp).trim() : '';
   const email = dados.email ? String(dados.email).trim().toLowerCase() : '';
+  const siteUrl = dados.site_url ? String(dados.site_url).trim() : '';
+  const emailNfe = dados.email_nfe ? String(dados.email_nfe).trim().toLowerCase() : '';
+  const emailBoleto = dados.email_boleto ? String(dados.email_boleto).trim().toLowerCase() : '';
+  const contatoFinNome = dados.contato_financeiro_nome ? String(dados.contato_financeiro_nome).trim() : '';
+  const contatoFinTel = dados.contato_financeiro_tel ? String(dados.contato_financeiro_tel).trim() : '';
+  const contatoFinEmail = dados.contato_financeiro_email ? String(dados.contato_financeiro_email).trim().toLowerCase() : '';
   const cep = dados.cep ? String(dados.cep).trim().replace(/\D/g, '') : '';
   const logradouro = dados.logradouro ? String(dados.logradouro).trim() : '';
   const numero = dados.numero ? String(dados.numero).trim() : '';
@@ -1355,14 +1386,23 @@ async function salvarCliente(dados, usuario) {
           protheus_cod = $19,
           protheus_loja = $20,
           observacoes = $21,
+          tipo_cliente_protheus = $22,
+          site_url = $23,
+          email_nfe = $24,
+          email_boleto = $25,
+          contato_financeiro_nome = $26,
+          contato_financeiro_tel = $27,
+          contato_financeiro_email = $28,
           updated_at = NOW()
-        WHERE id = $22 AND deleted_at IS NULL
+        WHERE id = $29 AND deleted_at IS NULL
         RETURNING *;
       `, [
         tipoPessoa, nomeRazao, nomeFantasia, cnpjLimpo, ie,
         contatoNome, telefone, celularWhatsapp, email, cep,
         logradouro, numero, complemento, bairro, cidade, uf,
         origem, vendedorResp, protheusCod, protheusLoja, observacoes,
+        tipoClienteProtheus, siteUrl, emailNfe, emailBoleto,
+        contatoFinNome, contatoFinTel, contatoFinEmail,
         clienteId
       ]);
       if (res && res.rows && res.rows.length > 0) {
@@ -1375,19 +1415,25 @@ async function salvarCliente(dados, usuario) {
           contato_nome, telefone, celular_whatsapp, email, cep,
           logradouro, numero, complemento, bairro, cidade, uf,
           origem, vendedor_responsavel, protheus_cod, protheus_loja,
-          observacoes, created_at, updated_at, deleted_at
+          observacoes, tipo_cliente_protheus, site_url, email_nfe, email_boleto,
+          contato_financeiro_nome, contato_financeiro_tel, contato_financeiro_email,
+          created_at, updated_at, deleted_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6,
           $7, $8, $9, $10, $11,
           $12, $13, $14, $15, $16, $17,
           $18, $19, $20, $21,
-          $22, NOW(), NOW(), NULL
+          $22, $23, $24, $25, $26,
+          $27, $28, $29,
+          NOW(), NOW(), NULL
         ) RETURNING *;
       `, [
         clienteId, tipoPessoa, nomeRazao, nomeFantasia, cnpjLimpo, ie,
         contatoNome, telefone, celularWhatsapp, email, cep,
         logradouro, numero, complemento, bairro, cidade, uf,
-        origem, vendedorResp, protheusCod, protheusLoja, observacoes
+        origem, vendedorResp, protheusCod, protheusLoja, observacoes,
+        tipoClienteProtheus, siteUrl, emailNfe, emailBoleto,
+        contatoFinNome, contatoFinTel, contatoFinEmail
       ]);
       if (res && res.rows && res.rows.length > 0) {
         clienteSalvo = mapClienteRow(res.rows[0]);
@@ -1405,6 +1451,7 @@ async function salvarCliente(dados, usuario) {
     clienteSalvo = {
       id: clienteId,
       tipo_pessoa: tipoPessoa,
+      tipo_cliente_protheus: tipoClienteProtheus,
       nome_razao: nomeRazao,
       nome_fantasia: nomeFantasia,
       cnpj_cpf: cnpjLimpo,
@@ -1416,6 +1463,13 @@ async function salvarCliente(dados, usuario) {
       celular_whatsapp: celularWhatsapp,
       celular_whatsapp_fmt: formatarTelefone(celularWhatsapp),
       email,
+      site_url: siteUrl,
+      email_nfe: emailNfe,
+      email_boleto: emailBoleto,
+      contato_financeiro_nome: contatoFinNome,
+      contato_financeiro_tel: contatoFinTel,
+      contato_financeiro_tel_fmt: formatarTelefone(contatoFinTel),
+      contato_financeiro_email: contatoFinEmail,
       cep,
       logradouro,
       numero,
@@ -1779,6 +1833,14 @@ async function autocompleteClientes(termo) {
         celular_whatsapp: c.celular_whatsapp || '',
         celular_whatsapp_fmt: formatarTelefone(c.celular_whatsapp),
         email: c.email || '',
+        site_url: c.site_url || '',
+        email_nfe: c.email_nfe || '',
+        email_boleto: c.email_boleto || '',
+        contato_financeiro_nome: c.contato_financeiro_nome || '',
+        contato_financeiro_tel: c.contato_financeiro_tel || '',
+        contato_financeiro_tel_fmt: formatarTelefone(c.contato_financeiro_tel),
+        contato_financeiro_email: c.contato_financeiro_email || '',
+        tipo_cliente_protheus: c.tipo_cliente_protheus || 'F',
         contato: c.contato_nome || '',
         cod_vendedor: c.vendedor_responsavel || '',
         origem_fonte: 'CRM',
@@ -1806,7 +1868,14 @@ async function autocompleteClientes(termo) {
         RTRIM(ISNULL(A1_TEL, '')) AS A1_TEL,
         RTRIM(ISNULL(A1_EMAIL, '')) AS A1_EMAIL,
         RTRIM(ISNULL(A1_CONTATO, '')) AS A1_CONTATO,
-        RTRIM(ISNULL(A1_VEND, '')) AS A1_VEND
+        RTRIM(ISNULL(A1_VEND, '')) AS A1_VEND,
+        RTRIM(ISNULL(A1_HPAGE, '')) AS A1_HPAGE,
+        RTRIM(ISNULL(A1_MAILNFE, '')) AS A1_MAILNFE,
+        RTRIM(ISNULL(A1_MAILBOL, '')) AS A1_MAILBOL,
+        RTRIM(ISNULL(A1_ZPESPAG, '')) AS A1_ZPESPAG,
+        RTRIM(ISNULL(A1_ZTELPAG, '')) AS A1_ZTELPAG,
+        RTRIM(ISNULL(A1_ZMAILPA, '')) AS A1_ZMAILPA,
+        RTRIM(ISNULL(A1_TIPO, 'F')) AS A1_TIPO
       FROM SA1010
       WHERE D_E_L_E_T_ = ' '
         AND (
@@ -1842,6 +1911,14 @@ async function autocompleteClientes(termo) {
             telefone: r.A1_TEL || '',
             telefone_fmt: formatarTelefone(r.A1_TEL),
             email: r.A1_EMAIL || '',
+            site_url: r.A1_HPAGE || '',
+            email_nfe: r.A1_MAILNFE || '',
+            email_boleto: r.A1_MAILBOL || '',
+            contato_financeiro_nome: r.A1_ZPESPAG || '',
+            contato_financeiro_tel: r.A1_ZTELPAG || '',
+            contato_financeiro_tel_fmt: formatarTelefone(r.A1_ZTELPAG),
+            contato_financeiro_email: r.A1_ZMAILPA || '',
+            tipo_cliente_protheus: r.A1_TIPO || 'F',
             contato: r.A1_CONTATO || '',
             cod_vendedor: r.A1_VEND || '',
             origem_fonte: 'PROTHEUS'

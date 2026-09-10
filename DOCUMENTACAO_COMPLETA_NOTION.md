@@ -214,6 +214,18 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
   * **Ficha da Oportunidade & Timeline:** Modal com dados completos do negócio e feed cronológico de follow-ups (ligações, reuniões, anotações, mensagens WhatsApp e tarefas).
   * **Governança de Perda:** Modal dedicado com justificativa de perda obrigatória antes de mover para o estágio `perdido`.
   * **Segurança e Resiliência:** Row-Level Security no Supabase (`crm_deals` e `crm_atividades`), fallback atômico em disco (`data/crm_deals_cache.json`) via `safe_json_storage.js`, sanitização contra DOM XSS (`escapeHtml`) e reversibilidade total de exclusão (`restaurarDeal`).
+* **Sub-aba / Visão `[ 👥 Cadastros de Clientes ]` (Módulo de Gestão B2B):**
+  * **Independência dos Novos Prospects:** 75% dos contatos no CRM são novos clientes B2B que ainda não existem no ERP Protheus `SA1010`. Permite cadastramento rápido e completo sem travas contábeis.
+  * **Auditoria de 200 Clientes Protheus SA1010:** Mapeamento determinístico dos campos digitados na base Protheus real (Empresa 01), garantindo aderência cadastral perfeita:
+    - `A1_TIPO`: Fixo como Consumidor Final (`F`).
+    - `A1_HPAGE`: Site e home page corporativa com link clicável (`🌐`).
+    - `A1_MAILNFE` & `A1_MAILBOL`: E-mails dedicados para envio de XML/DANFE e boletos de cobrança.
+    - `A1_ZPESPAG`, `A1_ZTELPAG`, `A1_ZMAILPA`: Bloco dedicado para Pessoa de Contato, Telefone/WhatsApp e E-mail do Contas a Pagar / Financeiro do cliente.
+  * **Segmented Control & Tabela Paginada:** Alternância no topo do CRM entre Funil e Clientes, busca instantânea, filtro por vendedor, contadores de novos prospects e ações de edição, exclusão lógica e criação imediata de Deals.
+  * **WhatsApp 1-Clique (`wa.me`):** Conversa direta sem custos de API externa.
+  * **Cadastro Rápido Inline no Deal:** Botão `➕ Novo Cliente` dentro da modal de oportunidade para criar e vincular clientes instantaneamente sem perda de digitação.
+  * **Autocomplete Híbrido:** Prioriza a base `crm_clientes` (`[CRM]`) e complementa com `SA1010` (`[Protheus]`), já trazendo contatos fiscais e financeiros preenchidos.
+  * **Persistência ACID & RLS:** Tabela `crm_clientes` com RLS ativo no Supabase e fallback JSON seguro.
 
 ---
 

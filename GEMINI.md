@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.169 (Homologada em 10/09/2026 11:30)  
+> **Versão da Documentação:** v8.170 (Homologada em 10/09/2026 12:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso do Módulo de Gestão e Cadastro de Clientes B2B no CRM Comercial, Autocomplete Híbrido CRM x Protheus SA1, Cadastro Rápido Inline no Deal, WhatsApp 1-Clique wa.me, RLS Supabase, Fallback JSON Seguro e 18 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 10/09/2026 11:30 (v8.169 - Gestão e Cadastro de Clientes no CRM Comercial com Autocomplete Híbrido e RLS, 18 Testes Aprovados)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída com Sucesso da Expansão Cadastral de Clientes B2B no CRM Comercial com Mapeamento SA1 Protheus, Campos Fiscais/Cobrança NF-e/Boleto, Contatos do Contas a Pagar, Site Corporativo, RLS Supabase e Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 10/09/2026 12:15 (v8.170 - Expansão Cadastral de Clientes CRM com Campos Fiscais e Financeiro Protheus SA1)  
 
 ---
 
@@ -588,6 +588,15 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Mapeamento da regra real de negócio: 75% dos contatos no CRM são novos prospects B2B que ainda não existem no ERP Protheus `SA1010`.
       - Modelagem relacional da tabela `crm_clientes` no Supabase com RLS ativo (`ENABLE/FORCE ROW LEVEL SECURITY`), índices B-Tree e chave primária resiliente (`id VARCHAR(64)`).
       - Campos essenciais de negócio: Tipo PJ/PF, Razão Social / Nome, Nome Fantasia, CNPJ/CPF, Inscrição Estadual, Pessoa de Contato, Celular / WhatsApp, Telefone Fixo, E-mail, Origem do Lead, Vendedor Responsável, Endereço completo (seção retrátil) e Observações.
+    - **Auditoria de 200 Clientes Protheus SA1010 & Expansão Cadastral:**
+      - Auditoria nos 200 clientes mais recentes da base `SA1010` (Empresa 01) via API Railway (`CNVYB3_184594_PR_PD`), identificando as colunas customizadas e campos realmente preenchidos por digitação.
+      - Mapeamento e inclusão dos 7 novos campos:
+        * `tipo_cliente_protheus`: Mantido fixo/default como `Consumidor Final (F)` (ao migrar pro Protheus só essa opção é selecionada).
+        * `site_url`: Home Page corporativa (`A1_HPAGE`), com link `🌐` clicável na listagem e na ficha.
+        * `email_nfe`: E-mail para envio de NF-e XML/DANFE (`A1_MAILNFE`).
+        * `email_boleto`: E-mail para envio de boletos de cobrança (`A1_MAILBOL`).
+        * Bloco 3 "💳 3. Faturamento, Boletos & Contas a Pagar": `contato_financeiro_nome` (`A1_ZPESPAG`), `contato_financeiro_tel` (`A1_ZTELPAG`) e `contato_financeiro_email` (`A1_ZMAILPA`).
+      - Migrações DDL idempotentes no Supabase (`ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS ...`) e suporte completo no fallback JSON local (`data/crm_clientes_cache.json`).
     - **Segmented Control no Topo do CRM & Visualização de Clientes:**
       - Alternância instantânea de contexto no topo da aba: `📊 Funil de Oportunidades` vs `👥 Clientes Cadastrados` com atributos de acessibilidade `aria-pressed`.
       - Tabela paginada de clientes com busca textual instantânea (debounce), filtro por vendedor responsável e 3 Mini KPIs no topo (*Total de Clientes Cadastrados*, *Novos Prospects CRM*, *Clientes Protheus*).
@@ -598,8 +607,8 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Botão `➕ Novo Cliente` (`#btnCrmNovoClienteFromDeal`) inserido no modal de Oportunidade imediatamente acima do autocomplete.
       - Ao salvar o novo cliente, os dados (Razão, CNPJ e Código) são injetados automaticamente nos campos da oportunidade sem fechar o formulário e sem perder nenhum dado já digitado pelo vendedor.
     - **Autocomplete Híbrido com Deduplicação e Precedência CRM:**
-      - Endpoint `/api/bi/crm/clientes/autocomplete` busca prioritariamente na base `crm_clientes` (badge verde `[CRM]`) e complementa com clientes históricos do Protheus `SA1010` (badge roxo `[Protheus]`), usando `Map` por CNPJ para deduplicação automática.
-    - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com 8 asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação, edição, busca por ID, listagem paginada, autocomplete prioritário e soft delete (100% de sucesso).
+      - Endpoint `/api/bi/crm/clientes/autocomplete` busca prioritariamente na base `crm_clientes` (badge verde `[CRM]`) e complementa com clientes históricos do Protheus `SA1010` (badge roxo `[Protheus]`), retornando os 7 novos campos Protheus mapeados e usando `Map` por CNPJ para deduplicação automática.
+    - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação com campos fiscais e financeiro, edição, busca por ID, listagem paginada, autocomplete prioritário e soft delete (100% de sucesso).
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
