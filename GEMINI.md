@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.181 (Homologada em 10/09/2026 16:49)  
+> **Versão da Documentação:** v8.182 (Homologada em 10/09/2026 17:03)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída da Vinculação de 100% dos Códigos de Fornecedor Protheus SA2 nos Colaboradores para Geração de Contas a Pagar)  
-> **Data da Última Auditoria:** 10/09/2026 16:49 (v8.181 - Cadastro de Códigos de Fornecedor Protheus SA2 nos 22 Colaboradores DP)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída de Ex-Funcionários Davi e Paulo com Flag DESLIGADO, Filtro Padrão de Colaboradores ATIVOS e Código Protheus 000089 de Fabiane Rodrigues Arrais)  
+> **Data da Última Auditoria:** 10/09/2026 17:03 (v8.182 - Flag DESLIGADO para Ex-Funcionários, Filtro Default Ativo e Cód Protheus 000089)  
 
 ---
 
@@ -674,6 +674,27 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Endpoint seguro `POST /api/dp/colaboradores/limpar-duplicados` com autenticação JWT e registro de telemetria/auditoria (`DEDUPLICAR_COLABORADORES`).
     - **Suíte de Testes Automatizados (8/8 Aprovados):**
       - Expansão de `test_funcionarios_dp.js` com Teste 7 (validação de fusão de campos complementares e eliminação de duplicatas) e Teste 8 (validação dos códigos de fornecedor Protheus para os 22 colaboradores com asserções estritas), 100% aprovados.
+
+53. [x] **Gestão de Ex-Funcionários (Flag `DESLIGADO`), Filtro Padrão de Colaboradores `ATIVO` e Cód Protheus `000089` de Fabiane Rodrigues Arrais (`postgres_db.js`, `public/js/funcionarios_dp.js`, `public/index.html`, `data/dp_colaboradores.json`, `test_funcionarios_dp.js`):**
+    - **Flag de Ex-Funcionários (`status = 'DESLIGADO'`):**
+      - Identificação e atualização dos colaboradores *Davi de Carvalho Aguiar* e *Paulo Cesar de Moraes* como ex-funcionários com a flag `DESLIGADO`.
+      - Prevenção de regressão na sincronização de holerites (`sincronizarColaboradoresDosHoleritesDB`): mesmo que os PDFs legados de folha contenham holerites antigos deles, o sistema identifica os nomes e preserva permanentemente o status `DESLIGADO` (não voltando a reativá-los como `ATIVO`).
+      - Regra de preservação no motor de fusão (`mesclarColaboradores`): se qualquer registro do cluster possuir status `DESLIGADO`, o status resultante permanece estritamente `DESLIGADO`.
+      - Migração DML de auto-cura no startup (`initDB`) atualizando no PostgreSQL `status = 'DESLIGADO'` para Davi e Paulo.
+    - **Filtro Padrão da Listagem de Colaboradores (`ATIVO`):**
+      - A interface do usuário (`#groupFiltroStatusColab`) e o estado inicial (`state.statusFiltro = 'ATIVO'`) foram ajustados para exibir por padrão **exclusivamente os funcionários ativos**.
+      - Botão `🟢 Ativos` posicionado como primeira opção com destaque visual ativo (`btn-primary active`), e botão `Todos` posicionado como alternativo (`btn-outline`).
+      - Davi e Paulo ficam automaticamente ocultos na listagem regular de trabalho, podendo ser consultados a qualquer momento ao clicar em `🔴 Desligados` ou `Todos`.
+    - **Cód Protheus Oficial de Fabiane Rodrigues Arrais (`000089`):**
+      - Cadastro e atualização de *Fabiane Rodrigues Arrais* (GSI, Supervisora Financeira, Cód Interno 11) com o código de fornecedor Protheus `000089` e `status = 'ATIVO'`.
+      - Migração DML no boot (`initDB`), atualização no JSON oficial [`data/dp_colaboradores.json`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/data/dp_colaboradores.json) e no sync de holerites.
+    - **Suíte de Testes Automatizados (9/9 Aprovados):**
+      - Adicionado Teste 9 em `test_funcionarios_dp.js` com asserções cobrindo:
+        1. Fabiane com `status = 'ATIVO'` e `cod_protheus = '000089'`.
+        2. Davi com `status = 'DESLIGADO'`.
+        3. Paulo com `status = 'DESLIGADO'`.
+        4. Listagem com filtro `{ status: 'ATIVO' }` ocultando 100% dos ex-funcionários.
+        5. Listagem com filtro `{ status: 'DESLIGADO' }` retornando Davi e Paulo.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

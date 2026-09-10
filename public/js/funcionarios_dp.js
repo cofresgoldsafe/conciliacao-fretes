@@ -9,7 +9,7 @@
   // Estado Local
   const state = {
     empresaFiltro: 'TODAS',
-    statusFiltro: 'TODOS',
+    statusFiltro: 'ATIVO',
     searchQuery: '',
     colaboradores: [],
     currentColab: null

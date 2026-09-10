@@ -939,6 +939,8 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_dp_colab_nome ON dp_colaboradores(nome_completo);
         ALTER TABLE dp_colaboradores ADD COLUMN IF NOT EXISTS cod_protheus VARCHAR(30);
         CREATE INDEX IF NOT EXISTS idx_dp_colab_cod_protheus ON dp_colaboradores(cod_protheus);
+        UPDATE dp_colaboradores SET status = 'DESLIGADO' WHERE UPPER(nome_completo) LIKE '%DAVI%CARVALHO%AGUIAR%' OR UPPER(nome_completo) LIKE '%PAULO%CESAR%MORAES%';
+        UPDATE dp_colaboradores SET cod_protheus = '000089' WHERE UPPER(nome_completo) LIKE '%FABIANE%RODRIGUES%ARRAIS%';
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
@@ -4299,6 +4301,23 @@ function mesclarColaboradores(principal, secundario) {
     p.observacoes = `${p.observacoes} | ${s.observacoes}`;
   }
 
+  // Status: Se qualquer um dos registros for DESLIGADO, prioriza DESLIGADO (ex-funcionário)
+  if (s.status === 'DESLIGADO' || p.status === 'DESLIGADO') {
+    p.status = 'DESLIGADO';
+  } else if (!p.status && s.status) {
+    p.status = s.status;
+  }
+
+  // Regras específicas de funcionários Protheus
+  const nomeNorm = (p.nome_completo || '') + ' ' + (s.nome_completo || '');
+  if (/FABIANE.*RODRIGUES.*ARRAIS/i.test(nomeNorm)) {
+    p.cod_protheus = '000089';
+    p.status = 'ATIVO';
+  }
+  if (/DAVI.*CARVALHO.*AGUIAR|PAULO.*CESAR.*MORAES/i.test(nomeNorm)) {
+    p.status = 'DESLIGADO';
+  }
+
   return p;
 }
 
@@ -4436,6 +4455,12 @@ async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
     if (!doc.funcionario_nome) continue;
     total++;
 
+    const isDesligado = /DAVI.*CARVALHO.*AGUIAR|PAULO.*CESAR.*MORAES/i.test(doc.funcionario_nome);
+    let codProt = doc.funcionario_codigo || null;
+    if (/FABIANE.*RODRIGUES.*ARRAIS/i.test(doc.funcionario_nome)) {
+      codProt = '000089';
+    }
+
     const jaExiste = existentes.some(c => saoMesmoColaborador(c, {
       cpf: doc.funcionario_cpf,
       nome_completo: doc.funcionario_nome
@@ -4445,7 +4470,7 @@ async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
       const novoColab = {
         empresa: doc.empresa || 'GSI',
         codigo_interno: doc.funcionario_codigo || null,
-        cod_protheus: doc.funcionario_codigo || null,
+        cod_protheus: codProt,
         nome_completo: doc.funcionario_nome,
         cpf: doc.funcionario_cpf || null,
         cargo: doc.funcionario_cargo || null,
@@ -4453,7 +4478,7 @@ async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
         departamento: doc.funcionario_departamento || null,
         data_admissao: doc.funcionario_admissao || null,
         salario_base: doc.salario_base || 0.0,
-        status: 'ATIVO',
+        status: isDesligado ? 'DESLIGADO' : 'ATIVO',
         tipo_contrato: doc.funcionario_tipo_contrato || (doc.empresa === 'SEM_REGISTRO' ? 'AUTONOMO' : 'CLT'),
         tipo_chave_pix: doc.funcionario_cpf ? 'CPF' : null,
         chave_pix: doc.funcionario_cpf || null
