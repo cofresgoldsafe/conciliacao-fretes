@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.179">
+  <link rel="stylesheet" href="style.css?v=8.180">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 16:09 (Sincronização dos 22 Colaboradores com Aniversários e PIX e Endpoint Sync Oficial)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 10/09/2026 16:36 (Deduplicação de Funcionários e Campo Cod Protheus)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -4128,6 +4128,9 @@
             <button id="btnSyncBaseColaboradores" class="btn btn-outline" style="height: 38px; display: flex; align-items: center; gap: 6px; border-color: #38bdf8; color: #38bdf8;" title="Carregar/Atualizar a base oficial completa dos 22 colaboradores da planilha com datas de nascimento e chaves PIX">
               <span>📋 Base Oficial (22 Colab.)</span>
             </button>
+            <button id="btnDeduplicarColaboradores" class="btn btn-outline" style="height: 38px; display: flex; align-items: center; gap: 6px; border-color: #f59e0b; color: #fbbf24;" title="Unificar cadastros duplicados e concatenar dados completos (aniversários, PIX, salários e contratos)">
+              <span>🧹 Limpar / Unificar Duplicados</span>
+            </button>
             <button id="btnSyncColaboradoresHolerite" class="btn btn-outline" style="height: 38px; display: flex; align-items: center; gap: 6px;" title="Auto-cadastrar colaboradores a partir dos holerites importados">
               <span>🔄 Sincronizar dos Holerites</span>
             </button>
@@ -4229,19 +4232,20 @@
           <table class="data-table" id="tableColaboradores" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
             <thead>
               <tr style="border-bottom: 2px solid var(--panel-border); text-align: left;">
-                <th style="width: 90px;">Empresa</th>
-                <th style="min-width: 200px;">Colaborador / CPF</th>
-                <th style="min-width: 160px;">Cargo / Depto</th>
-                <th style="width: 100px;">Admissão</th>
-                <th style="width: 140px;">Contato / Celular</th>
-                <th style="min-width: 170px;">Chave PIX</th>
-                <th style="width: 100px; text-align: center;">Status</th>
+                <th style="width: 85px;">Empresa</th>
+                <th style="min-width: 190px;">Colaborador / CPF</th>
+                <th style="width: 100px; text-align: center;">Cód Protheus</th>
+                <th style="min-width: 150px;">Cargo / Depto</th>
+                <th style="width: 95px;">Admissão</th>
+                <th style="width: 130px;">Contato</th>
+                <th style="min-width: 160px;">Chave PIX</th>
+                <th style="width: 90px; text-align: center;">Status</th>
                 <th style="width: 110px; text-align: center;">Ações</th>
               </tr>
             </thead>
             <tbody id="colaboradoresTableBody">
               <tr>
-                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
                   ⏳ Carregando colaboradores...
                 </td>
               </tr>
@@ -6554,6 +6558,11 @@
                 <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Cód. na Folha / Interno</label>
                 <input type="text" id="colabInputCodigo" class="form-control" placeholder="Ex: 1, 2, SEM_REG..." style="font-size: 0.85rem;">
               </div>
+
+              <div class="form-group">
+                <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px; color: #38bdf8;">Cod Protheus</label>
+                <input type="text" id="colabInputCodProtheus" class="form-control" placeholder="Ex: 000064, 000074..." style="font-size: 0.85rem;" maxlength="30">
+              </div>
             </div>
           </div>
 
@@ -7005,16 +7014,16 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.179"></script>
-  <script src="js/bi_indices.js?v=8.179"></script>
-  <script src="js/bi_autorizacoes.js?v=8.179"></script>
-  <script src="js/gordura_frete.js?v=8.179"></script>
-  <script src="js/fechamento_vendedores.js?v=8.179"></script>
-  <script type="module" src="js/tarefas.js?v=8.179"></script>
-  <script src="js/holerites.js?v=8.179"></script>
-  <script src="js/funcionarios_dp.js?v=8.179"></script>
-  <script src="js/crm.js?v=8.179"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.179"></script>
-  <script src="app.js?v=8.179"></script>
+  <script src="js/bi.js?v=8.180"></script>
+  <script src="js/bi_indices.js?v=8.180"></script>
+  <script src="js/bi_autorizacoes.js?v=8.180"></script>
+  <script src="js/gordura_frete.js?v=8.180"></script>
+  <script src="js/fechamento_vendedores.js?v=8.180"></script>
+  <script type="module" src="js/tarefas.js?v=8.180"></script>
+  <script src="js/holerites.js?v=8.180"></script>
+  <script src="js/funcionarios_dp.js?v=8.180"></script>
+  <script src="js/crm.js?v=8.180"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.180"></script>
+  <script src="app.js?v=8.180"></script>
 </body>
 </html>

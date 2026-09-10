@@ -1,6 +1,6 @@
 [
   {
-    "id": 1789066247479,
+    "id": 1789066240010,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "ADRIANO ROVARIS",
@@ -38,10 +38,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.888Z",
-    "updated_at": "2026-09-10T18:50:46.888Z"
+    "updated_at": "2026-09-10T18:50:46.888Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247499,
+    "id": 1789066240020,
     "empresa": "GSI",
     "codigo_interno": null,
     "nome_completo": "ALEXANDRE RODRIGUES ARRAIS",
@@ -79,10 +80,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.895Z",
-    "updated_at": "2026-09-10T18:50:46.895Z"
+    "updated_at": "2026-09-10T18:50:46.895Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247786,
+    "id": 1789066240030,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "ANDERSON TOSHIO TAMA",
@@ -120,10 +122,11 @@
     "observacoes": "Whats: (11) 96857-2282 / Cel: (11) 95467-3533",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.900Z",
-    "updated_at": "2026-09-10T18:50:46.900Z"
+    "updated_at": "2026-09-10T18:50:46.900Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247079,
+    "id": 1789066240040,
     "empresa": "OACO",
     "codigo_interno": "000064",
     "nome_completo": "ANDRÉA DA CONCEIÇÃO FERREIRA",
@@ -161,10 +164,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.904Z",
-    "updated_at": "2026-09-10T18:50:46.904Z"
+    "updated_at": "2026-09-10T18:50:46.904Z",
+    "cod_protheus": "000064"
   },
   {
-    "id": 1789066247677,
+    "id": 1789066240050,
     "empresa": "GSI",
     "codigo_interno": null,
     "nome_completo": "BEATRIZ NEGRÃO ARRAIS",
@@ -202,10 +206,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.910Z",
-    "updated_at": "2026-09-10T18:50:46.910Z"
+    "updated_at": "2026-09-10T18:50:46.910Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247153,
+    "id": 1789066240060,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "CARLOS HENRIQUE DA SILVA ROSSI",
@@ -243,10 +248,11 @@
     "observacoes": "Tel: (35) 98412-9936 / Ligação: (11) 98689-0157 (Rosana)",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.915Z",
-    "updated_at": "2026-09-10T18:50:46.915Z"
+    "updated_at": "2026-09-10T18:50:46.915Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247597,
+    "id": 1789066240070,
     "empresa": "OACO",
     "codigo_interno": null,
     "nome_completo": "ERICA SANTOS SILVA",
@@ -284,10 +290,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.922Z",
-    "updated_at": "2026-09-10T18:50:46.922Z"
+    "updated_at": "2026-09-10T18:50:46.922Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247838,
+    "id": 1789066240080,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": "000074",
     "nome_completo": "JULIANA BARBOSA FERREIRA LOPES",
@@ -325,10 +332,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.929Z",
-    "updated_at": "2026-09-10T18:50:46.929Z"
+    "updated_at": "2026-09-10T18:50:46.929Z",
+    "cod_protheus": "000074"
   },
   {
-    "id": 1789066247103,
+    "id": 1789066240090,
     "empresa": "GSI",
     "codigo_interno": null,
     "nome_completo": "LETICIA ARRAIS GONÇALVES",
@@ -366,10 +374,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.935Z",
-    "updated_at": "2026-09-10T18:50:46.935Z"
+    "updated_at": "2026-09-10T18:50:46.935Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247624,
+    "id": 1789066240100,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "LUCAS DA SILVA BORGES DE OLIVEIRA",
@@ -407,10 +416,11 @@
     "observacoes": "PIX Cel: (11) 96765-2090 / Contato: (11) 97635-9198",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.942Z",
-    "updated_at": "2026-09-10T18:50:46.942Z"
+    "updated_at": "2026-09-10T18:50:46.942Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247280,
+    "id": 1789066240110,
     "empresa": "GSI",
     "codigo_interno": null,
     "nome_completo": "LUCAS SANTANA DA SILVA",
@@ -448,10 +458,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.950Z",
-    "updated_at": "2026-09-10T18:50:46.950Z"
+    "updated_at": "2026-09-10T18:50:46.950Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247605,
+    "id": 1789066240120,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "LUCAS WENDERSON SILVA SANTOS",
@@ -489,10 +500,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.954Z",
-    "updated_at": "2026-09-10T18:50:46.954Z"
+    "updated_at": "2026-09-10T18:50:46.954Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247556,
+    "id": 1789066240130,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "LUIS ANTONIO BERNARDINO GOMES",
@@ -530,10 +542,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.959Z",
-    "updated_at": "2026-09-10T18:50:46.959Z"
+    "updated_at": "2026-09-10T18:50:46.959Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247608,
+    "id": 1789066240140,
     "empresa": "PJ",
     "codigo_interno": null,
     "nome_completo": "LUIS CARLOS DA SILVA",
@@ -571,10 +584,11 @@
     "observacoes": "Prestador PJ com emissão de NF.",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.966Z",
-    "updated_at": "2026-09-10T18:50:46.966Z"
+    "updated_at": "2026-09-10T18:50:46.966Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247321,
+    "id": 1789066240150,
     "empresa": "GSI",
     "codigo_interno": "000004",
     "nome_completo": "LUIZ CLAUDIO FIGUEIREDO",
@@ -612,10 +626,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.972Z",
-    "updated_at": "2026-09-10T18:50:46.972Z"
+    "updated_at": "2026-09-10T18:50:46.972Z",
+    "cod_protheus": "000004"
   },
   {
-    "id": 1789066247297,
+    "id": 1789066240160,
     "empresa": "MP",
     "codigo_interno": null,
     "nome_completo": "MARINA MADEIRA LAGE",
@@ -653,10 +668,11 @@
     "observacoes": "Sócia da Metal Pleno / S4BW.",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.978Z",
-    "updated_at": "2026-09-10T18:50:46.978Z"
+    "updated_at": "2026-09-10T18:50:46.978Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247445,
+    "id": 1789066240170,
     "empresa": "SEM_REGISTRO",
     "codigo_interno": null,
     "nome_completo": "ODAIR BARBOSA DO CARMO",
@@ -694,10 +710,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.983Z",
-    "updated_at": "2026-09-10T18:50:46.983Z"
+    "updated_at": "2026-09-10T18:50:46.983Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247382,
+    "id": 1789066240180,
     "empresa": "GSI",
     "codigo_interno": null,
     "nome_completo": "RUBENS DA SILVA",
@@ -735,10 +752,11 @@
     "observacoes": "WhatsApp: (11) 94740-3321 / Ligação: (11) 2937-5961 / E-mail: drubens258@gmail.com",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.987Z",
-    "updated_at": "2026-09-10T18:50:46.987Z"
+    "updated_at": "2026-09-10T18:50:46.987Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247280,
+    "id": 1789066240190,
     "empresa": "PJ",
     "codigo_interno": null,
     "nome_completo": "VANESSA MARY DA SILVA SANTOS CARLOS",
@@ -776,10 +794,11 @@
     "observacoes": "Prestadora PJ com emissão de NF. Poupança op 013.",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.992Z",
-    "updated_at": "2026-09-10T18:50:46.992Z"
+    "updated_at": "2026-09-10T18:50:46.992Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247522,
+    "id": 1789066240200,
     "empresa": "OACO",
     "codigo_interno": null,
     "nome_completo": "WALLERSON EUSTÁQUIO DE SOUZA",
@@ -817,10 +836,11 @@
     "observacoes": "Chave PIX CPF antiga: 273.322.568-51",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:46.998Z",
-    "updated_at": "2026-09-10T18:50:46.998Z"
+    "updated_at": "2026-09-10T18:50:46.998Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247133,
+    "id": 1789066240210,
     "empresa": "OACO",
     "codigo_interno": null,
     "nome_completo": "WILLIAM CONCEIÇÃO PINHEIRO",
@@ -858,10 +878,11 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:47.003Z",
-    "updated_at": "2026-09-10T18:50:47.003Z"
+    "updated_at": "2026-09-10T18:50:47.003Z",
+    "cod_protheus": null
   },
   {
-    "id": 1789066247297,
+    "id": 1789066240220,
     "empresa": "OACO",
     "codigo_interno": null,
     "nome_completo": "YAN LUCAS MADUREIRA E SOUSA BELLINE CABRAL",
@@ -899,6 +920,7 @@
     "observacoes": "",
     "created_by": "admin_seeder",
     "created_at": "2026-09-10T18:50:47.009Z",
-    "updated_at": "2026-09-10T18:50:47.009Z"
+    "updated_at": "2026-09-10T18:50:47.009Z",
+    "cod_protheus": null
   }
 ]

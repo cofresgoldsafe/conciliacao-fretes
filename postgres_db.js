@@ -895,6 +895,7 @@ async function initPostgres() {
           id SERIAL PRIMARY KEY,
           empresa VARCHAR(20) NOT NULL,
           codigo_interno VARCHAR(20),
+          cod_protheus VARCHAR(30),
           nome_completo VARCHAR(255) NOT NULL,
           cpf VARCHAR(20),
           rg VARCHAR(20),
@@ -936,6 +937,8 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_dp_colab_cpf ON dp_colaboradores(cpf);
         CREATE INDEX IF NOT EXISTS idx_dp_colab_status ON dp_colaboradores(status);
         CREATE INDEX IF NOT EXISTS idx_dp_colab_nome ON dp_colaboradores(nome_completo);
+        ALTER TABLE dp_colaboradores ADD COLUMN IF NOT EXISTS cod_protheus VARCHAR(30);
+        CREATE INDEX IF NOT EXISTS idx_dp_colab_cod_protheus ON dp_colaboradores(cod_protheus);
       `);
 
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
@@ -996,89 +999,16 @@ async function initPostgres() {
         console.warn('⚠️ [Postgres] Aviso na autocura de vendedores:', errAutoHeal.message);
       }
 
-      // 11.2. Auto-Seeder / Migração e Consolidação dos 22 Colaboradores para o Supabase
+      // 11.2. Auto-Seeder / Migração, Consolidação e Deduplicação dos 22 Colaboradores
       try {
         if (fs.existsSync(colaboradoresCacheFile)) {
-          const localColabs = safeReadJsonSync(colaboradoresCacheFile, []);
-          if (localColabs.length > 0) {
-            console.log(`📦 [Postgres] Sincronizando/consolidando ${localColabs.length} colaboradores de dp_colaboradores.json...`);
-            for (const c of localColabs) {
-              let existingId = null;
-              if (c.cpf) {
-                const resCpf = await client.query('SELECT id FROM dp_colaboradores WHERE cpf = $1 LIMIT 1;', [c.cpf]);
-                if (resCpf && resCpf.rows && resCpf.rows[0]) existingId = resCpf.rows[0].id;
-              }
-              if (!existingId && c.nome_completo) {
-                const resNome = await client.query('SELECT id FROM dp_colaboradores WHERE UPPER(TRIM(nome_completo)) = UPPER(TRIM($1)) LIMIT 1;', [c.nome_completo]);
-                if (resNome && resNome.rows && resNome.rows[0]) existingId = resNome.rows[0].id;
-              }
-
-              if (existingId) {
-                await client.query(`
-                  UPDATE dp_colaboradores SET
-                    empresa = COALESCE($1, empresa),
-                    codigo_interno = COALESCE($2, codigo_interno),
-                    nome_completo = COALESCE($3, nome_completo),
-                    cpf = COALESCE($4, cpf),
-                    data_nascimento = COALESCE($5, data_nascimento),
-                    cargo = COALESCE($6, cargo),
-                    departamento = COALESCE($7, departamento),
-                    tipo_contrato = COALESCE($8, tipo_contrato),
-                    status = COALESCE($9, status),
-                    telefone_celular = COALESCE($10, telefone_celular),
-                    email_pessoal = COALESCE($11, email_pessoal),
-                    tipo_chave_pix = COALESCE($12, tipo_chave_pix),
-                    chave_pix = COALESCE($13, chave_pix),
-                    banco_nome = COALESCE($14, banco_nome),
-                    banco_codigo = COALESCE($15, banco_codigo),
-                    agencia = COALESCE($16, agencia),
-                    conta_corrente = COALESCE($17, conta_corrente),
-                    tipo_conta = COALESCE($18, tipo_conta),
-                    observacoes = COALESCE($19, observacoes),
-                    updated_at = NOW()
-                  WHERE id = $20;
-                `, [
-                  c.empresa, c.codigo_interno, c.nome_completo, c.cpf,
-                  c.data_nascimento, c.cargo, c.departamento, c.tipo_contrato,
-                  c.status, c.telefone_celular, c.email_pessoal, c.tipo_chave_pix,
-                  c.chave_pix, c.banco_nome, c.banco_codigo, c.agencia,
-                  c.conta_corrente, c.tipo_conta, c.observacoes, existingId
-                ]);
-              } else {
-                await client.query(`
-                  INSERT INTO dp_colaboradores (
-                    empresa, codigo_interno, nome_completo, cpf, rg, ctps_numero, ctps_serie,
-                    pis_pasep, data_nascimento, cargo, cbo, departamento, data_admissao,
-                    data_demissao, tipo_contrato, status, salario_base, telefone_celular,
-                    telefone_fixo, email_pessoal, endereco_logradouro, endereco_numero,
-                    endereco_complemento, endereco_bairro, endereco_cidade, endereco_uf,
-                    endereco_cep, tipo_chave_pix, chave_pix, banco_nome, banco_codigo,
-                    agencia, conta_corrente, tipo_conta, observacoes, created_by
-                  ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-                    $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31,
-                    $32, $33, $34, $35, $36
-                  );
-                `, [
-                  c.empresa || 'GSI', c.codigo_interno || null, c.nome_completo, c.cpf || null, c.rg || null,
-                  c.ctps_numero || null, c.ctps_serie || null, c.pis_pasep || null, c.data_nascimento || null,
-                  c.cargo || null, c.cbo || null, c.departamento || null, c.data_admissao || null,
-                  c.data_demissao || null, c.tipo_contrato || 'CLT', c.status || 'ATIVO',
-                  parseFloat(c.salario_base) || 0.0, c.telefone_celular || null, c.telefone_fixo || null,
-                  c.email_pessoal || null, c.endereco_logradouro || null, c.endereco_numero || null,
-                  c.endereco_complemento || null, c.endereco_bairro || null, c.endereco_cidade || null,
-                  c.endereco_uf || null, c.endereco_cep || null, c.tipo_chave_pix || null,
-                  c.chave_pix || null, c.banco_nome || null, c.banco_codigo || null,
-                  c.agencia || null, c.conta_corrente || null, c.tipo_conta || 'CORRENTE',
-                  c.observacoes || null, 'migracao_oficial'
-                ]);
-              }
-            }
-            console.log(`✅ [Postgres] Consolidados com sucesso ${localColabs.length} colaboradores na base Supabase PostgreSQL.`);
-          }
+          console.log('📦 [Postgres] Sincronizando, consolidando e deduplicando colaboradores...');
+          await sincronizarColaboradoresBaseOficialDB('startup_sync');
+          const resDedup = await limparEDeduplicarColaboradoresDB('startup_autoclean');
+          console.log(`✅ [Postgres] Base de colaboradores homologada: ${resDedup.total_depois} colaboradores únicos (${resDedup.duplicados_removidos} duplicados unificados/removidos).`);
         }
       } catch (errColabSeeder) {
-        console.warn('⚠️ [Postgres] Aviso na sincronização de colaboradores:', errColabSeeder.message);
+        console.warn('⚠️ [Postgres] Aviso na sincronização/deduplicação de colaboradores:', errColabSeeder.message);
       }
 
       // 12. Habilita Row-Level Security (RLS) e Políticas de Backend no Supabase (Security Advisor Check 0013 & 0008)
@@ -3973,6 +3903,7 @@ async function salvarColaboradorDB(dados, usuario = 'sistema') {
   const colab = {
     empresa: (dados.empresa || 'GSI').toUpperCase(),
     codigo_interno: dados.codigo_interno ? String(dados.codigo_interno).trim() : null,
+    cod_protheus: dados.cod_protheus ? String(dados.cod_protheus).trim() : null,
     nome_completo: (dados.nome_completo || '').trim().toUpperCase(),
     cpf: dados.cpf ? String(dados.cpf).trim() : null,
     rg: dados.rg ? String(dados.rg).trim() : null,
@@ -4013,20 +3944,20 @@ async function salvarColaboradorDB(dados, usuario = 'sistema') {
       if (dados.id) {
         const sql = `
           UPDATE dp_colaboradores SET
-            empresa = $1, codigo_interno = $2, nome_completo = $3, cpf = $4, rg = $5,
-            ctps_numero = $6, ctps_serie = $7, pis_pasep = $8, data_nascimento = $9,
-            cargo = $10, cbo = $11, departamento = $12, data_admissao = $13, data_demissao = $14,
-            tipo_contrato = $15, status = $16, salario_base = $17, telefone_celular = $18,
-            telefone_fixo = $19, email_pessoal = $20, endereco_logradouro = $21, endereco_numero = $22,
-            endereco_complemento = $23, endereco_bairro = $24, endereco_cidade = $25, endereco_uf = $26,
-            endereco_cep = $27, tipo_chave_pix = $28, chave_pix = $29, banco_nome = $30,
-            banco_codigo = $31, agencia = $32, conta_corrente = $33, tipo_conta = $34,
-            observacoes = $35, updated_at = NOW()
-          WHERE id = $36
+            empresa = $1, codigo_interno = $2, cod_protheus = $3, nome_completo = $4, cpf = $5, rg = $6,
+            ctps_numero = $7, ctps_serie = $8, pis_pasep = $9, data_nascimento = $10,
+            cargo = $11, cbo = $12, departamento = $13, data_admissao = $14, data_demissao = $15,
+            tipo_contrato = $16, status = $17, salario_base = $18, telefone_celular = $19,
+            telefone_fixo = $20, email_pessoal = $21, endereco_logradouro = $22, endereco_numero = $23,
+            endereco_complemento = $24, endereco_bairro = $25, endereco_cidade = $26, endereco_uf = $27,
+            endereco_cep = $28, tipo_chave_pix = $29, chave_pix = $30, banco_nome = $31,
+            banco_codigo = $32, agencia = $33, conta_corrente = $34, tipo_conta = $35,
+            observacoes = $36, updated_at = NOW()
+          WHERE id = $37
           RETURNING *;
         `;
         const params = [
-          colab.empresa, colab.codigo_interno, colab.nome_completo, colab.cpf, colab.rg,
+          colab.empresa, colab.codigo_interno, colab.cod_protheus, colab.nome_completo, colab.cpf, colab.rg,
           colab.ctps_numero, colab.ctps_serie, colab.pis_pasep, colab.data_nascimento,
           colab.cargo, colab.cbo, colab.departamento, colab.data_admissao, colab.data_demissao,
           colab.tipo_contrato, colab.status, colab.salario_base, colab.telefone_celular,
@@ -4041,7 +3972,7 @@ async function salvarColaboradorDB(dados, usuario = 'sistema') {
       } else {
         const sql = `
           INSERT INTO dp_colaboradores (
-            empresa, codigo_interno, nome_completo, cpf, rg, ctps_numero, ctps_serie,
+            empresa, codigo_interno, cod_protheus, nome_completo, cpf, rg, ctps_numero, ctps_serie,
             pis_pasep, data_nascimento, cargo, cbo, departamento, data_admissao,
             data_demissao, tipo_contrato, status, salario_base, telefone_celular,
             telefone_fixo, email_pessoal, endereco_logradouro, endereco_numero,
@@ -4051,12 +3982,12 @@ async function salvarColaboradorDB(dados, usuario = 'sistema') {
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
             $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31,
-            $32, $33, $34, $35, $36
+            $32, $33, $34, $35, $36, $37
           )
           RETURNING *;
         `;
         const params = [
-          colab.empresa, colab.codigo_interno, colab.nome_completo, colab.cpf, colab.rg,
+          colab.empresa, colab.codigo_interno, colab.cod_protheus, colab.nome_completo, colab.cpf, colab.rg,
           colab.ctps_numero, colab.ctps_serie, colab.pis_pasep, colab.data_nascimento,
           colab.cargo, colab.cbo, colab.departamento, colab.data_admissao, colab.data_demissao,
           colab.tipo_contrato, colab.status, colab.salario_base, colab.telefone_celular,
@@ -4135,7 +4066,8 @@ async function obterColaboradoresDB(filtros = {}) {
           cargo ILIKE $${pIdx} OR
           telefone_celular ILIKE $${pIdx} OR
           chave_pix ILIKE $${pIdx} OR
-          codigo_interno ILIKE $${pIdx}
+          codigo_interno ILIKE $${pIdx} OR
+          cod_protheus ILIKE $${pIdx}
         )`);
         params.push(`%${busca}%`);
         pIdx++;
@@ -4159,18 +4091,20 @@ async function obterColaboradoresDB(filtros = {}) {
   }
 
   // Fallback JSON local
+  const removerAcentos = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   let list = safeReadJsonSync(colaboradoresCacheFile, []);
   list = list.filter(item => {
     if (empresa && empresa !== 'TODAS' && item.empresa !== empresa) return false;
     if (status && status !== 'TODOS' && item.status !== status) return false;
     if (busca) {
-      const q = busca.toLowerCase();
-      const match = (item.nome_completo || '').toLowerCase().includes(q) ||
-                    (item.cpf || '').toLowerCase().includes(q) ||
-                    (item.cargo || '').toLowerCase().includes(q) ||
-                    (item.telefone_celular || '').toLowerCase().includes(q) ||
-                    (item.chave_pix || '').toLowerCase().includes(q) ||
-                    (item.codigo_interno || '').toLowerCase().includes(q);
+      const q = removerAcentos(busca);
+      const match = removerAcentos(item.nome_completo).includes(q) ||
+                    removerAcentos(item.cpf).includes(q) ||
+                    removerAcentos(item.cargo).includes(q) ||
+                    removerAcentos(item.telefone_celular).includes(q) ||
+                    removerAcentos(item.chave_pix).includes(q) ||
+                    removerAcentos(item.codigo_interno).includes(q) ||
+                    removerAcentos(item.cod_protheus).includes(q);
       if (!match) return false;
     }
     return true;
@@ -4226,6 +4160,268 @@ async function excluirColaboradorDB(id, usuario = 'sistema') {
   return false;
 }
 
+function normalizarNome(nome) {
+  if (!nome) return '';
+  return String(nome)
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizarCpf(cpf) {
+  if (!cpf) return '';
+  const digits = String(cpf).replace(/\D/g, '');
+  return digits.length === 11 ? digits : '';
+}
+
+function nomesSaoCompativeis(n1, n2) {
+  const norm1 = normalizarNome(n1);
+  const norm2 = normalizarNome(n2);
+  if (!norm1 || !norm2) return false;
+  if (norm1 === norm2) return true;
+
+  const t1 = norm1.split(' ').filter(w => w.length >= 3);
+  const t2 = norm2.split(' ').filter(w => w.length >= 3);
+  if (t1.length === 0 || t2.length === 0) return false;
+  if (t1[0] !== t2[0]) return false;
+  if (t1[t1.length - 1] !== t2[t2.length - 1]) return false;
+
+  const all1in2 = t1.every(t => t2.includes(t));
+  const all2in1 = t2.every(t => t1.includes(t));
+  return all1in2 || all2in1;
+}
+
+function saoMesmoColaborador(c1, c2) {
+  if (!c1 || !c2) return false;
+  if (c1 === c2) return false;
+
+  // 1. Confronto por CPF
+  const cpf1 = normalizarCpf(c1.cpf);
+  const cpf2 = normalizarCpf(c2.cpf);
+  if (cpf1 && cpf2 && cpf1 === cpf2) return true;
+
+  // 2. Confronto por Nome normalizado / compatível
+  if (nomesSaoCompativeis(c1.nome_completo, c2.nome_completo)) return true;
+
+  // 3. Confronto por Chave PIX idêntica (se for CPF ou Celular)
+  if (c1.chave_pix && c2.chave_pix) {
+    const pix1 = String(c1.chave_pix).replace(/\D/g, '');
+    const pix2 = String(c2.chave_pix).replace(/\D/g, '');
+    if (pix1.length >= 10 && pix1 === pix2) return true;
+  }
+
+  // 4. Confronto por Cod Protheus
+  if (c1.cod_protheus && c2.cod_protheus && String(c1.cod_protheus).trim() === String(c2.cod_protheus).trim()) {
+    return true;
+  }
+
+  return false;
+}
+
+function mesclarColaboradores(principal, secundario) {
+  const p = { ...principal };
+  const s = { ...secundario };
+
+  // Nome Completo: se secundário tem acentos e o principal não, preferir acentuado
+  if (!p.nome_completo || (s.nome_completo && /[ÁÉÍÓÚÂÊÎÔÛÃÕÇáéíóúâêîôûãõç]/.test(s.nome_completo) && !/[ÁÉÍÓÚÂÊÎÔÛÃÕÇáéíóúâêîôûãõç]/.test(p.nome_completo))) {
+    p.nome_completo = s.nome_completo;
+  } else if (!p.nome_completo && s.nome_completo) {
+    p.nome_completo = s.nome_completo;
+  }
+
+  // CPF
+  if (!p.cpf && s.cpf) p.cpf = s.cpf;
+
+  // Cod Protheus & Código Interno
+  if (!p.cod_protheus && s.cod_protheus) p.cod_protheus = s.cod_protheus;
+  if (!p.codigo_interno && s.codigo_interno) p.codigo_interno = s.codigo_interno;
+
+  // Data de Nascimento
+  if (!p.data_nascimento && s.data_nascimento) p.data_nascimento = s.data_nascimento;
+
+  // PIX e Bancos
+  if (!p.chave_pix && s.chave_pix) {
+    p.chave_pix = s.chave_pix;
+    p.tipo_chave_pix = s.tipo_chave_pix || p.tipo_chave_pix;
+  }
+  if (!p.tipo_chave_pix && s.tipo_chave_pix) p.tipo_chave_pix = s.tipo_chave_pix;
+  if (!p.banco_nome && s.banco_nome) p.banco_nome = s.banco_nome;
+  if (!p.banco_codigo && s.banco_codigo) p.banco_codigo = s.banco_codigo;
+  if (!p.agencia && s.agencia) p.agencia = s.agencia;
+  if (!p.conta_corrente && s.conta_corrente) p.conta_corrente = s.conta_corrente;
+  if ((!p.tipo_conta || p.tipo_conta === 'CORRENTE') && s.tipo_conta) p.tipo_conta = s.tipo_conta;
+
+  // Salário Base (se um tem 0 e o outro tem valor real do holerite, preserva o valor real)
+  const salP = parseFloat(p.salario_base) || 0;
+  const salS = parseFloat(s.salario_base) || 0;
+  if (salP === 0 && salS > 0) p.salario_base = salS;
+
+  // Admissão / Demissão / CTPS / PIS / RG
+  if (!p.data_admissao && s.data_admissao) p.data_admissao = s.data_admissao;
+  if (!p.data_demissao && s.data_demissao) p.data_demissao = s.data_demissao;
+  if (!p.rg && s.rg) p.rg = s.rg;
+  if (!p.ctps_numero && s.ctps_numero) p.ctps_numero = s.ctps_numero;
+  if (!p.ctps_serie && s.ctps_serie) p.ctps_serie = s.ctps_serie;
+  if (!p.pis_pasep && s.pis_pasep) p.pis_pasep = s.pis_pasep;
+
+  // Cargo, CBO, Depto
+  if (!p.cargo && s.cargo) p.cargo = s.cargo;
+  if (!p.cbo && s.cbo) p.cbo = s.cbo;
+  if (!p.departamento && s.departamento) p.departamento = s.departamento;
+
+  // Telefones e E-mail
+  if (!p.telefone_celular && s.telefone_celular) p.telefone_celular = s.telefone_celular;
+  if (!p.telefone_fixo && s.telefone_fixo) p.telefone_fixo = s.telefone_fixo;
+  if (!p.email_pessoal && s.email_pessoal) p.email_pessoal = s.email_pessoal;
+
+  // Endereço
+  if (!p.endereco_logradouro && s.endereco_logradouro) p.endereco_logradouro = s.endereco_logradouro;
+  if (!p.endereco_numero && s.endereco_numero) p.endereco_numero = s.endereco_numero;
+  if (!p.endereco_complemento && s.endereco_complemento) p.endereco_complemento = s.endereco_complemento;
+  if (!p.endereco_bairro && s.endereco_bairro) p.endereco_bairro = s.endereco_bairro;
+  if (!p.endereco_cidade && s.endereco_cidade) p.endereco_cidade = s.endereco_cidade;
+  if (!p.endereco_uf && s.endereco_uf) p.endereco_uf = s.endereco_uf;
+  if (!p.endereco_cep && s.endereco_cep) p.endereco_cep = s.endereco_cep;
+
+  // Contrato & Empresa
+  if (['SOCIO', 'PJ'].includes(s.tipo_contrato)) p.tipo_contrato = s.tipo_contrato;
+  if (['MP', 'SEM_REGISTRO', 'PJ'].includes(s.empresa) && ['GSI', 'OACO'].includes(p.empresa)) {
+    p.empresa = s.empresa;
+  }
+
+  // Observações
+  if (s.observacoes && !p.observacoes) {
+    p.observacoes = s.observacoes;
+  } else if (s.observacoes && p.observacoes && !p.observacoes.includes(s.observacoes)) {
+    p.observacoes = `${p.observacoes} | ${s.observacoes}`;
+  }
+
+  return p;
+}
+
+async function limparEDeduplicarColaboradoresDB(usuario = 'sistema') {
+  let todos = [];
+  if (getPool()) {
+    try {
+      const res = await safeQuery('SELECT * FROM dp_colaboradores ORDER BY id ASC;');
+      if (res && res.rows) todos = res.rows;
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao buscar colaboradores para deduplicação:', err.message);
+    }
+  }
+
+  const localList = safeReadJsonSync(colaboradoresCacheFile, []);
+  if (todos.length === 0) {
+    todos = [...localList];
+  }
+
+  if (todos.length === 0) {
+    return { success: true, total_antes: 0, total_depois: 0, duplicados_removidos: 0, grupos_mesclados: 0 };
+  }
+
+  const visitados = new Set();
+  const clusters = [];
+
+  for (let i = 0; i < todos.length; i++) {
+    if (visitados.has(i)) continue;
+
+    const cluster = [todos[i]];
+    visitados.add(i);
+
+    for (let j = i + 1; j < todos.length; j++) {
+      if (visitados.has(j)) continue;
+
+      const itemB = todos[j];
+      const combina = cluster.some(membro => saoMesmoColaborador(membro, itemB));
+      if (combina) {
+        cluster.push(itemB);
+        visitados.add(j);
+      }
+    }
+    clusters.push(cluster);
+  }
+
+  let duplicadosRemovidos = 0;
+  let gruposMesclados = 0;
+  const listaConsolidada = [];
+
+  for (const cluster of clusters) {
+    if (cluster.length === 1) {
+      listaConsolidada.push(cluster[0]);
+      continue;
+    }
+
+    gruposMesclados++;
+    // Ordena: prefere quem tem data_nascimento, chave_pix, cpf, cod_protheus ou menor ID
+    cluster.sort((a, b) => {
+      const scoreA = (a.data_nascimento ? 3 : 0) + (a.chave_pix ? 3 : 0) + (a.cpf ? 2 : 0) + (a.cod_protheus ? 1 : 0);
+      const scoreB = (b.data_nascimento ? 3 : 0) + (b.chave_pix ? 3 : 0) + (b.cpf ? 2 : 0) + (b.cod_protheus ? 1 : 0);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+      return parseInt(a.id, 10) - parseInt(b.id, 10);
+    });
+
+    let master = { ...cluster[0] };
+    const secondaries = cluster.slice(1);
+
+    for (const sec of secondaries) {
+      master = mesclarColaboradores(master, sec);
+    }
+
+    const idsParaRemover = secondaries.map(s => parseInt(s.id, 10)).filter(Boolean);
+    duplicadosRemovidos += idsParaRemover.length;
+
+    if (getPool()) {
+      try {
+        await safeQuery(`
+          UPDATE dp_colaboradores SET
+            empresa = $1, codigo_interno = $2, cod_protheus = $3, nome_completo = $4, cpf = $5, rg = $6,
+            ctps_numero = $7, ctps_serie = $8, pis_pasep = $9, data_nascimento = $10,
+            cargo = $11, cbo = $12, departamento = $13, data_admissao = $14, data_demissao = $15,
+            tipo_contrato = $16, status = $17, salario_base = $18, telefone_celular = $19,
+            telefone_fixo = $20, email_pessoal = $21, endereco_logradouro = $22, endereco_numero = $23,
+            endereco_complemento = $24, endereco_bairro = $25, endereco_cidade = $26, endereco_uf = $27,
+            endereco_cep = $28, tipo_chave_pix = $29, chave_pix = $30, banco_nome = $31,
+            banco_codigo = $32, agencia = $33, conta_corrente = $34, tipo_conta = $35,
+            observacoes = $36, updated_at = NOW()
+          WHERE id = $37;
+        `, [
+          master.empresa, master.codigo_interno, master.cod_protheus, master.nome_completo, master.cpf, master.rg,
+          master.ctps_numero, master.ctps_serie, master.pis_pasep, master.data_nascimento,
+          master.cargo, master.cbo, master.departamento, master.data_admissao, master.data_demissao,
+          master.tipo_contrato, master.status, master.salario_base, master.telefone_celular,
+          master.telefone_fixo, master.email_pessoal, master.endereco_logradouro, master.endereco_numero,
+          master.endereco_complemento, master.endereco_bairro, master.endereco_cidade, master.endereco_uf,
+          master.endereco_cep, master.tipo_chave_pix, master.chave_pix, master.banco_nome,
+          master.banco_codigo, master.agencia, master.conta_corrente, master.tipo_conta,
+          master.observacoes, parseInt(master.id, 10)
+        ]);
+
+        if (idsParaRemover.length > 0) {
+          await safeQuery('DELETE FROM dp_colaboradores WHERE id = ANY($1::int[]);', [idsParaRemover]);
+        }
+      } catch (errDb) {
+        console.warn('⚠️ [Postgres] Erro ao consolidar cluster de colaboradores:', errDb.message);
+      }
+    }
+
+    listaConsolidada.push(master);
+  }
+
+  // Atualiza cache JSON local com a lista consolidada
+  safeWriteJsonSync(colaboradoresCacheFile, listaConsolidada);
+
+  return {
+    success: true,
+    total_antes: todos.length,
+    total_depois: listaConsolidada.length,
+    duplicados_removidos: duplicadosRemovidos,
+    grupos_mesclados: gruposMesclados
+  };
+}
+
 async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
   const holerites = await obterHoleritesDB({ status: 'ATIVO', limit: 5000 });
   if (!holerites || holerites.length === 0) {
@@ -4240,16 +4436,16 @@ async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
     if (!doc.funcionario_nome) continue;
     total++;
 
-    const jaExiste = existentes.some(c => {
-      if (doc.funcionario_cpf && c.cpf && doc.funcionario_cpf === c.cpf) return true;
-      return (c.nome_completo || '').toUpperCase() === (doc.funcionario_nome || '').toUpperCase() &&
-             (c.empresa || '').toUpperCase() === (doc.empresa || '').toUpperCase();
-    });
+    const jaExiste = existentes.some(c => saoMesmoColaborador(c, {
+      cpf: doc.funcionario_cpf,
+      nome_completo: doc.funcionario_nome
+    }));
 
     if (!jaExiste) {
       const novoColab = {
         empresa: doc.empresa || 'GSI',
         codigo_interno: doc.funcionario_codigo || null,
+        cod_protheus: doc.funcionario_codigo || null,
         nome_completo: doc.funcionario_nome,
         cpf: doc.funcionario_cpf || null,
         cargo: doc.funcionario_cargo || null,
@@ -4271,6 +4467,9 @@ async function sincronizarColaboradoresDosHoleritesDB(usuario = 'sistema') {
     }
   }
 
+  // Deduplica e consolida automaticamente
+  await limparEDeduplicarColaboradoresDB(usuario);
+
   return { total_verificados: total, novos_adicionados: novos };
 }
 
@@ -4285,53 +4484,49 @@ async function sincronizarColaboradoresBaseOficialDB(usuario = 'sistema') {
 
   if (getPool()) {
     try {
-      for (const c of localColabs) {
-        let existingId = null;
-        if (c.cpf) {
-          const resCpf = await safeQuery('SELECT id FROM dp_colaboradores WHERE cpf = $1 LIMIT 1;', [c.cpf]);
-          if (resCpf && resCpf.rows && resCpf.rows[0]) existingId = resCpf.rows[0].id;
-        }
-        if (!existingId && c.nome_completo) {
-          const resNome = await safeQuery('SELECT id FROM dp_colaboradores WHERE UPPER(TRIM(nome_completo)) = UPPER(TRIM($1)) LIMIT 1;', [c.nome_completo]);
-          if (resNome && resNome.rows && resNome.rows[0]) existingId = resNome.rows[0].id;
-        }
+      const resExistentes = await safeQuery('SELECT * FROM dp_colaboradores ORDER BY id ASC;');
+      const existentes = (resExistentes && resExistentes.rows) ? resExistentes.rows : [];
 
-        if (existingId) {
+      for (const c of localColabs) {
+        const match = existentes.find(e => saoMesmoColaborador(e, c));
+
+        if (match) {
           await safeQuery(`
             UPDATE dp_colaboradores SET
               empresa = COALESCE($1, empresa),
               codigo_interno = COALESCE($2, codigo_interno),
-              nome_completo = COALESCE($3, nome_completo),
-              cpf = COALESCE($4, cpf),
-              data_nascimento = COALESCE($5, data_nascimento),
-              cargo = COALESCE($6, cargo),
-              departamento = COALESCE($7, departamento),
-              tipo_contrato = COALESCE($8, tipo_contrato),
-              status = COALESCE($9, status),
-              telefone_celular = COALESCE($10, telefone_celular),
-              email_pessoal = COALESCE($11, email_pessoal),
-              tipo_chave_pix = COALESCE($12, tipo_chave_pix),
-              chave_pix = COALESCE($13, chave_pix),
-              banco_nome = COALESCE($14, banco_nome),
-              banco_codigo = COALESCE($15, banco_codigo),
-              agencia = COALESCE($16, agencia),
-              conta_corrente = COALESCE($17, conta_corrente),
-              tipo_conta = COALESCE($18, tipo_conta),
-              observacoes = COALESCE($19, observacoes),
+              cod_protheus = COALESCE($3, cod_protheus),
+              nome_completo = COALESCE($4, nome_completo),
+              cpf = COALESCE($5, cpf),
+              data_nascimento = COALESCE($6, data_nascimento),
+              cargo = COALESCE($7, cargo),
+              departamento = COALESCE($8, departamento),
+              tipo_contrato = COALESCE($9, tipo_contrato),
+              status = COALESCE($10, status),
+              telefone_celular = COALESCE($11, telefone_celular),
+              email_pessoal = COALESCE($12, email_pessoal),
+              tipo_chave_pix = COALESCE($13, tipo_chave_pix),
+              chave_pix = COALESCE($14, chave_pix),
+              banco_nome = COALESCE($15, banco_nome),
+              banco_codigo = COALESCE($16, banco_codigo),
+              agencia = COALESCE($17, agencia),
+              conta_corrente = COALESCE($18, conta_corrente),
+              tipo_conta = COALESCE($19, tipo_conta),
+              observacoes = COALESCE($20, observacoes),
               updated_at = NOW()
-            WHERE id = $20;
+            WHERE id = $21;
           `, [
-            c.empresa, c.codigo_interno, c.nome_completo, c.cpf,
+            c.empresa, c.codigo_interno, c.cod_protheus, c.nome_completo, c.cpf,
             c.data_nascimento, c.cargo, c.departamento, c.tipo_contrato,
             c.status, c.telefone_celular, c.email_pessoal, c.tipo_chave_pix,
             c.chave_pix, c.banco_nome, c.banco_codigo, c.agencia,
-            c.conta_corrente, c.tipo_conta, c.observacoes, existingId
+            c.conta_corrente, c.tipo_conta, c.observacoes, match.id
           ]);
           atualizados++;
         } else {
           await safeQuery(`
             INSERT INTO dp_colaboradores (
-              empresa, codigo_interno, nome_completo, cpf, rg, ctps_numero, ctps_serie,
+              empresa, codigo_interno, cod_protheus, nome_completo, cpf, rg, ctps_numero, ctps_serie,
               pis_pasep, data_nascimento, cargo, cbo, departamento, data_admissao,
               data_demissao, tipo_contrato, status, salario_base, telefone_celular,
               telefone_fixo, email_pessoal, endereco_logradouro, endereco_numero,
@@ -4341,10 +4536,10 @@ async function sincronizarColaboradoresBaseOficialDB(usuario = 'sistema') {
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
               $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31,
-              $32, $33, $34, $35, $36
+              $32, $33, $34, $35, $36, $37
             );
           `, [
-            c.empresa || 'GSI', c.codigo_interno || null, c.nome_completo, c.cpf || null, c.rg || null,
+            c.empresa || 'GSI', c.codigo_interno || null, c.cod_protheus || null, c.nome_completo, c.cpf || null, c.rg || null,
             c.ctps_numero || null, c.ctps_serie || null, c.pis_pasep || null, c.data_nascimento || null,
             c.cargo || null, c.cbo || null, c.departamento || null, c.data_admissao || null,
             c.data_demissao || null, c.tipo_contrato || 'CLT', c.status || 'ATIVO',
@@ -4364,10 +4559,14 @@ async function sincronizarColaboradoresBaseOficialDB(usuario = 'sistema') {
     }
   }
 
+  // Deduplica e consolida após sincronizar
+  const dedup = await limparEDeduplicarColaboradoresDB(usuario);
+
   return {
     total: localColabs.length,
     inseridos,
-    atualizados
+    atualizados,
+    deduplicacao: dedup
   };
 }
 
@@ -4445,6 +4644,7 @@ module.exports = {
   excluirColaboradorDB,
   sincronizarColaboradoresDosHoleritesDB,
   sincronizarColaboradoresBaseOficialDB,
+  limparEDeduplicarColaboradoresDB,
   DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool

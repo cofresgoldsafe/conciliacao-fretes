@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.179 (Homologada em 10/09/2026 16:10)  
+> **Versão da Documentação:** v8.180 (Homologada em 10/09/2026 16:36)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Homologação Concluída da Sincronização da Base Oficial de 22 Colaboradores DP com Aniversários e PIX, Botão Sync Planilha e Resolução da Origem dos 11 Holerites)  
-> **Data da Última Auditoria:** 10/09/2026 16:10 (v8.179 - Sincronização Base Oficial de 22 Colaboradores DP e Endpoint Sync Planilha)  
+> **Status:** Estável / Operacional em Produção (Homologação Concluída da Deduplicação de Funcionários, Concatenação Inteligente de Dados, Campo Cód Protheus e Botão de Limpeza em 1 Clique)  
+> **Data da Última Auditoria:** 10/09/2026 16:36 (v8.180 - Deduplicação e Concatenação de Funcionários DP, Campo Cód Protheus e Botão de Limpeza)  
 
 ---
 
@@ -630,6 +630,28 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Modal de Ficha Completa do Colaborador, formulário de edição/inclusão com validações, botão de cópia de chave PIX em 1 clique e exportação completa em CSV com codificação UTF-8 (`\uFEFF`).
     - **Suíte de Testes Automatizados (6/6 Aprovados):**
       - `test_funcionarios_dp.js` validando persistência, filtros, busca universal, edição funcional, auto-sincronização de holerites, exclusão e os 22 registros oficiais.
+
+52. [x] **Deduplicação Inteligente de Colaboradores DP, Fusão/Concatenação de Dados e Campo "Cód Protheus" (`postgres_db.js`, `server.js`, `public/js/funcionarios_dp.js`, `public/index.html`, `data/dp_colaboradores.json`, `test_funcionarios_dp.js`):**
+    - **Causa Raiz da Duplicação Resolvida:**
+      - A importação inicial de PDFs de holerites contábeis gerou registros com nomes em maiúsculas sem acentuação (ex: `ANDREA DA CONCEICAO FERREIRA`) e com `cpf = null`.
+      - A importação da planilha oficial continha nomes acentuados (ex: `ANDRÉA DA CONCEIÇÃO FERREIRA`) e CPF preenchido.
+      - A busca anterior por igualdade textual simples não encontrava a correspondência, gerando duplicidade para os 11 funcionários com holerite.
+    - **Algoritmo de Deduplicação e Fusão Inteligente (`limparEDeduplicarColaboradoresDB`):**
+      - Função `normalizarNome(nome)` com remoção determinística de acentuação (Unicode NFD `[\u0300-\u036f]`), pontuação e espaços extras.
+      - Função `nomesSaoCompativeis(n1, n2)` e `saoMesmoColaborador(c1, c2)` comparando CPF normalizado, tokens de nomes (primeiro nome + último sobrenome + subconjunto de nomes intermediários), chaves PIX numéricas e Códigos Protheus.
+      - Agrupamento em clusters conexos e ranqueamento de registro master (preferência para cadastros que possuem data de nascimento, PIX, CPF, Cód Protheus ou menor ID).
+      - Função `mesclarColaboradores(principal, secundario)` que absorve e concatena todos os dados complementares (aniversários, PIX, bancos, salários reais dos holerites, Cód Protheus, datas de admissão/demissão, CTPS, PIS, contatos e observações concatenadas com `|`), atualizando o registro mestre e excluindo os secundários redundantes no banco e no JSON local.
+      - Execução automática da deduplicação no startup (`initDB`), após sync da planilha oficial e após sync de holerites.
+    - **Campo "Cód Protheus" em Todas as Camadas:**
+      - DDL relacional `ALTER TABLE dp_colaboradores ADD COLUMN IF NOT EXISTS cod_protheus VARCHAR(30);` com índice `idx_dp_colab_cod_protheus`.
+      - Campo integrado no CRUD do PostgreSQL e no cache JSON local com suporte a busca textual insensível a acentos (`ILIKE` / `removerAcentos`).
+      - Vinculação dos códigos comerciais conhecidos: Juliana (`000074`), Andréa (`000064`), Figueiredo (`000004`).
+      - Inclusão da coluna `Cód Protheus` na tabela HTML, no formulário de inclusão/edição (`#colabInputCodProtheus`), na Ficha Executiva (`#modalColaboradorFicha`) e na exportação CSV (`exportarColaboradoresCsv`).
+    - **Ação Rápida de Limpeza em 1 Clique na UI:**
+      - Botão `🧹 Limpar / Unificar Duplicados` (`#btnDeduplicarColaboradores`) no topo da sub-aba DP.
+      - Endpoint seguro `POST /api/dp/colaboradores/limpar-duplicados` com autenticação JWT e registro de telemetria/auditoria (`DEDUPLICAR_COLABORADORES`).
+    - **Suíte de Testes Automatizados (8/8 Aprovados):**
+      - Expansão de `test_funcionarios_dp.js` com Teste 7 (validação de fusão de campos complementares e eliminação de duplicatas) e Teste 8 (persistência e vínculos de `cod_protheus`), 100% aprovados.
 
 ### Prioridade 1 (Resiliencia/SRE)
 1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.

@@ -10,7 +10,8 @@ const {
   excluirColaboradorDB,
   salvarHoleritesDB,
   excluirHoleriteDB,
-  sincronizarColaboradoresDosHoleritesDB
+  sincronizarColaboradoresDosHoleritesDB,
+  limparEDeduplicarColaboradoresDB
 } = require('./postgres_db');
 
 async function runTests() {
@@ -28,6 +29,7 @@ async function runTests() {
     cpf: '123.456.789-00',
     rg: '12.345.678-9',
     codigo_interno: '10',
+    cod_protheus: 'TESTE001',
     cargo: 'Analista de Operações',
     cbo: '411010',
     departamento: 'Logística',
@@ -50,7 +52,8 @@ async function runTests() {
   assert.strictEqual(salvo.nome_completo, 'TESTE ROBERTO SILVA');
   assert.strictEqual(salvo.empresa, 'GSI');
   assert.strictEqual(salvo.chave_pix, '123.456.789-00');
-  console.log('  ✅ [PASS] Colaborador cadastrado com sucesso com dados cadastrais e PIX');
+  assert.strictEqual(salvo.cod_protheus, 'TESTE001');
+  console.log('  ✅ [PASS] Colaborador cadastrado com sucesso com dados cadastrais, PIX e Cód Protheus');
   passed++;
 
   // Teste 2: Consultar colaboradores com filtros (Empresa, Status e Busca)
@@ -64,7 +67,11 @@ async function runTests() {
   const buscaPix = await obterColaboradoresDB({ busca: '123.456.789-00' });
   assert.ok(buscaPix.length >= 1, 'Busca por chave PIX deve encontrar o colaborador');
   assert.strictEqual(buscaPix[0].nome_completo, 'TESTE ROBERTO SILVA');
-  console.log('  ✅ [PASS] Filtros por empresa, status e busca universal validados');
+
+  const buscaCodProtheus = await obterColaboradoresDB({ busca: 'TESTE001' });
+  assert.ok(buscaCodProtheus.length >= 1, 'Busca por Cód Protheus deve encontrar o colaborador');
+  assert.strictEqual(buscaCodProtheus[0].nome_completo, 'TESTE ROBERTO SILVA');
+  console.log('  ✅ [PASS] Filtros por empresa, status e busca universal (incluindo Cód Protheus) validados');
   passed++;
 
   // Teste 3: Edição e Atualização de Dados (Chave PIX e Status)
@@ -72,6 +79,7 @@ async function runTests() {
   const dadosAtualizados = {
     ...salvo,
     cargo: 'Coordenador de Operações',
+    cod_protheus: 'TESTE001_UPD',
     salario_base: 4500.00,
     telefone_celular: '(11) 98888-7777',
     chave_pix: 'roberto.teste@email.com',
@@ -81,14 +89,16 @@ async function runTests() {
 
   const atualizado = await salvarColaboradorDB(dadosAtualizados, 'admin_test');
   assert.strictEqual(atualizado.cargo, 'Coordenador de Operações');
+  assert.strictEqual(atualizado.cod_protheus, 'TESTE001_UPD');
   assert.strictEqual(parseFloat(atualizado.salario_base), 4500.00);
   assert.strictEqual(atualizado.chave_pix, 'roberto.teste@email.com');
   assert.strictEqual(atualizado.status, 'FERIAS');
 
   const recarregado = await obterColaboradorPorIdDB(salvo.id);
   assert.strictEqual(recarregado.cargo, 'Coordenador de Operações');
+  assert.strictEqual(recarregado.cod_protheus, 'TESTE001_UPD');
   assert.strictEqual(recarregado.status, 'FERIAS');
-  console.log('  ✅ [PASS] Atualização de cargo, PIX, celular e status funcional persistida');
+  console.log('  ✅ [PASS] Atualização de cargo, PIX, Cód Protheus, celular e status funcional persistida');
   passed++;
 
   // Teste 4: Sincronização Inteligente de Holerites para o Cadastro
@@ -195,6 +205,68 @@ async function runTests() {
   assert.ok(pjList.length >= 2, 'PJ deve ter pelo menos 2 prestadores');
 
   console.log('  ✅ [PASS] 22 Colaboradores validados com datas de aniversário, PIX e empresas');
+  passed++;
+
+  // Teste 7: Deduplicação e Concatenação Inteligente de Colaboradores
+  console.log('\n--- 7. Deduplicação e Concatenação Inteligente ---');
+  // Cria 2 cadastros duplicados propositais: um com acento e dados bancários, outro sem acento com salário
+  const colab1 = await salvarColaboradorDB({
+    empresa: 'GSI',
+    nome_completo: 'CLÁUDIO TESTE DEDUPLICAÇÃO',
+    cpf: '111.222.333-44',
+    data_nascimento: '15/05/1985',
+    chave_pix: 'claudio.dedup@email.com',
+    tipo_chave_pix: 'EMAIL',
+    cod_protheus: 'DEDUP001'
+  }, 'test_dedup');
+
+  const colab2 = await salvarColaboradorDB({
+    empresa: 'GSI',
+    nome_completo: 'CLAUDIO TESTE DEDUPLICACAO', // sem acento
+    salario_base: 5200.00,
+    cargo: 'Especialista em Logística',
+    tipo_contrato: 'CLT'
+  }, 'test_dedup');
+
+  assert.ok(colab1.id && colab2.id, 'Ambos os cadastros de teste devem ter sido criados');
+
+  // Executa a deduplicação
+  const dedupRes = await limparEDeduplicarColaboradoresDB('test_runner');
+  assert.ok(dedupRes.success, 'Deduplicação deve retornar sucesso');
+  assert.ok(dedupRes.duplicados_removidos >= 1, 'Deveria remover pelo menos 1 duplicata');
+
+  // Verifica se o registro sobrevivente foi mesclado com todas as informações
+  const buscaSobrevivente = await obterColaboradoresDB({ busca: 'CLAUDIO TESTE DEDUPLICAÇÃO' });
+  assert.strictEqual(buscaSobrevivente.length, 1, 'Deve existir exatamente 1 registro unificado para Cláudio');
+  const merged = buscaSobrevivente[0];
+  assert.strictEqual(merged.data_nascimento, '15/05/1985', 'Data de nascimento deve ter sido preservada');
+  assert.strictEqual(merged.chave_pix, 'claudio.dedup@email.com', 'Chave PIX deve ter sido preservada');
+  assert.strictEqual(merged.cod_protheus, 'DEDUP001', 'Cód Protheus deve ter sido preservado');
+  assert.strictEqual(parseFloat(merged.salario_base), 5200.00, 'Salário base deve ter sido absorvido do registro secundário');
+  assert.strictEqual(merged.cargo, 'Especialista em Logística', 'Cargo deve ter sido absorvido');
+
+  // Limpa o registro de teste
+  await excluirColaboradorDB(merged.id, 'cleanup_test');
+  console.log('  ✅ [PASS] Algoritmo de deduplicação e fusão de registros duplicados homologado com sucesso');
+  passed++;
+
+  // Teste 8: Validação dos Códigos Protheus Comerciais
+  console.log('\n--- 8. Validação de Cód Protheus da Equipe Comercial ---');
+  const baseVendedores = await obterColaboradoresDB({});
+  const juliana = baseVendedores.find(c => c.nome_completo.includes('JULIANA'));
+  const andrea = baseVendedores.find(c => c.nome_completo.includes('ANDREA') || c.nome_completo.includes('ANDRÉA'));
+  const figueiredo = baseVendedores.find(c => c.nome_completo.includes('FIGUEIREDO'));
+
+  assert.ok(juliana, 'Juliana deve existir na base');
+  assert.strictEqual(juliana.cod_protheus, '000074', 'Juliana deve ter Cód Protheus 000074');
+
+  assert.ok(andrea, 'Andrea deve existir na base');
+  assert.strictEqual(andrea.cod_protheus, '000064', 'Andrea deve ter Cód Protheus 000064');
+
+  assert.ok(figueiredo, 'Figueiredo deve existir na base');
+  assert.strictEqual(figueiredo.cod_protheus, '000004', 'Figueiredo deve ter Cód Protheus 000004');
+
+  console.log('  ✅ [PASS] Códigos Protheus vinculados aos vendedores oficiais com sucesso (000074, 000064, 000004)');
   passed++;
 
   console.log('\n=============================================================');

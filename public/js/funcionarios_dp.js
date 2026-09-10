@@ -51,6 +51,12 @@
       btnSyncBase.addEventListener('click', executarSyncBaseOficial);
     }
 
+    // 2.2 Limpar / Unificar Duplicados
+    const btnDedup = document.getElementById('btnDeduplicarColaboradores');
+    if (btnDedup) {
+      btnDedup.addEventListener('click', executarLimpezaDuplicados);
+    }
+
     // 3. Atualizar Lista
     const btnRefresh = document.getElementById('btnRefreshColaboradores');
     if (btnRefresh) {
@@ -164,7 +170,7 @@
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+          <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
             ⏳ Carregando colaboradores...
           </td>
         </tr>
@@ -194,7 +200,7 @@
       if (tbody) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="8" style="text-align: center; color: #ef4444; padding: 2rem;">
+            <td colspan="9" style="text-align: center; color: #ef4444; padding: 2rem;">
               ❌ Falha ao carregar colaboradores: ${err.message}
             </td>
           </tr>
@@ -210,7 +216,7 @@
     if (state.colaboradores.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+          <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">
             Nenhum colaborador encontrado para os filtros informados.
           </td>
         </tr>
@@ -231,6 +237,11 @@
       if (c.status === 'FERIAS') badgeStatus = `<span class="badge-status-ferias">🟡 Férias</span>`;
       else if (c.status === 'AFASTADO') badgeStatus = `<span class="badge-status-afastado">🟠 Afastado</span>`;
       else if (c.status === 'DESLIGADO') badgeStatus = `<span class="badge-status-desligado">🔴 Desligado</span>`;
+
+      // Cód. Protheus
+      let codProtheusHtml = c.cod_protheus
+        ? `<span style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3);">${c.cod_protheus}</span>`
+        : `<span style="color: var(--text-muted); font-size: 0.78rem;">-</span>`;
 
       // Telefone / WhatsApp Link
       let contatoHtml = '<span style="color: var(--text-muted);">-</span>';
@@ -270,6 +281,7 @@
               ${c.cpf ? `CPF: ${c.cpf}` : 'Sem CPF'} ${c.codigo_interno ? `| Cód: ${c.codigo_interno}` : ''}
             </span>
           </td>
+          <td style="text-align: center;">${codProtheusHtml}</td>
           <td>
             <span style="display: block; font-weight: 500;">${c.cargo || 'Não informado'}</span>
             <span style="font-size: 0.74rem; color: var(--text-muted);">${c.departamento || '-'}</span>
@@ -343,6 +355,8 @@
     document.getElementById('colabInputEmpresa').value = 'GSI';
     document.getElementById('colabInputStatus').value = 'ATIVO';
     document.getElementById('colabInputTipoContrato').value = 'CLT';
+    const inpCodProt = document.getElementById('colabInputCodProtheus');
+    if (inpCodProt) inpCodProt.value = '';
 
     modal.style.display = 'flex';
   }
@@ -368,6 +382,8 @@
       document.getElementById('colabInputRg').value = c.rg || '';
       document.getElementById('colabInputNascimento').value = c.data_nascimento || '';
       document.getElementById('colabInputCodigo').value = c.codigo_interno || '';
+      const inpCodProtEdit = document.getElementById('colabInputCodProtheus');
+      if (inpCodProtEdit) inpCodProtEdit.value = c.cod_protheus || '';
 
       document.getElementById('colabInputCargo').value = c.cargo || '';
       document.getElementById('colabInputCbo').value = c.cbo || '';
@@ -424,6 +440,7 @@
       rg: document.getElementById('colabInputRg').value.trim(),
       data_nascimento: document.getElementById('colabInputNascimento').value.trim(),
       codigo_interno: document.getElementById('colabInputCodigo').value.trim(),
+      cod_protheus: (document.getElementById('colabInputCodProtheus')?.value || '').trim(),
       cargo: document.getElementById('colabInputCargo').value.trim(),
       cbo: document.getElementById('colabInputCbo').value.trim(),
       departamento: document.getElementById('colabInputDepto').value.trim(),
@@ -520,6 +537,7 @@
             <span>RG: <strong style="color: #f8fafc;">${c.rg || '-'}</strong></span>
             <span>🎂 Nascim.: <strong style="color: #38bdf8;">${c.data_nascimento || '-'}</strong></span>
             <span>Cód: <strong style="color: #f8fafc;">${c.codigo_interno || '-'}</strong></span>
+            <span>Cód. Protheus: <strong style="color: #38bdf8;">${c.cod_protheus || '-'}</strong></span>
             <span>Status: <strong style="color: #34d399;">${c.status || 'ATIVO'}</strong></span>
           </div>
         </div>
@@ -619,6 +637,35 @@
     }
   }
 
+  async function executarLimpezaDuplicados() {
+    if (!confirm('Deseja iniciar a varredura e unificação de funcionários duplicados?\n\nO sistema irá concatenar todas as informações complementares (aniversários, chaves PIX, salários, Cód Protheus) e remover os registros duplicados.')) {
+      return;
+    }
+
+    const btn = document.getElementById('btnDeduplicarColaboradores');
+    if (btn) btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/dp/colaboradores/limpar-duplicados', {
+        method: 'POST',
+        headers: getAuthHeader()
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      if (data.duplicados_removidos > 0) {
+        alert(`✅ Limpeza e Unificação Concluída!\n\n• Antes: ${data.total_antes} registros\n• Agora: ${data.total_depois} registros consolidados\n• Duplicados unificados e removidos: ${data.duplicados_removidos} (em ${data.grupos_mesclados} grupos).`);
+      } else {
+        alert(`✅ Base Verificada!\n\nNenhum colaborador duplicado encontrado. Todos os ${data.total_depois} cadastros já estão 100% únicos.`);
+      }
+      await carregarColaboradores();
+    } catch (err) {
+      alert('Falha na limpeza de duplicados: ' + err.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   async function excluirColaborador(id) {
     const colab = state.colaboradores.find(x => x.id === id);
     const nome = colab ? colab.nome_completo : `ID ${id}`;
@@ -657,7 +704,7 @@
     }
 
     const colunas = [
-      'ID', 'Empresa', 'Nome Completo', 'CPF', 'RG', 'Código Interno', 'Cargo', 'CBO',
+      'ID', 'Empresa', 'Nome Completo', 'CPF', 'RG', 'Código Interno', 'Cód Protheus', 'Cargo', 'CBO',
       'Departamento', 'Tipo Contrato', 'Admissão', 'Demissão', 'Status', 'Salário Base (R$)',
       'Celular', 'Telefone Fixo', 'E-mail', 'CEP', 'Logradouro', 'Número', 'Bairro', 'Cidade', 'UF',
       'Tipo Chave PIX', 'Chave PIX', 'Banco', 'Agência', 'Conta Corrente'
@@ -670,6 +717,7 @@
       c.cpf || '',
       c.rg || '',
       c.codigo_interno || '',
+      c.cod_protheus || '',
       `"${(c.cargo || '').replace(/"/g, '""')}"`,
       c.cbo || '',
       `"${(c.departamento || '').replace(/"/g, '""')}"`,
@@ -719,6 +767,7 @@
     abrirFicha,
     excluirColaborador,
     copiarChavePix,
+    executarLimpezaDuplicados,
     executarSyncBaseOficial,
     executarSyncHolerites
   };

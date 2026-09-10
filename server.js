@@ -111,6 +111,7 @@ const {
   excluirColaboradorDB,
   sincronizarColaboradoresDosHoleritesDB,
   sincronizarColaboradoresBaseOficialDB,
+  limparEDeduplicarColaboradoresDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -4467,6 +4468,28 @@ app.post('/api/dp/colaboradores/sync-planilha', requireAuth, async (req, res) =>
     return res.json({ success: true, ...resultado });
   } catch (err) {
     console.error('Erro ao sincronizar base oficial de colaboradores:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. Limpar e Deduplicar Colaboradores (Unificar Cadastros e Concatenar Dados)
+app.post('/api/dp/colaboradores/limpar-duplicados', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const resultado = await limparEDeduplicarColaboradoresDB(user ? user.username : 'sistema');
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'DEDUPLICAR_COLABORADORES',
+      description: `Executou limpeza e deduplicação de colaboradores: ${resultado.total_antes} antes -> ${resultado.total_depois} consolidados (${resultado.duplicados_removidos} duplicados unificados/removidos em ${resultado.grupos_mesclados} grupos).`,
+      ip: req.ip,
+      metadata: resultado
+    }).catch(() => {});
+
+    return res.json({ success: true, ...resultado });
+  } catch (err) {
+    console.error('Erro ao limpar/deduplicar colaboradores:', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
