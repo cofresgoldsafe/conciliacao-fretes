@@ -5007,7 +5007,7 @@ async function atualizarStatusNfseDB(chaveAcesso, dados = {}) {
 /**
  * Motor de Conciliação em Lote com o TOTVS Protheus (SF1140, SF1150, SF1160 x nfse_recebidas)
  */
-async function reconciliarNfseComProtheusDB(dias = 150) {
+async function reconciliarNfseComProtheusDB(dias = 250) {
   const queryRailway = getRailwayQueryFn();
   if (!queryRailway) {
     return { ok: false, error: 'Função de consulta Protheus não disponível' };
@@ -5015,46 +5015,94 @@ async function reconciliarNfseComProtheusDB(dias = 150) {
 
   console.log(`🔄 [NFS-e Protheus Sync] Iniciando reconciliação dos últimos ${dias} dias...`);
 
-  // Calcula data de corte no formato YYYYMMDD
+  // Calcula data de corte no formato YYYYMMDD (mínimo 20260101 para cobrir todo o exercício corrente)
   const dataCorte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
   const anoCorte = dataCorte.getFullYear();
   const mesCorte = String(dataCorte.getMonth() + 1).padStart(2, '0');
   const diaCorte = String(dataCorte.getDate()).padStart(2, '0');
-  const dataCorteStr = `${anoCorte}${mesCorte}${diaCorte}`;
+  let dataCorteStr = `${anoCorte}${mesCorte}${diaCorte}`;
+  if (dataCorteStr > '20260101') {
+    dataCorteStr = '20260101';
+  }
 
-  const sf1Map = { '14': new Map(), '15': new Map(), '16': new Map() };
+  const protheusDocs = { '14': new Map(), '15': new Map(), '16': new Map() };
+  const protheusRaizDocs = { '14': new Map(), '15': new Map(), '16': new Map() };
 
-  // 1. Consulta em paralelo SF1 das 3 empresas
+  // 1. Consulta em paralelo SF1 (Doc Entrada) e SE2 (Contas a Pagar) das 3 empresas
   for (const empCod of ['14', '15', '16']) {
+    // 1.1 SF1 - Documentos de Entrada (Compras / Fiscal)
     try {
-      const sql = `
-        SELECT F1.F1_DOC, F1.F1_EMISSAO, F1.F1_VALBRUT, F1.F1_FORNECE, F1.F1_LOJA, A2.A2_CGC
+      const sqlSF1 = `
+        SELECT F1.F1_DOC, F1.F1_EMISSAO, F1.F1_VALBRUT, F1.F1_FORNECE, F1.F1_LOJA, A2.A2_CGC, A2.A2_NOME
         FROM SF1${empCod}0 F1
         JOIN SA2010 A2 ON A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA AND A2.D_E_L_E_T_ = ' '
         WHERE F1.D_E_L_E_T_ = ' ' AND F1.F1_EMISSAO >= '${dataCorteStr}'
       `;
-      const res = await queryRailway(sql);
-      if (res && Array.isArray(res.rows)) {
-        for (const row of res.rows) {
+      const resSF1 = await queryRailway(sqlSF1);
+      if (resSF1 && Array.isArray(resSF1.rows)) {
+        for (const row of resSF1.rows) {
           const cgc = String(row.A2_CGC || '').replace(/\D/g, '');
           const doc = String(row.F1_DOC || '').trim().replace(/^0+/, '');
           if (cgc && doc) {
-            sf1Map[empCod].set(`${cgc}::${doc}`, row);
+            const item = { ...row, doc, origem: 'SF1', valbrut: parseFloat(row.F1_VALBRUT) || 0 };
+            protheusDocs[empCod].set(`${cgc}::${doc}`, item);
+            if (cgc.length >= 8) {
+              protheusRaizDocs[empCod].set(`${cgc.slice(0, 8)}::${doc}`, item);
+            }
           }
         }
       }
-    } catch (errEmp) {
-      console.warn(`⚠️ [NFS-e Protheus Sync] Falha ao consultar SF1${empCod}0:`, errEmp.message);
+    } catch (errSF1) {
+      console.warn(`⚠️ [NFS-e Protheus Sync] Falha ao consultar SF1${empCod}0:`, errSF1.message);
+    }
+
+    // 1.2 SE2 - Contas a Pagar (Financeiro)
+    try {
+      const sqlSE2 = `
+        SELECT E2.E2_NUM, E2.E2_PREFIXO, E2.E2_EMISSAO, E2.E2_VALOR, E2.E2_FORNECE, E2.E2_LOJA, A2.A2_CGC, A2.A2_NOME
+        FROM SE2${empCod}0 E2
+        JOIN SA2010 A2 ON A2.A2_COD = E2.E2_FORNECE AND A2.A2_LOJA = E2.E2_LOJA AND A2.D_E_L_E_T_ = ' '
+        WHERE E2.D_E_L_E_T_ = ' ' AND E2.E2_EMISSAO >= '${dataCorteStr}'
+      `;
+      const resSE2 = await queryRailway(sqlSE2);
+      if (resSE2 && Array.isArray(resSE2.rows)) {
+        for (const row of resSE2.rows) {
+          const cgc = String(row.A2_CGC || '').replace(/\D/g, '');
+          const doc = String(row.E2_NUM || '').trim().replace(/^0+/, '');
+          if (cgc && doc) {
+            const key = `${cgc}::${doc}`;
+            const raizKey = `${cgc.slice(0, 8)}::${doc}`;
+            const item = {
+              F1_DOC: row.E2_NUM,
+              F1_EMISSAO: row.E2_EMISSAO,
+              F1_VALBRUT: row.E2_VALOR,
+              F1_FORNECE: row.E2_FORNECE,
+              F1_LOJA: row.E2_LOJA,
+              A2_CGC: row.A2_CGC,
+              A2_NOME: row.A2_NOME,
+              origem: 'SE2',
+              doc,
+              valbrut: parseFloat(row.E2_VALOR) || 0
+            };
+            if (!protheusDocs[empCod].has(key)) protheusDocs[empCod].set(key, item);
+            if (cgc.length >= 8 && !protheusRaizDocs[empCod].has(raizKey)) {
+              protheusRaizDocs[empCod].set(raizKey, item);
+            }
+          }
+        }
+      }
+    } catch (errSE2) {
+      console.warn(`⚠️ [NFS-e Protheus Sync] Falha ao consultar SE2${empCod}0:`, errSE2.message);
     }
   }
 
-  // 2. Carrega todas as notas recentes do banco ou cache local
+  // 2. Carrega todas as notas do banco ou cache local
   let todasNotas = [];
   const p = getPool();
   if (p) {
     try {
-      const res = await safeQuery(`SELECT * FROM nfse_recebidas WHERE data_emissao >= NOW() - INTERVAL '${dias} days';`);
-      if (res && res.rows) todasNotas = res.rows;
+      const res = await safeQuery(`SELECT * FROM nfse_recebidas;`);
+      if (res && res.rows && res.rows.length > 0) todasNotas = res.rows;
     } catch (errDb) {}
   }
   if (todasNotas.length === 0 && fs.existsSync(nfseCacheFile)) {
@@ -5071,14 +5119,20 @@ async function reconciliarNfseComProtheusDB(dias = 150) {
     const empCod = n.empresa_cod_protheus || '15';
     const numLimpo = String(n.numero_nota || '').replace(/^0+/, '');
     const prestCnpj = String(n.prestador_cnpj || '').replace(/\D/g, '');
+    const prestRaiz = prestCnpj.slice(0, 8);
 
-    const key = `${prestCnpj}::${numLimpo}`;
-    let achou = sf1Map[empCod]?.get(key);
+    // 1. Match Exato (CNPJ 14 dígitos + Número do Documento)
+    let achou = protheusDocs[empCod]?.get(`${prestCnpj}::${numLimpo}`);
 
-    // Se não achou, tenta o alias registrado
+    // 2. Match por Alias de CNPJ Registrado
     if (!achou && ALIAS_CNPJ_FORNECEDOR[prestCnpj]) {
       const aliasKey = `${ALIAS_CNPJ_FORNECEDOR[prestCnpj]}::${numLimpo}`;
-      achou = sf1Map[empCod]?.get(aliasKey);
+      achou = protheusDocs[empCod]?.get(aliasKey);
+    }
+
+    // 3. Match por Raiz de CNPJ (8 primeiros dígitos = Matriz/Filial do mesmo grupo)
+    if (!achou && prestRaiz.length === 8) {
+      achou = protheusRaizDocs[empCod]?.get(`${prestRaiz}::${numLimpo}`);
     }
 
     const agoraISO = new Date().toISOString();
@@ -5087,7 +5141,7 @@ async function reconciliarNfseComProtheusDB(dias = 150) {
       updatesLote.push({
         chave_acesso: n.chave_acesso,
         status_entrada: 'LANCADA',
-        protheus_doc: achou.F1_DOC,
+        protheus_doc: achou.F1_DOC || achou.doc,
         protheus_emissao: achou.F1_EMISSAO,
         protheus_valbrut: parseFloat(achou.F1_VALBRUT) || n.valor_liquido,
         protheus_fornece: achou.F1_FORNECE,

@@ -1217,9 +1217,13 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Desvendada a estrutura técnica da chave de 50 dígitos do ADN Nacional: `cUF(2) + cMun(5) + tpAmb(1) + tpInsc(1) + CNPJ(14) + [Mod(2)+Serie(3)+Num(até 13 zeros)] + [AAMM(4)] + [Cod(8)+DV(1)]`.
       - Algoritmo que localiza o CNPJ do prestador e a competência AAMM (derivada da emissão), descartando os prefixos de modelo 25 e série 000, com 100% de precisão nos 346 registros históricos.
     - **Motor de Conciliação em Lote com o TOTVS Protheus (`reconciliarNfseComProtheusDB`):**
-      - Consultas T-SQL paralelas nas tabelas `SF1140` (Metal Pleno), `SF1150` (GSI) e `SF1160` (OAÇO) com `JOIN SA2010` via API Protheus/Railway com janela retroativa de 150 dias.
-      - Suporte ao alias de CNPJ do prestador (`BENEFICIO DIGITAL TECNOLOGIA LTDA` `40314164000108` ➔ `08655788000186`).
-      - Cruzamento em memória O(1) via Map `[cnpjPrestador::numDoc]`. Em ~2 segundos, reconciliou todas as notas da base histórica (102 lançadas, 244 pendentes no total histórico; 51 pendentes no período ativo de 120 dias, totalizando R$ 103.501,23).
+      - Consultas T-SQL paralelas em duas frentes do Protheus: **Documentos de Entrada (`SF1`)** e **Contas a Pagar (`SE2`)** nas 3 empresas (14 Metal Pleno, 15 GSI, 16 OAÇO) com `JOIN SA2010` via API Protheus/Railway.
+      - Resolução da divergência Matriz x Filial com matching inteligente em 3 níveis:
+        1. *Match Exato:* CNPJ 14 dígitos + Número do Documento.
+        2. *Match por Alias:* Mapeamento de CNPJs alternativos (`BENEFICIO DIGITAL TECNOLOGIA LTDA` `40314164000108` ➔ `08655788000186`).
+        3. *Match por Raiz de CNPJ (8 dígitos):* Identificação de notas emitidas por filiais mas lançadas no ERP sob o CNPJ da matriz (ex: `SND DISTRIBUIÇÃO` notas `353712` e `359229`, `LOJA INTEGRADA`, `TOTVS`, `SERASA`, `GOOGLE CLOUD`, `DRIVE IT`, `ZAPSIGN`, etc.).
+      - Cruzamento em memória O(1) via Map `[cnpjPrestador::numDoc]` e `[raizCnpj::numDoc]`.
+      - **Resultados Atualizados:** Total de notas avaliadas: 346. Notas já lançadas no Protheus (`LANCADA`): **191** (aumento expressivo frente às 102 anteriores). Notas pendentes no filtro ativo de 120 dias reduzidas de 51 para **39 pendentes reais** (GSI: 14 / R$ 8.168,89, Metal Pleno: 6 / R$ 26.323,56, OAÇO: 19 / R$ 67.322,62).
     - **Interface Visual do Usuário (`public/index.html`, `public/js/nfse_pendentes.js`, `public/app.js`):**
       - Sub-aba `#btnTabNfsePendentes` perfeitamente integrada sob a aba principal `📑 ANALISTA FIN` (`#subGroupAnalistaFin`).
       - **Cards de Métricas:** Total de NFS-e Pendentes, Valor Total Pendente (R$), e breakdown por empresa (GSI, Metal Pleno, OAÇO).
