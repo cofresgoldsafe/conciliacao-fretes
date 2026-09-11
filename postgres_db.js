@@ -44,6 +44,7 @@ const configMetasVendasFile = path.join(dataDir, 'config_metas_vendas.json');
 const holeritesCacheFile = path.join(dataDir, 'holerites_documentos.json');
 const colaboradoresCacheFile = path.join(dataDir, 'dp_colaboradores.json');
 const nfseCacheFile = path.join(dataDir, 'nfse_recebidas.json');
+const fechamentoFiscalCacheFile = path.join(dataDir, 'fechamento_fiscal_cache.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -977,6 +978,42 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_nfse_prestador_num ON nfse_recebidas (prestador_cnpj, numero_nota);
       `);
 
+      // 10.9 Cria Tabela de Fechamentos Fiscais Consolidados (Analista Fin / Simples Nacional / ICMS)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS fechamento_fiscal_consolidado (
+          id SERIAL PRIMARY KEY,
+          empresa VARCHAR(10) NOT NULL,
+          ano_mes VARCHAR(6) NOT NULL,
+          data_inicio DATE NOT NULL,
+          data_fim DATE NOT NULL,
+          total_saidas_qtd INT DEFAULT 0,
+          total_saidas_valor NUMERIC(15,2) DEFAULT 0,
+          total_devolucao_qtd INT DEFAULT 0,
+          total_devolucao_valor NUMERIC(15,2) DEFAULT 0,
+          total_remessa_qtd INT DEFAULT 0,
+          total_remessa_valor NUMERIC(15,2) DEFAULT 0,
+          total_tributado_qtd INT DEFAULT 0,
+          total_tributado_valor NUMERIC(15,2) DEFAULT 0,
+          total_entradas_qtd INT DEFAULT 0,
+          total_entradas_valor NUMERIC(15,2) DEFAULT 0,
+          total_nfe_qtd INT DEFAULT 0,
+          total_nfe_valor NUMERIC(15,2) DEFAULT 0,
+          total_ctrs_qtd INT DEFAULT 0,
+          total_ctrs_valor NUMERIC(15,2) DEFAULT 0,
+          total_impostos_qtd INT DEFAULT 0,
+          total_impostos_valor NUMERIC(15,2) DEFAULT 0,
+          rbt12_valor NUMERIC(15,2) DEFAULT 0,
+          aliquota_efetiva NUMERIC(6,4) DEFAULT 0,
+          imposto_estimado NUMERIC(15,2) DEFAULT 0,
+          detalhes_json JSONB DEFAULT '{}'::jsonb,
+          usuario_fechamento VARCHAR(100),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          CONSTRAINT uq_fechamento_empresa_periodo UNIQUE(empresa, ano_mes)
+        );
+        CREATE INDEX IF NOT EXISTS idx_fech_fisc_empresa_mes ON fechamento_fiscal_consolidado(empresa, ano_mes DESC);
+      `);
+
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
@@ -1071,7 +1108,8 @@ async function initPostgres() {
         'fechamentos_vendedores',
         'holerites_documentos',
         'dp_colaboradores',
-        'nfse_recebidas'
+        'nfse_recebidas',
+        'fechamento_fiscal_consolidado'
       ];
 
       // Busca dinamicamente todas as tabelas do schema public para garantir 100% de cobertura
@@ -5213,6 +5251,204 @@ async function reconciliarNfseComProtheusDB(dias = 250) {
   };
 }
 
+// ============================================================================
+// MÓDULO FECHAMENTO FISCAL CONSOLIDADO (PERSISTÊNCIA & HISTÓRICO RBT12)
+// ============================================================================
+
+async function salvarFechamentoFiscalDB(dados) {
+  if (!dados || !dados.empresa || !dados.anoMes) {
+    throw new Error('Empresa e ano_mes são obrigatórios para salvar o fechamento fiscal.');
+  }
+
+  const empresa = String(dados.empresa).trim().toUpperCase();
+  const anoMes = String(dados.anoMes).trim();
+  const dataInicio = dados.dataInicio || `${anoMes.substring(0, 4)}-${anoMes.substring(4, 6)}-01`;
+  const dataFim = dados.dataFim || `${anoMes.substring(0, 4)}-${anoMes.substring(4, 6)}-28`;
+  const totais = dados.totais || {};
+  const rbt12 = Number(dados.rbt12 || 0);
+  const aliquotaEfetiva = Number(dados.aliquotaEfetiva || 0);
+  const impostoEstimado = Number(dados.impostoEstimado || 0);
+  const detalhesJson = dados.detalhes || {};
+  const usuario = dados.usuario || 'sistema';
+
+  const tSaidasQtd = Number(totais.totalSaidas?.qtd || 0);
+  const tSaidasVal = Number(totais.totalSaidas?.valor || 0);
+  const tDevQtd = Number(totais.totalDevolucao?.qtd || 0);
+  const tDevVal = Number(totais.totalDevolucao?.valor || 0);
+  const tRemQtd = Number(totais.totalRemessa?.qtd || 0);
+  const tRemVal = Number(totais.totalRemessa?.valor || 0);
+  const tTribQtd = Number(totais.totalTributado?.qtd || 0);
+  const tTribVal = Number(totais.totalTributado?.valor || 0);
+
+  const tEntQtd = Number(totais.totalEntradas?.qtd || 0);
+  const tEntVal = Number(totais.totalEntradas?.valor || 0);
+  const tNfeQtd = Number(totais.totalNfe?.qtd || 0);
+  const tNfeVal = Number(totais.totalNfe?.valor || 0);
+  const tCtrQtd = Number(totais.totalCtr?.qtd || 0);
+  const tCtrVal = Number(totais.totalCtr?.valor || 0);
+  const tImpQtd = Number(totais.totalImpostos?.qtd || 0);
+  const tImpVal = Number(totais.totalImpostos?.valor || 0);
+
+  let salvoNoPostgres = false;
+  if (isConnected && pool) {
+    try {
+      await safeQuery(`
+        INSERT INTO fechamento_fiscal_consolidado (
+          empresa, ano_mes, data_inicio, data_fim,
+          total_saidas_qtd, total_saidas_valor,
+          total_devolucao_qtd, total_devolucao_valor,
+          total_remessa_qtd, total_remessa_valor,
+          total_tributado_qtd, total_tributado_valor,
+          total_entradas_qtd, total_entradas_valor,
+          total_nfe_qtd, total_nfe_valor,
+          total_ctrs_qtd, total_ctrs_valor,
+          total_impostos_qtd, total_impostos_valor,
+          rbt12_valor, aliquota_efetiva, imposto_estimado,
+          detalhes_json, usuario_fechamento, updated_at
+        ) VALUES (
+          $1, $2, $3, $4,
+          $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+          $21, $22, $23, $24, $25, NOW()
+        )
+        ON CONFLICT (empresa, ano_mes) DO UPDATE SET
+          data_inicio = EXCLUDED.data_inicio,
+          data_fim = EXCLUDED.data_fim,
+          total_saidas_qtd = EXCLUDED.total_saidas_qtd,
+          total_saidas_valor = EXCLUDED.total_saidas_valor,
+          total_devolucao_qtd = EXCLUDED.total_devolucao_qtd,
+          total_devolucao_valor = EXCLUDED.total_devolucao_valor,
+          total_remessa_qtd = EXCLUDED.total_remessa_qtd,
+          total_remessa_valor = EXCLUDED.total_remessa_valor,
+          total_tributado_qtd = EXCLUDED.total_tributado_qtd,
+          total_tributado_valor = EXCLUDED.total_tributado_valor,
+          total_entradas_qtd = EXCLUDED.total_entradas_qtd,
+          total_entradas_valor = EXCLUDED.total_entradas_valor,
+          total_nfe_qtd = EXCLUDED.total_nfe_qtd,
+          total_nfe_valor = EXCLUDED.total_nfe_valor,
+          total_ctrs_qtd = EXCLUDED.total_ctrs_qtd,
+          total_ctrs_valor = EXCLUDED.total_ctrs_valor,
+          total_impostos_qtd = EXCLUDED.total_impostos_qtd,
+          total_impostos_valor = EXCLUDED.total_impostos_valor,
+          rbt12_valor = EXCLUDED.rbt12_valor,
+          aliquota_efetiva = EXCLUDED.aliquota_efetiva,
+          imposto_estimado = EXCLUDED.imposto_estimado,
+          detalhes_json = EXCLUDED.detalhes_json,
+          usuario_fechamento = EXCLUDED.usuario_fechamento,
+          updated_at = NOW();
+      `, [
+        empresa, anoMes, dataInicio, dataFim,
+        tSaidasQtd, tSaidasVal,
+        tDevQtd, tDevVal,
+        tRemQtd, tRemVal,
+        tTribQtd, tTribVal,
+        tEntQtd, tEntVal,
+        tNfeQtd, tNfeVal,
+        tCtrQtd, tCtrVal,
+        tImpQtd, tImpVal,
+        rbt12, aliquotaEfetiva, impostoEstimado,
+        JSON.stringify(detalhesJson), usuario
+      ]);
+      salvoNoPostgres = true;
+    } catch (errPg) {
+      console.warn('⚠️ [Postgres] Falha ao gravar fechamento_fiscal_consolidado, salvando em cache JSON:', errPg.message);
+    }
+  }
+
+  // Backup / Fallback perene em JSON
+  try {
+    const list = safeReadJsonSync(fechamentoFiscalCacheFile, []) || [];
+    const idx = list.findIndex(item => item.empresa === empresa && item.anoMes === anoMes);
+    const registro = {
+      empresa,
+      anoMes,
+      dataInicio,
+      dataFim,
+      totais,
+      rbt12,
+      aliquotaEfetiva,
+      impostoEstimado,
+      detalhes: detalhesJson,
+      usuario,
+      updated_at: new Date().toISOString()
+    };
+    if (idx >= 0) {
+      list[idx] = registro;
+    } else {
+      list.push(registro);
+    }
+    safeWriteJsonSync(fechamentoFiscalCacheFile, list);
+  } catch (errJson) {
+    console.warn('⚠️ [Postgres Cache] Falha ao gravar fechamento_fiscal_cache.json:', errJson.message);
+  }
+
+  return {
+    ok: true,
+    empresa,
+    anoMes,
+    salvoNoPostgres
+  };
+}
+
+async function obterFechamentoFiscalDB(empresa, anoMes) {
+  const emp = String(empresa || '').trim().toUpperCase();
+  const am = String(anoMes || '').trim();
+
+  if (isConnected && pool) {
+    try {
+      const res = await safeQuery(`
+        SELECT * FROM fechamento_fiscal_consolidado
+        WHERE empresa = $1 AND ano_mes = $2
+        LIMIT 1;
+      `, [emp, am]);
+      if (res && res.rows.length > 0) {
+        return res.rows[0];
+      }
+    } catch (errPg) {
+      console.warn('⚠️ [Postgres] Erro ao consultar fechamento_fiscal_consolidado:', errPg.message);
+    }
+  }
+
+  // Fallback JSON
+  try {
+    const list = safeReadJsonSync(fechamentoFiscalCacheFile, []) || [];
+    const found = list.find(item => item.empresa === emp && item.anoMes === am);
+    return found || null;
+  } catch {
+    return null;
+  }
+}
+
+async function listarFechamentosFiscaisDB(empresa) {
+  const emp = empresa ? String(empresa).trim().toUpperCase() : null;
+
+  if (isConnected && pool) {
+    try {
+      let query = `SELECT * FROM fechamento_fiscal_consolidado`;
+      const params = [];
+      if (emp) {
+        query += ` WHERE empresa = $1`;
+        params.push(emp);
+      }
+      query += ` ORDER BY ano_mes DESC;`;
+      const res = await safeQuery(query, params);
+      if (res) return res.rows;
+    } catch (errPg) {
+      console.warn('⚠️ [Postgres] Erro ao listar fechamentos fiscais:', errPg.message);
+    }
+  }
+
+  // Fallback JSON
+  try {
+    const list = safeReadJsonSync(fechamentoFiscalCacheFile, []) || [];
+    if (emp) {
+      return list.filter(item => item.empresa === emp).sort((a, b) => b.anoMes.localeCompare(a.anoMes));
+    }
+    return list.sort((a, b) => b.anoMes.localeCompare(a.anoMes));
+  } catch {
+    return [];
+  }
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -5293,6 +5529,10 @@ module.exports = {
   obterNfsePendentesDB,
   atualizarStatusNfseDB,
   reconciliarNfseComProtheusDB,
+  // Módulo Fechamento Fiscal
+  salvarFechamentoFiscalDB,
+  obterFechamentoFiscalDB,
+  listarFechamentosFiscaisDB,
   DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool

@@ -3752,6 +3752,355 @@ async function obterDetalhesNFeEntrada({ empresaKey, doc, serie, fornece, loja }
   };
 }
 
+// ============================================================================
+// MÓDULO FECHAMENTO FISCAL (ANALISTA FINANCEIRO) - MULTI-EMPRESAS
+// ============================================================================
+
+const TABELAS_FECHAMENTO = {
+  '16': { nome: 'OACO', codigo: '16', sf2: 'SF2160', sd2: 'SD2160', sf1: 'SF1160', sd1: 'SD1160', sa1: 'SA1160', sa2: 'SA2160', sf4: 'SF4160' },
+  'OACO': { nome: 'OACO', codigo: '16', sf2: 'SF2160', sd2: 'SD2160', sf1: 'SF1160', sd1: 'SD1160', sa1: 'SA1160', sa2: 'SA2160', sf4: 'SF4160' },
+  '14': { nome: 'METAL_PLENO', codigo: '14', sf2: 'SF2140', sd2: 'SD2140', sf1: 'SF1140', sd1: 'SD1140', sa1: 'SA1010', sa2: 'SA2010', sf4: 'SF4010' },
+  'METAL_PLENO': { nome: 'METAL_PLENO', codigo: '14', sf2: 'SF2140', sd2: 'SD2140', sf1: 'SF1140', sd1: 'SD1140', sa1: 'SA1010', sa2: 'SA2010', sf4: 'SF4010' },
+  'MP': { nome: 'METAL_PLENO', codigo: '14', sf2: 'SF2140', sd2: 'SD2140', sf1: 'SF1140', sd1: 'SD1140', sa1: 'SA1010', sa2: 'SA2010', sf4: 'SF4010' },
+  '15': { nome: 'GSI', codigo: '15', sf2: 'SF2150', sd2: 'SD2150', sf1: 'SF1150', sd1: 'SD1150', sa1: 'SA1010', sa2: 'SA2150', sf4: 'SF4010' },
+  'GSI': { nome: 'GSI', codigo: '15', sf2: 'SF2150', sd2: 'SD2150', sf1: 'SF1150', sd1: 'SD1150', sa1: 'SA1010', sa2: 'SA2150', sf4: 'SF4010' }
+};
+
+function formatarDataSqlFiscal(dataStr) {
+  if (!dataStr) return '';
+  const limpa = String(dataStr).replace(/[^0-9]/g, '');
+  if (limpa.length >= 8) return limpa.substring(0, 8);
+  return limpa;
+}
+
+function formatarDataBrFiscal(protheusDate) {
+  if (!protheusDate || String(protheusDate).length < 8) return '';
+  const s = String(protheusDate);
+  const y = s.substring(0, 4);
+  const m = s.substring(4, 6);
+  const d = s.substring(6, 8);
+  return `${d}/${m}/${y}`;
+}
+
+function formatarCgcFiscal(cgc) {
+  if (!cgc) return '';
+  const s = String(cgc).replace(/[^0-9]/g, '');
+  if (s.length === 14) {
+    return s.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  } else if (s.length === 11) {
+    return s.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  }
+  return s;
+}
+
+/**
+ * Consulta e consolida o fechamento fiscal de saídas e entradas de um período
+ * Ignora movimentos de espécie 'ROMA'
+ * Identifica deterministamente o Total Tributado (Vendas c/ financeiro)
+ */
+async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, criterioDataEntrada = 'EMISSAO' }) {
+  const empKey = String(empresa || '16').toUpperCase();
+  const cfg = TABELAS_FECHAMENTO[empKey] || TABELAS_FECHAMENTO['16'];
+
+  const dtDe = formatarDataSqlFiscal(dataDe) || '20260801';
+  const dtAte = formatarDataSqlFiscal(dataAte) || '20260831';
+
+  // 1. Consulta de Saídas SF2 + SD2 + SA1 + SF4
+  const sqlSaidas = `
+    SELECT 
+      F2.F2_DOC, F2.F2_SERIE, F2.F2_EMISSAO, F2.F2_VALBRUT, F2.F2_TIPO, F2.F2_ESPECIE,
+      F2.F2_CLIENT, F2.F2_LOJA, F2.F2_EST,
+      ISNULL(A1.A1_CGC, '') as CGC, ISNULL(A1.A1_NOME, '') as RAZAO,
+      D2.CFOP, D2.TES, D2.DESCR_TES, D2.GERA_DUPLIC,
+      ISNULL(F2.F2_ICMSDIF, 0) as DIFAL
+    FROM ${cfg.sf2} F2
+    LEFT JOIN ${cfg.sa1} A1 ON A1.D_E_L_E_T_ = '' AND A1.A1_COD = F2.F2_CLIENT AND A1.A1_LOJA = F2.F2_LOJA
+    CROSS APPLY (
+      SELECT TOP 1 
+        SD2.D2_CF as CFOP, 
+        SD2.D2_TES as TES,
+        ISNULL(SF4.F4_TEXTO, '') as DESCR_TES,
+        ISNULL(SF4.F4_DUPLIC, 'N') as GERA_DUPLIC
+      FROM ${cfg.sd2} SD2
+      LEFT JOIN ${cfg.sf4} SF4 ON SF4.D_E_L_E_T_ = '' AND SF4.F4_CODIGO = SD2.D2_TES
+      WHERE SD2.D_E_L_E_T_ = '' AND SD2.D2_DOC = F2.F2_DOC AND SD2.D2_SERIE = F2.F2_SERIE
+    ) D2
+    WHERE F2.D_E_L_E_T_ = ''
+      AND F2.F2_EMISSAO >= '${sanitizeSqlParam(dtDe)}' AND F2.F2_EMISSAO <= '${sanitizeSqlParam(dtAte)}'
+    ORDER BY F2.F2_DOC
+  `;
+
+  // 2. Consulta de Entradas SF1 + SD1 + SA2 + SF4 (ignora estritamente 'ROMA')
+  const campoDataEntrada = criterioDataEntrada === 'DIGITACAO' ? 'F1.F1_DTDIGIT' : 'F1.F1_EMISSAO';
+  const sqlEntradas = `
+    SELECT 
+      F1.F1_DOC, F1.F1_SERIE, F1.F1_EMISSAO, F1.F1_DTDIGIT, F1.F1_VALBRUT, F1.F1_TIPO, F1.F1_ESPECIE,
+      F1.F1_FORNECE, F1.F1_LOJA, F1.F1_EST,
+      ISNULL(A2.A2_CGC, '') as CGC, ISNULL(A2.A2_NOME, '') as RAZAO,
+      D1.CFOP, D1.TES, D1.DESCR_TES, D1.GERA_DUPLIC,
+      0 as DIFAL
+    FROM ${cfg.sf1} F1
+    LEFT JOIN ${cfg.sa2} A2 ON A2.D_E_L_E_T_ = '' AND A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA
+    CROSS APPLY (
+      SELECT TOP 1 
+        SD1.D1_CF as CFOP, 
+        SD1.D1_TES as TES,
+        ISNULL(SF4.F4_TEXTO, '') as DESCR_TES,
+        ISNULL(SF4.F4_DUPLIC, 'N') as GERA_DUPLIC
+      FROM ${cfg.sd1} SD1
+      LEFT JOIN ${cfg.sf4} SF4 ON SF4.D_E_L_E_T_ = '' AND SF4.F4_CODIGO = SD1.D1_TES
+      WHERE SD1.D_E_L_E_T_ = '' AND SD1.D1_DOC = F1.F1_DOC AND SD1.D1_SERIE = F1.F1_SERIE AND SD1.D1_FORNECE = F1.F1_FORNECE
+    ) D1
+    WHERE F1.D_E_L_E_T_ = ''
+      AND ${campoDataEntrada} >= '${sanitizeSqlParam(dtDe)}' AND ${campoDataEntrada} <= '${sanitizeSqlParam(dtAte)}'
+      AND F1.F1_ESPECIE <> 'ROMA'
+    ORDER BY F1.F1_DOC
+  `;
+
+  const [resSaidas, resEntradas] = await Promise.all([
+    executeRailwayQuery(sqlSaidas),
+    executeRailwayQuery(sqlEntradas)
+  ]);
+
+  const itens = [];
+
+  // Totais Saída
+  let totalSaidasQtd = 0;
+  let totalSaidasValor = 0.0;
+  let totalDevolucaoQtd = 0;
+  let totalDevolucaoValor = 0.0;
+  let totalRemessaQtd = 0;
+  let totalRemessaValor = 0.0;
+  let totalTributadoQtd = 0;
+  let totalTributadoValor = 0.0;
+
+  for (const row of resSaidas.rows) {
+    const val = Number(row.F2_VALBRUT || 0);
+    const tipo = (row.F2_TIPO || '').trim().toUpperCase();
+    const cfop = String(row.CFOP || '').trim();
+    const geraDuplic = (row.GERA_DUPLIC || 'N').trim().toUpperCase();
+
+    totalSaidasQtd++;
+    totalSaidasValor += val;
+
+    let tipoOperacao = 'OUTRAS_SAIDAS';
+    let geraImposto = false;
+
+    // Regras de Classificação
+    if (tipo === 'D' || cfop.startsWith('52') || cfop.startsWith('62') || cfop.startsWith('72')) {
+      tipoOperacao = 'DEVOLUCAO';
+      totalDevolucaoQtd++;
+      totalDevolucaoValor += val;
+    } else if (
+      tipo === 'B' ||
+      cfop === '5554' ||
+      (cfop.startsWith('59') && cfop !== '5922') ||
+      (cfop.startsWith('69') && cfop !== '6922') ||
+      cfop === '5117' ||
+      cfop === '6117' ||
+      geraDuplic !== 'S'
+    ) {
+      tipoOperacao = 'REMESSA';
+      totalRemessaQtd++;
+      totalRemessaValor += val;
+    } else if (
+      (tipo === 'N' || tipo === 'C') &&
+      geraDuplic === 'S' &&
+      (cfop.startsWith('51') || cfop.startsWith('54') || cfop.startsWith('61') || cfop.startsWith('64') || cfop.startsWith('71') || cfop === '5922' || cfop === '6922')
+    ) {
+      tipoOperacao = 'VENDA_TRIBUTADA';
+      geraImposto = true;
+      totalTributadoQtd++;
+      totalTributadoValor += val;
+    }
+
+    itens.push({
+      entraSaida: 'SAÍDA',
+      tipo: tipo || 'N',
+      tipoDoc: (row.F2_ESPECIE || 'SPED').trim(),
+      numNf: (row.F2_DOC || '').trim(),
+      serie: (row.F2_SERIE || '').trim(),
+      dataEmissao: (row.F2_EMISSAO || '').trim(),
+      dataEmissaoFmt: formatarDataBrFiscal(row.F2_EMISSAO),
+      valor: Math.round(val * 100) / 100,
+      cfop: cfop,
+      tes: (row.TES || '').trim(),
+      descrTes: (row.DESCR_TES || '').trim(),
+      uf: (row.F2_EST || '').trim(),
+      cnpjCpf: (row.CGC || '').trim(),
+      cnpjCpfFmt: formatarCgcFiscal(row.CGC),
+      razaoSocial: (row.RAZAO || '').trim(),
+      geraImposto: geraImposto ? 'Sim' : 'Não',
+      difal: Number(row.DIFAL || 0) > 0 ? Number(row.DIFAL).toFixed(2) : '',
+      tipoOperacao
+    });
+  }
+
+  // Totais Entrada
+  let totalEntradasQtd = 0;
+  let totalEntradasValor = 0.0;
+  let totalNfeQtd = 0;
+  let totalNfeValor = 0.0;
+  let totalCtrQtd = 0;
+  let totalCtrValor = 0.0;
+  let totalImpostosQtd = 0;
+  let totalImpostosValor = 0.0;
+
+  for (const row of resEntradas.rows) {
+    const val = Number(row.F1_VALBRUT || 0);
+    const esp = (row.F1_ESPECIE || '').trim().toUpperCase();
+    const cfop = String(row.CFOP || '').trim();
+
+    totalEntradasQtd++;
+    totalEntradasValor += val;
+
+    if (esp === 'NFE' || esp === 'SPED') {
+      totalNfeQtd++;
+      totalNfeValor += val;
+    } else if (esp === 'CTR' || esp === 'CTE') {
+      totalCtrQtd++;
+      totalCtrValor += val;
+    } else if (esp === 'IMP' || esp === 'DAS') {
+      totalImpostosQtd++;
+      totalImpostosValor += val;
+    }
+
+    itens.push({
+      entraSaida: 'ENTRA',
+      tipo: (row.F1_TIPO || 'N').trim(),
+      tipoDoc: esp,
+      numNf: (row.F1_DOC || '').trim(),
+      serie: (row.F1_SERIE || '').trim(),
+      dataEmissao: (row.F1_EMISSAO || '').trim(),
+      dataEmissaoFmt: formatarDataBrFiscal(row.F1_EMISSAO),
+      dataDigitacao: (row.F1_DTDIGIT || '').trim(),
+      dataDigitacaoFmt: formatarDataBrFiscal(row.F1_DTDIGIT),
+      valor: Math.round(val * 100) / 100,
+      cfop: cfop,
+      tes: (row.TES || '').trim(),
+      descrTes: (row.DESCR_TES || '').trim(),
+      uf: (row.F1_EST || '').trim(),
+      cnpjCpf: (row.CGC || '').trim(),
+      cnpjCpfFmt: formatarCgcFiscal(row.CGC),
+      razaoSocial: (row.RAZAO || '').trim(),
+      geraImposto: 'Não',
+      difal: '',
+      tipoOperacao: 'ENTRADA'
+    });
+  }
+
+  // Ordenação: Saídas primeiro, depois Entradas, por número de NF
+  itens.sort((a, b) => {
+    if (a.entraSaida !== b.entraSaida) {
+      return a.entraSaida === 'SAÍDA' ? -1 : 1;
+    }
+    return a.numNf.localeCompare(b.numNf, undefined, { numeric: true });
+  });
+
+  return {
+    ok: true,
+    empresa: cfg.nome,
+    empresaCodigo: cfg.codigo,
+    periodo: { de: dtDe, ate: dtAte, criterioDataEntrada },
+    totais: {
+      totalSaidas: { qtd: totalSaidasQtd, valor: Math.round(totalSaidasValor * 100) / 100 },
+      totalDevolucao: { qtd: totalDevolucaoQtd, valor: Math.round(totalDevolucaoValor * 100) / 100 },
+      totalRemessa: { qtd: totalRemessaQtd, valor: Math.round(totalRemessaValor * 100) / 100 },
+      totalTributado: { qtd: totalTributadoQtd, valor: Math.round(totalTributadoValor * 100) / 100 },
+      totalEntradas: { qtd: totalEntradasQtd, valor: Math.round(totalEntradasValor * 100) / 100 },
+      totalNfe: { qtd: totalNfeQtd, valor: Math.round(totalNfeValor * 100) / 100 },
+      totalCtr: { qtd: totalCtrQtd, valor: Math.round(totalCtrValor * 100) / 100 },
+      totalImpostos: { qtd: totalImpostosQtd, valor: Math.round(totalImpostosValor * 100) / 100 }
+    },
+    totalItens: itens.length,
+    itens
+  };
+}
+
+/**
+ * Consulta o faturamento tributado dos últimos 12 meses para apuração da RBT12 (Simples/Lucro Presumido)
+ */
+async function obterHistoricoFaturamento12MesesProtheus({ empresa, anoMesReferencia }) {
+  const empKey = String(empresa || '16').toUpperCase();
+  const cfg = TABELAS_FECHAMENTO[empKey] || TABELAS_FECHAMENTO['16'];
+
+  const ref = formatarDataSqlFiscal(anoMesReferencia) || '202608';
+  let y = parseInt(ref.substring(0, 4), 10);
+  let m = parseInt(ref.substring(4, 6), 10);
+
+  const meses = [];
+  for (let i = 12; i >= 1; i--) {
+    let targetM = m - i;
+    let targetY = y;
+    while (targetM <= 0) {
+      targetM += 12;
+      targetY -= 1;
+    }
+    const mesStr = `${targetY}${String(targetM).padStart(2, '0')}`;
+    meses.push(mesStr);
+  }
+
+  const minMes = meses[0];
+  const maxMes = meses[meses.length - 1];
+
+  const sql = `
+    SELECT 
+      SUBSTRING(F2.F2_EMISSAO, 1, 6) as ANO_MES,
+      COUNT(DISTINCT F2.F2_DOC + F2.F2_SERIE) as QTD_NOTAS,
+      SUM(F2.F2_VALBRUT) as VALOR_FATURADO
+    FROM ${cfg.sf2} F2
+    WHERE F2.D_E_L_E_T_ = ''
+      AND F2.F2_EMISSAO >= '${minMes}01' AND F2.F2_EMISSAO <= '${maxMes}31'
+      AND F2.F2_TIPO = 'N'
+      AND EXISTS (
+        SELECT 1 FROM ${cfg.sd2} SD2
+        LEFT JOIN ${cfg.sf4} SF4 ON SF4.D_E_L_E_T_ = '' AND SF4.F4_CODIGO = SD2.D2_TES
+        WHERE SD2.D_E_L_E_T_ = '' AND SD2.D2_DOC = F2.F2_DOC AND SD2.D2_SERIE = F2.F2_SERIE
+          AND (
+            SD2.D2_CF LIKE '51%' OR SD2.D2_CF LIKE '54%' OR SD2.D2_CF LIKE '61%' OR SD2.D2_CF LIKE '64%' OR SD2.D2_CF LIKE '71%'
+            OR SD2.D2_CF IN ('5922', '6922')
+          )
+          AND SD2.D2_CF NOT IN ('5117', '6117')
+          AND ISNULL(SF4.F4_DUPLIC, 'N') = 'S'
+      )
+    GROUP BY SUBSTRING(F2.F2_EMISSAO, 1, 6)
+    ORDER BY ANO_MES
+  `;
+
+  const res = await executeRailwayQuery(sql);
+  const mapaValores = new Map();
+  res.rows.forEach(r => {
+    mapaValores.set(r.ANO_MES, {
+      qtdNotas: Number(r.QTD_NOTAS || 0),
+      valorFaturado: Number(r.VALOR_FATURADO || 0)
+    });
+  });
+
+  let somaRbt12 = 0;
+  const historicoMeses = meses.map(mes => {
+    const dados = mapaValores.get(mes) || { qtdNotas: 0, valorFaturado: 0 };
+    somaRbt12 += dados.valorFaturado;
+    const ano = mes.substring(0, 4);
+    const mStr = mes.substring(4, 6);
+    return {
+      anoMes: mes,
+      rotulo: `${mStr}/${ano}`,
+      qtdNotas: dados.qtdNotas,
+      valorFaturado: Math.round(dados.valorFaturado * 100) / 100
+    };
+  });
+
+  return {
+    ok: true,
+    empresa: cfg.nome,
+    empresaCodigo: cfg.codigo,
+    mesReferencia: ref,
+    periodo12m: { de: minMes, ate: maxMes },
+    rbt12: Math.round(somaRbt12 * 100) / 100,
+    historico: historicoMeses
+  };
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
@@ -3786,7 +4135,13 @@ module.exports = {
   EMPRESAS_FINANCEIRO,
   consultarSaldoSE8,
   consultarExtratoSE5,
-  algoritmoMatchingConciliacao
+  algoritmoMatchingConciliacao,
+  // Exportações do Módulo Fechamento Fiscal
+  TABELAS_FECHAMENTO,
+  consultarFechamentoFiscalProtheus,
+  obterHistoricoFaturamento12MesesProtheus,
+  formatarDataBrFiscal,
+  formatarCgcFiscal
 };
 
 

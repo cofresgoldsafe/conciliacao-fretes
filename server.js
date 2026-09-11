@@ -37,7 +37,9 @@ const {
   EMPRESAS_FINANCEIRO,
   consultarSaldoSE8,
   consultarExtratoSE5,
-  algoritmoMatchingConciliacao
+  algoritmoMatchingConciliacao,
+  consultarFechamentoFiscalProtheus,
+  obterHistoricoFaturamento12MesesProtheus
 } = require('./protheus_db');
 
 const {
@@ -118,6 +120,9 @@ const {
   obterNfsePendentesDB,
   atualizarStatusNfseDB,
   reconciliarNfseComProtheusDB,
+  salvarFechamentoFiscalDB,
+  obterFechamentoFiscalDB,
+  listarFechamentosFiscaisDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -4674,6 +4679,103 @@ app.patch('/api/analista-fin/nfse/:chaveAcesso/status', requireAuth, async (req,
     return res.json({ ok: true, resultado: updated });
   } catch (err) {
     console.error('Erro ao atualizar status da NFS-e:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// MÓDULO DE FECHAMENTO FISCAL (ANALISTA FIN) - APURAÇÃO E CONSOLIDAÇÃO
+// ============================================================================
+
+// 1. Consultar Fechamento Fiscal no Protheus (Multiempresa: OACO 16, MP 14, GSI 15)
+app.get('/api/analista-fin/fechamento-fiscal', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { empresa, de, ate, criterioData } = req.query;
+
+    if (!empresa) {
+      return res.status(400).json({
+        ok: false,
+        error: 'O parâmetro "empresa" é obrigatório (14 = Metal Pleno, 15 = GSI, 16 = OACO).'
+      });
+    }
+
+    const resultado = await consultarFechamentoFiscalProtheus({
+      empresa,
+      dataDe: de,
+      dataAte: ate,
+      criterioDataEntrada: criterioData || 'EMISSAO'
+    });
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'CONSULTA_FECHAMENTO_FISCAL',
+      description: `Consultou Fechamento Fiscal da empresa ${resultado.empresa} (${resultado.periodo.de} a ${resultado.periodo.ate}) - ${resultado.totalItens} notas avaliadas.`,
+      ip: req.ip,
+      metadata: { empresa, de: resultado.periodo.de, ate: resultado.periodo.ate, totais: resultado.totais }
+    }).catch(() => {});
+
+    return res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao consultar fechamento fiscal:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. Obter Histórico de Faturamento dos Últimos 12 Meses (RBT12 Simples/ICMS)
+app.get('/api/analista-fin/fechamento-fiscal/historico-12m', requireAuth, async (req, res) => {
+  try {
+    const { empresa, anoMes } = req.query;
+    if (!empresa) {
+      return res.status(400).json({ ok: false, error: 'O parâmetro "empresa" é obrigatório.' });
+    }
+
+    const resultado = await obterHistoricoFaturamento12MesesProtheus({
+      empresa,
+      anoMesReferencia: anoMes
+    });
+
+    return res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao obter histórico 12m de fechamento fiscal:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. Salvar / Consolidar Fechamento Fiscal no Banco de Dados
+app.post('/api/analista-fin/fechamento-fiscal/consolidar', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const dados = req.body || {};
+    dados.usuario = user ? (user.name || user.username) : 'Sistema';
+
+    const resultado = await salvarFechamentoFiscalDB(dados);
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'CONSOLIDAR_FECHAMENTO_FISCAL',
+      description: `Consolidou Fechamento Fiscal de ${dados.empresa} para a competência ${dados.anoMes}.`,
+      ip: req.ip,
+      metadata: { empresa: dados.empresa, anoMes: dados.anoMes }
+    }).catch(() => {});
+
+    return res.status(201).json(resultado);
+  } catch (err) {
+    console.error('Erro ao consolidar fechamento fiscal:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 4. Listar Fechamentos Fiscais Consolidados Gravados
+app.get('/api/analista-fin/fechamento-fiscal/consolidados', requireAuth, async (req, res) => {
+  try {
+    const { empresa } = req.query;
+    const lista = await listarFechamentosFiscaisDB(empresa);
+    return res.json({ ok: true, total: lista.length, itens: lista });
+  } catch (err) {
+    console.error('Erro ao listar fechamentos fiscais consolidados:', err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });

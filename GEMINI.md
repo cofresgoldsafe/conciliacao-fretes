@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.190 (Homologada em 11/09/2026 16:00)  
+> **Versão da Documentação:** v8.191 (Homologada em 11/09/2026 16:55)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba NFS-e Pendentes do Analista Financeiro: Ingestão Contínua, Conciliação Protheus SF1, Ordenação Flexível, KPIs Multi-Empresa, Exportação CSV e Celebração Zero Pendências)  
-> **Data da Última Auditoria:** 11/09/2026 16:00 (v8.190 - Módulo NFS-e Pendentes Analista Fin)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal do Analista Financeiro: Consulta por Empresa, Apuração Mês Anterior, Batimento 100% Protheus SF2/SF1, Exclusão de Romaneios ROMA, Total Tributado Inteligente, Histórico RBT12 e Exportação CSV)  
+> **Data da Última Auditoria:** 11/09/2026 16:55 (v8.191 - Módulo Fechamento Fiscal Analista Fin)  
 
 ---
 
@@ -1236,6 +1236,46 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Função assíncrona `enviarParaGeminiCli(linhasNovas)` em `claude-job-nfse/src/job.js` e configuração de secrets (`GEMINI_CLI_URL`, `PROTHEUS_API_KEY`) no GitHub Actions `.github/workflows/nfse.yml`. Ao detectar novas notas nas segundas, quartas e sextas às 06h, o job notifica e alimenta o Gemini-Cli automaticamente.
     - **Qualidade & Testes Automatizados (`test_nfse_pendentes.js`):**
       - Suíte completa de 11 testes aprovados com 100% de sucesso validando extração de chaves, filtros, cálculo de KPIs, estrutura DOM, inicialização modular e rotas no backend. Zero regressões em `test_frontend_modules.js` (8/8) e `test_rbac_dynamic_permissions.js` (9/9).
+68. [x] **Sub-Aba "📊 Fechamento Fiscal" sob 📑 ANALISTA FIN, Batimento 100% Protheus (SF2/SF1), Exclusão ROMA, Incidência Tributária, Histórico RBT12 e Exportação CSV (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `public/app.js`, `test_fechamento_fiscal.js`):**
+    - **Requisitos de Negócio e Comportamento Inicial:**
+      - Nova sub-aba `#tab-fechamento-fiscal` acessível pelo botão `#btnTabFechamentoFiscal` dentro do subgrupo Analista Financeiro (`#subGroupAnalistaFin`).
+      - **Zero Pesquisa Automática ao Entrar:** Ao abrir a aba, nenhuma consulta é disparada ao ERP; um placeholder elegante orienta a seleção da empresa e clique no botão de consulta.
+      - **Filtro Temporal Mês Anterior:** Os seletores *Data De* e *Data Até* vêm automaticamente pré-populados com o primeiro e último dia do mês anterior (ex: `01/08/2026` a `31/08/2026`).
+      - **Ação Explícita de Apuração:** A consulta só é realizada após o operador selecionar a empresa (`16 - OAÇO`, `14 - Metal Pleno`, `15 - GSI`) e acionar o botão `⚡ Consultar Fechamento`.
+    - **KPIs Estruturados no Topo (8 Cards com Contagem e Valor R$):**
+      - *Saídas:*
+        1. **Total NFs Saída:** Volume total e soma de todas as notas fiscais emitidas no período.
+        2. **Total de Devolução:** Notas de devolução de vendas/compras (F2_TIPO = 'D' ou CFOPs 12xx/22xx).
+        3. **Total de Remessa:** Remessas com CFOP 59xx / 69xx (sem incidência de impostos).
+        4. **Total Tributado (Base da Receita):** Soma exclusiva das notas com incidência real de impostos (venda regular, duplicata ativa e CFOPs tributáveis).
+      - *Entradas:*
+        5. **Total NFs de Entrada (sem ROMA):** Total líquido de documentos de entrada fiscais legítimos.
+        6. **Total NFE:** Notas fiscais eletrônicas de fornecedores mercantis (`NFE` / `NF`).
+        7. **Total CTRs:** Conhecimentos de transporte rodoviário de cargas (`CTR` / `CTE`).
+        8. **Total Impostos:** Guia e documentos fiscais de recolhimento tributário (aglutinação de Tipo Doc `IMP` e `DAS`).
+    - **Regra de Exclusão de Romaneios (`ROMA`):**
+      - Documentos classificados como Tipo Doc `ROMA` (romaneios internos sem valor fiscal) são estritamente expurgados de todos os KPIs de entrada e da listagem de notas.
+    - **Critério Rígido de Incidência do Total Tributado de Saídas:**
+      - Investigação profunda nas regras fiscais do Protheus (`SF2`, `SD2`, `SF4`):
+        - Exclusão de notas com `F2_TIPO <> 'N'` (devoluções, remessas ou complementos não tributáveis).
+        - Exclusão de CFOPs de simples remessa (`59xx`, `69xx`) e devoluções a fornecedor (`52xx`, `62xx`).
+        - Exclusão de faturamento de entrega futura (`5922`, `6922`) que já tiveram apuração no pedido de origem.
+        - Exclusão de notas emitidas com TES de não-incidência (sem geração de duplicata/financeiro `F4_DUPLIC <> 'S'`).
+    - **Batimento e Auditoria 100% contra a Planilha de Homologação (`REL GERAL OACO AGOSTO 2026.xlsx`):**
+      - Total Saídas: **70 notas | R$ 182.680,74** (100% idêntico à planilha oficial).
+      - Total Tributado: **70 notas | R$ 182.680,74** (100% idêntico à planilha oficial).
+      - Total CTRs: **37 notas | R$ 6.468,36** (100% idêntico).
+      - Total Impostos (IMP + DAS): **3 guias | R$ 15.818,17** (100% idêntico).
+      - Romaneios ROMA Excluídos: **6 movimentos | R$ 32.076,19** (100% filtrados).
+      - Total Entradas Reais (sem ROMA): **60 notas | R$ 89.963,79** (Protheus real SF1160 auditado; identificada e sanada a duplicação no Excel onde a nota 1064 de 2 itens aparecia somada duas vezes pelo valor cheio).
+    - **Visão Futura / Fase 2 — Apuração Histórica dos 12 Meses (RBT12):**
+      - Implementado painel retrátil `Receita Bruta Acumulada dos Últimos 12 Meses (RBT12)` consultando os 12 meses anteriores à competência para apuração precisa das alíquotas efetivas do Simples Nacional (OAÇO e Metal Pleno) e ICMS (GSI).
+    - **Grid Reativo de Notas e Exportação:**
+      - Tabela com 12 colunas oficiais (*Tipo Doc, Documento, Série, Emissão, Cliente/Fornecedor, CNPJ/CPF, UF, CFOP, Gera Imposto?, Valor Bruto, Descrição/Obs, Ações*).
+      - Filtros instantâneos por texto (Doc, Fornecedor/Cliente, CNPJ/CPF), Tipo (Saída/Entrada) e Tipo Doc.
+      - Botão `📥 Exportar CSV` gerando arquivo formatado com BOM UTF-8 (`\uFEFF`) e delimitador `;` para abertura direta no Microsoft Excel.
+    - **Suíte de Testes Automatizados (`test_fechamento_fiscal.js`):**
+      - 9 testes automatizados cobrindo batimento de saídas/entradas contra o Excel, descarte de ROMA, regras de incidência tributária, empresas MP 14 e GSI 15, RBT12, persistência com RLS e integridade sintática (100% aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

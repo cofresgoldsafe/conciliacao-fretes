@@ -811,6 +811,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.nfsePendentesModule.init();
         }
       }
+      if (targetTab === 'tab-fechamento-fiscal') {
+        if (window.FechamentoFiscalModule && typeof window.FechamentoFiscalModule.init === 'function') {
+          window.FechamentoFiscalModule.init();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 

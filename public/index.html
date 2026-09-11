@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.189">
+  <link rel="stylesheet" href="style.css?v=8.190">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 11/09/2026 16:00 (NFS-e Pendentes Analista Fin, Conciliação Protheus SF1/SE2 & Raiz CNPJ)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 11/09/2026 16:53 (Sub-aba Fechamento Fiscal no Analista Financeiro)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -235,6 +235,10 @@
         <button class="nav-tab-btn" data-tab="tab-nfse-pendentes" id="btnTabNfsePendentes">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>🧾 NFS-e Pendentes</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-fechamento-fiscal" id="btnTabFechamentoFiscal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>📊 Fechamento Fiscal</span>
         </button>
       </div>
 
@@ -4694,6 +4698,324 @@
       </div>
     </div>
 
+    <!-- SUB-ABA ANALISTA FIN: Fechamento Fiscal Mensal -->
+    <div id="tab-fechamento-fiscal" class="tab-pane hidden" style="position: relative;">
+      
+      <!-- CABEÇALHO DA ABA & BARRA DE FILTROS -->
+      <section class="card" style="margin-bottom: 1.25rem;">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(16, 185, 129, 0.12); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+              📊
+            </div>
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-color, #f8fafc);">
+                Fechamento Fiscal Mensal (Apuração Contábil & Tributária)
+              </h2>
+              <p class="desc" style="margin: 3px 0 0 0; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+                Conferência e apuração consolidada de NFs de Saída e Entrada contra o TOTVS Protheus ERP (SF2/SD2/SF1/SD1/SF4) para apuração de Simples Nacional, ICMS e conciliação contábil.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button id="btnExportarFechamentoCsv" class="btn btn-outline" style="height: 38px; display: none; align-items: center; gap: 6px;" title="Exportar listagem completa filtrada para CSV/Excel">
+              <span>📥 Exportar CSV</span>
+            </button>
+            <button id="btnConsolidarFechamentoFiscal" class="btn btn-secondary" style="height: 38px; display: none; align-items: center; gap: 6px;" title="Gravar e congelar o snapshot do fechamento mensal no banco relacional">
+              <span>💾 Consolidar Fechamento</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO DE SELEÇÃO E FILTROS -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; align-items: flex-end; background: rgba(15, 23, 42, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border, #334155);">
+          <div>
+            <label for="selFechamentoEmpresa" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              🏢 Empresa *
+            </label>
+            <select id="selFechamentoEmpresa" class="form-select" style="width: 100%; height: 38px; font-weight: 600;">
+              <option value="">-- Selecione a Empresa --</option>
+              <option value="16">16 - OAÇO (Simples Nacional)</option>
+              <option value="14">14 - Metal Pleno / S4BW (Simples Nacional)</option>
+              <option value="15">15 - GSI Brasil (Lucro Presumido)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="inputFechamentoDataDe" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              📅 Data De (Mês Anterior)
+            </label>
+            <input type="date" id="inputFechamentoDataDe" class="form-input" style="width: 100%; height: 38px;" />
+          </div>
+
+          <div>
+            <label for="inputFechamentoDataAte" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              📅 Data Até (Mês Anterior)
+            </label>
+            <input type="date" id="inputFechamentoDataAte" class="form-input" style="width: 100%; height: 38px;" />
+          </div>
+
+          <div>
+            <label for="selFechamentoCriterioData" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              ⚙️ Critério Entradas
+            </label>
+            <select id="selFechamentoCriterioData" class="form-select" style="width: 100%; height: 38px;">
+              <option value="EMISSAO" selected>Data de Emissão (Oficial)</option>
+              <option value="DIGITACAO">Data de Digitação/Entrada</option>
+            </select>
+          </div>
+
+          <div>
+            <button id="btnConsultarFechamentoFiscal" class="btn btn-primary" style="width: 100%; height: 38px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;">
+              <span id="iconConsultarFechamento">🔍</span>
+              <span id="labelConsultarFechamento">Consultar Fechamento</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PLACEHOLDER INICIAL (NENHUMA PESQUISA ANTES DO CLIQUE) -->
+      <div id="fechamentoFiscalPlaceholder" class="card" style="text-align: center; padding: 3.5rem 1.5rem; margin-bottom: 1.5rem; border: 1px dashed var(--panel-border, #334155); background: rgba(15, 23, 42, 0.25);">
+        <div style="font-size: 3rem; margin-bottom: 0.75rem; opacity: 0.8;">📊</div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-color, #f8fafc); margin: 0 0 0.5rem 0;">
+          Pronto para Apuração Fiscal
+        </h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted, #94a3b8); max-width: 540px; margin: 0 auto;">
+          Selecione a empresa acima (as datas já foram preenchidas automaticamente com o <strong>mês anterior</strong>) e clique no botão <strong>Consultar Fechamento</strong> para apurar as notas do TOTVS Protheus.
+        </p>
+      </div>
+
+      <!-- SPINNER DE CARREGAMENTO -->
+      <div id="fechamentoFiscalLoading" class="card" style="display: none; text-align: center; padding: 3rem 1.5rem; margin-bottom: 1.5rem;">
+        <div class="spinner" style="margin: 0 auto 1rem auto; width: 36px; height: 36px; border: 3px solid rgba(16, 185, 129, 0.2); border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <h4 style="font-size: 1.1rem; color: #f8fafc; margin: 0 0 4px 0;">Consultando TOTVS Protheus...</h4>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">Cruzando SF2/SD2 (Saídas) e SF1/SD1 (Entradas) com regras de incidência fiscal e descartando ROMA.</p>
+      </div>
+
+      <!-- PAINEL DE RESULTADOS (EXIBIDO APÓS CONSULTA) -->
+      <div id="fechamentoFiscalResultados" style="display: none;">
+
+        <!-- 8 CARDS DE KPIS NO TOPO (CONTAGEM E SOMA DOS VALORES) -->
+        <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin-bottom: 1.25rem;">
+          
+          <!-- 1. Total NFs Saída -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #3b82f6;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📤 Total NFs Saída</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-weight: 600;">Saídas</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalSaidasQtd" style="font-size: 1.55rem; font-weight: 700; color: #3b82f6;">0</strong>
+              <span id="kpiTotalSaidasValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Todas as notas de saída</span>
+          </div>
+
+          <!-- 2. Total Devolução -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #a855f7;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">↩️ Total Devolução</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #a855f7; font-weight: 600;">Saídas</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalDevolucaoQtd" style="font-size: 1.55rem; font-weight: 700; color: #a855f7;">0</strong>
+              <span id="kpiTotalDevolucaoValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Tipo D / CFOP 52xx/62xx</span>
+          </div>
+
+          <!-- 3. Total Remessa -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📦 Total Remessa</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; font-weight: 600;">Saídas</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalRemessaQtd" style="font-size: 1.55rem; font-weight: 700; color: #f59e0b;">0</strong>
+              <span id="kpiTotalRemessaValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Remessas, consertos, trocas s/ receita</span>
+          </div>
+
+          <!-- 4. Total Tributado (Card em destaque) -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">⭐ Total Tributado</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 700;">Base Receita</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalTributadoQtd" style="font-size: 1.55rem; font-weight: 800; color: #10b981;">0</strong>
+              <span id="kpiTotalTributadoValor" style="font-size: 1.15rem; font-weight: 800; color: #34d399; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: #a7f3d0;">Vendas comerciais efetivas c/ duplicata</span>
+          </div>
+
+          <!-- 5. Total NFs de Entrada -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #06b6d4;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📥 Total NFs Entrada</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(6, 182, 212, 0.15); color: #06b6d4; font-weight: 600;">Entradas</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalEntradasQtd" style="font-size: 1.55rem; font-weight: 700; color: #06b6d4;">0</strong>
+              <span id="kpiTotalEntradasValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Desconsidera Tipo Doc ROMA</span>
+          </div>
+
+          <!-- 6. Total NFE -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #6366f1;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🏷️ Total NFE</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(99, 102, 241, 0.15); color: #6366f1; font-weight: 600;">Entradas</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalNfeQtd" style="font-size: 1.55rem; font-weight: 700; color: #6366f1;">0</strong>
+              <span id="kpiTotalNfeValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Notas mercantis de entrada</span>
+          </div>
+
+          <!-- 7. Total CTRs -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #f97316;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🚚 Total CTRs</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(249, 115, 22, 0.15); color: #f97316; font-weight: 600;">Fretes Tomados</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalCtrQtd" style="font-size: 1.55rem; font-weight: 700; color: #f97316;">0</strong>
+              <span id="kpiTotalCtrValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Conhecimentos de transporte</span>
+          </div>
+
+          <!-- 8. Total Impostos (IMP + DAS) -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #ec4899;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🏛️ Total Impostos</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(236, 72, 153, 0.15); color: #ec4899; font-weight: 600;">IMP + DAS</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalImpostosQtd" style="font-size: 1.55rem; font-weight: 700; color: #ec4899;">0</strong>
+              <span id="kpiTotalImpostosValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Guias recolhidas no mês</span>
+          </div>
+
+        </div>
+
+        <!-- BLOCO DA FASE 2: HISTÓRICO DE 12 MESES & RBT12 (EXPANSÍVEL) -->
+        <div class="card" style="margin-bottom: 1.25rem; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="btnToggleHistorico12m">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.2rem;">📈</span>
+              <div>
+                <strong style="font-size: 0.95rem; color: var(--text-color, #f8fafc);">
+                  Histórico de Faturamento dos Últimos 12 Meses (RBT12) & Fase 2
+                </strong>
+                <span style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); display: block;">
+                  Base acumulada para cálculo das alíquotas do Simples Nacional (OAÇO / Metal Pleno) e ICMS (GSI)
+                </span>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="text-align: right;">
+                <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8); display: block;">RBT12 ACUMULADA</span>
+                <strong id="kpiRbt12Total" style="font-size: 1.15rem; color: #38bdf8; font-family: var(--font-mono, monospace);">R$ 0,00</strong>
+              </div>
+              <span id="iconToggle12m" style="font-size: 0.9rem; color: var(--text-muted, #94a3b8);">▼</span>
+            </div>
+          </div>
+
+          <div id="conteudoHistorico12m" style="display: none; margin-top: 1rem; border-top: 1px solid var(--panel-border, #334155); padding-top: 1rem;">
+            <div style="max-height: 240px; overflow-y: auto;">
+              <table style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: rgba(15, 23, 42, 0.6); position: sticky; top: 0;">
+                    <th style="padding: 6px 10px; text-align: left;">Competência</th>
+                    <th style="padding: 6px 10px; text-align: center;">Qtd Notas</th>
+                    <th style="padding: 6px 10px; text-align: right;">Faturamento Tributado (R$)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyHistorico12m"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- BARRA DE FILTRO RÁPIDO & BUSCA INSTANTÂNEA DA LISTAGEM -->
+        <section class="card" style="margin-bottom: 1rem; padding: 0.85rem 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.85rem;">
+            
+            <div style="flex: 1; min-width: 260px;">
+              <input 
+                type="text" 
+                id="inputBuscaFechamento" 
+                class="form-input" 
+                placeholder="🔍 Filtrar instantaneamente por Num NF, Valor, CNPJ/CPF ou Razão Social..." 
+                style="width: 100%; height: 38px; font-size: 0.85rem;" 
+              />
+            </div>
+
+            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+              <select id="selFiltroTipoFechamento" class="form-select" style="height: 38px; font-size: 0.82rem; min-width: 150px;">
+                <option value="ALL">Fluxo: Todos</option>
+                <option value="SAIDA">Apenas Saídas</option>
+                <option value="ENTRA">Apenas Entradas</option>
+                <option value="TRIBUTADO">Apenas Tributadas (Sim)</option>
+                <option value="NAO_TRIBUTADO">Apenas Não Tributadas (Não)</option>
+              </select>
+
+              <select id="selFiltroDocFechamento" class="form-select" style="height: 38px; font-size: 0.82rem; min-width: 140px;">
+                <option value="ALL">Tipo Doc: Todos</option>
+                <option value="SPED">SPED</option>
+                <option value="NFE">NFE</option>
+                <option value="CTR">CTR / CTE</option>
+                <option value="NFS">NFS (Serviço)</option>
+                <option value="IMP">IMP (Imposto)</option>
+                <option value="DAS">DAS (Simples)</option>
+                <option value="NTST">NTST</option>
+              </select>
+
+              <span id="contadorRegistrosFechamento" style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500; white-space: nowrap; margin-left: 4px;">
+                Exibindo 0 de 0 notas
+              </span>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- TABELA / GRID DE NOTAS FISCAIS -->
+        <div class="card" style="padding: 0; overflow: hidden;">
+          <div style="max-height: 620px; overflow-y: auto; overflow-x: auto;">
+            <table class="data-table" style="width: 100%; font-size: 0.82rem; border-collapse: collapse;">
+              <thead>
+                <tr style="background: rgba(15, 23, 42, 0.9); position: sticky; top: 0; z-index: 5; border-bottom: 2px solid var(--panel-border, #334155);">
+                  <th style="padding: 8px 12px; text-align: center; width: 85px;">Fluxo</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 50px;">Tipo</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 75px;">Tipo Doc.</th>
+                  <th style="padding: 8px 12px; text-align: left; width: 110px;">Num NF</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 95px;">Data</th>
+                  <th style="padding: 8px 12px; text-align: right; width: 115px;">Valor (R$)</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 65px;">CFOP</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 60px;">TES</th>
+                  <th style="padding: 8px 8px; text-align: center; width: 45px;">UF</th>
+                  <th style="padding: 8px 12px; text-align: left; min-width: 200px;">CNPJ / Razão Social</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 95px;">Gera Imposto</th>
+                  <th style="padding: 8px 10px; text-align: right; width: 85px;">Difal</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyFechamentoFiscal">
+                <!-- Linhas inseridas dinamicamente via public/js/fechamento_fiscal.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
     <!-- ABA 1 BI: Índices Financeiros de Liquidez -->
     <div id="tab-bi-indices" class="tab-pane hidden">
       <div class="bi-wrapper" id="biIndicesWrapper">
@@ -7483,18 +7805,19 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.189"></script>
-  <script src="js/bi_indices.js?v=8.189"></script>
-  <script src="js/bi_autorizacoes.js?v=8.189"></script>
-  <script src="js/gordura_frete.js?v=8.189"></script>
-  <script src="js/fechamento_vendedores.js?v=8.189"></script>
-  <script type="module" src="js/tarefas.js?v=8.189"></script>
-  <script src="js/holerites.js?v=8.189"></script>
-  <script src="js/funcionarios_dp.js?v=8.189"></script>
-  <script src="js/crm.js?v=8.189"></script>
+  <script src="js/bi.js?v=8.190"></script>
+  <script src="js/bi_indices.js?v=8.190"></script>
+  <script src="js/bi_autorizacoes.js?v=8.190"></script>
+  <script src="js/gordura_frete.js?v=8.190"></script>
+  <script src="js/fechamento_vendedores.js?v=8.190"></script>
+  <script type="module" src="js/tarefas.js?v=8.190"></script>
+  <script src="js/holerites.js?v=8.190"></script>
+  <script src="js/funcionarios_dp.js?v=8.190"></script>
+  <script src="js/crm.js?v=8.190"></script>
   <script src="js/compras_ponto_pedido.js?v=8.190"></script>
   <script src="js/compras_consulta_ped_nf.js?v=8.190"></script>
   <script src="js/nfse_pendentes.js?v=8.190"></script>
+  <script src="js/fechamento_fiscal.js?v=8.190"></script>
   <script src="app.js?v=8.190"></script>
 </body>
 </html>
