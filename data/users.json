@@ -14,24 +14,26 @@
       "configuracoes"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-10T14:22:46.226Z",
+    "lastActiveAt": "2026-09-11T18:00:34.445Z",
     "lastLoginAt": "2026-08-24T18:52:40.764Z",
-    "totalActions": 481
+    "totalActions": 488
   },
   {
     "username": "erica",
     "name": "Érica",
     "email": null,
-    "pass": "$2b$10$WjoJjsygyvkqpcZX519zIuWyUlQbCKO9V7iIxzs3TsWv6B8S7bGeO",
+    "pass": "$2b$10$cnrDZm2dDmu7r8JbuHLUHe8ISqn9ZqsgIif2D46er8f262ZsFC9K2",
     "role": "user",
     "permissions": [
       "logistica",
-      "consulta"
+      "consulta",
+      "financeiro",
+      "analista-fin"
     ],
     "active": true,
     "vendorCode": null,
-    "lastActiveAt": "2026-09-10T14:22:46.977Z",
-    "totalActions": 92
+    "lastActiveAt": "2026-09-11T18:00:35.389Z",
+    "totalActions": 98
   },
   {
     "username": "wallerson",
@@ -56,8 +58,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-03T03:01:26.651Z",
-    "totalActions": 146,
+    "lastActiveAt": "2026-09-11T15:38:16.133Z",
+    "totalActions": 148,
     "links_favoritos": [
       {
         "id": "1",
@@ -102,8 +104,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-03T03:01:21.042Z",
-    "totalActions": 28
+    "lastActiveAt": "2026-09-11T15:38:12.503Z",
+    "totalActions": 29
   },
   {
     "username": "figueiredo",
@@ -134,7 +136,7 @@
     "username": "usuario_2fa_teste",
     "name": "Usuário de Teste 2FA",
     "email": "usuario.2fa@oaco.com.br",
-    "pass": "$2b$10$M73D//eJw.vY9L474m1nrOClNLRxQXL3G3c0XHppBxH7OH05Gry9m",
+    "pass": "$2b$10$U7VLDAs5.eBsKzPw9b.jxuiCRMQCekvYbpx3gGIArXiJ2v/BeNzvK",
     "role": "user",
     "vendorCode": null,
     "permissions": [
@@ -142,14 +144,14 @@
       "consulta"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-03T03:01:36.945Z",
-    "totalActions": 97
+    "lastActiveAt": "2026-09-11T15:37:19.155Z",
+    "totalActions": 99
   },
   {
     "username": "marcos_logistica",
     "name": "Marcos de Oliveira",
     "email": "marcos@oaco.com.br",
-    "pass": "$2b$10$HCntQIqjeB2qhJPA3UB/nOjAW19L2m7Nep2lm301B2l6r9zl4brsa",
+    "pass": "$2b$10$T3yBa67pNq/Oa9zrZK78Eu.kGFWeGSms4d/4iVBqnyUtTvL51H7l2",
     "role": "user",
     "vendorCode": null,
     "permissions": [

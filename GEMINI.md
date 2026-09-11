@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.187 (Homologada em 11/09/2026 12:18)  
+> **Versão da Documentação:** v8.189 (Homologada em 11/09/2026 15:00)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Consulta Ped/NF Compras com Campo Cód Fornec., Alias "Nod Fornec.", Atalho em Vendedores, SF1/SD1/SC7/SA2/SF4/SE2 e Trava de 90 Dias)  
-> **Data da Última Auditoria:** 11/09/2026 12:18 (v8.187 - Campo Cód Fornec. em Consulta Ped/NF Compras e Atalho Vendedores)  
+> **Status:** Estável / Operacional em Produção (Arquitetura Extensível de Abas & Permissões RBAC Dinâmicas: Descoberta DOM, Badges Resilientes, Regex de Slugs em server.js e Correção de Érica em Analista Fin)  
+> **Data da Última Auditoria:** 11/09/2026 15:00 (v8.189 - Arquitetura Dinâmica de Permissões RBAC e Abas Permitidas)  
 
 ---
 
@@ -1191,6 +1191,18 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Como a função `gerarHoleriteHtml()` em `public/js/holerites.js` atende tanto aos holerites mensais quanto aos recibos de adiantamento, a melhoria beneficia 100% dos documentos gerados pelo sistema.
     - **Homologação Adversarial & Testes:**
       - Subagente de oposição adversarial aprovou a solução sem ressalvas após validação em `test_holerites_visual_signature.js` (5/5), `test_frontend_modules.js` (8/8), `test_holerites_api.js` (7/7) e `test_funcionarios_dp.js` (9/9).
+66. [x] **Arquitetura Extensível de Abas & Permissões RBAC Dinâmicas (`server.js`, `public/app.js`, `public/style.css`, `postgres_db.js`, `data/users.json`, `test_rbac_dynamic_permissions.js`):**
+    - **Diagnóstico da Causa Raiz da Omissão de Permissões:**
+      - *Filtro no Backend (`server.js`):* Ao salvar um usuário (`/api/admin/users/save`), o array estático `allowedTabs` não continha `'analista-fin'` nem telas futuras, descartando silenciosamente essas permissões antes de persistir no PostgreSQL e `users.json`.
+      - *Renderização Estática no Frontend (`public/app.js`):* A função `renderUsersTable` possuía uma lista fixa de 6 ternários hardcoded. Permissões que não estivessem explicitamente no array eram ignoradas e nunca geravam badges na coluna "Abas Permitidas".
+      - *Checkboxes Rígidos no Modal:* Manipulação individual por ID exigia alteração manual em 4 pontos do código para cada nova tela.
+    - **Solução Arquitetural em 3 Camadas (Resiliente a Futuras Telas):**
+      - *1. Backend Aberto a Slugs Válidos (`server.js`):* Expansão do catálogo `allowedTabs` e inclusão do regex `/^[a-z0-9_-]{2,50}$/`, garantindo que abas homologadas e qualquer nova tela adicionada em rotas/plugins sejam salvas e validadas sem intervenção no backend.
+      - *2. Descoberta Dinâmica no Frontend (`public/app.js`):* Criação de `SYSTEM_TABS_REGISTRY`, função `getTabBadgeMeta()` com 3 níveis (Catálogo ➔ Descoberta via DOM em `button[data-main-tab]` e `#userModal` ➔ Fallback Genérico `.perm-badge-generic`), e renderização por mapeamento `perms.map(p => renderPermBadgeHtml(p))`, assegurando que 100% das permissões associadas a um usuário sempre tenham badges visíveis.
+      - *3. Checkboxes Dinâmicos no Modal de Usuários:* Varredura automática via `querySelectorAll('#userModal input[type="checkbox"][value]')` em `openUserModalForNew`, `openUserModalForEdit` e `submit`, permitindo adicionar novos checkboxes no HTML sem precisar alterar o JavaScript.
+      - *4. Estilos CSS Dedicados (`public/style.css`):* Inclusão das classes `.perm-badge-analista-fin` (rosa `#f472b6`), `.perm-badge-tarefas` (índigo `#818cf8`), `.perm-badge-bi` (violeta `#a78bfa`) e `.perm-badge-generic` (slate `#94a3b8`).
+      - *5. Correção de Dados da Usuária Érica:* Atualização das permissões de `erica` em `data/users.json` para `['logistica', 'consulta', 'financeiro', 'analista-fin']`.
+    - **Cobertura de Testes Automatizados:** Suíte dedicada `test_rbac_dynamic_permissions.js` com 9 asserções aprovadas com 100% de sucesso e integrada ao `npm test`.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

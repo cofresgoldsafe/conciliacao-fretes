@@ -263,7 +263,7 @@ async function runSecurityTests() {
       name: 'Érica',
       pass: '1020304050',
       role: 'user',
-      permissions: ['logistica', 'consulta'],
+      permissions: ['logistica', 'consulta', 'financeiro', 'analista-fin'],
       active: true
     });
 

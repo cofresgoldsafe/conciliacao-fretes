@@ -1862,6 +1862,81 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Catálogo Oficial de Abas & Permissões do Sistema com Metadados Visuais
+  const SYSTEM_TABS_REGISTRY = {
+    'tarefas': { label: 'Minhas Tarefas', icon: '📋', className: 'perm-badge-tarefas' },
+    'logistica': { label: 'Logística', icon: '📦', className: 'perm-badge-logistica' },
+    'consulta': { label: 'Consulta', icon: '🔍', className: 'perm-badge-consulta' },
+    'vendedores': { label: 'Vendedores', icon: '💼', className: 'perm-badge-vendedores' },
+    'compras': { label: 'Compras', icon: '🛒', className: 'perm-badge-compras' },
+    'financeiro': { label: 'Assist. Financ.', icon: '💰', className: 'perm-badge-financeiro' },
+    'analista-fin': { label: 'Analista Fin', icon: '📑', className: 'perm-badge-analista-fin' },
+    'bi': { label: 'BI Executivo', icon: '📊', className: 'perm-badge-bi' },
+    'configuracoes': { label: 'Configurações', icon: '⚙️', className: 'perm-badge-configuracoes' }
+  };
+
+  /**
+   * Resolve metadados visuais (rótulo, ícone e classe CSS) de uma permissão com 3 camadas:
+   * 1. Catálogo Homologado (SYSTEM_TABS_REGISTRY)
+   * 2. Descoberta Dinâmica no DOM (botoes de abas principais e checkboxes do modal)
+   * 3. Fallback Genérico Resiliente (para qualquer nova tela customizada criada no futuro)
+   */
+  function getTabBadgeMeta(permKey) {
+    const cleanKey = String(permKey || '').trim().toLowerCase();
+    if (SYSTEM_TABS_REGISTRY[cleanKey]) {
+      return SYSTEM_TABS_REGISTRY[cleanKey];
+    }
+
+    // 2. Descoberta no DOM: botão principal de navegação
+    try {
+      const domTabBtn = document.querySelector(`nav.main-tabs-header button[data-main-tab="${cleanKey}"]`);
+      if (domTabBtn) {
+        const text = domTabBtn.textContent.trim();
+        const firstChar = text.match(/^\p{Extended_Pictographic}/u);
+        const icon = firstChar ? firstChar[0] : '📌';
+        const label = text.replace(/^\p{Extended_Pictographic}\s*/u, '').trim();
+        return {
+          label: label || cleanKey,
+          icon: icon,
+          className: `perm-badge-${cleanKey}`
+        };
+      }
+    } catch {}
+
+    // 2b. Descoberta no DOM: checkbox de permissão no modal de usuários
+    try {
+      const domCheckbox = document.querySelector(`#userModal input[type="checkbox"][value="${cleanKey}"]`);
+      if (domCheckbox) {
+        const parentLabel = domCheckbox.closest('label');
+        if (parentLabel) {
+          const text = parentLabel.textContent.trim();
+          const firstChar = text.match(/^\p{Extended_Pictographic}/u);
+          const icon = firstChar ? firstChar[0] : '📌';
+          const strong = parentLabel.querySelector('strong');
+          const label = strong ? strong.textContent.trim() : text.replace(/^\p{Extended_Pictographic}\s*/u, '').trim();
+          return {
+            label: label || cleanKey,
+            icon: icon,
+            className: `perm-badge-${cleanKey}`
+          };
+        }
+      }
+    } catch {}
+
+    // 3. Fallback Genérico Resiliente: formata slug e usa estilo genérico
+    const formatted = cleanKey.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return {
+      label: formatted || cleanKey,
+      icon: '📌',
+      className: 'perm-badge-generic'
+    };
+  }
+
+  function renderPermBadgeHtml(permKey) {
+    const meta = getTabBadgeMeta(permKey);
+    return `<span class="perm-badge ${meta.className}">${meta.icon} ${escapeHtml(meta.label)}</span>`;
+  }
+
   function renderUsersTable(users) {
     if (!usersTableBody) return;
     usersTableBody.innerHTML = '';
@@ -1870,14 +1945,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const tr = document.createElement('tr');
       
       const perms = u.permissions || ['logistica', 'consulta'];
-      const permsHtml = [
-        perms.includes('logistica') ? '<span class="perm-badge perm-badge-logistica">📦 Logística</span>' : '',
-        perms.includes('consulta') ? '<span class="perm-badge perm-badge-consulta">🔍 Consulta</span>' : '',
-        perms.includes('vendedores') ? '<span class="perm-badge perm-badge-vendedores">💼 Vendedores</span>' : '',
-        perms.includes('compras') ? '<span class="perm-badge perm-badge-compras">🛒 Compras</span>' : '',
-        perms.includes('financeiro') ? '<span class="perm-badge perm-badge-financeiro">💰 Assist. Financ.</span>' : '',
-        perms.includes('configuracoes') ? '<span class="perm-badge perm-badge-configuracoes">⚙️ Configurações</span>' : ''
-      ].filter(Boolean).join(' ');
+      // Renderização dinâmica de 100% das permissões associadas ao usuário
+      const permsHtml = perms.map(p => renderPermBadgeHtml(p)).filter(Boolean).join(' ');
 
       const isMainAdmin = u.username.toLowerCase() === 'alexandre';
 
@@ -1947,13 +2016,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editRole) editRole.value = 'user';
     if (editVendorCode) editVendorCode.value = '';
     if (editVendorCodeGroup) editVendorCodeGroup.style.display = 'none';
-    if (permLogistica) permLogistica.checked = true;
-    if (permConsulta) permConsulta.checked = true;
-    if (permVendedores) permVendedores.checked = true;
-    if (permCompras) permCompras.checked = true;
-    if (permFinanceiro) permFinanceiro.checked = false;
-    if (permAnalistaFin) permAnalistaFin.checked = false;
-    if (permConfiguracoes) permConfiguracoes.checked = false;
+    // Configuração inicial de permissões: padrão dinâmico para todos os checkboxes de permissões no modal
+    const defaultNewUserPerms = ['logistica', 'consulta', 'vendedores', 'compras'];
+    const permInputsNew = document.querySelectorAll('#userModal input[type="checkbox"][value]');
+    if (permInputsNew.length > 0) {
+      permInputsNew.forEach(cb => {
+        cb.checked = defaultNewUserPerms.includes(cb.value);
+      });
+    } else {
+      if (permLogistica) permLogistica.checked = true;
+      if (permConsulta) permConsulta.checked = true;
+      if (permVendedores) permVendedores.checked = true;
+      if (permCompras) permCompras.checked = true;
+      if (permFinanceiro) permFinanceiro.checked = false;
+      if (permAnalistaFin) permAnalistaFin.checked = false;
+      if (permConfiguracoes) permConfiguracoes.checked = false;
+    }
     if (userModalMsg) userModalMsg.classList.add('hidden');
     if (userModal) userModal.classList.remove('hidden');
   }
@@ -1973,13 +2051,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const perms = userObj.permissions || ['logistica', 'consulta'];
-    if (permLogistica) permLogistica.checked = perms.includes('logistica');
-    if (permConsulta) permConsulta.checked = perms.includes('consulta');
-    if (permVendedores) permVendedores.checked = perms.includes('vendedores');
-    if (permCompras) permCompras.checked = perms.includes('compras');
-    if (permFinanceiro) permFinanceiro.checked = perms.includes('financeiro');
-    if (permAnalistaFin) permAnalistaFin.checked = perms.includes('analista-fin') || perms.includes('financeiro');
-    if (permConfiguracoes) permConfiguracoes.checked = perms.includes('configuracoes');
+    const permInputsEdit = document.querySelectorAll('#userModal input[type="checkbox"][value]');
+    if (permInputsEdit.length > 0) {
+      permInputsEdit.forEach(cb => {
+        cb.checked = perms.includes(cb.value) || (cb.value === 'analista-fin' && perms.includes('financeiro'));
+      });
+    } else {
+      if (permLogistica) permLogistica.checked = perms.includes('logistica');
+      if (permConsulta) permConsulta.checked = perms.includes('consulta');
+      if (permVendedores) permVendedores.checked = perms.includes('vendedores');
+      if (permCompras) permCompras.checked = perms.includes('compras');
+      if (permFinanceiro) permFinanceiro.checked = perms.includes('financeiro');
+      if (permAnalistaFin) permAnalistaFin.checked = perms.includes('analista-fin') || perms.includes('financeiro');
+      if (permConfiguracoes) permConfiguracoes.checked = perms.includes('configuracoes');
+    }
 
     if (userModalMsg) userModalMsg.classList.add('hidden');
     if (userModal) userModal.classList.remove('hidden');
@@ -2009,14 +2094,22 @@ document.addEventListener('DOMContentLoaded', () => {
         userModalMsg.classList.remove('hidden');
       }
 
+      // Coleta dinâmica de todas as abas marcadas (compatível com novas telas futuras)
       const selectedPerms = [];
-      if (permLogistica && permLogistica.checked) selectedPerms.push('logistica');
-      if (permConsulta && permConsulta.checked) selectedPerms.push('consulta');
-      if (permVendedores && permVendedores.checked) selectedPerms.push('vendedores');
-      if (permCompras && permCompras.checked) selectedPerms.push('compras');
-      if (permFinanceiro && permFinanceiro.checked) selectedPerms.push('financeiro');
-      if (permAnalistaFin && permAnalistaFin.checked) selectedPerms.push('analista-fin');
-      if (permConfiguracoes && permConfiguracoes.checked) selectedPerms.push('configuracoes');
+      const checkedPerms = document.querySelectorAll('#userModal input[type="checkbox"][value]:checked');
+      if (checkedPerms.length > 0) {
+        checkedPerms.forEach(cb => {
+          if (!selectedPerms.includes(cb.value)) selectedPerms.push(cb.value);
+        });
+      } else {
+        if (permLogistica && permLogistica.checked) selectedPerms.push('logistica');
+        if (permConsulta && permConsulta.checked) selectedPerms.push('consulta');
+        if (permVendedores && permVendedores.checked) selectedPerms.push('vendedores');
+        if (permCompras && permCompras.checked) selectedPerms.push('compras');
+        if (permFinanceiro && permFinanceiro.checked) selectedPerms.push('financeiro');
+        if (permAnalistaFin && permAnalistaFin.checked) selectedPerms.push('analista-fin');
+        if (permConfiguracoes && permConfiguracoes.checked) selectedPerms.push('configuracoes');
+      }
 
       if (selectedPerms.length === 0) {
         if (userModalMsg) {
