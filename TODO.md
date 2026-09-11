@@ -35,6 +35,7 @@
 - [x] [VEND-08] Desbloqueio de Visão Unificada para Vendedores em Pedidos Abertos e Comissões (visualização global da equipe comercial sem travas restritivas).
 - [x] [VEND-09] Nova Coluna "Nome" no Relatório de Comissões (primeiras 20 letras com espaços via `SA1010`) e redistribuição harmônica de larguras (Vendedor 12%).
 - [x] [COMP-01] Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY): Disponibilização de Saldos em Estoque, Consulta Ped Venda, Ped Vendas Abertos e Prod x Ped Compras com zero duplicação de DOM/CSS, sincronização em tempo real, controle granular RBAC (`compras`) e alternância de Tema Claro/Escuro.
+- [x] [COMP-02] Sub-aba Consulta Ped/NF Compras (Multi-Empresa 14, 15, 16): 4 critérios de pesquisa direta no Protheus (Pedido de Compra, NFe de Entrada, Código do Fornecedor e Razão Social) com trava estrita de 90 dias, suporte ao alias "Nod Fornec.", padding seguro de 6 dígitos numéricos, filtros de resíduo ativo e saldo em SC7, modal rico de detalhes fiscais e atalho direto na barra de navegação de Vendedores.
 - [x] [CRED-01] Módulo de Análise de Crédito Comercial: Motor de Score, maturidade digital (RDAP/Wayback/MX) e extrato auditável.
 - [x] [CRED-02] Leitura de PDF Serasa Experian com validação de validade (&le; 4 meses), trava de consulta e expansão de métricas do Bloco 5.
 - [x] [CRED-03] Tratamento de Capital Social Não Informado / Isento (0 pts) com checkbox e pontuação neutra.
@@ -68,6 +69,7 @@
 - [x] [QA-18] Suíte de testes automatizados da Análise de Crédito cobrindo 12 vetores de integridade (78 asserções 100% aprovadas).
 - [x] [QA-19] Suíte de testes automatizados para a Aba Principal Compras e Sub-Abas DRY (`test_compras_tab.js` - 6 asserções 100% aprovadas).
 - [x] [QA-20] Suíte de testes automatizados para a Central de Tarefas e Delegação (`test_minhas_tarefas.js` - 20 asserções 100% aprovadas).
+- [x] [QA-21] Suíte de testes automatizados para Consulta Ped/NF Compras e Cód. Fornecedor (`test_compras_consulta_ped_nf.js` - 26 asserções 100% aprovadas).
 
 ## 💼 Central de Tarefas & Delegação
 - [x] [TASK-01] Central de Delegação e Checagem "Minhas Tarefas": Criação e delegação de demandas operacionais, listagem de colaboradores ativos via `GET /api/auth/users`, unificação de prioridades (`Normal` default, `Alta`, `Urgente`), governança de status, comentários atômicos em JSONB e painel de KPIs em linha única compacta.
