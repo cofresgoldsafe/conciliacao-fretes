@@ -222,6 +222,8 @@ try {
   assert.ok(css.includes('.holerite-linha-liquido'), 'CSS deve definir .holerite-linha-liquido');
   assert.ok(css.includes('.holerite-subtotal-val'), 'CSS deve definir .holerite-subtotal-val');
   assert.ok(css.includes('.holerite-liquido-val'), 'CSS deve definir .holerite-liquido-val');
+  assert.ok(css.includes('border: 1px solid #000000'), 'CSS deve definir borda preta sólida (#000000) para a tabela de eventos');
+  assert.ok(css.includes('border-color: #000000 !important'), 'CSS de impressão deve forçar bordas pretas (#000000) em @media print');
 
   report('Tabela clássica de holerites com subtotais e valor líquido integrados no rodapé validada com sucesso', true);
 } catch (err) {

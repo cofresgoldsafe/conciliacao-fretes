@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.183 (Homologada em 11/09/2026 08:56)  
+> **Versão da Documentação:** v8.184 (Homologada em 11/09/2026 09:14)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Tabela Clássica com Subtotais de Vencimentos, Descontos e Valor Líquido Alinhados nos Holerites DP, Sanitização XSS e Prevenção de Duplicação Relacional)  
-> **Data da Última Auditoria:** 11/09/2026 08:56 (v8.183 - Tabela Clássica de Holerites DP com Subtotais e Líquido, Sanitização XSS e Anti-Duplicação)  
+> **Status:** Estável / Operacional em Produção (Tabela Clássica de Holerites DP 100% com Bordas Pretas Sólidas #000000, Rótulos e Cabeçalhos Pretos e Fundo Branco Puro)  
+> **Data da Última Auditoria:** 11/09/2026 09:14 (v8.184 - Tabela Clássica de Holerites DP 100% em Preto Sólido #000000)  
 
 ---
 
@@ -1132,22 +1132,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Inclusão da opção `SOCIO` no select de tipo de contrato do formulário de cadastro.
       - Exibição destacada da data de nascimento (`🎂 Nascim.: DD/MM/AAAA`) e tipo de vínculo no cabeçalho e corpo da Ficha Executiva do Colaborador.
     - **Qualidade & Testes Automatizados (`test_funcionarios_dp.js`, `test_frontend_modules.js`):**
-      - Criação do Teste 6 em `test_funcionarios_dp.js` validando a presença e integridade dos 22 colaboradores, presença dos sócios (Alexandre, Leticia, Marina), prestadores PJ (Luis Carlos, Vanessa Mary), colaboradores Sem Registro (Adriano, Juliana, Odair, etc.), preenchimento obrigatório de data de nascimento e filtros por empresa (100% aprovados, 6 testes).
+      - *Criação do Teste 6 em `test_funcionarios_dp.js` validando a presença e integridade dos 22 colaboradores, presença dos sócios (Alexandre, Leticia, Marina), prestadores PJ (Luis Carlos, Vanessa Mary), colaboradores Sem Registro (Adriano, Juliana, Odair, etc.), preenchimento obrigatório de data de nascimento e filtros por empresa (100% aprovados, 6 testes).
 64. [x] **Tabela Clássica de Lançamentos com Subtotais e Valor Líquido Alinhados nos Holerites DP (`public/js/holerites.js`, `public/style.css`, `postgres_db.js`, `test_holerites_visual_signature.js`, `test_holerites_api.js`):**
     - **Demanda Operacional & Preservação do Padrão dos Colaboradores:**
       - Reestruturação completa do grid de eventos nos recibos de salário (`RECIBO DE PAGAMENTO DE SALÁRIO`) e recibos de adiantamento (`RECIBO DE ADIANTAMENTO SALARIAL`), mantendo total fidelidade aos modelos contábeis oficiais (`Recibo de Pagamento 07.2026 exemplo OAÇO.pdf` e `Recibo de Pagamento 07.2026 exemplo GSI BW.pdf`) para evitar estranhamento por parte dos colaboradores.
       - Preservação intacta de toda a identidade visual executiva (logos em Base64 de alta resolução da OAÇO e GSI, quadro de comunicado/mensagem institucional, bases de cálculo e canhoto de quitação com espaçamento amplo para assinaturas digitais).
     - **Engenharia de Layout Tabular Clássico (`public/js/holerites.js`, `public/style.css`):**
       - **Matriz Canônica de 5 Colunas:** `Código` (55px centrado), `Descrição` (largura flexível), `Referência` (75px centrado), `Vencimentos` (120px à direita em verde `#047857`) e `Descontos` (120px à direita em vermelho `#b91c1c`).
+      - **Padronização 100% em Preto Sólido (`#000000`):** Eliminação de qualquer borda cinza (`#cbd5e1`, `#e2e8f0`) ou sombreado intermediário (`#f8fafc`, `#f1f5f9`). Borda externa da tabela, linhas divisórias verticais entre colunas, divisórias horizontais de linhas e do rodapé padronizadas em `1px solid #000000` (com divisória do rodapé em `1.5px solid #000000`). Cabeçalhos `th` com fundo branco limpo, tipografia preta em negrito (`#000000`) e rótulos de subtotais e valor líquido rigorosamente em preto (`#000000`), tanto no preview quanto na impressão em folha A4 (`@media print`).
       - **Subtotais Integrados no `<tfoot>`:** Eliminação do antigo card flutuante externo (`.holerite-totais-grid`). Implementação de linha `.holerite-linha-subtotais` com `colspan="3"` vazio para as três primeiras colunas e alinhamento colunar rigoroso do **Total de Vencimentos** na coluna 4 (embaixo dos proventos) e do **Total de Descontos** na coluna 5 (embaixo dos descontos).
       - **Valor Líquido Imediatamente Abaixo:** Linha `.holerite-linha-liquido` posicionando o rótulo **`Valor Líquido ⇨`** na coluna 4 e o montante final em destaque verde esmeralda (`.holerite-liquido-val`) na coluna 5.
-      - **Linhas Espaçadoras Estéticas (`.holerite-linha-vazia`):** Preenchimento automático de no mínimo 5 linhas na grade com fundo branco puro (`background: #ffffff !important;`), impedindo o colapso visual em recibos enxutos (ex: adiantamentos de 1 item) e evitando faixas zebradas em espaço em branco.
+      - **Linhas Espaçadoras Estéticas (`.holerite-linha-vazia`):** Preenchimento automático de no mínimo 5 linhas na grade com fundo branco puro (`background: #ffffff !important;`) e bordas pretas sólidas, impedindo o colapso visual em recibos enxutos (ex: adiantamentos de 1 item) e mantendo a grade visualmente perfeita até o rodapé.
     - **Remediações Adversariais de Segurança e Resiliência (Red Team):**
       - **Sanitização Universal contra Stored XSS:** Criação e aplicação sistemática da função `escapeHtml()` sobre todos os campos interpolados no DOM (`doc.mensagem_personalizada`, `doc.funcionario_nome`, `e.descricao`, `c.chave_pix`, etc.), neutralizando injeções de scripts e tags maliciosas.
       - **Parser Monetário Seguro PT-BR (`parseNumeroPtBr`):** Tratamento correto de valores monetários passados como string brasileira (ex: `"1.356,80"` ou `"848,00"`), prevenindo truncamento no separador de milhar por `parseFloat` nativo e garantindo cálculo fidedigno.
       - **Eliminação de Duplicação e Prevenção de Estouro de Inteiro (`postgres_db.js`):** Sincronização limpa entre PostgreSQL e cache JSON local sem reinserção duplicada em `saved`, e geração de IDs inteiros sequenciais seguros ($ \le 2.147.483.647 $) no modo offline, prevenindo falhas `out of range for type integer` em queries PostgreSQL.
       - **Otimização de Impressão A4:** Ajuste cirúrgico da margem vertical superior do canhoto de assinatura no `@media print` para `18mm` (mantendo $\ge 60$px na tela), garantindo encaixe estrito em 1 página por folha sem transbordo de página em impressoras físicas ou virtuais.
-    - **Suíte de Testes Automatizados (100% Verde):**
       - `test_holerites_visual_signature.js`: 5 asserções (Sub-aba, Logos Base64, Espaçamento de Assinatura, Tabela Clássica com Subtotais/Líquido e Testes Adversariais de XSS e Formatação PT-BR).
       - `test_holerites_api.js`: 7 asserções com validação estrita de cardinalidade `salvos.length === 3`.
       - `test_parser_holerites.py`: 6 testes pytest com validação dos 6 PDFs/planilhas oficiais.

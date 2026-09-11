@@ -3539,18 +3539,20 @@ body {
   border-collapse: collapse;
   margin-bottom: 14px;
   font-size: 0.82rem;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #000000;
+  background: #ffffff;
 }
 
 .holerite-tabela-eventos th {
-  background: #0f172a;
-  color: #ffffff;
+  background: #ffffff;
+  color: #000000;
   padding: 6px 10px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  border-right: 1px solid #334155;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
 }
 
 .holerite-tabela-eventos th:last-child {
@@ -3559,23 +3561,29 @@ body {
 
 .holerite-tabela-eventos td {
   padding: 5px 10px;
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
+  color: #000000;
 }
 
 .holerite-tabela-eventos td:last-child {
   border-right: none;
 }
 
-.holerite-tabela-eventos tbody tr:nth-child(even) {
-  background: #f8fafc;
+.holerite-tabela-eventos tbody tr {
+  background: #ffffff;
 }
 
 .holerite-tabela-eventos tbody tr.holerite-linha-vazia td {
   height: 22px;
   padding: 2px 10px;
-  border-bottom: none;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
   background: #ffffff !important;
+}
+
+.holerite-tabela-eventos tbody tr.holerite-linha-vazia td:last-child {
+  border-right: none;
 }
 
 .holerite-num {
@@ -3595,10 +3603,16 @@ body {
 
 /* Rodapé Clássico da Folha: Subtotais e Valor Líquido Integrados */
 .holerite-tabela-eventos tfoot tr.holerite-linha-subtotais td {
-  border-top: 1.5px solid #0f172a;
-  border-bottom: 1px solid #cbd5e1;
+  border-top: 1.5px solid #000000;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
   padding: 6px 10px;
   vertical-align: middle;
+  background: #ffffff;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-subtotais td:last-child {
+  border-right: none;
 }
 
 .holerite-tabela-eventos tfoot tr.holerite-linha-subtotais .holerite-subtotal-vazio {
@@ -3606,14 +3620,14 @@ body {
 }
 
 .holerite-tabela-eventos tfoot tr.holerite-linha-subtotais .holerite-subtotal-col {
-  background: #f8fafc;
+  background: #ffffff;
 }
 
 .holerite-subtotal-label {
   display: block;
   font-size: 0.65rem;
   font-weight: 700;
-  color: #475569;
+  color: #000000;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   line-height: 1.2;
@@ -3627,10 +3641,16 @@ body {
 }
 
 .holerite-tabela-eventos tfoot tr.holerite-linha-liquido td {
-  border-top: 1px solid #cbd5e1;
-  border-bottom: 2px solid #0f172a;
+  border-top: 1px solid #000000;
+  border-bottom: 1.5px solid #000000;
+  border-right: 1px solid #000000;
   padding: 7px 10px;
   vertical-align: middle;
+  background: #ffffff;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-liquido td:last-child {
+  border-right: none;
 }
 
 .holerite-tabela-eventos tfoot tr.holerite-linha-liquido .holerite-liquido-vazio {
@@ -3638,20 +3658,20 @@ body {
 }
 
 .holerite-tabela-eventos tfoot tr.holerite-linha-liquido .holerite-liquido-label-cell {
-  background: #f1f5f9;
+  background: #ffffff;
   text-align: right;
 }
 
 .holerite-liquido-label {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  color: #0f172a;
+  color: #000000;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .holerite-tabela-eventos tfoot tr.holerite-linha-liquido .holerite-liquido-val-cell {
-  background: #ecfdf5;
+  background: #ffffff;
   text-align: right;
 }
 
@@ -3841,6 +3861,19 @@ body {
 
   .holerite-linha-assinatura {
     width: 75mm !important;
+  }
+
+  .holerite-tabela-eventos,
+  .holerite-tabela-eventos th,
+  .holerite-tabela-eventos td {
+    border-color: #000000 !important;
+    background-color: #ffffff !important;
+  }
+
+  .holerite-tabela-eventos th,
+  .holerite-subtotal-label,
+  .holerite-liquido-label {
+    color: #000000 !important;
   }
 
   .no-print {
