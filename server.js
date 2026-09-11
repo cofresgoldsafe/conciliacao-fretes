@@ -13,6 +13,8 @@ const { validateWebhookPayload } = require('./webhook_validator');
 const { 
   consultarProtheusNF, 
   buscarProtheusMultiEmpresa,
+  buscarConsultaComprasProtheus,
+  obterDetalhesNFeEntrada,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
@@ -1300,6 +1302,70 @@ app.get('/api/compras/pedidos/detalhes', requireAuth, async (req, res) => {
     res.json({ success: true, data });
   } catch (err) {
     handleServerError(res, err, 'Erro ao consultar detalhes do pedido de compra.');
+  }
+});
+
+// API: Compras - Consulta Multi-Empresa de Pedidos de Compra e NFe de Entrada
+app.get('/api/compras/consulta-ped-nf', requireAuth, async (req, res) => {
+  try {
+    const { tipo, termo, empresa, dataIni, dataFim } = req.query || {};
+    const user = getUserFromReq(req);
+
+    if (!termo || !String(termo).trim()) {
+      return res.status(400).json({ success: false, message: 'Informe um termo de busca (Pedido de Compra, NFe ou Fornecedor).' });
+    }
+
+    const rows = await buscarConsultaComprasProtheus({
+      tipo,
+      termo,
+      empresa,
+      dataIni,
+      dataFim
+    });
+
+    const tipoLabel = tipo === 'fornecedor' ? 'Fornecedor' : (tipo === 'pedCompra' ? 'Pedido de Compra' : 'NFe de Entrada');
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_COMPRAS_PED_NF',
+      description: `Consultou ${tipoLabel}: "${termo}" (${rows.length} resultado(s))`,
+      ip: req.ip,
+      metadata: { tipo, termo, empresa, count: rows.length }
+    }).catch(() => {});
+
+    res.json({ success: true, count: rows.length, rows });
+  } catch (err) {
+    handleServerError(res, err, err.message || 'Erro na consulta de compras multi-empresa.');
+  }
+});
+
+// API: Compras - Detalhes Completos da NFe de Entrada (SF1 + SD1 + SA2 + SE4 + SE2)
+app.get('/api/compras/nfe-entrada-detalhes', requireAuth, async (req, res) => {
+  try {
+    const { empresaKey, doc, serie, fornece, loja } = req.query || {};
+    const user = getUserFromReq(req);
+
+    if (!doc) {
+      return res.status(400).json({ success: false, message: 'Parâmetro doc (número da NFe) é obrigatório.' });
+    }
+
+    const data = await obterDetalhesNFeEntrada({ empresaKey, doc, serie, fornece, loja });
+    if (!data) {
+      return res.status(404).json({ success: false, message: `Nota Fiscal #${doc} não localizada na empresa ${empresaKey || 'OACO'}.` });
+    }
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_DETALHES_NFE_ENTRADA',
+      description: `Visualizou detalhes da NFe de Entrada #${doc}/${data.header.serie} (${data.empresaNome || empresaKey} - ${data.header.fornecedor})`,
+      ip: req.ip,
+      metadata: { empresaKey, doc, serie: data.header.serie, totalItens: data.itens.length }
+    }).catch(() => {});
+
+    res.json({ success: true, data });
+  } catch (err) {
+    handleServerError(res, err, err.message || 'Erro ao consultar detalhes da NFe de entrada.');
   }
 });
 

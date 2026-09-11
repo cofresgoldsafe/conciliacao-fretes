@@ -3188,9 +3188,510 @@ async function buscarPedidosAnaliseLibEstoque({ empresa, search, limit = 500 } =
   return results;
 }
 
+/**
+ * Consulta de Compras / Documentos de Entrada (NFe) e Pedidos de Compra em Multi-Empresas no Protheus
+ * Suporta busca por:
+ * - 'nfe': Número da NFe (F1_DOC)
+ * - 'pedCompra': Número do Pedido de Compra (D1_PEDIDO / C7_NUM)
+ * - 'fornecedor': Razão Social, Fantasia ou CNPJ (SA2010 + SF1) com intervalo máximo estrito de 90 dias
+ */
+async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, dataFim } = {}) {
+  const cleanTipo = String(tipo || 'nfe').trim();
+  const cleanTerm = sanitizeSqlParam(termo || '').trim();
+  const cleanEmpresa = sanitizeSqlParam(empresa || '').toUpperCase();
+
+  if (!cleanTerm) {
+    throw new Error('Informe um termo de busca para pesquisar no Protheus.');
+  }
+
+  // Normalização de datas (YYYY-MM-DD -> YYYYMMDD ou YYYYMMDD puro)
+  let rawIni = String(dataIni || '').replace(/\D/g, '');
+  let rawFim = String(dataFim || '').replace(/\D/g, '');
+
+  // Validação estrita da trava de 90 dias para fornecedor
+  if (cleanTipo === 'fornecedor') {
+    if (cleanTerm.length < 3) {
+      throw new Error('Para pesquisar por Fornecedor, informe ao menos 3 caracteres.');
+    }
+    if (!rawIni || !rawFim || rawIni.length !== 8 || rawFim.length !== 8) {
+      throw new Error('Para pesquisa por Fornecedor, as datas de início e fim são obrigatórias.');
+    }
+
+    const dIni = new Date(parseInt(rawIni.substring(0, 4), 10), parseInt(rawIni.substring(4, 6), 10) - 1, parseInt(rawIni.substring(6, 8), 10));
+    const dFim = new Date(parseInt(rawFim.substring(0, 4), 10), parseInt(rawFim.substring(4, 6), 10) - 1, parseInt(rawFim.substring(6, 8), 10));
+    const diffDays = Math.round((dFim.getTime() - dIni.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      throw new Error('A data inicial não pode ser maior que a data final.');
+    }
+    if (diffDays > 90) {
+      throw new Error('Para pesquisa por Fornecedor, o intervalo máximo permitido é de 90 dias.');
+    }
+  }
+
+  const variants = getDocVariants(cleanTerm);
+  const padded6 = variants.padded6;
+  const padded9 = variants.padded9;
+  const numOnly = variants.numOnly;
+
+  const empresasConfig = [
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sf1: "SF1160", sd1: "SD1160", sc7: "SC7160", se2: "SE2160", sa2: "SA2010" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sf1: "SF1150", sd1: "SD1150", sc7: "SC7150", se2: "SE2150", sa2: "SA2010" },
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sf1: "SF1140", sd1: "SD1140", sc7: "SC7140", se2: "SE2140", sa2: "SA2010" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e =>
+      e.key === cleanEmpresa ||
+      e.sigla === cleanEmpresa ||
+      e.codigo === cleanEmpresa ||
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) {
+      empresasFiltradas = empresasConfig;
+    }
+  }
+
+  const results = [];
+  const seen = new Set();
+
+  for (const emp of empresasFiltradas) {
+    try {
+      if (cleanTipo === 'nfe') {
+        let dateCondition = '';
+        if (rawIni && rawFim && rawIni.length === 8 && rawFim.length === 8) {
+          dateCondition = ` AND F1.F1_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}'`;
+        }
+
+        const sql = `
+          SELECT TOP 100
+            RTRIM(F1.F1_FILIAL) AS FILIAL,
+            RTRIM(F1.F1_DOC) AS NF,
+            RTRIM(F1.F1_SERIE) AS SERIE,
+            RTRIM(F1.F1_FORNECE) AS FORNECE,
+            RTRIM(F1.F1_LOJA) AS LOJA,
+            RTRIM(F1.F1_EMISSAO) AS EMISSAO,
+            ISNULL(F1.F1_VALBRUT, 0) AS VALOR_NF,
+            ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM ${emp.sa2} WHERE A2_COD = F1.F1_FORNECE AND D_E_L_E_T_ = ' '), '') AS RAZAO_SOCIAL,
+            ISNULL((SELECT TOP 1 RTRIM(A2_CGC) FROM ${emp.sa2} WHERE A2_COD = F1.F1_FORNECE AND D_E_L_E_T_ = ' '), '') AS CNPJ,
+            ISNULL((SELECT TOP 1 RTRIM(D1.D1_PEDIDO) FROM ${emp.sd1} D1 
+                    WHERE D1.D1_DOC = F1.F1_DOC AND D1.D1_SERIE = F1.F1_SERIE 
+                      AND D1.D1_FORNECE = F1.F1_FORNECE AND D1.D1_LOJA = F1.F1_LOJA 
+                      AND D1.D_E_L_E_T_ = ' ' AND D1.D1_PEDIDO <> ''), '') AS PEDIDO_COMPRA
+          FROM ${emp.sf1} F1
+          WHERE F1.D_E_L_E_T_ = ' '
+            AND (F1.F1_DOC = '${padded6}' OR F1.F1_DOC = '${cleanTerm}' OR F1.F1_DOC = '${padded9}' OR F1.F1_DOC = '${numOnly}' OR F1.F1_DOC LIKE '%${numOnly}%')
+            ${dateCondition}
+          ORDER BY F1.F1_EMISSAO DESC, F1.F1_DOC DESC
+        `;
+
+        const dbRes = await executeRailwayQuery(sql);
+        if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+          for (const row of dbRes.rows) {
+            const nf = row.NF || '-';
+            const serie = row.SERIE || '';
+            const pedCompra = row.PEDIDO_COMPRA || '-';
+            const seenKey = `${emp.key}_${nf}_${serie}_${pedCompra}`;
+            if (seen.has(seenKey)) continue;
+            seen.add(seenKey);
+
+            results.push({
+              empresa: emp.sigla,
+              empresaNome: emp.nome,
+              empresaKey: emp.key,
+              razaoSocial: row.RAZAO_SOCIAL || 'FORNECEDOR NÃO INFORMADO',
+              cnpj: row.CNPJ || '',
+              pedCompra: pedCompra,
+              temPedCompra: Boolean(pedCompra && pedCompra !== '-'),
+              nfe: nf,
+              serie: serie,
+              temNfe: true,
+              emissao: formatarDataProtheus(row.EMISSAO),
+              emissaoRaw: row.EMISSAO || '',
+              valorNf: Number(row.VALOR_NF) || 0,
+              fornece: row.FORNECE || '',
+              loja: row.LOJA || ''
+            });
+          }
+        }
+      } else if (cleanTipo === 'pedCompra') {
+        // 1. Busca em SD1 + SF1 (pedidos que já geraram NFe)
+        let dateConditionD1 = '';
+        if (rawIni && rawFim && rawIni.length === 8 && rawFim.length === 8) {
+          dateConditionD1 = ` AND (D1.D1_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}' OR F1.F1_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}')`;
+        }
+
+        const sqlSD1 = `
+          SELECT TOP 100
+            RTRIM(D1.D1_FILIAL) AS FILIAL,
+            RTRIM(D1.D1_DOC) AS NF,
+            RTRIM(D1.D1_SERIE) AS SERIE,
+            RTRIM(D1.D1_FORNECE) AS FORNECE,
+            RTRIM(D1.D1_LOJA) AS LOJA,
+            RTRIM(D1.D1_PEDIDO) AS PEDIDO_COMPRA,
+            RTRIM(ISNULL(F1.F1_EMISSAO, D1.D1_EMISSAO)) AS EMISSAO,
+            ISNULL(F1.F1_VALBRUT, D1.D1_TOTAL) AS VALOR_NF,
+            ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM ${emp.sa2} WHERE A2_COD = D1.D1_FORNECE AND D_E_L_E_T_ = ' '), '') AS RAZAO_SOCIAL,
+            ISNULL((SELECT TOP 1 RTRIM(A2_CGC) FROM ${emp.sa2} WHERE A2_COD = D1.D1_FORNECE AND D_E_L_E_T_ = ' '), '') AS CNPJ
+          FROM ${emp.sd1} D1
+          LEFT JOIN ${emp.sf1} F1 
+            ON F1.F1_DOC = D1.D1_DOC AND F1.F1_SERIE = D1.D1_SERIE 
+           AND F1.F1_FORNECE = D1.D1_FORNECE AND F1.F1_LOJA = D1.D1_LOJA 
+           AND F1.D_E_L_E_T_ = ' '
+          WHERE D1.D_E_L_E_T_ = ' '
+            AND (D1.D1_PEDIDO = '${padded6}' OR D1.D1_PEDIDO = '${cleanTerm}' OR D1.D1_PEDIDO LIKE '%${cleanTerm}%')
+            ${dateConditionD1}
+          ORDER BY D1.D1_EMISSAO DESC
+        `;
+
+        const resSD1 = await executeRailwayQuery(sqlSD1);
+        const pedsWithNF = new Set();
+
+        if (resSD1 && resSD1.rows && resSD1.rows.length > 0) {
+          for (const row of resSD1.rows) {
+            const nf = row.NF || '-';
+            const serie = row.SERIE || '';
+            const pedCompra = row.PEDIDO_COMPRA || cleanTerm;
+            const seenKey = `${emp.key}_${nf}_${serie}_${pedCompra}`;
+            if (seen.has(seenKey)) continue;
+            seen.add(seenKey);
+            pedsWithNF.add(pedCompra);
+
+            results.push({
+              empresa: emp.sigla,
+              empresaNome: emp.nome,
+              empresaKey: emp.key,
+              razaoSocial: row.RAZAO_SOCIAL || 'FORNECEDOR NÃO INFORMADO',
+              cnpj: row.CNPJ || '',
+              pedCompra: pedCompra,
+              temPedCompra: true,
+              nfe: nf,
+              serie: serie,
+              temNfe: Boolean(nf && nf !== '-'),
+              emissao: formatarDataProtheus(row.EMISSAO),
+              emissaoRaw: row.EMISSAO || '',
+              valorNf: Number(row.VALOR_NF) || 0,
+              fornece: row.FORNECE || '',
+              loja: row.LOJA || ''
+            });
+          }
+        }
+
+        // 2. Busca em SC7 (pedidos que ainda NÃO têm NF lançada em SD1)
+        let dateConditionSC7 = '';
+        if (rawIni && rawFim && rawIni.length === 8 && rawFim.length === 8) {
+          dateConditionSC7 = ` AND C7.C7_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}'`;
+        }
+
+        const sqlSC7 = `
+          SELECT TOP 50
+            RTRIM(C7.C7_FILIAL) AS FILIAL,
+            RTRIM(C7.C7_NUM) AS PEDIDO_COMPRA,
+            RTRIM(C7.C7_FORNECE) AS FORNECE,
+            RTRIM(C7.C7_LOJA) AS LOJA,
+            RTRIM(C7.C7_EMISSAO) AS EMISSAO,
+            SUM(ISNULL(C7.C7_TOTAL, 0)) AS VALOR_PEDIDO,
+            ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM ${emp.sa2} WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(MAX(C7.C7_NOMFOR), ''))) AS RAZAO_SOCIAL,
+            ISNULL((SELECT TOP 1 RTRIM(A2_CGC) FROM ${emp.sa2} WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), '') AS CNPJ
+          FROM ${emp.sc7} C7
+          WHERE C7.D_E_L_E_T_ = ' '
+            AND (C7.C7_NUM = '${padded6}' OR C7.C7_NUM = '${cleanTerm}' OR C7.C7_NUM LIKE '%${cleanTerm}%')
+            ${dateConditionSC7}
+          GROUP BY C7.C7_FILIAL, C7.C7_NUM, C7.C7_FORNECE, C7.C7_LOJA, C7.C7_EMISSAO
+          ORDER BY C7.C7_EMISSAO DESC
+        `;
+
+        const resSC7 = await executeRailwayQuery(sqlSC7);
+        if (resSC7 && resSC7.rows && resSC7.rows.length > 0) {
+          for (const row of resSC7.rows) {
+            const pedCompra = row.PEDIDO_COMPRA || cleanTerm;
+            if (pedsWithNF.has(pedCompra)) continue; // Já listado com NF
+            const seenKey = `${emp.key}_SEM_NF_${pedCompra}`;
+            if (seen.has(seenKey)) continue;
+            seen.add(seenKey);
+
+            results.push({
+              empresa: emp.sigla,
+              empresaNome: emp.nome,
+              empresaKey: emp.key,
+              razaoSocial: row.RAZAO_SOCIAL || 'FORNECEDOR NÃO INFORMADO',
+              cnpj: row.CNPJ || '',
+              pedCompra: pedCompra,
+              temPedCompra: true,
+              nfe: '-',
+              serie: '',
+              temNfe: false,
+              emissao: formatarDataProtheus(row.EMISSAO),
+              emissaoRaw: row.EMISSAO || '',
+              valorNf: Number(row.VALOR_PEDIDO) || 0,
+              fornece: row.FORNECE || '',
+              loja: row.LOJA || ''
+            });
+          }
+        }
+      } else if (cleanTipo === 'fornecedor') {
+        const sql = `
+          SELECT TOP 100
+            RTRIM(F1.F1_FILIAL) AS FILIAL,
+            RTRIM(F1.F1_DOC) AS NF,
+            RTRIM(F1.F1_SERIE) AS SERIE,
+            RTRIM(F1.F1_FORNECE) AS FORNECE,
+            RTRIM(F1.F1_LOJA) AS LOJA,
+            RTRIM(F1.F1_EMISSAO) AS EMISSAO,
+            ISNULL(F1.F1_VALBRUT, 0) AS VALOR_NF,
+            RTRIM(ISNULL(A2.A2_NOME, '')) AS RAZAO_SOCIAL,
+            RTRIM(ISNULL(A2.A2_CGC, '')) AS CNPJ,
+            ISNULL((SELECT TOP 1 RTRIM(D1.D1_PEDIDO) FROM ${emp.sd1} D1 
+                    WHERE D1.D1_DOC = F1.F1_DOC AND D1.D1_SERIE = F1.F1_SERIE 
+                      AND D1.D1_FORNECE = F1.F1_FORNECE AND D1.D1_LOJA = F1.F1_LOJA 
+                      AND D1.D_E_L_E_T_ = ' ' AND D1.D1_PEDIDO <> ''), '') AS PEDIDO_COMPRA
+          FROM ${emp.sf1} F1
+          INNER JOIN ${emp.sa2} A2 
+            ON A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA AND A2.D_E_L_E_T_ = ' '
+          WHERE F1.D_E_L_E_T_ = ' '
+            AND F1.F1_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}'
+            AND (A2.A2_NOME LIKE '%${cleanTerm}%' OR A2.A2_NREDUZ LIKE '%${cleanTerm}%' OR A2.A2_CGC LIKE '%${cleanTerm}%')
+          ORDER BY F1.F1_EMISSAO DESC, F1.F1_DOC DESC
+        `;
+
+        const dbRes = await executeRailwayQuery(sql);
+        if (dbRes && dbRes.rows && dbRes.rows.length > 0) {
+          for (const row of dbRes.rows) {
+            const nf = row.NF || '-';
+            const serie = row.SERIE || '';
+            const pedCompra = row.PEDIDO_COMPRA || '-';
+            const seenKey = `${emp.key}_${nf}_${serie}_${pedCompra}`;
+            if (seen.has(seenKey)) continue;
+            seen.add(seenKey);
+
+            results.push({
+              empresa: emp.sigla,
+              empresaNome: emp.nome,
+              empresaKey: emp.key,
+              razaoSocial: row.RAZAO_SOCIAL || 'FORNECEDOR NÃO INFORMADO',
+              cnpj: row.CNPJ || '',
+              pedCompra: pedCompra,
+              temPedCompra: Boolean(pedCompra && pedCompra !== '-'),
+              nfe: nf,
+              serie: serie,
+              temNfe: true,
+              emissao: formatarDataProtheus(row.EMISSAO),
+              emissaoRaw: row.EMISSAO || '',
+              valorNf: Number(row.VALOR_NF) || 0,
+              fornece: row.FORNECE || '',
+              loja: row.LOJA || ''
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`Erro ao consultar compras na empresa ${emp.nome}:`, err.message);
+    }
+  }
+
+  // Ordenação descendente por data de emissão
+  results.sort((a, b) => (b.emissaoRaw || '').localeCompare(a.emissaoRaw || ''));
+  return results;
+}
+
+/**
+ * Consulta Detalhes Completos de uma Nota Fiscal de Entrada (SF1 + SD1 + SA2 + SE4 + SE2)
+ */
+async function obterDetalhesNFeEntrada({ empresaKey, doc, serie, fornece, loja } = {}) {
+  const cleanEmp = sanitizeSqlParam(empresaKey || 'OACO').toUpperCase();
+  const cleanDoc = sanitizeSqlParam(doc || '').trim();
+  const cleanSerie = sanitizeSqlParam(serie || '').trim();
+  const cleanFornece = sanitizeSqlParam(fornece || '').trim();
+  const cleanLoja = sanitizeSqlParam(loja || '01').trim();
+
+  if (!cleanDoc) {
+    throw new Error('Número da Nota Fiscal de Entrada não informado.');
+  }
+
+  const empresasConfig = {
+    'OACO': { sigla: 'OACO', nome: 'Empresa 16 (OACO)', sf1: 'SF1160', sd1: 'SD1160', se2: 'SE2160', sa2: 'SA2010', sb1: 'SB1160' },
+    '16': { sigla: 'OACO', nome: 'Empresa 16 (OACO)', sf1: 'SF1160', sd1: 'SD1160', se2: 'SE2160', sa2: 'SA2010', sb1: 'SB1160' },
+    'GSI': { sigla: 'GSI', nome: 'Empresa 15 (GSI)', sf1: 'SF1150', sd1: 'SD1150', se2: 'SE2150', sa2: 'SA2010', sb1: 'SB1090' },
+    '15': { sigla: 'GSI', nome: 'Empresa 15 (GSI)', sf1: 'SF1150', sd1: 'SD1150', se2: 'SE2150', sa2: 'SA2010', sb1: 'SB1090' },
+    'METAL_PLENO': { sigla: 'MP', nome: 'Empresa 14 (METAL PLENO)', sf1: 'SF1140', sd1: 'SD1140', se2: 'SE2140', sa2: 'SA2010', sb1: 'SB1090' },
+    'MP': { sigla: 'MP', nome: 'Empresa 14 (METAL PLENO)', sf1: 'SF1140', sd1: 'SD1140', se2: 'SE2140', sa2: 'SA2010', sb1: 'SB1090' },
+    '14': { sigla: 'MP', nome: 'Empresa 14 (METAL PLENO)', sf1: 'SF1140', sd1: 'SD1140', se2: 'SE2140', sa2: 'SA2010', sb1: 'SB1090' }
+  };
+
+  const emp = empresasConfig[cleanEmp] || empresasConfig['OACO'];
+
+  const variants = getDocVariants(cleanDoc);
+  const docFilter = `(F1.F1_DOC = '${variants.padded6}' OR F1.F1_DOC = '${variants.raw}' OR F1.F1_DOC = '${variants.padded9}' OR F1.F1_DOC = '${variants.numOnly}')`;
+  const serieFilter = cleanSerie ? ` AND F1.F1_SERIE = '${cleanSerie}'` : '';
+  const fornFilter = cleanFornece ? ` AND F1.F1_FORNECE = '${cleanFornece}'` : '';
+  const lojaFilter = cleanLoja ? ` AND F1.F1_LOJA = '${cleanLoja}'` : '';
+
+  // 1. Cabeçalho SF1 + SA2 + SE4
+  const sqlHeader = `
+    SELECT TOP 1
+      F1.F1_FILIAL,
+      RTRIM(F1.F1_DOC) AS F1_DOC,
+      RTRIM(F1.F1_SERIE) AS F1_SERIE,
+      RTRIM(ISNULL(F1.F1_CHVNFE, '')) AS F1_CHVNFE,
+      RTRIM(F1.F1_FORNECE) AS F1_FORNECE,
+      RTRIM(F1.F1_LOJA) AS F1_LOJA,
+      RTRIM(F1.F1_EMISSAO) AS F1_EMISSAO,
+      RTRIM(ISNULL(F1.F1_DTDIGIT, '')) AS F1_DTDIGIT,
+      ISNULL(F1.F1_VALBRUT, 0) AS F1_VALBRUT,
+      ISNULL(F1.F1_VALMERC, 0) AS F1_VALMERC,
+      ISNULL(F1.F1_FRETE, 0) AS F1_FRETE,
+      ISNULL(F1.F1_DESCONT, 0) AS F1_DESCONT,
+      ISNULL(F1.F1_DESPESA, 0) AS F1_DESPESA,
+      ISNULL(F1.F1_VALICM, 0) AS F1_VALICM,
+      ISNULL(F1.F1_VALIPI, 0) AS F1_VALIPI,
+      RTRIM(ISNULL(F1.F1_COND, '')) AS F1_COND,
+      RTRIM(ISNULL(A2.A2_NOME, '')) AS NOME_FORNEC,
+      RTRIM(ISNULL(A2.A2_NREDUZ, '')) AS FANTASIA_FORNEC,
+      RTRIM(ISNULL(A2.A2_CGC, '')) AS CNPJ_FORNEC,
+      RTRIM(ISNULL(A2.A2_MUN, '')) AS MUN_FORNEC,
+      RTRIM(ISNULL(A2.A2_EST, '')) AS UF_FORNEC,
+      ISNULL((SELECT TOP 1 RTRIM(E4_DESCRI) FROM SE4010 WHERE E4_CODIGO = F1.F1_COND AND D_E_L_E_T_ = ' '), '') AS COND_DESC
+    FROM ${emp.sf1} F1
+    LEFT JOIN ${emp.sa2} A2 ON A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA AND A2.D_E_L_E_T_ = ' '
+    WHERE ${docFilter}${serieFilter}${fornFilter}${lojaFilter}
+      AND F1.D_E_L_E_T_ = ' '
+    ORDER BY F1.F1_EMISSAO DESC
+  `;
+
+  const resHeader = await executeRailwayQuery(sqlHeader);
+  if (!resHeader || !resHeader.rows || resHeader.rows.length === 0) {
+    return null;
+  }
+
+  const h = resHeader.rows[0];
+  const realDoc = h.F1_DOC;
+  const realSerie = h.F1_SERIE;
+  const realFornece = h.F1_FORNECE;
+  const realLoja = h.F1_LOJA;
+
+  // 2. Itens SD1 + SB1 + SF4
+  const sqlItens = `
+    SELECT 
+      RTRIM(D1.D1_ITEM) AS D1_ITEM,
+      RTRIM(D1.D1_COD) AS D1_COD,
+      ISNULL((SELECT TOP 1 RTRIM(B1_DESC) FROM SB1160 WHERE B1_COD = D1.D1_COD AND D_E_L_E_T_ = ' '), 
+        ISNULL((SELECT TOP 1 RTRIM(B1_DESC) FROM SB1090 WHERE B1_COD = D1.D1_COD AND D_E_L_E_T_ = ' '), '')) AS PROD_DESC,
+      RTRIM(ISNULL(D1.D1_UM, 'UN')) AS D1_UM,
+      ISNULL(D1.D1_QUANT, 0) AS D1_QUANT,
+      ISNULL(D1.D1_VUNIT, 0) AS D1_VUNIT,
+      ISNULL(D1.D1_TOTAL, 0) AS D1_TOTAL,
+      RTRIM(ISNULL(D1.D1_TES, '')) AS D1_TES,
+      ISNULL((SELECT TOP 1 RTRIM(F4_TEXTO) FROM SF4010 WHERE F4_CODIGO = D1.D1_TES AND D_E_L_E_T_ = ' '), '') AS TES_DESC,
+      RTRIM(ISNULL(D1.D1_CF, '')) AS D1_CF,
+      RTRIM(ISNULL(D1.D1_PEDIDO, '')) AS D1_PEDIDO,
+      RTRIM(ISNULL(D1.D1_ITEMPC, '')) AS D1_ITEMPC,
+      ISNULL(D1.D1_VALICM, 0) AS D1_VALICM,
+      ISNULL(D1.D1_VALIPI, 0) AS D1_VALIPI
+    FROM ${emp.sd1} D1
+    WHERE D1.D1_DOC = '${realDoc}' AND D1.D1_SERIE = '${realSerie}' 
+      AND D1.D1_FORNECE = '${realFornece}' AND D1.D1_LOJA = '${realLoja}' 
+      AND D1.D_E_L_E_T_ = ' '
+    ORDER BY D1.D1_ITEM ASC
+  `;
+
+  const resItens = await executeRailwayQuery(sqlItens);
+
+  // 3. Títulos SE2 (Contas a Pagar)
+  const sqlTitulos = `
+    SELECT 
+      RTRIM(E2_PREFIXO) AS PREFIXO,
+      RTRIM(E2_NUM) AS NUM,
+      RTRIM(E2_PARCELA) AS PARCELA,
+      RTRIM(E2_TIPO) AS TIPO,
+      ISNULL(E2_VALOR, 0) AS VALOR,
+      ISNULL(E2_SALDO, 0) AS SALDO,
+      RTRIM(ISNULL(E2_EMISSAO, '')) AS EMISSAO,
+      RTRIM(ISNULL(E2_VENCTO, '')) AS VENCTO,
+      RTRIM(ISNULL(E2_BAIXA, '')) AS BAIXA
+    FROM ${emp.se2}
+    WHERE (RTRIM(E2_NUM) = '${realDoc}' OR RTRIM(E2_NUM) = '${variants.numOnly}' OR RTRIM(E2_NUM) = '${variants.padded6}')
+      AND E2_FORNECE = '${realFornece}' AND E2_LOJA = '${realLoja}' 
+      AND D_E_L_E_T_ = ' '
+    ORDER BY E2_PARCELA ASC, E2_VENCTO ASC
+  `;
+
+  const resTitulos = await executeRailwayQuery(sqlTitulos);
+
+  return {
+    empresa: emp.sigla,
+    empresaNome: emp.nome,
+    empresaKey: emp.key,
+    header: {
+      filial: h.F1_FILIAL,
+      doc: h.F1_DOC,
+      serie: h.F1_SERIE,
+      chaveNfe: h.F1_CHVNFE,
+      fornecedor: h.NOME_FORNEC || 'FORNECEDOR NÃO INFORMADO',
+      fantasia: h.FANTASIA_FORNEC || '',
+      cnpj: h.CNPJ_FORNEC || '',
+      cidade: h.MUN_FORNEC || '',
+      uf: h.UF_FORNEC || '',
+      emissao: formatarDataProtheus(h.F1_EMISSAO),
+      emissaoRaw: h.F1_EMISSAO,
+      digitacao: formatarDataProtheus(h.F1_DTDIGIT),
+      digitacaoRaw: h.F1_DTDIGIT,
+      valorBruto: Number(h.F1_VALBRUT) || 0,
+      valorMercadoria: Number(h.F1_VALMERC) || 0,
+      valorFrete: Number(h.F1_FRETE) || 0,
+      valorDesconto: Number(h.F1_DESCONT) || 0,
+      valorDespesa: Number(h.F1_DESPESA) || 0,
+      valorIcms: Number(h.F1_VALICM) || 0,
+      valorIpi: Number(h.F1_VALIPI) || 0,
+      condPagto: h.F1_COND || '',
+      condPagtoDesc: h.COND_DESC || ''
+    },
+    itens: (resItens && resItens.rows ? resItens.rows : []).map(it => ({
+      item: it.D1_ITEM,
+      codigo: it.D1_COD,
+      descricao: it.PROD_DESC || `PRODUTO ${it.D1_COD}`,
+      um: it.D1_UM,
+      quantidade: Number(it.D1_QUANT) || 0,
+      valorUnitario: Number(it.D1_VUNIT) || 0,
+      valorTotal: Number(it.D1_TOTAL) || 0,
+      tes: it.D1_TES,
+      tesDesc: it.TES_DESC,
+      cfop: it.D1_CF,
+      pedidoCompra: it.D1_PEDIDO || '-',
+      itemPc: it.D1_ITEMPC || '',
+      valorIcms: Number(it.D1_VALICM) || 0,
+      valorIpi: Number(it.D1_VALIPI) || 0
+    })),
+    titulos: (resTitulos && resTitulos.rows ? resTitulos.rows : []).map(t => {
+      const saldo = Number(t.SALDO) || 0;
+      const valor = Number(t.VALOR) || 0;
+      const baixa = t.BAIXA ? formatarDataProtheus(t.BAIXA) : '';
+      let status = 'ABERTO';
+      if (saldo <= 0 && baixa) status = 'PAGO';
+      else if (saldo < valor && saldo > 0) status = 'PARCIAL';
+
+      return {
+        prefixo: t.PREFIXO,
+        num: t.NUM,
+        parcela: t.PARCELA || 'Única',
+        tipo: t.TIPO,
+        valor: valor,
+        saldo: saldo,
+        vencimento: formatarDataProtheus(t.VENCTO),
+        vencimentoRaw: t.VENCTO,
+        baixa: baixa,
+        baixaRaw: t.BAIXA,
+        status: status
+      };
+    })
+  };
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
+  buscarConsultaComprasProtheus,
+  obterDetalhesNFeEntrada,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,
@@ -3222,5 +3723,6 @@ module.exports = {
   consultarExtratoSE5,
   algoritmoMatchingConciliacao
 };
+
 
 

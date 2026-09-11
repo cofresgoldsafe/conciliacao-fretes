@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.185 (Homologada em 11/09/2026 09:50)  
+> **Versão da Documentação:** v8.186 (Homologada em 11/09/2026 10:50)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Folga Ampliada em +80% para Assinatura Digital ZapSign em Holerites e Adiantamentos DP)  
-> **Data da Última Auditoria:** 11/09/2026 09:50 (v8.185 - Folga Ampliada em +80% para Assinatura ZapSign)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Consulta Ped/NF Compras Multi-Empresa com SF1, SD1, SC7, SA2, SF4, SE2 e Trava de 90 Dias)  
+> **Data da Última Auditoria:** 11/09/2026 10:50 (v8.186 - Consulta Ped/NF Compras Multi-Empresa)  
 
 ---
 
@@ -763,6 +763,28 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Filtros reativos por Empresa, Busca Textual (pedido, fornecedor, código, produto) e Status do Prazo (Todos, Atrasados, Vence Hoje, No Prazo).
       - Sincronização total com o seletor de Modo Claro/Modo Escuro (`modal-theme-light` e `tab-theme-light`).
     - **Suíte de Testes Automatizados:** Script `test_pedidos_compras_abertos.js` com 10 asserções cobrindo cenários abertos/encerrados validados com os exemplos da OACO 16 (`000263`, `000264`, `000265`, `000255`, `000258` vs `000256`, `000260`, `000181`, `000108`), cálculo determinístico de dias de atraso, proteção RBAC / JWT nos endpoints HTTP e integridade sintática (100% de aprovação).
+34. [x] **Sub-Aba "Consulta Ped/NF Compras" na Aba Principal COMPRAS com Consulta Multi-Empresa Direta no Protheus (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/compras_consulta_ped_nf.js`, `test_compras_consulta_ped_nf.js`):**
+    - **Consultas Multi-Empresa 100% Diretas no Protheus (Sem Replicação):**
+      - Nova sub-aba `#tab-compras-consulta-ped-nf` integrada ao subgrupo `#subGroupCompras` ao lado de `Ped Compras Aberto`.
+      - Busca unificada nas 3 empresas ativas (`OACO 16`, `GSI 15`, `Metal Pleno 14`) diretamente no Protheus SQL Server via Railway API (`executeRailwayQuery`), sem replicar linhas analíticas no PostgreSQL do portal.
+    - **3 Modos de Pesquisa & Validações:**
+      - **Número do Pedido de Compra (`ped`):** Busca em `SC7` e `SD1`/`SF1` para localizar tanto o pedido em aberto quanto NFs de entrada já faturadas para aquele pedido.
+      - **Número da NFe (`nf`):** Busca em `SF1` cruzando com `SD1` e `SC7` para recuperar dados fiscais e pedido amarrado.
+      - **Razão Social / Nome Fantasia Fornecedor (`fornec`):** Busca por termo com no mínimo 3 caracteres em `SA2010` (`A2_NOME` ou `A2_NREDUZ`) cruzando com as NFs `SF1`.
+    - **Trava de Segurança Anti-Sobrecarga (Intervalo Máximo de 90 Dias):**
+      - Ao pesquisar por Fornecedor, a data de emissão é obrigatória e limitada a um intervalo máximo estrito de **90 dias** (`dataFim - dataIni <= 90 dias`), aplicada de forma fail-closed tanto no frontend (`compras_consulta_ped_nf.js`) quanto no backend (`protheus_db.js`).
+      - Default inteligente pré-carregado: data final = hoje, data inicial = 90 dias atrás. Cláusula `TOP 100` por empresa para salvaguardar a estabilidade do Protheus.
+    - **Grade de Resultados Completa:**
+      - Colunas: `Empresa` | `Razão Social Fornecedor` | `Ped. Compra` | `NFe / Série` | `Data Emissão` | `Valor NF (R$)` | `Ações ("👁️ Ver")`.
+      - Exibição de badges claras para pedidos de compra com NF pendente (`🟡 Pendente (Sem NF)`).
+    - **Modal de Detalhes da NFe de Entrada (`#modalNFeEntradaDetalhes`):**
+      - Cabeçalho com Número da NF, Série, Empresa, CNPJ/Razão Social, Condição de Pagamento (`SE4`), Data de Emissão e Digitação.
+      - Chave de Acesso de 44 dígitos com botão de cópia instantânea em 1 clique (`📋 Copiar`).
+      - Resumo de Tributos e Frete (Total Produtos, Frete, Desconto, ICMS, IPI, Valor Bruto).
+      - Tabela analítica de itens (`SD1`) com Código, Descrição (`SB1`), Quantidade, Unidade, Valor Unitário, Valor Total, TES e CFOP.
+      - Tabela de Títulos a Pagar (`SE2`) com Parcela, Vencimento, Valor e Data de Baixa (se liquidado).
+    - **Suíte de Testes Automatizados (21 Asserções 100% Aprovadas):**
+      - Script `test_compras_consulta_ped_nf.js` cobrindo validações de entrada, trava de 90 dias, montagem das queries T-SQL, rotas de API com JWT/RBAC, integridade do módulo cliente IIFE e compilação de sintaxe.
 44. [x] **Sub-aba "Autorizações" (Desconto & Análise de Margem Pipedrive <-> Protheus ERP) na Aba 📊 BI EXECUTIVO (`bi_autorizacoes_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_autorizacoes.js`, `test_bi_autorizacoes.js`):**
     - **Navegação & Nova Sub-aba no BI Executivo:**
       - Criação da sub-aba `🎯 Autorizações de Desconto` (`#tab-bi-autorizacoes` / `#btnTabBiAutorizacoes`) ao lado de `📊 Índices Financeiros` e `📈 Metabase Analytics` no grupo `#subGroupBi`.
