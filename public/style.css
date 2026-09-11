@@ -3792,7 +3792,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin: 80px auto 0 auto;
+  margin: 144px auto 0 auto;
   max-width: 620px;
   padding: 0 15px;
   box-sizing: border-box;
@@ -3854,7 +3854,7 @@ body {
   }
 
   .holerite-canhoto-linhas {
-    margin: 18mm auto 0 auto !important;
+    margin: 32mm auto 0 auto !important;
     max-width: 160mm !important;
     padding: 0 8mm !important;
   }

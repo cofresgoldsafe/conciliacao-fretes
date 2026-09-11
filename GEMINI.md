@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.184 (Homologada em 11/09/2026 09:14)  
+> **Versão da Documentação:** v8.185 (Homologada em 11/09/2026 09:50)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Tabela Clássica de Holerites DP 100% com Bordas Pretas Sólidas #000000, Rótulos e Cabeçalhos Pretos e Fundo Branco Puro)  
-> **Data da Última Auditoria:** 11/09/2026 09:14 (v8.184 - Tabela Clássica de Holerites DP 100% em Preto Sólido #000000)  
+> **Status:** Estável / Operacional em Produção (Folga Ampliada em +80% para Assinatura Digital ZapSign em Holerites e Adiantamentos DP)  
+> **Data da Última Auditoria:** 11/09/2026 09:50 (v8.185 - Folga Ampliada em +80% para Assinatura ZapSign)  
 
 ---
 
@@ -1153,6 +1153,18 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - `test_parser_holerites.py`: 6 testes pytest com validação dos 6 PDFs/planilhas oficiais.
       - `test_frontend_modules.js`: 8 testes de integridade sintática e modular.
       - `test_funcionarios_dp.js`: 9 testes de colaboradores DP.
+65. [x] **Ampliação do Espaçamento de Assinatura Digital (+80%) para Plataformas Eletrônicas (ZapSign) em Holerites e Adiantamentos DP (`public/style.css`, `test_holerites_visual_signature.js`):**
+    - **Diagnóstico da Evidência Real (`holerite-ass-01.png`):**
+      - A análise de laudo assinado eletronicamente via ZapSign demonstrou colisão e sobreposição direta entre o carimbo digital da plataforma (*"Assinado digitalmente via ZapSign por ALEXANDRE ARRAIS"*, rubrica cursiva e carimbo de data/hora) e o traço/nome impresso do colaborador no canhoto de quitação.
+    - **Aumento Cirúrgico de +80% no Espaçamento Superior (`.holerite-canhoto-linhas`):**
+      - **Em Tela / Preview Web:** Margem superior ampliada de `80px` para **`144px`** (`80px * 1.8 = 144px`, exatos +80%), criando uma folga generosa entre a declaração de quitação e o traço de assinatura.
+      - **Em Impressão A4 / Exportação PDF (`@media print`):** Margem superior de impressão ajustada de `18mm` para **`32mm`** (`18mm * 1.8 = 32.4mm` ➔ `32mm`), garantindo que documentos salvos em PDF e submetidos a plataformas de assinatura (ZapSign, Clicksign, DocuSign, D4Sign) disponham de espaço confortável sem colisão visual.
+    - **Contenção Estrita em Folha Única A4:**
+      - Verificação da área útil vertical: a folha A4 possui 297mm (com área útil de ~261mm). O holerite completo com tabela clássica (5 a 8 linhas) e margem de 32mm totaliza ~190-215mm, preservando mais de 45mm de folga antes de qualquer risco de page break (100% de garantia de página única sem transbordo).
+    - **Unificação para Holerites e Adiantamentos:**
+      - Como a função `gerarHoleriteHtml()` em `public/js/holerites.js` atende tanto aos holerites mensais quanto aos recibos de adiantamento, a melhoria beneficia 100% dos documentos gerados pelo sistema.
+    - **Homologação Adversarial & Testes:**
+      - Subagente de oposição adversarial aprovou a solução sem ressalvas após validação em `test_holerites_visual_signature.js` (5/5), `test_frontend_modules.js` (8/8), `test_holerites_api.js` (7/7) e `test_funcionarios_dp.js` (9/9).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

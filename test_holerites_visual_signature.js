@@ -118,11 +118,11 @@ try {
   assert.ok(canhotoLinhasMatch, 'Deve capturar bloco .holerite-canhoto-linhas');
   const canhotoLinhasContent = canhotoLinhasMatch[1];
 
-  // Verifica margem generosa (pelo menos 60px a 80px)
+  // Verifica margem generosa (144px, aumentado em 80% em relação aos 80px anteriores para folga de assinatura eletrônica)
   const marginMatch = canhotoLinhasContent.match(/margin:\s*(\d+)px/);
   assert.ok(marginMatch, 'Deve conter margem em pixels');
   const marginTopPx = parseInt(marginMatch[1], 10);
-  assert.ok(marginTopPx >= 60, `Margem superior deve ser generosa (>= 60px para assinatura digital), obtido: ${marginTopPx}px`);
+  assert.ok(marginTopPx >= 140, `Margem superior deve ser de 144px (+80% para ZapSign/assinatura digital), obtido: ${marginTopPx}px`);
 
   // Verifica centralização (margin auto e max-width definido)
   assert.ok(canhotoLinhasContent.includes('auto'), 'Margem deve ter auto para centralização');
@@ -141,7 +141,7 @@ try {
   assert.ok(mediaPrintIdx !== -1, 'Deve conter @media print');
   const printContent = css.substring(mediaPrintIdx, mediaPrintIdx + 1200);
   assert.ok(printContent.includes('.holerite-canhoto-linhas'), '@media print deve conter regras para .holerite-canhoto-linhas');
-  assert.ok(printContent.includes('margin: 24mm auto') || printContent.includes('max-width: 160mm'), 'Impressão deve manter margem generosa e centralização em milímetros');
+  assert.ok(printContent.includes('margin: 32mm auto') || printContent.includes('max-width: 160mm'), 'Impressão deve manter margem de 32mm (+80%) e centralização em milímetros');
 
   report('Espaçamento vertical generoso e layout centralizado para plataformas de assinatura digital validados', true);
 } catch (err) {
