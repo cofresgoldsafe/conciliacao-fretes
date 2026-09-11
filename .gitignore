@@ -8,3 +8,4 @@ data/*.tmp*
 data/.*.tmp*
 __pycache__/
 *.pyc
+*.xlsx

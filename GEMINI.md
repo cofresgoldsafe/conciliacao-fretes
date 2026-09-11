@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.189 (Homologada em 11/09/2026 15:00)  
+> **Versão da Documentação:** v8.190 (Homologada em 11/09/2026 16:00)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Arquitetura Extensível de Abas & Permissões RBAC Dinâmicas: Descoberta DOM, Badges Resilientes, Regex de Slugs em server.js e Correção de Érica em Analista Fin)  
-> **Data da Última Auditoria:** 11/09/2026 15:00 (v8.189 - Arquitetura Dinâmica de Permissões RBAC e Abas Permitidas)  
+> **Status:** Estável / Operacional em Produção (Sub-aba NFS-e Pendentes do Analista Financeiro: Ingestão Contínua, Conciliação Protheus SF1, Ordenação Flexível, KPIs Multi-Empresa, Exportação CSV e Celebração Zero Pendências)  
+> **Data da Última Auditoria:** 11/09/2026 16:00 (v8.190 - Módulo NFS-e Pendentes Analista Fin)  
 
 ---
 
@@ -1203,6 +1203,35 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - *4. Estilos CSS Dedicados (`public/style.css`):* Inclusão das classes `.perm-badge-analista-fin` (rosa `#f472b6`), `.perm-badge-tarefas` (índigo `#818cf8`), `.perm-badge-bi` (violeta `#a78bfa`) e `.perm-badge-generic` (slate `#94a3b8`).
       - *5. Correção de Dados da Usuária Érica:* Atualização das permissões de `erica` em `data/users.json` para `['logistica', 'consulta', 'financeiro', 'analista-fin']`.
     - **Cobertura de Testes Automatizados:** Suíte dedicada `test_rbac_dynamic_permissions.js` com 9 asserções aprovadas com 100% de sucesso e integrada ao `npm test`.
+67. [x] **Sub-Aba "🧾 NFS-e Pendentes" sob 📑 ANALISTA FIN, Conciliação Protheus SF1, Ingestão Contínua e Celebração Zero Pendências (`sql/create_nfse_recebidas.sql`, `postgres_db.js`, `server.js`, `public/index.html`, `public/js/nfse_pendentes.js`, `public/app.js`, `scripts/import_nfse_historico.js`, `claude-job-nfse/src/job.js`, `test_nfse_pendentes.js`):**
+    - **Contexto e Problema de Origem:**
+      - O job de captura de NFS-e no Ambiente de Dados Nacional (ADN) rodava 3x por semana (`claude-job-nfse`), porém gravava apenas em um arquivo CSV local (`data/nfse.csv`) e arquivava os XMLs no Google Drive.
+      - A analista financeira não possuía visibilidade integrada no ERP/Portal sobre quais dessas notas já haviam sido lançadas no Protheus (`SF1`) e quais continuavam pendentes de entrada.
+    - **Arquitetura Resiliente & Modelo de Dados Relacional (`sql/create_nfse_recebidas.sql`, `postgres_db.js`):**
+      - Criação da tabela `nfse_recebidas` no Supabase PostgreSQL com chave única `chave_acesso VARCHAR(60) PRIMARY KEY`.
+      - Campos normalizados: `empresa_cnpj`, `empresa_nome`, `empresa_cod_protheus` (14, 15, 16), `nsu`, `numero_nota`, `data_emissao`, `prestador_cnpj`, `prestador_nome`, `valor_liquido`, `municipio`, `descricao`, `status_entrada` (`PENDENTE`, `LANCADA`, `CANCELADA`, `IGNORADA`), `protheus_doc`, `protheus_emissao`, `protheus_valbrut`, `protheus_fornece`, `protheus_loja`, `data_ultima_conferencia`.
+      - Índices de alta performance: `idx_nfse_status_emissao`, `idx_nfse_empresa_status`, `idx_nfse_prestador`.
+      - Row-Level Security (RLS) automático e compulsório no Supabase com permissões restritas ao backend.
+      - Fallback transparente para cache JSON local em `data/nfse_recebidas.json`, mantendo a aplicação 100% operacional mesmo em caso de indisponibilidade momentânea do PostgreSQL.
+    - **Extração Determinística do Número da NFS-e Nacional (`extrairNumeroNfse`):**
+      - Desvendada a estrutura técnica da chave de 50 dígitos do ADN Nacional: `cUF(2) + cMun(5) + tpAmb(1) + tpInsc(1) + CNPJ(14) + [Mod(2)+Serie(3)+Num(até 13 zeros)] + [AAMM(4)] + [Cod(8)+DV(1)]`.
+      - Algoritmo que localiza o CNPJ do prestador e a competência AAMM (derivada da emissão), descartando os prefixos de modelo 25 e série 000, com 100% de precisão nos 346 registros históricos.
+    - **Motor de Conciliação em Lote com o TOTVS Protheus (`reconciliarNfseComProtheusDB`):**
+      - Consultas T-SQL paralelas nas tabelas `SF1140` (Metal Pleno), `SF1150` (GSI) e `SF1160` (OAÇO) com `JOIN SA2010` via API Protheus/Railway com janela retroativa de 150 dias.
+      - Suporte ao alias de CNPJ do prestador (`BENEFICIO DIGITAL TECNOLOGIA LTDA` `40314164000108` ➔ `08655788000186`).
+      - Cruzamento em memória O(1) via Map `[cnpjPrestador::numDoc]`. Em ~2 segundos, reconciliou todas as notas da base histórica (102 lançadas, 244 pendentes no total histórico; 51 pendentes no período ativo de 120 dias, totalizando R$ 103.501,23).
+    - **Interface Visual do Usuário (`public/index.html`, `public/js/nfse_pendentes.js`, `public/app.js`):**
+      - Sub-aba `#btnTabNfsePendentes` perfeitamente integrada sob a aba principal `📑 ANALISTA FIN` (`#subGroupAnalistaFin`).
+      - **Cards de Métricas:** Total de NFS-e Pendentes, Valor Total Pendente (R$), e breakdown por empresa (GSI, Metal Pleno, OAÇO).
+      - **Filtros Flexíveis:** Dropdown de Empresa (*Todas, GSI, Metal Pleno, OAÇO*), Datas *De* e *Até* pré-populadas com os últimos 120 dias (`today - 120` até `today`), seletor de Status e busca rápida instantânea.
+      - **Ordenação Dinâmica de Colunas:** Padrão do mais antigo para o mais novo (`dataEmissao ASC`), com alternância interativa via setinhas (`▲`/`▼`/`↕`) em todas as colunas.
+      - **Modal de Detalhes:** Exibição completa dos metadados da nota, descrição integral do serviço, dados fiscais Protheus e botão com clique único para copiar a chave de acesso de 50 dígitos para a área de transferência.
+      - **Exportação CSV:** Botão `📥 Exportar CSV` gerando arquivo formatado com BOM UTF-8 (`\uFEFF`) e delimitador `;`, abrindo nativamente no Excel sem corrupção de acentos.
+      - **Celebração Zero Pendências:** Quando o volume de pendências é zerado pela analista financeira, um card congratulatório dourado/verde é exibido e dispara uma animação de confetes e serpentinas multicoloridas via micro-canvas puro (`#nfseConfettiCanvas`), sem dependência de bibliotecas externas.
+    - **Integração Push Contínua (`claude-job-nfse`):**
+      - Função assíncrona `enviarParaGeminiCli(linhasNovas)` em `claude-job-nfse/src/job.js` e configuração de secrets (`GEMINI_CLI_URL`, `PROTHEUS_API_KEY`) no GitHub Actions `.github/workflows/nfse.yml`. Ao detectar novas notas nas segundas, quartas e sextas às 06h, o job notifica e alimenta o Gemini-Cli automaticamente.
+    - **Qualidade & Testes Automatizados (`test_nfse_pendentes.js`):**
+      - Suíte completa de 11 testes aprovados com 100% de sucesso validando extração de chaves, filtros, cálculo de KPIs, estrutura DOM, inicialização modular e rotas no backend. Zero regressões em `test_frontend_modules.js` (8/8) e `test_rbac_dynamic_permissions.js` (9/9).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

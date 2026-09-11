@@ -43,6 +43,7 @@ const fechamentosCacheFile = path.join(dataDir, 'fechamentos_vendedores_cache.js
 const configMetasVendasFile = path.join(dataDir, 'config_metas_vendas.json');
 const holeritesCacheFile = path.join(dataDir, 'holerites_documentos.json');
 const colaboradoresCacheFile = path.join(dataDir, 'dp_colaboradores.json');
+const nfseCacheFile = path.join(dataDir, 'nfse_recebidas.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -943,6 +944,39 @@ async function initPostgres() {
         UPDATE dp_colaboradores SET cod_protheus = '000089' WHERE UPPER(nome_completo) LIKE '%FABIANE%RODRIGUES%ARRAIS%';
       `);
 
+      // 10.9 Tabela de Notas Fiscais de Serviço (NFS-e) Recebidas e Conciliação Protheus (ANALISTA FIN)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS nfse_recebidas (
+          id SERIAL PRIMARY KEY,
+          chave_acesso VARCHAR(60) UNIQUE NOT NULL,
+          empresa_cnpj VARCHAR(14) NOT NULL,
+          empresa_nome VARCHAR(100) NOT NULL,
+          empresa_cod_protheus VARCHAR(2) NOT NULL,
+          nsu BIGINT,
+          numero_nota VARCHAR(20) NOT NULL,
+          data_emissao TIMESTAMPTZ NOT NULL,
+          prestador_cnpj VARCHAR(14) NOT NULL,
+          prestador_nome VARCHAR(255) NOT NULL,
+          valor_liquido NUMERIC(14,2) NOT NULL,
+          municipio VARCHAR(100),
+          descricao TEXT,
+          status_entrada VARCHAR(20) DEFAULT 'PENDENTE',
+          protheus_doc VARCHAR(20),
+          protheus_emissao VARCHAR(8),
+          protheus_valbrut NUMERIC(14,2),
+          protheus_fornece VARCHAR(10),
+          protheus_loja VARCHAR(5),
+          fornecedor_sem_cadastro BOOLEAN DEFAULT FALSE,
+          data_ultima_conferencia TIMESTAMPTZ,
+          observacao TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_nfse_status_emissao ON nfse_recebidas (status_entrada, data_emissao);
+        CREATE INDEX IF NOT EXISTS idx_nfse_empresa_emissao ON nfse_recebidas (empresa_cod_protheus, data_emissao);
+        CREATE INDEX IF NOT EXISTS idx_nfse_prestador_num ON nfse_recebidas (prestador_cnpj, numero_nota);
+      `);
+
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
@@ -1036,7 +1070,8 @@ async function initPostgres() {
         'tarefas',
         'fechamentos_vendedores',
         'holerites_documentos',
-        'dp_colaboradores'
+        'dp_colaboradores',
+        'nfse_recebidas'
       ];
 
       // Busca dinamicamente todas as tabelas do schema public para garantir 100% de cobertura
@@ -4617,6 +4652,513 @@ async function sincronizarColaboradoresBaseOficialDB(usuario = 'sistema') {
   };
 }
 
+/**
+ * ══════════════════════════════════════════════════════════════════════════════
+ * MÓDULO NFS-E PENDENTES DE ENTRADA & CONCILIAÇÃO PROTHEUS (ANALISTA FIN)
+ * ══════════════════════════════════════════════════════════════════════════════
+ */
+
+let executeRailwayQueryFn = null;
+function getRailwayQueryFn() {
+  if (!executeRailwayQueryFn) {
+    try {
+      executeRailwayQueryFn = require('./protheus_db').executeRailwayQuery;
+    } catch (e) {
+      console.warn('⚠️ [NFS-e] protheus_db não pôde ser carregado:', e.message);
+    }
+  }
+  return executeRailwayQueryFn;
+}
+
+const EMPRESAS_NFSE_MAP = {
+  '14061778000115': { cod: '15', nome: 'GSI BW Equipamentos de Aço Cofres e Armários', sigla: 'GSI' },
+  '61237790000118': { cod: '16', nome: 'OACO Produtos de Aço', sigla: 'OACO' },
+  '48758821000118': { cod: '14', nome: 'Metal Pleno Equipamentos de Aço', sigla: 'METAL PLENO' }
+};
+
+const ALIAS_CNPJ_FORNECEDOR = {
+  '40314164000108': '08655788000186' // Benefício Digital
+};
+
+/**
+ * Extrai e normaliza o número da nota fiscal de serviço a partir da chave de 50 dígitos da NFS-e Nacional
+ */
+function extrairNumeroNfse(chave, prestadorCnpj, dataEmissao) {
+  if (!chave || !prestadorCnpj) return '';
+  const idxCnpj = chave.indexOf(prestadorCnpj);
+  if (idxCnpj === -1) return '';
+  
+  const afterCnpj = chave.slice(idxCnpj + prestadorCnpj.length);
+  const dataStr = String(dataEmissao || '');
+  const ano2 = dataStr.slice(2, 4);
+  const mes2 = dataStr.slice(5, 7);
+  const aamm = ano2 + mes2;
+  
+  const idxAamm = afterCnpj.lastIndexOf(aamm);
+  if (idxAamm !== -1) {
+    let numPart = afterCnpj.slice(0, idxAamm);
+    if (numPart.startsWith('25000')) {
+      numPart = numPart.slice(5);
+    } else if (numPart.startsWith('25') && numPart.length > 8) {
+      numPart = numPart.slice(2);
+    }
+    const limpo = numPart.replace(/^0+/, '');
+    return limpo || '0';
+  }
+  return '';
+}
+
+/**
+ * Salva ou atualiza notas fiscais de serviço no banco (Supabase PostgreSQL com fallback JSON local)
+ */
+async function salvarNfseRecebidasDB(notas = []) {
+  if (!Array.isArray(notas) || notas.length === 0) {
+    return { ok: true, total: 0, inseridas: 0, atualizadas: 0 };
+  }
+
+  // Sanitização e normalização das notas
+  const normalizadas = notas.map(n => {
+    const cnpjEmp = (n.empresaCnpj || n.empresa_cnpj || '').replace(/\D/g, '');
+    const empInfo = EMPRESAS_NFSE_MAP[cnpjEmp] || { cod: n.empresa_cod_protheus || '15', nome: n.empresaNome || n.empresa_nome || 'GSI', sigla: 'GSI' };
+    const chave = String(n.chaveAcesso || n.chave_acesso || '').trim();
+    const prestadorCnpj = (n.prestadorCnpj || n.prestador_cnpj || '').replace(/\D/g, '');
+    const dataEmi = n.dataEmissao || n.data_emissao || new Date().toISOString();
+    const numero = n.numeroNota || n.numero_nota || extrairNumeroNfse(chave, prestadorCnpj, dataEmi) || '0';
+    const valor = parseFloat(n.valorLiquido !== undefined ? n.valorLiquido : (n.valor_liquido || 0)) || 0.0;
+
+    return {
+      chave_acesso: chave,
+      empresa_cnpj: cnpjEmp,
+      empresa_nome: n.empresaNome || n.empresa_nome || empInfo.nome,
+      empresa_cod_protheus: empInfo.cod,
+      nsu: n.nsu ? parseInt(n.nsu, 10) : null,
+      numero_nota: String(numero).replace(/^0+/, '') || '0',
+      data_emissao: dataEmi,
+      prestador_cnpj: prestadorCnpj,
+      prestador_nome: (n.prestadorNome || n.prestador_nome || '').trim(),
+      valor_liquido: valor,
+      municipio: (n.municipio || '').trim(),
+      descricao: (n.descricao || '').trim(),
+      status_entrada: n.status_entrada || 'PENDENTE',
+      protheus_doc: n.protheus_doc || null,
+      protheus_emissao: n.protheus_emissao || null,
+      protheus_valbrut: n.protheus_valbrut !== undefined ? parseFloat(n.protheus_valbrut) : null,
+      protheus_fornece: n.protheus_fornece || null,
+      protheus_loja: n.protheus_loja || null,
+      fornecedor_sem_cadastro: !!n.fornecedor_sem_cadastro,
+      data_ultima_conferencia: n.data_ultima_conferencia || null,
+      observacao: n.observacao || null
+    };
+  }).filter(n => n.chave_acesso && n.prestador_cnpj);
+
+  let inseridas = 0;
+  let atualizadas = 0;
+
+  // 1. Persistência em PostgreSQL (se conectado)
+  const p = getPool();
+  if (p) {
+    try {
+      for (const item of normalizadas) {
+        const query = `
+          INSERT INTO nfse_recebidas (
+            chave_acesso, empresa_cnpj, empresa_nome, empresa_cod_protheus,
+            nsu, numero_nota, data_emissao, prestador_cnpj, prestador_nome,
+            valor_liquido, municipio, descricao, status_entrada,
+            protheus_doc, protheus_emissao, protheus_valbrut, protheus_fornece,
+            protheus_loja, fornecedor_sem_cadastro, data_ultima_conferencia, observacao
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+          ON CONFLICT (chave_acesso) DO UPDATE SET
+            numero_nota = EXCLUDED.numero_nota,
+            valor_liquido = EXCLUDED.valor_liquido,
+            municipio = COALESCE(EXCLUDED.municipio, nfse_recebidas.municipio),
+            descricao = COALESCE(EXCLUDED.descricao, nfse_recebidas.descricao),
+            updated_at = NOW()
+          RETURNING (xmax = 0) AS inserido;
+        `;
+        const res = await safeQuery(query, [
+          item.chave_acesso, item.empresa_cnpj, item.empresa_nome, item.empresa_cod_protheus,
+          item.nsu, item.numero_nota, item.data_emissao, item.prestador_cnpj, item.prestador_nome,
+          item.valor_liquido, item.municipio, item.descricao, item.status_entrada,
+          item.protheus_doc, item.protheus_emissao, item.protheus_valbrut, item.protheus_fornece,
+          item.protheus_loja, item.fornecedor_sem_cadastro, item.data_ultima_conferencia, item.observacao
+        ]);
+        if (res && res.rows && res.rows[0]) {
+          if (res.rows[0].inserido) inseridas++;
+          else atualizadas++;
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Falha ao gravar nfse_recebidas no Supabase:', err.message);
+    }
+  }
+
+  // 2. Persistência em Cache JSON Local (sempre atualizada para resiliência)
+  try {
+    let localList = [];
+    if (fs.existsSync(nfseCacheFile)) {
+      try { localList = safeReadJsonSync(nfseCacheFile, []) || []; } catch (e) {}
+    }
+    const map = new Map();
+    for (const item of localList) {
+      if (item.chave_acesso) map.set(item.chave_acesso, item);
+    }
+    for (const item of normalizadas) {
+      if (map.has(item.chave_acesso)) {
+        const existing = map.get(item.chave_acesso);
+        map.set(item.chave_acesso, { ...existing, ...item, updated_at: new Date().toISOString() });
+      } else {
+        map.set(item.chave_acesso, { ...item, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      }
+    }
+    safeWriteJsonSync(nfseCacheFile, Array.from(map.values()));
+  } catch (errJson) {
+    console.warn('⚠️ [NFS-e Local] Falha ao gravar nfse_recebidas.json:', errJson.message);
+  }
+
+  return { ok: true, total: normalizadas.length, inseridas, atualizadas };
+}
+
+/**
+ * Consulta NFS-e com filtros (empresa, período de/até, status) e calcula KPIs
+ */
+async function obterNfsePendentesDB(filtros = {}) {
+  const { empresa = 'todas', de, ate, dataInicio, dataFim, dias, status = 'PENDENTE' } = filtros;
+
+  // Período padrão: últimos 120 dias se não fornecido
+  const hoje = new Date();
+  const padraoAte = hoje.toISOString().slice(0, 10);
+  const numDias = parseInt(dias, 10) || 120;
+  const dataAtras = new Date(hoje.getTime() - numDias * 24 * 60 * 60 * 1000);
+  const padraoDe = dataAtras.toISOString().slice(0, 10);
+
+  const filtroDe = de || dataInicio || padraoDe;
+  const filtroAte = ate || dataFim || padraoAte;
+  const isStatusTodos = !status || ['TODOS', 'TODAS', 'ALL', ''].includes(String(status).trim().toUpperCase());
+
+  let todasNotas = [];
+
+  // Tenta carregar do PostgreSQL
+  const p = getPool();
+  let carregadoPostgres = false;
+  if (p) {
+    try {
+      let sql = `
+        SELECT id, chave_acesso, empresa_cnpj, empresa_nome, empresa_cod_protheus,
+               nsu, numero_nota, data_emissao, prestador_cnpj, prestador_nome,
+               valor_liquido, municipio, descricao, status_entrada,
+               protheus_doc, protheus_emissao, protheus_valbrut, protheus_fornece,
+               protheus_loja, fornecedor_sem_cadastro, data_ultima_conferencia, observacao,
+               created_at, updated_at
+        FROM nfse_recebidas
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (!isStatusTodos) {
+        params.push(status);
+        sql += ` AND status_entrada = $${params.length}`;
+      }
+      if (empresa && empresa !== 'todas') {
+        params.push(empresa);
+        sql += ` AND (empresa_cod_protheus = $${params.length} OR empresa_cnpj = $${params.length})`;
+      }
+      if (filtroDe) {
+        params.push(`${filtroDe}T00:00:00Z`);
+        sql += ` AND data_emissao >= $${params.length}`;
+      }
+      if (filtroAte) {
+        params.push(`${filtroAte}T23:59:59Z`);
+        sql += ` AND data_emissao <= $${params.length}`;
+      }
+
+      sql += ` ORDER BY data_emissao ASC`;
+
+      const res = await safeQuery(sql, params);
+      if (res && res.rows) {
+        todasNotas = res.rows.map(r => ({
+          ...r,
+          valor_liquido: parseFloat(r.valor_liquido) || 0.0,
+          protheus_valbrut: r.protheus_valbrut ? parseFloat(r.protheus_valbrut) : null
+        }));
+        carregadoPostgres = true;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Falha ao consultar nfse_recebidas, usando fallback JSON:', err.message);
+    }
+  }
+
+  // Fallback para JSON local se Postgres falhar ou não retornar nada
+  if (!carregadoPostgres || todasNotas.length === 0) {
+    try {
+      if (fs.existsSync(nfseCacheFile)) {
+        const raw = safeReadJsonSync(nfseCacheFile, []) || [];
+        todasNotas = raw.filter(n => {
+          if (!isStatusTodos && n.status_entrada !== status) return false;
+          if (empresa && empresa !== 'todas' && n.empresa_cod_protheus !== empresa && n.empresa_cnpj !== empresa) return false;
+          const dt = String(n.data_emissao || '').slice(0, 10);
+          if (filtroDe && dt < filtroDe) return false;
+          if (filtroAte && dt > filtroAte) return false;
+          return true;
+        }).map(r => ({
+          ...r,
+          valor_liquido: parseFloat(r.valor_liquido) || 0.0,
+          protheus_valbrut: r.protheus_valbrut ? parseFloat(r.protheus_valbrut) : null
+        }));
+
+        // Ordenação padrão: mais antigo para o mais novo
+        todasNotas.sort((a, b) => new Date(a.data_emissao) - new Date(b.data_emissao));
+      }
+    } catch (errJson) {
+      console.warn('⚠️ [NFS-e Local] Erro ao ler nfseCacheFile:', errJson.message);
+    }
+  }
+
+  // Cálculo dos KPIs da tela
+  let valorTotalPendente = 0;
+  const porEmpresa = {
+    '15': { count: 0, valor: 0, nome: 'GSI' },
+    '14': { count: 0, valor: 0, nome: 'Metal Pleno' },
+    '16': { count: 0, valor: 0, nome: 'OACO' }
+  };
+
+  for (const n of todasNotas) {
+    if (n.status_entrada === 'PENDENTE') {
+      valorTotalPendente += n.valor_liquido;
+      const cod = n.empresa_cod_protheus || '15';
+      if (!porEmpresa[cod]) {
+        porEmpresa[cod] = { count: 0, valor: 0, nome: n.empresa_nome || cod };
+      }
+      porEmpresa[cod].count++;
+      porEmpresa[cod].valor += n.valor_liquido;
+    }
+  }
+
+  return {
+    ok: true,
+    notas: todasNotas,
+    itens: todasNotas,
+    total: todasNotas.length,
+    kpis: {
+      totalPendentes: todasNotas.filter(n => n.status_entrada === 'PENDENTE').length,
+      valorTotalPendente: Math.round(valorTotalPendente * 100) / 100,
+      porEmpresa,
+      filtroAplicado: {
+        empresa,
+        de: filtroDe,
+        ate: filtroAte,
+        status
+      }
+    }
+  };
+}
+
+/**
+ * Atualiza status e metadados de uma NFS-e específica
+ */
+async function atualizarStatusNfseDB(chaveAcesso, dados = {}) {
+  if (!chaveAcesso) return { ok: false, error: 'Chave de acesso obrigatória' };
+
+  const p = getPool();
+  if (p) {
+    try {
+      const sets = [];
+      const params = [chaveAcesso];
+
+      if (dados.status_entrada) {
+        params.push(dados.status_entrada);
+        sets.push(`status_entrada = $${params.length}`);
+      }
+      if (dados.observacao !== undefined) {
+        params.push(dados.observacao);
+        sets.push(`observacao = $${params.length}`);
+      }
+      if (dados.protheus_doc !== undefined) {
+        params.push(dados.protheus_doc);
+        sets.push(`protheus_doc = $${params.length}`);
+      }
+      sets.push(`updated_at = NOW()`);
+
+      if (sets.length > 1) {
+        await safeQuery(`UPDATE nfse_recebidas SET ${sets.join(', ')} WHERE chave_acesso = $1;`, params);
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao atualizar status da NFS-e:', err.message);
+    }
+  }
+
+  // Atualiza também no JSON local
+  try {
+    if (fs.existsSync(nfseCacheFile)) {
+      const list = safeReadJsonSync(nfseCacheFile, []) || [];
+      const item = list.find(n => n.chave_acesso === chaveAcesso);
+      if (item) {
+        if (dados.status_entrada) item.status_entrada = dados.status_entrada;
+        if (dados.observacao !== undefined) item.observacao = dados.observacao;
+        if (dados.protheus_doc !== undefined) item.protheus_doc = dados.protheus_doc;
+        item.updated_at = new Date().toISOString();
+        safeWriteJsonSync(nfseCacheFile, list);
+      }
+    }
+  } catch (errJson) {}
+
+  return { ok: true, chaveAcesso };
+}
+
+/**
+ * Motor de Conciliação em Lote com o TOTVS Protheus (SF1140, SF1150, SF1160 x nfse_recebidas)
+ */
+async function reconciliarNfseComProtheusDB(dias = 150) {
+  const queryRailway = getRailwayQueryFn();
+  if (!queryRailway) {
+    return { ok: false, error: 'Função de consulta Protheus não disponível' };
+  }
+
+  console.log(`🔄 [NFS-e Protheus Sync] Iniciando reconciliação dos últimos ${dias} dias...`);
+
+  // Calcula data de corte no formato YYYYMMDD
+  const dataCorte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+  const anoCorte = dataCorte.getFullYear();
+  const mesCorte = String(dataCorte.getMonth() + 1).padStart(2, '0');
+  const diaCorte = String(dataCorte.getDate()).padStart(2, '0');
+  const dataCorteStr = `${anoCorte}${mesCorte}${diaCorte}`;
+
+  const sf1Map = { '14': new Map(), '15': new Map(), '16': new Map() };
+
+  // 1. Consulta em paralelo SF1 das 3 empresas
+  for (const empCod of ['14', '15', '16']) {
+    try {
+      const sql = `
+        SELECT F1.F1_DOC, F1.F1_EMISSAO, F1.F1_VALBRUT, F1.F1_FORNECE, F1.F1_LOJA, A2.A2_CGC
+        FROM SF1${empCod}0 F1
+        JOIN SA2010 A2 ON A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA AND A2.D_E_L_E_T_ = ' '
+        WHERE F1.D_E_L_E_T_ = ' ' AND F1.F1_EMISSAO >= '${dataCorteStr}'
+      `;
+      const res = await queryRailway(sql);
+      if (res && Array.isArray(res.rows)) {
+        for (const row of res.rows) {
+          const cgc = String(row.A2_CGC || '').replace(/\D/g, '');
+          const doc = String(row.F1_DOC || '').trim().replace(/^0+/, '');
+          if (cgc && doc) {
+            sf1Map[empCod].set(`${cgc}::${doc}`, row);
+          }
+        }
+      }
+    } catch (errEmp) {
+      console.warn(`⚠️ [NFS-e Protheus Sync] Falha ao consultar SF1${empCod}0:`, errEmp.message);
+    }
+  }
+
+  // 2. Carrega todas as notas recentes do banco ou cache local
+  let todasNotas = [];
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await safeQuery(`SELECT * FROM nfse_recebidas WHERE data_emissao >= NOW() - INTERVAL '${dias} days';`);
+      if (res && res.rows) todasNotas = res.rows;
+    } catch (errDb) {}
+  }
+  if (todasNotas.length === 0 && fs.existsSync(nfseCacheFile)) {
+    try {
+      todasNotas = safeReadJsonSync(nfseCacheFile, []) || [];
+    } catch (e) {}
+  }
+
+  let lancadas = 0;
+  let pendentes = 0;
+  const updatesLote = [];
+
+  for (const n of todasNotas) {
+    const empCod = n.empresa_cod_protheus || '15';
+    const numLimpo = String(n.numero_nota || '').replace(/^0+/, '');
+    const prestCnpj = String(n.prestador_cnpj || '').replace(/\D/g, '');
+
+    const key = `${prestCnpj}::${numLimpo}`;
+    let achou = sf1Map[empCod]?.get(key);
+
+    // Se não achou, tenta o alias registrado
+    if (!achou && ALIAS_CNPJ_FORNECEDOR[prestCnpj]) {
+      const aliasKey = `${ALIAS_CNPJ_FORNECEDOR[prestCnpj]}::${numLimpo}`;
+      achou = sf1Map[empCod]?.get(aliasKey);
+    }
+
+    const agoraISO = new Date().toISOString();
+    if (achou) {
+      lancadas++;
+      updatesLote.push({
+        chave_acesso: n.chave_acesso,
+        status_entrada: 'LANCADA',
+        protheus_doc: achou.F1_DOC,
+        protheus_emissao: achou.F1_EMISSAO,
+        protheus_valbrut: parseFloat(achou.F1_VALBRUT) || n.valor_liquido,
+        protheus_fornece: achou.F1_FORNECE,
+        protheus_loja: achou.F1_LOJA,
+        data_ultima_conferencia: agoraISO
+      });
+    } else {
+      pendentes++;
+      updatesLote.push({
+        chave_acesso: n.chave_acesso,
+        status_entrada: n.status_entrada === 'IGNORADA' ? 'IGNORADA' : 'PENDENTE',
+        protheus_doc: null,
+        protheus_emissao: null,
+        protheus_valbrut: null,
+        data_ultima_conferencia: agoraISO
+      });
+    }
+  }
+
+  // 3. Persiste atualizações no PostgreSQL
+  if (p && updatesLote.length > 0) {
+    try {
+      for (const u of updatesLote) {
+        await safeQuery(`
+          UPDATE nfse_recebidas SET
+            status_entrada = $1,
+            protheus_doc = $2,
+            protheus_emissao = $3,
+            protheus_valbrut = $4,
+            protheus_fornece = $5,
+            protheus_loja = $6,
+            data_ultima_conferencia = $7,
+            updated_at = NOW()
+          WHERE chave_acesso = $8;
+        `, [
+          u.status_entrada, u.protheus_doc, u.protheus_emissao, u.protheus_valbrut,
+          u.protheus_fornece || null, u.protheus_loja || null, u.data_ultima_conferencia,
+          u.chave_acesso
+        ]);
+      }
+    } catch (errUp) {
+      console.warn('⚠️ [Postgres] Erro ao persistir reconciliação no Supabase:', errUp.message);
+    }
+  }
+
+  // 4. Atualiza no cache JSON local
+  try {
+    if (fs.existsSync(nfseCacheFile)) {
+      const list = safeReadJsonSync(nfseCacheFile, []) || [];
+      const mapUp = new Map(updatesLote.map(u => [u.chave_acesso, u]));
+      for (const item of list) {
+        if (mapUp.has(item.chave_acesso)) {
+          Object.assign(item, mapUp.get(item.chave_acesso));
+        }
+      }
+      safeWriteJsonSync(nfseCacheFile, list);
+    }
+  } catch (errJson) {}
+
+  console.log(`✅ [NFS-e Protheus Sync] Concluído! Total: ${todasNotas.length}, Lançadas: ${lancadas}, Pendentes: ${pendentes}`);
+
+  return {
+    ok: true,
+    totalAvaliado: todasNotas.length,
+    lancadas,
+    pendentes,
+    dataCorte: dataCorteStr,
+    timestamp: new Date().toISOString()
+  };
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -4692,6 +5234,11 @@ module.exports = {
   sincronizarColaboradoresDosHoleritesDB,
   sincronizarColaboradoresBaseOficialDB,
   limparEDeduplicarColaboradoresDB,
+  extrairNumeroNfse,
+  salvarNfseRecebidasDB,
+  obterNfsePendentesDB,
+  atualizarStatusNfseDB,
+  reconciliarNfseComProtheusDB,
   DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool

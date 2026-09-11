@@ -114,6 +114,10 @@ const {
   sincronizarColaboradoresDosHoleritesDB,
   sincronizarColaboradoresBaseOficialDB,
   limparEDeduplicarColaboradoresDB,
+  salvarNfseRecebidasDB,
+  obterNfsePendentesDB,
+  atualizarStatusNfseDB,
+  reconciliarNfseComProtheusDB,
   isPostgresConnected
 } = require('./postgres_db');
 
@@ -4560,6 +4564,117 @@ app.post('/api/dp/colaboradores/limpar-duplicados', requireAuth, async (req, res
   } catch (err) {
     console.error('Erro ao limpar/deduplicar colaboradores:', err);
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// MÓDULO DE NOTAS FISCAIS DE SERVIÇO (NFS-E) RECEBIDAS (ANALISTA FIN)
+// ============================================================================
+
+// 1. Listar NFS-e com Filtros (Empresa, Período de/até, Status) e KPIs
+app.get('/api/analista-fin/nfse/pendentes', requireAuth, async (req, res) => {
+  try {
+    const { empresa, de, ate, status } = req.query;
+    const resultado = await obterNfsePendentesDB({ empresa, de, ate, status });
+    return res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao listar NFS-e pendentes:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. Disparar Sincronização e Conciliação em Lote com o TOTVS Protheus (SF1)
+app.post('/api/analista-fin/nfse/sincronizar', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const dias = req.body && req.body.dias ? parseInt(req.body.dias, 10) : 150;
+    const syncRes = await reconciliarNfseComProtheusDB(dias);
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'SYNC_NFSE_PROTHEUS',
+      description: `Disparou conciliação de NFS-e x Protheus (${syncRes.totalAvaliado} notas, ${syncRes.lancadas} lançadas, ${syncRes.pendentes} pendentes).`,
+      ip: req.ip,
+      metadata: syncRes
+    }).catch(() => {});
+
+    return res.json(syncRes);
+  } catch (err) {
+    console.error('Erro ao reconciliar NFS-e com Protheus:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. Ingestão Automática de Notas Capturadas pelo claude-job-nfse (Webhook / Job Ingestion)
+app.post('/api/analista-fin/nfse/ingest', async (req, res) => {
+  try {
+    // Autenticação flexível: via x-api-key (PROTHEUS_API_KEY) ou Authorization Bearer
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+    const expectedKey = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || 'ProtheusClaude#2026';
+    const isKeyValid = apiKey && apiKey === expectedKey;
+    let isTokenValid = false;
+
+    if (!isKeyValid && token) {
+      try {
+        jwt.verify(token, process.env.JWT_SECRET || 'goldsafe_secret_jwt_key_2026_super_secure');
+        isTokenValid = true;
+      } catch (e) {}
+    }
+
+    if (!isKeyValid && !isTokenValid) {
+      return res.status(401).json({ ok: false, error: 'Acesso não autorizado: credenciais de ingestão inválidas.' });
+    }
+
+    const { notas, disparar_reconciliacao } = req.body || {};
+    if (!Array.isArray(notas) || notas.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Payload deve conter array "notas" com ao menos um registro.' });
+    }
+
+    const resultadoSave = await salvarNfseRecebidasDB(notas);
+
+    let reconciliacaoRes = null;
+    if (disparar_reconciliacao !== false) {
+      // Reconcilia automaticamente os últimos 150 dias
+      reconciliacaoRes = await reconciliarNfseComProtheusDB(150);
+    }
+
+    return res.status(201).json({
+      ok: true,
+      ingestao: resultadoSave,
+      reconciliacao: reconciliacaoRes
+    });
+  } catch (err) {
+    console.error('Erro na ingestão de NFS-e:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 4. Atualizar Status ou Observações de uma NFS-e
+app.patch('/api/analista-fin/nfse/:chaveAcesso/status', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { chaveAcesso } = req.params;
+    const { status_entrada, observacao, protheus_doc } = req.body || {};
+
+    const updated = await atualizarStatusNfseDB(chaveAcesso, { status_entrada, observacao, protheus_doc });
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'UPDATE_STATUS_NFSE',
+      description: `Alterou status da NFS-e chave ${chaveAcesso.slice(-8)} para "${status_entrada}".`,
+      ip: req.ip,
+      metadata: { chaveAcesso, status_entrada, observacao }
+    }).catch(() => {});
+
+    return res.json({ ok: true, resultado: updated });
+  } catch (err) {
+    console.error('Erro ao atualizar status da NFS-e:', err);
+    return res.status(500).json({ ok: false, error: err.message });
   }
 });
 

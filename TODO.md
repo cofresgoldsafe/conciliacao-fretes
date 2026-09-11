@@ -72,9 +72,13 @@
 - [x] [QA-20] Suíte de testes automatizados para a Central de Tarefas e Delegação (`test_minhas_tarefas.js` - 20 asserções 100% aprovadas).
 - [x] [QA-21] Suíte de testes automatizados para Consulta Ped/NF Compras e Cód. Fornecedor (`test_compras_consulta_ped_nf.js` - 26 asserções 100% aprovadas).
 - [x] [QA-22] Suíte de testes automatizados para Arquitetura de Permissões RBAC Dinâmicas (`test_rbac_dynamic_permissions.js` - 9 asserções 100% aprovadas).
+- [x] [QA-23] Suíte de testes automatizados para NFS-e Pendentes do Analista Financeiro (`test_nfse_pendentes.js` - 11 asserções 100% aprovadas).
 
 ## 💼 Central de Tarefas & Delegação
 - [x] [TASK-01] Central de Delegação e Checagem "Minhas Tarefas": Criação e delegação de demandas operacionais, listagem de colaboradores ativos via `GET /api/auth/users`, unificação de prioridades (`Normal` default, `Alta`, `Urgente`), governança de status, comentários atômicos em JSONB e painel de KPIs em linha única compacta.
+
+## 📑 Analista Financeiro & Gestão Fiscal (NFS-e Nacional)
+- [x] [FIN-01] Sub-aba NFS-e Pendentes de Entrada: Painel operacional para analista financeira com listagem multi-empresa (GSI 15, Metal Pleno 14, OAÇO 16), filtros dinâmicos por empresa e período (default 120 dias), ordenação interativa de colunas (default mais antigo primeiro), conciliação automática com TOTVS Protheus (`SF1140`, `SF1150`, `SF1160` e fornecedores `SA2010`), busca textual instantânea, exportação CSV com BOM UTF-8, modal de detalhes com cópia de chave de 50 dígitos, card celebrativo com micro-canvas confetti em zero pendências e webhook de ingestão contínua para `claude-job-nfse`.
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).

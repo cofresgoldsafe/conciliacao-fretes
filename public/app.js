@@ -806,6 +806,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.funcionariosDpModule.carregarColaboradores();
         }
       }
+      if (targetTab === 'tab-nfse-pendentes') {
+        if (window.nfsePendentesModule && typeof window.nfsePendentesModule.init === 'function') {
+          window.nfsePendentesModule.init();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 
