@@ -3539,6 +3539,7 @@ body {
   border-collapse: collapse;
   margin-bottom: 14px;
   font-size: 0.82rem;
+  border: 1px solid #cbd5e1;
 }
 
 .holerite-tabela-eventos th {
@@ -3549,15 +3550,32 @@ body {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  border-right: 1px solid #334155;
+}
+
+.holerite-tabela-eventos th:last-child {
+  border-right: none;
 }
 
 .holerite-tabela-eventos td {
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.holerite-tabela-eventos td:last-child {
+  border-right: none;
 }
 
 .holerite-tabela-eventos tbody tr:nth-child(even) {
   background: #f8fafc;
+}
+
+.holerite-tabela-eventos tbody tr.holerite-linha-vazia td {
+  height: 22px;
+  padding: 2px 10px;
+  border-bottom: none;
+  background: #ffffff !important;
 }
 
 .holerite-num {
@@ -3575,7 +3593,76 @@ body {
   font-weight: 600;
 }
 
-/* Card de Totais e Líquido */
+/* Rodapé Clássico da Folha: Subtotais e Valor Líquido Integrados */
+.holerite-tabela-eventos tfoot tr.holerite-linha-subtotais td {
+  border-top: 1.5px solid #0f172a;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 6px 10px;
+  vertical-align: middle;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-subtotais .holerite-subtotal-vazio {
+  background: #ffffff;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-subtotais .holerite-subtotal-col {
+  background: #f8fafc;
+}
+
+.holerite-subtotal-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.holerite-subtotal-val {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-liquido td {
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 2px solid #0f172a;
+  padding: 7px 10px;
+  vertical-align: middle;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-liquido .holerite-liquido-vazio {
+  background: #ffffff;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-liquido .holerite-liquido-label-cell {
+  background: #f1f5f9;
+  text-align: right;
+}
+
+.holerite-liquido-label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.holerite-tabela-eventos tfoot tr.holerite-linha-liquido .holerite-liquido-val-cell {
+  background: #ecfdf5;
+  text-align: right;
+}
+
+.holerite-liquido-val {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #047857;
+}
+
+/* Card de Totais e Líquido (Compatibilidade) */
 .holerite-totais-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1.6fr;
@@ -3747,7 +3834,7 @@ body {
   }
 
   .holerite-canhoto-linhas {
-    margin: 24mm auto 0 auto !important;
+    margin: 18mm auto 0 auto !important;
     max-width: 160mm !important;
     padding: 0 8mm !important;
   }

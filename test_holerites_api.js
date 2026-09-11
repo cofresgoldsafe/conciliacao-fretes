@@ -112,7 +112,7 @@ async function runTests() {
   // Teste 1: Gravação e UPSERT de Holerites no Banco / JSON Fallback
   console.log('--- 1. Gravação e Persistência de Holerites ---');
   const salvos = await salvarHoleritesDB([mockDocGsi, mockDocOaco, mockDocSemReg], 'admin_test');
-  assert.ok(salvos.length >= 3, 'Deveria salvar ao menos 3 holerites');
+  assert.strictEqual(salvos.length, 3, 'Deveria salvar exatamente 3 holerites sem duplicar registros');
   const gsiSalvo = salvos.find(s => s.funcionario_nome === 'TESTE ALEXANDRE ARRAIS');
   assert.ok(gsiSalvo, 'Deveria encontrar mockDocGsi salvo');
   assert.strictEqual(gsiSalvo.empresa, 'GSI');

@@ -20,9 +20,33 @@
     currentPreviewDoc: null
   };
 
-  // Utilitários de Formatação
+  // Utilitários de Formatação e Sanitização
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function parseNumeroPtBr(val) {
+    if (val === null || val === undefined) return 0.0;
+    if (typeof val === 'number') return isNaN(val) ? 0.0 : val;
+    const s = String(val).trim();
+    if (!s) return 0.0;
+    if (s.includes(',') && s.includes('.')) {
+      return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0.0;
+    }
+    if (s.includes(',')) {
+      return parseFloat(s.replace(',', '.')) || 0.0;
+    }
+    return parseFloat(s) || 0.0;
+  }
+
   function formatMoney(val) {
-    const num = parseFloat(val) || 0.0;
+    const num = parseNumeroPtBr(val);
     return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
@@ -617,24 +641,41 @@
     // Eventos
     const eventos = Array.isArray(doc.eventos) ? doc.eventos : [];
     let eventosRows = '';
+    const minLinhas = 5;
     if (eventos.length > 0) {
-      eventosRows = eventos.map(e => `
+      eventosRows = eventos.map(e => {
+        const vNum = parseNumeroPtBr(e.vencimento);
+        const dNum = parseNumeroPtBr(e.desconto);
+        return `
         <tr>
-          <td class="holerite-num" style="width: 55px; text-align: center;">${e.codigo || ''}</td>
-          <td>${e.descricao || ''}</td>
-          <td class="holerite-num" style="width: 75px; text-align: center;">${e.referencia || ''}</td>
-          <td class="holerite-num holerite-vencimento" style="width: 110px; text-align: right;">
-            ${e.vencimento > 0 ? formatMoney(e.vencimento) : ''}
+          <td class="holerite-num" style="width: 55px; text-align: center;">${escapeHtml(e.codigo || '')}</td>
+          <td>${escapeHtml(e.descricao || '')}</td>
+          <td class="holerite-num" style="width: 75px; text-align: center;">${escapeHtml(e.referencia || '')}</td>
+          <td class="holerite-num holerite-vencimento" style="width: 120px; text-align: right;">
+            ${vNum > 0 ? formatMoney(vNum) : ''}
           </td>
-          <td class="holerite-num holerite-desconto" style="width: 110px; text-align: right;">
-            ${e.desconto > 0 ? formatMoney(e.desconto) : ''}
+          <td class="holerite-num holerite-desconto" style="width: 120px; text-align: right;">
+            ${dNum > 0 ? formatMoney(dNum) : ''}
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
+
+      for (let i = eventos.length; i < minLinhas; i++) {
+        eventosRows += `
+          <tr class="holerite-linha-vazia">
+            <td class="holerite-num" style="text-align: center;">&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="holerite-num" style="text-align: center;">&nbsp;</td>
+            <td class="holerite-num" style="text-align: right;">&nbsp;</td>
+            <td class="holerite-num" style="text-align: right;">&nbsp;</td>
+          </tr>
+        `;
+      }
     } else {
       eventosRows = `
         <tr>
-          <td colspan="5" style="text-align: center; color: #64748b; padding: 12px;">Nenhum evento detalhado.</td>
+          <td colspan="5" style="text-align: center; color: #64748b; padding: 14px;">Nenhum evento detalhado.</td>
         </tr>
       `;
     }
@@ -648,7 +689,7 @@
           <div class="holerite-quadro-mensagem-header">
             <span>📢 Comunicado da Empresa</span>
           </div>
-          <div>${msgTexto}</div>
+          <div>${escapeHtml(msgTexto)}</div>
         </div>
       `;
     }
@@ -683,53 +724,59 @@
         <!-- Dados do Colaborador -->
         <table class="holerite-dados-colaborador">
           <tr>
-            <td style="width: 90px; color: #64748b;">Código: <strong>${doc.funcionario_codigo || 'SEM_REG'}</strong></td>
-            <td colspan="2">Nome: <strong style="font-size: 0.92rem; color: #0f172a;">${doc.funcionario_nome}</strong></td>
-            <td style="width: 120px; text-align: right;">CBO: <strong>${doc.funcionario_cbo || '-'}</strong></td>
+            <td style="width: 90px; color: #64748b;">Código: <strong>${escapeHtml(doc.funcionario_codigo || 'SEM_REG')}</strong></td>
+            <td colspan="2">Nome: <strong style="font-size: 0.92rem; color: #0f172a;">${escapeHtml(doc.funcionario_nome || '')}</strong></td>
+            <td style="width: 120px; text-align: right;">CBO: <strong>${escapeHtml(doc.funcionario_cbo || '-')}</strong></td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Depto/Filial: <strong>${doc.funcionario_departamento || '1'}/${doc.funcionario_filial || '1'}</strong></td>
-            <td>Cargo: <strong>${doc.funcionario_cargo || '-'}</strong></td>
-            <td>Admissão: <strong>${doc.funcionario_admissao || '-'}</strong></td>
-            <td style="text-align: right;">${doc.funcionario_cpf ? `CPF: <strong>${doc.funcionario_cpf}</strong>` : `Tipo: <strong>${doc.funcionario_tipo_contrato || 'Mensalista'}</strong>`}</td>
+            <td style="color: #64748b;">Depto/Filial: <strong>${escapeHtml(doc.funcionario_departamento || '1')}/${escapeHtml(doc.funcionario_filial || '1')}</strong></td>
+            <td>Cargo: <strong>${escapeHtml(doc.funcionario_cargo || '-')}</strong></td>
+            <td>Admissão: <strong>${escapeHtml(doc.funcionario_admissao || '-')}</strong></td>
+            <td style="text-align: right;">${doc.funcionario_cpf ? `CPF: <strong>${escapeHtml(doc.funcionario_cpf)}</strong>` : `Tipo: <strong>${escapeHtml(doc.funcionario_tipo_contrato || 'Mensalista')}</strong>`}</td>
           </tr>
         </table>
 
-        <!-- Tabela de Eventos -->
+        <!-- Tabela de Eventos com Subtotais e Valor Líquido -->
         <table class="holerite-tabela-eventos">
           <thead>
             <tr>
-              <th style="text-align: center;">Cód</th>
-              <th style="text-align: left;">Descrição da Verba</th>
-              <th style="text-align: center;">Referência</th>
-              <th style="text-align: right;">Vencimentos (Crédito)</th>
-              <th style="text-align: right;">Descontos (Débito)</th>
+              <th scope="col" style="width: 55px; text-align: center;">Código</th>
+              <th scope="col" style="text-align: left;">Descrição</th>
+              <th scope="col" style="width: 75px; text-align: center;">Referência</th>
+              <th scope="col" style="width: 120px; text-align: right;">Vencimentos</th>
+              <th scope="col" style="width: 120px; text-align: right;">Descontos</th>
             </tr>
           </thead>
           <tbody>
             ${eventosRows}
           </tbody>
+          <tfoot>
+            <tr class="holerite-linha-subtotais">
+              <td colspan="3" class="holerite-subtotal-vazio"></td>
+              <td class="holerite-subtotal-col" style="text-align: right;">
+                <span class="holerite-subtotal-label">Total de Vencimentos</span>
+                <span class="holerite-num holerite-vencimento holerite-subtotal-val">${formatMoney(doc.total_vencimentos)}</span>
+              </td>
+              <td class="holerite-subtotal-col" style="text-align: right;">
+                <span class="holerite-subtotal-label">Total de Descontos</span>
+                <span class="holerite-num holerite-desconto holerite-subtotal-val">${formatMoney(doc.total_descontos)}</span>
+              </td>
+            </tr>
+            <tr class="holerite-linha-liquido">
+              <td colspan="3" class="holerite-liquido-vazio"></td>
+              <td class="holerite-liquido-label-cell" style="text-align: right;">
+                <span class="holerite-liquido-label">Valor Líquido &nbsp;⇨</span>
+              </td>
+              <td class="holerite-liquido-val-cell" style="text-align: right;">
+                <span class="holerite-num holerite-liquido-val">${formatMoney(doc.valor_liquido)}</span>
+              </td>
+            </tr>
+          </tfoot>
         </table>
-
-        <!-- Grid de Totais -->
-        <div class="holerite-totais-grid">
-          <div class="holerite-total-card">
-            <span class="holerite-total-label">Total de Vencimentos</span>
-            <span class="holerite-total-valor" style="color: #047857;">${formatMoney(doc.total_vencimentos)}</span>
-          </div>
-          <div class="holerite-total-card">
-            <span class="holerite-total-label">Total de Descontos</span>
-            <span class="holerite-total-valor" style="color: #b91c1c;">${formatMoney(doc.total_descontos)}</span>
-          </div>
-          <div class="holerite-total-card destaque-liquido">
-            <span class="holerite-total-label">Valor Líquido a Receber</span>
-            <span class="holerite-total-valor">${formatMoney(doc.valor_liquido)}</span>
-          </div>
-        </div>
 
         <!-- Valor por Extenso -->
         <div style="font-size: 0.78rem; color: #334155; margin-bottom: 12px; background: #f1f5f9; padding: 6px 12px; border-radius: 4px;">
-          Valor por extenso: <em>${doc.valor_liquido_extenso || formatMoney(doc.valor_liquido)}</em>
+          Valor por extenso: <em>${escapeHtml(doc.valor_liquido_extenso || formatMoney(doc.valor_liquido))}</em>
         </div>
 
         <!-- Bases de Cálculo -->
@@ -769,7 +816,7 @@
               Data: <strong>____/____/________</strong>
             </div>
             <div class="holerite-linha-assinatura">
-              ${doc.funcionario_nome}
+              ${escapeHtml(doc.funcionario_nome || '')}
             </div>
           </div>
         </div>
@@ -802,14 +849,15 @@
           if (colabData.success && Array.isArray(colabData.colaboradores) && colabData.colaboradores.length > 0) {
             const c = colabData.colaboradores[0];
             if (c.chave_pix || c.telefone_celular) {
+              const pixSafe = encodeURIComponent(c.chave_pix || '');
               pixBarHtml = `
                 <div class="no-print" style="margin-bottom: 12px; padding: 10px 14px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                   <div style="display: flex; align-items: center; gap: 14px; font-size: 0.82rem;">
-                    ${c.chave_pix ? `<span>💳 PIX: <strong style="font-family: monospace; color: #a855f7;">${c.chave_pix}</strong></span>` : ''}
-                    ${c.telefone_celular ? `<span>📱 Cel: <strong>${c.telefone_celular}</strong></span>` : ''}
-                    <span>Status: <strong style="color: #10b981;">${c.status || 'ATIVO'}</strong></span>
+                    ${c.chave_pix ? `<span>💳 PIX: <strong style="font-family: monospace; color: #a855f7;">${escapeHtml(c.chave_pix)}</strong></span>` : ''}
+                    ${c.telefone_celular ? `<span>📱 Cel: <strong>${escapeHtml(c.telefone_celular)}</strong></span>` : ''}
+                    <span>Status: <strong style="color: #10b981;">${escapeHtml(c.status || 'ATIVO')}</strong></span>
                   </div>
-                  ${c.chave_pix ? `<button type="button" class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('${c.chave_pix.replace(/'/g, "\\'")}').then(() => alert('📋 Chave PIX copiada: ${c.chave_pix}'))" style="font-size: 0.75rem; padding: 2px 8px;">📋 Copiar PIX</button>` : ''}
+                  ${c.chave_pix ? `<button type="button" class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(decodeURIComponent('${pixSafe}')).then(() => alert('📋 Chave PIX copiada!'))" style="font-size: 0.75rem; padding: 2px 8px;">📋 Copiar PIX</button>` : ''}
                 </div>
               `;
             }

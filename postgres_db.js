@@ -3627,9 +3627,33 @@ async function salvarHoleritesDB(docs, username) {
     }
   }
 
-  // Fallback JSON local
+  // Sincronização e Fallback do Cache Local JSON
   const list = safeReadJsonSync(holeritesCacheFile, []);
+  let maxId = list.reduce((max, x) => Math.max(max, parseInt(x.id, 10) || 0), 0);
+
+  if (saved.length > 0) {
+    // Banco PostgreSQL gravou com sucesso: sincroniza o cache local mantendo os IDs oficiais do PostgreSQL
+    for (const s of saved) {
+      const idx = list.findIndex(x =>
+        x.empresa === s.empresa &&
+        x.tipo_documento === s.tipo_documento &&
+        parseInt(x.competencia_ano, 10) === parseInt(s.competencia_ano, 10) &&
+        parseInt(x.competencia_mes, 10) === parseInt(s.competencia_mes, 10) &&
+        x.funcionario_nome === s.funcionario_nome
+      );
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...s };
+      } else {
+        list.push(s);
+      }
+    }
+    safeWriteJsonSync(holeritesCacheFile, list);
+    return saved;
+  }
+
+  // Fallback 100% offline (Postgres desconectado): gera IDs inteiros seguros (<= 2.147.483.647)
   for (const doc of docs) {
+    maxId++;
     const idx = list.findIndex(x =>
       x.empresa === doc.empresa &&
       x.tipo_documento === doc.tipo_documento &&
@@ -3638,7 +3662,7 @@ async function salvarHoleritesDB(docs, username) {
       x.funcionario_nome === doc.funcionario_nome
     );
     const rec = {
-      id: idx >= 0 ? list[idx].id : Date.now() + Math.floor(Math.random() * 1000),
+      id: idx >= 0 ? list[idx].id : maxId,
       ...doc,
       status: doc.status || 'ATIVO',
       mensagem_personalizada: (idx >= 0 && list[idx].mensagem_personalizada) ? list[idx].mensagem_personalizada : (doc.mensagem_personalizada || ''),
@@ -3650,9 +3674,7 @@ async function salvarHoleritesDB(docs, username) {
     } else {
       list.push(rec);
     }
-    if (!saved.some(s => s.id === rec.id)) {
-      saved.push(rec);
-    }
+    saved.push(rec);
   }
   safeWriteJsonSync(holeritesCacheFile, list);
   return saved;

@@ -148,6 +148,134 @@ try {
   report('Espaçamento vertical generoso e layout centralizado para plataformas de assinatura digital validados', false, err.message);
 }
 
+// 4. Validação da Tabela de Eventos com Subtotais e Valor Líquido no Rodapé (Padrão Clássico)
+try {
+  console.log('\n--- 4. Validação da Tabela de Lançamentos com Subtotais e Valor Líquido ---');
+  const js = fs.readFileSync(path.join(__dirname, 'public', 'js', 'holerites.js'), 'utf-8');
+  const css = fs.readFileSync(path.join(__dirname, 'public', 'style.css'), 'utf-8');
+
+  // Executa no sandbox JS
+  const context = {
+    window: {},
+    document: {
+      readyState: 'complete',
+      getElementById: () => null,
+      addEventListener: () => {}
+    },
+    localStorage: { getItem: () => null }
+  };
+  vm.createContext(context);
+  vm.runInContext(js, context);
+
+  // Amostra 1: Recibo de Adiantamento Salarial (OAÇO)
+  const htmlAdiantamento = context.window.holeritesModule.gerarHoleriteHtml({
+    id: 101,
+    empresa: 'OACO',
+    empresa_razao_social: 'OACO PRODUTOS DE ACO LTDA',
+    tipo_documento: 'ADIANTAMENTO',
+    funcionario_nome: 'WILLIAM CONCEICAO PINHEIRO',
+    total_vencimentos: 848.00,
+    total_descontos: 0.00,
+    valor_liquido: 848.00,
+    eventos: [
+      { codigo: '981', descricao: 'ADIANTAMENTO SALARIAL', referencia: '40,00', vencimento: 848.00, desconto: 0.00 }
+    ]
+  });
+
+  // Amostra 2: Recibo de Folha Mensal (GSI BW)
+  const htmlMensal = context.window.holeritesModule.gerarHoleriteHtml({
+    id: 102,
+    empresa: 'GSI',
+    empresa_razao_social: 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA',
+    tipo_documento: 'FOLHA_MENSAL',
+    funcionario_nome: 'ALEXANDRE RODRIGUES ARRAIS',
+    total_vencimentos: 4748.80,
+    total_descontos: 295.62,
+    valor_liquido: 4453.18,
+    eventos: [
+      { codigo: '8781', descricao: 'DIAS NORMAIS', referencia: '30,00', vencimento: 3392.00, desconto: 0.00 },
+      { codigo: '9488', descricao: 'AJUDA HOME OFFICE', referencia: '1.356,80', vencimento: 1356.80, desconto: 0.00 },
+      { codigo: '998', descricao: 'I.N.S.S.', referencia: '8,72', vencimento: 0.00, desconto: 295.62 }
+    ]
+  });
+
+  // Asserções para ambos os modelos:
+  for (const [modelo, html] of [['Adiantamento OAÇO', htmlAdiantamento], ['Mensal GSI', htmlMensal]]) {
+    assert.ok(html.includes('<tfoot'), `${modelo} deve conter elemento <tfoot>`);
+    assert.ok(html.includes('holerite-linha-subtotais'), `${modelo} deve conter linha .holerite-linha-subtotais`);
+    assert.ok(html.includes('Total de Vencimentos'), `${modelo} deve exibir rótulo "Total de Vencimentos"`);
+    assert.ok(html.includes('Total de Descontos'), `${modelo} deve exibir rótulo "Total de Descontos"`);
+    assert.ok(html.includes('holerite-linha-liquido'), `${modelo} deve conter linha .holerite-linha-liquido`);
+    assert.ok(html.includes('Valor Líquido'), `${modelo} deve exibir rótulo "Valor Líquido"`);
+    assert.ok(!html.includes('class="holerite-totais-grid"'), `${modelo} NÃO deve conter contêiner externo .holerite-totais-grid`);
+    assert.ok(html.includes('holerite-linha-vazia'), `${modelo} deve conter linhas espaçadoras para manter elegância da folha`);
+  }
+
+  // Validação dos valores específicos
+  assert.ok(htmlAdiantamento.includes('848,00'), 'Adiantamento deve renderizar 848,00 nos vencimentos e líquido');
+  assert.ok(htmlMensal.includes('4.748,80'), 'Mensal deve renderizar total de vencimentos 4.748,80');
+  assert.ok(htmlMensal.includes('295,62'), 'Mensal deve renderizar total de descontos 295,62');
+  assert.ok(htmlMensal.includes('4.453,18'), 'Mensal deve renderizar valor líquido 4.453,18');
+
+  // Validação no CSS
+  assert.ok(css.includes('.holerite-linha-subtotais'), 'CSS deve definir .holerite-linha-subtotais');
+  assert.ok(css.includes('.holerite-linha-liquido'), 'CSS deve definir .holerite-linha-liquido');
+  assert.ok(css.includes('.holerite-subtotal-val'), 'CSS deve definir .holerite-subtotal-val');
+  assert.ok(css.includes('.holerite-liquido-val'), 'CSS deve definir .holerite-liquido-val');
+
+  report('Tabela clássica de holerites com subtotais e valor líquido integrados no rodapé validada com sucesso', true);
+} catch (err) {
+  report('Tabela clássica de holerites com subtotais e valor líquido integrados no rodapé validada com sucesso', false, err.message);
+}
+
+// 5. Validação de Sanitização XSS & Parser Numérico PT-BR
+try {
+  console.log('\n--- 5. Validação de Sanitização XSS & Parser Numérico PT-BR ---');
+  const js = fs.readFileSync(path.join(__dirname, 'public', 'js', 'holerites.js'), 'utf-8');
+  const context = {
+    window: {},
+    document: {
+      readyState: 'complete',
+      getElementById: () => null,
+      addEventListener: () => {}
+    },
+    localStorage: { getItem: () => null }
+  };
+  vm.createContext(context);
+  vm.runInContext(js, context);
+
+  // Teste de ataque XSS
+  const xssPayload = '"><script>alert("xss")</script><img src=x onerror="alert(1)">';
+  const htmlXss = context.window.holeritesModule.gerarHoleriteHtml({
+    id: 999,
+    empresa: 'GSI',
+    funcionario_nome: `ALEXANDRE ${xssPayload}`,
+    funcionario_cargo: `GERENTE ${xssPayload}`,
+    mensagem_personalizada: xssPayload,
+    total_vencimentos: "1.356,80",
+    total_descontos: "295,62",
+    valor_liquido: "1.061,18",
+    eventos: [
+      { codigo: '101', descricao: `Salário ${xssPayload}`, referencia: '30d', vencimento: "1.356,80", desconto: 0 },
+      { codigo: '201', descricao: 'INSS', referencia: '7,5%', vencimento: 0, desconto: "295,62" }
+    ]
+  });
+
+  assert.ok(!htmlXss.includes('<script>'), 'HTML NÃO deve conter tags <script> não escapadas');
+  assert.ok(!htmlXss.includes('<img src=x'), 'HTML NÃO deve conter tags <img> maliciosas não escapadas');
+  assert.ok(htmlXss.includes('&lt;script&gt;'), 'Tags script devem ser devidamente escapadas como entidades HTML');
+  assert.ok(htmlXss.includes('&quot;xss&quot;'), 'Aspas em payloads devem ser escapadas');
+
+  // Validação de parsing PT-BR de strings com separadores de milhar e decimal
+  assert.ok(htmlXss.includes('1.356,80'), 'Deve converter e renderizar strings monetárias PT-BR com separador de milhar ("1.356,80")');
+  assert.ok(htmlXss.includes('295,62'), 'Deve converter e renderizar descontos em formato PT-BR ("295,62")');
+  assert.ok(htmlXss.includes('1.061,18'), 'Deve converter e renderizar valor líquido PT-BR ("1.061,18")');
+
+  report('Sanitização contra Stored XSS e suporte a strings numéricas PT-BR validados com sucesso', true);
+} catch (err) {
+  report('Sanitização contra Stored XSS e suporte a strings numéricas PT-BR validados com sucesso', false, err.message);
+}
+
 console.log('\n=============================================================');
 console.log(`📊 RESULTADOS: ${passed} Aprovados, ${failed} Falhas`);
 console.log('=============================================================');
