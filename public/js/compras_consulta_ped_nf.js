@@ -82,6 +82,7 @@
       const btnLimpar = document.getElementById('btnLimparConsultaCompras');
       const inputPed = document.getElementById('searchComprasPed');
       const inputNFe = document.getElementById('searchComprasNFe');
+      const inputCodFornec = document.getElementById('searchComprasCodFornec');
       const inputFornec = document.getElementById('searchComprasFornec');
 
       // Botão Buscar
@@ -95,7 +96,7 @@
       }
 
       // Atalho Enter nos inputs
-      [inputPed, inputNFe, inputFornec].forEach(input => {
+      [inputPed, inputNFe, inputCodFornec, inputFornec].forEach(input => {
         if (input) {
           input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -109,11 +110,13 @@
       // Feedback visual de foco / exclusividade mútua
       const tagPed = document.getElementById('tagComprasPed');
       const tagNFe = document.getElementById('tagComprasNFe');
+      const tagCodFornec = document.getElementById('tagComprasCodFornec');
       const tagFornec = document.getElementById('tagComprasFornec');
 
       const atualizarTags = () => {
         const hasPed = inputPed && inputPed.value.trim().length > 0;
         const hasNFe = inputNFe && inputNFe.value.trim().length > 0;
+        const hasCodFornec = inputCodFornec && inputCodFornec.value.trim().length > 0;
         const hasFornec = inputFornec && inputFornec.value.trim().length > 0;
 
         if (tagPed) {
@@ -126,8 +129,13 @@
           tagNFe.style.background = hasNFe ? 'rgba(56, 189, 248, 0.2)' : '';
           tagNFe.style.color = hasNFe ? '#38bdf8' : '';
         }
+        if (tagCodFornec) {
+          tagCodFornec.textContent = hasCodFornec ? ((hasPed || hasNFe) ? 'Secundário' : 'Prioritário') : 'Ativo';
+          tagCodFornec.style.background = hasCodFornec ? 'rgba(56, 189, 248, 0.2)' : '';
+          tagCodFornec.style.color = hasCodFornec ? '#38bdf8' : '';
+        }
         if (tagFornec) {
-          tagFornec.textContent = hasFornec ? ((hasPed || hasNFe) ? 'Secundário' : 'Prioritário') : 'Ativo';
+          tagFornec.textContent = hasFornec ? ((hasPed || hasNFe || hasCodFornec) ? 'Secundário' : 'Prioritário') : 'Ativo';
           tagFornec.style.background = hasFornec ? 'rgba(56, 189, 248, 0.2)' : '';
           tagFornec.style.color = hasFornec ? '#38bdf8' : '';
         }
@@ -135,6 +143,7 @@
 
       if (inputPed) inputPed.addEventListener('input', atualizarTags);
       if (inputNFe) inputNFe.addEventListener('input', atualizarTags);
+      if (inputCodFornec) inputCodFornec.addEventListener('input', atualizarTags);
       if (inputFornec) inputFornec.addEventListener('input', atualizarTags);
 
       // Modal Detalhes NFe
@@ -161,6 +170,7 @@
     limparFiltros: function () {
       const inputPed = document.getElementById('searchComprasPed');
       const inputNFe = document.getElementById('searchComprasNFe');
+      const inputCodFornec = document.getElementById('searchComprasCodFornec');
       const inputFornec = document.getElementById('searchComprasFornec');
       const selectEmpresa = document.getElementById('selectComprasEmpresa');
       const tbody = document.getElementById('comprasTableBody');
@@ -169,6 +179,7 @@
 
       if (inputPed) inputPed.value = '';
       if (inputNFe) inputNFe.value = '';
+      if (inputCodFornec) inputCodFornec.value = '';
       if (inputFornec) inputFornec.value = '';
       if (selectEmpresa) selectEmpresa.value = 'TODAS';
 
@@ -176,9 +187,11 @@
 
       const tagPed = document.getElementById('tagComprasPed');
       const tagNFe = document.getElementById('tagComprasNFe');
+      const tagCodFornec = document.getElementById('tagComprasCodFornec');
       const tagFornec = document.getElementById('tagComprasFornec');
       if (tagPed) { tagPed.textContent = 'Ativo'; tagPed.style.background = ''; tagPed.style.color = ''; }
       if (tagNFe) { tagNFe.textContent = 'Ativo'; tagNFe.style.background = ''; tagNFe.style.color = ''; }
+      if (tagCodFornec) { tagCodFornec.textContent = 'Ativo'; tagCodFornec.style.background = ''; tagCodFornec.style.color = ''; }
       if (tagFornec) { tagFornec.textContent = 'Ativo'; tagFornec.style.background = ''; tagFornec.style.color = ''; }
 
       if (tbody) tbody.innerHTML = '';
@@ -191,6 +204,7 @@
 
       const inputPed = document.getElementById('searchComprasPed');
       const inputNFe = document.getElementById('searchComprasNFe');
+      const inputCodFornec = document.getElementById('searchComprasCodFornec');
       const inputFornec = document.getElementById('searchComprasFornec');
       const selectEmpresa = document.getElementById('selectComprasEmpresa');
       const inputDataIni = document.getElementById('searchComprasDataIni');
@@ -198,13 +212,14 @@
 
       const pedValue = inputPed ? inputPed.value.trim() : '';
       const nfeValue = inputNFe ? inputNFe.value.trim() : '';
+      const codFornecValue = inputCodFornec ? inputCodFornec.value.trim() : '';
       const fornecValue = inputFornec ? inputFornec.value.trim() : '';
       const empresaValue = selectEmpresa ? selectEmpresa.value : 'TODAS';
       const dataIniValue = inputDataIni ? inputDataIni.value.trim() : '';
       const dataFimValue = inputDataFim ? inputDataFim.value.trim() : '';
 
-      if (!pedValue && !nfeValue && !fornecValue) {
-        alert('Por favor, preencha o Número do Pedido de Compra, o Número da NFe OU a Razão Social do Fornecedor para buscar.');
+      if (!pedValue && !nfeValue && !codFornecValue && !fornecValue) {
+        alert('Por favor, preencha o Número do Pedido de Compra, o Número da NFe, o Cód. Fornecedor OU a Razão Social do Fornecedor para buscar.');
         return;
       }
 
@@ -217,6 +232,29 @@
       } else if (nfeValue) {
         tipo = 'nfe';
         termo = nfeValue;
+      } else if (codFornecValue) {
+        tipo = 'codFornec';
+        termo = codFornecValue;
+
+        if (!dataIniValue || !dataFimValue) {
+          alert('Para pesquisar por Cód. Fornecedor, as datas de emissão inicial e final são obrigatórias.');
+          return;
+        }
+
+        const dIni = new Date(dataIniValue + 'T00:00:00');
+        const dFim = new Date(dataFimValue + 'T00:00:00');
+        const diffMs = dFim.getTime() - dIni.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          alert('A Data de Emissão Inicial não pode ser posterior à Data Final.');
+          return;
+        }
+
+        if (diffDays > 90) {
+          alert(`Para pesquisa por Cód. Fornecedor, o intervalo máximo permitido é de 90 dias (você selecionou ${diffDays} dias).\n\nPor favor, reduza o período para proteger a performance do Protheus.`);
+          return;
+        }
       } else if (fornecValue) {
         tipo = 'fornecedor';
         termo = fornecValue;
@@ -258,7 +296,8 @@
       if (resultsSection) resultsSection.classList.add('hidden');
       if (loading) loading.classList.remove('hidden');
       if (loadingMsg) {
-        loadingMsg.textContent = `Consultando ${tipo === 'fornecedor' ? 'fornecedor' : (tipo === 'pedCompra' ? 'pedido de compra' : 'nota fiscal')} "${termo}" no Protheus...`;
+        const tipoDesc = tipo === 'fornecedor' ? 'fornecedor' : (tipo === 'codFornec' ? 'código de fornecedor' : (tipo === 'pedCompra' ? 'pedido de compra' : 'nota fiscal'));
+        loadingMsg.textContent = `Consultando ${tipoDesc} "${termo}" no Protheus...`;
       }
 
       isSearching = true;
@@ -437,7 +476,8 @@
       if (paramInfo) {
         let descTipo = 'NFe de Entrada';
         if (tipo === 'pedCompra') descTipo = 'Pedido de Compra';
-        if (tipo === 'fornecedor') descTipo = 'Fornecedor';
+        else if (tipo === 'codFornec') descTipo = 'Cód. Fornecedor';
+        else if (tipo === 'fornecedor') descTipo = 'Fornecedor';
         paramInfo.innerHTML = `Critério: <strong>${descTipo} (${escapeHtml(termo)})</strong> | Empresa: <strong>${escapeHtml(empresa)}</strong>`;
       }
 

@@ -1312,7 +1312,7 @@ app.get('/api/compras/consulta-ped-nf', requireAuth, async (req, res) => {
     const user = getUserFromReq(req);
 
     if (!termo || !String(termo).trim()) {
-      return res.status(400).json({ success: false, message: 'Informe um termo de busca (Pedido de Compra, NFe ou Fornecedor).' });
+      return res.status(400).json({ success: false, message: 'Informe um termo de busca (Pedido de Compra, NFe, Código do Fornecedor ou Fornecedor).' });
     }
 
     const rows = await buscarConsultaComprasProtheus({
@@ -1323,7 +1323,7 @@ app.get('/api/compras/consulta-ped-nf', requireAuth, async (req, res) => {
       dataFim
     });
 
-    const tipoLabel = tipo === 'fornecedor' ? 'Fornecedor' : (tipo === 'pedCompra' ? 'Pedido de Compra' : 'NFe de Entrada');
+    const tipoLabel = tipo === 'fornecedor' ? 'Fornecedor' : (tipo === 'codFornec' ? 'Cód. Fornecedor' : (tipo === 'pedCompra' ? 'Pedido de Compra' : 'NFe de Entrada'));
     logUserActivity({
       username: user.username,
       userName: user.name,

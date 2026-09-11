@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.186">
+  <link rel="stylesheet" href="style.css?v=8.187">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 11/09/2026 10:50 (Sub-aba Consulta Ped/NF Compras Multi-Empresa com Trava de 90 Dias)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 11/09/2026 12:18 (Campo Cód Fornec. em Consulta Ped/NF Compras e atalho Vendedores)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -136,6 +136,10 @@
           <button class="nav-tab-btn" data-tab="tab-vend-pedidos-compras" id="btnTabVendPedidosCompras">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
             <span>Prod x Ped Compras</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-compras-consulta-ped-nf" id="btnTabVendConsultaPedNf">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span>Consulta Ped/NF Compras</span>
           </button>
           <button class="nav-tab-btn" data-tab="tab-vend-comissoes">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -1707,11 +1711,11 @@
           </div>
         </div>
 
-        <!-- Search Form Container -->
+          <!-- Search Form Container -->
         <div class="search-form-box">
-          <div class="search-fields-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; align-items: start;">
+          <div class="search-fields-grid" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start;">
             
-            <div class="search-field-group" id="groupComprasPed">
+            <div class="search-field-group" id="groupComprasPed" style="flex: 1 1 200px; min-width: 180px;">
               <label for="searchComprasPed">
                 <span>📦 Número do Pedido de Compra</span>
               </label>
@@ -1722,11 +1726,11 @@
               <small class="field-hint">Busca pelo C7_NUM / D1_PEDIDO no Protheus.</small>
             </div>
 
-            <div class="search-divider-or" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; padding-top: 1.5rem;">
+            <div class="search-divider-or" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; padding-top: 1.5rem; flex: 0 0 auto; user-select: none;">
               <span>OU</span>
             </div>
 
-            <div class="search-field-group" id="groupComprasNFe">
+            <div class="search-field-group" id="groupComprasNFe" style="flex: 1 1 200px; min-width: 180px;">
               <label for="searchComprasNFe">
                 <span>📄 Número da NFe de Entrada</span>
               </label>
@@ -1737,11 +1741,26 @@
               <small class="field-hint">Busca direta pela Nota Fiscal de entrada (SF1 DOC).</small>
             </div>
 
-            <div class="search-divider-or" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; padding-top: 1.5rem;">
+            <div class="search-divider-or" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; padding-top: 1.5rem; flex: 0 0 auto; user-select: none;">
               <span>OU</span>
             </div>
 
-            <div class="search-field-group" id="groupComprasFornec">
+            <div class="search-field-group" id="groupComprasCodFornec" style="flex: 1 1 200px; min-width: 180px;">
+              <label for="searchComprasCodFornec" title="Código do Fornecedor (Cód. Fornec.)" data-alias="Nod Fornec.">
+                <span>🏢 Cód Fornec.</span>
+              </label>
+              <div class="input-with-icon">
+                <input type="text" id="searchComprasCodFornec" class="form-input" placeholder="Ex: 121187 ou 000277..." />
+                <span class="field-status-tag" id="tagComprasCodFornec">Ativo</span>
+              </div>
+              <small class="field-hint">Busca pelo código do fornecedor (A2_COD / F1_FORNECE).</small>
+            </div>
+
+            <div class="search-divider-or" style="display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); font-size: 0.85rem; padding-top: 1.5rem; flex: 0 0 auto; user-select: none;">
+              <span>OU</span>
+            </div>
+
+            <div class="search-field-group" id="groupComprasFornec" style="flex: 1 1 200px; min-width: 180px;">
               <label for="searchComprasFornec">
                 <span>🏢 Razão Social / Nome Fornec.</span>
               </label>
@@ -1768,18 +1787,18 @@
 
             <div class="form-group" style="margin: 0;">
               <label for="searchComprasDataIni" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">📅 Emissão Inicial</label>
-              <input type="date" id="searchComprasDataIni" class="input-text" style="height: 38px;" />
+              <input type="date" id="searchComprasDataIni" class="form-input" style="height: 38px;" />
             </div>
 
             <div class="form-group" style="margin: 0;">
               <label for="searchComprasDataFim" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">📅 Emissão Final</label>
-              <input type="date" id="searchComprasDataFim" class="input-text" style="height: 38px;" />
+              <input type="date" id="searchComprasDataFim" class="form-input" style="height: 38px;" />
             </div>
           </div>
 
           <!-- Helper notice -->
           <div id="comprasNoticeBar" class="search-notice-bar" style="margin-top: 1rem; font-size: 0.84rem; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); color: #38bdf8; padding: 8px 12px; border-radius: 8px;">
-            💡 <strong>Dica:</strong> Preencha um dos campos principais (Pedido, NFe ou Fornecedor). Para busca por <strong>Fornecedor</strong>, o intervalo de datas é obrigatório e limitado a no máximo <strong>90 dias</strong> para proteção do banco de dados.
+            💡 <strong>Dica:</strong> Preencha um dos campos principais (Pedido, NFe, Cód. Fornecedor ou Razão Social). Para busca por <strong>Cód. Fornecedor ou Fornecedor</strong>, o intervalo de datas é obrigatório e limitado a no máximo <strong>90 dias</strong> para proteção do banco de dados.
           </div>
 
           <div class="search-actions-row" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
@@ -7192,17 +7211,17 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.186"></script>
-  <script src="js/bi_indices.js?v=8.186"></script>
-  <script src="js/bi_autorizacoes.js?v=8.186"></script>
-  <script src="js/gordura_frete.js?v=8.186"></script>
-  <script src="js/fechamento_vendedores.js?v=8.186"></script>
-  <script type="module" src="js/tarefas.js?v=8.186"></script>
-  <script src="js/holerites.js?v=8.186"></script>
-  <script src="js/funcionarios_dp.js?v=8.186"></script>
-  <script src="js/crm.js?v=8.186"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.186"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.186"></script>
-  <script src="app.js?v=8.186"></script>
+  <script src="js/bi.js?v=8.187"></script>
+  <script src="js/bi_indices.js?v=8.187"></script>
+  <script src="js/bi_autorizacoes.js?v=8.187"></script>
+  <script src="js/gordura_frete.js?v=8.187"></script>
+  <script src="js/fechamento_vendedores.js?v=8.187"></script>
+  <script type="module" src="js/tarefas.js?v=8.187"></script>
+  <script src="js/holerites.js?v=8.187"></script>
+  <script src="js/funcionarios_dp.js?v=8.187"></script>
+  <script src="js/crm.js?v=8.187"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.187"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.187"></script>
+  <script src="app.js?v=8.187"></script>
 </body>
 </html>

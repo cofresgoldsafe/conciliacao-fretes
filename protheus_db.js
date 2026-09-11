@@ -3208,13 +3208,14 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
   let rawIni = String(dataIni || '').replace(/\D/g, '');
   let rawFim = String(dataFim || '').replace(/\D/g, '');
 
-  // Validação estrita da trava de 90 dias para fornecedor
-  if (cleanTipo === 'fornecedor') {
-    if (cleanTerm.length < 3) {
+  // Validação estrita da trava de 90 dias para fornecedor ou código de fornecedor
+  if (cleanTipo === 'fornecedor' || cleanTipo === 'codFornec') {
+    const tipoMsg = cleanTipo === 'codFornec' ? 'Código do Fornecedor' : 'Fornecedor';
+    if (cleanTipo === 'fornecedor' && cleanTerm.length < 3) {
       throw new Error('Para pesquisar por Fornecedor, informe ao menos 3 caracteres.');
     }
     if (!rawIni || !rawFim || rawIni.length !== 8 || rawFim.length !== 8) {
-      throw new Error('Para pesquisa por Fornecedor, as datas de início e fim são obrigatórias.');
+      throw new Error(`Para pesquisa por ${tipoMsg}, as datas de início e fim são obrigatórias.`);
     }
 
     const dIni = new Date(parseInt(rawIni.substring(0, 4), 10), parseInt(rawIni.substring(4, 6), 10) - 1, parseInt(rawIni.substring(6, 8), 10));
@@ -3225,7 +3226,7 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
       throw new Error('A data inicial não pode ser maior que a data final.');
     }
     if (diffDays > 90) {
-      throw new Error('Para pesquisa por Fornecedor, o intervalo máximo permitido é de 90 dias.');
+      throw new Error(`Para pesquisa por ${tipoMsg}, o intervalo máximo permitido é de 90 dias.`);
     }
   }
 
@@ -3233,6 +3234,8 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
   const padded6 = variants.padded6;
   const padded9 = variants.padded9;
   const numOnly = variants.numOnly;
+  const isNumericTerm = /^\d+$/.test(cleanTerm);
+  const codFornecPadded6 = isNumericTerm ? cleanTerm.padStart(6, '0') : cleanTerm;
 
   const empresasConfig = [
     { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sf1: "SF1160", sd1: "SD1160", sc7: "SC7160", se2: "SE2160", sa2: "SA2010" },
@@ -3397,6 +3400,8 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
           FROM ${emp.sc7} C7
           WHERE C7.D_E_L_E_T_ = ' '
             AND (C7.C7_NUM = '${padded6}' OR C7.C7_NUM = '${cleanTerm}' OR C7.C7_NUM LIKE '%${cleanTerm}%')
+            AND (C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')
+            AND (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0
             ${dateConditionSC7}
           GROUP BY C7.C7_FILIAL, C7.C7_NUM, C7.C7_FORNECE, C7.C7_LOJA, C7.C7_EMISSAO
           ORDER BY C7.C7_EMISSAO DESC
@@ -3430,7 +3435,11 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
             });
           }
         }
-      } else if (cleanTipo === 'fornecedor') {
+      } else if (cleanTipo === 'fornecedor' || cleanTipo === 'codFornec') {
+        const condicaoFornec = cleanTipo === 'codFornec'
+          ? `(F1.F1_FORNECE = '${codFornecPadded6}' OR F1.F1_FORNECE = '${cleanTerm}' OR A2.A2_COD = '${codFornecPadded6}' OR A2.A2_COD = '${cleanTerm}')`
+          : `(A2.A2_NOME LIKE '%${cleanTerm}%' OR A2.A2_NREDUZ LIKE '%${cleanTerm}%' OR A2.A2_CGC LIKE '%${cleanTerm}%' OR A2.A2_COD = '${codFornecPadded6}' OR F1.F1_FORNECE = '${codFornecPadded6}')`;
+
         const sql = `
           SELECT TOP 100
             RTRIM(F1.F1_FILIAL) AS FILIAL,
@@ -3451,7 +3460,7 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
             ON A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA AND A2.D_E_L_E_T_ = ' '
           WHERE F1.D_E_L_E_T_ = ' '
             AND F1.F1_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}'
-            AND (A2.A2_NOME LIKE '%${cleanTerm}%' OR A2.A2_NREDUZ LIKE '%${cleanTerm}%' OR A2.A2_CGC LIKE '%${cleanTerm}%')
+            AND ${condicaoFornec}
           ORDER BY F1.F1_EMISSAO DESC, F1.F1_DOC DESC
         `;
 
@@ -3482,6 +3491,62 @@ async function buscarConsultaComprasProtheus({ tipo, termo, empresa, dataIni, da
               fornece: row.FORNECE || '',
               loja: row.LOJA || ''
             });
+          }
+        }
+
+        // Para busca por código do fornecedor, também consulta pedidos em aberto em SC7
+        if (cleanTipo === 'codFornec') {
+          const sqlSC7 = `
+            SELECT TOP 50
+              RTRIM(C7.C7_FILIAL) AS FILIAL,
+              RTRIM(C7.C7_NUM) AS PEDIDO_COMPRA,
+              RTRIM(C7.C7_FORNECE) AS FORNECE,
+              RTRIM(C7.C7_LOJA) AS LOJA,
+              RTRIM(C7.C7_EMISSAO) AS EMISSAO,
+              SUM(ISNULL(C7.C7_TOTAL, 0)) AS VALOR_PEDIDO,
+              ISNULL((SELECT TOP 1 RTRIM(A2_NOME) FROM ${emp.sa2} WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), RTRIM(ISNULL(MAX(C7.C7_NOMFOR), ''))) AS RAZAO_SOCIAL,
+              ISNULL((SELECT TOP 1 RTRIM(A2_CGC) FROM ${emp.sa2} WHERE A2_COD = C7.C7_FORNECE AND D_E_L_E_T_ = ' '), '') AS CNPJ
+            FROM ${emp.sc7} C7
+            WHERE C7.D_E_L_E_T_ = ' '
+              AND (C7.C7_FORNECE = '${codFornecPadded6}' OR C7.C7_FORNECE = '${cleanTerm}')
+              AND (C7.C7_RESIDUO IS NULL OR RTRIM(C7.C7_RESIDUO) <> 'S')
+              AND (ISNULL(C7.C7_QUANT, 0) - ISNULL(C7.C7_QUJE, 0)) > 0
+              AND C7.C7_EMISSAO BETWEEN '${rawIni}' AND '${rawFim}'
+              AND NOT EXISTS (
+                SELECT 1 FROM ${emp.sd1} D1X 
+                WHERE D1X.D1_FILIAL = C7.C7_FILIAL AND D1X.D1_PEDIDO = C7.C7_NUM 
+                  AND D1X.D1_FORNECE = C7.C7_FORNECE AND D1X.D1_LOJA = C7.C7_LOJA 
+                  AND D1X.D_E_L_E_T_ = ' ' AND D1X.D1_DOC <> ''
+              )
+            GROUP BY C7.C7_FILIAL, C7.C7_NUM, C7.C7_FORNECE, C7.C7_LOJA, C7.C7_EMISSAO
+            ORDER BY C7.C7_EMISSAO DESC
+          `;
+          const resSC7 = await executeRailwayQuery(sqlSC7);
+          if (resSC7 && resSC7.rows && resSC7.rows.length > 0) {
+            for (const row of resSC7.rows) {
+              const pedCompra = row.PEDIDO_COMPRA || '';
+              const seenKey = `${emp.key}_SEM_NF_${pedCompra}`;
+              if (seen.has(seenKey)) continue;
+              seen.add(seenKey);
+
+              results.push({
+                empresa: emp.sigla,
+                empresaNome: emp.nome,
+                empresaKey: emp.key,
+                razaoSocial: row.RAZAO_SOCIAL || 'FORNECEDOR NÃO INFORMADO',
+                cnpj: row.CNPJ || '',
+                pedCompra: pedCompra,
+                temPedCompra: true,
+                nfe: '-',
+                serie: '',
+                temNfe: false,
+                emissao: formatarDataProtheus(row.EMISSAO),
+                emissaoRaw: row.EMISSAO || '',
+                valorNf: Number(row.VALOR_PEDIDO) || 0,
+                fornece: row.FORNECE || '',
+                loja: row.LOJA || ''
+              });
+            }
           }
         }
       }

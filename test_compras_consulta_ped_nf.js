@@ -95,6 +95,27 @@ async function runTests() {
     );
   });
 
+  await testAsync('Deve rejeitar busca por Código de Fornecedor sem datas', async () => {
+    await assert.rejects(
+      async () => await protheusDb.buscarConsultaComprasProtheus({ tipo: 'codFornec', termo: '121187' }),
+      /as datas de início e fim são obrigatórias/
+    );
+  });
+
+  await testAsync('Deve rejeitar busca por Código de Fornecedor com intervalo superior a 90 dias', async () => {
+    await assert.rejects(
+      async () => await protheusDb.buscarConsultaComprasProtheus({ tipo: 'codFornec', termo: '121187', dataIni: '2026-01-01', dataFim: '2026-09-11' }),
+      /intervalo máximo permitido é de 90 dias/
+    );
+  });
+
+  await testAsync('Deve rejeitar busca por Código de Fornecedor com data inicial maior que final', async () => {
+    await assert.rejects(
+      async () => await protheusDb.buscarConsultaComprasProtheus({ tipo: 'codFornec', termo: '121187', dataIni: '2026-09-11', dataFim: '2026-06-15' }),
+      /data inicial não pode ser maior/
+    );
+  });
+
   // --- BLOCO 3: Consultas no Protheus DB ---
   console.log('\n--- BLOCO 3: Execução de Consultas Reais no Protheus DB ---');
   await testAsync('Deve consultar NFe de entrada por número (ex: 036057)', async () => {
@@ -130,6 +151,18 @@ async function runTests() {
     assert(Array.isArray(rows), 'Deve retornar array');
     assert(rows.length > 0, 'Deve encontrar registros do fornecedor DIVINE');
     assert(rows[0].razaoSocial.includes('DIVINE'), 'Razão social deve conter DIVINE');
+  });
+
+  await testAsync('Deve consultar por Código de Fornecedor (ex: 121187) dentro do limite de 90 dias', async () => {
+    const rows = await protheusDb.buscarConsultaComprasProtheus({
+      tipo: 'codFornec',
+      termo: '121187',
+      dataIni: '2026-06-15',
+      dataFim: '2026-09-11'
+    });
+    assert(Array.isArray(rows), 'Deve retornar array');
+    assert(rows.length > 0, 'Deve encontrar registros do código de fornecedor 121187');
+    assert(rows.some(r => r.fornece.includes('121187') || r.razaoSocial.includes('DIVINE')), 'Deve conter notas ou pedidos vinculados a 121187');
   });
 
   await testAsync('Deve obter Detalhes Completos da NFe (SF1 + SD1 + SA2 + SE4 + SE2)', async () => {
@@ -176,16 +209,20 @@ async function runTests() {
   console.log('\n--- BLOCO 4: Integridade do DOM (public/index.html) ---');
   const indexHtml = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf-8');
 
-  test('HTML deve conter botão da sub-aba btnTabComprasConsultaPedNf em subGroupCompras', () => {
+  test('HTML deve conter botão da sub-aba btnTabComprasConsultaPedNf em subGroupCompras e btnTabVendConsultaPedNf em subGroupVendedores', () => {
     assert(indexHtml.includes('id="btnTabComprasConsultaPedNf"'), 'Falta id="btnTabComprasConsultaPedNf"');
+    assert(indexHtml.includes('id="btnTabVendConsultaPedNf"'), 'Falta id="btnTabVendConsultaPedNf"');
     assert(indexHtml.includes('data-tab="tab-compras-consulta-ped-nf"'), 'Falta data-tab="tab-compras-consulta-ped-nf"');
     assert(indexHtml.includes('Consulta Ped/NF Compras'), 'Falta label do botão');
   });
 
-  test('HTML deve conter painel tab-compras-consulta-ped-nf com formulário de pesquisa', () => {
+  test('HTML deve conter painel tab-compras-consulta-ped-nf com formulário de pesquisa completo', () => {
     assert(indexHtml.includes('id="tab-compras-consulta-ped-nf"'), 'Falta id="tab-compras-consulta-ped-nf"');
     assert(indexHtml.includes('id="searchComprasPed"'), 'Falta input do Pedido de Compra');
     assert(indexHtml.includes('id="searchComprasNFe"'), 'Falta input da NFe');
+    assert(indexHtml.includes('id="searchComprasCodFornec"'), 'Falta input do Código do Fornecedor');
+    assert(indexHtml.includes('id="tagComprasCodFornec"'), 'Falta tag de status do Código do Fornecedor');
+    assert(indexHtml.includes('Cód Fornec.'), 'Falta label Cód Fornec.');
     assert(indexHtml.includes('id="searchComprasFornec"'), 'Falta input do Fornecedor');
     assert(indexHtml.includes('id="selectComprasEmpresa"'), 'Falta seletor de empresa');
     assert(indexHtml.includes('id="searchComprasDataIni"'), 'Falta input data inicial');
@@ -216,11 +253,17 @@ async function runTests() {
 
   // --- BLOCO 5: Integridade de Sintaxe via vm.Script ---
   console.log('\n--- BLOCO 5: Integridade Léxica/Sintática (vm.Script) ---');
-  test('public/js/compras_consulta_ped_nf.js deve compilar sem erros', () => {
+  test('public/js/compras_consulta_ped_nf.js deve compilar sem erros e mapear descTipo codFornec', () => {
     const code = fs.readFileSync(path.join(__dirname, 'public', 'js', 'compras_consulta_ped_nf.js'), 'utf-8');
     assert.doesNotThrow(() => {
       new vm.Script(code);
     }, 'Erro léxico ou sintático em compras_consulta_ped_nf.js');
+    assert(code.includes("descTipo = 'Cód. Fornecedor'"), 'Falta mapeamento descTipo Cód. Fornecedor');
+  });
+
+  test('public/js/vendedores.js deve incluir tab-compras-consulta-ped-nf e compilar', () => {
+    const code = fs.readFileSync(path.join(__dirname, 'public', 'js', 'vendedores.js'), 'utf-8');
+    assert(code.includes('tab-compras-consulta-ped-nf'), 'Falta tab-compras-consulta-ped-nf em vendedores.js');
   });
 
   test('public/app.js deve compilar sem erros', () => {
