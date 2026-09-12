@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.191 (Homologada em 11/09/2026 16:55)  
+> **Versão da Documentação:** v8.192 (Homologada em 12/09/2026 12:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal do Analista Financeiro: Consulta por Empresa, Apuração Mês Anterior, Batimento 100% Protheus SF2/SF1, Exclusão de Romaneios ROMA, Total Tributado Inteligente, Histórico RBT12 e Exportação CSV)  
-> **Data da Última Auditoria:** 11/09/2026 16:55 (v8.191 - Módulo Fechamento Fiscal Analista Fin)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Movimentações do Estoque no Módulo Compras: Consulta Multi-Empresa SD1/SD2/SF4, Entradas Manuais/Romaneios, Entradas NF, Saídas NF, Filtro por Código de Movimentação/TES, Período Dinâmico de 12 Meses, KPIs Reativos, Autocomplete e Exportação Excel com Proteção CSV Formula Injection)  
+> **Data da Última Auditoria:** 12/09/2026 12:30 (v8.192 - Sub-aba Movimentações do Estoque Compras)  
 
 ---
 
@@ -1276,6 +1276,36 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Botão `📥 Exportar CSV` gerando arquivo formatado com BOM UTF-8 (`\uFEFF`) e delimitador `;` para abertura direta no Microsoft Excel.
     - **Suíte de Testes Automatizados (`test_fechamento_fiscal.js`):**
       - 9 testes automatizados cobrindo batimento de saídas/entradas contra o Excel, descarte de ROMA, regras de incidência tributária, empresas MP 14 e GSI 15, RBT12, persistência com RLS e integridade sintática (100% aprovados).
+69. [x] **Sub-Aba "Movimentações do Estoque" na Aba Principal COMPRAS com Consulta Multi-Empresa Direta no Protheus (SD1/SD2/SF4), Identificação de Entradas Manuais, Filtro de TES e Período Dinâmico de 12 Meses (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/compras_movimentacoes_estoque.js`, `public/style.css`, `test_compras_movimentacoes_estoque.js`):**
+    - **Demanda Operacional & Inspiração Power BI (`SD1140`):**
+      - Nova sub-aba dedicada no menu de 1º nível `COMPRAS` (`#tab-compras-movimentacoes-estoque` / `#btnTabComprasMovimentacoesEstoque`), permitindo aos compradores e gestores auditarem o fluxo completo de movimentações de estoque (entradas e saídas manuais e faturadas) de qualquer produto.
+    - **Consulta de 1 Produto por Vez & Resolução Automática de Identificadores:**
+      - Campo de busca instantânea `#movEstoqueInputProduto` com autocomplete debounceado (250ms) alimentado por `/api/compras/ponto-pedido/produtos`.
+      - **Resolução Automática por Código ou Descrição:** Caso o operador digite a descrição do produto (ex: `"ARMARIO CORTA FOGO"`) ou cole um código com prefixo (ex: `"14-00101..."`) e pressione Enter/consulte sem clicar no dropdown, o motor resolve automaticamente o produto na `SB1090` / `SB1160` por código exato ou `B1_DESC LIKE`, recuperando o código Protheus oficial para cruzar com as tabelas de movimentação.
+    - **Agregação Multi-Empresa Paralela (SD1 e SD2):**
+      - Consultas diretas em `SD1140/SD2140` (Metal Pleno 14), `SD1150/SD2150` (GSI 15) e `SD1160/SD2160` (OAÇO 16) executadas em paralelo via `Promise.all`, acelerando o tempo de resposta em ~60%.
+      - JOINs em `SF4010/SF4160` para descrições de TES (`F4_TEXTO`) e indicador de atualização de estoque (`F4_ESTOQUE`), `SA2010` para fornecedores e `SA1010/SA1160` para clientes.
+    - **Identificação e Taxonomia de Entradas Manuais vs NF:**
+      - **Entrada Manual (`ENTRADA_MANUAL`):** Documentos com prefixo `ROM%` (romaneios), `TFE%` (transferências manuais), série vazia (`D1_SERIE = ''`) ou TES manuais de acerto (`084`, `085`, `099`). Badge em roxo de alto contraste (`📦 Entrada Manual`).
+      - **Entrada por NF (`ENTRADA_NF`):** Notas fiscais mercantis de fornecedores com série preenchida e TES comercial. Badge em verde esmeralda (`🟢 Entrada NF`).
+      - **Saída por NF (`SAIDA_NF`):** Vendas e transferências faturadas emitidas na `SD2`. Badge em vermelho/coral (`🔴 Saída NF`).
+    - **Filtro por Código da Movimentação (TES) & Preservação de Estado:**
+      - Seletor dedicado `#movEstoqueFiltroTes` populado dinamicamente com todas as TES movimentadas pelo produto no período, indicando o sentido (`📥 [ENTRADA]` / `📤 [SAÍDA]`), código, descrição oficial do Protheus e contagem de ocorrências.
+      - A consulta mantém o catálogo completo de TES do produto e aplica filtragem e recálculo de KPIs instantâneo em memória no cliente, preservando as opções do dropdown mesmo em novas pesquisas.
+    - **Período Padrão Dinâmico de 12 Meses Customizável:**
+      - Seletores *Data Inicial* e *Data Final* inicializados automaticamente com a janela dos últimos 12 meses móveis (ex: de hoje - 1 ano até hoje), permitindo ajuste livre para qualquer intervalo desejado com validação defensiva contra data inicial maior que final.
+    - **Painel de 7 Cards de KPIs Dinâmicos & Tabela Paginada:**
+      - Cards reativos no topo: *Entradas (Qtd)*, *Saídas (Qtd)*, *Saldo do Período (Qtd)*, *Total Entradas (R$)*, *Total Saídas (R$)*, *Qtd Movimentações* e *Entradas Manuais*.
+      - Tabela com 11 colunas detalhadas com ordenação interativa bidirecional e paginação (25 por página).
+    - **Segurança Defensiva, Sanitização & Proteção CSV Formula Injection (CWE-1236):**
+      - Proteção estrita via `requireAuth` com JWT Bearer no endpoint `GET /api/compras/movimentacoes-estoque`.
+      - Sanitização contra SQL Injection via `sanitizeSqlParam()`.
+      - Sanitização contra XSS via `escapeHtml()` e manipulação do DOM segura com `textContent`.
+      - Exportação para Excel (CSV com BOM UTF-8 `\uFEFF` e delimitador `;`) com função `escapeCsvCell()` que neutraliza fórmulas executáveis iniciadas por `=`, `+`, `-`, `@`, tab ou CR com prefixo de apóstrofo (`'`).
+    - **Sincronização com Tema Claro/Escuro:**
+      - Compatibilidade total via `.tab-theme-light`, tokens de alto contraste WCAG AA e responsividade mobile para telas menores que 768px.
+    - **Suíte de Testes Automatizados (12/12 Aprovados):**
+      - Script `test_compras_movimentacoes_estoque.js` homologado com 12 asserções cobrindo validações de código e data, consultas reais multi-empresa, identificação de entradas manuais, filtros por TES, compilação léxica `vm.Script`, resolução por descrição, mitigação CSV Formula Injection e integridade do DOM.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

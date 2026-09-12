@@ -4101,11 +4101,384 @@ async function obterHistoricoFaturamento12MesesProtheus({ empresa, anoMesReferen
   };
 }
 
+/**
+ * Consulta Histórico Consolidado de Movimentações de Estoque (SD1 Entradas / Romaneios + SD2 Saídas Faturadas)
+ * Suporta busca por produto em Multi-Empresas (Metal Pleno 14, GSI 15, OACO 16) com filtros de:
+ * - Período (padrão últimos 12 meses)
+ * - Empresa (TODAS, MP, GSI, OACO)
+ * - Tipo de Movimentação (TODOS, ENTRADA, SAIDA, ENTRADA_MANUAL, ENTRADA_NF, SAIDA_NF)
+ * - Código de Movimentação (TES)
+ */
+async function consultarMovimentacoesEstoqueProtheus({
+  codProduto,
+  empresa = 'TODAS',
+  dataIni,
+  dataFim,
+  tipoMov = 'TODOS',
+  tes
+} = {}) {
+  let cleanCod = sanitizeSqlParam(codProduto || '').trim();
+  if (!cleanCod) {
+    throw new Error('Informe o código do produto para consultar as movimentações.');
+  }
+
+  // Remove prefixo de empresa se houver (ex: '14-00101...' -> '00101...')
+  if (/^\d{1,2}-.+/.test(cleanCod)) {
+    cleanCod = cleanCod.split('-')[1].trim();
+  }
+
+  const cleanEmpresa = sanitizeSqlParam(empresa || 'TODAS').toUpperCase();
+  const cleanTipo = sanitizeSqlParam(tipoMov || 'TODOS').toUpperCase();
+  const cleanTes = sanitizeSqlParam(tes || '').trim();
+
+  // Cálculo de datas padrão de 12 meses
+  const hoje = new Date();
+  const hojeStr = hoje.toISOString().slice(0, 10).replace(/-/g, '');
+  const anoAtras = new Date(hoje);
+  anoAtras.setFullYear(anoAtras.getFullYear() - 1);
+  const anoAtrasStr = anoAtras.toISOString().slice(0, 10).replace(/-/g, '');
+
+  let dtIni = String(dataIni || '').replace(/\D/g, '');
+  let dtFim = String(dataFim || '').replace(/\D/g, '');
+
+  if (!dtIni || dtIni.length !== 8) dtIni = anoAtrasStr;
+  if (!dtFim || dtFim.length !== 8) dtFim = hojeStr;
+
+  if (dtIni > dtFim) {
+    throw new Error('A data inicial não pode ser posterior à data final.');
+  }
+
+  // 1. Dados cadastrais do Produto (SB1090 / fallback SB1160)
+  let produtoInfo = null;
+  try {
+    // 1.1 Busca por código exato na SB1090
+    const sqlProd = `
+      SELECT TOP 1 RTRIM(B1_COD) AS CODIGO, RTRIM(B1_DESC) AS DESCRICAO, RTRIM(B1_GRUPO) AS GRUPO, RTRIM(B1_UM) AS UM, RTRIM(B1_TIPO) AS TIPO
+      FROM SB1090
+      WHERE D_E_L_E_T_ = ' ' AND B1_COD = '${cleanCod}'
+    `;
+    const prodRes = await executeRailwayQuery(sqlProd);
+    produtoInfo = prodRes.rows && prodRes.rows[0] ? prodRes.rows[0] : null;
+
+    // 1.2 Se não encontrou, busca por código exato na SB1160 (OACO)
+    if (!produtoInfo) {
+      const sqlProdOACO = `
+        SELECT TOP 1 RTRIM(B1_COD) AS CODIGO, RTRIM(B1_DESC) AS DESCRICAO, RTRIM(B1_GRUPO) AS GRUPO, RTRIM(B1_UM) AS UM, RTRIM(B1_TIPO) AS TIPO
+        FROM SB1160
+        WHERE D_E_L_E_T_ = ' ' AND B1_COD = '${cleanCod}'
+      `;
+      const prodResOACO = await executeRailwayQuery(sqlProdOACO);
+      produtoInfo = prodResOACO.rows && prodResOACO.rows[0] ? prodResOACO.rows[0] : null;
+    }
+
+    // 1.3 Se ainda não encontrou e o termo tem pelo menos 2 caracteres, busca por descrição ou código parcial na SB1090
+    if (!produtoInfo && cleanCod.length >= 2) {
+      const sqlProdDesc = `
+        SELECT TOP 1 RTRIM(B1_COD) AS CODIGO, RTRIM(B1_DESC) AS DESCRICAO, RTRIM(B1_GRUPO) AS GRUPO, RTRIM(B1_UM) AS UM, RTRIM(B1_TIPO) AS TIPO
+        FROM SB1090
+        WHERE D_E_L_E_T_ = ' ' AND (B1_DESC LIKE '%${cleanCod}%' OR B1_COD LIKE '%${cleanCod}%')
+        ORDER BY CASE WHEN B1_COD = '${cleanCod}' THEN 1 WHEN B1_DESC LIKE '${cleanCod}%' THEN 2 ELSE 3 END
+      `;
+      const prodResDesc = await executeRailwayQuery(sqlProdDesc);
+      produtoInfo = prodResDesc.rows && prodResDesc.rows[0] ? prodResDesc.rows[0] : null;
+    }
+
+    // 1.4 Se ainda não encontrou, busca por descrição na SB1160
+    if (!produtoInfo && cleanCod.length >= 2) {
+      const sqlProdDescOACO = `
+        SELECT TOP 1 RTRIM(B1_COD) AS CODIGO, RTRIM(B1_DESC) AS DESCRICAO, RTRIM(B1_GRUPO) AS GRUPO, RTRIM(B1_UM) AS UM, RTRIM(B1_TIPO) AS TIPO
+        FROM SB1160
+        WHERE D_E_L_E_T_ = ' ' AND (B1_DESC LIKE '%${cleanCod}%' OR B1_COD LIKE '%${cleanCod}%')
+        ORDER BY CASE WHEN B1_COD = '${cleanCod}' THEN 1 WHEN B1_DESC LIKE '${cleanCod}%' THEN 2 ELSE 3 END
+      `;
+      const prodResDescOACO = await executeRailwayQuery(sqlProdDescOACO);
+      produtoInfo = prodResDescOACO.rows && prodResDescOACO.rows[0] ? prodResDescOACO.rows[0] : null;
+    }
+  } catch (errProd) {
+    console.warn('Aviso ao consultar cadastro SB1 do produto:', errProd.message);
+  }
+
+  // Se identificamos o produto cadastrado, atualizamos cleanCod para o código Protheus oficial
+  if (produtoInfo && produtoInfo.CODIGO) {
+    cleanCod = produtoInfo.CODIGO;
+  }
+
+  const empresasConfig = [
+    { key: "METAL_PLENO", sigla: "MP", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sd1: "SD1140", sd2: "SD2140", sf4: "SF4010", sa1: "SA1010", sa2: "SA2010" },
+    { key: "GSI", sigla: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sd1: "SD1150", sd2: "SD2150", sf4: "SF4010", sa1: "SA1010", sa2: "SA2010" },
+    { key: "OACO", sigla: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd1: "SD1160", sd2: "SD2160", sf4: "SF4160", sa1: "SA1160", sa2: "SA2160" }
+  ];
+
+  let empresasFiltradas = empresasConfig;
+  if (cleanEmpresa && cleanEmpresa !== 'TODAS' && cleanEmpresa !== 'TODOS') {
+    empresasFiltradas = empresasConfig.filter(e =>
+      e.key === cleanEmpresa ||
+      e.sigla === cleanEmpresa ||
+      e.codigo === cleanEmpresa ||
+      (cleanEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasFiltradas.length === 0) empresasFiltradas = empresasConfig;
+  }
+
+  const includeEntradas = ['TODOS', 'ENTRADA', 'ENTRADAS', 'ENTRADA_MANUAL', 'ENTRADA_NF'].includes(cleanTipo);
+  const includeSaidas = ['TODOS', 'SAIDA', 'SAIDAS', 'SAIDA_NF'].includes(cleanTipo);
+
+  const movimentacoes = [];
+  const tesMap = new Map();
+
+  // Execução paralela multi-empresa com Promise.all para máxima performance
+  const promises = empresasFiltradas.map(async (emp) => {
+    const empMovs = [];
+
+    // A. Consultar Entradas (SD1)
+    if (includeEntradas) {
+      let condExtraD1 = '';
+      if (cleanTes) {
+        condExtraD1 += ` AND D1.D1_TES = '${cleanTes}'`;
+      }
+      if (cleanTipo === 'ENTRADA_MANUAL') {
+        condExtraD1 += ` AND (D1.D1_DOC LIKE 'ROM%' OR D1.D1_DOC LIKE 'TFE%' OR D1.D1_SERIE = '' OR D1.D1_TES IN ('084', '085', '099'))`;
+      } else if (cleanTipo === 'ENTRADA_NF') {
+        condExtraD1 += ` AND D1.D1_SERIE <> '' AND D1.D1_DOC NOT LIKE 'ROM%' AND D1.D1_DOC NOT LIKE 'TFE%' AND D1.D1_TES NOT IN ('084', '085', '099')`;
+      }
+
+      const sqlD1 = `
+        SELECT 
+          'ENTRADA' AS TIPO_MOV,
+          '${emp.sigla}' AS EMPRESA,
+          '${emp.codigo}' AS EMPRESA_COD,
+          '${emp.nome}' AS EMPRESA_NOME,
+          RTRIM(D1.D1_FILIAL) AS FILIAL,
+          RTRIM(D1.D1_DOC) AS DOC,
+          RTRIM(D1.D1_SERIE) AS SERIE,
+          RTRIM(D1.D1_ITEM) AS ITEM,
+          RTRIM(D1.D1_COD) AS COD_PROD,
+          ISNULL(D1.D1_QUANT, 0) AS QUANT,
+          ISNULL(D1.D1_VUNIT, 0) AS VUNIT,
+          ISNULL(D1.D1_TOTAL, 0) AS TOTAL,
+          RTRIM(D1.D1_TES) AS TES,
+          RTRIM(D1.D1_CF) AS CFOP,
+          RTRIM(D1.D1_EMISSAO) AS EMISSAO,
+          RTRIM(D1.D1_FORNECE) AS PARTICIPANTE_COD,
+          RTRIM(D1.D1_LOJA) AS PARTICIPANTE_LOJA,
+          RTRIM(D1.D1_TIPO) AS TIPO_DOC,
+          ISNULL(SF4.F4_TEXTO, '') AS TES_DESC,
+          ISNULL(SF4.F4_ESTOQUE, 'S') AS ATUALIZA_ESTOQUE,
+          ISNULL(SA2.A2_NOME, '') AS PARTICIPANTE_NOME
+        FROM ${emp.sd1} D1
+        LEFT JOIN ${emp.sf4} SF4 ON SF4.F4_CODIGO = D1.D1_TES AND SF4.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sa2} SA2 ON SA2.A2_COD = D1.D1_FORNECE AND SA2.D_E_L_E_T_ = ' '
+        WHERE D1.D_E_L_E_T_ = ' '
+          AND D1.D1_COD = '${cleanCod}'
+          AND D1.D1_EMISSAO >= '${dtIni}' AND D1.D1_EMISSAO <= '${dtFim}'
+          ${condExtraD1}
+      `;
+
+      try {
+        const resD1 = await executeRailwayQuery(sqlD1);
+        if (resD1.rows && resD1.rows.length > 0) {
+          for (const r of resD1.rows) {
+            const docUpper = String(r.DOC || '').toUpperCase();
+            const serieUpper = String(r.SERIE || '').trim().toUpperCase();
+            const isManual = docUpper.startsWith('ROM') || docUpper.startsWith('TFE') || serieUpper === '' || ['084', '085', '099'].includes(r.TES);
+            const subTipo = isManual ? 'ENTRADA_MANUAL' : 'ENTRADA_NF';
+
+            empMovs.push({
+              id: `${emp.sigla}_E_${r.DOC}_${r.SERIE}_${r.ITEM}_${r.EMISSAO}`,
+              empresa: emp.sigla,
+              empresaCodigo: emp.codigo,
+              empresaNome: emp.nome,
+              tipoMov: 'ENTRADA',
+              subTipo,
+              isManual,
+              filial: r.FILIAL,
+              doc: r.DOC,
+              serie: r.SERIE,
+              item: r.ITEM,
+              codProd: r.COD_PROD,
+              quantidade: Number(r.QUANT) || 0,
+              valorUnitario: Number(r.VUNIT) || 0,
+              valorTotal: Number(r.TOTAL) || 0,
+              tes: r.TES,
+              tesDescricao: r.TES_DESC.trim(),
+              atualizaEstoque: r.ATUALIZA_ESTOQUE,
+              cfop: r.CFOP,
+              emissao: r.EMISSAO,
+              emissaoFormatada: formatarDataProtheus(r.EMISSAO),
+              participanteCod: r.PARTICIPANTE_COD,
+              participanteLoja: r.PARTICIPANTE_LOJA,
+              participanteNome: r.PARTICIPANTE_NOME.trim(),
+              tipoDoc: r.TIPO_DOC
+            });
+          }
+        }
+      } catch (errD1) {
+        console.warn(`Aviso ao consultar ${emp.sd1}:`, errD1.message);
+      }
+    }
+
+    // B. Consultar Saídas (SD2)
+    if (includeSaidas) {
+      let condExtraD2 = '';
+      if (cleanTes) {
+        condExtraD2 += ` AND D2.D2_TES = '${cleanTes}'`;
+      }
+
+      const sqlD2 = `
+        SELECT 
+          'SAIDA' AS TIPO_MOV,
+          '${emp.sigla}' AS EMPRESA,
+          '${emp.codigo}' AS EMPRESA_COD,
+          '${emp.nome}' AS EMPRESA_NOME,
+          RTRIM(D2.D2_FILIAL) AS FILIAL,
+          RTRIM(D2.D2_DOC) AS DOC,
+          RTRIM(D2.D2_SERIE) AS SERIE,
+          RTRIM(D2.D2_ITEM) AS ITEM,
+          RTRIM(D2.D2_COD) AS COD_PROD,
+          ISNULL(D2.D2_QUANT, 0) AS QUANT,
+          ISNULL(D2.D2_PRCVEN, 0) AS VUNIT,
+          ISNULL(D2.D2_TOTAL, 0) AS TOTAL,
+          RTRIM(D2.D2_TES) AS TES,
+          RTRIM(D2.D2_CF) AS CFOP,
+          RTRIM(D2.D2_EMISSAO) AS EMISSAO,
+          RTRIM(D2.D2_CLIENTE) AS PARTICIPANTE_COD,
+          RTRIM(D2.D2_LOJA) AS PARTICIPANTE_LOJA,
+          RTRIM(D2.D2_TIPO) AS TIPO_DOC,
+          ISNULL(SF4.F4_TEXTO, '') AS TES_DESC,
+          ISNULL(SF4.F4_ESTOQUE, 'S') AS ATUALIZA_ESTOQUE,
+          ISNULL(SA1.A1_NOME, '') AS PARTICIPANTE_NOME
+        FROM ${emp.sd2} D2
+        LEFT JOIN ${emp.sf4} SF4 ON SF4.F4_CODIGO = D2.D2_TES AND SF4.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sa1} SA1 ON SA1.A1_COD = D2.D2_CLIENTE AND SA1.D_E_L_E_T_ = ' '
+        WHERE D2.D_E_L_E_T_ = ' '
+          AND D2.D2_COD = '${cleanCod}'
+          AND D2.D2_EMISSAO >= '${dtIni}' AND D2.D2_EMISSAO <= '${dtFim}'
+          ${condExtraD2}
+      `;
+
+      try {
+        const resD2 = await executeRailwayQuery(sqlD2);
+        if (resD2.rows && resD2.rows.length > 0) {
+          for (const r of resD2.rows) {
+            empMovs.push({
+              id: `${emp.sigla}_S_${r.DOC}_${r.SERIE}_${r.ITEM}_${r.EMISSAO}`,
+              empresa: emp.sigla,
+              empresaCodigo: emp.codigo,
+              empresaNome: emp.nome,
+              tipoMov: 'SAIDA',
+              subTipo: 'SAIDA_NF',
+              isManual: false,
+              filial: r.FILIAL,
+              doc: r.DOC,
+              serie: r.SERIE,
+              item: r.ITEM,
+              codProd: r.COD_PROD,
+              quantidade: Number(r.QUANT) || 0,
+              valorUnitario: Number(r.VUNIT) || 0,
+              valorTotal: Number(r.TOTAL) || 0,
+              tes: r.TES,
+              tesDescricao: r.TES_DESC.trim(),
+              atualizaEstoque: r.ATUALIZA_ESTOQUE,
+              cfop: r.CFOP,
+              emissao: r.EMISSAO,
+              emissaoFormatada: formatarDataProtheus(r.EMISSAO),
+              participanteCod: r.PARTICIPANTE_COD,
+              participanteLoja: r.PARTICIPANTE_LOJA,
+              participanteNome: r.PARTICIPANTE_NOME.trim(),
+              tipoDoc: r.TIPO_DOC
+            });
+          }
+        }
+      } catch (errD2) {
+        console.warn(`Aviso ao consultar ${emp.sd2}:`, errD2.message);
+      }
+    }
+
+    return empMovs;
+  });
+
+  const resultadosPorEmpresa = await Promise.all(promises);
+  for (const empMovs of resultadosPorEmpresa) {
+    for (const m of empMovs) {
+      movimentacoes.push(m);
+      if (m.tes) {
+        const k = `${m.tes}|${m.tesDescricao}|${m.tipoMov}`;
+        tesMap.set(k, (tesMap.get(k) || 0) + 1);
+      }
+    }
+  }
+
+  // Ordenação cronológica decrescente (mais recentes primeiro)
+  movimentacoes.sort((a, b) => {
+    if (b.emissao !== a.emissao) {
+      return b.emissao.localeCompare(a.emissao);
+    }
+    return (b.doc || '').localeCompare(a.doc || '');
+  });
+
+  // Cálculo de KPIs consolidados
+  let totalEntradasQtd = 0;
+  let totalSaidasQtd = 0;
+  let totalEntradasValor = 0;
+  let totalSaidasValor = 0;
+  let qtdEntradasManuais = 0;
+  let qtdEntradasNF = 0;
+  let qtdSaidasNF = 0;
+
+  for (const m of movimentacoes) {
+    if (m.tipoMov === 'ENTRADA') {
+      totalEntradasQtd += m.quantidade;
+      totalEntradasValor += m.valorTotal;
+      if (m.isManual) qtdEntradasManuais++;
+      else qtdEntradasNF++;
+    } else {
+      totalSaidasQtd += m.quantidade;
+      totalSaidasValor += m.valorTotal;
+      qtdSaidasNF++;
+    }
+  }
+
+  const saldoPeriodoQtd = totalEntradasQtd - totalSaidasQtd;
+
+  const listaTes = Array.from(tesMap.entries()).map(([k, count]) => {
+    const [tes, descricao, tipo] = k.split('|');
+    return { tes, descricao, tipo, count };
+  }).sort((a, b) => a.tes.localeCompare(b.tes));
+
+  return {
+    ok: true,
+    produto: produtoInfo || { CODIGO: cleanCod, DESCRICAO: cleanCod, GRUPO: '', UM: 'UN' },
+    periodo: {
+      de: dtIni,
+      ate: dtFim,
+      deFormatado: formatarDataProtheus(dtIni),
+      ateFormatado: formatarDataProtheus(dtFim)
+    },
+    empresa: cleanEmpresa,
+    tipoMov: cleanTipo,
+    tes: cleanTes,
+    kpis: {
+      totalEntradasQtd: Math.round(totalEntradasQtd * 100) / 100,
+      totalSaidasQtd: Math.round(totalSaidasQtd * 100) / 100,
+      saldoPeriodoQtd: Math.round(saldoPeriodoQtd * 100) / 100,
+      totalEntradasValor: Math.round(totalEntradasValor * 100) / 100,
+      totalSaidasValor: Math.round(totalSaidasValor * 100) / 100,
+      totalRegistros: movimentacoes.length,
+      qtdEntradasManuais,
+      qtdEntradasNF,
+      qtdSaidasNF
+    },
+    listaTes,
+    movimentacoes
+  };
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
   buscarConsultaComprasProtheus,
   obterDetalhesNFeEntrada,
+  consultarMovimentacoesEstoqueProtheus,
   buscarPedidosVendedores,
   buscarPedidosAbertosVendedores,
   buscarPedidosCompras,

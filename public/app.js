@@ -845,6 +845,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.ComprasConsultaPedNfModule.init();
         }
       }
+      if (targetTab === 'tab-compras-movimentacoes-estoque') {
+        if (window.ComprasMovimentacoesEstoqueModule && typeof window.ComprasMovimentacoesEstoqueModule.init === 'function') {
+          window.ComprasMovimentacoesEstoqueModule.init();
+        }
+      }
       if (targetTab === 'tab-vend-pedidos-compras') {
         carregarPedidosCompras();
       }
@@ -4038,6 +4043,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'tab-compras-pedidos-abertos',
     'tab-compras-ponto-pedido',
     'tab-compras-consulta-ped-nf',
+    'tab-compras-movimentacoes-estoque',
     'tab-vend-pedidos-compras',
     'tab-vend-comissoes',
     'tab-vend-gordura-frete',

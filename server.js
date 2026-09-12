@@ -39,7 +39,8 @@ const {
   consultarExtratoSE5,
   algoritmoMatchingConciliacao,
   consultarFechamentoFiscalProtheus,
-  obterHistoricoFaturamento12MesesProtheus
+  obterHistoricoFaturamento12MesesProtheus,
+  consultarMovimentacoesEstoqueProtheus
 } = require('./protheus_db');
 
 const {
@@ -1449,6 +1450,48 @@ app.post('/api/compras/ponto-pedido/calcular', requireAuth, async (req, res) => 
     res.json(resultado);
   } catch (err) {
     handleServerError(res, err, err.message || 'Erro ao calcular ponto de pedido ideal.');
+  }
+});
+
+// API: Compras - Consulta de Movimentações de Estoque Multi-Empresas (SD1 Entradas / Romaneios + SD2 Saídas)
+app.get('/api/compras/movimentacoes-estoque', requireAuth, async (req, res) => {
+  try {
+    const { codigo, empresa, dataIni, dataFim, tipoMov, tes } = req.query || {};
+    const user = getUserFromReq(req);
+
+    if (!codigo || !String(codigo).trim()) {
+      return res.status(400).json({ success: false, message: 'O código do produto é obrigatório para consultar as movimentações.' });
+    }
+
+    const resultado = await consultarMovimentacoesEstoqueProtheus({
+      codProduto: String(codigo).trim(),
+      empresa,
+      dataIni,
+      dataFim,
+      tipoMov,
+      tes
+    });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_MOVIMENTACOES_ESTOQUE',
+      description: `Consultou movimentações de estoque para o produto ${resultado.produto.CODIGO} - ${resultado.produto.DESCRICAO} (${resultado.movimentacoes.length} registros)`,
+      ip: req.ip,
+      metadata: {
+        codigo: resultado.produto.CODIGO,
+        empresa: resultado.empresa,
+        periodo: resultado.periodo,
+        totalRegistros: resultado.kpis.totalRegistros
+      }
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    handleServerError(res, err, err.message || 'Erro ao consultar movimentações de estoque.');
   }
 });
 

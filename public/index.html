@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.190">
+  <link rel="stylesheet" href="style.css?v=8.192">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 11/09/2026 16:53 (Sub-aba Fechamento Fiscal no Analista Financeiro)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 12/09/2026 12:30 (Movimentações do Estoque em Compras)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -192,6 +192,10 @@
           <button class="nav-tab-btn" data-tab="tab-compras-consulta-ped-nf" id="btnTabComprasConsultaPedNf">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <span>Consulta Ped/NF Compras</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-compras-movimentacoes-estoque" id="btnTabComprasMovimentacoesEstoque">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            <span>Movimentações do Estoque</span>
           </button>
         </div>
         <div style="margin-left: auto;">
@@ -1863,6 +1867,236 @@
           <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 600px; margin: 0 auto;">
             Preencha o <strong>Número do Pedido de Compra</strong>, o <strong>Número da NFe de Entrada</strong> ou o <strong>Nome do Fornecedor</strong> acima e clique em <strong>Buscar no Protheus</strong> para visualizar os resultados consolidados.
           </p>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- SUB-ABA: MOVIMENTAÇÕES DO ESTOQUE (SD1 ENTRADAS/ROMANEIOS + SD2 SAÍDAS + SF4) -->
+    <div id="tab-compras-movimentacoes-estoque" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row">
+          <div>
+            <h2>📦 Movimentações do Estoque</h2>
+            <p class="desc">Consulta unificada de Entradas (SD1 / Romaneios Manuais) e Saídas Faturadas (SD2) integradas com Tipos de Movimentação (SF4 TES) nas 3 Empresas Protheus (Metal Pleno 14, GSI 15 e OACO 16).</p>
+          </div>
+        </div>
+
+        <!-- Formulário e Filtros de Busca -->
+        <div style="background: rgba(15, 23, 42, 0.4); padding: 1.25rem 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); margin-top: 1rem;">
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr; gap: 1rem; align-items: flex-end;">
+            
+            <!-- Autocomplete de Produto -->
+            <div style="position: relative;" id="movEstoqueAutocompleteContainer">
+              <label for="movEstoqueInputProduto" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px; color: var(--text-color);">
+                🔍 Produto / Código Protheus / Nome <span style="color: #ef4444;">*</span>
+              </label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input type="text" id="movEstoqueInputProduto" class="input-text" placeholder="Ex: 01801080802B003 ou ARMARIO CORTA FOGO..." autocomplete="off" style="width: 100%; height: 40px; font-size: 0.9rem;" />
+              </div>
+              <div id="movEstoqueSugestoesList" class="ponto-pedido-autocomplete-list" role="listbox" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1050; max-height: 280px; overflow-y: auto; background: #0f172a; border: 1px solid var(--panel-border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
+            </div>
+
+            <!-- Data Inicial -->
+            <div>
+              <label for="movEstoqueDataIni" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px; color: var(--text-color);">
+                📅 Data Inicial
+              </label>
+              <input type="date" id="movEstoqueDataIni" class="input-text" style="width: 100%; height: 40px; font-size: 0.85rem;" />
+            </div>
+
+            <!-- Data Final -->
+            <div>
+              <label for="movEstoqueDataFim" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px; color: var(--text-color);">
+                📅 Data Final
+              </label>
+              <input type="date" id="movEstoqueDataFim" class="input-text" style="width: 100%; height: 40px; font-size: 0.85rem;" />
+            </div>
+
+            <!-- Seletor de Empresa -->
+            <div>
+              <label for="movEstoqueFiltroEmpresa" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px; color: var(--text-color);">
+                🏢 Empresa
+              </label>
+              <select id="movEstoqueFiltroEmpresa" class="form-select" style="width: 100%; height: 40px; font-size: 0.85rem;">
+                <option value="TODAS">Todas as Empresas (14, 15, 16)</option>
+                <option value="MP">Metal Pleno (Empresa 14)</option>
+                <option value="GSI">GSI (Empresa 15)</option>
+                <option value="OACO">OACO (Empresa 16)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Linha Secundária de Filtros e Ações -->
+          <div style="display: grid; grid-template-columns: 1.5fr 2fr auto auto auto; gap: 1rem; align-items: flex-end; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.08);">
+            
+            <!-- Tipo de Movimentação -->
+            <div>
+              <label for="movEstoqueFiltroTipo" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px; color: var(--text-color);">
+                🔄 Tipo de Movimentação
+              </label>
+              <select id="movEstoqueFiltroTipo" class="form-select" style="width: 100%; height: 40px; font-size: 0.85rem;">
+                <option value="TODOS">Todas as Movimentações</option>
+                <option value="ENTRADA_MANUAL">📦 Apenas Entradas Manuais (Romaneios)</option>
+                <option value="ENTRADA_NF">🟢 Apenas Entradas com NF</option>
+                <option value="SAIDA_NF">🔴 Apenas Saídas com NF</option>
+                <option value="ENTRADA">Todas as Entradas (Manuais + NFs)</option>
+                <option value="SAIDA">Todas as Saídas</option>
+              </select>
+            </div>
+
+            <!-- Código da Movimentação / TES -->
+            <div>
+              <label for="movEstoqueFiltroTes" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px; color: var(--text-color);">
+                🏷️ Código Movimentação (TES)
+              </label>
+              <select id="movEstoqueFiltroTes" class="form-select" style="width: 100%; height: 40px; font-size: 0.85rem;">
+                <option value="">Todas as Movimentações / TES</option>
+              </select>
+            </div>
+
+            <!-- Botão Consultar -->
+            <div>
+              <button type="button" id="btnConsultarMovEstoque" class="btn btn-primary" style="height: 40px; padding: 0 16px; display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.88rem; white-space: nowrap;">
+                <span>🔍 Exibir Movimentações</span>
+              </button>
+            </div>
+
+            <!-- Botão Limpar -->
+            <div>
+              <button type="button" id="btnLimparMovEstoque" class="btn btn-outline" style="height: 40px; padding: 0 14px; font-size: 0.85rem; white-space: nowrap;" title="Limpar busca e resetar formulário">
+                <span>🧹 Limpar</span>
+              </button>
+            </div>
+
+            <!-- Botão Exportar Excel -->
+            <div>
+              <button type="button" id="btnExportarMovEstoque" class="btn btn-outline" style="height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; white-space: nowrap;" title="Exportar movimentações exibidas para Excel">
+                <span>📥 Exp. Excel</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Estado Inicial: Nenhuma Busca -->
+        <div id="movEstoqueEmptyState" style="text-align: center; padding: 3.5rem 1rem; background: rgba(15, 23, 42, 0.25); border-radius: 12px; border: 1px dashed var(--panel-border); margin-top: 1.5rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📦</div>
+          <h4 style="margin: 0 0 0.5rem; font-size: 1.1rem; color: var(--text-color);">Nenhum produto selecionado</h4>
+          <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 580px; margin: 0 auto;">
+            Digite o <strong>Código do Produto</strong> ou <strong>Descrição</strong> no campo acima e clique em <strong>Exibir Movimentações</strong> para analisar as entradas e saídas manuais e faturadas nos últimos 12 meses.
+          </p>
+        </div>
+
+        <!-- Estado Carregando -->
+        <div id="movEstoqueLoadingState" class="hidden" style="text-align: center; padding: 3.5rem 1rem;">
+          <div class="spinner" style="margin: 0 auto 1rem; width: 36px; height: 36px; border: 3px solid rgba(56, 189, 248, 0.2); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+          <h4 style="margin: 0 0 0.25rem; font-size: 1.05rem; color: var(--text-color);">Consultando Protheus...</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Extraindo movimentações consolidadas em SD1, SD2 e SF4 nas 3 empresas.</p>
+        </div>
+
+        <!-- Estado de Erro -->
+        <div id="movEstoqueErrorState" class="hidden" style="padding: 1.5rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; margin-top: 1.5rem; text-align: center;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+          <h4 style="color: #ef4444; margin: 0 0 0.5rem; font-size: 1.05rem;">Erro na Consulta</h4>
+          <p id="movEstoqueErrorMsg" style="color: var(--text-color); font-size: 0.88rem; margin: 0;"></p>
+        </div>
+
+        <!-- Container de Resultados (KPIs + Tabela) -->
+        <div id="movEstoqueResultadosContainer" class="hidden" style="margin-top: 1.5rem;">
+          
+          <!-- Cabeçalho do Produto -->
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.4); padding: 1rem 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="movEstoqueProdCodigo" style="font-family: monospace; font-weight: 700; color: #38bdf8; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.25); padding: 3px 8px; border-radius: 6px; font-size: 0.88rem;"></span>
+                <span id="movEstoqueProdDescricao" style="font-weight: 700; font-size: 1.05rem; color: var(--text-color);"></span>
+              </div>
+              <div style="display: flex; gap: 14px; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                <span id="movEstoqueProdGrupo"></span>
+                <span id="movEstoqueProdUm"></span>
+              </div>
+            </div>
+            <div>
+              <span id="movEstoquePeriodoInfo" style="font-size: 0.82rem; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);"></span>
+            </div>
+          </div>
+
+          <!-- Cards de KPIs -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            
+            <!-- KPI Entradas -->
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 1rem 1.25rem;">
+              <div style="font-size: 0.78rem; font-weight: 600; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                <span>📥 Total Entradas</span>
+              </div>
+              <div id="kpiMovEstoqueTotalEntradas" style="font-size: 1.5rem; font-weight: 700; color: #10b981; margin: 4px 0 2px;">0 un</div>
+              <div id="kpiMovEstoqueValorEntradas" style="font-size: 0.8rem; color: var(--text-muted);">R$ 0,00</div>
+            </div>
+
+            <!-- KPI Saídas -->
+            <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 10px; padding: 1rem 1.25rem;">
+              <div style="font-size: 0.78rem; font-weight: 600; color: #f87171; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                <span>📤 Total Saídas (NFs)</span>
+              </div>
+              <div id="kpiMovEstoqueTotalSaidas" style="font-size: 1.5rem; font-weight: 700; color: #ef4444; margin: 4px 0 2px;">0 un</div>
+              <div id="kpiMovEstoqueValorSaidas" style="font-size: 0.8rem; color: var(--text-muted);">R$ 0,00</div>
+            </div>
+
+            <!-- KPI Saldo Líquido do Período -->
+            <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 1rem 1.25rem;">
+              <div style="font-size: 0.78rem; font-weight: 600; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                <span>⚖️ Saldo Líquido do Período</span>
+              </div>
+              <div id="kpiMovEstoqueSaldoPeriodo" style="font-size: 1.5rem; font-weight: 700; margin: 4px 0 2px;">0 un</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Entradas subtraídas de Saídas</div>
+            </div>
+
+            <!-- KPI Lançamentos -->
+            <div style="background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 1rem 1.25rem;">
+              <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+                📋 Volume de Movimentos
+              </div>
+              <div id="kpiMovEstoqueTotalRegistros" style="font-size: 1.5rem; font-weight: 700; color: var(--text-color); margin: 4px 0 2px;">0</div>
+              <div id="kpiMovEstoqueDetalhesLanc" style="font-size: 0.76rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">0 Manuais | 0 NFs</div>
+            </div>
+
+          </div>
+
+          <!-- Tabela de Movimentações -->
+          <div style="background: rgba(15, 23, 42, 0.3); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <h3 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--text-color);">Histórico Cronológico de Entradas e Saídas</h3>
+              <span id="movEstoqueTotalContador" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table class="table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                <thead>
+                  <tr style="background: rgba(15, 23, 42, 0.6); border-bottom: 1px solid var(--panel-border); text-align: left;">
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Data</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center;">Emp.</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Tipo</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Doc / Romaneio</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center;">Série</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center;">Item</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: right;">Qtd</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: right;">Unitário</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: right;">Total</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">TES / Movimentação</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center;">CFOP</th>
+                    <th style="padding: 10px 12px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Fornecedor / Cliente</th>
+                  </tr>
+                </thead>
+                <tbody id="movEstoqueTbody">
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Controles de Paginação -->
+            <div id="movEstoquePaginacao"></div>
+          </div>
+
         </div>
 
       </section>
@@ -7805,19 +8039,20 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.190"></script>
-  <script src="js/bi_indices.js?v=8.190"></script>
-  <script src="js/bi_autorizacoes.js?v=8.190"></script>
-  <script src="js/gordura_frete.js?v=8.190"></script>
-  <script src="js/fechamento_vendedores.js?v=8.190"></script>
-  <script type="module" src="js/tarefas.js?v=8.190"></script>
-  <script src="js/holerites.js?v=8.190"></script>
-  <script src="js/funcionarios_dp.js?v=8.190"></script>
-  <script src="js/crm.js?v=8.190"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.190"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.190"></script>
-  <script src="js/nfse_pendentes.js?v=8.190"></script>
-  <script src="js/fechamento_fiscal.js?v=8.190"></script>
-  <script src="app.js?v=8.190"></script>
+  <script src="js/bi.js?v=8.192"></script>
+  <script src="js/bi_indices.js?v=8.192"></script>
+  <script src="js/bi_autorizacoes.js?v=8.192"></script>
+  <script src="js/gordura_frete.js?v=8.192"></script>
+  <script src="js/fechamento_vendedores.js?v=8.192"></script>
+  <script type="module" src="js/tarefas.js?v=8.192"></script>
+  <script src="js/holerites.js?v=8.192"></script>
+  <script src="js/funcionarios_dp.js?v=8.192"></script>
+  <script src="js/crm.js?v=8.192"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.192"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.192"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.192"></script>
+  <script src="js/nfse_pendentes.js?v=8.192"></script>
+  <script src="js/fechamento_fiscal.js?v=8.192"></script>
+  <script src="app.js?v=8.192"></script>
 </body>
 </html>

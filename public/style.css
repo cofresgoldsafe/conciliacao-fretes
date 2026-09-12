@@ -4914,6 +4914,164 @@ body.theme-light .crm-bloco-titulo-cinza {
   }
 }
 
+/* ==========================================================================
+   TEMA CLARO E AJUSTES PARA MOVIMENTAÇÕES DO ESTOQUE (ABA COMPRAS)
+   ========================================================================== */
+#tab-compras-movimentacoes-estoque.tab-theme-light,
+.tab-theme-light #tab-compras-movimentacoes-estoque {
+  background-color: #f8fafc;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light .card,
+.tab-theme-light #tab-compras-movimentacoes-estoque .card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light h2,
+#tab-compras-movimentacoes-estoque.tab-theme-light h3,
+#tab-compras-movimentacoes-estoque.tab-theme-light h4,
+.tab-theme-light #tab-compras-movimentacoes-estoque h2,
+.tab-theme-light #tab-compras-movimentacoes-estoque h3,
+.tab-theme-light #tab-compras-movimentacoes-estoque h4 {
+  color: #0f172a !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light p.desc,
+.tab-theme-light #tab-compras-movimentacoes-estoque p.desc {
+  color: #64748b !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light input,
+#tab-compras-movimentacoes-estoque.tab-theme-light select,
+.tab-theme-light #tab-compras-movimentacoes-estoque input,
+.tab-theme-light #tab-compras-movimentacoes-estoque select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light label,
+.tab-theme-light #tab-compras-movimentacoes-estoque label {
+  color: #1e293b !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light div[style*="background: rgba(15, 23, 42"],
+.tab-theme-light #tab-compras-movimentacoes-estoque div[style*="background: rgba(15, 23, 42"] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light #movEstoqueEmptyState,
+.tab-theme-light #tab-compras-movimentacoes-estoque #movEstoqueEmptyState {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light #movEstoqueSugestoesList,
+.tab-theme-light #tab-compras-movimentacoes-estoque #movEstoqueSugestoesList {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light #movEstoqueSugestoesList span,
+.tab-theme-light #tab-compras-movimentacoes-estoque #movEstoqueSugestoesList span {
+  color: #0f172a !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light .ponto-pedido-autocomplete-item:hover,
+.tab-theme-light #tab-compras-movimentacoes-estoque .ponto-pedido-autocomplete-item:hover {
+  background: #f1f5f9 !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light table,
+.tab-theme-light #tab-compras-movimentacoes-estoque table {
+  background: #ffffff !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light th,
+.tab-theme-light #tab-compras-movimentacoes-estoque th {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light td,
+.tab-theme-light #tab-compras-movimentacoes-estoque td {
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+#tab-compras-movimentacoes-estoque.tab-theme-light tbody tr:hover,
+.tab-theme-light #tab-compras-movimentacoes-estoque tbody tr:hover {
+  background: #f8fafc !important;
+}
+
+/* Correções de Contraste WCAG 2.1 AA para Movimentações do Estoque no Modo Claro */
+.tab-theme-light #tab-compras-movimentacoes-estoque #movEstoqueProdCodigo {
+  color: #0369a1 !important;
+  background: rgba(3, 105, 161, 0.1) !important;
+  border-color: rgba(3, 105, 161, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque #movEstoquePeriodoInfo {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #a78bfa"] {
+  color: #6d28d9 !important;
+  background: rgba(109, 40, 217, 0.1) !important;
+  border-color: rgba(109, 40, 217, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #f87171"] {
+  color: #b91c1c !important;
+  background: rgba(185, 28, 28, 0.1) !important;
+  border-color: rgba(185, 28, 28, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #10b981"] {
+  color: #047857 !important;
+  background: rgba(4, 120, 87, 0.1) !important;
+  border-color: rgba(4, 120, 87, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #38bdf8"] {
+  color: #0284c7 !important;
+  background: rgba(2, 132, 199, 0.1) !important;
+  border-color: rgba(2, 132, 199, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #fbbf24"] {
+  color: #b45309 !important;
+  background: rgba(180, 83, 9, 0.1) !important;
+  border-color: rgba(180, 83, 9, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #c084fc"] {
+  color: #7e22ce !important;
+  background: rgba(126, 34, 206, 0.1) !important;
+  border-color: rgba(126, 34, 206, 0.25) !important;
+}
+
+.tab-theme-light #tab-compras-movimentacoes-estoque span[style*="color: #f59e0b"] {
+  color: #b45309 !important;
+  background: rgba(180, 83, 9, 0.1) !important;
+}
+
+/* Responsividade Mobile para Movimentações do Estoque */
+@media (max-width: 768px) {
+  #tab-compras-movimentacoes-estoque div[style*="grid-template-columns: 2fr 1fr 1fr 1.2fr"],
+  #tab-compras-movimentacoes-estoque div[style*="grid-template-columns: 1.5fr 2fr auto auto auto"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
 
 
 
