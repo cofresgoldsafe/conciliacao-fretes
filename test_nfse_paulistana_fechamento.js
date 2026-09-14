@@ -433,7 +433,9 @@ async function runTests() {
   await test('Teste 12: Tradução operacional de erros OpenSSL mTLS (humanizarErroMtls)', () => {
     const errLegacy = humanizarErroMtls({ message: 'Unsupported PKCS12 PFX data' });
     assert.ok(errLegacy.includes('PKCS#12 legada'), 'Deve identificar criptografia legada');
-    assert.ok(errLegacy.includes('--openssl-legacy-provider'), 'Deve instruir configuração de NODE_OPTIONS no Render');
+
+    const errDecoder = humanizarErroMtls({ message: 'error:1E08010C:DECODER routines::unsupported' });
+    assert.ok(errDecoder.includes('Importar Lote SP'), 'Deve orientar importação de lote');
 
     const errSenha = humanizarErroMtls({ message: 'mac verify failure' });
     assert.ok(errSenha.includes('Senha do certificado'), 'Deve identificar senha incorreta');

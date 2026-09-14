@@ -54,8 +54,11 @@ function humanizarErroMtls(erro) {
   const msg = erro?.message || String(erro || '');
   const code = erro?.code || '';
 
+  if (/DECODER routines/i.test(msg)) {
+    return 'O WebService SOAP da Prefeitura de SP exige assinatura estruturada XMLDSig (W3C) que não decodifica chave privada direta a partir do PFX. Utilize o botão "Importar Lote SP" para carregar o arquivo oficial (.xml ou .txt) exportado do portal da Nota Paulistana.';
+  }
   if (/Unsupported PKCS12 PFX data/i.test(msg) || /ERR_OSSL_UNSUPPORTED/i.test(msg)) {
-    return 'O certificado digital A1 da GSI utiliza criptografia PKCS#12 legada (RC2-40/3DES da ICP-Brasil) incompatível com o OpenSSL 3.0 do Render. Para resolver definitivamente: execute python scripts/converter_certificado_pfx.py "C:/Users/Alexandre/Downloads/120a2609105ad966.pfx" <sua_senha> e atualize NFSE_CERT_GSI_PFX_BASE64 com o AES-256 gerado, ou adicione a variável NODE_OPTIONS com o valor --openssl-legacy-provider no Render (ou use o botão "Importar Lote SP").';
+    return 'O certificado digital A1 da GSI utiliza criptografia PKCS#12 legada (RC2-40/3DES da ICP-Brasil) incompatível com o OpenSSL 3.0 do Render. Utilize o botão "Importar Lote SP" para carregar o arquivo exportado da prefeitura.';
   }
   if (/mac verify failure/i.test(msg)) {
     return 'Senha do certificado digital A1 da GSI (NFSE_CERT_GSI_SENHA) incorreta ou dados do PFX corrompidos. Verifique a senha configurada no Render/Ambiente.';

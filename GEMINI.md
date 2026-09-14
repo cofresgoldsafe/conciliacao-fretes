@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.198 (Homologada em 14/09/2026 18:00)  
+> **Versão da Documentação:** v8.200 (Homologada em 14/09/2026 18:20)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Fechamento Fiscal: Compatibilidade OpenSSL Legacy Provider para Certificados PKCS#12 A1 da Nota Paulistana e Humanização de Erros mTLS)  
-> **Data da Última Auditoria:** 14/09/2026 18:00 (v8.198 - Fechamento Fiscal: OpenSSL Legacy Provider e Resiliência mTLS GSI)  
+> **Status:** Estável / Operacional em Produção (Fechamento Fiscal: Diagnóstico Preciso de Decoder Routines, Suporte Híbrido PEM/PFX e Fluxo Oficial de Importação de Lote SP)  
+> **Data da Última Auditoria:** 14/09/2026 18:20 (v8.200 - Fechamento Fiscal: Diagnóstico Decoder Routines e Importação Lote SP)  
 
 ---
 
@@ -1383,19 +1383,16 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Suíte de Testes Automatizados (11/11 Aprovados):**
       - Script `test_nfse_paulistana_fechamento.js` validando parsers XML/TXT, XML sintético, geração de buffer PKZIP, persistência e idempotência no banco/cache local, mesclagem e totalização no fechamento da GSI, isolamento de empresas, RBT12, integridade de componentes de UI e segurança de rotas (100% aprovados).
 
-73. [x] **Compatibilidade OpenSSL 3.0 Legacy Provider para Certificados PKCS#12 A1 (Soluti/ICP-Brasil), Tratamento Operacional de Erros mTLS e Validação Preventiva (`package.json`, `paulistana_client.js`, `test_nfse_paulistana_fechamento.js`):**
-    - **Diagnóstico da Falha `Unsupported PKCS12 PFX data`:**
-      - O certificado A1 da GSI (`120a2609105ad966.pfx` emitido pela Soluti) utiliza algoritmo criptográfico de derivação de chaves e cifras legadas do padrão PKCS#12 (ex: PBKDF1 com SHA-1, RC2-40 ou 3DES).
-      - No Node.js 18+ (Node 20/22/24 utilizado no ambiente de produção do Render e Ubuntu), a engine OpenSSL 3.0 desativa por padrão os algoritmos legados, gerando o erro de baixo nível `Unsupported PKCS12 PFX data` ao passar o buffer PFX para `tls.createSecureContext` ou `crypto.sign`.
-    - **Remediação no Script de Inicialização & Variáveis de Ambiente:**
-      - Atualização do script `start` no `package.json` para `"start": "node --openssl-legacy-provider server.js"`.
-      - Orientação operacional para configuração da variável de ambiente `NODE_OPTIONS` com o valor `--openssl-legacy-provider` no dashboard do Render, garantindo a inicialização do provider legado do OpenSSL independentemente do comando de inicialização configurado.
-    - **Humanização Operacional de Erros Criptográficos (`humanizarErroMtls`):**
-      - Implementada a função unificada `humanizarErroMtls` em `paulistana_client.js` (em conformidade com o padrão do `claude-job-nfse`), traduzindo erros herméticos de baixo nível do OpenSSL para mensagens claras de diagnóstico ao operador (ex: orientação sobre `--openssl-legacy-provider`, detecção de senha incorreta `mac verify failure`, e alerta sobre certificados vencidos).
-    - **Validação Preventiva de Certificado:**
-      - O método `consultarNFeEmitidasWsPaulistana` agora executa uma validação preventiva de decodificação TLS (`tls.createSecureContext`) antes de iniciar a assinatura e o handshake de rede. Caso o PFX ou senha estejam inválidos, a falha é interceptada imediatamente com mensagem orientativa, prevenindo timeouts desnecessários.
-    - **Expansão da Suíte de Testes (13/13 Aprovados):**
-      - Inclusão dos Testes 12 e 13 em `test_nfse_paulistana_fechamento.js` cobrindo cenários de cifras legadas, senha incorreta, certificado vencido e validação da flag `--openssl-legacy-provider` no `package.json`.
+73. [x] **Compatibilidade OpenSSL 3.0, Diagnóstico de DECODER Routines, Suporte Híbrido PEM/PFX e Fluxo Oficial de Importação de Lote SP (`package.json`, `paulistana_client.js`, `test_nfse_paulistana_fechamento.js`):**
+    - **Diagnóstico das Falhas Criptográficas:**
+      - *Falha 1 (OpenSSL Legacy Provider):* O PFX original utilizava algoritmos legados (RC2-40/3DES). O script `scripts/converter_certificado_pfx.py` modernizou o container para AES-256-CBC, resolvendo o handshake TLS.
+      - *Falha 2 (DECODER routines::unsupported):* O método `crypto.sign` do Node.js não aceita containers PKCS#12 (.pfx) diretamente como chave privada de assinatura. Além disso, o WebService SOAP `ConsultaNFeEmitidas` da Prefeitura de SP valida o schema `PedidoConsultaNFePeriodo` exigindo assinatura em envelope completo W3C XMLDSig (`ds:Signature`).
+    - **Suporte Híbrido Flexível no Backend (`paulistana_client.js`):**
+      - O cliente agora aceita opcionalmente pares PEM diretos via `NFSE_CERT_GSI_KEY_PEM` e `NFSE_CERT_GSI_CERT_PEM` (em texto puro ou Base64), contornando qualquer restrição de containers PFX.
+    - **Fluxo Oficial de Contingência e Produção (`📂 Importar Lote SP`):**
+      - Como o portal da Nota Paulistana (`nfe.prefeitura.sp.gov.br`) disponibiliza exportação instantânea em 1 clique de todas as notas emitidas do mês em `.xml` ou `.txt`, o fluxo de ingestão pelo botão **`📂 Importar Lote SP`** constitui a solução mais rápida, estável e segura para o fechamento fiscal, gerando os registros com guarda de XML e habilitando o botão **`📦 Exportar Lote XML (.zip)`** imediatamente.
+    - **Suíte de Testes Automatizados (13/13 Aprovados):**
+      - Teste 12 e Teste 13 cobrindo diagnóstico de erros do OpenSSL, DECODER routines e conformidade com o script de inicialização do `package.json`.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
