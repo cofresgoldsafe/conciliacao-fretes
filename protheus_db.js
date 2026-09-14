@@ -3915,6 +3915,10 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
   let totalRemessaValor = 0.0;
   let totalServicoQtd = 0;
   let totalServicoValor = 0.0;
+  let totalServicoProtheusQtd = 0;
+  let totalServicoProtheusValor = 0.0;
+  let totalServicoPrefeituraQtd = 0;
+  let totalServicoPrefeituraValor = 0.0;
   let totalTributadoQtd = 0;
   let totalTributadoValor = 0.0;
 
@@ -3949,6 +3953,8 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       geraImposto = true;
       totalServicoQtd++;
       totalServicoValor += val;
+      totalServicoProtheusQtd++;
+      totalServicoProtheusValor += val;
     } else if (
       tipo === 'B' ||
       cfop === '5554' ||
@@ -3993,8 +3999,69 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       razaoSocial: (row.RAZAO || '').trim(),
       geraImposto: geraImposto ? 'Sim' : 'Não',
       difal: Number(row.DIFAL || 0) > 0 ? Number(row.DIFAL).toFixed(2) : '',
-      tipoOperacao
+      tipoOperacao,
+      origem: 'PROTHEUS'
     });
+  }
+
+  // 1.1 Ingestão de Notas de Serviço Emitidas da Prefeitura de SP (GSI Empresa 15)
+  if (cfg.codigo === '15') {
+    try {
+      const { consultarNfseEmitidasPeriodoDB } = require('./postgres_db');
+      const notasServicoGsi = await consultarNfseEmitidasPeriodoDB({
+        empresa: '15',
+        dataDe: dtDe,
+        dataAte: dtAte,
+        incluirXml: false
+      });
+
+      for (const nota of notasServicoGsi) {
+        if (nota.status === 'CANCELADA') continue; // Canceladas não somam
+        const val = Number(nota.valor_servicos || 0);
+
+        totalSaidasQtd++;
+        totalSaidasValor += val;
+        totalServicoQtd++;
+        totalServicoValor += val;
+        totalServicoPrefeituraQtd++;
+        totalServicoPrefeituraValor += val;
+        totalTributadoQtd++;
+        totalTributadoValor += val; // Conforme alinhado, compõe faturamento tributado
+
+        itens.push({
+          entraSaida: 'SAÍDA',
+          tipo: 'N',
+          tipoDoc: 'NFS',
+          especie: 'NFS-e SP',
+          formularioProprio: false,
+          nfOrigem: '',
+          serieOrigem: '',
+          numNf: String(nota.numero_nota || '').trim(),
+          serie: String(nota.serie || 'NFS').trim(),
+          dataEmissao: (nota.data_emissao ? nota.data_emissao.slice(0, 10).replace(/-/g, '') : '').trim(),
+          dataEmissaoFmt: formatarDataBrFiscal(nota.data_emissao ? nota.data_emissao.slice(0, 10).replace(/-/g, '') : ''),
+          valor: Math.round(val * 100) / 100,
+          cfop: '5933',
+          tes: 'PREF-SP',
+          descrTes: 'PRESTAÇÃO DE SERVIÇOS (PREFEITURA DE SP)',
+          uf: 'SP',
+          cnpjCpf: String(nota.tomador_cnpj_cpf || '').trim(),
+          cnpjCpfFmt: formatarCgcFiscal(nota.tomador_cnpj_cpf),
+          razaoSocial: String(nota.tomador_razao || 'CLIENTE SERVIÇO').trim(),
+          geraImposto: 'Sim',
+          difal: '',
+          tipoOperacao: 'SERVICO',
+          origem: 'PREFEITURA_SP',
+          chaveAcesso: nota.chave_acesso,
+          temXml: Boolean(nota.tem_xml),
+          discriminacao: nota.discriminacao_servico || '',
+          issRetido: Boolean(nota.iss_retido),
+          valorIss: Number(nota.valor_iss || 0)
+        });
+      }
+    } catch (errNfse) {
+      console.warn('⚠️ [Fechamento Fiscal] Falha ao carregar NFS-e da Prefeitura de SP:', errNfse.message);
+    }
   }
 
   // Totais Entrada
@@ -4090,7 +4157,12 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
         saidas: { qtd: totalDevolucaoSaidaQtd, valor: Math.round(totalDevolucaoSaidaValor * 100) / 100 }
       },
       totalRemessa: { qtd: totalRemessaQtd, valor: Math.round(totalRemessaValor * 100) / 100 },
-      totalServico: { qtd: totalServicoQtd, valor: Math.round(totalServicoValor * 100) / 100 },
+      totalServico: {
+        qtd: totalServicoQtd,
+        valor: Math.round(totalServicoValor * 100) / 100,
+        prefeituraSp: { qtd: totalServicoPrefeituraQtd, valor: Math.round(totalServicoPrefeituraValor * 100) / 100 },
+        protheus: { qtd: totalServicoProtheusQtd, valor: Math.round(totalServicoProtheusValor * 100) / 100 }
+      },
       totalTributado: { qtd: totalTributadoQtd, valor: Math.round(totalTributadoValor * 100) / 100 },
       totalEntradas: { qtd: totalEntradasQtd, valor: Math.round(totalEntradasValor * 100) / 100 },
       totalNfe: { qtd: totalNfeQtd, valor: Math.round(totalNfeValor * 100) / 100 },
@@ -4161,17 +4233,32 @@ async function obterHistoricoFaturamento12MesesProtheus({ empresa, anoMesReferen
     });
   });
 
+  // Se for GSI (15), carrega histórico mensal de serviços da Prefeitura de SP
+  let mapaServicos = {};
+  if (cfg.codigo === '15') {
+    try {
+      const { consultarHistoricoFaturamentoServicos12mDB } = require('./postgres_db');
+      mapaServicos = await consultarHistoricoFaturamentoServicos12mDB({ empresa: '15', meses });
+    } catch (e) {
+      console.warn('⚠️ [RBT12] Falha ao carregar serviços GSI:', e.message);
+    }
+  }
+
   let somaRbt12 = 0;
   const historicoMeses = meses.map(mes => {
     const dados = mapaValores.get(mes) || { qtdNotas: 0, valorFaturado: 0 };
-    somaRbt12 += dados.valorFaturado;
+    const valorServicos = Number(mapaServicos[mes] || 0);
+    const valorFaturadoTotal = dados.valorFaturado + valorServicos;
+    somaRbt12 += valorFaturadoTotal;
     const ano = mes.substring(0, 4);
     const mStr = mes.substring(4, 6);
     return {
       anoMes: mes,
       rotulo: `${mStr}/${ano}`,
       qtdNotas: dados.qtdNotas,
-      valorFaturado: Math.round(dados.valorFaturado * 100) / 100
+      valorFaturado: Math.round(valorFaturadoTotal * 100) / 100,
+      valorMercadorias: Math.round(dados.valorFaturado * 100) / 100,
+      valorServicos: Math.round(valorServicos * 100) / 100
     };
   });
 

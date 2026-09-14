@@ -121,11 +121,28 @@ const {
   obterNfsePendentesDB,
   atualizarStatusNfseDB,
   reconciliarNfseComProtheusDB,
+  salvarNfseEmitidasDB,
+  consultarNfseEmitidasPeriodoDB,
+  obterXmlNfseEmitidaDB,
+  consultarHistoricoFaturamentoServicos12mDB,
   salvarFechamentoFiscalDB,
   obterFechamentoFiscalDB,
   listarFechamentosFiscaisDB,
   isPostgresConnected
 } = require('./postgres_db');
+
+const {
+  parseNFeXmlPaulistana,
+  parseTxtLotePaulistana,
+  consultarNFeEmitidasWsPaulistana
+} = require('./paulistana_client');
+
+const { criarZipBuffer } = require('./zip_util');
+
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 } // 15MB
+});
 
 const {
   send2FACodeEmail,
@@ -4722,6 +4739,209 @@ app.patch('/api/analista-fin/nfse/:chaveAcesso/status', requireAuth, async (req,
     return res.json({ ok: true, resultado: updated });
   } catch (err) {
     console.error('Erro ao atualizar status da NFS-e:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// MÓDULO NFS-E EMITIDAS (PREFEITURA DE SÃO PAULO - GSI EMPRESA 15)
+// ============================================================================
+
+// 1. Sincronizar NFS-e Emitidas da Prefeitura de SP (mTLS SOAP da Nota Paulistana)
+app.post('/api/analista-fin/nfse-emitidas/sync', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { de, ate, inscricaoMunicipal } = req.body || req.query || {};
+
+    const hoje = new Date();
+    const dtFimPadrao = hoje.toISOString().slice(0, 10).replace(/-/g, '');
+    const dtIniPadrao = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10).replace(/-/g, '');
+
+    const dtInicio = (de ? String(de).replace(/\D/g, '') : dtIniPadrao).slice(0, 8);
+    const dtFim = (ate ? String(ate).replace(/\D/g, '') : dtFimPadrao).slice(0, 8);
+
+    console.log(`📡 [NFS-e SP Sync] Disparando busca na Prefeitura de SP (${dtInicio} a ${dtFim})...`);
+
+    let resultadoWs = null;
+    let notas = [];
+    try {
+      resultadoWs = await consultarNFeEmitidasWsPaulistana({
+        dtInicio,
+        dtFim,
+        inscricaoMunicipal
+      });
+      notas = resultadoWs.notas || [];
+    } catch (errWs) {
+      console.warn('⚠️ [NFS-e SP Sync] WebService da Prefeitura retornou erro:', errWs.message);
+      return res.status(200).json({
+        ok: false,
+        aviso: true,
+        error: `Não foi possível conectar ao WebService da Prefeitura de SP: ${errWs.message}. Você também pode utilizar o botão "Importar Lote SP" (upload de XML/TXT da prefeitura).`,
+        detalhes: errWs.message
+      });
+    }
+
+    const saveRes = await salvarNfseEmitidasDB(notas);
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'SYNC_NFSE_EMITIDAS',
+      description: `Sincronizou ${saveRes.total} NFS-e emitidas da Prefeitura de SP (${dtInicio} a ${dtFim}). Inseridas: ${saveRes.inseridas}, Atualizadas: ${saveRes.atualizadas}.`,
+      ip: req.ip,
+      metadata: { de: dtInicio, ate: dtFim, resultado: saveRes }
+    }).catch(() => {});
+
+    return res.json({
+      ok: true,
+      mensagem: `Sincronização concluída! ${saveRes.total} nota(s) processada(s) (${saveRes.inseridas} novas, ${saveRes.atualizadas} atualizadas).`,
+      resultado: saveRes
+    });
+  } catch (err) {
+    console.error('Erro na sincronização de NFS-e SP:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. Ingestão em Lote (JSON) de NFS-e Emitidas (Jobs / Webhooks)
+app.post('/api/analista-fin/nfse-emitidas/ingest', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+
+    const expectedKey = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || 'ProtheusClaude#2026';
+    const isKeyValid = apiKey && apiKey === expectedKey;
+    let isTokenValid = false;
+
+    if (!isKeyValid && token) {
+      try {
+        jwt.verify(token, process.env.JWT_SECRET || 'goldsafe_secret_jwt_key_2026_super_secure');
+        isTokenValid = true;
+      } catch (e) {}
+    }
+
+    if (!isKeyValid && !isTokenValid) {
+      return res.status(401).json({ ok: false, error: 'Acesso não autorizado: credenciais de ingestão inválidas.' });
+    }
+
+    const { notas } = req.body || {};
+    if (!Array.isArray(notas) || notas.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Payload deve conter array "notas" com ao menos um registro.' });
+    }
+
+    const saveRes = await salvarNfseEmitidasDB(notas);
+    return res.status(201).json({ ok: true, resultado: saveRes });
+  } catch (err) {
+    console.error('Erro na ingestão de NFS-e emitidas:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. Upload e Importação Manual de Arquivo da Nota Paulistana (.xml ou .txt)
+app.post('/api/analista-fin/nfse-emitidas/upload', requireAuth, uploadMemory.single('arquivo'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ ok: false, error: 'Nenhum arquivo enviado para importação.' });
+    }
+
+    const nomeArquivo = req.file.originalname || 'arquivo';
+    const conteudoStr = req.file.buffer.toString('utf8');
+    let notas = [];
+
+    if (nomeArquivo.toLowerCase().endsWith('.txt') || (conteudoStr.trim().startsWith('1') && !conteudoStr.trim().startsWith('<?xml'))) {
+      notas = parseTxtLotePaulistana(conteudoStr);
+    } else {
+      notas = parseNFeXmlPaulistana(conteudoStr);
+    }
+
+    if (notas.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Nenhuma nota fiscal reconhecida no arquivo. Certifique-se de que o arquivo é no padrão oficial da Nota Paulistana (XML ou TXT de lote).'
+      });
+    }
+
+    const saveRes = await salvarNfseEmitidasDB(notas);
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'UPLOAD_NFSE_PAULISTANA',
+      description: `Importou manualmente ${saveRes.total} NFS-e do arquivo ${nomeArquivo}.`,
+      ip: req.ip,
+      metadata: { arquivo: nomeArquivo, resultado: saveRes }
+    }).catch(() => {});
+
+    return res.json({
+      ok: true,
+      mensagem: `${saveRes.total} nota(s) importada(s) com sucesso do arquivo ${nomeArquivo}! (${saveRes.inseridas} novas, ${saveRes.atualizadas} atualizadas).`,
+      resultado: saveRes
+    });
+  } catch (err) {
+    console.error('Erro no upload de NFS-e Paulistana:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 4. Download Individual do XML de uma NFS-e Emitida
+app.get('/api/analista-fin/nfse-emitidas/:chaveAcesso/xml', requireAuth, async (req, res) => {
+  try {
+    const { chaveAcesso } = req.params;
+    const notaXml = await obterXmlNfseEmitidaDB(chaveAcesso);
+
+    if (!notaXml || !notaXml.xml_conteudo) {
+      return res.status(404).json({ ok: false, error: 'XML não localizado para esta nota fiscal.' });
+    }
+
+    const numNota = notaXml.numero_nota || chaveAcesso;
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="NFS-e_${numNota}.xml"`);
+    return res.send(notaXml.xml_conteudo);
+  } catch (err) {
+    console.error('Erro ao obter XML da NFS-e:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 5. Exportar Lote de XMLs Compactados (.zip) para Fechamento Fiscal da GSI
+app.get('/api/analista-fin/nfse-emitidas/exportar-zip', requireAuth, async (req, res) => {
+  try {
+    const { empresa = '15', de, ate } = req.query;
+
+    const notas = await consultarNfseEmitidasPeriodoDB({
+      empresa,
+      dataDe: de,
+      dataAte: ate,
+      incluirXml: true
+    });
+
+    const arquivosZip = [];
+    for (const nota of notas) {
+      if (nota.xml_conteudo) {
+        arquivosZip.push({
+          name: `NFS-e_${nota.numero_nota}.xml`,
+          content: nota.xml_conteudo
+        });
+      }
+    }
+
+    if (arquivosZip.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        error: 'Nenhum arquivo XML disponível para as notas de serviço deste período.'
+      });
+    }
+
+    const zipBuffer = criarZipBuffer(arquivosZip);
+    const periodoNome = (de && ate) ? `${String(de).replace(/\D/g, '')}_${String(ate).replace(/\D/g, '')}` : 'periodo';
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="NFS-e_GSI_${periodoNome}.zip"`);
+    return res.send(zipBuffer);
+  } catch (err) {
+    console.error('Erro ao exportar lote ZIP de NFS-e:', err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });

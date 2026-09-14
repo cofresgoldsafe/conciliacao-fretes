@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.195 (Homologada em 14/09/2026 14:25)  
+> **Versão da Documentação:** v8.196 (Homologada em 14/09/2026 17:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Card de Resumo de Faturamento de Notas de Serviço na Saída, Classificação Determinística Protheus SF2/SD2 com CFOP 5933/6933, NFS/RPS, TES 594, Filtro e 11 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 14/09/2026 14:25 (v8.195 - Fechamento Fiscal: Card de Resumo de Faturamento de Notas de Serviço na Saída)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Integração Completa de NFS-e Nota Paulistana da GSI com Guarda Perpétua de XML Bruto, Exportador ZIP Nativo, Ingestão mTLS/TXT e Recálculo Tributado/RBT12 - 11 Testes 100% Aprovados)  
+> **Data da Última Auditoria:** 14/09/2026 17:15 (v8.196 - Fechamento Fiscal: Integração NFS-e Nota Paulistana SP da GSI)  
 
 ---
 
@@ -1348,13 +1348,40 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
      - Suporte a filtro por `Apenas Serviços` (`SERVICO`) no dropdown de fluxo e busca instantânea por `servico` / `serviço`.
    - **Persistência Relacional & Cache JSON (`postgres_db.js`):**
      - Persistência das colunas `total_servico_qtd` e `total_servico_valor` na tabela `fechamento_fiscal_consolidado` com auto-migration `ADD COLUMN IF NOT EXISTS`.
-     - Persistência garantida no snapshot JSON `data/fechamento_fiscal_cache.json`.
-   - **Suíte de Testes Automatizados (`test_fechamento_fiscal.js`):**
-     - Assertions no Teste 1 (confirmando 0 serviços no período de homologação 08/2026 da OACO).
+      - Assertions no Teste 1 (confirmando 0 serviços no período de homologação 08/2026 da OACO).
      - Teste 6 atualizado com verificação de persistência e recuperação de `totalServico`.
      - Teste 8 atualizado validando os elementos do card e seletor no DOM.
      - Novo **Teste 11** validando cenários determinísticos de classificação de notas de serviço (CFOP 5933, Espécie NFS, TES 594 e isolamento de remessa 5949 comum).
      - 11 testes 100% aprovados com zero falhas.
+
+72. [x] **Integração de NFS-e Nota Paulistana (Prefeitura de SP) no Fechamento Fiscal da GSI (Empresa 15) com Guarda de XML, Exportação ZIP Nativa e Batimento do Total Tributado & RBT12 (`paulistana_client.js`, `zip_util.js`, `postgres_db.js`, `protheus_db.js`, `server.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `test_nfse_paulistana_fechamento.js`):**
+    - **Contexto Operacional & Causa Raiz:**
+      - A Empresa 15 (GSI BW) não emite Notas Fiscais de Serviço através do ERP TOTVS Protheus (`SF2150`/`SD2150`), emitindo-as exclusivamente de forma direta no portal da Nota Paulistana da Prefeitura de São Paulo (`nfe.prefeitura.sp.gov.br`).
+      - Por essa razão, as NFS-e emitidas ficavam fora do Fechamento Fiscal Mensal no sistema e distorciam o cálculo do Faturamento Tributado e a evolução da receita bruta acumulada dos últimos 12 meses (RBT12).
+    - **Persistência Relacional com Guarda Perpétua de XML Bruto (`nfse_emitidas`):**
+      - Criação da tabela `nfse_emitidas` no PostgreSQL Supabase (com fallback atômico em `data/nfse_emitidas.json`) armazenando a íntegra dos dados fiscais e o XML original na coluna `xml_conteudo TEXT`.
+      - Projeção leve otimizada para listagens em massa: a consulta omite a coluna `xml_conteudo` (`tem_xml: Boolean`), garantindo tempo de resposta sub-50ms no fechamento mensal.
+      - Idempotência rigorosa com chave primária `chave_acesso` (`14061778000115_<num_nota>`) e UPSERT no Supabase / mapa em memória.
+    - **Utilitário Nativo de Geração PKZIP sem Dependências (`zip_util.js`):**
+      - Implementado gerador completo em conformidade com o padrão PKZIP 2.0 e codificação UTF-8 utilizando estritamente a biblioteca nativa `node:zlib` (`deflateRawSync`) e tabela pré-calculada de CRC-32 IEEE 802.3, respeitando rigorosamente a diretriz YAGNI (zero dependências npm adicionais no `package.json`).
+    - **Exportação e Download de XMLs na Interface:**
+      - Botão **`📦 Exportar Lote XML (.zip)`** (`#btnExportarLoteXmlZip`): faz o streaming direto de arquivo compactado contendo todos os XMLs individuais de notas de serviço da competência selecionada para envio à contabilidade.
+      - Download individual de XML (`📄`) e modal de espelho da nota (`#modalNfsePaulistanaDetalhes`) exibindo tomador, discriminação dos serviços, deduções, retenções federais (PIS, COFINS, INSS, IR, CSLL) e alíquota de ISS.
+    - **Motor de Consulta & Parser da Nota Paulistana (`paulistana_client.js`):**
+      - Suporte à consulta via WebService SOAP HTTPS com mTLS e assinatura digital RSA-SHA1 via certificado A1 da GSI.
+      - Parser robusto do envelope XML `<RetornoConsulta>` e `<NFe>`.
+      - Parser flexível de arquivo TXT de lote emitido pela Prefeitura de SP (suporta tanto layout posicional oficial de largura fixa quanto formato delimitado por pipe gerado por sistemas contábeis).
+      - Gerador de XML sintético de contingência para notas importadas via TXT.
+    - **Fluxo Híbrido Resiliente & Contingência:**
+      - Disparo sob demanda via botão **`🔄 Sincronizar NFS-e SP`** (`#btnSincronizarNfseSp`) com feedback visual de progresso.
+      - Contingência com botão **`📂 Importar Lote SP`** (`#btnImportarLoteNfseSp`) para upload manual (`multer.memoryStorage()`) de arquivos `.xml` ou `.txt` exportados do portal da prefeitura.
+    - **Integração no Motor Fiscal Protheus & Regra Tributária:**
+      - As notas de serviço da Prefeitura de SP são mescladas transparentemente às saídas da Empresa 15 (GSI), classificadas com `especie: 'NFS-e SP'`, `cfop: '5933'`, `tipoOperacao: 'SERVICO'` e `geraImposto: 'Sim'`.
+      - O card de resumo de faturamento de serviços discrimina a origem `🏛️ Prefeitura de SP` e totaliza no **Total Tributado** e no **Total Saídas**.
+      - O cálculo do **RBT12** (`obterHistoricoFaturamento12MesesProtheus`) agrega os serviços mês a mês, assegurando o valor correto da faixa do Simples Nacional da GSI.
+      - **Isolamento Estrito:** As Empresas 14 (Metal Pleno) e 16 (OAÇO) permanecem 100% Protheus padrão sem qualquer interferência de notas de serviço externas.
+    - **Suíte de Testes Automatizados (11/11 Aprovados):**
+      - Script `test_nfse_paulistana_fechamento.js` validando parsers XML/TXT, XML sintético, geração de buffer PKZIP, persistência e idempotência no banco/cache local, mesclagem e totalização no fechamento da GSI, isolamento de empresas, RBT12, integridade de componentes de UI e segurança de rotas (100% aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

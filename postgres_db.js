@@ -44,6 +44,7 @@ const configMetasVendasFile = path.join(dataDir, 'config_metas_vendas.json');
 const holeritesCacheFile = path.join(dataDir, 'holerites_documentos.json');
 const colaboradoresCacheFile = path.join(dataDir, 'dp_colaboradores.json');
 const nfseCacheFile = path.join(dataDir, 'nfse_recebidas.json');
+const nfseEmitidasCacheFile = path.join(dataDir, 'nfse_emitidas.json');
 const fechamentoFiscalCacheFile = path.join(dataDir, 'fechamento_fiscal_cache.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
@@ -978,6 +979,45 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_nfse_prestador_num ON nfse_recebidas (prestador_cnpj, numero_nota);
       `);
 
+      // 10.9.1 Tabela de Notas Fiscais de Serviço (NFS-e) Emitidas (Prefeitura de SP - Nota Paulistana / ANALISTA FIN)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS nfse_emitidas (
+          id SERIAL PRIMARY KEY,
+          chave_acesso VARCHAR(60) UNIQUE NOT NULL,
+          empresa_cnpj VARCHAR(14) NOT NULL DEFAULT '14061778000115',
+          empresa_nome VARCHAR(100) NOT NULL DEFAULT 'GSI BW Equipamentos de Aço Cofres e Armários',
+          empresa_cod_protheus VARCHAR(2) NOT NULL DEFAULT '15',
+          numero_nota VARCHAR(20) NOT NULL,
+          serie VARCHAR(10) DEFAULT 'NFS',
+          codigo_verificacao VARCHAR(20),
+          data_emissao TIMESTAMPTZ NOT NULL,
+          competencia VARCHAR(7) NOT NULL,
+          tomador_cnpj_cpf VARCHAR(18),
+          tomador_razao VARCHAR(255),
+          valor_servicos NUMERIC(14,2) NOT NULL DEFAULT 0.00,
+          valor_deducoes NUMERIC(14,2) DEFAULT 0.00,
+          valor_pis NUMERIC(14,2) DEFAULT 0.00,
+          valor_cofins NUMERIC(14,2) DEFAULT 0.00,
+          valor_inss NUMERIC(14,2) DEFAULT 0.00,
+          valor_ir NUMERIC(14,2) DEFAULT 0.00,
+          valor_csll NUMERIC(14,2) DEFAULT 0.00,
+          valor_iss NUMERIC(14,2) DEFAULT 0.00,
+          aliquota_iss NUMERIC(5,2) DEFAULT 0.00,
+          iss_retido BOOLEAN DEFAULT FALSE,
+          valor_liquido NUMERIC(14,2) NOT NULL DEFAULT 0.00,
+          discriminacao_servico TEXT,
+          status VARCHAR(20) DEFAULT 'NORMAL',
+          origem VARCHAR(50) DEFAULT 'PREFEITURA_SP',
+          xml_conteudo TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_nfse_emitidas_empresa_emissao ON nfse_emitidas (empresa_cod_protheus, data_emissao);
+        CREATE INDEX IF NOT EXISTS idx_nfse_emitidas_competencia ON nfse_emitidas (competencia);
+        CREATE INDEX IF NOT EXISTS idx_nfse_emitidas_status ON nfse_emitidas (status);
+        CREATE INDEX IF NOT EXISTS idx_nfse_emitidas_num ON nfse_emitidas (numero_nota);
+      `);
+
       // 10.9 Cria Tabela de Fechamentos Fiscais Consolidados (Analista Fin / Simples Nacional / ICMS)
       await client.query(`
         CREATE TABLE IF NOT EXISTS fechamento_fiscal_consolidado (
@@ -1109,6 +1149,7 @@ async function initPostgres() {
         'holerites_documentos',
         'dp_colaboradores',
         'nfse_recebidas',
+        'nfse_emitidas',
         'fechamento_fiscal_consolidado'
       ];
 
@@ -5252,6 +5293,340 @@ async function reconciliarNfseComProtheusDB(dias = 250) {
 }
 
 // ============================================================================
+// MÓDULO NFS-E EMITIDAS (PREFEITURA DE SÃO PAULO - GSI EMPRESA 15)
+// ============================================================================
+
+/**
+ * Salva ou atualiza lote de NFS-e emitidas no Supabase PostgreSQL e no cache JSON local
+ * Suporta persistência integral do XML bruto (xml_conteudo)
+ * @param {Array<Object>} notas
+ */
+async function salvarNfseEmitidasDB(notas = []) {
+  if (!Array.isArray(notas) || notas.length === 0) {
+    return { ok: true, total: 0, inseridas: 0, atualizadas: 0 };
+  }
+
+  const normalizadas = notas.map(n => {
+    const numLimpo = String(n.numero_nota || '').trim();
+    const chave = String(n.chave_acesso || `14061778000115_${numLimpo}`).trim();
+    const dtEmi = n.data_emissao ? new Date(n.data_emissao).toISOString() : new Date().toISOString();
+    const comp = n.competencia || dtEmi.slice(0, 7);
+
+    return {
+      chave_acesso: chave,
+      empresa_cnpj: String(n.empresa_cnpj || '14061778000115').replace(/\D/g, ''),
+      empresa_nome: n.empresa_nome || 'GSI BW Equipamentos de Aço Cofres e Armários',
+      empresa_cod_protheus: String(n.empresa_cod_protheus || '15'),
+      numero_nota: numLimpo,
+      serie: n.serie || 'NFS',
+      codigo_verificacao: n.codigo_verificacao || '',
+      data_emissao: dtEmi,
+      competencia: comp,
+      tomador_cnpj_cpf: n.tomador_cnpj_cpf || '',
+      tomador_razao: n.tomador_razao || '',
+      valor_servicos: Number(n.valor_servicos || 0),
+      valor_deducoes: Number(n.valor_deducoes || 0),
+      valor_pis: Number(n.valor_pis || 0),
+      valor_cofins: Number(n.valor_cofins || 0),
+      valor_inss: Number(n.valor_inss || 0),
+      valor_ir: Number(n.valor_ir || 0),
+      valor_csll: Number(n.valor_csll || 0),
+      valor_iss: Number(n.valor_iss || 0),
+      aliquota_iss: Number(n.aliquota_iss || 0),
+      iss_retido: Boolean(n.iss_retido),
+      valor_liquido: Number(n.valor_liquido != null ? n.valor_liquido : n.valor_servicos || 0),
+      discriminacao_servico: n.discriminacao_servico || '',
+      status: (String(n.status || 'NORMAL').toUpperCase() === 'CANCELADA') ? 'CANCELADA' : 'NORMAL',
+      origem: n.origem || 'PREFEITURA_SP',
+      xml_conteudo: n.xml_conteudo || ''
+    };
+  });
+
+  let inseridas = 0;
+  let atualizadas = 0;
+
+  // 1. Tenta persistência no Supabase PostgreSQL
+  const p = getPool();
+  if (p) {
+    try {
+      for (const item of normalizadas) {
+        const query = `
+          INSERT INTO nfse_emitidas (
+            chave_acesso, empresa_cnpj, empresa_nome, empresa_cod_protheus,
+            numero_nota, serie, codigo_verificacao, data_emissao, competencia,
+            tomador_cnpj_cpf, tomador_razao, valor_servicos, valor_deducoes,
+            valor_pis, valor_cofins, valor_inss, valor_ir, valor_csll, valor_iss,
+            aliquota_iss, iss_retido, valor_liquido, discriminacao_servico,
+            status, origem, xml_conteudo
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+          ON CONFLICT (chave_acesso) DO UPDATE SET
+            codigo_verificacao = COALESCE(EXCLUDED.codigo_verificacao, nfse_emitidas.codigo_verificacao),
+            tomador_cnpj_cpf = COALESCE(EXCLUDED.tomador_cnpj_cpf, nfse_emitidas.tomador_cnpj_cpf),
+            tomador_razao = COALESCE(EXCLUDED.tomador_razao, nfse_emitidas.tomador_razao),
+            valor_servicos = EXCLUDED.valor_servicos,
+            valor_deducoes = EXCLUDED.valor_deducoes,
+            valor_pis = EXCLUDED.valor_pis,
+            valor_cofins = EXCLUDED.valor_cofins,
+            valor_inss = EXCLUDED.valor_inss,
+            valor_ir = EXCLUDED.valor_ir,
+            valor_csll = EXCLUDED.valor_csll,
+            valor_iss = EXCLUDED.valor_iss,
+            aliquota_iss = EXCLUDED.aliquota_iss,
+            iss_retido = EXCLUDED.iss_retido,
+            valor_liquido = EXCLUDED.valor_liquido,
+            discriminacao_servico = COALESCE(EXCLUDED.discriminacao_servico, nfse_emitidas.discriminacao_servico),
+            status = EXCLUDED.status,
+            xml_conteudo = COALESCE(NULLIF(EXCLUDED.xml_conteudo, ''), nfse_emitidas.xml_conteudo),
+            updated_at = NOW()
+          RETURNING (xmax = 0) AS inserido;
+        `;
+        const res = await safeQuery(query, [
+          item.chave_acesso, item.empresa_cnpj, item.empresa_nome, item.empresa_cod_protheus,
+          item.numero_nota, item.serie, item.codigo_verificacao, item.data_emissao, item.competencia,
+          item.tomador_cnpj_cpf, item.tomador_razao, item.valor_servicos, item.valor_deducoes,
+          item.valor_pis, item.valor_cofins, item.valor_inss, item.valor_ir, item.valor_csll, item.valor_iss,
+          item.aliquota_iss, item.iss_retido, item.valor_liquido, item.discriminacao_servico,
+          item.status, item.origem, item.xml_conteudo
+        ]);
+        if (res && res.rows && res.rows[0]) {
+          if (res.rows[0].inserido) inseridas++;
+          else atualizadas++;
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Falha ao gravar nfse_emitidas no Supabase:', err.message);
+    }
+  }
+
+  // 2. Persistência em Cache JSON Local (sempre atualizada para resiliência offline)
+  try {
+    let localList = [];
+    if (fs.existsSync(nfseEmitidasCacheFile)) {
+      try { localList = safeReadJsonSync(nfseEmitidasCacheFile, []) || []; } catch (e) {}
+    }
+    const map = new Map();
+    for (const item of localList) {
+      if (item.chave_acesso) map.set(item.chave_acesso, item);
+    }
+    for (const item of normalizadas) {
+      if (map.has(item.chave_acesso)) {
+        const existing = map.get(item.chave_acesso);
+        map.set(item.chave_acesso, {
+          ...existing,
+          ...item,
+          xml_conteudo: item.xml_conteudo || existing.xml_conteudo || '',
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        map.set(item.chave_acesso, {
+          ...item,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+    safeWriteJsonSync(nfseEmitidasCacheFile, Array.from(map.values()));
+  } catch (errJson) {
+    console.warn('⚠️ [NFS-e Emitidas Local] Falha ao gravar nfse_emitidas.json:', errJson.message);
+  }
+
+  return { ok: true, total: normalizadas.length, inseridas, atualizadas };
+}
+
+/**
+ * Consulta NFS-e Emitidas por período para integração no Fechamento Fiscal
+ * Por padrão NÃO carrega o xml_conteudo em massa para garantir velocidade máxima (< 50ms)
+ * @param {Object} params
+ * @param {string} [params.empresa='15']
+ * @param {string} params.dataDe 'YYYYMMDD' ou 'YYYY-MM-DD'
+ * @param {string} params.dataAte 'YYYYMMDD' ou 'YYYY-MM-DD'
+ * @param {boolean} [params.incluirXml=false]
+ */
+async function consultarNfseEmitidasPeriodoDB({ empresa = '15', dataDe, dataAte, incluirXml = false }) {
+  const empCod = String(empresa || '15').trim();
+  if (empCod !== '15') {
+    return []; // Somente GSI emite notas de serviço externas
+  }
+
+  // Normaliza datas
+  const limpaDe = String(dataDe || '').replace(/\D/g, '');
+  const limpaAte = String(dataAte || '').replace(/\D/g, '');
+
+  const dtDe = limpaDe.length >= 8 ? `${limpaDe.slice(0, 4)}-${limpaDe.slice(4, 6)}-${limpaDe.slice(6, 8)}T00:00:00-03:00` : '2026-08-01T00:00:00-03:00';
+  const dtAte = limpaAte.length >= 8 ? `${limpaAte.slice(0, 4)}-${limpaAte.slice(4, 6)}-${limpaAte.slice(6, 8)}T23:59:59-03:00` : '2026-08-31T23:59:59-03:00';
+
+  let notas = [];
+  let carregouPostgres = false;
+
+  const p = getPool();
+  if (p) {
+    try {
+      const colXml = incluirXml ? ', xml_conteudo' : ', (xml_conteudo IS NOT NULL AND xml_conteudo <> \'\') AS tem_xml';
+      const query = `
+        SELECT 
+          id, chave_acesso, empresa_cnpj, empresa_nome, empresa_cod_protheus,
+          numero_nota, serie, codigo_verificacao, data_emissao, competencia,
+          tomador_cnpj_cpf, tomador_razao, valor_servicos, valor_deducoes,
+          valor_pis, valor_cofins, valor_inss, valor_ir, valor_csll, valor_iss,
+          aliquota_iss, iss_retido, valor_liquido, discriminacao_servico,
+          status, origem, created_at, updated_at
+          ${colXml}
+        FROM nfse_emitidas
+        WHERE empresa_cod_protheus = $1
+          AND data_emissao >= $2
+          AND data_emissao <= $3
+        ORDER BY numero_nota ASC;
+      `;
+      const res = await safeQuery(query, [empCod, dtDe, dtAte]);
+      if (res && res.rows) {
+        notas = res.rows.map(r => ({
+          ...r,
+          valor_servicos: Number(r.valor_servicos || 0),
+          valor_deducoes: Number(r.valor_deducoes || 0),
+          valor_pis: Number(r.valor_pis || 0),
+          valor_cofins: Number(r.valor_cofins || 0),
+          valor_inss: Number(r.valor_inss || 0),
+          valor_ir: Number(r.valor_ir || 0),
+          valor_csll: Number(r.valor_csll || 0),
+          valor_iss: Number(r.valor_iss || 0),
+          aliquota_iss: Number(r.aliquota_iss || 0),
+          valor_liquido: Number(r.valor_liquido || 0),
+          tem_xml: incluirXml ? Boolean(r.xml_conteudo) : Boolean(r.tem_xml)
+        }));
+        carregouPostgres = true;
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Falha ao consultar nfse_emitidas, usando fallback JSON:', err.message);
+    }
+  }
+
+  if (!carregouPostgres) {
+    try {
+      if (fs.existsSync(nfseEmitidasCacheFile)) {
+        const localList = safeReadJsonSync(nfseEmitidasCacheFile, []) || [];
+        const tDe = new Date(dtDe).getTime();
+        const tAte = new Date(dtAte).getTime();
+
+        notas = localList
+          .filter(n => {
+            if (String(n.empresa_cod_protheus || '15') !== empCod) return false;
+            const tEmi = new Date(n.data_emissao).getTime();
+            return !isNaN(tEmi) && tEmi >= tDe && tEmi <= tAte;
+          })
+          .map(n => {
+            const item = { ...n, tem_xml: Boolean(n.xml_conteudo) };
+            if (!incluirXml) delete item.xml_conteudo;
+            return item;
+          })
+          .sort((a, b) => String(a.numero_nota).localeCompare(String(b.numero_nota), undefined, { numeric: true }));
+      }
+    } catch (errJson) {
+      console.warn('⚠️ [NFS-e Emitidas Local] Erro ao ler fallback JSON:', errJson.message);
+    }
+  }
+
+  return notas;
+}
+
+/**
+ * Retorna o XML bruto individual de uma NFS-e emitida
+ */
+async function obterXmlNfseEmitidaDB(chaveAcesso) {
+  if (!chaveAcesso) return null;
+
+  const p = getPool();
+  if (p) {
+    try {
+      const res = await safeQuery('SELECT xml_conteudo, numero_nota FROM nfse_emitidas WHERE chave_acesso = $1 LIMIT 1;', [chaveAcesso]);
+      if (res && res.rows && res.rows[0]) {
+        return {
+          numero_nota: res.rows[0].numero_nota,
+          xml_conteudo: res.rows[0].xml_conteudo
+        };
+      }
+    } catch (e) {}
+  }
+
+  // Fallback local
+  try {
+    if (fs.existsSync(nfseEmitidasCacheFile)) {
+      const list = safeReadJsonSync(nfseEmitidasCacheFile, []) || [];
+      const item = list.find(n => n.chave_acesso === chaveAcesso || String(n.numero_nota) === String(chaveAcesso));
+      if (item) {
+        return {
+          numero_nota: item.numero_nota,
+          xml_conteudo: item.xml_conteudo
+        };
+      }
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/**
+ * Retorna o histórico de faturamento mensal de serviços dos últimos 12 meses
+ * Agrupado por 'YYYYMM' -> valor
+ */
+async function consultarHistoricoFaturamentoServicos12mDB({ empresa = '15', meses = [] }) {
+  const empCod = String(empresa || '15').trim();
+  const mapa = {};
+  for (const m of meses) mapa[m] = 0;
+
+  if (empCod !== '15' || meses.length === 0) return mapa;
+
+  const minMes = meses[0]; // ex '202508'
+  const maxMes = meses[meses.length - 1]; // ex '202607'
+
+  const minComp = `${minMes.slice(0, 4)}-${minMes.slice(4, 6)}`;
+  const maxComp = `${maxMes.slice(0, 4)}-${maxMes.slice(4, 6)}`;
+
+  let carregouPostgres = false;
+  const p = getPool();
+  if (p) {
+    try {
+      const query = `
+        SELECT competencia, SUM(valor_servicos) as total_servicos
+        FROM nfse_emitidas
+        WHERE empresa_cod_protheus = $1
+          AND status = 'NORMAL'
+          AND competencia >= $2 AND competencia <= $3
+        GROUP BY competencia;
+      `;
+      const res = await safeQuery(query, [empCod, minComp, maxComp]);
+      if (res && res.rows) {
+        for (const row of res.rows) {
+          const anoMes = (row.competencia || '').replace('-', '');
+          if (mapa.hasOwnProperty(anoMes)) {
+            mapa[anoMes] = Math.round(Number(row.total_servicos || 0) * 100) / 100;
+          }
+        }
+        carregouPostgres = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!carregouPostgres) {
+    try {
+      if (fs.existsSync(nfseEmitidasCacheFile)) {
+        const list = safeReadJsonSync(nfseEmitidasCacheFile, []) || [];
+        for (const n of list) {
+          if (String(n.empresa_cod_protheus || '15') !== empCod) continue;
+          if (n.status === 'CANCELADA') continue;
+          const comp = n.competencia || (n.data_emissao ? n.data_emissao.slice(0, 7) : '');
+          const anoMes = comp.replace('-', '');
+          if (mapa.hasOwnProperty(anoMes)) {
+            mapa[anoMes] = Math.round((mapa[anoMes] + Number(n.valor_servicos || 0)) * 100) / 100;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  return mapa;
+}
+
+// ============================================================================
 // MÓDULO FECHAMENTO FISCAL CONSOLIDADO (PERSISTÊNCIA & HISTÓRICO RBT12)
 // ============================================================================
 
@@ -5541,6 +5916,11 @@ module.exports = {
   obterNfsePendentesDB,
   atualizarStatusNfseDB,
   reconciliarNfseComProtheusDB,
+  // NFS-e Emitidas (Prefeitura de SP - GSI)
+  salvarNfseEmitidasDB,
+  consultarNfseEmitidasPeriodoDB,
+  obterXmlNfseEmitidaDB,
+  consultarHistoricoFaturamentoServicos12mDB,
   // Módulo Fechamento Fiscal
   salvarFechamentoFiscalDB,
   obterFechamentoFiscalDB,

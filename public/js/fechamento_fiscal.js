@@ -1,6 +1,7 @@
 /**
  * fechamento_fiscal.js — Módulo de Fechamento Fiscal Mensal (Analista Fin)
- * Apuração de Saídas e Entradas Protheus ERP, Total Tributado e Histórico 12 Meses (RBT12)
+ * Apuração de Saídas e Entradas Protheus ERP, Total Tributado, Histórico 12 Meses (RBT12)
+ * e Ingestão/Exportação de NFS-e da Prefeitura de São Paulo (GSI Empresa 15)
  */
 
 (function () {
@@ -22,6 +23,17 @@
   let btnConsultar = null;
   let btnExportarCsv = null;
   let btnConsolidar = null;
+  let btnSincronizarNfseSp = null;
+  let btnExportarLoteXmlZip = null;
+  let btnImportarLoteNfseSp = null;
+  let inputUploadLoteNfseSp = null;
+
+  let modalNfseSp = null;
+  let modalNfseSpCorpo = null;
+  let btnFecharModalNfseSp = null;
+  let btnModalFecharNfseSp = null;
+  let btnModalBaixarXml = null;
+
   let placeholder = null;
   let loading = null;
   let resultados = null;
@@ -76,6 +88,18 @@
   }
 
   /**
+   * Atualiza a visibilidade dos botões de NFS-e exclusivos da GSI (Empresa 15)
+   */
+  function atualizarVisibilidadeBotoesGsi() {
+    const isGsi = selEmpresa && selEmpresa.value === '15';
+    const resultadosVisiveis = resultados && resultados.style.display !== 'none';
+
+    if (btnSincronizarNfseSp) btnSincronizarNfseSp.style.display = (isGsi && resultadosVisiveis) ? 'inline-flex' : 'none';
+    if (btnExportarLoteXmlZip) btnExportarLoteXmlZip.style.display = (isGsi && resultadosVisiveis) ? 'inline-flex' : 'none';
+    if (btnImportarLoteNfseSp) btnImportarLoteNfseSp.style.display = (isGsi && resultadosVisiveis) ? 'inline-flex' : 'none';
+  }
+
+  /**
    * Inicializa referências DOM e configurações de tela
    */
   function initFechamentoFiscal() {
@@ -86,6 +110,16 @@
     btnConsultar = document.getElementById('btnConsultarFechamentoFiscal');
     btnExportarCsv = document.getElementById('btnExportarFechamentoCsv');
     btnConsolidar = document.getElementById('btnConsolidarFechamentoFiscal');
+    btnSincronizarNfseSp = document.getElementById('btnSincronizarNfseSp');
+    btnExportarLoteXmlZip = document.getElementById('btnExportarLoteXmlZip');
+    btnImportarLoteNfseSp = document.getElementById('btnImportarLoteNfseSp');
+    inputUploadLoteNfseSp = document.getElementById('inputUploadLoteNfseSp');
+
+    modalNfseSp = document.getElementById('modalNfsePaulistanaDetalhes');
+    modalNfseSpCorpo = document.getElementById('modalNfseSpCorpo');
+    btnFecharModalNfseSp = document.getElementById('btnFecharModalNfseSp');
+    btnModalFecharNfseSp = document.getElementById('btnModalFecharNfseSp');
+    btnModalBaixarXml = document.getElementById('btnModalBaixarXml');
 
     placeholder = document.getElementById('fechamentoFiscalPlaceholder');
     loading = document.getElementById('fechamentoFiscalLoading');
@@ -109,6 +143,9 @@
     if (inputDataAte && !inputDataAte.value) inputDataAte.value = datas.ate;
 
     // Listeners
+    if (selEmpresa) {
+      selEmpresa.addEventListener('change', atualizarVisibilidadeBotoesGsi);
+    }
     if (btnConsultar) {
       btnConsultar.addEventListener('click', consultarFechamento);
     }
@@ -117,6 +154,54 @@
     }
     if (btnConsolidar) {
       btnConsolidar.addEventListener('click', consolidarFechamento);
+    }
+
+    // Ações de NFS-e GSI
+    if (btnSincronizarNfseSp) {
+      btnSincronizarNfseSp.addEventListener('click', sincronizarNfseSp);
+    }
+    if (btnExportarLoteXmlZip) {
+      btnExportarLoteXmlZip.addEventListener('click', exportarLoteXmlZip);
+    }
+    if (btnImportarLoteNfseSp) {
+      btnImportarLoteNfseSp.addEventListener('click', () => {
+        if (inputUploadLoteNfseSp) inputUploadLoteNfseSp.click();
+      });
+    }
+    if (inputUploadLoteNfseSp) {
+      inputUploadLoteNfseSp.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          importarArquivoLotePaulistana(e.target.files[0]);
+          e.target.value = '';
+        }
+      });
+    }
+    if (btnFecharModalNfseSp) {
+      btnFecharModalNfseSp.addEventListener('click', fecharModalNfsePaulistana);
+    }
+    if (btnModalFecharNfseSp) {
+      btnModalFecharNfseSp.addEventListener('click', fecharModalNfsePaulistana);
+    }
+
+    // Delegação de cliques no grid para detalhes de NFS-e Paulistana e download de XML
+    if (tbodyTabela) {
+      tbodyTabela.addEventListener('click', (e) => {
+        const link = e.target.closest('.link-nfse-paulistana');
+        if (link) {
+          const chave = link.dataset.chave;
+          const item = estadoFechamento.itensFiltrados.find(i => i.chaveAcesso === chave || String(i.numNf) === String(chave));
+          if (item) abrirModalNfsePaulistana(item);
+          return;
+        }
+
+        const btnXml = e.target.closest('.btn-baixar-xml-avulso');
+        if (btnXml) {
+          const chave = btnXml.dataset.chave;
+          const num = btnXml.dataset.num;
+          baixarXmlIndividual(chave, num);
+          return;
+        }
+      });
     }
 
     if (inputBusca) {
@@ -197,7 +282,6 @@
         criterioData
       });
 
-      // Extrai ano_mes para o histórico dos 12 meses
       const anoMesRef = de.replace(/[^0-9]/g, '').substring(0, 6);
 
       // Consulta Fechamento e Histórico 12m em paralelo
@@ -219,8 +303,11 @@
 
       if (btnExportarCsv) btnExportarCsv.style.display = 'inline-flex';
       if (btnConsolidar) btnConsolidar.style.display = 'inline-flex';
+
       if (loading) loading.style.display = 'none';
       if (resultados) resultados.style.display = 'block';
+
+      atualizarVisibilidadeBotoesGsi();
 
       notificar(`Apuração fiscal concluída: ${resFechamento.totalItens} notas processadas com sucesso!`, 'success');
     } catch (err) {
@@ -254,21 +341,32 @@
     setCard('kpiTotalRemessaQtd', 'kpiTotalRemessaValor', totais.totalRemessa);
     // 4. Total NFs Serviço
     setCard('kpiTotalServicoQtd', 'kpiTotalServicoValor', totais.totalServico);
+
+    // Detalhe no subtítulo do card de serviços quando houver notas da prefeitura
+    const elSubServico = document.getElementById('kpiTotalServicoSub');
+    if (elSubServico && totais.totalServico) {
+      if (totais.totalServico.prefeituraSp && totais.totalServico.prefeituraSp.qtd > 0) {
+        elSubServico.innerHTML = `Protheus: <strong>${formatarInt(totais.totalServico.protheus ? totais.totalServico.protheus.qtd : 0)}</strong> | Pref. SP: <strong>${formatarInt(totais.totalServico.prefeituraSp.qtd)}</strong>`;
+      } else {
+        elSubServico.textContent = 'Faturamento de serviços prestados';
+      }
+    }
+
     // 5. Total Tributado
     setCard('kpiTotalTributadoQtd', 'kpiTotalTributadoValor', totais.totalTributado);
 
-    // 5. Total NFs Entrada
+    // 6. Total NFs Entrada
     setCard('kpiTotalEntradasQtd', 'kpiTotalEntradasValor', totais.totalEntradas);
-    // 6. Total NFE
+    // 7. Total NFE
     setCard('kpiTotalNfeQtd', 'kpiTotalNfeValor', totais.totalNfe);
-    // 7. Total CTRs
+    // 8. Total CTRs
     setCard('kpiTotalCtrQtd', 'kpiTotalCtrValor', totais.totalCtr);
-    // 8. Total Impostos (IMP + DAS)
+    // 9. Total Impostos (IMP + DAS)
     setCard('kpiTotalImpostosQtd', 'kpiTotalImpostosValor', totais.totalImpostos);
   }
 
   /**
-   * Renderiza o histórico de 12 meses (RBT12) da Fase 2
+   * Renderiza o histórico de 12 meses (RBT12)
    */
   function renderizarHistorico12m(dados12m) {
     if (!tbody12m || !kpiRbt12) return;
@@ -283,12 +381,14 @@
 
     let html = '';
     dados12m.historico.forEach(item => {
+      const detalheServ = item.valorServicos > 0 ? ` <span style="font-size: 0.72rem; color: #38bdf8;" title="Inclui serviços">${formatarMoeda(item.valorServicos)}</span>` : '';
       html += `
         <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4);">
           <td style="padding: 6px 10px; font-weight: 600; color: #f8fafc;">${item.rotulo}</td>
           <td style="padding: 6px 10px; text-align: center; color: #cbd5e1;">${formatarInt(item.qtdNotas)}</td>
           <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: #38bdf8; font-family: var(--font-mono, monospace);">
             ${formatarMoeda(item.valorFaturado)}
+            ${detalheServ}
           </td>
         </tr>
       `;
@@ -376,6 +476,7 @@
     lista.forEach(item => {
       const isSaida = item.entraSaida === 'SAÍDA';
       const isDevolucao = item.tipoOperacao === 'DEVOLUCAO';
+      const isPrefeituraSp = item.origem === 'PREFEITURA_SP' || item.origem === 'PREFEITURA_SP_TXT';
 
       let badgeFluxo = '';
       if (isDevolucao) {
@@ -384,6 +485,8 @@
           ? 'Devolução a Fornecedor'
           : (item.formularioProprio ? 'Devolução de Venda (Formulário Próprio MATA103)' : 'Devolução de Venda (Cliente)');
         badgeFluxo = `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);" title="${devTitle}">${devLabel}</span>`;
+      } else if (isPrefeituraSp) {
+        badgeFluxo = '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);" title="NFS-e emitida diretamente na Prefeitura de São Paulo (Nota Paulistana)">🏛️ NFS-e SP</span>';
       } else if (item.tipoOperacao === 'SERVICO') {
         badgeFluxo = '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.3);" title="Nota Fiscal de Serviço (Saída)">SERVIÇO</span>';
       } else if (isSaida) {
@@ -406,6 +509,15 @@
         ? `<div style="font-size: 0.68rem; color: #94a3b8; font-weight: 500;" title="Devolução referente à NF original ${item.nfOrigem}">Orig: ${item.nfOrigem}</div>`
         : '';
 
+      // Renderização do número da NF com link para espelho da nota quando for NFS-e Paulistana
+      let numNfHtml = item.numNf;
+      if (isPrefeituraSp) {
+        numNfHtml = `
+          <a href="javascript:void(0)" class="link-nfse-paulistana" data-chave="${item.chaveAcesso}" style="color: #38bdf8; text-decoration: underline; font-weight: 700;" title="Ver espelho da nota fiscal">${item.numNf}</a>
+          ${item.temXml ? `<button type="button" class="btn-baixar-xml-avulso" data-chave="${item.chaveAcesso}" data-num="${item.numNf}" title="Baixar XML desta nota" style="background: none; border: none; cursor: pointer; padding: 0 4px; font-size: 0.9rem; color: #a78bfa; vertical-align: middle;">📄</button>` : ''}
+        `;
+      }
+
       html += `
         <tr style="border-bottom: 1px solid var(--panel-border, #334155); transition: background 0.15s ease;" onmouseover="this.style.background='rgba(51, 65, 85, 0.25)'" onmouseout="this.style.background='transparent'">
           <td style="padding: 7px 12px; text-align: center;">${badgeFluxo}</td>
@@ -415,7 +527,7 @@
             ${docTag}
           </td>
           <td style="padding: 7px 12px; font-family: var(--font-mono, monospace); font-weight: 700; color: #f8fafc;">
-            ${item.numNf}
+            ${numNfHtml}
             ${nfOrigemTag}
           </td>
           <td style="padding: 7px 10px; text-align: center; color: #cbd5e1; white-space: nowrap;">${dataExibicao}</td>
@@ -436,6 +548,209 @@
     });
 
     tbodyTabela.innerHTML = html;
+  }
+
+  /**
+   * Abre modal de espelho da NFS-e da Prefeitura de SP
+   */
+  function abrirModalNfsePaulistana(item) {
+    if (!modalNfseSp || !modalNfseSpCorpo) return;
+
+    const tituloEl = document.getElementById('modalNfseSpTitulo');
+    if (tituloEl) {
+      tituloEl.textContent = `Espelho da NFS-e Nº ${item.numNf} — Prefeitura de SP`;
+    }
+
+    modalNfseSpCorpo.innerHTML = `
+      <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border, #334155); border-radius: 8px; padding: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <div>
+          <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Prestador de Serviços</span>
+          <div style="font-weight: 700; color: #f8fafc;">GSI BW Equipamentos de Aço Cofres e Armários</div>
+          <div style="font-size: 0.75rem; color: #94a3b8; font-family: monospace;">CNPJ: 14.061.778/0001-15</div>
+        </div>
+        <div>
+          <span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase;">Tomador (Cliente)</span>
+          <div style="font-weight: 700; color: #f8fafc;">${item.razaoSocial || 'Cliente Não Informado'}</div>
+          <div style="font-size: 0.75rem; color: #94a3b8; font-family: monospace;">CNPJ/CPF: ${item.cnpjCpfFmt || item.cnpjCpf || '-'}</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; padding: 12px;">
+        <div>
+          <span style="font-size: 0.72rem; color: #94a3b8;">Número / Série</span>
+          <div style="font-weight: 700; color: #38bdf8; font-size: 1.1rem; font-family: monospace;">${item.numNf} <span style="font-size: 0.8rem; color: #94a3b8;">(${item.serie || 'NFS'})</span></div>
+        </div>
+        <div>
+          <span style="font-size: 0.72rem; color: #94a3b8;">Data de Emissão</span>
+          <div style="font-weight: 700; color: #f8fafc;">${item.dataEmissaoFmt || '-'}</div>
+        </div>
+        <div>
+          <span style="font-size: 0.72rem; color: #94a3b8;">Valor dos Serviços</span>
+          <div style="font-weight: 700; color: #10b981; font-size: 1.1rem; font-family: monospace;">${formatarMoeda(item.valor)}</div>
+        </div>
+        <div>
+          <span style="font-size: 0.72rem; color: #94a3b8;">ISS Retido</span>
+          <div style="font-weight: 700; color: ${item.issRetido ? '#f59e0b' : '#94a3b8'};">${item.issRetido ? 'Sim (Retido na Fonte)' : 'Não'}</div>
+        </div>
+      </div>
+
+      <div>
+        <span style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Discriminação dos Serviços Prestados</span>
+        <div style="margin-top: 4px; padding: 10px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--panel-border, #334155); border-radius: 6px; font-size: 0.82rem; line-height: 1.45; white-space: pre-wrap; color: #e2e8f0; max-height: 140px; overflow-y: auto;">
+          ${item.discriminacao || item.descrTes || 'Nenhuma discriminação adicional informada.'}
+        </div>
+      </div>
+    `;
+
+    if (btnModalBaixarXml) {
+      btnModalBaixarXml.onclick = () => baixarXmlIndividual(item.chaveAcesso, item.numNf);
+    }
+
+    modalNfseSp.style.display = 'flex';
+  }
+
+  function fecharModalNfsePaulistana() {
+    if (modalNfseSp) modalNfseSp.style.display = 'none';
+  }
+
+  /**
+   * Baixa o XML individual de uma NFS-e
+   */
+  function baixarXmlIndividual(chaveAcesso, numeroNota) {
+    if (!chaveAcesso) return;
+    const token = localStorage.getItem('auth_token');
+    const url = `/api/analista-fin/nfse-emitidas/${encodeURIComponent(chaveAcesso)}/xml`;
+
+    fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('XML não encontrado no servidor.');
+      return res.blob();
+    })
+    .then(blob => {
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `NFS-e_${numeroNota || 'nota'}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    })
+    .catch(err => {
+      notificar(`Erro ao baixar XML: ${err.message}`, 'error');
+    });
+  }
+
+  /**
+   * Exporta lote compactado ZIP de todos os XMLs de NFS-e da GSI do período
+   */
+  function exportarLoteXmlZip() {
+    const empresa = selEmpresa ? selEmpresa.value : '15';
+    const de = inputDataDe ? inputDataDe.value.replace(/[^0-9]/g, '') : '';
+    const ate = inputDataAte ? inputDataAte.value.replace(/[^0-9]/g, '') : '';
+
+    if (empresa !== '15') {
+      notificar('A exportação de lote XML é exclusiva para as notas de serviço da GSI.', 'warning');
+      return;
+    }
+
+    const token = localStorage.getItem('auth_token');
+    const url = `/api/analista-fin/nfse-emitidas/exportar-zip?empresa=15&de=${de}&ate=${ate}`;
+
+    notificar('Gerando pacote ZIP com os XMLs de NFS-e...', 'info');
+
+    fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+    .then(res => {
+      if (!res.ok) {
+        return res.json().then(j => { throw new Error(j.error || 'Erro ao gerar arquivo ZIP'); });
+      }
+      return res.blob();
+    })
+    .then(blob => {
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `NFS-e_GSI_${de}_${ate}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      notificar('Download do lote de XMLs (.zip) concluído com sucesso!', 'success');
+    })
+    .catch(err => {
+      notificar(`Falha ao exportar lote ZIP: ${err.message}`, 'error');
+    });
+  }
+
+  /**
+   * Dispara a sincronização mTLS contra a Prefeitura de SP
+   */
+  async function sincronizarNfseSp() {
+    const de = inputDataDe ? inputDataDe.value.replace(/[^0-9]/g, '') : '';
+    const ate = inputDataAte ? inputDataAte.value.replace(/[^0-9]/g, '') : '';
+
+    const btn = document.getElementById('btnSincronizarNfseSp');
+    const icon = document.getElementById('iconSyncNfseSp');
+    const label = document.getElementById('labelSyncNfseSp');
+
+    try {
+      if (btn) btn.disabled = true;
+      if (icon) icon.textContent = '⏳';
+      if (label) label.textContent = 'Buscando na Prefeitura...';
+
+      const res = await apiFetch('/api/analista-fin/nfse-emitidas/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ de, ate })
+      });
+
+      if (res.ok) {
+        notificar(res.mensagem || 'Sincronização com a Prefeitura concluída!', 'success');
+        await consultarFechamento();
+      } else if (res.aviso) {
+        notificar(res.error, 'warning');
+      } else {
+        notificar(res.error || 'Falha na sincronização com a Prefeitura.', 'error');
+      }
+    } catch (err) {
+      notificar(`Erro ao sincronizar com a Prefeitura de SP: ${err.message}`, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+      if (icon) icon.textContent = '🔄';
+      if (label) label.textContent = 'Sincronizar NFS-e SP';
+    }
+  }
+
+  /**
+   * Importa arquivo de lote exportado da Nota Paulistana (XML ou TXT)
+   */
+  async function importarArquivoLotePaulistana(file) {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('arquivo', file);
+
+    const token = localStorage.getItem('auth_token');
+    try {
+      notificar(`Importando arquivo ${file.name}...`, 'info');
+      const res = await fetch('/api/analista-fin/nfse-emitidas/upload', {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        notificar(data.mensagem || 'Arquivo importado com sucesso!', 'success');
+        await consultarFechamento();
+      } else {
+        notificar(data.error || 'Falha ao processar arquivo.', 'error');
+      }
+    } catch (err) {
+      notificar(`Erro na importação: ${err.message}`, 'error');
+    }
   }
 
   /**
@@ -464,7 +779,8 @@
       'CNPJ/CPF',
       'Razao Social',
       'Gera Imposto',
-      'Difal'
+      'Difal',
+      'Origem Documental'
     ];
 
     const escapeCsv = (val) => {
@@ -475,6 +791,7 @@
     const rows = [headers.map(escapeCsv).join(';')];
 
     lista.forEach(item => {
+      const isPrefeituraSp = item.origem === 'PREFEITURA_SP' || item.origem === 'PREFEITURA_SP_TXT';
       const row = [
         item.entraSaida,
         item.tipoOperacao,
@@ -491,12 +808,12 @@
         item.cnpjCpf,
         item.razaoSocial,
         item.geraImposto,
-        item.difal || ''
+        item.difal || '',
+        isPrefeituraSp ? 'Prefeitura de SP (Nota Paulistana)' : 'TOTVS Protheus (SF2/SF1)'
       ];
       rows.push(row.map(escapeCsv).join(';'));
     });
 
-    // Adiciona BOM UTF-8 (\uFEFF) para garantir acentuação correta no Excel Windows
     const csvContent = '\uFEFF' + rows.join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -569,6 +886,11 @@
     filtrar: filtrarItensTabela,
     exportarCsv: exportarCsvFechamento,
     consolidar: consolidarFechamento,
+    sincronizarNfseSp,
+    exportarLoteXmlZip,
+    abrirModalNfsePaulistana,
+    fecharModalNfsePaulistana,
+    baixarXmlIndividual,
     getEstado: () => estadoFechamento
   };
 
