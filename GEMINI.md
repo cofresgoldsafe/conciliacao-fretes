@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.197 (Homologada em 14/09/2026 17:38)  
+> **Versão da Documentação:** v8.198 (Homologada em 14/09/2026 18:00)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Melhoria na Visibilidade Imediata dos Botões de Sincronização/Importação de NFS-e SP, CCM Oficial da GSI 43419135 e Dica Visual no Card de Serviços)  
-> **Data da Última Auditoria:** 14/09/2026 17:38 (v8.197 - Fechamento Fiscal: Visibilidade de Ações e CCM GSI 43419135)  
+> **Status:** Estável / Operacional em Produção (Fechamento Fiscal: Compatibilidade OpenSSL Legacy Provider para Certificados PKCS#12 A1 da Nota Paulistana e Humanização de Erros mTLS)  
+> **Data da Última Auditoria:** 14/09/2026 18:00 (v8.198 - Fechamento Fiscal: OpenSSL Legacy Provider e Resiliência mTLS GSI)  
 
 ---
 
@@ -1382,6 +1382,20 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - **Isolamento Estrito:** As Empresas 14 (Metal Pleno) e 16 (OAÇO) permanecem 100% Protheus padrão sem qualquer interferência de notas de serviço externas.
     - **Suíte de Testes Automatizados (11/11 Aprovados):**
       - Script `test_nfse_paulistana_fechamento.js` validando parsers XML/TXT, XML sintético, geração de buffer PKZIP, persistência e idempotência no banco/cache local, mesclagem e totalização no fechamento da GSI, isolamento de empresas, RBT12, integridade de componentes de UI e segurança de rotas (100% aprovados).
+
+73. [x] **Compatibilidade OpenSSL 3.0 Legacy Provider para Certificados PKCS#12 A1 (Soluti/ICP-Brasil), Tratamento Operacional de Erros mTLS e Validação Preventiva (`package.json`, `paulistana_client.js`, `test_nfse_paulistana_fechamento.js`):**
+    - **Diagnóstico da Falha `Unsupported PKCS12 PFX data`:**
+      - O certificado A1 da GSI (`120a2609105ad966.pfx` emitido pela Soluti) utiliza algoritmo criptográfico de derivação de chaves e cifras legadas do padrão PKCS#12 (ex: PBKDF1 com SHA-1, RC2-40 ou 3DES).
+      - No Node.js 18+ (Node 20/22/24 utilizado no ambiente de produção do Render e Ubuntu), a engine OpenSSL 3.0 desativa por padrão os algoritmos legados, gerando o erro de baixo nível `Unsupported PKCS12 PFX data` ao passar o buffer PFX para `tls.createSecureContext` ou `crypto.sign`.
+    - **Remediação no Script de Inicialização & Variáveis de Ambiente:**
+      - Atualização do script `start` no `package.json` para `"start": "node --openssl-legacy-provider server.js"`.
+      - Orientação operacional para configuração da variável de ambiente `NODE_OPTIONS` com o valor `--openssl-legacy-provider` no dashboard do Render, garantindo a inicialização do provider legado do OpenSSL independentemente do comando de inicialização configurado.
+    - **Humanização Operacional de Erros Criptográficos (`humanizarErroMtls`):**
+      - Implementada a função unificada `humanizarErroMtls` em `paulistana_client.js` (em conformidade com o padrão do `claude-job-nfse`), traduzindo erros herméticos de baixo nível do OpenSSL para mensagens claras de diagnóstico ao operador (ex: orientação sobre `--openssl-legacy-provider`, detecção de senha incorreta `mac verify failure`, e alerta sobre certificados vencidos).
+    - **Validação Preventiva de Certificado:**
+      - O método `consultarNFeEmitidasWsPaulistana` agora executa uma validação preventiva de decodificação TLS (`tls.createSecureContext`) antes de iniciar a assinatura e o handshake de rede. Caso o PFX ou senha estejam inválidos, a falha é interceptada imediatamente com mensagem orientativa, prevenindo timeouts desnecessários.
+    - **Expansão da Suíte de Testes (13/13 Aprovados):**
+      - Inclusão dos Testes 12 e 13 em `test_nfse_paulistana_fechamento.js` cobrindo cenários de cifras legadas, senha incorreta, certificado vencido e validação da flag `--openssl-legacy-provider` no `package.json`.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

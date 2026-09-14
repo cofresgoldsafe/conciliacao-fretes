@@ -48,6 +48,28 @@ function tagBlock(xml, tag) {
 }
 
 /**
+ * Traduz erros criptográficos de baixo nível do OpenSSL / mTLS para mensagens claras e operacionais
+ */
+function humanizarErroMtls(erro) {
+  const msg = erro?.message || String(erro || '');
+  const code = erro?.code || '';
+
+  if (/Unsupported PKCS12 PFX data/i.test(msg) || /ERR_OSSL_UNSUPPORTED/i.test(msg)) {
+    return 'O certificado digital A1 da GSI utiliza criptografia PKCS#12 legada (RC2-40/3DES da ICP-Brasil) rejeitada por padrão pelo OpenSSL 3.0. Para corrigir no Render: acesse Environment > adicione a variável NODE_OPTIONS com o valor --openssl-legacy-provider (ou utilize o botão "Importar Lote SP" para carregar o arquivo da prefeitura).';
+  }
+  if (/mac verify failure/i.test(msg)) {
+    return 'Senha do certificado digital A1 da GSI (NFSE_CERT_GSI_SENHA) incorreta ou dados do PFX corrompidos. Verifique a senha configurada no Render/Ambiente.';
+  }
+  if (/decryption failed or bad record mac|0A000119/i.test(msg) || code === 'ERR_SSL_DECRYPTION_FAILED_OR_BAD_RECORD_MAC') {
+    return `Falha de handshake mTLS (o certificado digital A1 da GSI pode estar vencido, revogado ou recusado pela Prefeitura de SP). Erro técnico: ${msg}`;
+  }
+  if (/certificate has expired/i.test(msg) || code === 'CERT_HAS_EXPIRED') {
+    return 'Certificado digital A1 da GSI VENCIDO. Atualize o arquivo PFX e senha nas variáveis de ambiente.';
+  }
+  return msg;
+}
+
+/**
  * Assina dados com chave privada RSA-SHA1 (Padrão Nota Paulistana)
  */
 function assinarDadosSha1(textoParaAssinar, privateKeyPem) {
@@ -56,7 +78,7 @@ function assinarDadosSha1(textoParaAssinar, privateKeyPem) {
     signer.update(textoParaAssinar, 'utf8');
     return signer.sign(privateKeyPem, 'base64');
   } catch (err) {
-    console.warn('⚠️ [Paulistana] Falha ao assinar RSA-SHA1:', err.message);
+    console.warn('⚠️ [Paulistana] Falha ao assinar RSA-SHA1:', humanizarErroMtls(err));
     return '';
   }
 }
@@ -414,6 +436,15 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
     throw new Error('Certificado Digital da GSI (NFSE_CERT_GSI_PFX_BASE64) não configurado para consulta na Prefeitura de SP.');
   }
 
+  // Validação preventiva do contexto TLS do certificado PFX
+  try {
+    const tls = require('tls');
+    tls.createSecureContext({ pfx: pfxBuffer, passphrase: passphrase });
+  } catch (errCtx) {
+    const msgHumanizada = humanizarErroMtls(errCtx);
+    throw new Error(msgHumanizada);
+  }
+
   // Extrai chave privada do PFX para assinar o cabeçalho
   let assinaturaBase64 = '';
   try {
@@ -428,7 +459,9 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
       passphrase: passphrase
     }).toString('base64');
   } catch (errSig) {
-    console.warn('⚠️ [Paulistana] Aviso na assinatura digital da consulta:', errSig.message);
+    const msgErr = humanizarErroMtls(errSig);
+    console.warn('⚠️ [Paulistana] Falha na assinatura digital da consulta:', msgErr);
+    throw new Error(msgErr);
   }
 
   const envelopeSoap = `<?xml version="1.0" encoding="utf-8"?>
@@ -492,7 +525,7 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
       req.destroy(new Error('Timeout de 30s excedido na comunicação com a Prefeitura de SP.'));
     });
     req.on('error', (err) => {
-      reject(new Error(`Erro de conexão com a Nota Paulistana: ${err.message}`));
+      reject(new Error(`Erro de conexão com a Nota Paulistana: ${humanizarErroMtls(err)}`));
     });
 
     req.write(postData);
@@ -501,6 +534,7 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
 }
 
 module.exports = {
+  humanizarErroMtls,
   parseNFeXmlPaulistana,
   parseTxtLotePaulistana,
   gerarXmlSinteticoPaulistana,

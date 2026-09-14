@@ -20,6 +20,7 @@ const path = require('path');
 const vm = require('vm');
 
 const {
+  humanizarErroMtls,
   parseNFeXmlPaulistana,
   parseTxtLotePaulistana,
   gerarXmlSinteticoPaulistana
@@ -426,6 +427,29 @@ async function runTests() {
     assert.ok(serverJs.includes('/api/analista-fin/nfse-emitidas/:chaveAcesso/xml'), 'Deve registrar rota /:chaveAcesso/xml');
     assert.ok(serverJs.includes('/api/analista-fin/nfse-emitidas/exportar-zip'), 'Deve registrar rota /exportar-zip');
     assert.ok(serverJs.includes('requireAuth'), 'Rotas de NFS-e devem ser protegidas por requireAuth');
+  });
+
+  // TESTE 12: Humanização e Tratamento Resiliente de Erros Criptográficos mTLS / OpenSSL 3.0
+  await test('Teste 12: Tradução operacional de erros OpenSSL mTLS (humanizarErroMtls)', () => {
+    const errLegacy = humanizarErroMtls({ message: 'Unsupported PKCS12 PFX data' });
+    assert.ok(errLegacy.includes('PKCS#12 legada'), 'Deve identificar criptografia legada');
+    assert.ok(errLegacy.includes('--openssl-legacy-provider'), 'Deve instruir configuração de NODE_OPTIONS no Render');
+
+    const errSenha = humanizarErroMtls({ message: 'mac verify failure' });
+    assert.ok(errSenha.includes('Senha do certificado'), 'Deve identificar senha incorreta');
+
+    const errDecryption = humanizarErroMtls({ message: '409D8E90867F0000:error:0A000119:SSL routines:tls_get_more_records:decryption failed or bad record mac' });
+    assert.ok(errDecryption.includes('handshake mTLS') || errDecryption.includes('vencido'), 'Deve orientar sobre handshake ou vencimento');
+
+    const errExpired = humanizarErroMtls({ message: 'certificate has expired', code: 'CERT_HAS_EXPIRED' });
+    assert.ok(errExpired.includes('VENCIDO'), 'Deve alertar sobre certificado vencido');
+  });
+
+  // TESTE 13: Verificação de Inicialização do Servidor com Suporte a Cifras Legadas no package.json
+  await test('Teste 13: Script de inicialização do package.json configurado com --openssl-legacy-provider', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
+    assert.ok(pkg.scripts && pkg.scripts.start, 'Deve possuir script start');
+    assert.ok(pkg.scripts.start.includes('--openssl-legacy-provider'), 'Script start deve carregar o provedor legado do OpenSSL 3.0');
   });
 
   console.log('\n=====================================================================');
