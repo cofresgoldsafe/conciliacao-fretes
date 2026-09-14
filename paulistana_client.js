@@ -55,7 +55,7 @@ function humanizarErroMtls(erro) {
   const code = erro?.code || '';
 
   if (/Unsupported PKCS12 PFX data/i.test(msg) || /ERR_OSSL_UNSUPPORTED/i.test(msg)) {
-    return 'O certificado digital A1 da GSI utiliza criptografia PKCS#12 legada (RC2-40/3DES da ICP-Brasil) rejeitada por padrão pelo OpenSSL 3.0. Para corrigir no Render: acesse Environment > adicione a variável NODE_OPTIONS com o valor --openssl-legacy-provider (ou utilize o botão "Importar Lote SP" para carregar o arquivo da prefeitura).';
+    return 'O certificado digital A1 da GSI utiliza criptografia PKCS#12 legada (RC2-40/3DES da ICP-Brasil) incompatível com o OpenSSL 3.0 do Render. Para resolver definitivamente: execute python scripts/converter_certificado_pfx.py "C:/Users/Alexandre/Downloads/120a2609105ad966.pfx" <sua_senha> e atualize NFSE_CERT_GSI_PFX_BASE64 com o AES-256 gerado, ou adicione a variável NODE_OPTIONS com o valor --openssl-legacy-provider no Render (ou use o botão "Importar Lote SP").';
   }
   if (/mac verify failure/i.test(msg)) {
     return 'Senha do certificado digital A1 da GSI (NFSE_CERT_GSI_SENHA) incorreta ou dados do PFX corrompidos. Verifique a senha configurada no Render/Ambiente.';
@@ -432,32 +432,57 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
     passphrase = process.env.NFSE_CERT_GSI_SENHA || '';
   }
 
-  if (!pfxBuffer) {
-    throw new Error('Certificado Digital da GSI (NFSE_CERT_GSI_PFX_BASE64) não configurado para consulta na Prefeitura de SP.');
+  // Suporte opcional direto a Certificado e Chave Privada em PEM (imunes a problemas de PFX legado)
+  let certPem = process.env.NFSE_CERT_GSI_CERT_PEM || '';
+  let keyPem = process.env.NFSE_CERT_GSI_KEY_PEM || '';
+
+  if (certPem && !certPem.includes('BEGIN CERTIFICATE')) {
+    try {
+      const dec = Buffer.from(certPem, 'base64').toString('utf8');
+      if (dec.includes('BEGIN CERTIFICATE')) certPem = dec;
+    } catch (e) {}
+  }
+  if (keyPem && !keyPem.includes('BEGIN')) {
+    try {
+      const dec = Buffer.from(keyPem, 'base64').toString('utf8');
+      if (dec.includes('BEGIN')) keyPem = dec;
+    } catch (e) {}
   }
 
-  // Validação preventiva do contexto TLS do certificado PFX
+  const usaPem = Boolean(certPem && keyPem);
+
+  if (!usaPem && !pfxBuffer) {
+    throw new Error('Certificado Digital da GSI (NFSE_CERT_GSI_PFX_BASE64 ou NFSE_CERT_GSI_CERT_PEM/KEY_PEM) não configurado para consulta na Prefeitura de SP.');
+  }
+
+  // Validação preventiva do contexto TLS
   try {
     const tls = require('tls');
-    tls.createSecureContext({ pfx: pfxBuffer, passphrase: passphrase });
+    if (usaPem) {
+      tls.createSecureContext({ cert: certPem, key: keyPem, passphrase: passphrase || undefined });
+    } else {
+      tls.createSecureContext({ pfx: pfxBuffer, passphrase: passphrase });
+    }
   } catch (errCtx) {
     const msgHumanizada = humanizarErroMtls(errCtx);
     throw new Error(msgHumanizada);
   }
 
-  // Extrai chave privada do PFX para assinar o cabeçalho
+  // Extrai assinatura com chave privada para o cabeçalho
   let assinaturaBase64 = '';
   try {
     // Texto a assinar conforme manual Prefeitura de SP: Inscrição(8) + DtInicio(8) + DtFim(8)
     const textoParaAssinar = `${ccm}${dInicioLimpa}${dFimLimpa}`;
-    // Usando crypto nativo para assinar
     const signer = crypto.createSign('RSA-SHA1');
     signer.update(textoParaAssinar, 'utf8');
-    // crypto.sign com PFX direto
-    assinaturaBase64 = crypto.sign('RSA-SHA1', Buffer.from(textoParaAssinar, 'utf8'), {
-      key: pfxBuffer,
-      passphrase: passphrase
-    }).toString('base64');
+    if (usaPem) {
+      assinaturaBase64 = signer.sign({ key: keyPem, passphrase: passphrase || undefined }, 'base64');
+    } else {
+      assinaturaBase64 = crypto.sign('RSA-SHA1', Buffer.from(textoParaAssinar, 'utf8'), {
+        key: pfxBuffer,
+        passphrase: passphrase
+      }).toString('base64');
+    }
   } catch (errSig) {
     const msgErr = humanizarErroMtls(errSig);
     console.warn('⚠️ [Paulistana] Falha na assinatura digital da consulta:', msgErr);
@@ -493,8 +518,6 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
       port: 443,
       path: PREFEITURA_SP_PATH,
       method: 'POST',
-      pfx: pfxBuffer,
-      passphrase: passphrase,
       headers: {
         'Content-Type': 'text/xml; charset=utf-8',
         'SOAPAction': 'http://www.prefeitura.sp.gov.br/nfe/ws/consultaNFeEmitidas',
@@ -502,6 +525,15 @@ async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMuni
       },
       timeout: 30000
     };
+
+    if (usaPem) {
+      options.cert = certPem;
+      options.key = keyPem;
+      if (passphrase) options.passphrase = passphrase;
+    } else {
+      options.pfx = pfxBuffer;
+      options.passphrase = passphrase;
+    }
 
     const req = https.request(options, (res) => {
       let body = '';
