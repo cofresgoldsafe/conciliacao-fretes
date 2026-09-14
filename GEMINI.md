@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.193 (Homologada em 14/09/2026 10:27)  
+> **Versão da Documentação:** v8.194 (Homologada em 14/09/2026 12:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Movimentações do Estoque no Módulo Compras: Remoção de Colunas Série/Item, Truncamento de TES a 15 Caracteres, Consulta Multi-Empresa SD1/SD2/SF4, Entradas Manuais/Romaneios, Entradas NF, Saídas NF, Filtro por Código de Movimentação/TES, Período Dinâmico de 12 Meses, KPIs Reativos, Autocomplete e Exportação Excel com Proteção CSV Formula Injection)  
-> **Data da Última Auditoria:** 14/09/2026 10:27 (v8.193 - Sub-aba Movimentações do Estoque Compras: Ajuste de Grid e Truncamento TES)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Suporte Completo a Devoluções com Formulário Próprio MATA103/SF1/SD1, Resolução de Cliente SA1010/SA1160, Identificação de NF Origem, Filtro e Badges de Devolução e 10 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 14/09/2026 12:15 (v8.194 - Fechamento Fiscal: Apuração de Devoluções com Formulário Próprio MATA103 e Ajuste de Clientes SA1)  
 
 ---
 
@@ -1309,6 +1309,25 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Compatibilidade total via `.tab-theme-light`, tokens de alto contraste WCAG AA e responsividade mobile para telas menores que 768px.
     - **Suíte de Testes Automatizados (14/14 Aprovados):**
       - Script `test_compras_movimentacoes_estoque.js` homologado com 14 asserções cobrindo validações de código e data, consultas reais multi-empresa, identificação de entradas manuais, filtros por TES, compilação léxica `vm.Script`, resolução por descrição, mitigação CSV Formula Injection, integridade do DOM, expurgo das colunas Série/Item e trava de 15 caracteres na descrição de TES.
+70. [x] **Sub-Aba "📊 Fechamento Fiscal" (Analista Fin): Apuração de Devoluções com Formulário Próprio MATA103 (`F1_FORMUL = 'S'`), Resolução de Clientes SA1 e Filtro Dedicado (`protheus_db.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `test_fechamento_fiscal.js`):**
+    - **Causa Raiz & Diagnóstico Operacional:**
+      - No TOTVS Protheus, devoluções de venda realizadas por clientes que não emitem NF (ex: Pessoa Física / Consumidor Final) são registradas no módulo de Documento de Entrada (`MATA103`) com Formulário Próprio (`F1_FORMUL = 'S'`), Tipo de Documento Devolução (`F1_TIPO = 'D'`), CFOPs de devolução (12xx, 22xx, 32xx) e amarração com a nota de saída original (`D1_NFORI` e `D1_SERIORI`).
+      - Na regra anterior, a consulta em `SF1` classificava incondicionalmente todas as entradas como `tipoOperacao: 'ENTRADA'`, desconsiderando `F1_TIPO = 'D'`, e calculava o card `Total Devolução` exclusivamente sobre as saídas (`SF2`). Além disso, o campo `F1_FORNECE` em devoluções aponta para a tabela de clientes (`SA1`), mas o JOIN era feito exclusivamente em fornecedores (`SA2`), retornando Razão Social e CNPJ/CPF em branco.
+    - **Resolução de Clientes e Fornecedores com Fallback Híbrido:**
+      - Atualização do mapeamento da empresa `16` (OAÇO) para utilizar `SA1010` (tabela mestre de clientes compartilhada com `SA1160`).
+      - Implementação de `COALESCE` inteligente no SQL de entradas (`SF1`): quando `F1_TIPO = 'D'`, a busca prioriza o cliente na `SA1` (`A1_NOME`, `A1_CGC`), mantendo fallback para `SA2` para notas mercantis normais (`F1_TIPO = 'N'`).
+    - **Classificação Precisa de Devoluções e KPIs no Topo:**
+      - Identificação determinística de devolução em entradas: `F1_TIPO = 'D'`, CFOPs iniciados em `12`, `22` ou `32`, ou `F1_FORMUL = 'S'` com devolução.
+      - Card `↩️ Total Devolução` no topo agora aglutina devoluções de venda (entradas) e de compra (saídas), exibindo corretamente a contagem e soma financeira (ex: em 08/2026 na OAÇO: 1 devolução | R$ 607,00 correspondente à NFe `000660`).
+      - Inclusão dos sub-totais segregados no envelope de retorno (`totais.totalDevolucao.entradas` e `totais.totalDevolucao.saidas`).
+    - **Grid Reativo, Identificação Visual & Filtro no Frontend:**
+      - Badge de fluxo em roxo de alto contraste: `ENTRA (DEV)` com tooltip descritivo (*"Devolução de Venda (Formulário Próprio MATA103)"*).
+      - Indicação visual de formulário próprio (`Próprio`) na coluna Tipo Doc e exibição da nota de origem devolvida (`Orig: 000634`) na coluna Num NF.
+      - Novo filtro no seletor de fluxo: `<option value="DEVOLUCAO">Apenas Devoluções</option>`.
+      - Busca textual livre otimizada para capturar termos como *"devolução"*, *"proprio"*, número da NF e número da NF de origem.
+      - Exportação para CSV atualizada com colunas *Operação*, *Formulário Próprio* e *NF Origem*.
+    - **Suíte de Testes Automatizados (10/10 Aprovados):**
+      - Adicionado o **Teste 10** em `test_fechamento_fiscal.js` validando especificamente a NFe `000660`, seu valor (R$ 607,00), cliente resolvido (*Cicero Augusto Figueira* / *243.877.387-15*), CFOP `2202`, TES `040`, formulário próprio `true` e NF original `000634`. Zero falhas em toda a suíte de regressão (`npm test`).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

@@ -73,9 +73,12 @@ async function runTests() {
     assert.strictEqual(res.totais.totalTributado.qtd, 70, 'Total Tributado Qtd deve ser 70');
     assert.strictEqual(res.totais.totalTributado.valor, 182680.74, 'Valor Total Tributado deve ser R$ 182.680,74');
 
-    // 1.3 Devoluções e Remessas de Saída em 08/2026
-    assert.strictEqual(res.totais.totalDevolucao.qtd, 0, 'Total Devolução Saída deve ser 0');
-    assert.strictEqual(res.totais.totalDevolucao.valor, 0, 'Valor Devolução Saída deve ser R$ 0,00');
+    // 1.3 Devoluções e Remessas em 08/2026 (Computa NFe 000660 de devolução de entrada com formulário próprio)
+    assert.strictEqual(res.totais.totalDevolucao.qtd, 1, 'Total Devolução deve ser 1 (NFe 000660)');
+    assert.strictEqual(res.totais.totalDevolucao.valor, 607, 'Valor Devolução deve ser R$ 607,00 (NFe 000660)');
+    assert.strictEqual(res.totais.totalDevolucao.saidas.qtd, 0, 'Devolução Saída deve ser 0');
+    assert.strictEqual(res.totais.totalDevolucao.entradas.qtd, 1, 'Devolução Entrada deve ser 1 (NFe 000660)');
+    assert.strictEqual(res.totais.totalDevolucao.entradas.valor, 607, 'Valor Devolução Entrada deve ser R$ 607,00');
     assert.strictEqual(res.totais.totalRemessa.qtd, 0, 'Total Remessa Saída deve ser 0');
     assert.strictEqual(res.totais.totalRemessa.valor, 0, 'Valor Remessa Saída deve ser R$ 0,00');
 
@@ -228,6 +231,31 @@ async function runTests() {
     assert.strictEqual(formatarDataBrFiscal('20260804'), '04/08/2026', 'Data 20260804 deve formatar 04/08/2026');
     assert.strictEqual(formatarCgcFiscal('40838591000195'), '40.838.591/0001-95', 'CNPJ deve formatar com máscara');
     assert.strictEqual(formatarCgcFiscal('10612344797'), '106.123.447-97', 'CPF deve formatar com máscara');
+  });
+
+  // TESTE 10: Validação de NFe de Devolução com Formulário Próprio MATA103 (NFe 000660 OACO 08/2026)
+  await reportAsync('Teste 10: Validação de NFe de Devolução com Formulário Próprio MATA103 (NFe 000660)', async () => {
+    const res = await consultarFechamentoFiscalProtheus({
+      empresa: '16',
+      dataDe: '2026-08-01',
+      dataAte: '2026-08-31'
+    });
+
+    const nf660 = res.itens.find(i => i.numNf === '000660');
+    assert.ok(nf660, 'NFe 000660 deve constar na listagem de itens');
+    assert.strictEqual(nf660.entraSaida, 'ENTRA', 'Fluxo de 000660 deve ser ENTRA');
+    assert.strictEqual(nf660.tipo, 'D', 'Tipo de 000660 deve ser D (Devolução)');
+    assert.strictEqual(nf660.tipoDoc, 'SPED', 'Tipo Doc de 000660 deve ser SPED');
+    assert.strictEqual(nf660.tipoOperacao, 'DEVOLUCAO', 'Operação deve ser classificada como DEVOLUCAO');
+    assert.strictEqual(nf660.formularioProprio, true, 'Deve indicar formulário próprio emitido no MATA103');
+    assert.strictEqual(nf660.valor, 607, 'Valor bruto de 000660 deve ser R$ 607,00');
+    assert.strictEqual(nf660.cfop, '2202', 'CFOP de devolução deve ser 2202');
+    assert.strictEqual(nf660.tes, '040', 'TES deve ser 040');
+    assert.strictEqual(nf660.cnpjCpf, '24387738715', 'CPF do cliente deve ser resolvido via SA1');
+    assert.strictEqual(nf660.cnpjCpfFmt, '243.877.387-15', 'CPF formatado deve ter máscara');
+    assert.strictEqual(nf660.razaoSocial, 'Cicero Augusto Figueira', 'Razão social deve ser o nome do cliente Cicero Augusto Figueira');
+    assert.strictEqual(nf660.nfOrigem, '000634', 'NF de saída original devolvida deve ser 000634');
+    assert.strictEqual(nf660.serieOrigem, '1', 'Série de saída original deve ser 1');
   });
 
   console.log('\n========================================================');

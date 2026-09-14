@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.193">
+  <link rel="stylesheet" href="style.css?v=8.194">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 10:27 (Ajuste colunas e truncamento TES em Movimentações do Estoque)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 12:15 (Fechamento Fiscal: Apuração de Devoluções com Formulário Próprio MATA103 e Ajuste de Clientes SA1)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -5047,13 +5047,13 @@
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #a855f7;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">↩️ Total Devolução</span>
-              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #a855f7; font-weight: 600;">Saídas</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #a855f7; font-weight: 600;">Devoluções</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
               <strong id="kpiTotalDevolucaoQtd" style="font-size: 1.55rem; font-weight: 700; color: #a855f7;">0</strong>
               <span id="kpiTotalDevolucaoValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
             </div>
-            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Tipo D / CFOP 52xx/62xx</span>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Entradas (Vendas) e Saídas (Compras)</span>
           </div>
 
           <!-- 3. Total Remessa -->
@@ -5194,6 +5194,7 @@
                 <option value="ALL">Fluxo: Todos</option>
                 <option value="SAIDA">Apenas Saídas</option>
                 <option value="ENTRA">Apenas Entradas</option>
+                <option value="DEVOLUCAO">Apenas Devoluções</option>
                 <option value="TRIBUTADO">Apenas Tributadas (Sim)</option>
                 <option value="NAO_TRIBUTADO">Apenas Não Tributadas (Não)</option>
               </select>
@@ -8037,20 +8038,20 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.193"></script>
-  <script src="js/bi_indices.js?v=8.193"></script>
-  <script src="js/bi_autorizacoes.js?v=8.193"></script>
-  <script src="js/gordura_frete.js?v=8.193"></script>
-  <script src="js/fechamento_vendedores.js?v=8.193"></script>
-  <script type="module" src="js/tarefas.js?v=8.193"></script>
-  <script src="js/holerites.js?v=8.193"></script>
-  <script src="js/funcionarios_dp.js?v=8.193"></script>
-  <script src="js/crm.js?v=8.193"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.193"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.193"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.193"></script>
-  <script src="js/nfse_pendentes.js?v=8.193"></script>
-  <script src="js/fechamento_fiscal.js?v=8.193"></script>
-  <script src="app.js?v=8.193"></script>
+  <script src="js/bi.js?v=8.194"></script>
+  <script src="js/bi_indices.js?v=8.194"></script>
+  <script src="js/bi_autorizacoes.js?v=8.194"></script>
+  <script src="js/gordura_frete.js?v=8.194"></script>
+  <script src="js/fechamento_vendedores.js?v=8.194"></script>
+  <script type="module" src="js/tarefas.js?v=8.194"></script>
+  <script src="js/holerites.js?v=8.194"></script>
+  <script src="js/funcionarios_dp.js?v=8.194"></script>
+  <script src="js/crm.js?v=8.194"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.194"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.194"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.194"></script>
+  <script src="js/nfse_pendentes.js?v=8.194"></script>
+  <script src="js/fechamento_fiscal.js?v=8.194"></script>
+  <script src="app.js?v=8.194"></script>
 </body>
 </html>

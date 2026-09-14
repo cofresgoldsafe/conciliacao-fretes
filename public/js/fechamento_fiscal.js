@@ -311,6 +311,7 @@
       // 1. Filtro de Tipo/Fluxo
       if (filtroTipo === 'SAIDA' && item.entraSaida !== 'SAÍDA') return false;
       if (filtroTipo === 'ENTRA' && item.entraSaida !== 'ENTRA') return false;
+      if (filtroTipo === 'DEVOLUCAO' && item.tipoOperacao !== 'DEVOLUCAO') return false;
       if (filtroTipo === 'TRIBUTADO' && item.geraImposto !== 'Sim') return false;
       if (filtroTipo === 'NAO_TRIBUTADO' && item.geraImposto !== 'Não') return false;
 
@@ -321,7 +322,7 @@
         else if (filtroDoc !== 'CTR' && docUpper !== filtroDoc) return false;
       }
 
-      // 3. Busca por Termo (Num NF, Valor, CNPJ/CPF ou Razão Social)
+      // 3. Busca por Termo (Num NF, Valor, CNPJ/CPF, Razão Social, Devolução ou NF Origem)
       if (termo) {
         const numMatch = (item.numNf || '').toLowerCase().includes(termo);
         const cnpjMatch = (item.cnpjCpf || '').replace(/[^0-9]/g, '').includes(termo.replace(/[^0-9]/g, ''));
@@ -329,8 +330,12 @@
         const cfopMatch = (item.cfop || '').includes(termo);
         const tesMatch = (item.tes || '').includes(termo);
         const valorMatch = String(item.valor || '').includes(termo) || formatarMoeda(item.valor).toLowerCase().includes(termo);
+        const tipoMatch = (item.tipoOperacao || '').toLowerCase().includes(termo) ||
+          ((termo === 'devolucao' || termo === 'devolução') && item.tipoOperacao === 'DEVOLUCAO') ||
+          ((termo === 'proprio' || termo === 'próprio') && item.formularioProprio);
+        const nfOriMatch = (item.nfOrigem || '').toLowerCase().includes(termo);
 
-        if (!numMatch && !cnpjMatch && !razaoMatch && !cfopMatch && !tesMatch && !valorMatch) {
+        if (!numMatch && !cnpjMatch && !razaoMatch && !cfopMatch && !tesMatch && !valorMatch && !tipoMatch && !nfOriMatch) {
           return false;
         }
       }
@@ -366,9 +371,20 @@
     let html = '';
     lista.forEach(item => {
       const isSaida = item.entraSaida === 'SAÍDA';
-      const badgeFluxo = isSaida
-        ? '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">SAÍDA</span>'
-        : '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">ENTRA</span>';
+      const isDevolucao = item.tipoOperacao === 'DEVOLUCAO';
+
+      let badgeFluxo = '';
+      if (isDevolucao) {
+        const devLabel = isSaida ? 'SAÍDA (DEV)' : 'ENTRA (DEV)';
+        const devTitle = isSaida
+          ? 'Devolução a Fornecedor'
+          : (item.formularioProprio ? 'Devolução de Venda (Formulário Próprio MATA103)' : 'Devolução de Venda (Cliente)');
+        badgeFluxo = `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);" title="${devTitle}">${devLabel}</span>`;
+      } else if (isSaida) {
+        badgeFluxo = '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">SAÍDA</span>';
+      } else {
+        badgeFluxo = '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">ENTRA</span>';
+      }
 
       const badgeGeraImposto = item.geraImposto === 'Sim'
         ? '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(16, 185, 129, 0.2); color: #10b981;">Sim</span>'
@@ -376,16 +392,28 @@
 
       const dataExibicao = item.dataEmissaoFmt || item.dataDigitacaoFmt || '';
 
+      const docTag = item.formularioProprio
+        ? `<div style="font-size: 0.68rem; color: #c084fc; font-weight: 600;" title="Nota emitida em formulário próprio (MATA103)">Próprio</div>`
+        : '';
+
+      const nfOrigemTag = item.nfOrigem
+        ? `<div style="font-size: 0.68rem; color: #94a3b8; font-weight: 500;" title="Devolução referente à NF original ${item.nfOrigem}">Orig: ${item.nfOrigem}</div>`
+        : '';
+
       html += `
         <tr style="border-bottom: 1px solid var(--panel-border, #334155); transition: background 0.15s ease;" onmouseover="this.style.background='rgba(51, 65, 85, 0.25)'" onmouseout="this.style.background='transparent'">
           <td style="padding: 7px 12px; text-align: center;">${badgeFluxo}</td>
           <td style="padding: 7px 10px; text-align: center; font-weight: 600; color: #cbd5e1;">${item.tipo}</td>
-          <td style="padding: 7px 10px; text-align: center; font-weight: 600; color: #94a3b8;">${item.tipoDoc}</td>
+          <td style="padding: 7px 10px; text-align: center; font-weight: 600; color: #94a3b8;">
+            ${item.tipoDoc}
+            ${docTag}
+          </td>
           <td style="padding: 7px 12px; font-family: var(--font-mono, monospace); font-weight: 700; color: #f8fafc;">
             ${item.numNf}
+            ${nfOrigemTag}
           </td>
           <td style="padding: 7px 10px; text-align: center; color: #cbd5e1; white-space: nowrap;">${dataExibicao}</td>
-          <td style="padding: 7px 12px; text-align: right; font-family: var(--font-mono, monospace); font-weight: 700; color: ${isSaida ? '#60a5fa' : '#38bdf8'};">
+          <td style="padding: 7px 12px; text-align: right; font-family: var(--font-mono, monospace); font-weight: 700; color: ${isSaida ? '#60a5fa' : (isDevolucao ? '#c084fc' : '#38bdf8')};">
             ${formatarMoeda(item.valor)}
           </td>
           <td style="padding: 7px 10px; text-align: center; font-family: var(--font-mono, monospace); color: #e2e8f0;">${item.cfop || '-'}</td>
@@ -416,9 +444,12 @@
 
     const headers = [
       'Entra / Saida',
+      'Operacao',
       'Tipo',
       'Tipo Doc.',
+      'Formulario Proprio',
       'Num NF',
+      'NF Origem',
       'Data',
       'Valor',
       'CFOP',
@@ -440,9 +471,12 @@
     lista.forEach(item => {
       const row = [
         item.entraSaida,
+        item.tipoOperacao,
         item.tipo,
         item.tipoDoc,
+        item.formularioProprio ? 'Sim' : 'Não',
         item.numNf,
+        item.nfOrigem || '',
         item.dataEmissaoFmt || item.dataDigitacaoFmt || '',
         Number(item.valor || 0).toFixed(2).replace('.', ','),
         item.cfop,

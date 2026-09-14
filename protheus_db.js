@@ -3757,8 +3757,8 @@ async function obterDetalhesNFeEntrada({ empresaKey, doc, serie, fornece, loja }
 // ============================================================================
 
 const TABELAS_FECHAMENTO = {
-  '16': { nome: 'OACO', codigo: '16', sf2: 'SF2160', sd2: 'SD2160', sf1: 'SF1160', sd1: 'SD1160', sa1: 'SA1160', sa2: 'SA2160', sf4: 'SF4160' },
-  'OACO': { nome: 'OACO', codigo: '16', sf2: 'SF2160', sd2: 'SD2160', sf1: 'SF1160', sd1: 'SD1160', sa1: 'SA1160', sa2: 'SA2160', sf4: 'SF4160' },
+  '16': { nome: 'OACO', codigo: '16', sf2: 'SF2160', sd2: 'SD2160', sf1: 'SF1160', sd1: 'SD1160', sa1: 'SA1010', sa2: 'SA2160', sf4: 'SF4160' },
+  'OACO': { nome: 'OACO', codigo: '16', sf2: 'SF2160', sd2: 'SD2160', sf1: 'SF1160', sd1: 'SD1160', sa1: 'SA1010', sa2: 'SA2160', sf4: 'SF4160' },
   '14': { nome: 'METAL_PLENO', codigo: '14', sf2: 'SF2140', sd2: 'SD2140', sf1: 'SF1140', sd1: 'SD1140', sa1: 'SA1010', sa2: 'SA2010', sf4: 'SF4010' },
   'METAL_PLENO': { nome: 'METAL_PLENO', codigo: '14', sf2: 'SF2140', sd2: 'SD2140', sf1: 'SF1140', sd1: 'SD1140', sa1: 'SA1010', sa2: 'SA2010', sf4: 'SF4010' },
   'MP': { nome: 'METAL_PLENO', codigo: '14', sf2: 'SF2140', sd2: 'SD2140', sf1: 'SF1140', sd1: 'SD1140', sa1: 'SA1010', sa2: 'SA2010', sf4: 'SF4010' },
@@ -3805,16 +3805,31 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
   const dtDe = formatarDataSqlFiscal(dataDe) || '20260801';
   const dtAte = formatarDataSqlFiscal(dataAte) || '20260831';
 
-  // 1. Consulta de Saídas SF2 + SD2 + SA1 + SF4
+  // 1. Consulta de Saídas SF2 + SD2 + SA1/SA2 + SF4
   const sqlSaidas = `
     SELECT 
       F2.F2_DOC, F2.F2_SERIE, F2.F2_EMISSAO, F2.F2_VALBRUT, F2.F2_TIPO, F2.F2_ESPECIE,
       F2.F2_CLIENT, F2.F2_LOJA, F2.F2_EST,
-      ISNULL(A1.A1_CGC, '') as CGC, ISNULL(A1.A1_NOME, '') as RAZAO,
+      COALESCE(
+        CASE WHEN F2.F2_TIPO = 'D' THEN NULLIF(A2.A2_CGC, '') END,
+        NULLIF(A1.A1_CGC, ''),
+        NULLIF(A1G.A1_CGC, ''),
+        NULLIF(A2.A2_CGC, ''),
+        ''
+      ) as CGC,
+      COALESCE(
+        CASE WHEN F2.F2_TIPO = 'D' THEN NULLIF(A2.A2_NOME, '') END,
+        NULLIF(A1.A1_NOME, ''),
+        NULLIF(A1G.A1_NOME, ''),
+        NULLIF(A2.A2_NOME, ''),
+        ''
+      ) as RAZAO,
       D2.CFOP, D2.TES, D2.DESCR_TES, D2.GERA_DUPLIC,
       ISNULL(F2.F2_ICMSDIF, 0) as DIFAL
     FROM ${cfg.sf2} F2
     LEFT JOIN ${cfg.sa1} A1 ON A1.D_E_L_E_T_ = '' AND A1.A1_COD = F2.F2_CLIENT AND A1.A1_LOJA = F2.F2_LOJA
+    LEFT JOIN SA1010 A1G ON A1G.D_E_L_E_T_ = '' AND A1G.A1_COD = F2.F2_CLIENT AND A1G.A1_LOJA = F2.F2_LOJA
+    LEFT JOIN ${cfg.sa2} A2 ON A2.D_E_L_E_T_ = '' AND A2.A2_COD = F2.F2_CLIENT AND A2.A2_LOJA = F2.F2_LOJA
     CROSS APPLY (
       SELECT TOP 1 
         SD2.D2_CF as CFOP, 
@@ -3830,21 +3845,44 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
     ORDER BY F2.F2_DOC
   `;
 
-  // 2. Consulta de Entradas SF1 + SD1 + SA2 + SF4 (ignora estritamente 'ROMA')
+  // 2. Consulta de Entradas SF1 + SD1 + SA1/SA2 + SF4 (ignora estritamente 'ROMA')
   const campoDataEntrada = criterioDataEntrada === 'DIGITACAO' ? 'F1.F1_DTDIGIT' : 'F1.F1_EMISSAO';
   const sqlEntradas = `
     SELECT 
-      F1.F1_DOC, F1.F1_SERIE, F1.F1_EMISSAO, F1.F1_DTDIGIT, F1.F1_VALBRUT, F1.F1_TIPO, F1.F1_ESPECIE,
+      F1.F1_DOC, F1.F1_SERIE, F1.F1_EMISSAO, F1.F1_DTDIGIT, F1.F1_VALBRUT, F1.F1_TIPO, F1.F1_FORMUL, F1.F1_ESPECIE,
       F1.F1_FORNECE, F1.F1_LOJA, F1.F1_EST,
-      ISNULL(A2.A2_CGC, '') as CGC, ISNULL(A2.A2_NOME, '') as RAZAO,
+      COALESCE(
+        CASE WHEN F1.F1_TIPO = 'D' THEN NULLIF(A1.A1_CGC, '') END,
+        CASE WHEN F1.F1_TIPO = 'D' THEN NULLIF(A1G.A1_CGC, '') END,
+        NULLIF(A2.A2_CGC, ''),
+        NULLIF(A2G.A2_CGC, ''),
+        NULLIF(A1.A1_CGC, ''),
+        NULLIF(A1G.A1_CGC, ''),
+        ''
+      ) as CGC,
+      COALESCE(
+        CASE WHEN F1.F1_TIPO = 'D' THEN NULLIF(A1.A1_NOME, '') END,
+        CASE WHEN F1.F1_TIPO = 'D' THEN NULLIF(A1G.A1_NOME, '') END,
+        NULLIF(A2.A2_NOME, ''),
+        NULLIF(A2G.A2_NOME, ''),
+        NULLIF(A1.A1_NOME, ''),
+        NULLIF(A1G.A1_NOME, ''),
+        ''
+      ) as RAZAO,
       D1.CFOP, D1.TES, D1.DESCR_TES, D1.GERA_DUPLIC,
+      D1.D1_NFORI, D1.D1_SERIORI,
       0 as DIFAL
     FROM ${cfg.sf1} F1
+    LEFT JOIN ${cfg.sa1} A1 ON A1.D_E_L_E_T_ = '' AND A1.A1_COD = F1.F1_FORNECE AND A1.A1_LOJA = F1.F1_LOJA
+    LEFT JOIN SA1010 A1G ON A1G.D_E_L_E_T_ = '' AND A1G.A1_COD = F1.F1_FORNECE AND A1G.A1_LOJA = F1.F1_LOJA
     LEFT JOIN ${cfg.sa2} A2 ON A2.D_E_L_E_T_ = '' AND A2.A2_COD = F1.F1_FORNECE AND A2.A2_LOJA = F1.F1_LOJA
+    LEFT JOIN SA2010 A2G ON A2G.D_E_L_E_T_ = '' AND A2G.A2_COD = F1.F1_FORNECE AND A2G.A2_LOJA = F1.F1_LOJA
     CROSS APPLY (
       SELECT TOP 1 
         SD1.D1_CF as CFOP, 
         SD1.D1_TES as TES,
+        ISNULL(SD1.D1_NFORI, '') as D1_NFORI,
+        ISNULL(SD1.D1_SERIORI, '') as D1_SERIORI,
         ISNULL(SF4.F4_TEXTO, '') as DESCR_TES,
         ISNULL(SF4.F4_DUPLIC, 'N') as GERA_DUPLIC
       FROM ${cfg.sd1} SD1
@@ -3869,6 +3907,10 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
   let totalSaidasValor = 0.0;
   let totalDevolucaoQtd = 0;
   let totalDevolucaoValor = 0.0;
+  let totalDevolucaoSaidaQtd = 0;
+  let totalDevolucaoSaidaValor = 0.0;
+  let totalDevolucaoEntradaQtd = 0;
+  let totalDevolucaoEntradaValor = 0.0;
   let totalRemessaQtd = 0;
   let totalRemessaValor = 0.0;
   let totalTributadoQtd = 0;
@@ -3891,6 +3933,8 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       tipoOperacao = 'DEVOLUCAO';
       totalDevolucaoQtd++;
       totalDevolucaoValor += val;
+      totalDevolucaoSaidaQtd++;
+      totalDevolucaoSaidaValor += val;
     } else if (
       tipo === 'B' ||
       cfop === '5554' ||
@@ -3918,6 +3962,9 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       entraSaida: 'SAÍDA',
       tipo: tipo || 'N',
       tipoDoc: (row.F2_ESPECIE || 'SPED').trim(),
+      formularioProprio: false,
+      nfOrigem: '',
+      serieOrigem: '',
       numNf: (row.F2_DOC || '').trim(),
       serie: (row.F2_SERIE || '').trim(),
       dataEmissao: (row.F2_EMISSAO || '').trim(),
@@ -3948,11 +3995,26 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
 
   for (const row of resEntradas.rows) {
     const val = Number(row.F1_VALBRUT || 0);
+    const tipo = (row.F1_TIPO || '').trim().toUpperCase();
+    const formul = (row.F1_FORMUL || '').trim().toUpperCase();
     const esp = (row.F1_ESPECIE || '').trim().toUpperCase();
     const cfop = String(row.CFOP || '').trim();
 
     totalEntradasQtd++;
     totalEntradasValor += val;
+
+    let tipoOperacao = 'ENTRADA';
+    const isDevolucaoEntrada = tipo === 'D' ||
+      cfop.startsWith('12') || cfop.startsWith('22') || cfop.startsWith('32') ||
+      (formul === 'S' && (tipo === 'D' || cfop.startsWith('12') || cfop.startsWith('22') || cfop.startsWith('32')));
+
+    if (isDevolucaoEntrada) {
+      tipoOperacao = 'DEVOLUCAO';
+      totalDevolucaoQtd++;
+      totalDevolucaoValor += val;
+      totalDevolucaoEntradaQtd++;
+      totalDevolucaoEntradaValor += val;
+    }
 
     if (esp === 'NFE' || esp === 'SPED') {
       totalNfeQtd++;
@@ -3967,8 +4029,11 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
 
     itens.push({
       entraSaida: 'ENTRA',
-      tipo: (row.F1_TIPO || 'N').trim(),
+      tipo: tipo || 'N',
       tipoDoc: esp,
+      formularioProprio: formul === 'S',
+      nfOrigem: (row.D1_NFORI || '').trim(),
+      serieOrigem: (row.D1_SERIORI || '').trim(),
       numNf: (row.F1_DOC || '').trim(),
       serie: (row.F1_SERIE || '').trim(),
       dataEmissao: (row.F1_EMISSAO || '').trim(),
@@ -3985,7 +4050,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       razaoSocial: (row.RAZAO || '').trim(),
       geraImposto: 'Não',
       difal: '',
-      tipoOperacao: 'ENTRADA'
+      tipoOperacao
     });
   }
 
@@ -4004,7 +4069,12 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
     periodo: { de: dtDe, ate: dtAte, criterioDataEntrada },
     totais: {
       totalSaidas: { qtd: totalSaidasQtd, valor: Math.round(totalSaidasValor * 100) / 100 },
-      totalDevolucao: { qtd: totalDevolucaoQtd, valor: Math.round(totalDevolucaoValor * 100) / 100 },
+      totalDevolucao: {
+        qtd: totalDevolucaoQtd,
+        valor: Math.round(totalDevolucaoValor * 100) / 100,
+        entradas: { qtd: totalDevolucaoEntradaQtd, valor: Math.round(totalDevolucaoEntradaValor * 100) / 100 },
+        saidas: { qtd: totalDevolucaoSaidaQtd, valor: Math.round(totalDevolucaoSaidaValor * 100) / 100 }
+      },
       totalRemessa: { qtd: totalRemessaQtd, valor: Math.round(totalRemessaValor * 100) / 100 },
       totalTributado: { qtd: totalTributadoQtd, valor: Math.round(totalTributadoValor * 100) / 100 },
       totalEntradas: { qtd: totalEntradasQtd, valor: Math.round(totalEntradasValor * 100) / 100 },
