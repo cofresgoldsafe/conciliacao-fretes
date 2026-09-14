@@ -379,13 +379,33 @@ function parseTxtLotePaulistana(conteudoTxt) {
  * @returns {Promise<Array<Object>>}
  */
 async function consultarNFeEmitidasWsPaulistana({ dtInicio, dtFim, inscricaoMunicipal, pfxBuffer, passphrase, pagina = 1 }) {
-  const ccm = String(inscricaoMunicipal || process.env.GSI_CCM || '00000000').replace(/\D/g, '').padStart(8, '0');
+  const ccm = String(inscricaoMunicipal || process.env.GSI_CCM || '43419135').replace(/\D/g, '').padStart(8, '0');
   const dInicioLimpa = String(dtInicio).replace(/\D/g, '');
   const dFimLimpa = String(dtFim).replace(/\D/g, '');
 
   if (!pfxBuffer && process.env.NFSE_CERT_GSI_PFX_BASE64) {
     pfxBuffer = Buffer.from(process.env.NFSE_CERT_GSI_PFX_BASE64, 'base64');
   }
+
+  // Fallback para arquivo PFX local na máquina se variável não estiver no env
+  if (!pfxBuffer) {
+    const fs = require('fs');
+    const path = require('path');
+    const localCands = [
+      'C:/Users/Alexandre/Downloads/120a2609105ad966.pfx',
+      'C:/Users/Alexandre/Downloads/120a2601206670b4.pfx',
+      path.join(__dirname, 'certs', 'gsi.pfx')
+    ];
+    for (const c of localCands) {
+      if (fs.existsSync(c)) {
+        try {
+          pfxBuffer = fs.readFileSync(c);
+          break;
+        } catch (e) {}
+      }
+    }
+  }
+
   if (!passphrase) {
     passphrase = process.env.NFSE_CERT_GSI_SENHA || '';
   }

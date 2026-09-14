@@ -27,7 +27,7 @@
     "origem": "PREFEITURA_SP",
     "xml_conteudo": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<NFe xmlns=\"http://www.prefeitura.sp.gov.br/nfe\">\n  <ChaveNFe>\n    <InscricaoPrestador>43219876</InscricaoPrestador>\n    <NumeroNFe>10452</NumeroNFe>\n    <CodigoVerificacao>ABC123XYZ</CodigoVerificacao>\n  </ChaveNFe>\n  <DataEmissaoNFe>2026-08-15T14:30:00</DataEmissaoNFe>\n  <NumeroLote>9988</NumeroLote>\n  <TributacaoNFe>T</TributacaoNFe>\n  <StatusNFe>N</StatusNFe>\n  <Discriminacao>SERVICOS DE CONSULTORIA DE TI E INTEGRACAO DE SISTEMAS CONFORME CONTRATO GSI-2026</Discriminacao>\n  <ValorServicos>15400.00</ValorServicos>\n  <ValorDeducoes>0.00</ValorDeducoes>\n  <ValorPIS>98.56</ValorPIS>\n  <ValorCOFINS>454.40</ValorCOFINS>\n  <ValorINSS>0.00</ValorINSS>\n  <ValorIR>231.00</ValorIR>\n  <ValorCSLL>154.00</ValorCSLL>\n  <CodigoServico>02898</CodigoServico>\n  <AliquotaServicos>0.025</AliquotaServicos>\n  <ValorISS>385.00</ValorISS>\n  <ISSRetido>false</ISSRetido>\n  <CPFCNPJTomador>\n    <CNPJ>22333444000199</CNPJ>\n  </CPFCNPJTomador>\n  <RazaoSocialTomador>CLIENTE CORPORATIVO EXEMPLO LTDA</RazaoSocialTomador>\n  <EmailTomador>financeiro@clienteexemplo.com.br</EmailTomador>\n</NFe>",
     "created_at": "2026-09-14T20:03:16.829Z",
-    "updated_at": "2026-09-14T20:14:08.279Z"
+    "updated_at": "2026-09-14T20:38:02.402Z"
   },
   {
     "chave_acesso": "14061778000115_10453",
@@ -57,6 +57,6 @@
     "origem": "PREFEITURA_SP",
     "xml_conteudo": "<NFe><NumeroNFe>10453</NumeroNFe></NFe>",
     "created_at": "2026-09-14T20:03:16.829Z",
-    "updated_at": "2026-09-14T20:14:08.279Z"
+    "updated_at": "2026-09-14T20:38:02.402Z"
   }
 ]

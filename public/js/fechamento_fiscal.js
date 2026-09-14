@@ -94,9 +94,11 @@
     const isGsi = selEmpresa && selEmpresa.value === '15';
     const resultadosVisiveis = resultados && resultados.style.display !== 'none';
 
-    if (btnSincronizarNfseSp) btnSincronizarNfseSp.style.display = (isGsi && resultadosVisiveis) ? 'inline-flex' : 'none';
+    // Botões de Ingestão/Sincronização ficam visíveis assim que a GSI é selecionada
+    if (btnSincronizarNfseSp) btnSincronizarNfseSp.style.display = isGsi ? 'inline-flex' : 'none';
+    if (btnImportarLoteNfseSp) btnImportarLoteNfseSp.style.display = isGsi ? 'inline-flex' : 'none';
+    // Exportação ZIP fica disponível quando há resultados na tela
     if (btnExportarLoteXmlZip) btnExportarLoteXmlZip.style.display = (isGsi && resultadosVisiveis) ? 'inline-flex' : 'none';
-    if (btnImportarLoteNfseSp) btnImportarLoteNfseSp.style.display = (isGsi && resultadosVisiveis) ? 'inline-flex' : 'none';
   }
 
   /**
@@ -347,6 +349,8 @@
     if (elSubServico && totais.totalServico) {
       if (totais.totalServico.prefeituraSp && totais.totalServico.prefeituraSp.qtd > 0) {
         elSubServico.innerHTML = `Protheus: <strong>${formatarInt(totais.totalServico.protheus ? totais.totalServico.protheus.qtd : 0)}</strong> | Pref. SP: <strong>${formatarInt(totais.totalServico.prefeituraSp.qtd)}</strong>`;
+      } else if (selEmpresa && selEmpresa.value === '15') {
+        elSubServico.innerHTML = `<span style="color: #38bdf8;">💡 Clique em <strong>Sincronizar NFS-e SP</strong> ou <strong>Importar Lote</strong></span>`;
       } else {
         elSubServico.textContent = 'Faturamento de serviços prestados';
       }

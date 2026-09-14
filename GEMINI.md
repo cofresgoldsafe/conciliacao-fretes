@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.196 (Homologada em 14/09/2026 17:15)  
+> **Versão da Documentação:** v8.197 (Homologada em 14/09/2026 17:38)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Integração Completa de NFS-e Nota Paulistana da GSI com Guarda Perpétua de XML Bruto, Exportador ZIP Nativo, Ingestão mTLS/TXT e Recálculo Tributado/RBT12 - 11 Testes 100% Aprovados)  
-> **Data da Última Auditoria:** 14/09/2026 17:15 (v8.196 - Fechamento Fiscal: Integração NFS-e Nota Paulistana SP da GSI)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Melhoria na Visibilidade Imediata dos Botões de Sincronização/Importação de NFS-e SP, CCM Oficial da GSI 43419135 e Dica Visual no Card de Serviços)  
+> **Data da Última Auditoria:** 14/09/2026 17:38 (v8.197 - Fechamento Fiscal: Visibilidade de Ações e CCM GSI 43419135)  
 
 ---
 
