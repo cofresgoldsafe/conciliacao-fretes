@@ -1,5 +1,77 @@
 [
   {
+    "id": "ACT-1789406220986",
+    "username": "admin_test",
+    "userName": "admin_test",
+    "actionType": "CRON_FECHAMENTO_MENSAL",
+    "description": "Disparo externo de fechamento mensal concluído em 34878ms (Ciclo: 26/07/2026 a 25/08/2026)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "durationMs": 34878,
+      "force": true,
+      "ciclo": {
+        "cicloId": "2026-07-26_2026-08-25",
+        "dtIni": "20260726",
+        "dtFim": "20260825",
+        "dataIniIso": "2026-07-26",
+        "dataFimIso": "2026-08-25",
+        "dataIniBR": "26/07/2026",
+        "dataFimBR": "25/08/2026",
+        "label": "26/07/2026 a 25/08/2026",
+        "mesCompetencia": "08/2026"
+      }
+    },
+    "createdAt": "2026-09-14T17:17:00.986Z"
+  },
+  {
+    "id": "ACT-1789406186085",
+    "username": "github-actions-cron",
+    "userName": "GitHub Actions Cron",
+    "actionType": "CRON_FECHAMENTO_MENSAL",
+    "description": "Disparo externo de fechamento mensal concluído em 40153ms (Ciclo: 26/07/2026 a 25/08/2026)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "durationMs": 40153,
+      "force": true,
+      "ciclo": {
+        "cicloId": "2026-07-26_2026-08-25",
+        "dtIni": "20260726",
+        "dtFim": "20260825",
+        "dataIniIso": "2026-07-26",
+        "dataFimIso": "2026-08-25",
+        "dataIniBR": "26/07/2026",
+        "dataFimBR": "25/08/2026",
+        "label": "26/07/2026 a 25/08/2026",
+        "mesCompetencia": "08/2026"
+      }
+    },
+    "createdAt": "2026-09-14T17:16:26.085Z"
+  },
+  {
+    "id": "ACT-1789406145912",
+    "username": "github-actions-cron",
+    "userName": "GitHub Actions Cron",
+    "actionType": "CRON_FECHAMENTO_MENSAL",
+    "description": "Disparo externo de fechamento mensal concluído em 36005ms (Ciclo: 26/07/2026 a 25/08/2026)",
+    "ip": "::ffff:127.0.0.1",
+    "metadata": {
+      "durationMs": 36005,
+      "force": true,
+      "ciclo": {
+        "cicloId": "2026-07-26_2026-08-25",
+        "dtIni": "20260726",
+        "dtFim": "20260825",
+        "dataIniIso": "2026-07-26",
+        "dataFimIso": "2026-08-25",
+        "dataIniBR": "26/07/2026",
+        "dataFimBR": "25/08/2026",
+        "label": "26/07/2026 a 25/08/2026",
+        "mesCompetencia": "08/2026"
+      }
+    },
+    "createdAt": "2026-09-14T17:15:45.912Z"
+  },
+  {
     "id": "ACT-1789050166977",
     "username": "erica",
     "userName": "Érica",
@@ -2326,35 +2398,5 @@
     "ip": "::ffff:127.0.0.1",
     "metadata": {},
     "createdAt": "2026-09-01T15:06:32.411Z"
-  },
-  {
-    "id": "ACT-1788275192107",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T15:06:32.107Z"
-  },
-  {
-    "id": "ACT-1788275191822",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T15:06:31.822Z"
-  },
-  {
-    "id": "ACT-1788275190913",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"marcos_logistica\" (marcos@oaco.com.br)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-01T15:06:30.913Z"
   }
 ]

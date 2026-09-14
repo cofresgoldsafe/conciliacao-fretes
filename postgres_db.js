@@ -5277,6 +5277,8 @@ async function salvarFechamentoFiscalDB(dados) {
   const tDevVal = Number(totais.totalDevolucao?.valor || 0);
   const tRemQtd = Number(totais.totalRemessa?.qtd || 0);
   const tRemVal = Number(totais.totalRemessa?.valor || 0);
+  const tServQtd = Number(totais.totalServico?.qtd || 0);
+  const tServVal = Number(totais.totalServico?.valor || 0);
   const tTribQtd = Number(totais.totalTributado?.qtd || 0);
   const tTribVal = Number(totais.totalTributado?.valor || 0);
 
@@ -5293,11 +5295,18 @@ async function salvarFechamentoFiscalDB(dados) {
   if (isConnected && pool) {
     try {
       await safeQuery(`
+        ALTER TABLE fechamento_fiscal_consolidado 
+          ADD COLUMN IF NOT EXISTS total_servico_qtd INTEGER DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS total_servico_valor NUMERIC(15,2) DEFAULT 0;
+      `).catch(() => {});
+
+      await safeQuery(`
         INSERT INTO fechamento_fiscal_consolidado (
           empresa, ano_mes, data_inicio, data_fim,
           total_saidas_qtd, total_saidas_valor,
           total_devolucao_qtd, total_devolucao_valor,
           total_remessa_qtd, total_remessa_valor,
+          total_servico_qtd, total_servico_valor,
           total_tributado_qtd, total_tributado_valor,
           total_entradas_qtd, total_entradas_valor,
           total_nfe_qtd, total_nfe_valor,
@@ -5308,7 +5317,7 @@ async function salvarFechamentoFiscalDB(dados) {
         ) VALUES (
           $1, $2, $3, $4,
           $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-          $21, $22, $23, $24, $25, NOW()
+          $21, $22, $23, $24, $25, $26, $27, NOW()
         )
         ON CONFLICT (empresa, ano_mes) DO UPDATE SET
           data_inicio = EXCLUDED.data_inicio,
@@ -5319,6 +5328,8 @@ async function salvarFechamentoFiscalDB(dados) {
           total_devolucao_valor = EXCLUDED.total_devolucao_valor,
           total_remessa_qtd = EXCLUDED.total_remessa_qtd,
           total_remessa_valor = EXCLUDED.total_remessa_valor,
+          total_servico_qtd = EXCLUDED.total_servico_qtd,
+          total_servico_valor = EXCLUDED.total_servico_valor,
           total_tributado_qtd = EXCLUDED.total_tributado_qtd,
           total_tributado_valor = EXCLUDED.total_tributado_valor,
           total_entradas_qtd = EXCLUDED.total_entradas_qtd,
@@ -5340,6 +5351,7 @@ async function salvarFechamentoFiscalDB(dados) {
         tSaidasQtd, tSaidasVal,
         tDevQtd, tDevVal,
         tRemQtd, tRemVal,
+        tServQtd, tServVal,
         tTribQtd, tTribVal,
         tEntQtd, tEntVal,
         tNfeQtd, tNfeVal,

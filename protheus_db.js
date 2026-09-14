@@ -3913,12 +3913,15 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
   let totalDevolucaoEntradaValor = 0.0;
   let totalRemessaQtd = 0;
   let totalRemessaValor = 0.0;
+  let totalServicoQtd = 0;
+  let totalServicoValor = 0.0;
   let totalTributadoQtd = 0;
   let totalTributadoValor = 0.0;
 
   for (const row of resSaidas.rows) {
     const val = Number(row.F2_VALBRUT || 0);
     const tipo = (row.F2_TIPO || '').trim().toUpperCase();
+    const esp = (row.F2_ESPECIE || '').trim().toUpperCase();
     const cfop = String(row.CFOP || '').trim();
     const geraDuplic = (row.GERA_DUPLIC || 'N').trim().toUpperCase();
 
@@ -3935,6 +3938,17 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       totalDevolucaoValor += val;
       totalDevolucaoSaidaQtd++;
       totalDevolucaoSaidaValor += val;
+    } else if (
+      tipo === 'S' ||
+      esp === 'NFS' || esp === 'RPS' || esp === 'NFPS' || esp === 'SE' || esp === 'NFSE' || esp === 'NFS-E' ||
+      cfop === '5933' || cfop === '6933' ||
+      row.TES === '594' || row.TES === '099' || row.TES === '108' ||
+      ((row.DESCR_TES || '').toUpperCase().includes('VENDA DE SERV') || (row.DESCR_TES || '').toUpperCase().includes('PRESTACAO DE SERV'))
+    ) {
+      tipoOperacao = 'SERVICO';
+      geraImposto = true;
+      totalServicoQtd++;
+      totalServicoValor += val;
     } else if (
       tipo === 'B' ||
       cfop === '5554' ||
@@ -3961,7 +3975,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
     itens.push({
       entraSaida: 'SAÍDA',
       tipo: tipo || 'N',
-      tipoDoc: (row.F2_ESPECIE || 'SPED').trim(),
+      tipoDoc: (tipoOperacao === 'SERVICO' && (!esp || esp === 'SPED')) ? 'NFS' : (row.F2_ESPECIE || 'SPED').trim(),
       formularioProprio: false,
       nfOrigem: '',
       serieOrigem: '',
@@ -4076,6 +4090,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
         saidas: { qtd: totalDevolucaoSaidaQtd, valor: Math.round(totalDevolucaoSaidaValor * 100) / 100 }
       },
       totalRemessa: { qtd: totalRemessaQtd, valor: Math.round(totalRemessaValor * 100) / 100 },
+      totalServico: { qtd: totalServicoQtd, valor: Math.round(totalServicoValor * 100) / 100 },
       totalTributado: { qtd: totalTributadoQtd, valor: Math.round(totalTributadoValor * 100) / 100 },
       totalEntradas: { qtd: totalEntradasQtd, valor: Math.round(totalEntradasValor * 100) / 100 },
       totalNfe: { qtd: totalNfeQtd, valor: Math.round(totalNfeValor * 100) / 100 },

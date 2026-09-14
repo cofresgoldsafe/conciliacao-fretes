@@ -13,7 +13,7 @@
     "pct_meta_vendas": 133.46,
     "premio_meta_vendas": 400,
     "faixa_meta_vendas": ">= 100% da Meta",
-    "gordura_frete_total": 689.56,
+    "gordura_frete_total": 685.29,
     "premio_gordura_frete": 0,
     "faixa_gordura_frete": "Sem Premiação (< R$ 700)",
     "comissao_taxa": 0.013,
@@ -32,8 +32,8 @@
       "mediaVendasEquipe": 155669.08,
       "diffVendasPct": 2.88,
       "statusVendasBench": "ACIMA_MEDIA",
-      "mediaGorduraEquipe": 837.72,
-      "diffGorduraPct": -17.69,
+      "mediaGorduraEquipe": 1067.67,
+      "diffGorduraPct": -35.81,
       "statusGorduraBench": "ABAIXO_MEDIA"
     },
     "metas_snapshot_json": {
@@ -52,8 +52,8 @@
       "totalPedidosComFreteEmbutido": 6,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "TEST_RECALC",
-    "gerado_em": "2026-09-03T03:00:28.477Z"
+    "tipo_geracao": "GITHUB_ACTIONS",
+    "gerado_em": "2026-09-14T17:17:00.967Z"
   },
   {
     "ciclo_id": "2026-07-26_2026-08-25",
@@ -69,7 +69,7 @@
     "pct_meta_vendas": 114.68,
     "premio_meta_vendas": 400,
     "faixa_meta_vendas": ">= 100% da Meta",
-    "gordura_frete_total": 2359.07,
+    "gordura_frete_total": 2363.31,
     "premio_gordura_frete": 500,
     "faixa_gordura_frete": ">= R$ 2.100,00",
     "comissao_taxa": 0.013,
@@ -88,8 +88,8 @@
       "mediaVendasEquipe": 155669.08,
       "diffVendasPct": -11.6,
       "statusVendasBench": "ABAIXO_MEDIA",
-      "mediaGorduraEquipe": 837.72,
-      "diffGorduraPct": 181.61,
+      "mediaGorduraEquipe": 1067.67,
+      "diffGorduraPct": 121.35,
       "statusGorduraBench": "ACIMA_MEDIA"
     },
     "metas_snapshot_json": {
@@ -108,8 +108,8 @@
       "totalPedidosComFreteEmbutido": 6,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "TEST_RECALC",
-    "gerado_em": "2026-09-03T03:00:28.483Z"
+    "tipo_geracao": "GITHUB_ACTIONS",
+    "gerado_em": "2026-09-14T17:17:00.972Z"
   },
   {
     "ciclo_id": "2026-07-26_2026-08-25",
@@ -125,7 +125,7 @@
     "pct_meta_vendas": 141.04,
     "premio_meta_vendas": 400,
     "faixa_meta_vendas": ">= 100% da Meta",
-    "gordura_frete_total": -535.47,
+    "gordura_frete_total": 154.42,
     "premio_gordura_frete": 0,
     "faixa_gordura_frete": "Sem Premiação (< R$ 700)",
     "comissao_taxa": 0.013,
@@ -144,8 +144,8 @@
       "mediaVendasEquipe": 155669.08,
       "diffVendasPct": 8.72,
       "statusVendasBench": "ACIMA_MEDIA",
-      "mediaGorduraEquipe": 837.72,
-      "diffGorduraPct": -163.92,
+      "mediaGorduraEquipe": 1067.67,
+      "diffGorduraPct": -85.54,
       "statusGorduraBench": "ABAIXO_MEDIA"
     },
     "metas_snapshot_json": {
@@ -164,8 +164,8 @@
       "totalPedidosComFreteEmbutido": 5,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "TEST_RECALC",
-    "gerado_em": "2026-09-03T03:00:28.489Z"
+    "tipo_geracao": "GITHUB_ACTIONS",
+    "gerado_em": "2026-09-14T17:17:00.977Z"
   },
   {
     "ciclo_id": "2026-06-26_2026-07-25",

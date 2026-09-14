@@ -1,1 +1,48 @@
-[]
+[
+  {
+    "empresa": "16",
+    "anoMes": "202608",
+    "dataInicio": "2026-08-01",
+    "dataFim": "2026-08-31",
+    "totais": {
+      "totalSaidas": {
+        "qtd": 70,
+        "valor": 182680.74
+      },
+      "totalRemessa": {
+        "qtd": 0,
+        "valor": 0
+      },
+      "totalServico": {
+        "qtd": 2,
+        "valor": 3500
+      },
+      "totalTributado": {
+        "qtd": 70,
+        "valor": 182680.74
+      },
+      "totalEntradas": {
+        "qtd": 60,
+        "valor": 89963.79
+      },
+      "totalNfe": {
+        "qtd": 10,
+        "valor": 25282.46
+      },
+      "totalCtr": {
+        "qtd": 37,
+        "valor": 6468.36
+      },
+      "totalImpostos": {
+        "qtd": 3,
+        "valor": 15818.17
+      }
+    },
+    "rbt12": 2375044.88,
+    "aliquotaEfetiva": 0,
+    "impostoEstimado": 0,
+    "detalhes": {},
+    "usuario": "Teste Automatizado",
+    "updated_at": "2026-09-14T19:08:43.081Z"
+  }
+]

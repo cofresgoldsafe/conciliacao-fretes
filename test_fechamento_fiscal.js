@@ -82,6 +82,11 @@ async function runTests() {
     assert.strictEqual(res.totais.totalRemessa.qtd, 0, 'Total Remessa Saída deve ser 0');
     assert.strictEqual(res.totais.totalRemessa.valor, 0, 'Valor Remessa Saída deve ser R$ 0,00');
 
+    // 1.3.1 Notas de Serviço Saída em 08/2026 (OACO não teve saída de serviço em 08/2026)
+    assert.ok(res.totais.totalServico, 'Objeto totalServico deve existir nos totais');
+    assert.strictEqual(res.totais.totalServico.qtd, 0, 'Total NFs Serviço Saída deve ser 0 em 08/2026');
+    assert.strictEqual(res.totais.totalServico.valor, 0, 'Valor NFs Serviço Saída deve ser R$ 0,00 em 08/2026');
+
     // 1.4 Entradas (sem ROMA)
     assert.strictEqual(res.totais.totalEntradas.qtd, 60, 'Total NFs Entrada (sem ROMA) deve ser exatamente 60');
     assert.strictEqual(res.totais.totalCtr.qtd, 37, 'Total CTRs deve ser 37');
@@ -180,6 +185,8 @@ async function runTests() {
       dataFim: '2026-08-31',
       totais: {
         totalSaidas: { qtd: 70, valor: 182680.74 },
+        totalRemessa: { qtd: 0, valor: 0 },
+        totalServico: { qtd: 2, valor: 3500.00 },
         totalTributado: { qtd: 70, valor: 182680.74 },
         totalEntradas: { qtd: 60, valor: 89963.79 },
         totalNfe: { qtd: 10, valor: 25282.46 },
@@ -196,6 +203,8 @@ async function runTests() {
     const resGet = await obterFechamentoFiscalDB('16', '202608');
     assert.ok(resGet, 'Fechamento salvo deve ser recuperado com sucesso');
     assert.strictEqual(String(resGet.empresa || resGet.empresa_cod), '16', 'Empresa do fechamento deve ser 16');
+    assert.strictEqual(resGet.totais?.totalServico?.qtd, 2, 'Total de serviços salvo deve ser 2');
+    assert.strictEqual(resGet.totais?.totalServico?.valor, 3500.00, 'Valor de serviços salvo deve ser 3500.00');
 
     const lista = await listarFechamentosFiscaisDB('16');
     assert.ok(Array.isArray(lista), 'Listagem deve ser um array');
@@ -219,9 +228,13 @@ async function runTests() {
     assert.ok(html.includes('id="tab-fechamento-fiscal"'), 'Deve conter aba #tab-fechamento-fiscal');
     assert.ok(html.includes('id="selFechamentoEmpresa"'), 'Deve conter seletor de empresa #selFechamentoEmpresa');
     assert.ok(html.includes('id="btnConsultarFechamentoFiscal"'), 'Deve conter botão #btnConsultarFechamentoFiscal');
+    assert.ok(html.includes('id="kpiTotalRemessaQtd"'), 'Deve conter card #kpiTotalRemessaQtd');
+    assert.ok(html.includes('id="kpiTotalServicoQtd"'), 'Deve conter card #kpiTotalServicoQtd');
+    assert.ok(html.includes('id="kpiTotalServicoValor"'), 'Deve conter card #kpiTotalServicoValor');
     assert.ok(html.includes('id="kpiTotalTributadoQtd"'), 'Deve conter card #kpiTotalTributadoQtd');
     assert.ok(html.includes('id="kpiTotalImpostosValor"'), 'Deve conter card #kpiTotalImpostosValor');
     assert.ok(html.includes('id="inputBuscaFechamento"'), 'Deve conter campo de busca instantânea #inputBuscaFechamento');
+    assert.ok(html.includes('value="SERVICO"'), 'Deve conter opção SERVICO no filtro de tipo');
     assert.ok(html.includes('id="tbodyFechamentoFiscal"'), 'Deve conter tabela #tbodyFechamentoFiscal');
     assert.ok(html.includes('src="js/fechamento_fiscal.js'), 'Deve importar script fechamento_fiscal.js');
   });
@@ -256,6 +269,75 @@ async function runTests() {
     assert.strictEqual(nf660.razaoSocial, 'Cicero Augusto Figueira', 'Razão social deve ser o nome do cliente Cicero Augusto Figueira');
     assert.strictEqual(nf660.nfOrigem, '000634', 'NF de saída original devolvida deve ser 000634');
     assert.strictEqual(nf660.serieOrigem, '1', 'Série de saída original deve ser 1');
+  });
+
+  // TESTE 11: Validação de Classificação de Notas de Serviço de Saída
+  report('Teste 11: Classificação determinística de Notas de Serviço na Saída', () => {
+    function classificarNotaSaida(row) {
+      const val = Number(row.F2_VALBRUT || 0);
+      const tipo = (row.F2_TIPO || '').trim().toUpperCase();
+      const esp = (row.F2_ESPECIE || '').trim().toUpperCase();
+      const cfop = String(row.CFOP || '').trim();
+      const geraDuplic = (row.GERA_DUPLIC || 'N').trim().toUpperCase();
+
+      let tipoOperacao = 'OUTRAS_SAIDAS';
+      let geraImposto = false;
+
+      if (tipo === 'D' || cfop.startsWith('52') || cfop.startsWith('62') || cfop.startsWith('72')) {
+        tipoOperacao = 'DEVOLUCAO';
+      } else if (
+        tipo === 'S' ||
+        ['NFS', 'RPS', 'NFPS', 'SE', 'NFSE', 'NFS-E'].includes(esp) ||
+        cfop === '5933' || cfop === '6933' ||
+        row.TES === '594' || row.TES === '099' || row.TES === '108' ||
+        ((row.DESCR_TES || '').toUpperCase().includes('VENDA DE SERV') || (row.DESCR_TES || '').toUpperCase().includes('PRESTACAO DE SERV'))
+      ) {
+        tipoOperacao = 'SERVICO';
+        geraImposto = true;
+      } else if (
+        tipo === 'B' ||
+        cfop === '5554' ||
+        (cfop.startsWith('59') && cfop !== '5922') ||
+        (cfop.startsWith('69') && cfop !== '6922') ||
+        cfop === '5117' ||
+        cfop === '6117' ||
+        geraDuplic !== 'S'
+      ) {
+        tipoOperacao = 'REMESSA';
+      } else if (
+        (tipo === 'N' || tipo === 'C') &&
+        geraDuplic === 'S' &&
+        (cfop.startsWith('51') || cfop.startsWith('54') || cfop.startsWith('61') || cfop.startsWith('64') || cfop.startsWith('71') || cfop === '5922' || cfop === '6922')
+      ) {
+        tipoOperacao = 'VENDA_TRIBUTADA';
+        geraImposto = true;
+      }
+
+      const tipoDoc = (tipoOperacao === 'SERVICO' && (!esp || esp === 'SPED')) ? 'NFS' : (row.F2_ESPECIE || 'SPED').trim();
+
+      return { tipoOperacao, geraImposto, tipoDoc };
+    }
+
+    // Cenário A: NF emitida com CFOP 5933 (Prestação de serviços)
+    const nfsCfop = classificarNotaSaida({ F2_VALBRUT: 1500, F2_TIPO: 'N', F2_ESPECIE: 'SPED', CFOP: '5933', GERA_DUPLIC: 'S' });
+    assert.strictEqual(nfsCfop.tipoOperacao, 'SERVICO', 'CFOP 5933 deve ser classificado como SERVICO');
+    assert.strictEqual(nfsCfop.geraImposto, true, 'CFOP 5933 deve ter geraImposto = true');
+    assert.strictEqual(nfsCfop.tipoDoc, 'NFS', 'TipoDoc deve ser NFS quando serviço');
+
+    // Cenário B: NF emitida com espécie NFS
+    const nfsEsp = classificarNotaSaida({ F2_VALBRUT: 2200, F2_TIPO: 'N', F2_ESPECIE: 'NFS', CFOP: '5949', GERA_DUPLIC: 'S' });
+    assert.strictEqual(nfsEsp.tipoOperacao, 'SERVICO', 'Espécie NFS deve ser classificada como SERVICO');
+    assert.strictEqual(nfsEsp.geraImposto, true, 'Espécie NFS deve ter geraImposto = true');
+
+    // Cenário C: NF emitida com TES de serviço 594 (Venda de Serviço)
+    const nfsTes = classificarNotaSaida({ F2_VALBRUT: 800, F2_TIPO: 'N', F2_ESPECIE: 'SPED', CFOP: '5102', TES: '594', DESCR_TES: 'VENDA DE SERVICO', GERA_DUPLIC: 'S' });
+    assert.strictEqual(nfsTes.tipoOperacao, 'SERVICO', 'TES 594 de serviço deve ser classificada como SERVICO');
+    assert.strictEqual(nfsTes.geraImposto, true, 'TES 594 deve ter geraImposto = true');
+
+    // Cenário D: NF de remessa 5949 comum não deve ser confundida com serviço
+    const remessa = classificarNotaSaida({ F2_VALBRUT: 300, F2_TIPO: 'N', F2_ESPECIE: 'SPED', CFOP: '5949', TES: '501', DESCR_TES: 'REMESSA P/ CONSERTO', GERA_DUPLIC: 'N' });
+    assert.strictEqual(remessa.tipoOperacao, 'REMESSA', 'CFOP 5949 comum deve ser REMESSA');
+    assert.strictEqual(remessa.geraImposto, false, 'Remessa não gera imposto');
   });
 
   console.log('\n========================================================');

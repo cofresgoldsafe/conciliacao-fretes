@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.194 (Homologada em 14/09/2026 12:15)  
+> **Versão da Documentação:** v8.195 (Homologada em 14/09/2026 14:25)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Suporte Completo a Devoluções com Formulário Próprio MATA103/SF1/SD1, Resolução de Cliente SA1010/SA1160, Identificação de NF Origem, Filtro e Badges de Devolução e 10 Testes Automatizados 100% Aprovados)  
-> **Data da Última Auditoria:** 14/09/2026 12:15 (v8.194 - Fechamento Fiscal: Apuração de Devoluções com Formulário Próprio MATA103 e Ajuste de Clientes SA1)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Fechamento Fiscal Mensal no Analista Fin: Card de Resumo de Faturamento de Notas de Serviço na Saída, Classificação Determinística Protheus SF2/SD2 com CFOP 5933/6933, NFS/RPS, TES 594, Filtro e 11 Testes Automatizados 100% Aprovados)  
+> **Data da Última Auditoria:** 14/09/2026 14:25 (v8.195 - Fechamento Fiscal: Card de Resumo de Faturamento de Notas de Serviço na Saída)  
 
 ---
 
@@ -1328,6 +1328,33 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Exportação para CSV atualizada com colunas *Operação*, *Formulário Próprio* e *NF Origem*.
     - **Suíte de Testes Automatizados (10/10 Aprovados):**
       - Adicionado o **Teste 10** em `test_fechamento_fiscal.js` validando especificamente a NFe `000660`, seu valor (R$ 607,00), cliente resolvido (*Cicero Augusto Figueira* / *243.877.387-15*), CFOP `2202`, TES `040`, formulário próprio `true` e NF original `000634`. Zero falhas em toda a suíte de regressão (`npm test`).
+71. [x] **Sub-Aba "📊 Fechamento Fiscal" (Analista Fin): Card de Resumo de Faturamento de Notas de Serviço na Saída, Classificação Determinística Protheus (CFOP 5933/6933, NFS/RPS, TES 594), Filtro e 11 Testes Automatizados 100% Aprovados (`protheus_db.js`, `postgres_db.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `test_fechamento_fiscal.js`):**
+   - **Novo Card de KPI no Topo (Grid Perfeito de 9 Cards):**
+     - Adicionado o card **`🛠️ Total NFs Serviço`** (com contadores `#kpiTotalServicoQtd` e `#kpiTotalServicoValor`), posicionado imediatamente após o card *Total Remessa* (Saídas) e antes de *⭐ Total Tributado*.
+     - O grid agora totaliza exatamente **9 cards de KPIs**, preenchendo a vaga remanescente e formando uma grade 3x3 perfeitamente simétrica e responsiva.
+     - Contraste visual AAA (7.05:1 no número e 14.1:1 no valor) em Sky Blue (`#38bdf8`) e borda `#0284c7`.
+   - **Classificação Determinística Fiscal no Backend (`protheus_db.js`):**
+     - Identificação de notas de prestação de serviços nas saídas (SF2/SD2):
+       - Tipo de documento/espécie fiscal: `NFS`, `RPS`, `NFPS`, `SE`, `NFSE`, `NFS-E`.
+       - Tipo Protheus: `F2_TIPO = 'S'`.
+       - CFOPs municipais de serviço: `5933` (dentro do estado) e `6933` (fora do estado).
+       - TES de serviço: `594` (*VENDA DE SERVICO*), `099` (*SERVICOS*), `108` (*SERVICO COM RETENCAO*) ou descrições contendo `"VENDA DE SERV"` / `"PRESTACAO DE SERV"`.
+     - Precedência estrita: Avaliada após devoluções e **antes** de remessas (`59xx`/`69xx`), evitando que serviços com CFOP 5933/6933 caiam equivocadamente em remessas.
+     - `tipoOperacao: 'SERVICO'`, `geraImposto: 'Sim'`, e normalização automática de `tipoDoc` para `'NFS'`.
+     - Objeto de retorno `totais.totalServico: { qtd, valor }`.
+   - **Camada Frontend & Tabela (`public/js/fechamento_fiscal.js`):**
+     - Atualização reativa de contadores via `setCard` em `renderizarTotais`.
+     - Badge visual `<span class="...">SERVIÇO</span>` com fundo ciano e texto em Sky Blue.
+     - Suporte a filtro por `Apenas Serviços` (`SERVICO`) no dropdown de fluxo e busca instantânea por `servico` / `serviço`.
+   - **Persistência Relacional & Cache JSON (`postgres_db.js`):**
+     - Persistência das colunas `total_servico_qtd` e `total_servico_valor` na tabela `fechamento_fiscal_consolidado` com auto-migration `ADD COLUMN IF NOT EXISTS`.
+     - Persistência garantida no snapshot JSON `data/fechamento_fiscal_cache.json`.
+   - **Suíte de Testes Automatizados (`test_fechamento_fiscal.js`):**
+     - Assertions no Teste 1 (confirmando 0 serviços no período de homologação 08/2026 da OACO).
+     - Teste 6 atualizado com verificação de persistência e recuperação de `totalServico`.
+     - Teste 8 atualizado validando os elementos do card e seletor no DOM.
+     - Novo **Teste 11** validando cenários determinísticos de classificação de notas de serviço (CFOP 5933, Espécie NFS, TES 594 e isolamento de remessa 5949 comum).
+     - 11 testes 100% aprovados com zero falhas.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

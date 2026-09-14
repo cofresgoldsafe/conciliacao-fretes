@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.194">
+  <link rel="stylesheet" href="style.css?v=8.195">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 12:15 (Fechamento Fiscal: Apuração de Devoluções com Formulário Próprio MATA103 e Ajuste de Clientes SA1)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 16:07 (Fechamento Fiscal: Card de Resumo de Faturamento de Notas de Serviço na Saída)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -5027,7 +5027,7 @@
       <!-- PAINEL DE RESULTADOS (EXIBIDO APÓS CONSULTA) -->
       <div id="fechamentoFiscalResultados" style="display: none;">
 
-        <!-- 8 CARDS DE KPIS NO TOPO (CONTAGEM E SOMA DOS VALORES) -->
+        <!-- 9 CARDS DE KPIS NO TOPO (CONTAGEM E SOMA DOS VALORES) -->
         <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem; margin-bottom: 1.25rem;">
           
           <!-- 1. Total NFs Saída -->
@@ -5069,7 +5069,20 @@
             <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Remessas, consertos, trocas s/ receita</span>
           </div>
 
-          <!-- 4. Total Tributado (Card em destaque) -->
+          <!-- 4. Total NFs Serviço -->
+          <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #0284c7;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🛠️ Total NFs Serviço</span>
+              <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(2, 132, 199, 0.15); color: #38bdf8; font-weight: 600;">Saídas</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+              <strong id="kpiTotalServicoQtd" style="font-size: 1.55rem; font-weight: 700; color: #38bdf8;">0</strong>
+              <span id="kpiTotalServicoValor" style="font-size: 1.05rem; font-weight: 700; color: #f8fafc; font-family: var(--font-mono, monospace);">R$ 0,00</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Faturamento de serviços prestados</span>
+          </div>
+
+          <!-- 5. Total Tributado (Card em destaque) -->
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.78rem; color: #10b981; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">⭐ Total Tributado</span>
@@ -5082,7 +5095,7 @@
             <span style="font-size: 0.72rem; color: #a7f3d0;">Vendas comerciais efetivas c/ duplicata</span>
           </div>
 
-          <!-- 5. Total NFs de Entrada -->
+          <!-- 6. Total NFs de Entrada -->
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #06b6d4;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">📥 Total NFs Entrada</span>
@@ -5095,7 +5108,7 @@
             <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Desconsidera Tipo Doc ROMA</span>
           </div>
 
-          <!-- 6. Total NFE -->
+          <!-- 7. Total NFE -->
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #6366f1;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🏷️ Total NFE</span>
@@ -5108,7 +5121,7 @@
             <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Notas mercantis de entrada</span>
           </div>
 
-          <!-- 7. Total CTRs -->
+          <!-- 8. Total CTRs -->
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #f97316;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🚚 Total CTRs</span>
@@ -5121,7 +5134,7 @@
             <span style="font-size: 0.72rem; color: var(--text-muted, #94a3b8);">Conhecimentos de transporte</span>
           </div>
 
-          <!-- 8. Total Impostos (IMP + DAS) -->
+          <!-- 9. Total Impostos (IMP + DAS) -->
           <div class="card" style="padding: 1rem; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid #ec4899;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">🏛️ Total Impostos</span>
@@ -5195,6 +5208,7 @@
                 <option value="SAIDA">Apenas Saídas</option>
                 <option value="ENTRA">Apenas Entradas</option>
                 <option value="DEVOLUCAO">Apenas Devoluções</option>
+                <option value="SERVICO">Apenas Serviços</option>
                 <option value="TRIBUTADO">Apenas Tributadas (Sim)</option>
                 <option value="NAO_TRIBUTADO">Apenas Não Tributadas (Não)</option>
               </select>
@@ -8038,20 +8052,20 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.194"></script>
-  <script src="js/bi_indices.js?v=8.194"></script>
-  <script src="js/bi_autorizacoes.js?v=8.194"></script>
-  <script src="js/gordura_frete.js?v=8.194"></script>
-  <script src="js/fechamento_vendedores.js?v=8.194"></script>
-  <script type="module" src="js/tarefas.js?v=8.194"></script>
-  <script src="js/holerites.js?v=8.194"></script>
-  <script src="js/funcionarios_dp.js?v=8.194"></script>
-  <script src="js/crm.js?v=8.194"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.194"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.194"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.194"></script>
-  <script src="js/nfse_pendentes.js?v=8.194"></script>
-  <script src="js/fechamento_fiscal.js?v=8.194"></script>
-  <script src="app.js?v=8.194"></script>
+  <script src="js/bi.js?v=8.195"></script>
+  <script src="js/bi_indices.js?v=8.195"></script>
+  <script src="js/bi_autorizacoes.js?v=8.195"></script>
+  <script src="js/gordura_frete.js?v=8.195"></script>
+  <script src="js/fechamento_vendedores.js?v=8.195"></script>
+  <script type="module" src="js/tarefas.js?v=8.195"></script>
+  <script src="js/holerites.js?v=8.195"></script>
+  <script src="js/funcionarios_dp.js?v=8.195"></script>
+  <script src="js/crm.js?v=8.195"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.195"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.195"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.195"></script>
+  <script src="js/nfse_pendentes.js?v=8.195"></script>
+  <script src="js/fechamento_fiscal.js?v=8.195"></script>
+  <script src="app.js?v=8.195"></script>
 </body>
 </html>

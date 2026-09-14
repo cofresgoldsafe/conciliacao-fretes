@@ -252,7 +252,9 @@
     setCard('kpiTotalDevolucaoQtd', 'kpiTotalDevolucaoValor', totais.totalDevolucao);
     // 3. Total Remessa
     setCard('kpiTotalRemessaQtd', 'kpiTotalRemessaValor', totais.totalRemessa);
-    // 4. Total Tributado
+    // 4. Total NFs Serviço
+    setCard('kpiTotalServicoQtd', 'kpiTotalServicoValor', totais.totalServico);
+    // 5. Total Tributado
     setCard('kpiTotalTributadoQtd', 'kpiTotalTributadoValor', totais.totalTributado);
 
     // 5. Total NFs Entrada
@@ -312,6 +314,7 @@
       if (filtroTipo === 'SAIDA' && item.entraSaida !== 'SAÍDA') return false;
       if (filtroTipo === 'ENTRA' && item.entraSaida !== 'ENTRA') return false;
       if (filtroTipo === 'DEVOLUCAO' && item.tipoOperacao !== 'DEVOLUCAO') return false;
+      if (filtroTipo === 'SERVICO' && item.tipoOperacao !== 'SERVICO') return false;
       if (filtroTipo === 'TRIBUTADO' && item.geraImposto !== 'Sim') return false;
       if (filtroTipo === 'NAO_TRIBUTADO' && item.geraImposto !== 'Não') return false;
 
@@ -322,7 +325,7 @@
         else if (filtroDoc !== 'CTR' && docUpper !== filtroDoc) return false;
       }
 
-      // 3. Busca por Termo (Num NF, Valor, CNPJ/CPF, Razão Social, Devolução ou NF Origem)
+      // 3. Busca por Termo (Num NF, Valor, CNPJ/CPF, Razão Social, Devolução, Serviço ou NF Origem)
       if (termo) {
         const numMatch = (item.numNf || '').toLowerCase().includes(termo);
         const cnpjMatch = (item.cnpjCpf || '').replace(/[^0-9]/g, '').includes(termo.replace(/[^0-9]/g, ''));
@@ -332,6 +335,7 @@
         const valorMatch = String(item.valor || '').includes(termo) || formatarMoeda(item.valor).toLowerCase().includes(termo);
         const tipoMatch = (item.tipoOperacao || '').toLowerCase().includes(termo) ||
           ((termo === 'devolucao' || termo === 'devolução') && item.tipoOperacao === 'DEVOLUCAO') ||
+          ((termo === 'servico' || termo === 'serviço') && item.tipoOperacao === 'SERVICO') ||
           ((termo === 'proprio' || termo === 'próprio') && item.formularioProprio);
         const nfOriMatch = (item.nfOrigem || '').toLowerCase().includes(termo);
 
@@ -380,6 +384,8 @@
           ? 'Devolução a Fornecedor'
           : (item.formularioProprio ? 'Devolução de Venda (Formulário Próprio MATA103)' : 'Devolução de Venda (Cliente)');
         badgeFluxo = `<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);" title="${devTitle}">${devLabel}</span>`;
+      } else if (item.tipoOperacao === 'SERVICO') {
+        badgeFluxo = '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(2, 132, 199, 0.15); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.3);" title="Nota Fiscal de Serviço (Saída)">SERVIÇO</span>';
       } else if (isSaida) {
         badgeFluxo = '<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">SAÍDA</span>';
       } else {
@@ -413,7 +419,7 @@
             ${nfOrigemTag}
           </td>
           <td style="padding: 7px 10px; text-align: center; color: #cbd5e1; white-space: nowrap;">${dataExibicao}</td>
-          <td style="padding: 7px 12px; text-align: right; font-family: var(--font-mono, monospace); font-weight: 700; color: ${isSaida ? '#60a5fa' : (isDevolucao ? '#c084fc' : '#38bdf8')};">
+          <td style="padding: 7px 12px; text-align: right; font-family: var(--font-mono, monospace); font-weight: 700; color: ${item.tipoOperacao === 'SERVICO' ? '#38bdf8' : (isSaida ? '#60a5fa' : (isDevolucao ? '#c084fc' : '#34d399'))};">
             ${formatarMoeda(item.valor)}
           </td>
           <td style="padding: 7px 10px; text-align: center; font-family: var(--font-mono, monospace); color: #e2e8f0;">${item.cfop || '-'}</td>
