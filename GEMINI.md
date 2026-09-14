@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.192 (Homologada em 12/09/2026 12:30)  
+> **Versão da Documentação:** v8.193 (Homologada em 14/09/2026 10:27)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Sub-aba Movimentações do Estoque no Módulo Compras: Consulta Multi-Empresa SD1/SD2/SF4, Entradas Manuais/Romaneios, Entradas NF, Saídas NF, Filtro por Código de Movimentação/TES, Período Dinâmico de 12 Meses, KPIs Reativos, Autocomplete e Exportação Excel com Proteção CSV Formula Injection)  
-> **Data da Última Auditoria:** 12/09/2026 12:30 (v8.192 - Sub-aba Movimentações do Estoque Compras)  
+> **Status:** Estável / Operacional em Produção (Sub-aba Movimentações do Estoque no Módulo Compras: Remoção de Colunas Série/Item, Truncamento de TES a 15 Caracteres, Consulta Multi-Empresa SD1/SD2/SF4, Entradas Manuais/Romaneios, Entradas NF, Saídas NF, Filtro por Código de Movimentação/TES, Período Dinâmico de 12 Meses, KPIs Reativos, Autocomplete e Exportação Excel com Proteção CSV Formula Injection)  
+> **Data da Última Auditoria:** 14/09/2026 10:27 (v8.193 - Sub-aba Movimentações do Estoque Compras: Ajuste de Grid e Truncamento TES)  
 
 ---
 
@@ -1294,9 +1294,12 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - A consulta mantém o catálogo completo de TES do produto e aplica filtragem e recálculo de KPIs instantâneo em memória no cliente, preservando as opções do dropdown mesmo em novas pesquisas.
     - **Período Padrão Dinâmico de 12 Meses Customizável:**
       - Seletores *Data Inicial* e *Data Final* inicializados automaticamente com a janela dos últimos 12 meses móveis (ex: de hoje - 1 ano até hoje), permitindo ajuste livre para qualquer intervalo desejado com validação defensiva contra data inicial maior que final.
-    - **Painel de 7 Cards de KPIs Dinâmicos & Tabela Paginada:**
+    - **Painel de 7 Cards de KPIs Dinâmicos & Tabela Paginada Enxuta (10 Colunas):**
       - Cards reativos no topo: *Entradas (Qtd)*, *Saídas (Qtd)*, *Saldo do Período (Qtd)*, *Total Entradas (R$)*, *Total Saídas (R$)*, *Qtd Movimentações* e *Entradas Manuais*.
-      - Tabela com 11 colunas detalhadas com ordenação interativa bidirecional e paginação (25 por página).
+      - Tabela com 10 colunas enxutas (*Data, Emp., Tipo, Doc / Romaneio, Qtd, Unitário, Total, TES / Movimentação, CFOP, Fornecedor / Cliente*) após remoção das colunas desnecessárias **Série** e **Item**.
+      - **Coluna TES / Movimentação:** Exibe o código da TES e a descrição da movimentação com truncamento em **no máximo 15 caracteres** (`slice(0, 15) + '...'`) para impedir que textos longos estufem a tabela, preservando a descrição integral no tooltip nativo `title`.
+      - **Coluna Fornecedor / Cliente:** Largura contida com `max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;` e tooltip `title` para exibição de nomes longos sem quebrar o alinhamento.
+      - Empty state da tabela ajustado para `colspan="10"`.
     - **Segurança Defensiva, Sanitização & Proteção CSV Formula Injection (CWE-1236):**
       - Proteção estrita via `requireAuth` com JWT Bearer no endpoint `GET /api/compras/movimentacoes-estoque`.
       - Sanitização contra SQL Injection via `sanitizeSqlParam()`.
@@ -1304,8 +1307,8 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Exportação para Excel (CSV com BOM UTF-8 `\uFEFF` e delimitador `;`) com função `escapeCsvCell()` que neutraliza fórmulas executáveis iniciadas por `=`, `+`, `-`, `@`, tab ou CR com prefixo de apóstrofo (`'`).
     - **Sincronização com Tema Claro/Escuro:**
       - Compatibilidade total via `.tab-theme-light`, tokens de alto contraste WCAG AA e responsividade mobile para telas menores que 768px.
-    - **Suíte de Testes Automatizados (12/12 Aprovados):**
-      - Script `test_compras_movimentacoes_estoque.js` homologado com 12 asserções cobrindo validações de código e data, consultas reais multi-empresa, identificação de entradas manuais, filtros por TES, compilação léxica `vm.Script`, resolução por descrição, mitigação CSV Formula Injection e integridade do DOM.
+    - **Suíte de Testes Automatizados (14/14 Aprovados):**
+      - Script `test_compras_movimentacoes_estoque.js` homologado com 14 asserções cobrindo validações de código e data, consultas reais multi-empresa, identificação de entradas manuais, filtros por TES, compilação léxica `vm.Script`, resolução por descrição, mitigação CSV Formula Injection, integridade do DOM, expurgo das colunas Série/Item e trava de 15 caracteres na descrição de TES.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

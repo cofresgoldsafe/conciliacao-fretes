@@ -201,6 +201,39 @@ async function runTests() {
     assert.ok(content.includes('^[=+\\-@\\t\\r]'), 'Deve verificar prefixos de fórmulas executáveis do Excel');
   });
 
+  // Teste 13: Remoção das colunas Série e Item na tabela de Movimentações do Estoque
+  await test('13. Tabela deve expurgar colunas Série e Item mantendo 10 colunas no grid', () => {
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const jsPath = path.join(__dirname, 'public', 'js', 'compras_movimentacoes_estoque.js');
+    const js = fs.readFileSync(jsPath, 'utf8');
+
+    // Valida que o thead da tabela não contém th de Série nem th de Item
+    const theadMatch = html.match(/<tbody id="movEstoqueTbody">/);
+    assert.ok(theadMatch, 'Deve conter tbody da tabela');
+    const theadSection = html.slice(html.indexOf('Histórico Cronológico de Entradas e Saídas'), theadMatch.index);
+    assert.ok(!theadSection.includes('>Série<'), 'Thead não deve conter coluna Série');
+    assert.ok(!theadSection.includes('>Item<'), 'Thead não deve conter coluna Item');
+
+    // Valida que o empty state usa colspan="10"
+    assert.ok(js.includes('colspan="10"'), 'Empty state deve usar colspan="10" após remoção das 2 colunas');
+    assert.ok(!js.includes('colspan="12"'), 'Empty state não deve manter colspan="12"');
+  });
+
+  // Teste 14: Trava de 15 caracteres na descrição da TES e ellipsis em Fornecedor/Cliente
+  await test('14. Coluna TES deve limitar descrição a 15 caracteres e Fornecedor/Cliente com text-overflow ellipsis', () => {
+    const jsPath = path.join(__dirname, 'public', 'js', 'compras_movimentacoes_estoque.js');
+    const js = fs.readFileSync(jsPath, 'utf8');
+
+    // Valida truncamento em 15 caracteres na TES
+    assert.ok(js.includes('.slice(0, 15)'), 'Deve limitar descrição da TES a 15 caracteres');
+    assert.ok(js.includes('descTesExibida.length > 15'), 'Deve verificar se descrição da TES ultrapassa 15 caracteres');
+
+    // Valida preservação de ellipsis e max-width na coluna Fornecedor / Cliente
+    assert.ok(js.includes('text-overflow: ellipsis;'), 'Coluna Fornecedor / Cliente deve conter text-overflow ellipsis');
+    assert.ok(js.includes('max-width: 220px;'), 'Coluna Fornecedor / Cliente deve conter max-width travada');
+  });
+
   console.log('\n================================================================');
   console.log(`📊 RESULTADO FINAL: ${passCount} APROVADOS | ${failCount} FALHAS`);
   console.log('================================================================');

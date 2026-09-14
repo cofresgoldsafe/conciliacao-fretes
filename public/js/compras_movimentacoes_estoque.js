@@ -469,7 +469,7 @@
       if (movimentacoesExibidas.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="12" style="text-align: center; padding: 2.5rem; color: var(--text-muted, #94a3b8);">
+            <td colspan="10" style="text-align: center; padding: 2.5rem; color: var(--text-muted, #94a3b8);">
               Nenhuma movimentação encontrada para os filtros selecionados no período.
             </td>
           </tr>
@@ -533,20 +533,25 @@
 
         const empBadge = `<span class="badge" style="${empBadgeStyle} font-weight: 700; padding: 2px 7px; border-radius: 5px; font-size: 0.75rem;">${escapeHtml(m.empresa)}</span>`;
 
+        // Truncamento da descrição da TES em no máximo 15 caracteres
+        const descTesCompleta = (m.tesDescricao || '').trim();
+        let descTesExibida = descTesCompleta;
+        if (descTesExibida.length > 15) {
+          descTesExibida = descTesExibida.slice(0, 15) + '...';
+        }
+
         html += `
           <tr style="border-bottom: 1px solid var(--panel-border, rgba(255,255,255,0.06)); transition: background 0.15s ease;">
             <td style="white-space: nowrap; font-size: 0.85rem; font-weight: 500;">${escapeHtml(m.emissaoFormatada)}</td>
             <td style="text-align: center;">${empBadge}</td>
             <td style="white-space: nowrap;">${badgeTipoHtml}</td>
             <td style="font-family: monospace; font-weight: 700; font-size: 0.88rem; color: var(--text-highlight, #38bdf8);">${escapeHtml(m.doc)}</td>
-            <td style="text-align: center; font-size: 0.82rem; color: var(--text-muted);">${escapeHtml(m.serie || '-')}</td>
-            <td style="text-align: center; font-size: 0.82rem; color: var(--text-muted);">${escapeHtml(m.item || '-')}</td>
             <td style="text-align: right; font-weight: 700; font-size: 0.92rem; color: ${qtdColor};">${qtdSinal}${formatNumber(m.quantidade)}</td>
             <td style="text-align: right; font-size: 0.85rem; color: var(--text-color);">${formatCurrency(m.valorUnitario)}</td>
             <td style="text-align: right; font-size: 0.85rem; font-weight: 600; color: var(--text-color);">${formatCurrency(m.valorTotal)}</td>
-            <td style="white-space: nowrap;">
+            <td style="white-space: nowrap;" title="${escapeHtml(descTesCompleta)}">
               <span style="font-family: monospace; font-weight: 700; color: #f59e0b; background: rgba(245, 158, 11, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; margin-right: 6px;">${escapeHtml(m.tes)}</span>
-              <span style="font-size: 0.82rem; color: var(--text-muted);">${escapeHtml(m.tesDescricao || '-')}</span>
+              <span style="font-size: 0.82rem; color: var(--text-muted);">${escapeHtml(descTesExibida || '-')}</span>
             </td>
             <td style="text-align: center; font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(m.cfop || '-')}</td>
             <td style="font-size: 0.82rem; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(m.participanteNome)}">
