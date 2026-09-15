@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.220 (Homologada em 15/09/2026 16:40)  
+> **Versão da Documentação:** v8.221 (Homologada em 15/09/2026 17:42)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 15/09/2026 16:40 (v8.220 - Arquitetura Documental Hub-and-Spoke: Divisão em Documento Pai enxuto, 35 telas especializadas em docs/telas/ e arquivamento de histórico)  
+> **Data da Última Auditoria:** 15/09/2026 17:42 (v8.221 - Segundo gráfico de Ativo Circulante Seco e detector de baixa acentuada no BI Executivo)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.221 (15/09/2026):** Segundo gráfico executivo: Monitor de Ativo Circulante Seco (Caixa + Receber) em layout empilhado com detector de baixa acentuada e recomendações comerciais.
 - **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.
 - **v8.219 (15/09/2026):** Auditoria Protheus x SEFAZ com distincao de CC-e (`tpEvento 110110`) vs Inutilizacao (`cStat 102`), badge visual e conciliacao de batimento.
 - **v8.218 (15/09/2026):** Renomeacao da aba BUSCA CODWEB/PED/NF, novas colunas temporais (Dt Ganho, Migracao, Emissao) e remocao de frete cobrado.

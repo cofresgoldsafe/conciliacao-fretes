@@ -11,6 +11,7 @@
   let isBiLoading = false;
   let currentEmbedUrl = null;
   let executiveChartInstance = null;
+  let secoChartInstance = null;
   let currentChartType = 'line';
   let currentHistoryData = [];
   let currentSelectedMetric = 'liquidez';
@@ -119,6 +120,7 @@
 
         if (currentHistoryData && currentHistoryData.length > 0) {
           renderExecutiveChart(currentHistoryData);
+          renderSecoChart(currentHistoryData);
         }
       });
 
@@ -135,8 +137,43 @@
 
         if (currentHistoryData && currentHistoryData.length > 0) {
           renderExecutiveChart(currentHistoryData);
+          renderSecoChart(currentHistoryData);
         }
       });
+    }
+
+    // 8.1 Botões de Ação do Monitor de Ativo Seco (Promoções e Estoque)
+    function navegarParaSaldosEstoque() {
+      const empSelect = document.getElementById('biEmpresaSelect');
+      const filial = empSelect ? empSelect.value : 'ALL';
+
+      const btnTabEstoque = document.getElementById('btnTabVendSaldosEstoque') || 
+                            document.getElementById('btnTabLogSaldosEstoque') || 
+                            document.querySelector('[data-tab="tab-vend-saldos-estoque"]');
+      if (btnTabEstoque) {
+        btnTabEstoque.click();
+      } else if (window.app && typeof window.app.switchTab === 'function') {
+        window.app.switchTab('tab-vend-saldos-estoque');
+      }
+
+      if (filial && filial !== 'ALL') {
+        setTimeout(() => {
+          const filterFilial = document.getElementById('vendEstoqueEmpresa') || document.getElementById('filtroEstoqueFilial');
+          if (filterFilial) {
+            filterFilial.value = filial;
+            filterFilial.dispatchEvent(new Event('change'));
+          }
+        }, 150);
+      }
+    }
+
+    const btnGoEstoque = document.getElementById('btnBiSecoGoEstoque');
+    if (btnGoEstoque) {
+      btnGoEstoque.addEventListener('click', navegarParaSaldosEstoque);
+    }
+    const btnAcaoPromo = document.getElementById('btnBiSecoAcaoPromo');
+    if (btnAcaoPromo) {
+      btnAcaoPromo.addEventListener('click', navegarParaSaldosEstoque);
     }
 
     // 9. Alteração de ID de Dashboard (Preservado para compatibilidade e testes)
@@ -268,6 +305,7 @@
 
       // Atualiza Cards de Resumo (KPIs) com o último fechamento cronológico
       atualizarCardsResumo(currentHistoryData);
+      atualizarCardsSeco(currentHistoryData);
 
       if (currentHistoryData.length === 0) {
         if (chartEmpty) chartEmpty.classList.remove('hidden');
@@ -276,10 +314,15 @@
           executiveChartInstance.destroy();
           executiveChartInstance = null;
         }
+        if (secoChartInstance) {
+          secoChartInstance.destroy();
+          secoChartInstance = null;
+        }
       } else {
         if (chartEmpty) chartEmpty.classList.add('hidden');
         if (chartWrapper) chartWrapper.classList.remove('hidden');
         renderExecutiveChart(currentHistoryData);
+        renderSecoChart(currentHistoryData);
       }
 
     } catch (err) {
@@ -587,6 +630,312 @@
                   return `R$ ${val}`;
                 }
                 return val;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Atualiza os cards de KPI de Ativo Circulante Seco e avalia tendência / baixa acentuada
+   * @param {Array} historyData Lista de snapshots históricos
+   */
+  function atualizarCardsSeco(historyData) {
+    const elCaixa = document.getElementById('biKpiSecoCaixa');
+    const elCaixaPct = document.getElementById('biKpiSecoCaixaPct');
+    const elReceber = document.getElementById('biKpiSecoReceber');
+    const elReceberPct = document.getElementById('biKpiSecoReceberPct');
+    const elTotal = document.getElementById('biKpiSecoTotal');
+    const elVariacao = document.getElementById('biKpiSecoVariacao');
+    const elMedia = document.getElementById('biKpiSecoMedia');
+    const badgeStatus = document.getElementById('biSecoStatusBadge');
+    const banner = document.getElementById('biSecoAlertBanner');
+    const alertTitle = document.getElementById('biSecoAlertTitle');
+    const alertDesc = document.getElementById('biSecoAlertDesc');
+
+    if (!historyData || historyData.length === 0) {
+      if (elCaixa) elCaixa.textContent = '---';
+      if (elCaixaPct) elCaixaPct.textContent = '--% do Ativo Seco';
+      if (elReceber) elReceber.textContent = '---';
+      if (elReceberPct) elReceberPct.textContent = '--% do Ativo Seco';
+      if (elTotal) elTotal.textContent = '---';
+      if (elVariacao) elVariacao.textContent = '---';
+      if (elMedia) elMedia.textContent = 'Média: R$ ---';
+      if (badgeStatus) {
+        badgeStatus.textContent = '⚪ Sem Dados';
+        badgeStatus.style.background = 'rgba(148, 163, 184, 0.2)';
+        badgeStatus.style.color = '#94a3b8';
+      }
+      if (banner) banner.classList.add('hidden');
+      return;
+    }
+
+    const sorted = [...historyData].sort((a, b) => new Date(a.data_registro) - new Date(b.data_registro));
+    const latest = sorted[sorted.length - 1];
+    const first = sorted[0];
+
+    const caixa = Number(latest.disponibilidades || 0);
+    const receber = Number(latest.receber_valido || 0);
+    const totalSeco = Number(latest.ativo_seco) || (caixa + receber);
+
+    const pctCaixa = totalSeco > 0 ? ((caixa / totalSeco) * 100).toFixed(1) : '0.0';
+    const pctReceber = totalSeco > 0 ? ((receber / totalSeco) * 100).toFixed(1) : '0.0';
+
+    // Média do período selecionado
+    const soma = sorted.reduce((acc, r) => {
+      const v = Number(r.ativo_seco) || (Number(r.disponibilidades || 0) + Number(r.receber_valido || 0));
+      return acc + v;
+    }, 0);
+    const media = soma / sorted.length;
+
+    // Variação percentual entre o início e o fim da série temporal
+    let varPct = 0;
+    if (sorted.length > 1) {
+      const firstSeco = Number(first.ativo_seco) || (Number(first.disponibilidades || 0) + Number(first.receber_valido || 0));
+      if (firstSeco > 0) {
+        varPct = ((totalSeco - firstSeco) / firstSeco) * 100;
+      }
+    }
+
+    if (elCaixa) elCaixa.textContent = formatarMoeda(caixa);
+    if (elCaixaPct) elCaixaPct.textContent = `${pctCaixa}% do Ativo Seco`;
+    if (elReceber) elReceber.textContent = formatarMoeda(receber);
+    if (elReceberPct) elReceberPct.textContent = `${pctReceber}% do Ativo Seco`;
+    if (elTotal) elTotal.textContent = formatarMoeda(totalSeco);
+    if (elMedia) elMedia.textContent = `Média: ${formatarMoeda(media)}`;
+
+    if (elVariacao) {
+      const sinal = varPct > 0 ? '+' : '';
+      elVariacao.textContent = `${sinal}${varPct.toFixed(1)}%`;
+      if (varPct <= -10) {
+        elVariacao.style.color = '#ef4444';
+      } else if (varPct <= -3) {
+        elVariacao.style.color = '#f59e0b';
+      } else {
+        elVariacao.style.color = '#10b981';
+      }
+    }
+
+    // Avaliação de Baixa Acentuada e Alerta de Ações Promocionais
+    if (varPct <= -10) {
+      if (badgeStatus) {
+        badgeStatus.textContent = '🚨 Baixa Acentuada';
+        badgeStatus.style.background = 'rgba(239, 68, 68, 0.2)';
+        badgeStatus.style.color = '#ef4444';
+      }
+      if (banner) {
+        banner.classList.remove('hidden');
+        banner.className = 'bi-seco-alert-danger';
+        if (alertTitle) {
+          alertTitle.textContent = `🚨 ALERTA: Baixa Acentuada de Liquidez Seca Detectada (${varPct.toFixed(1)}%)`;
+          alertTitle.style.color = '#ef4444';
+        }
+        if (alertDesc) {
+          const firstSeco = Number(first.ativo_seco) || (Number(first.disponibilidades || 0) + Number(first.receber_valido || 0));
+          alertDesc.textContent = `O Ativo Circulante Seco (Caixa + Receber) recuou de ${formatarMoeda(firstSeco)} em ${formatarDataBR(first.data_registro)} para ${formatarMoeda(totalSeco)} em ${formatarDataBR(latest.data_registro)} (${Math.abs(varPct).toFixed(1)}% de queda). A liquidez imediata exige ação comercial para evitar estrangulamento financeiro.`;
+        }
+      }
+    } else if (varPct <= -3) {
+      if (badgeStatus) {
+        badgeStatus.textContent = '🟡 Atenção';
+        badgeStatus.style.background = 'rgba(245, 158, 11, 0.2)';
+        badgeStatus.style.color = '#f59e0b';
+      }
+      if (banner) {
+        banner.classList.remove('hidden');
+        banner.className = 'bi-seco-alert-warning';
+        if (alertTitle) {
+          alertTitle.textContent = `🟡 ATENÇÃO: Recuo Moderado de Ativo Seco (${varPct.toFixed(1)}%)`;
+          alertTitle.style.color = '#f59e0b';
+        }
+        if (alertDesc) {
+          alertDesc.textContent = `O Ativo Seco registrou leve queda no período selecionado (${Math.abs(varPct).toFixed(1)}%). Recomenda-se acompanhar o fechamento de vendas e avaliar a antecipação de pedidos faturáveis.`;
+        }
+      }
+    } else {
+      if (badgeStatus) {
+        badgeStatus.textContent = varPct > 5 ? '🟢 Em Alta' : '🟢 Estável';
+        badgeStatus.style.background = 'rgba(16, 185, 129, 0.2)';
+        badgeStatus.style.color = '#10b981';
+      }
+      if (banner) {
+        banner.classList.add('hidden');
+      }
+    }
+  }
+
+  /**
+   * Renderiza o 2º gráfico Canvas nativo (Ativo Circulante Seco: Caixa vs Receber vs Total) via Chart.js
+   * @param {Array} historyData Lista de snapshots históricos
+   */
+  function renderSecoChart(historyData) {
+    if (typeof window.Chart === 'undefined') {
+      return;
+    }
+
+    const canvas = document.getElementById('biSecoChart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (secoChartInstance) {
+      secoChartInstance.destroy();
+      secoChartInstance = null;
+    }
+
+    if (!historyData || historyData.length === 0) return;
+
+    const isLight = document.body.classList.contains('light-theme') || 
+      document.documentElement.classList.contains('light-theme') ||
+      Boolean(document.getElementById('tab-bi-metabase')?.closest('.tab-theme-light')) ||
+      Boolean(document.getElementById('tab-bi-metabase')?.classList.contains('tab-theme-light'));
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)';
+    const textColor = isLight ? '#475569' : '#94a3b8';
+    const tooltipBg = isLight ? '#ffffff' : '#0f172a';
+    const tooltipText = isLight ? '#0f172a' : '#f8fafc';
+    const tooltipBorder = isLight ? '#cbd5e1' : '#334155';
+
+    const sorted = [...historyData].sort((a, b) => new Date(a.data_registro) - new Date(b.data_registro));
+    const labels = sorted.map(r => formatarDataBR(r.data_registro));
+
+    const soma = sorted.reduce((acc, r) => {
+      const v = Number(r.ativo_seco) || (Number(r.disponibilidades || 0) + Number(r.receber_valido || 0));
+      return acc + v;
+    }, 0);
+    const media = soma / sorted.length;
+
+    const isBar = currentChartType === 'bar';
+
+    const datasets = [
+      {
+        label: '🏦 Caixa & Bancos (SE8)',
+        data: sorted.map(r => Number(r.disponibilidades || 0)),
+        borderColor: '#06b6d4',
+        backgroundColor: isBar ? 'rgba(6, 182, 212, 0.75)' : 'rgba(6, 182, 212, 0.15)',
+        fill: !isBar,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: isBar ? 0 : 3.5,
+        pointHoverRadius: 6,
+        borderRadius: 4
+      },
+      {
+        label: '📑 A Receber Válido (SE1)',
+        data: sorted.map(r => Number(r.receber_valido || 0)),
+        borderColor: '#3b82f6',
+        backgroundColor: isBar ? 'rgba(59, 130, 246, 0.75)' : 'rgba(59, 130, 246, 0.15)',
+        fill: !isBar,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: isBar ? 0 : 3.5,
+        pointHoverRadius: 6,
+        borderRadius: 4
+      },
+      {
+        label: '💎 Total Ativo Seco (R$)',
+        data: sorted.map(r => Number(r.ativo_seco) || (Number(r.disponibilidades || 0) + Number(r.receber_valido || 0))),
+        borderColor: '#10b981',
+        backgroundColor: isBar ? 'rgba(16, 185, 129, 0.75)' : 'rgba(16, 185, 129, 0.20)',
+        fill: !isBar,
+        tension: 0.35,
+        borderWidth: 3.5,
+        pointRadius: isBar ? 0 : 5,
+        pointHoverRadius: 8,
+        borderRadius: 4
+      },
+      {
+        label: 'Média do Período',
+        data: Array(sorted.length).fill(Number(media.toFixed(2))),
+        borderColor: '#94a3b8',
+        borderDash: [6, 6],
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false
+      }
+    ];
+
+    secoChartInstance = new window.Chart(ctx, {
+      type: currentChartType,
+      data: {
+        labels: labels,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 650,
+          easing: 'easeOutQuart'
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: textColor,
+              font: {
+                size: 12,
+                weight: '600'
+              },
+              usePointStyle: true,
+              padding: 16
+            }
+          },
+          tooltip: {
+            backgroundColor: tooltipBg,
+            titleColor: tooltipText,
+            bodyColor: tooltipText,
+            borderColor: tooltipBorder,
+            borderWidth: 1,
+            padding: 10,
+            boxPadding: 4,
+            usePointStyle: true,
+            callbacks: {
+              label: function (context) {
+                const label = context.dataset.label || '';
+                const raw = context.raw || 0;
+                return `${label}: ${formatarMoeda(raw)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: gridColor,
+              drawBorder: false
+            },
+            ticks: {
+              color: textColor,
+              font: {
+                size: 11
+              },
+              maxRotation: 45,
+              minRotation: 0
+            }
+          },
+          y: {
+            grid: {
+              color: gridColor,
+              drawBorder: false
+            },
+            ticks: {
+              color: textColor,
+              font: {
+                size: 11
+              },
+              callback: function (val) {
+                if (val >= 1000000) {
+                  return 'R$ ' + (val / 1000000).toFixed(1) + 'M';
+                }
+                if (val >= 1000) {
+                  return 'R$ ' + (val / 1000).toFixed(0) + 'k';
+                }
+                return 'R$ ' + val;
               }
             }
           }
@@ -951,5 +1300,7 @@
   window.toggleBIFullscreen = toggleBIFullscreen;
   window.getActiveBIDashboardId = getActiveDashboardId;
   window.setActiveBIDashboardId = setActiveDashboardId;
+  window.renderSecoChart = renderSecoChart;
+  window.atualizarCardsSeco = atualizarCardsSeco;
 
 })();

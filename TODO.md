@@ -45,6 +45,7 @@
 - [x] [CRED-05] Auditoria Completa da Sub-aba Análise de Crédito: 12 suítes automatizadas, 78 testes 100% aprovados, resolução de reatribuição de const no histórico, contratos de API em `credito.js`, view BI SQL híbrida JSONB, mascaramento de token InfoSimples e robustez de decimais com ponto flutuante.
 - [x] [BI-01] Resolução de Lockout RLS no Metabase Analytics Supabase: Diagnóstico de 0 linhas, política unificada para `postgres, service_role`, script `sql/fix_supabase_metabase_permissions.sql`, botões de sincronização de Faturamento e Índices, link externo, telemetria de dados e cooldown SRE em `POST /api/bi/sync-faturamento` (22 testes aprovados em `test_bi_embed.js`).
 - [x] [BI-02] Homologação em Produção da Incorporação Estática Metabase, Publicação do Dashboard Executivo GSI, Seletor Dinâmico de Dashboard ID no Portal e 24 Testes Aprovados em `test_bi_embed.js`.
+- [x] [BI-03] Segundo Gráfico Executivo de Tendência (Ativo Circulante Seco: Caixa/Bancos + Contas a Receber): Implementação de 2º gráfico Chart.js nativo empilhado abaixo dos índices gerais na sub-aba 📈 Gráficos & Tendências (#tab-bi-metabase), com 3 séries decompostas (Caixa, Receber, Total Seco), linha de média histórica, cards de KPI com percentual relativo, detector automático de baixa acentuada (-10%), banner pulsante com recomendações comerciais e atalhos rápidos para análise de saldos de estoque.
 - [x] [DOC-01] Reestruturação Documental Hub-and-Spoke do Portal GSI: Redução de 91% no GEMINI.md pai (< 25 KB), criação de 35 documentações modulares por tela em docs/telas/, arquivamento íntegro dos 77 itens e 9 arquivos órfãos em docs/legado/GEMINI_HISTORICO.md, alinhamento da skill /fui para evitar inchaço documental e resolução de 100% dos links de navegação.
 - [ ] [INT-01] Ativação da gravação contábil direta no ERP Protheus via rotina AdvPL ExecAuto (`REST_AMARFRET.PRW` / `MATA116`) no AppServer TOTVS.
 
@@ -76,6 +77,7 @@
 - [x] [QA-22] Suíte de testes automatizados para Arquitetura de Permissões RBAC Dinâmicas (`test_rbac_dynamic_permissions.js` - 9 asserções 100% aprovadas).
 - [x] [QA-23] Suíte de testes automatizados para NFS-e Pendentes do Analista Financeiro (`test_nfse_pendentes.js` - 11 asserções 100% aprovadas).
 - [x] [QA-24] Suíte de testes automatizados para BUSCA CODWEB/PED/NF e Enriquecimento de Datas (`test_busca_codweb_ped_nf.js` - 13 asserções 100% aprovadas).
+- [x] [QA-25] Suíte de testes automatizados para o Segundo Gráfico Executivo e Detector de Baixa Acentuada (`test_bi_seco_chart.js` - 18 asserções 100% aprovadas).
 
 ## 💼 Central de Tarefas & Delegação
 - [x] [TASK-01] Central de Delegação e Checagem "Minhas Tarefas": Criação e delegação de demandas operacionais, listagem de colaboradores ativos via `GET /api/auth/users`, unificação de prioridades (`Normal` default, `Alta`, `Urgente`), governança de status, comentários atômicos em JSONB e painel de KPIs em linha única compacta.

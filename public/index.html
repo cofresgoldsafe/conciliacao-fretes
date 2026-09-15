@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.220">
+  <link rel="stylesheet" href="style.css?v=8.221">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 15/09/2026 16:40 (Reestruturação Documental Hub-and-Spoke e Telas do Portal GSI)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 15/09/2026 17:42 (Segundo grafico executivo: Ativo Circulante Seco (Caixa + Receber) com detector de baixa acentuada e recomendacoes comerciais)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -5905,6 +5905,87 @@
           </div>
         </div>
 
+        <!-- CONTAINER DO 2º GRÁFICO: MONITOR DE ATIVO CIRCULANTE SECO (CAIXA/BANCOS + A RECEBER) -->
+        <div id="biSecoCard" class="card" style="padding: 1.25rem; margin-top: 1.25rem; position: relative; min-height: 480px;">
+          <!-- Header do 2º Gráfico -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--panel-border, #334155); padding-bottom: 0.75rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-color, #f8fafc); display: flex; align-items: center; gap: 6px;">
+                  <span>💎</span> Monitor de Ativo Circulante Seco &amp; Liquidez Rápida
+                </h3>
+                <span id="biSecoStatusBadge" class="badge" style="font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #10b981;">
+                  🟢 Estável
+                </span>
+              </div>
+              <p class="desc" style="margin: 3px 0 0 0; font-size: 0.8rem; color: var(--text-muted, #94a3b8);">
+                Evolução temporal de Disponibilidades (Caixa/Bancos) + Contas a Receber Válido (sem estoques) com radar de baixa acentuada
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <button type="button" id="btnBiSecoGoEstoque" class="btn btn-outline btn-sm" title="Ir para Saldos em Estoque para planejar campanhas e promoções">
+                📦 Analisar Estoque p/ Promoções
+              </button>
+            </div>
+          </div>
+
+          <!-- Banner Inteligente de Alerta de Baixa Acentuada -->
+          <div id="biSecoAlertBanner" class="hidden" style="margin-bottom: 1rem; padding: 0.85rem 1.15rem; border-radius: 8px; font-size: 0.85rem; border-left: 5px solid #ef4444; background: rgba(239, 68, 68, 0.12); color: var(--text-color, #f8fafc);">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 260px;">
+                <div style="font-weight: 700; display: flex; align-items: center; gap: 6px; font-size: 0.95rem; color: #ef4444;" id="biSecoAlertTitle">
+                  🚨 ALERTA: Baixa Acentuada de Liquidez Seca Detectada (-15.2%)
+                </div>
+                <div style="margin-top: 4px; line-height: 1.4;" id="biSecoAlertDesc">
+                  O valor em caixa/bancos somado às contas a receber sofreu uma retração expressiva no período recente. A liquidez imediata exige atenção para honrar compromissos sem estrangulamento.
+                </div>
+                <div style="margin-top: 8px; font-size: 0.82rem; background: rgba(15, 23, 42, 0.4); padding: 6px 10px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.3);">
+                  <strong>💡 Recomendações Táticas de Alavancagem:</strong>
+                  <ul style="margin: 4px 0 0 16px; padding: 0;">
+                    <li>Disparar campanhas comerciais com desconto progressivo para pagamentos à vista/Pix.</li>
+                    <li>Promover queima de estoque de itens acabados com alta disponibilidade física.</li>
+                    <li>Priorizar cobrança de títulos vencidos e antecipação de carteira de pedidos faturáveis.</li>
+                  </ul>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <button type="button" id="btnBiSecoAcaoPromo" class="btn btn-sm" style="background: #ef4444; color: #ffffff; font-weight: 600; white-space: nowrap;">
+                  🎯 Disparar Ações Comerciais
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cards Resumo de Ativo Seco -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+            <div class="card" style="padding: 0.85rem; border-left: 4px solid #06b6d4; background: var(--card-bg, #1e293b);">
+              <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">🏦 Caixa &amp; Bancos (SE8)</div>
+              <div id="biKpiSecoCaixa" style="font-size: 1.25rem; font-weight: 700; color: #06b6d4; font-family: var(--font-mono); margin-top: 2px;">---</div>
+              <div id="biKpiSecoCaixaPct" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">--% do Ativo Seco</div>
+            </div>
+            <div class="card" style="padding: 0.85rem; border-left: 4px solid #3b82f6; background: var(--card-bg, #1e293b);">
+              <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">📑 A Receber Válido (SE1)</div>
+              <div id="biKpiSecoReceber" style="font-size: 1.25rem; font-weight: 700; color: #3b82f6; font-family: var(--font-mono); margin-top: 2px;">---</div>
+              <div id="biKpiSecoReceberPct" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">--% do Ativo Seco</div>
+            </div>
+            <div class="card" style="padding: 0.85rem; border-left: 4px solid #10b981; background: var(--card-bg, #1e293b);">
+              <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">💎 Total Ativo Seco (R$)</div>
+              <div id="biKpiSecoTotal" style="font-size: 1.25rem; font-weight: 700; color: #10b981; font-family: var(--font-mono); margin-top: 2px;">---</div>
+              <div id="biKpiSecoTotalSub" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Disponibilidades + Recebíveis</div>
+            </div>
+            <div class="card" style="padding: 0.85rem; border-left: 4px solid #8b5cf6; background: var(--card-bg, #1e293b);">
+              <div style="font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">📊 Variação no Período</div>
+              <div id="biKpiSecoVariacao" style="font-size: 1.25rem; font-weight: 700; color: var(--text-color, #f8fafc); font-family: var(--font-mono); margin-top: 2px;">---</div>
+              <div id="biKpiSecoMedia" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Média: R$ ---</div>
+            </div>
+          </div>
+
+          <!-- Canvas do 2º Gráfico -->
+          <div id="biSecoChartWrapper" style="position: relative; height: 350px; width: 100%;">
+            <canvas id="biSecoChart"></canvas>
+          </div>
+        </div>
+
         <!-- Preservação de Containers para Compatibilidade de Testes e Fallbacks -->
         <div id="biStatusContainer" class="hidden"></div>
         <div id="biLoadingSpinner" class="loading-state hidden"></div>
@@ -8401,22 +8482,22 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.220"></script>
-  <script src="js/bi.js?v=8.220"></script>
-  <script src="js/bi_indices.js?v=8.220"></script>
-  <script src="js/bi_autorizacoes.js?v=8.220"></script>
-  <script src="js/gordura_frete.js?v=8.220"></script>
-  <script src="js/fechamento_vendedores.js?v=8.220"></script>
-  <script type="module" src="js/tarefas.js?v=8.220"></script>
-  <script src="js/holerites.js?v=8.220"></script>
-  <script src="js/funcionarios_dp.js?v=8.220"></script>
-  <script src="js/crm.js?v=8.220"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.220"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.220"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.220"></script>
-  <script src="js/nfse_pendentes.js?v=8.220"></script>
-  <script src="js/fechamento_fiscal.js?v=8.220"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.220"></script>
-  <script src="app.js?v=8.220"></script>
+  <script src="js/chart.umd.min.js?v=8.221"></script>
+  <script src="js/bi.js?v=8.221"></script>
+  <script src="js/bi_indices.js?v=8.221"></script>
+  <script src="js/bi_autorizacoes.js?v=8.221"></script>
+  <script src="js/gordura_frete.js?v=8.221"></script>
+  <script src="js/fechamento_vendedores.js?v=8.221"></script>
+  <script type="module" src="js/tarefas.js?v=8.221"></script>
+  <script src="js/holerites.js?v=8.221"></script>
+  <script src="js/funcionarios_dp.js?v=8.221"></script>
+  <script src="js/crm.js?v=8.221"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.221"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.221"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.221"></script>
+  <script src="js/nfse_pendentes.js?v=8.221"></script>
+  <script src="js/fechamento_fiscal.js?v=8.221"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.221"></script>
+  <script src="app.js?v=8.221"></script>
 </body>
 </html>
