@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.213 (Homologada em 14/09/2026 23:35)  
+> **Versão da Documentação:** v8.214 (Homologada em 14/09/2026 23:38)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Resolução Rejeição 588 Envelope Compacto e Conciliação Ativa)  
-> **Data da Última Auditoria:** 14/09/2026 23:35 (v8.213 - Eliminação de Rejeição 588 por Formatação de XML, Compactação SOAP 1.2 e Conciliação Ativa)  
+> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Opção Default Neutra no Seletor de Empresas)  
+> **Data da Última Auditoria:** 14/09/2026 23:38 (v8.214 - Ajuste de UX: Opção Default Neutra '-- Selecione a Empresa --' no Seletor)  
 
 ---
 

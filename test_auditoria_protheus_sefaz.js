@@ -275,6 +275,7 @@ async function runTests() {
 
     // Formulário de filtros
     assert.ok(html.includes('id="selAuditoriaEmpresa"'), 'Deve conter seletor de empresa #selAuditoriaEmpresa');
+    assert.ok(html.includes('<option value="" selected>-- Selecione a Empresa --</option>'), 'Opção default deve ser -- Selecione a Empresa --');
     assert.ok(html.includes('id="inputAuditoriaSerie"'), 'Deve conter input de série fixa #inputAuditoriaSerie');
     assert.ok(html.includes('id="inputAuditoriaDataDe"'), 'Deve conter input de data inicial #inputAuditoriaDataDe');
     assert.ok(html.includes('id="inputAuditoriaDataAte"'), 'Deve conter input de data final #inputAuditoriaDataAte');
