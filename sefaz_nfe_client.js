@@ -152,6 +152,69 @@ function montarEnvelopeSoap12(chaveNfe) {
 }
 
 /**
+ * Processa e analisa a resposta XML retornada pela SEFAZ (NFeConsultaProtocolo4)
+ * Extrai cStat, xMotivo, protocolo, data/hora e eventos vinculados (Cancelamento 110111/110112, CC-e 110110)
+ */
+function processarRespostaXmlSefaz(data, chaveLimpa = '') {
+  // Garante decodificação completa se houver XML encapsulado como texto
+  const xmlCompleto = (data && data.includes('&lt;')) ? decodificarXml(data) : (data || '');
+
+  let cStat = extrairTag(xmlCompleto, 'cStat') || extrairTag(data, 'cStat') || '';
+  let xMotivo = extrairTag(xmlCompleto, 'xMotivo') || extrairTag(data, 'xMotivo') || '';
+  let nProt = extrairTag(xmlCompleto, 'nProt') || extrairTag(data, 'nProt') || '';
+  let dhRecbto = extrairTag(xmlCompleto, 'dhRecbto') || extrairTag(data, 'dhRecbto') || '';
+
+  // Detecta Cancelamento vinculado (tpEvento 110111 ou 110112)
+  const temCancelamento = xmlCompleto.includes('<tpEvento>110111</tpEvento>') || 
+                          xmlCompleto.includes('&lt;tpEvento&gt;110111&lt;/tpEvento&gt;') ||
+                          xmlCompleto.includes('<tpEvento>110112</tpEvento>') ||
+                          xmlCompleto.includes('&lt;tpEvento&gt;110112&lt;/tpEvento&gt;') ||
+                          /Cancelamento de NF-e homologado/i.test(xmlCompleto);
+
+  // Detecta Carta de Correção vinculada (tpEvento 110110) - ATENÇÃO: NÃO MUDA O STATUS PARA INUTILIZADA!
+  const temCce = xmlCompleto.includes('<tpEvento>110110</tpEvento>') || 
+                 xmlCompleto.includes('&lt;tpEvento&gt;110110&lt;/tpEvento&gt;') ||
+                 /Carta de Correcao/i.test(xmlCompleto);
+
+  if (temCancelamento) {
+    cStat = '101';
+    if (!xMotivo || xMotivo.includes('Autorizado')) {
+      xMotivo = 'Cancelamento de NF-e homologado';
+    }
+  } else if (/Inutilizacao de numero homologad[ao]/i.test(xmlCompleto)) {
+    cStat = '102';
+    if (!xMotivo) xMotivo = 'Inutilização de número homologada';
+  } else if (/nao consta na base de dados/i.test(xmlCompleto)) {
+    cStat = '217';
+    if (!xMotivo) xMotivo = 'NF-e não consta na base de dados da SEFAZ';
+  }
+
+  if (!cStat) {
+    cStat = 'DESCONHECIDO';
+  }
+
+  const mapeado = CSTAT_MAP[cStat] || {
+    status: cStat && cStat !== 'DESCONHECIDO' ? `CSTAT_${cStat}` : 'OUTRO',
+    rotulo: cStat && cStat !== 'DESCONHECIDO' ? `cStat ${cStat}` : 'Outro Status',
+    desc: xMotivo || 'Resposta recebida da SEFAZ',
+    badgeClass: 'badge-secondary'
+  };
+
+  return {
+    sucesso: true,
+    cStat,
+    status: mapeado.status,
+    rotulo: (temCce && mapeado.status === 'AUTORIZADA') ? 'Autorizada (CC-e)' : mapeado.rotulo,
+    temCce: !!temCce,
+    xMotivo: (temCce && mapeado.status === 'AUTORIZADA') ? `${xMotivo} (com Carta de Correção)` : xMotivo,
+    protocolo: nProt,
+    dataHora: dhRecbto,
+    chave: chaveLimpa,
+    rawXmlSnippet: data ? data.slice(0, 300) : ''
+  };
+}
+
+/**
  * Consulta a situação de uma única chave de acesso junto à SEFAZ
  */
 async function consultarSituacaoNfeSefaz(chaveNfe, empresaCod = '14') {
@@ -249,53 +312,8 @@ async function consultarSituacaoNfeSefaz(chaveNfe, empresaCod = '14') {
               return;
             }
 
-            // Garante decodificação completa se houver XML encapsulado como texto
-            const xmlCompleto = (data && data.includes('&lt;')) ? decodificarXml(data) : (data || '');
-
-            let cStat = extrairTag(xmlCompleto, 'cStat') || extrairTag(data, 'cStat') || '';
-            let xMotivo = extrairTag(xmlCompleto, 'xMotivo') || extrairTag(data, 'xMotivo') || '';
-            let nProt = extrairTag(xmlCompleto, 'nProt') || extrairTag(data, 'nProt') || '';
-            let dhRecbto = extrairTag(xmlCompleto, 'dhRecbto') || extrairTag(data, 'dhRecbto') || '';
-
-            // Inteligência Adicional para Eventos Vinculados (ex: Cancelamento 110111)
-            if (xmlCompleto.includes('<tpEvento>110111</tpEvento>') || 
-                xmlCompleto.includes('&lt;tpEvento&gt;110111&lt;/tpEvento&gt;') ||
-                /Cancelamento de NF-e homologado/i.test(xmlCompleto)) {
-              cStat = '101';
-              if (!xMotivo || xMotivo.includes('Autorizado')) {
-                xMotivo = 'Cancelamento de NF-e homologado';
-              }
-            } else if (xmlCompleto.includes('<tpEvento>110110</tpEvento>') ||
-                       /Inutilizacao de numero homologada/i.test(xmlCompleto)) {
-              cStat = '102';
-              if (!xMotivo) xMotivo = 'Inutilização de número homologada';
-            } else if (/nao consta na base de dados/i.test(xmlCompleto)) {
-              cStat = '217';
-              if (!xMotivo) xMotivo = 'NF-e não consta na base de dados da SEFAZ';
-            }
-
-            if (!cStat) {
-              cStat = 'DESCONHECIDO';
-            }
-
-            const mapeado = CSTAT_MAP[cStat] || {
-              status: cStat && cStat !== 'DESCONHECIDO' ? `CSTAT_${cStat}` : 'OUTRO',
-              rotulo: cStat && cStat !== 'DESCONHECIDO' ? `cStat ${cStat}` : 'Outro Status',
-              desc: xMotivo || 'Resposta recebida da SEFAZ',
-              badgeClass: 'badge-secondary'
-            };
-
-            resolve({
-              sucesso: true,
-              cStat,
-              status: mapeado.status,
-              rotulo: mapeado.rotulo,
-              xMotivo,
-              protocolo: nProt,
-              dataHora: dhRecbto,
-              chave: chaveLimpa,
-              rawXmlSnippet: data.slice(0, 300)
-            });
+            const parsed = processarRespostaXmlSefaz(data, chaveLimpa);
+            resolve(parsed);
           } catch (parseErr) {
             resolve({
               sucesso: false,
@@ -623,6 +641,7 @@ module.exports = {
   extrairTag,
   montarEnvelopeSoap12,
   obterCertificadoA1,
+  processarRespostaXmlSefaz,
   consultarSituacaoNfeSefaz,
   classificarDivergencia,
   consultarLoteSefaz

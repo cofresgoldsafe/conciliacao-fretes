@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.218 (Homologada em 15/09/2026 00:58)  
+> **Versão da Documentação:** v8.219 (Homologada em 15/09/2026 12:20)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (BUSCA CODWEB/PED/NF: Novas Colunas Dt Ganho/Migração/Emissão)  
-> **Data da Última Auditoria:** 15/09/2026 00:58 (v8.218 - 2ª Aba Principal: Renomeação para BUSCA CODWEB/PED/NF, Otimização da Coluna Empresa, Inclusão de Dt Ganho, Dt Migração e Dt Emissão e Remoção de Frete Cobrado)  
+> **Status:** Estável / Operacional em Produção (AUDITORIA SEFAZ: Correção CC-e vs Inutilizada)  
+> **Data da Última Auditoria:** 15/09/2026 12:20 (v8.219 - Auditoria Protheus x SEFAZ: Distinção Estrita de Carta de Correção tpEvento 110110 vs Inutilização cStat 102, Badge CC-e e Batimento Conciliado)  
 
 ---
 
@@ -1473,6 +1473,23 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - A pesquisa por `pedVenda` agora consulta a tabela `SC5` com `LEFT JOIN SD2` e `LEFT JOIN SF2`, garantindo que pedidos criados que ainda não foram faturados sejam localizados normalmente com suas respectivas datas.
     - **Suíte de Testes Automatizados (13/13 Aprovados):**
       - Script `test_busca_codweb_ped_nf.js` integrado ao `npm test` validando estrutura HTML, ordem estrita das 9 colunas do cabeçalho, compilação `vm.Script` de `public/app.js`, sanitização de prefixos, consultas reais no banco de dados Protheus e enriquecimento assíncrono Pipedrive (100% aprovados).
+
+77. [x] **Auditoria Protheus x SEFAZ: Correção de Parsing XML, Distinção Estrita de Carta de Correção (`tpEvento 110110`) vs Inutilização (`cStat 102`) e Badge Visual `📝 CC-e` (`sefaz_nfe_client.js`, `public/js/auditoria_protheus_sefaz.js`, `test_auditoria_protheus_sefaz.js`):**
+    - **Causa Raiz Investigada & Diagnóstico Técnico:**
+      - Na empresa **16 (OACO)**, a NF `000652` aparecia incorretamente como `⚪ INUTILIZADA (102)` na coluna Status SEFAZ, apesar de estar regularmente emitida, ativa e autorizada no Protheus (`SF2160`/`SF3160`, protocolo `135263282224493`) e na SEFAZ.
+      - O mesmo sintoma afetava diversas outras notas na **OACO 16** e **Metal Pleno 14**.
+      - Identificou-se que a NF `000652` possuía Carta de Correção Eletrônica (`F2_IDCCE = 'ID1101103526086123779000011855001000000652160899524901'`).
+      - No parser `sefaz_nfe_client.js`, a regra anterior confundia o código `tpEvento 110110` (que é estritamente Carta de Correção no manual da SEFAZ) com Inutilização, sobrescrevendo `cStat = '100'` (*Autorizada*) para `cStat = '102'` (*Inutilizada*).
+    - **Resolução Arquitetural & Refatoração Limpa:**
+      - Remoção imediata da cláusula `<tpEvento>110110</tpEvento>` da checagem de inutilização. Inutilização homologada passa a exigir código `cStat = 102` ou texto explícito de homologação de inutilização.
+      - Extração da função modular desacoplada `processarRespostaXmlSefaz(data, chaveLimpa)` no backend, permitindo validação e testes unitários 100% isolados de rede.
+      - Detecção explícita e elegante de Carta de Correção: quando a NF possui `tpEvento 110110`, a flag `temCce = true` é atribuída, o status fiscal permanece intacto em `AUTORIZADA` (`cStat 100`) e o rótulo é enriquecido para `Autorizada (CC-e)`.
+      - Apoio a cancelamentos por substituição (`tpEvento 110112`) ao lado do cancelamento tradicional (`110111`).
+    - **Interface do Usuário & Batimento Conciliado:**
+      - Na tabela de auditoria, notas autorizadas com CC-e exibem agora `🟢 AUTORIZADA (100)` acompanhado de um badge dedicado em azul suave: `📝 CC-e` com tooltip explicativo (*"Possui Carta de Correção Eletrônica (CC-e) vinculada na SEFAZ"*).
+      - O algoritmo de diagnóstico `classificarDivergencia('ATIVA', 'AUTORIZADA')` categoriza a nota perfeitamente como `✅ CONCILIADO`, eliminando falsos alertas de divergência.
+    - **Cobertura de Testes Automatizados (8/8 Aprovados):**
+      - Expansão do Teste 4 em `test_auditoria_protheus_sefaz.js` com asserções simulando XMLs da SEFAZ com CC-e (garantindo `cStat 100` e `temCce = true`), Cancelamento (`101`) e Inutilização (`102`), além de validação léxica em `test_frontend_modules.js`.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

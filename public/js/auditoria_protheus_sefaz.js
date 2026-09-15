@@ -289,6 +289,7 @@
         sefazDesc: it.isGap ? 'NF-e não consta na base da SEFAZ' : 'Aguardando verificação SEFAZ',
         sefazProt: '',
         sefazData: '',
+        temCce: false,
         diagnostico: it.isGap ? {
           divergencia: true,
           gravidade: 'ALERTA',
@@ -447,6 +448,7 @@
           it.sefazDesc = ret.sefaz.xMotivo;
           it.sefazProt = ret.sefaz.protocolo;
           it.sefazData = ret.sefaz.dataHora;
+          it.temCce = ret.sefaz.temCce || false;
           it.diagnostico = ret.diagnostico;
 
           if (ret.diagnostico && ret.diagnostico.divergencia) {
@@ -666,7 +668,7 @@
       // 7. Status na SEFAZ
       const tdStatusSefaz = document.createElement('td');
       tdStatusSefaz.style.textAlign = 'center';
-      tdStatusSefaz.innerHTML = renderizarBadgeSefaz(it.statusSefaz, it.sefazProt, it.sefazDesc);
+      tdStatusSefaz.innerHTML = renderizarBadgeSefaz(it.statusSefaz, it.sefazProt, it.sefazDesc, it.temCce);
 
       // 8. Diagnóstico / Batimento
       const tdDiag = document.createElement('td');
@@ -723,10 +725,11 @@
     return `<span class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">${status || '-'}</span>`;
   }
 
-  function renderizarBadgeSefaz(status, prot, desc) {
+  function renderizarBadgeSefaz(status, prot, desc, temCce) {
     const info = prot ? ` title="Protocolo SEFAZ: ${prot}"` : (desc ? ` title="${desc}"` : '');
+    const badgeCce = temCce ? ' <span class="badge" title="Possui Carta de Correção Eletrônica (CC-e) vinculada na SEFAZ" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); font-size: 0.68rem; margin-left: 4px;">📝 CC-e</span>' : '';
     if (status === 'AUTORIZADA') {
-      return `<span class="badge"${info} style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 AUTORIZADA (100)</span>`;
+      return `<span class="badge"${info} style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 AUTORIZADA (100)</span>${badgeCce}`;
     } else if (status === 'CANCELADA') {
       return `<span class="badge"${info} style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3);">🔴 CANCELADA (101)</span>`;
     } else if (status === 'INUTILIZADA') {

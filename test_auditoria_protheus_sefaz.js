@@ -22,6 +22,7 @@ const {
   CSTAT_MAP,
   extrairTag,
   montarEnvelopeSoap12,
+  processarRespostaXmlSefaz,
   classificarDivergencia,
   consultarSituacaoNfeSefaz
 } = require('./sefaz_nfe_client');
@@ -242,6 +243,81 @@ async function runTests() {
     assert.strictEqual(extrairTag(xmlRetornoEscapado, 'cStat'), '100', 'Deve extrair cStat = 100 de XML escapado');
     assert.strictEqual(extrairTag(xmlRetornoEscapado, 'xMotivo'), 'Autorizado o uso da NF-e', 'Deve extrair xMotivo de XML escapado');
     assert.strictEqual(extrairTag(xmlRetornoEscapado, 'nProt'), '135260000999888', 'Deve extrair nProt de XML escapado');
+
+    // 4.1 Teste de NF-e AUTORIZADA com CARTA DE CORREÇÃO (CC-e - tpEvento 110110)
+    // GARANTIA: NÃO deve ser confundida com INUTILIZADA (102)!
+    const xmlComCce = `
+      <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+        <soap:Body>
+          <nfeResultMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4">
+            <retConsSitNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+              <tpAmb>1</tpAmb>
+              <cStat>100</cStat>
+              <xMotivo>Autorizado o uso da NF-e</xMotivo>
+              <dhRecbto>2026-08-12T09:05:00-03:00</dhRecbto>
+              <chNFe>35260861237790000118550010000006521608995249</chNFe>
+              <protNFe versao="4.00">
+                <infProt>
+                  <nProt>135263282224493</nProt>
+                  <cStat>100</cStat>
+                  <xMotivo>Autorizado o uso da NF-e</xMotivo>
+                </infProt>
+              </protNFe>
+              <procEventoNFe versao="1.00">
+                <evento versao="1.00">
+                  <infEvento>
+                    <tpEvento>110110</tpEvento>
+                    <descEvento>Carta de Correcao</descEvento>
+                  </infEvento>
+                </evento>
+              </procEventoNFe>
+            </retConsSitNFe>
+          </nfeResultMsg>
+        </soap:Body>
+      </soap:Envelope>
+    `;
+
+    const resultadoCce = processarRespostaXmlSefaz(xmlComCce, '35260861237790000118550010000006521608995249');
+    assert.strictEqual(resultadoCce.cStat, '100', 'cStat deve permanecer 100 mesmo com CC-e');
+    assert.strictEqual(resultadoCce.status, 'AUTORIZADA', 'Status deve ser AUTORIZADA e jamais INUTILIZADA');
+    assert.strictEqual(resultadoCce.temCce, true, 'Deve identificar presença de Carta de Correção (temCce = true)');
+    assert.strictEqual(resultadoCce.rotulo, 'Autorizada (CC-e)', 'Rótulo deve destacar Autorizada (CC-e)');
+    assert.strictEqual(resultadoCce.protocolo, '135263282224493', 'Deve extrair número de protocolo da NF');
+
+    // Valida que o batimento fiscal com NF ativa no Protheus gera CONCILIADO
+    const diagCce = classificarDivergencia('ATIVA', resultadoCce.status);
+    assert.strictEqual(diagCce.divergencia, false, 'NF ativa no Protheus e Autorizada com CC-e não é divergência');
+    assert.strictEqual(diagCce.tipo, 'CONCILIADO', 'Tipo de classificação deve ser CONCILIADO');
+
+    // 4.2 Teste de NF-e com CANCELAMENTO vinculado (tpEvento 110111)
+    const xmlComCancelamento = `
+      <retConsSitNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+        <cStat>100</cStat>
+        <xMotivo>Autorizado o uso da NF-e</xMotivo>
+        <procEventoNFe versao="1.00">
+          <evento versao="1.00">
+            <infEvento>
+              <tpEvento>110111</tpEvento>
+              <descEvento>Cancelamento</descEvento>
+            </infEvento>
+          </evento>
+        </procEventoNFe>
+      </retConsSitNFe>
+    `;
+    const resultadoCanc = processarRespostaXmlSefaz(xmlComCancelamento, chaveValida);
+    assert.strictEqual(resultadoCanc.cStat, '101', 'Cancelamento homologado deve ajustar cStat para 101');
+    assert.strictEqual(resultadoCanc.status, 'CANCELADA', 'Status deve ser CANCELADA');
+
+    // 4.3 Teste de retorno de INUTILIZAÇÃO legítima (cStat 102)
+    const xmlInutilizada = `
+      <retConsSitNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+        <cStat>102</cStat>
+        <xMotivo>Inutilização de número homologada</xMotivo>
+      </retConsSitNFe>
+    `;
+    const resultadoInut = processarRespostaXmlSefaz(xmlInutilizada, chaveValida);
+    assert.strictEqual(resultadoInut.cStat, '102', 'cStat deve ser 102 para inutilização homologada');
+    assert.strictEqual(resultadoInut.status, 'INUTILIZADA', 'Status deve ser INUTILIZADA');
   });
 
   // 5. Integração com Backend Protheus (consultarAuditoriaNfeProtheus)
