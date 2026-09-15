@@ -208,10 +208,51 @@ function roundVal(val) {
   return Math.round((val + Number.EPSILON) * 100) / 100;
 }
 
+const PIPEDRIVE_API_TOKEN_PROTHEUS = process.env.PIPEDRIVE_API_TOKEN || '27c8e6f7f9bccd60101889f25369f6075e30f615';
+const PIPEDRIVE_BASE_URL_PROTHEUS = 'https://api.pipedrive.com/v1';
+const pipedriveWonCache = new Map();
+
+/**
+ * Consulta resiliente do won_time de um Deal no Pipedrive com cache em memória e timeout curto
+ */
+function fetchPipedriveWonTime(dealId) {
+  const cleanId = String(dealId || '').replace(/\D/g, '');
+  if (!cleanId) return Promise.resolve(null);
+  if (pipedriveWonCache.has(cleanId)) return Promise.resolve(pipedriveWonCache.get(cleanId));
+
+  return new Promise((resolve) => {
+    const url = `${PIPEDRIVE_BASE_URL_PROTHEUS}/deals/${cleanId}?api_token=${PIPEDRIVE_API_TOKEN_PROTHEUS}`;
+    const req = https.get(url, { timeout: 3000 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const wonTime = (json.data && json.data.won_time) ? json.data.won_time : null;
+          pipedriveWonCache.set(cleanId, wonTime);
+          resolve(wonTime);
+        } catch (_) {
+          pipedriveWonCache.set(cleanId, null);
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => {
+      pipedriveWonCache.set(cleanId, null);
+      resolve(null);
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      pipedriveWonCache.set(cleanId, null);
+      resolve(null);
+    });
+  });
+}
+
 /**
  * Consulta de Vendas / NFe em Multi-Empresas no Protheus
  * Retorna registros das empresas OACO (16), GSI (15) e Metal Pleno (14)
- * com as colunas: Empresa | CodWeb | Ped Venda | NF | Vlr NF | Vlr Frete Cob. | Nome Cli
+ * com as colunas: Empresa | CodWeb | Dt Ganho | Ped Venda | Dt Migração | NF | Dt Emissão | Vlr NF | Nome Cli
  */
 async function buscarProtheusMultiEmpresa(tipo, termo) {
   const variants = getDocVariants(termo);
@@ -223,9 +264,9 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
   const numOnly = variants.numOnly;
 
   const empresasInfo = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sd2: "SD2160", sc5: "SC5160", sf2: "SF2160", defaultClient: "CLIENTE NÃO INFORMADO" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sd2: "SD2150", sc5: "SC5150", sf2: "SF2150", defaultClient: "CLIENTE NÃO INFORMADO" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sd2: "SD2140", sc5: "SC5140", sf2: "SF2140", defaultClient: "CLIENTE NÃO INFORMADO" }
+    { key: "OACO", codigo: "16", nome: "16 (OACO)", sd2: "SD2160", sc5: "SC5160", sf2: "SF2160", defaultClient: "CLIENTE NÃO INFORMADO" },
+    { key: "GSI", codigo: "15", nome: "15 (GSI)", sd2: "SD2150", sc5: "SC5150", sf2: "SF2150", defaultClient: "CLIENTE NÃO INFORMADO" },
+    { key: "METAL_PLENO", codigo: "14", nome: "14 (METAL PLENO)", sd2: "SD2140", sc5: "SC5140", sf2: "SF2140", defaultClient: "CLIENTE NÃO INFORMADO" }
   ];
 
   const results = [];
@@ -240,6 +281,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
               RTRIM(ISNULL(D2.D2_DOC, '')) AS NF,
               RTRIM(C5.C5_NUM) AS PED_VENDA,
               RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+              RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS DT_MIGRACAO,
+              RTRIM(ISNULL(F2.F2_EMISSAO, ISNULL(D2.D2_EMISSAO, ''))) AS DT_EMISSAO,
               ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
               ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
               ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
@@ -257,16 +300,39 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
             AND C5.D_E_L_E_T_ = ' '
           ORDER BY C5.C5_EMISSAO DESC
         `;
+      } else if (tipo === 'pedVenda') {
+        sql = `
+          SELECT TOP 10
+              RTRIM(ISNULL(D2.D2_DOC, '')) AS NF,
+              RTRIM(C5.C5_NUM) AS PED_VENDA,
+              RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+              RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS DT_MIGRACAO,
+              RTRIM(ISNULL(F2.F2_EMISSAO, ISNULL(D2.D2_EMISSAO, ''))) AS DT_EMISSAO,
+              ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
+              ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
+              ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
+              RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI
+          FROM ${emp.sc5} C5
+          LEFT JOIN ${emp.sd2} D2 
+            ON D2.D2_FILIAL = C5.C5_FILIAL 
+           AND D2.D2_PEDIDO = C5.C5_NUM 
+           AND D2.D_E_L_E_T_ = ' '
+          LEFT JOIN ${emp.sf2} F2 
+            ON F2.F2_FILIAL = D2.D2_FILIAL 
+           AND F2.F2_DOC = D2.D2_DOC 
+           AND F2.D_E_L_E_T_ = ' '
+          WHERE (C5.C5_NUM = '${padded6}' OR C5.C5_NUM = '${cleanTerm}' OR C5.C5_NUM = '${padded9}' OR C5.C5_NUM = '${numOnly}')
+            AND C5.D_E_L_E_T_ = ' '
+          ORDER BY C5.C5_EMISSAO DESC
+        `;
       } else {
-        const whereClause = (tipo === 'pedVenda')
-          ? `(D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanTerm}' OR D2.D2_PEDIDO = '${padded9}' OR D2.D2_PEDIDO = '${numOnly}' OR D2.D2_PEDIDO LIKE '%${numOnly}%')`
-          : `(D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanTerm}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}%')`;
-
         sql = `
           SELECT TOP 10
               RTRIM(D2.D2_DOC) AS NF,
               RTRIM(D2.D2_PEDIDO) AS PED_VENDA,
               RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
+              RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS DT_MIGRACAO,
+              RTRIM(ISNULL(F2.F2_EMISSAO, ISNULL(D2.D2_EMISSAO, ''))) AS DT_EMISSAO,
               ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
               ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
               ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
@@ -280,7 +346,7 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
             ON F2.F2_FILIAL = D2.D2_FILIAL 
            AND F2.F2_DOC = D2.D2_DOC 
            AND F2.D_E_L_E_T_ = ' '
-          WHERE ${whereClause}
+          WHERE (D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanTerm}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}%')
             AND D2.D_E_L_E_T_ = ' '
           ORDER BY D2.D2_EMISSAO DESC
         `;
@@ -301,11 +367,16 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
           const clientName = (row.C5_NOMECLI && String(row.C5_NOMECLI).trim()) 
             ? String(row.C5_NOMECLI).trim() 
             : emp.defaultClient;
+          const temNf = nf && nf !== '-' && String(nf).trim() !== '';
+
           results.push({
             empresa: emp.nome,
             codWeb: row.C5_CODWEB || '-',
+            dtGanho: '', // Enriquecido em paralelo via Pipedrive
             pedVenda: pedVenda,
+            dtMigracao: row.DT_MIGRACAO || '',
             nf: nf,
+            dtEmissao: temNf ? (row.DT_EMISSAO || '') : '',
             valorNf: roundVal(valorNf),
             valorCobrado: roundVal(freteCobrado + freteEmbutido),
             nomeCli: clientName
@@ -314,6 +385,21 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
       }
     } catch (err) {
       // Ignora e tenta a próxima empresa
+    }
+  }
+
+  // Enriquecimento assíncrono paralelo com Dt Ganho (won_time do Pipedrive)
+  const uniqueCodWebs = [...new Set(results.map(r => r.codWeb).filter(w => w && w !== '-' && /^\d+$/.test(w)))];
+  if (uniqueCodWebs.length > 0) {
+    try {
+      const wonTimes = await Promise.all(uniqueCodWebs.map(id => fetchPipedriveWonTime(id)));
+      const wonMap = new Map();
+      uniqueCodWebs.forEach((id, idx) => wonMap.set(id, wonTimes[idx]));
+      results.forEach(r => {
+        r.dtGanho = wonMap.get(r.codWeb) || '';
+      });
+    } catch (_) {
+      // Degradação graciosa
     }
   }
 

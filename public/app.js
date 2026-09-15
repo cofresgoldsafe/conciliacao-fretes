@@ -1756,23 +1756,57 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'Número da NFe';
   }
 
+  function formatDataBR(val) {
+    if (!val) return '-';
+    const s = String(val).trim();
+    if (!s || s === '-') return '-';
+    if (/^\d{8}$/.test(s)) {
+      return `${s.slice(6, 8)}/${s.slice(4, 6)}/${s.slice(0, 4)}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      const p = s.slice(0, 10).split('-');
+      return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+    return s;
+  }
+
   function renderConsultaResults(rows, tipo, termo) {
     consultaTableBody.innerHTML = '';
     
     rows.forEach(row => {
       const tr = document.createElement('tr');
+      const empresaDisplay = (row.empresa || '').replace(/^Empresa\s+/i, '').trim();
+
       const codWebText = row.codWeb && row.codWeb !== '-' ? row.codWeb : '-';
       const codWebHtml = codWebText !== '-'
-        ? `<span class="badge-tag" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight: 600; padding: 2px 8px; border-radius: 4px;">${escapeHtml(codWebText)}</span>`
+        ? `<a href="https://benetroncomercial.pipedrive.com/deal/${encodeURIComponent(codWebText)}" target="_blank" rel="noopener noreferrer" class="badge-tag" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight: 600; padding: 2px 8px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Abrir Deal ${escapeHtml(codWebText)} no Pipedrive">${escapeHtml(codWebText)} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
+      const dtGanhoFormatada = formatDataBR(row.dtGanho);
+      const dtGanhoHtml = dtGanhoFormatada !== '-'
+        ? `<span class="mono-text" style="color: #10b981; font-weight: 600;" title="${escapeHtml(row.dtGanho)}">${escapeHtml(dtGanhoFormatada)}</span>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
+      const dtMigracaoFormatada = formatDataBR(row.dtMigracao);
+      const dtMigracaoHtml = dtMigracaoFormatada !== '-'
+        ? `<span class="mono-text" style="color: #38bdf8; font-weight: 600;">${escapeHtml(dtMigracaoFormatada)}</span>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
+      const temNf = row.nf && row.nf !== '-' && String(row.nf).trim() !== '';
+      const dtEmissaoFormatada = temNf ? formatDataBR(row.dtEmissao) : '-';
+      const dtEmissaoHtml = dtEmissaoFormatada !== '-'
+        ? `<span class="mono-text" style="color: #a855f7; font-weight: 600;">${escapeHtml(dtEmissaoFormatada)}</span>`
         : `<span style="color: var(--text-muted);">-</span>`;
 
       tr.innerHTML = `
-        <td><span class="badge-doc">${escapeHtml(row.empresa)}</span></td>
+        <td><span class="badge-doc">${escapeHtml(empresaDisplay || '-')}</span></td>
         <td class="mono-text">${codWebHtml}</td>
+        <td>${dtGanhoHtml}</td>
         <td><span class="ped-venda-badge">${escapeHtml(row.pedVenda || '-')}</span></td>
+        <td>${dtMigracaoHtml}</td>
         <td class="mono-text"><strong>${escapeHtml(row.nf || '-')}</strong></td>
+        <td>${dtEmissaoHtml}</td>
         <td class="mono-text"><strong>${formatCurrency(row.valorNf || 0)}</strong></td>
-        <td class="mono-text"><strong>${formatCurrency(row.valorCobrado || 0)}</strong></td>
         <td><strong>${escapeHtml(row.nomeCli || '-')}</strong></td>
       `;
       consultaTableBody.appendChild(tr);

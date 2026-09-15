@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.217 (Homologada em 15/09/2026 00:40)  
+> **Versão da Documentação:** v8.218 (Homologada em 15/09/2026 00:58)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (BI Executivo: Autorizações de Desconto com Ágio e Abatimento de Frete Embutido)  
-> **Data da Última Auditoria:** 15/09/2026 00:40 (v8.217 - Sub-aba BI Executivo: Homologação de Desconto Líquido com Frete Embutido e Ágio no Deal 26569)  
+> **Status:** Estável / Operacional em Produção (BUSCA CODWEB/PED/NF: Novas Colunas Dt Ganho/Migração/Emissão)  
+> **Data da Última Auditoria:** 15/09/2026 00:58 (v8.218 - 2ª Aba Principal: Renomeação para BUSCA CODWEB/PED/NF, Otimização da Coluna Empresa, Inclusão de Dt Ganho, Dt Migração e Dt Emissão e Remoção de Frete Cobrado)  
 
 ---
 
@@ -1457,7 +1457,22 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Expansão do Backend (`bi_indices_engine.js` & `server.js`):**
       - Endpoint `/api/bi/indices/historico` agora suporta `empresa=COMPARATIVO` ou `empresa=MULTI` (trazendo as filiais 14, 15 e 16 juntas) e `dias=0` para extração do histórico completo.
     - **Esteira de Testes Automatizados (27/27 Aprovados):**
-      - Suíte `test_bi_embed.js` expandida de 24 para 27 asserções cobrindo integridade do arquivo vendor Chart.js, estrutura do DOM, métodos no `bi.js` e controles reativos.
+76. [x] **Renomeação da Aba para BUSCA CODWEB/PED/NF, Otimização da Coluna Empresa e Inclusão de Dt Ganho, Dt Migração e Dt Emissão (`protheus_db.js`, `public/index.html`, `public/app.js`, `package.json`, `test_busca_codweb_ped_nf.js`):**
+    - **Demanda Operacional & Ajuste de Nomenclatura:**
+      - Alteração do rótulo da 2ª aba de navegação principal de `CONSULTA PED/NF` para `BUSCA CODWEB/PED/NF` (`#mainTabConsulta`), alinhando o título à tríade de critérios de busca utilizados pelos operadores (Código Web do Pipedrive, Pedido de Venda e Nota Fiscal).
+      - Atualização correspondente no seletor de permissões de operadores no modal de configurações de usuários.
+    - **Otimização da Coluna Empresa (Eliminação de Redundância):**
+      - Remoção do prefixo redundante `"Empresa "` nos resultados da busca tanto no backend (`protheus_db.js` `empresasInfo`) quanto na camada reativa de renderização (`app.js`).
+      - Exibição limpa das filiais: `16 (OACO)`, `15 (GSI)` e `14 (METAL PLENO)`.
+    - **Inserção Estruturada das Novas Colunas de Datas e Remoção de Frete Cobrado:**
+      - **`Dt Ganho` (Data de Ganho do Negócio):** Posicionada imediatamente após a coluna `CodWeb`. Obtida de forma resiliente e paralela diretamente do Pipedrive CRM (`won_time`), com cache em memória efêmero e conversão para o formato brasileiro `DD/MM/YYYY`.
+      - **`Dt Migração` (Data de Entrada no Protheus):** Posicionada imediatamente após a coluna `Ped Venda`. Extraída do campo nativo do ERP `C5_EMISSAO` no formato `DD/MM/YYYY`.
+      - **`Dt Emissão` (Data de Emissão da NF):** Posicionada imediatamente após a coluna `NF`. Extraída dos campos `F2_EMISSAO` / `D2_EMISSAO`, exibida apenas quando a nota foi emitida e exibindo `-` quando pendente de faturamento.
+      - **Remoção de `Vlr Frete Cob.`:** Excluída tanto do cabeçalho `<thead>` quanto do corpo `<tbody>` da tabela para despoluir a visualização operacional.
+    - **Ajuste na Query de Pedido de Venda (`protheus_db.js`):**
+      - A pesquisa por `pedVenda` agora consulta a tabela `SC5` com `LEFT JOIN SD2` e `LEFT JOIN SF2`, garantindo que pedidos criados que ainda não foram faturados sejam localizados normalmente com suas respectivas datas.
+    - **Suíte de Testes Automatizados (13/13 Aprovados):**
+      - Script `test_busca_codweb_ped_nf.js` integrado ao `npm test` validando estrutura HTML, ordem estrita das 9 colunas do cabeçalho, compilação `vm.Script` de `public/app.js`, sanitização de prefixos, consultas reais no banco de dados Protheus e enriquecimento assíncrono Pipedrive (100% aprovados).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
