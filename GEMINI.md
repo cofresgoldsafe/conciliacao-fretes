@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.214 (Homologada em 14/09/2026 23:38)  
+> **Versão da Documentação:** v8.215 (Homologada em 14/09/2026 23:48)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Opção Default Neutra no Seletor de Empresas)  
-> **Data da Última Auditoria:** 14/09/2026 23:38 (v8.214 - Ajuste de UX: Opção Default Neutra '-- Selecione a Empresa --' no Seletor)  
+> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Barra de Progresso Animada com Shimmer, Cronômetro e Auto-Hide)  
+> **Data da Última Auditoria:** 14/09/2026 23:48 (v8.215 - UX Aprimorada: Loader Dinâmico com Gradiente Fluido, Spinner Ativo e Auto-Hide)  
 
 ---
 
@@ -1433,7 +1433,10 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
         - `INUTILIZADA` (ERP) + `INUTILIZADA`/`NAO_CONSTA` (SEFAZ) ➔ `✅ INUTILIZAÇÃO CONFIRMADA` (OK).
     - **Eliminação da Rejeição 588 da SEFAZ & Envelope SOAP 1.2 Compacto v8.213 (`sefaz_nfe_client.js`):**
       - Diagnóstico e resolução da **Rejeição 588** (*"Não é permitida a presença de caracteres de edição no início/fim da mensagem ou entre as tags da mensagem"*), provocada por quebras de linha (`\n`) e espaços de indentação no envelope XML.
-      - Implementação de montagem compacta em linha única estrita sem espaços entre tags (`><`), com `<soap12:Header/>` e cabeçalho `SOAPAction` oficial, restaurando o retorno legítimo de `cStat 100` (Autorizada) e `✅ CONCILIADO` para as notas ativas.
+    - **Barra de Progresso Dinâmica & Feedback em Tempo Real v8.215 (`public/js/auditoria_protheus_sefaz.js`, `public/style.css`, `public/index.html`):**
+      - Substituição da barra estática por animação contínua de shimmer gradiente (`@keyframes sefazShimmer` e `@keyframes sefazGlowPulse`).
+      - Inclusão de spinner ativo (`.sefaz-spinner`), cronômetro de tempo decorrido em segundos (`0s`, `1s`, `2s`...) e percentual com progressão orgânica até o retorno do lote da Fazenda.
+      - Transição de encerramento elegante: ao concluir a consulta com sucesso, fixa a barra em 100% verde com ícone `✅`, exibe o resumo e executa fade out suave (`opacity: 0`, `translateY(-6px)`) após 2.2 segundos para focar a atenção do operador na tabela e KPIs.
     - **Suíte de Testes Automatizados (8/8 Aprovados):**
       - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências (incluindo 217 sem risco e garantias anti-`/ OUTRO`), SOAP 1.2 / XML parser (puro e escapado), consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
 

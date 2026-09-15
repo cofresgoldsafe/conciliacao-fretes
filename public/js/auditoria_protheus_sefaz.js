@@ -36,6 +36,10 @@
   let boxProgressoSefaz = null;
   let barraProgressoSefaz = null;
   let lblProgressoSefaz = null;
+  let sefazLoadingIcon = null;
+  let lblTempoSefaz = null;
+  let lblPercentualSefaz = null;
+  let lblSubTextoSefaz = null;
 
   let kpiTotalFaixa = null;
   let kpiAtivas = null;
@@ -181,6 +185,10 @@
     boxProgressoSefaz = document.getElementById('boxProgressoSefaz');
     barraProgressoSefaz = document.getElementById('barraProgressoSefaz');
     lblProgressoSefaz = document.getElementById('lblProgressoSefaz');
+    sefazLoadingIcon = document.getElementById('sefazLoadingIcon');
+    lblTempoSefaz = document.getElementById('lblTempoSefaz');
+    lblPercentualSefaz = document.getElementById('lblPercentualSefaz');
+    lblSubTextoSefaz = document.getElementById('lblSubTextoSefaz');
 
     kpiTotalFaixa = document.getElementById('kpiAuditoriaTotalFaixa');
     kpiAtivas = document.getElementById('kpiAuditoriaAtivas');
@@ -329,6 +337,11 @@
    * Consulta a SEFAZ em lote para as NFs carregadas
    */
   async function consultarSefazEmLote() {
+    if (!estado.dadosAtuais || !estado.dadosAtuais.itens) {
+      exibirToast('Carregue os dados do Protheus antes de consultar a SEFAZ.', 'alerta');
+      return;
+    }
+
     if (!estado.itensComSefaz || estado.itensComSefaz.length === 0) {
       exibirToast('Nenhum registro carregado para consulta SEFAZ.', 'alerta');
       return;
@@ -336,28 +349,68 @@
 
     if (estado.consultandoSefaz) return;
 
-    const empresa = selEmpresa ? selEmpresa.value : '14';
+    const empresa = selEmpresa ? selEmpresa.value : '';
+    if (!empresa) {
+      exibirToast('Selecione uma empresa antes de consultar a SEFAZ.', 'alerta');
+      if (selEmpresa) selEmpresa.focus();
+      return;
+    }
+
     estado.consultandoSefaz = true;
 
     if (btnConsultarSefaz) btnConsultarSefaz.disabled = true;
     if (btnCarregar) btnCarregar.disabled = true;
 
-    if (boxProgressoSefaz) boxProgressoSefaz.style.display = 'block';
-    if (barraProgressoSefaz) barraProgressoSefaz.style.width = '10%';
-    if (lblProgressoSefaz) lblProgressoSefaz.textContent = 'Iniciando consulta ao WebService da SEFAZ-SP via mTLS...';
+    // Monta o lote apenas com chaves de 44 dígitos ou NFs válidas
+    const itensParaConsultar = estado.itensComSefaz.map(it => ({
+      doc: it.doc,
+      chaveNfe: it.chaveNfe || '',
+      statusProtheus: it.statusProtheus
+    }));
+
+    // Ativa e exibe a barra de progresso animada
+    if (boxProgressoSefaz) {
+      boxProgressoSefaz.style.display = 'block';
+      boxProgressoSefaz.style.opacity = '1';
+      boxProgressoSefaz.style.transform = '';
+      boxProgressoSefaz.className = 'card box-progresso-sefaz-loading';
+    }
+    if (barraProgressoSefaz) {
+      barraProgressoSefaz.className = 'barra-progresso-sefaz-animated';
+      barraProgressoSefaz.style.width = '15%';
+      barraProgressoSefaz.style.background = '';
+    }
+    if (sefazLoadingIcon) {
+      sefazLoadingIcon.className = 'sefaz-spinner';
+      sefazLoadingIcon.textContent = '';
+    }
+    if (lblProgressoSefaz) {
+      lblProgressoSefaz.textContent = `Consultando ${itensParaConsultar.length} notas junto à SEFAZ-SP...`;
+      lblProgressoSefaz.style.color = '#f8fafc';
+    }
+    if (lblSubTextoSefaz) {
+      lblSubTextoSefaz.textContent = 'Aguarde a transmissão do lote criptografado com a Fazenda Estadual...';
+    }
+    if (lblTempoSefaz) lblTempoSefaz.textContent = '0s';
+    if (lblPercentualSefaz) lblPercentualSefaz.textContent = '15%';
+
+    // Animação de contador de tempo e avanço progressivo orgânico enquanto aguarda a SEFAZ
+    let segundosDecorridos = 0;
+    let progressoSimulado = 15;
+    const timerSefaz = setInterval(() => {
+      segundosDecorridos++;
+      if (lblTempoSefaz) lblTempoSefaz.textContent = `${segundosDecorridos}s`;
+
+      if (progressoSimulado < 88) {
+        progressoSimulado += Math.floor(Math.random() * 8) + 6;
+        if (progressoSimulado > 90) progressoSimulado = 90;
+        if (barraProgressoSefaz) barraProgressoSefaz.style.width = `${progressoSimulado}%`;
+        if (lblPercentualSefaz) lblPercentualSefaz.textContent = `${progressoSimulado}%`;
+      }
+    }, 850);
 
     try {
       const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
-
-      // Monta o lote apenas com chaves de 44 dígitos ou NFs válidas
-      const itensParaConsultar = estado.itensComSefaz.map(it => ({
-        doc: it.doc,
-        chaveNfe: it.chaveNfe || '',
-        statusProtheus: it.statusProtheus
-      }));
-
-      if (barraProgressoSefaz) barraProgressoSefaz.style.width = '40%';
-      if (lblProgressoSefaz) lblProgressoSefaz.textContent = `Consultando ${itensParaConsultar.length} notas junto à SEFAZ-SP...`;
 
       const res = await fetch('/api/analista-fin/auditoria-protheus-sefaz/consultar-sefaz', {
         method: 'POST',
@@ -370,8 +423,6 @@
           itens: itensParaConsultar
         })
       });
-
-      if (barraProgressoSefaz) barraProgressoSefaz.style.width = '85%';
 
       if (!res.ok) {
         const erroJson = await res.json().catch(() => ({}));
@@ -404,8 +455,25 @@
         }
       }
 
-      if (barraProgressoSefaz) barraProgressoSefaz.style.width = '100%';
-      if (lblProgressoSefaz) lblProgressoSefaz.textContent = `Concluído! ${resposta.totalConsultadas} NFs verificadas. ${countDivergencias} divergências encontradas.`;
+      // Conclusão bem-sucedida: trava a barra em 100% verde e exibe confirmação clara
+      clearInterval(timerSefaz);
+      if (barraProgressoSefaz) {
+        barraProgressoSefaz.className = '';
+        barraProgressoSefaz.style.width = '100%';
+        barraProgressoSefaz.style.background = '#10b981';
+      }
+      if (lblPercentualSefaz) lblPercentualSefaz.textContent = '100%';
+      if (sefazLoadingIcon) {
+        sefazLoadingIcon.className = '';
+        sefazLoadingIcon.textContent = '✅';
+      }
+      if (lblProgressoSefaz) {
+        lblProgressoSefaz.textContent = `Concluído! ${resposta.totalConsultadas} NFs verificadas. ${countDivergencias} divergências encontradas.`;
+        lblProgressoSefaz.style.color = '#10b981';
+      }
+      if (lblSubTextoSefaz) {
+        lblSubTextoSefaz.textContent = 'Batimento fiscal finalizado com sucesso com a SEFAZ.';
+      }
 
       // Atualiza KPI de Divergências
       if (kpiDivergencias) kpiDivergencias.textContent = formatarInt(countDivergencias);
@@ -427,13 +495,37 @@
         exibirToast('Parabéns: Nenhuma divergência encontrada junto à SEFAZ!', 'sucesso');
       }
 
+      // Confirmação visível por 2.2s e depois fade out suave
       setTimeout(() => {
-        if (boxProgressoSefaz) boxProgressoSefaz.style.display = 'none';
-      }, 3500);
+        if (boxProgressoSefaz) {
+          boxProgressoSefaz.style.opacity = '0';
+          boxProgressoSefaz.style.transform = 'translateY(-6px)';
+          setTimeout(() => {
+            boxProgressoSefaz.style.display = 'none';
+            boxProgressoSefaz.style.opacity = '1';
+            boxProgressoSefaz.style.transform = '';
+          }, 400);
+        }
+      }, 2200);
     } catch (err) {
+      clearInterval(timerSefaz);
       console.error('Erro na consulta em lote SEFAZ:', err);
-      if (lblProgressoSefaz) lblProgressoSefaz.textContent = `Erro: ${err.message}`;
-      if (barraProgressoSefaz) barraProgressoSefaz.style.backgroundColor = '#f43f5e';
+      if (lblProgressoSefaz) {
+        lblProgressoSefaz.textContent = `Falha na consulta SEFAZ`;
+        lblProgressoSefaz.style.color = '#f43f5e';
+      }
+      if (lblSubTextoSefaz) {
+        lblSubTextoSefaz.textContent = `Erro: ${err.message}`;
+      }
+      if (sefazLoadingIcon) {
+        sefazLoadingIcon.className = '';
+        sefazLoadingIcon.textContent = '❌';
+      }
+      if (barraProgressoSefaz) {
+        barraProgressoSefaz.className = '';
+        barraProgressoSefaz.style.width = '100%';
+        barraProgressoSefaz.style.background = '#f43f5e';
+      }
       exibirToast(`Falha na consulta SEFAZ: ${err.message}`, 'erro');
     } finally {
       estado.consultandoSefaz = false;

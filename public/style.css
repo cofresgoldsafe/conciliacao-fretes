@@ -5071,15 +5071,52 @@ body.theme-light .crm-bloco-titulo-cinza {
   }
 }
 
+/* Animações e Estilos da Barra de Progresso SEFAZ (Auditoria Fiscal) */
+@keyframes sefazShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
 
+@keyframes sefazGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+    border-color: #38bdf8;
+  }
+}
 
+.box-progresso-sefaz-loading {
+  animation: sefazGlowPulse 2.5s ease-in-out infinite;
+}
 
+.barra-progresso-sefaz-animated {
+  background: linear-gradient(
+    90deg,
+    #0284c7 0%,
+    #38bdf8 30%,
+    #10b981 50%,
+    #38bdf8 70%,
+    #0284c7 100%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: sefazShimmer 1.8s linear infinite !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
 
-
-
-
-
-
-
-
-
+.sefaz-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(56, 189, 248, 0.25);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  vertical-align: middle;
+}
