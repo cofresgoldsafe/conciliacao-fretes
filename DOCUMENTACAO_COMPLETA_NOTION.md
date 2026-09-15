@@ -193,9 +193,11 @@ O ecossistema da **Plataforma de Apoio GSI Multi-Empresas** é composto por serv
   * Cálculo em tempo real dos índices matemáticos de liquidez: **Liquidez Corrente ($LC$)**, **Liquidez Seca ($LS$)** e **Liquidez Imediata ($LI$)** consolidados e multi-empresa (Metal Pleno 14, GSI 15, OACO 16).
   * Confronto direto de Ativo Circulante (Estoque PA pelo custo unitário `SB1`/`SB2`, Disponibilidades Bancárias `SE8` e Contas a Receber `SE1` $\le$ 5 dias) contra Passivo Circulante (Contas a Pagar `SE2` incluindo provisórios `PR` e excluindo adiantamentos `PA`).
   * Modal rico de Drilldown com 5 guias analíticas e busca instantânea.
-* **Sub-aba `[ Metabase Analytics ]`:**
-  * Incorporação segura (*Signed Embed*) de dashboards executivos do Metabase hospedado no Render (`bi-gsi.onrender.com`), autenticado via token JWT assinado criptograficamente com `METABASE_SECRET_KEY` (HMAC-SHA256) e TTL efêmero.
-  * Seletor dinâmico de Dashboard ID (`#btnBiChangeDashboardId`) e botões de sincronização manual de Faturamento e Índices.
+* **Sub-aba `[ Gráficos & Tendências ]` (Motor Nativo Chart.js):**
+  * Visualização gráfica de alto desempenho em Canvas HTML5 via Chart.js 4.4.x embutido localmente (`chart.umd.min.js`), eliminando dependência de contêineres externos e erros de incorporação.
+  * Alternância dinâmica entre gráficos de **Linha** e **Colunas** para séries temporais de Liquidez (LC, LS, LI), Ativo vs Passivo Circulante, Disponibilidades vs A Pagar e Comparativo Multi-Empresa.
+  * Filtros por Empresa (*Consolidado, MP 14, GSI 15, OACO 16*), Período (*7d, 30d, 90d, Completo*) e 4 Mini Cards de KPIs no topo.
+  * Botões de sincronização manual com o Protheus (`📊 Sync Índices`, `📥 Sync Faturamento`) e atalho externo (`↗️ Abrir Metabase`).
 * **Sub-aba `[ Autorizações de Desconto ]`:**
   * Cruzamento analítico de oportunidades do Pipedrive com o Protheus ERP (`SB1090` / `SA1010`), calculando margem líquida e desconto médio ponderado.
   * Regra estrita de frete embutido: frete pago pela empresa (`C5_VLR_FRT`) é deduzido do valor vendido, nunca somado.
