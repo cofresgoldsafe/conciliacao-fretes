@@ -1,1544 +1,94 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.219 (Homologada em 15/09/2026 12:20)  
+> **Versão da Documentação:** v8.220 (Homologada em 15/09/2026 16:40)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (AUDITORIA SEFAZ: Correção CC-e vs Inutilizada)  
-> **Data da Última Auditoria:** 15/09/2026 12:20 (v8.219 - Auditoria Protheus x SEFAZ: Distinção Estrita de Carta de Correção tpEvento 110110 vs Inutilização cStat 102, Badge CC-e e Batimento Conciliado)  
+> **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
+> **Data da Última Auditoria:** 15/09/2026 16:40 (v8.220 - Arquitetura Documental Hub-and-Spoke: Divisão em Documento Pai enxuto, 35 telas especializadas em docs/telas/ e arquivamento de histórico)  
 
 ---
 
 ## 1. Visao Geral e Dominio do Sistema
-O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e logistica. O sistema atua como ponto central de orquestracao entre operacoes bancarias digitais (Banco Inter via API Pix/Webhooks, Mercado Pago), calculo e processamento de tabelas de frete (Correios, Rodonaves, layouts customizados) e integracao direta com o ERP TOTVS Protheus via rotinas AdvPL (`AMARFRET.PRW`).
+
+O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, financeira, logistica e inteligencia executiva do Grupo GSI (Cofres Gold Safe / Metal Pleno / OAÇO / GSI). O sistema atua como ponto central de orquestracao entre operacoes bancarias digitais (Banco Inter via API Pix/Webhooks com mTLS, Mercado Pago), processamento e conciliacao de fretes logisticos (Correios, Rodonaves, layouts customizados e ViPP), motor de analise de credito comercial e integracao direta com o ERP TOTVS Protheus via queries de alta performance e rotinas AdvPL (`AMARFRET.PRW`).
 
 ### Principais Personas Atendidas
-- **Operador Financeiro / Controladoria:** Gestao de extratos, emissao de cobrancas Pix/Boleto, conciliacao bancaria automatizada e monitoramento de webhooks.
-- **Analista de Logistica / Expedicao:** Importacao, parsing e conciliacao de faturas/tabelas de frete de transportadoras e geracao de amarracao contabil/fiscal.
-- **Administrador do Sistema:** Controle de acessos, configuracao de credenciais de integracao, visualizacao de trilhas de auditoria e logs de atividades.
+- **Operador Financeiro / Controladoria:** Gestao de extratos, emissao de cobrancas Pix, conciliacao bancaria automatizada N:1 e 1:1, analise de credito com score auditavel, monitoramento de webhooks e gestao fiscal de NFS-e.
+- **Analista de Logistica / Expedicao:** Acompanhamento de pedidos para faturamento, gestao de bloqueios/liberacoes de estoque (SC9), parsing de faturas de transportadoras e geracao de amarracao contabil.
+- **Equipe Comercial / Vendedores:** Acompanhamento de saldos fisicos PA multi-empresa, carteira de pedidos abertos, previsao de suprimentos (SC7) e apuracao analitica de comissoes.
+- **Gestao de Compras / Suprimentos:** Monitoramento de ordens de compra em aberto com fornecedores, avaliacao de demanda comercial represada, ponto de pedido ideal e movimentacoes de estoque (SD3).
+- **Diretoria / Gestao Executiva:** Painel de indices de liquidez, dashboards analiticos integrados no Metabase, governanca de descontos/frete embutido e acompanhamento de CRM Comercial.
+- **Administrador do Sistema:** Controle central de acessos com RBAC granular, autenticacao em dois fatores (2FA), gestao de seguranca Zero-Trust e trilha de auditoria.
 
 ---
 
 ## 2. Stack Tecnologica e Arquitetura
-- **Frontend:** Single Page Application (SPA) monolitica em Vanilla JavaScript (`public/app.js` com ~3.000 linhas), HTML5 (`index.htm`) e CSS customizado.
-- **Backend & Servicos de Integracao:** Node.js (JavaScript ES6+/CommonJS) para consumo de APIs bancarias (`inter_api.js`, `consultar_extrato_mp.js`) e sincronizacao de dados.
-- **Processamento e Extracao de Dados:** Python 3 (`parser_correios.py`, `parser_rodonaves.py`, `parser_tipo2.py`) para parsing de planilhas e arquivos de retorno de frete.
-- **ERP Legacy & Extensoes:** TOTVS Protheus AdvPL (`AMARFRET.PRW`) para validacao e gravacao de amarracoes de frete em tabelas de producao.
+
+- **Frontend:** SPA modular em Vanilla JavaScript ES6+ (`public/js/*.js` e `public/app.js`), HTML5 responsivo (`index.html`) e CSS com suporte a temas Claro e Escuro.
+- **Backend & Integracao:** Node.js (Express) para orquestracao de APIs bancarias mTLS (`inter_api.js`), autenticacao JWT, rate limiting e endpoints REST seguros.
+- **Processamento de Dados:** Python 3 (`pypdf`, parsers de frete Correios/Rodonaves/ViPP e extrator de relatorios Serasa em memoria sem gravacao em disco).
+- **ERP Corporativo:** TOTVS Protheus AdvPL (`AMARFRET.PRW` / `REST_AMARFRET.PRW`) e consultas parametrizadas ao Protheus MSSQL (`protheus_db.js`).
 - **Persistencia de Dados:**
-  - *Legado / Arquivos Planos:* JSON locais (`data/activities.json`, `data/history.json`, `data/inter_webhooks.json`, `data/users.json`).
-  - *Relacional (Em transicao):* PostgreSQL (`postgres_db.js`).
-- **Padrao Arquitetural:** Hibrido (Micro-scripts + SPA monolito), em fase de transicao para arquitetura modular orientada a servicos e persistencia ACID.
+  - *Relacional Transacional (ACID):* PostgreSQL hospedado no Supabase com Row-Level Security (RLS) habilitado e schemas segregados (`postgres_db.js`).
+  - *Armazenamento de Apoio:* JSON locais serializados com fila assincrona FIFO e gravacao atomica (`safe_json_storage.js`).
+- **APIs Conectadas:** Banco Inter (mTLS Banking v2, Pix, Webhooks), Mercado Pago, Receita Federal (BrasilAPI/ReceitaWS), Registro.br (RDAP), Wayback Machine, InfoSimples (FGTS/PGFN), Mailjet HTTP API v3.1 / SMTP, Metabase Analytics e Pipedrive CRM.
 
 ---
 
-## 3. Backlog Consolidado de Pendencias Priorizadas
+## 3. Matriz Geral de Navegação do Portal GSI
 
-### Prioridade 0 (Critico/Seguranca)
-1. [x] **Remocao do Interceptor Global de Fetch Inseguro (`app.js`):** Implementada funcao `isSameOriginUrl(url)` para restringir o envio de tokens Bearer/credenciais exclusivamente a endpoints de mesma origem (`same-origin`), prevenindo vazamento de tokens para APIs externas.
-2. [x] **Eliminacao de Bypass de Permissoes e Backdoors (`server.js`):** Extintos fallbacks insecure de `x-user-username` sem assinatura e pseudo-tokens `auth-token-*`. Autorizacao RBAC (`requireRole`) e identidade (`requireAuth`) 100% ancoradas na verificacao criptografica de JWT assinado no backend.
-3. [x] **Correcao de IDOR/BOLA na Troca de Senha (`/api/auth/change-password`):** Criado endpoint dedicado com validacao obrigatoria da senha atual via bcrypt e derivacao estrita da identidade a partir do JWT decodificado no servidor, impedindo alteracoes nao autorizadas ou manipulacao de IDs de terceiros.
-4. [x] **Substituicao de Headers de Identidade Injetados (`x-user-*`):** Extinta a emissao e consumo de headers customizados nao assinados (`x-user-username`, `x-user-name`). Autenticacao e autorizacao padronizadas 100% no header RFC `Authorization: Bearer <token>` com verificacao criptografica de JWT.
-5. [x] **Autenticação em Dois Fatores (2FA) por E-mail (`mailer.js`, `postgres_db.js`, `server.js`):**
-   - **Fluxo com Código de 4 Dígitos:** Códigos de 4 dígitos numéricos criptograficamente aleatórios (`crypto.randomInt(1000, 10000)`), hasheados com bcrypt (salt 10) e armazenados com TTL de 5 minutos na tabela `user_2fa_tokens` (Postgres / Map em memória).
-   - **Proteção Anti-Brute Force:** Limite estrito de 3 tentativas incorretas por token com bloqueio imediato do token (`BLOCKED`).
-   - **Rate Limiting Dedicado:** `verify2FALimiter` (20 req / 5 min) e `resend2FALimiter` (máx 2 req / 45s).
-   - **Prevenção de Vazamento PII:** Função `maskEmail` para ofuscar o e-mail no payload e na interface do usuário (ex: `al*******@oaco.com.br`).
-   - **Gestão de Usuários com E-mail:** Atualização de cadastro de usuários com campo `email` no frontend e validação sintática RFC 5322 no backend.
-   - **Aviso Informativo de Latência de E-mail:** Inclusão de aviso destacado em negrito no modal 2FA informando que o e-mail pode demorar até 60 segundos para entrega via Mailjet/SMTP, evitando confusão ou abandono de tela pelo operador.
-6. [x] **Módulo de E-mails Resiliente e Aprendizados de Nuvem (`mailer.js`):**
-   - **Driver Híbrido SMTP / Mailjet REST API (HTTPS 443):** Provedores de nuvem (Render, AWS) bloqueiam portas SMTP clássicas (25, 465, 587) por padrão. Para máxima resiliência, implementou-se envio direto via **Mailjet HTTP API v3.1** (`https://api.mailjet.com/v3.1/send` na porta 443 via módulo `https` nativo) utilizando Basic Auth com as credenciais já existentes (`SMTP_login` e `SMTP_pass`).
-   - **Compatibilidade SMTP Corporativo:** Suporte a `tls: { rejectUnauthorized: false }` para certificados autoassinados/intermediários e flexibilidade de variáveis (`SMTP_server`, `SMTP_login`, `SMTP_pass`, `SMTP_port`, `SMTP_from`, `SMTP_secure`).
-   - **Ferramenta de Diagnóstico em Tempo Real:** Endpoint `/api/auth/diag-smtp` para testes imediatos de conectividade e validação de remetentes.
-7. [x] **Integração Bancária mTLS Banco Inter — Metal Pleno / S4BW (`inter_api.js`):**
-   - **Autenticação mTLS Multi-Empresas:** Suporte a credenciais mTLS no Render via `MP_clientId`, `MP_clientSecret`, `MP_cert` e `MP_key` (Empresa 14 - Metal Pleno / S4BW - Conta `3974073-9`).
-   - **Decodificação Resiliente de Certificados:** Normalização automática de quebras de linha `\n` escapadas e suporte a certificados codificados em Base64 ou texto puro PEM.
-   - **Conciliação e Saldo em Tempo Real:** Consulta ao vivo de saldo (`/banking/v2/saldo`) confrontado com `SE8140` e extrato (`/banking/v2/extrato`) com agrupamento inteligente N:1 e 1:1 contra `SE5140`.
-8. [x] **Módulo de Análise de Crédito Comercial & Motor de Risco (`analise_credito_engine.js`, `postgres_db.js`, `server.js`, `public/app.js`):**
-   - **Integração Completa ERP Protheus:** Consulta automática de pedidos de venda (`SC5`/`SC6`), cadastro de clientes (`SA1`), condições de pagamento (`SE4`) e histórico financeiro unificado multi-empresa (`SE1` nas empresas 09, 14, 15 e 16).
-   - **Comparação Inteligente de Endereços:** Algoritmo tolerante a variações Protheus x Receita Federal com limpeza de números com zeros à esquerda (`00099` -> `99`), inclusão de complementos e suporte a logradouros equivalentes.
-   - **Maturidade Digital Automática (Substituição ScamAdviser):** Consulta em tempo real da idade do domínio no RDAP Registro.br, primeiro snapshot histórico no Wayback Machine (Archive.org) e identificação de provedor de e-mail via DNS MX (Google Workspace, Microsoft 365, Servidores Dedicados).
-   - **Automação de E-mails e Site:** Detecção automática de e-mails corporativos, múltiplos e-mails no cadastro (`A1_EMAIL`) para confirmação de contato financeiro, filtragem de provedores genéricos (@gmail, @uol, @terra) e validação de site corporativo.
-   - **UX Diferenciada Manual vs Automático & Filtros Temporais:** Asterisco (`*`) restrito aos 11 campos de preenchimento manual do analista (Entrega=Cadastro, Maps Fachada, Registro.Br, Score Serasa, Protestos, Valor Protestos, PFIN, Cheques, FGTS Regular, Razão=FGTS, 3 NFs), removido dos campos automáticos, e filtro por período temporal ("Últimos 7 dias" e "Últimos 30 dias") na listagem do histórico.
-   - **Calibração Total de Pesos e Critérios do Score:** Painel de configuração em 6 blocos na aba Configurações (`#tab-config-score`) cobrindo 100% dos critérios avaliados no motor (Limites Monetários, Condições Comerciais, Cadastrais RF/Protheus, Estudo de E-mails/RDAP/Wayback/MX, Idade/Capital Social e Serasa/Protestos/Certidões) com sincronização em tempo real e restauração para os padrões oficiais.
-   - **Snapshots Imutáveis de Pontuação & Ficha com Extrato de Score:** Gravação em texto/JSON de todos os pontos atribuídos a cada parâmetro no ato da consulta (`detalhes_pontos`), garantindo imutabilidade histórica mesmo com rebalanceamento futuro dos pesos. Renderização de badges de pontuação (`+X pts`, `-Y pts`, `0 pts`) ao lado de cada parâmetro na Ficha do Pedido e inclusão do bloco de Extrato & Conferência Matemática do Score com validação 100% auditável.
-   - **Validação de Decisão Final do Analista:** Estado inicial do select configurado como `Decisão (atenção ao gravar)`. Gravações no banco são bloqueadas no frontend e no backend se o analista não selecionar uma decisão operacional concreta (*Liberado, Liberar com Entrada, Só À Vista, Bloqueado, Cancelado*).
-   - **Auditoria de Usuário & Fallback Gracioso:** Persistência automática do analista autenticado (via token JWT ou payload) na tabela `analise_credito_history` (`usuario VARCHAR(100)`), dados_completos e JSON local. Exibição da identificação do analista no cabeçalho da Ficha (`Empresa: XX | Cliente: ... | Data: ... | Usuário: <nome/login>`), com fallback automático para `"Sistema"` exclusivamente em registros legados gravados antes da existência do campo ou em rotinas automatizadas sem sessão humana. Suporte a filtro por operador no histórico.
-   - **Carga e Reanálise via Ficha do Pedido:** O botão `⚡ Carregar no Formulário` da modal restaura integralmente os dados cadastrais, comerciais e de maturidade digital (RDAP, Wayback, MX), preenche o campo de busca superior (`creditoNumPedido`) e dispara instantaneamente o recálculo do Score em Tempo Real (`atualizarScoreEmTempoReal()`).
-   - **Rastreamento Contínuo de Atividades & Heartbeat de Sessão:** O sistema agora registra as ações de consulta ao Protheus (`CONSULTA_CREDITO`) e gravação (`GRAVACAO_CREDITO`) no feed de auditoria (`user_activities`), além de manter heartbeat ativo a cada 5 minutos via `/api/auth/session-ping`, atualizando em tempo real o status de engajamento (*Último Acesso Ativo*) de cada operador logado.
-9. [x] **Sub-aba Pedidos Abertos no Módulo Vendedores (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_pedidos_abertos.js`):**
-   - **Listagem Multi-Empresa de Pedidos Não Faturados:** Consulta unificada de pedidos em aberto (`C5_NOTA = ''` e não cancelados) nas 3 empresas (Metal Pleno 14, GSI 15 e OACO 16).
-   - **Mapeamento de Bloqueios SC9 (Power BI):** Agregação condicional de itens com precedência estrita de bloqueio contra mascaramento ASCII (`C9_BLEST = '02'` ➔ `BLOQ POR ESTOQUE`; `C9_BLCRED = '01'` ➔ `BLOQ NO CREDITO`; `10` ou ausência de bloqueio ➔ `SEM BLOQ ESTOQ` / `SEM BLOQ CREDITO`).
-   - **Segurança Fail-Closed e Proteção Anti-IDOR/BOLA:** Autenticação JWT obrigatória em todos os endpoints de vendedores (`/api/vendedores/pedidos/*`), propagação de `vendorCode` em `getUserFromReq` e bloqueio estrito (403) caso vendedor tente acessar pedidos de terceiros.
-   - **Integração Externa Pipedrive e Detalhes:** Coluna `CODWEB` com link inteligente para o CRM Pipedrive (`target="_blank" rel="noopener noreferrer"`) e clique no número do pedido abrindo a modal de detalhes de itens e faturamento (`SC6`/`SF4`).
-   - **Filtros Dinâmicos, Ordenação & UX:** Filtros reativos por Empresa (`MP`, `GSI`, `OACO`) e Vendedor (`Figueiredo`, `Andrea`, `Juliana`), ordenação interativa crescente/decrescente com comparação numérica nas colunas `CodWeb` e `Ped. Venda`, badges de status em alto contraste e suíte de testes com 18 asserções automatizadas.
-10. [x] **Sub-aba Pedidos Compras no Módulo Vendedores (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_pedidos_compras.js`):**
-   - **Consulta de Compras em Aberto (SC7):** Extração unificada nas tabelas `SC7140` (MP), `SC7150` (GSI) e `SC7160` (OACO) de itens com saldo positivo (`C7_QUANT - C7_QUJE > 0`) e resíduo ativo (`C7_RESIDUO <> 'S'`).
-   - **Filtro Estrito de Produtos PA & Faixa de Códigos:** Filtragem direta no campo `C7_PRODUTO` entre `001000000000000` e `019999999999999` (faixa correspondente aos produtos acabados `PA`), descartando insumos, matérias-primas e serviços (`090...`) tanto na query T-SQL do backend quanto na camada reativa do frontend.
-   - **Mapeamento e Identificadores:** Identificador visual `PedCom` com prefixo da empresa (ex: `MP000207`, `GSI000150`, `OACO000320`), data de previsão `C7_DATPRF` formatada e busca de fornecedor via subselect em `SA2010`.
-   - **Busca Instantânea & Métricas:** Filtro instantâneo conforme digitação por produto, código, pedido ou fornecedor, filtro por empresa, cards de métricas (**`Ped Compras em Aberto`**, saldo total e previsão mais próxima), ordenação de 4 colunas e 10 testes automatizados.
-11. [x] **Sub-aba Saldos em Estoque no Módulo Vendedores com Filtro por Empresa, Barra em Linha Única, Exportação Completa para Excel e Job Supabase (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_saldos_estoque.js`, `test_frontend_modules.js`):**
-   - **Consolidação Multi-Empresa e Catálogo PA:** Leitura combinada de catálogo `SB1` (produtos acabados PA, descartando `XXX`, `X` e tipo diferente de PA), saldos físicos `SB2` (`SB2140` Metal Pleno 14, `SB2150` GSI 15, `SB2160` OACO 16), vendas em carteira não faturadas `SC6` (`SC6140`, `SC6150`, `SC6160`) e compras em aberto `SC7` (`SC7140`, `SC7150`, `SC7160`).
-   - **Filtro por Empresa Reativo & KPIs Dedicados:**
-     - Dropdown `🏢 Empresa` com opções: *Todas as Empresas*, *Metal Pleno (14)*, *GSI (15)* e *OACO (16)*.
-     - Ao selecionar uma empresa específica, a tabela, a ordenação e os 3 KPIs do topo (*Itens em Estoque*, *Itens sem Estoque*, *Valor Total em Estoque*) recalculam instantaneamente com base nos números específicos da filial (`detalhes_empresas`).
-   - **Barra de Filtros Compacta em Linha Única:**
-     - Layout em Grid responsivo com 6 elementos alinhados horizontalmente: `🔍 Buscar Produto`, `🏢 Empresa`, `🏷️ Grupo`, `📊 Disponibilidade`, `🧹 Limpar` e `📥 Exp. Excel`.
-     - Ajuste das larguras mínimas dos seletores para encaixe perfeito em 1 linha sem quebra indesejada.
-   - **Exportação Completa para Excel (`📥 Exp. Excel`):**
-     - Exportação da **totalidade dos produtos filtrados em todas as páginas** (não apenas a página atual).
-     - Formatação universal CSV com BOM UTF-8 (`\uFEFF`) e delimitador ponto-e-vírgula (`;`), abrindo diretamente no Microsoft Excel com acentuação e números corretos.
-     - 12 Colunas Oficiais: *Código, Descrição, Grupo, Preço Unitário (R$), Saldo Total (Físico), Saldo Total (R$), Saldo Metal Pleno (14), Saldo GSI (15), Saldo OACO (16), Qtd Vendas (SC6), Qtd Compras (SC7), Ponto de Pedido*.
-   - **Job de Background & Sincronização Agendada (Supabase + Fallback JSON):**
-     - Rotina periódica a cada 60 min no horário comercial de Brasília (07h às 19h).
-     - Persistência e normalização de metadados na tabela relacional `produtos_saldo_estoque` e `estoque_sync_logs` com status, duração e contadores.
-     - Fallback gracioso para cache local `data/estoque_saldos_cache.json`.
-   - **Modal Drilldown Multi-Empresa com 3 Guias:**
-     - Clique na linha do produto abre modal com 4 mini KPIs, resumo por filial, compras em aberto (SC7) e vendas em aberto (SC6).
-   - **Segurança RBAC, Prevenção de Erros de Sintaxe & Testes:**
-     - Proteção JWT obrigatória em `/api/vendedores/estoque/saldos` e `/api/vendedores/estoque/sync`.
-     - Unificação rigorosa de variáveis DOM em `public/app.js` prevenindo colisões de escopo (`SyntaxError: Identifier has already been declared`).
-     - Inclusão do **Teste 6** em `test_frontend_modules.js` validando a integridade léxica/sintática de `public/app.js` via Node.js `vm.Script` em pipeline automatizado.
-     - 12 Suítes automatizadas com 84 testes 100% aprovados.
-12. [x] **Habilitação de Row-Level Security (RLS) e Hardening de Segurança no Supabase (`postgres_db.js`, `sql/fix_supabase_rls_security.sql`, `sql/bi/00_tabela_grupos_sbm.sql`, `test_security.js`):**
-    - **Remediação dos Alertas Críticos Supabase (`rls_disabled_in_public` e `sensitive_columns_exposed`):**
-      - Ativação dinâmica e compulsória de `ENABLE ROW LEVEL SECURITY` e `FORCE ROW LEVEL SECURITY` em todas as tabelas públicas (`users`, `user_2fa_tokens`, `analise_credito_history`, `grupos_produtos_sbm`, `system_configs`, `tarefas`, `faturamento_itens_historico`, `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs`, `indices_liquidez_historico`, etc.).
-      - Revogação formal de privilégios (`REVOKE ALL`) das roles `anon` e `authenticated` no schema `public` (tabelas, sequências e rotinas), neutralizando requisições não autorizadas via API REST PostgREST pública com a chave `anon`.
-      - Criação de políticas com escopo exclusivo para o backend (`service_role` / `postgres`) e configuração de `ALTER DEFAULT PRIVILEGES` para que futuras tabelas não herdem permissões anônimas.
-      - Criação do script de remediação imediata `sql/fix_supabase_rls_security.sql` para execução no SQL Editor do painel Supabase.
-      - Suíte de testes automatizados em `test_security.js` cobrindo 100% dos requisitos de RLS e sanitização de colunas sensíveis.
-13. [x] **Autocura e Gestão de Código de Vendedor no Perfil Comercial (`postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendor_autoheal.js`):**
-   - **Causa Raiz & Resolução:** Correção do bloqueio 403 (*"Acesso negado: Perfil de vendedor sem código de vendedor associado"*) enfrentado por vendedores ao acessar pedidos de venda abertos.
-   - **Autocura e DDL Supabase:** Adicionado `ALTER TABLE users ADD COLUMN IF NOT EXISTS vendor_code VARCHAR(20)` e rotina DML de autocura no startup (`initDB`) para restaurar códigos de vendedores cadastrados (`juliana: '000074'`, `andrea: '000064'`, `figueiredo: '000004'`).
-   - **Fallback Resiliente no Login / 2FA & `getUserFromReq`:** Tratamento transparente na decodificação do JWT e no login tradicional/2FA para associar o código Protheus e salvar correções em background sem quebrar sessões ativas.
-   - **Campo no Painel Administrativo:** Inclusão do input `Código do Vendedor no Protheus` no modal de gerenciamento de usuários (`#userModal`) com exibição condicional ao selecionar perfil `Vendedor`, validação e preservação do código anterior em edições.
-14. [x] **Seletor de Tema Claro/Escuro em Todo o Módulo Vendedores & Modais (`public/style.css`, `public/index.html`, `public/app.js`, `test_theme_toggle.js`):**
-   - **Expansão Modular (Fase 2):** Botão seletor no cabeçalho geral das sub-abas dos Vendedores (`#btnToggleThemeVendedores`) e no cabeçalho de estoque (`#btnToggleThemeEstoque`), alternando e sincronizando instantaneamente o tema em todas as 5 sub-abas:
-      1. *Saldos em Estoque* (`#tab-vend-saldos-estoque`)
-      2. *Consulta Ped Venda* (`#tab-vend-pedidos`)
-      3. *Ped Vendas Abertos* (`#tab-vend-pedidos-abertos`)
-      4. *Prod x Ped Compras* (`#tab-vend-pedidos-compras`)
-      5. *Comissões* (`#tab-vend-comissoes`)
-   - **Sincronização com Modais:** Aplicação automática do tema claro nos modais de *Drilldown de Estoque* (`#modalEstoqueDetalhes`) e *Detalhes do Pedido de Venda* (`#pedidoDetalhesModal`), mantendo legibilidade total nos itens de grade SC6, faturas SE1, mini KPIs e dados de entrega.
-   - **Paleta de Alto Contraste WCAG 2.1 (AA/AAA):** Calibração de tokens claros (`.tab-theme-light`, `.modal-theme-light`) com fundo `#ffffff`, textos `#0f172a`, bordas `#e2e8f0`, saldos positivos em verde esmeralda (`#059669`), compras/totais em azul céu (`#0284c7`) e vendas em âmbar escuro (`#d97706`), eliminando riscos de textos ilegíveis em fundos brancos.
-   - **Persistência Perene:** Armazenamento da preferência no `localStorage.setItem('theme_vendedores', mode)` e `theme_saldos_estoque`, restaurado automaticamente sem flash de tela (Zero-FOUC).
-   - **Suite de Testes Automatizados:** Script `test_theme_toggle.js` com 5 asserções cobrindo elementos de UI, regras de CSS com escopo, persistência em disco e funções de alternância em JS para as 5 sub-abas e modais.
-15. [x] **Regra de Cálculo de Frete no Total do Pedido de Venda (`protheus_db.js`, `server.js`, `public/app.js`, `test_totais_pedido.js`):**
-   - **Causa Raiz & Resolução:** O total do pedido de venda em Análise de Crédito e detalhes de pedidos somava incorretamente o campo de Frete Embutido (`C5_VLR_FRT`). Como o valor de `C5_VLR_FRT` já está embutido/incluído no preço dos produtos (`SC6`), somá-lo causava duplicidade no valor total do pedido (`totalGeral`).
-   - **Regra Estrita Aplicada:**
-     - **Frete Normal (`C5_FRETE`):** Soma normalmente ao total geral do pedido (`totalProdutos + C5_FRETE - C5_DESCONT`).
-     - **Frete Embutido (`C5_VLR_FRT`):** Permanece como campo informativo (`freteEmbutido`) no payload e na interface, mas **NÃO** é somado ao total geral do pedido de venda.
-   - **Ajustes de UI:** Modal de Detalhes do Pedido (`#pedidoDetalhesModal`) agora discrimina *Frete Cobrado* e exibe *Frete Embutido (Incluso)* apenas de forma informativa e contextual quando presente.
-   - **Cobertura de Testes:** Suíte dedicada `test_totais_pedido.js` cobrindo cenários de frete cobrado puro, frete embutido puro, misto com descontos e integração de payload com Análise de Crédito (100% aprovados).
-16. [x] **Leitura Obrigatória de PDF Serasa Experian, Validação de Validade (máx. 4 meses), Trava na Consulta Protheus & Expansão do Bloco 5 (`serasa_pdf_parser.py`, `serasa_pdf_parser.js`, `analise_credito_engine.js`, `server.js`, `public/index.html`, `public/app.js`, `test_serasa_pdf_parser.js`):**
-   - **Processamento Efêmero em Memória (Sem Gravação em Disco):**
-     - O sistema processa o arquivo PDF de análise Serasa em buffer de memória efêmero (`multer.memoryStorage()`) e stream direto via stdin/stdout com o interpretador Python (`pypdf`), garantindo que nenhum documento confidencial seja gravado no disco do servidor.
-   - **Validação Estrita de Modelo & Regra de 4 Meses de Validade:**
-     - **Modelo Serasa Oficial:** Verificação determinística de assinaturas de cabeçalho do Serasa Experian (Relatório Básico). Arquivos não reconhecidos (ex: estudos internos, manuais) são rejeitados com erro `MODELO_INVALIDO`.
-     - **Validade Temporal (&le; 4 meses):** Cálculo da idade do laudo a partir da data de emissão extraída (`data_emissao`). Se o laudo possuir mais de 4 meses (ex: laudo de 2024 contra 2026 = 24.3 meses), o upload é rejeitado com erro `LAUDO_EXPIRADO`, bloqueando consultas com laudos defasados.
-   - **Trava de Segurança na Consulta Protheus (Passo 1 ➔ Passo 2):**
-     - O botão `⚡ Iniciar Consulta Protheus` inicia desabilitado (`disabled="true"`, opacidade 60%, cursor bloqueado).
-     - Só é desbloqueado após a validação e leitura bem-sucedida de um laudo Serasa válido.
-     - **Validação Cruzada de CNPJs:** Ao consultar o Protheus, o sistema confronta o CNPJ da empresa consultada no ERP com o CNPJ extraído do laudo Serasa. Caso divirjam (ex: analista leu o Serasa de uma filial/empresa diferente), um alerta visual destacado em vermelho/âmbar é exibido no cabeçalho.
-   - **Extração Completa de Métricas e Expansão do Bloco 5:**
-     - Preenchimento 100% automático de: Score Numérico, Probabilidade de Inadimplência (`PD %`), Protestos (quantidade e valor total somado), PEFIN (quantidade e valor), REFIN Bancário (quantidade e valor), Dívidas Vencidas, Cheques Sem Fundo, Sócios com Restrição/Anotação no Bureau, Densidade de Consultas Recentes (`consultas/dia`), Consultas de Fomento Mercantil / Securitizadora e Documentos Roubados/Extraviados.
-   - **Rebalanceamento Equilibrado do Score & Prevenção Anti-Golpe:**
-     - O Serasa limpo **não possui sobrepeso excessivo** (+8 a +14 pts), impedindo que empresas antigas adquiridas por estelionatários burlem o motor de risco. Indicadores digitais e comportamentais (divergência de entrega, ausência de site/domínio recente, e-mail gratuito, pedidos anômalos) continuam sobrepondo-se e classificando como `GOLPE`.
-     - **Casos Críticos de Default e Fraude:** Identificação de laudos sem score numérico com estado `DEFAULT / Múltiplos Eventos` (penalidade -30 pts e direcionamento automático para `SÓ À VISTA / ANTECIPADO`) e detecção de `Documento Extraviado/Roubado` (penalidade -25 pts e classificação como `FRAUDE-DOCUMENTO`).
-   - **Calibração Administrativa de Pesos & Ficha Imutável:**
-     - Inclusão dos novos parâmetros de calibração na aba Configurações (`#tab-config-score`): `cfg_peso_serasa_default`, `cfg_peso_refin_sim`, `cfg_peso_dividas_vencidas_sim`, `cfg_peso_densidade_consultas_alta`, `cfg_peso_consultantes_fomento_sim`, `cfg_peso_socios_restricao_sim`, `cfg_peso_doc_extraviado_sim`.
-     - Extrato e Ficha do Pedido com badges de pontuação auditáveis, conferência matemática e restauração completa no formulário via botão `⚡ Carregar no Formulário`.
-   - **Suíte de Testes Automatizados:** Script `test_serasa_pdf_parser.js` com 10 asserções automatizadas cobrindo laudos reais (WDM, DASS, AP Elettro, EQUIPSEA, Itambé Minas, Prevent Senior), laudos expirados (Optimus Pharma), rejeição de não-Serasa, motor de score e endpoint HTTP `POST /api/financeiro/analise-credito/parse-serasa-pdf` (100% de aprovação).
-17. [x] **Tratamento de Capital Social Não Informado / Isento (Filiais, S.A., Sem Fins Lucrativos) (`analise_credito_engine.js`, `public/index.html`, `public/app.js`, `server.js`, `postgres_db.js`, `test_capital_social_isento.js`):**
-   - **Checkbox de Seleção Rápida & Desbloqueio de Gravação:**
-     - Inclusão do checkbox `[ ] Não informado / Isento` (`#cr_sem_capital_social`) ao lado do campo Capital Social.
-     - Ao ser marcado, o campo `cr_capital_social` é desabilitado com opacidade e placeholder explicativo, liberando a trava de validação de campos obrigatórios (`camposObrigatorios`) e permitindo o registro da análise no banco sem bloqueios.
-   - **Preenchimento Automático Protheus / Receita:**
-     - Ao consultar pedidos de filiais ou entidades onde a Receita/Protheus não lista capital social (ou vem nulo/zerado), o sistema marca o checkbox e ajusta o formulário automaticamente.
-   - **Pontuação Neutra & Calibração Parametrizada (`0 pts`):**
-     - Empresas sem capital social recebem pontuação neutra (`0 pts`), evitando tanto a bonificação indevida de grandes aportes quanto a penalização injusta de microempresas (`-7 pts`).
-     - Criação do parâmetro `cfg_peso_capital_nao_informado` na aba Configurações de Score (`#tab-config-score`) para customização livre pelo administrador.
-   - **Ficha do Pedido, Extrato e Restauração Perfeita:**
-     - Exibição de `Capital Social: Não informado / Isento (0 pts)` na Ficha e no Extrato de Auditoria, com suporte completo a recarga no formulário via `⚡ Carregar no Formulário`.
-   - **Suíte de Testes:** Script `test_capital_social_isento.js` com 5 testes automatizados aprovados com 100% de sucesso.
-18. [x] **Clareza nos Rótulos de Divergência Cadastral e Sincronização Dinâmica de Seletores (`public/index.html`, `public/app.js`, `test_score_config.js`):**
-   - **Eliminação de Ambiguidade de Notação Lógica (`!=`):**
-     - Substituição dos rótulos técnicos nas Configurações de Score (`Razão != FGTS` ➔ `Razão Divergente do FGTS (-pts)`, `Cadastro != Receita Federal` ➔ `Cadastro Divergente da Receita (-pts)`, `Entrega != Cadastro` ➔ `Entrega Divergente do Cadastro (-pts)`), deixando 100% claro que a penalidade se aplica exclusivamente quando houver divergência cadastral.
-   - **Sincronização Dinâmica dos Menus Seletores (`<select>`):**
-     - Implementação da função reativa `atualizarRotulosSelectsCredito(cfg)` em `public/app.js`, atualizando instantaneamente os textos de pontuação (+X pts / -Y pts) de todas as 28 opções de seletores do formulário sempre que as configurações forem salvas, carregadas ou restauradas.
-   - **Suíte de Testes:** Script `test_score_config.js` com 5 asserções automatizadas cobrindo pesos customizados, persistência, clareza textual e sincronização dinâmica.
-19. [x] **Mitigacao de DOM-based XSS (`public/app.js`, `test_dom_xss_and_secrets.js`):**
-   - Implementada função global `escapeHtml()` no topo do escopo da SPA para sanitização rigorosa de caracteres perigosos (`<`, `>`, `"`, `'`, `&`).
-   - Sanitização completa em 100% das renderizações dinâmicas de tabelas e modais: Feed de Atividades de auditoria (`auditActivitiesTableBody`), Resumo de Usuários (`auditUsersTableBody`), Histórico de Integrações (`historyModalBody`), cabeçalhos de faturas (`sumCnpj`), status ViPP (`vippStatusText`) e mensagens de erro de API.
-   - **Extinção de Senhas em Texto Puro:** Removido o objeto `defaultSeeds` com senhas em texto puro de `server.js` e substituídas as sementes de `postgres_db.js` por hashes bcrypt seguros (`$2b$10$...`), garantindo que 100% das senhas em memória, no Postgres e no JSON sejam criptografadas com bcrypt (salt 10).
-   - **Proteção de Chaves de API:** Leitura dinâmica e segura de `PROTHEUS_API_KEY` / `RAILWAY_API_KEY` via variáveis de ambiente.
-21. [x] **Eliminação de Concorrência em Arquivos JSON (`safe_json_storage.js`, `postgres_db.js`, `server.js`, `analise_credito_engine.js`, `test_resilience_sre.js`):**
-   - **Fila Assíncrona Sequencial por Arquivo (FIFO Promise Queue):** Criação do módulo `safe_json_storage.js` com enfileiramento de operações de escrita por caminho absoluto (`writeQueues = new Map()`), garantindo ordem estrita e eliminando condições de corrida (*race conditions*) e perdas de atualização (*lost updates*).
-   - **Substituição Atômica Resiliente (Windows NTFS / POSIX):** Gravação em arquivo temporário único (`.tmp.<timestamp>_<hex>`) seguido de `atomicRenameAsync` / `atomicRenameSync` com até 5 micro-retries para bloqueios transitórios de filesystem (`EPERM`/`EBUSY`) e fallback gracioso para cópia atômica com limpeza do temporário.
-   - **Leitura Segura com Fallback:** Funções `safeReadJson` e `safeReadJsonSync` que retornam valores padrão em arquivos ausentes ou corrompidos sem derrubar a aplicação.
-   - **Cobertura Completa do Repositório:** Migração de 100% das gravações de arquivos planos (`users.json`, `history.json`, `inter_webhooks.json`, `analise_credito_history.json`, `score_config.json`, `vipp_config.json`, `estoque_saldos_cache.json`).
-22. [x] **Circuit Breaker & Retries com Backoff Exponencial e Jitter (`circuit_breaker.js`, `inter_api.js`, `test_resilience_sre.js`):**
-   - **Padrão Circuit Breaker com 3 Estados:** Módulo `circuit_breaker.js` implementando classe `CircuitBreaker` com estados `CLOSED` (operação normal), `OPEN` (bloqueio imediato com `CircuitBreakerOpenError` e fail-fast por 30s de cooldown após 4 falhas consecutivas) e `HALF_OPEN` (sondagem com canary request restaurando o circuito para `CLOSED` em caso de sucesso).
-   - **Circuitos Isolados por Empresa:** Instâncias dedicadas de Circuit Breaker para as 3 empresas bancárias (Empresa 14 Metal Pleno `Inter_MetalPleno_14`, Empresa 15 GSI `Inter_GSI_15`, Empresa 16 OAÇO `Inter_OACO_16`) e função de exportação de métricas `getCircuitBreakersStatus()`.
-   - **Política de Retries Inteligentes:** Função `executeWithRetry` com classificação rigorosa de erros transitórios (Timeouts, `ETIMEDOUT`, `ECONNRESET`, status HTTP 429, 500, 502, 503, 504) e cálculo de backoff exponencial `min(maxDelay, baseDelay * 2^attempt) + jitter (0-200ms)`. Erros determinísticos (400, 401, 403, 404) falham imediatamente sem retentativas.
-   - **Proteção Completa Banco Inter:** Aplicação em `requestOAuthToken`, `consultarSaldoInter` e `consultarExtratoInter`.
-23. [x] **Gestão de Memória e Event Delegation no Frontend (`public/app.js`, `test_resilience_sre.js`):**
-   - **Eliminação de Acumuladores de Event Listeners:** Substituição de múltiplos `addEventListener` adicionados repetidamente dentro de loops de renderização por **Event Delegation** centralizado nos containers pais (`tbody`).
-   - **Tabelas Otimizadas:** Gestão de eventos delegados via `e.target.closest(...)` em `usersTableBody` (edição e exclusão), `vendPedidosTableBody` (links de pedidos e detalhes), `pedidosAbertosTableBody` (links diretos), `historicoCreditoTableBody` (botão de abertura de ficha) e `estoqueTableBody` (drilldown de produto).
-   - **Prevenção de Memory Leaks:** Eliminação de listeners redundantes no DOM, garantindo estabilidade e baixo consumo de memória na SPA após milhares de interações.
-24. [x] **Testes Unitários para Conciliação Bancária & Matching N:1 (`protheus_db.js`, `test_conciliacao_bancaria.js`):**
-   - Suíte com asserções cobrindo Casamento 1:1 Direto (Créditos/Débitos com tolerância de até 2 dias), Casamento de Cartão Líquido (Crédito Bruto - Taxa MDR = Líquido no Banco), Aglutinação N:1 com Subset-Sum, Arredondamento e Tolerância de Centavos (0.01) e segregação de itens órfãos Protheus/Banco com resumo estatístico.
-25. [x] **Testes de Parsers Python com Pytest (`parser_correios.py`, `parser_rodonaves.py`, `parser_tipo2.py`, `test_parsers.py`):**
-   - Suíte com 7 testes em Pytest cobrindo extração analítica dos Correios SFE (SEDEX, PAC, PAC Reverso), tabelas CT-e Rodonaves com padding de 9 dígitos nas NFs (`\d+` com `zfill(9)`), parsing de arquivos CSV/TXT do ViPP com múltiplos delimitadores e isolamento estrito contra rejeição de formatos incompatíveis (`isWrongFormat: True`).
-26. [x] **Testes Ponta a Ponta (E2E) com Playwright Headless Chromium (`test_playwright_e2e.js`):**
-   - Suíte com 6 fluxos E2E cobrindo inicialização e branding da SPA, autenticação com token JWT/2FA, navegação reativa entre as 4 abas principais, alternância e persistência de Tema Claro/Escuro nos Vendedores (`localStorage`), filtros e KPIs de Saldos em Estoque e formulário de Análise de Crédito Comercial.
-27. [x] **Validação Rigorosa de Schemas Zod para Webhooks Bancários (`webhook_validator.js`, `server.js`, `test_webhook_schemas.js`):**
-   - Schemas Zod com tipagem estrita para Pix individual (`PixEventSchema`), lotes Pix (`PixBatchSchema`), Boletos bancários (`BoletoEventSchema`) e extrato bancário (`BankingEventSchema`).
-   - Coerção automática de strings monetárias para float (`transform`), sanitização e middleware no endpoint `/api/webhooks/inter` rejeitando requisições malformadas com HTTP 400.
-28. [x] **Automação do Campo Registro.Br Confere via RDAP & Comparação de Raiz de CNPJ (`server.js`, `public/index.html`, `public/app.js`, `test_registro_br_automacao.js`):**
-   - **Consulta Oficial RDAP do NIC.br:** Consumo da API REST JSON oficial (`https://rdap.registro.br/domain/<dominio>`) com extração determinística do documento do titular (`publicIds` ou `handle`) e razão social/nome (`vcardArray` / `legalRepresentative`).
-   - **Comparação pela Raiz do CNPJ (8 Primeiros Dígitos):** Suporte nativo à compra por Filiais cujo domínio foi registrado pela Matriz (ou vice-versa). O algoritmo confronta os 8 primeiros dígitos numéricos do CNPJ do cliente com o CNPJ do Registro.br (`cnpjClienteRaiz === cnpjRegistroBrRaiz`).
-   - **Preenchimento 100% Automático & Feedback Visual:** Campo `cr_registro_br` preenchido automaticamente como `'S'` (Sim) quando a raiz confere e `'N'` (Não) quando diverge ou sob CPF. Remoção do asterisco (`*`) de campo manual na UI, exibição de badge contextual (`✓ Raiz Confere: CNPJ (Titular)` / `⚠️ Divergente`), persistência na Ficha do Pedido e restauração pelo histórico.
-   - **Suíte de Testes Automatizados:** Script `test_registro_br_automacao.js` com 8 asserções cobrindo matriz x filial, matriz x matriz, divergências, CPFs, domínios internacionais (.com) e pontuação de score de crédito (100% de aprovação).
-29. [x] **Novos Critérios Antifraude (Alteração Recente de Sócios & Aumento Expressivo de Capital) e Consulta Assistida 1-Clique na Caixa FGTS (`analise_credito_engine.js`, `public/index.html`, `public/app.js`, `server.js`, `postgres_db.js`, `test_novos_criterios_credito.js`):**
-   - **Critérios de Combate à Fraude da Empresa Dorminhoca (*Shelf Company Hijacking*):**
-     - **Alteração Recente de Sócios (`alteracao_recente_socios`):** Penalidade de **-8 pts** (`peso_alteracao_recente_socios_sim`) caso a empresa antiga tenha sofrido alteração de sócios/controle societário recente (indicativo de laranjas assumindo CNPJs inativos).
-     - **Aumento Expressivo de Capital (`aumento_expressivo_capital`):** Penalidade severa de **-20 pts** (`peso_aumento_expressivo_capital_sim`) caso a empresa tenha inflado artificialmente o capital social sem lastro operacional.
-     - **Incorporação na Matriz de Risco:** Ambos os novos pesos são somados no cálculo de detecção de fraudes (`subGolpe`), direcionando imediatamente para `GOLPE` / `ENTRADA OU A VISTA` quando acionados.
-   - **Botão de Consulta Assistida 1-Clique na Caixa Econômica Federal (CRF FGTS):**
-     - Botão destacado no Bloco 6 (`#btnConsultarFgtsCaixa`): `🌐 Consultar FGTS na Caixa (1-Clique)`.
-     - Ao clicar, o sistema copia automaticamente o CNPJ sanitizado (apenas números, ex: `02021647000125`) para a Área de Transferência (`navigator.clipboard.writeText`) com feedback visual e abre a página oficial da Caixa (`https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf`) em nova aba, agilizando o preenchimento para poucos segundos.
-   - **Calibração de Pesos, Ficha Auditável e Sincronização Dinâmica:**
-     - Inclusão dos novos campos na aba de Configurações de Score (`#tab-config-score`) para parametrização livre pelo gestor.
-     - Renderização de badges explicativos na Ficha do Pedido e linhas discriminadas no Extrato de Conferência Matemática do Score.
-     - Sincronização dinâmica de rótulos (`atualizarRotulosSelectsCredito`) e persistência segura tanto no PostgreSQL (`dados_completos JSONB`) quanto no backup local em disco (`analise_credito_history.json`).
-30. [x] **Automação da Consulta FGTS / CRF Caixa via API InfoSimples (`server.js`, `analise_credito_engine.js`, `mailer.js`, `public/index.html`, `public/app.js`, `test_infosimples_fgts.js`):**
-   - **Integração REST JSON com API InfoSimples:**
-     - Consumo do endpoint oficial da Caixa Regularidade (`POST https://api.infosimples.com/api/v2/consultas/caixa/regularidade`) de forma assíncrona e paralela com as demais consultas de inteligência no Protheus.
-     - Resolução do Código `602` (*O serviço informado na URL não é válido*): A validação em produção confirmou a autenticação com sucesso do token (`INFOSIMPLES_TOKEN`), apontando que a URL do serviço exigia o slug oficial `/caixa/regularidade` (conforme especificação da SDK oficial InfoSimples).
-     - Suporte a credencial flexível via `INFOSIMPLES_TOKEN` (variável de ambiente) ou campo dedicado em tela na aba **Configurações de Score (`#tab-config-score`)**.
-   - **Tratamento Estrito de Códigos da InfoSimples & Alertas por E-mail:**
-     - Tratamento estrito do código `601` (*Falha de Autenticação*) e `603` (*Serviço não autorizado ou limite excedido*) com disparo de e-mail de alerta em HTML para o administrador (`alexandre@oaco.com.br`) via `mailer.js` com cooldown anti-flood de 15 minutos.
-     - Tratamento específico dos códigos `600` (Indisponibilidade Caixa), `602` (Serviço Inválido), `604` (Validação de Parâmetros), `606` (Parâmetros Faltantes - prevenidos por pré-validação de 14 dígitos no CNPJ) e `622` (Tentativas Repetidas).
-     - Destaque visual em vermelho/laranja no badge de FGTS (`cr_fgts_badge`) informando claramente o motivo retornado pela API sem falha silenciosa.
-   - **Novas Regras de Pontuação Antifraude para o FGTS:**
-     - **Empresa Regular com Razão Social Idêntica:** `fgts_situacao_regular = 'S'` (0 pts) e `razao_fgts_igual = 'S'` (**`+3 pts`**).
-     - **Empresa Localizada com Razão Social Divergente (Empresa Alterada/Comprada):** `razao_fgts_igual = 'N'` (**`-15 pts`**).
-     - **Empresa Não Localizada no FGTS (Sem Histórico de Empregados / Empresa Fantasma):** `fgts_situacao_regular = 'NE'` (`0 pts`) e `razao_fgts_igual = 'NE'` (**`-5 pts`**), concentrando a penalidade na ausência de registro/divergência.
-   - **Remoção de Campos Descontinuados & Limpeza Estrutural:**
-     - Remoção total do campo **Google Maps Fachada** (`google_maps`) do formulário, motor de cálculo, configurações e extrato/ficha.
-     - Remoção total do campo **3 NFs Confirmadas?** (`tres_nfs_confirmadas` / `peso_boletos`) de todo o fluxo operacional.
-   - **Interface Reativa, Badges e Botão Dedicado:**
-     - Botão `⚡ Consultar FGTS (InfoSimples)` no Bloco 6 permitindo reconsultas sob demanda sem recarregar o pedido.
-     - Badge informativo automático com Razão Social histórica retornada pela Caixa, situação cadastral e validade do CRF.
-     - Botão assistido 1-Clique na Caixa mantido como contingência operacional.
-   - **Suíte de Testes:** Script `test_infosimples_fgts.js` com 10 asserções automatizadas cobrindo todos os cenários de score, persistência de token string, rota HTTP `POST /api/financeiro/analise-credito/consultar-fgts`, exportação de `sendAlertEmail` e tratamento estrito de erro 601 com disparo de alerta.
-   - **Homologação em Produção Concluída (04/09/2026):** Confirmado o processamento de consulta real no painel de controle da InfoSimples (contabilização de 1 consulta, recepção dos dados do CRF da Caixa e cálculo de pontuação no Score em Tempo Real homologados).
-31. [x] **Aprimoramento Visual e Rastreabilidade na Tabela de Histórico de Crédito (`public/index.html`, `public/app.js`):**
-   - **Compactação e Abreviatura de Empresa:**
-     - Cabeçalho reduzido de `Empresa` para **`Emp`** com alinhamento centralizado e largura otimizada (`55px`).
-   - **Coluna de Operador com Avatar Circular (`👤`):**
-     - Inclusão da coluna **`👤`** com badge circular tipo avatar estilizado em degradê ciano/índigo (`24px`).
-     - Renderização da **primeira letra do usuário em maiúsculo** (ex: `A` para Alexandre, `R` para Rubens, `J` para Juliana), derivado do campo auditável `item.usuario`.
-     - Tooltip nativo informativo (`Registrado por: <Nome>`) ao posicionar o cursor sobre o avatar.
-   - **Ajuste de Colunas e Empty State:**
-     - Atualização do `colspan="11"` para manter o grid perfeitamente balanceado em estados vazios ou filtrados.
-32. [x] **Painel de Faróis de Conectividade Externa (SRE), Telemetria em Tempo Real & Arquitetura Fail-Neutral na Análise de Crédito (`server.js`, `analise_credito_engine.js`, `serasa_pdf_parser.js`, `public/index.html`, `public/style.css`, `public/app.js`, `test_farois_resiliencia_credito.js`):**
-   - **Painel Visual com 6 Faróis de Status em Tempo Real (`#creditoFaroisConectividade`):**
-     - Indicadores dinâmicos com LEDs luminosos animados (`.farol-pulse-dot`, `.farol-ok`, `.farol-alert`, `.farol-error`, `.farol-info`, `.farol-neutral`) exibidos no topo da Análise de Crédito cobrindo 100% dos serviços externos:
-       1. **Receita Federal / CNPJ:** Status da BrasilAPI e ReceitaWS com latência em ms e detecção de contingência.
-       2. **RDAP Registro.br:** Status da consulta do NIC.br, idade do domínio e confronto de raiz de CNPJ.
-       3. **Wayback Machine:** Primeiro snapshot histórico arquivado no Archive.org ou aviso de ausência de registros.
-       4. **Servidor de E-mail (DNS MX):** Tipo de servidor identificado (Google Workspace, Microsoft 365, Hospedagem) com tempo de resolução.
-       5. **FGTS Caixa Econômica:** Regularidade do CRF e conformidade de Razão Social via InfoSimples com motivo detalhado.
-       6. **ERP TOTVS Protheus:** Status da conexão Railway SQL, tempo de resposta e importação de títulos SE1/pedidos SC5.
-   - **Eliminação de Falhas Silenciosas & Arquitetura Fail-Neutral:**
-     - **Registro.br e DNS MX Fail-Neutral:** Caso o RDAP ou DNS sofram timeout ou erro de rede, o sistema atribui pontuação neutra (`0 pts`) com tag explicativa `[INDISPONÍVEL]`, eliminando penalizações indevidas de **-7 pts** ou **-4 pts** sobre clientes legítimos.
-     - **Fim da Falsa Conformidade de Endereço:** Caso as APIs da Receita Federal estejam offline, o campo `cadastro_igual_receita` não assume falsamente `'S'`; o sistema exibe alerta e exige conferência manual (`RECEITA OFFLINE - CONFERIR ENDEREÇO`).
-     - **Feedback Explícito no FGTS no Auto-Fetch:** Caso a API InfoSimples oscile durante o carregamento do pedido, o badge não desaparece silenciosamente; exibe badge informativo com o motivo retornado pela API.
-     - **Diferenciação de Erros no Protheus:** Tratamento refinado no frontend distinguindo `404 - Pedido Inexistente` de `500/504 - Falha de Conexão com o ERP Protheus (Railway SQL)`.
-     - **Timeout de Segurança no Parser Serasa:** Inclusão de timer com timeout de 15 segundos no spawn do interpretador Python para proteção contra processos zumbis ou travamentos em PDFs corrompidos.
-   - **Suíte de Testes Automatizados:** Script `test_farois_resiliencia_credito.js` com 9 asserções cobrindo regras fail-neutral, payload de telemetria, componentes de interface e proteções de processos (100% de aprovação).
-33. [x] **Hardening do Ciclo de Autenticação Frontend & Salvaguarda contra Regressões de Sintaxe no Monolito SPA (`public/app.js`, `public/index.html`):**
-   - **Causa Raiz & Resolução do Bloqueio de Login:** Identificada declaração duplicada e não fechada de listener de evento no monolito SPA que gerava `SyntaxError: Unexpected end of input`, impedindo a execução de `DOMContentLoaded` e a ocultação do `#loginOverlay`.
-   - **Salvaguarda Preventiva:** Incorporação obrigatória de linting/checagem de sintaxe via `node -c public/app.js` em todos os ciclos de release antes de commits.
-   - **Invalidação Agressiva de Cache (`v=8.89`):** Parâmetros de cache-busting sincronizados em `style.css?v=8.89` e `app.js?v=8.89` com atualização da tag de versão para `27/08/2026 18:00`.
-34. [x] **Módulo de BI Executivo Embutido — Metabase Embedded Analytics (`services/bi_service.js`, `public/js/bi.js`, `sql/bi/`, `docs/metabase/`, `server.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_bi_embed.js`):**
-   - **Arquitetura Modular e Desacoplamento:**
-     - Criação do serviço backend `services/bi_service.js` e do módulo frontend `public/js/bi.js`, mantendo `server.js` e `app.js` limpos e desacoplados com importações mínimas.
-   - **Infraestrutura em Nuvem (Render Pro & Supabase Canada):**
-     - Instância dedicada no Render (`bi-gsi.onrender.com`) rodando Metabase `v0.49.13` em container Pro com **2 GB de RAM e 1 CPU dedicada**, garantindo inicialização veloz, zero crash por exaustão de memória e disponibilidade 24/7.
-     - Conexão segura e direta com o banco de dados PostgreSQL no Supabase (Região Canadá `ca-central-1` no host `aws-0-ca-central-1.pooler.supabase.com:5432`).
-   - **Segurança RBAC Estrita e Signed JWT Embedding:**
-     - Endpoint protegido `/api/bi/dashboard-executivo` restrito a `admin` e usuário master `alexandre` (`requireAuth`, `requireRole('admin')`). Bloqueio 403 para perfis operacionais e vendedores.
-     - Geração de token JWT assinado criptograficamente com `METABASE_SECRET_KEY` (HMAC-SHA256) e TTL efêmero de 10 minutos para incorporação segura (*Signed Embed*).
-     - Integração de Single Sign-On transparente via `conciliacao_fretes_session` sem necessidade de redigitar credenciais.
-   - **Interface Seamless & Experiência Centralizada no Portal GSI:**
-     - Nova aba principal `📊 BI EXECUTIVO` exibida exclusivamente para a diretoria (`#tab-bi-executivo` / `mainTabBi`).
-     - Container de iframe responsivo em tela cheia (`82vh`), sincronização de temas claro/escuro, botão de tela cheia (`⛶`) e botão de recarregamento instantâneo (`🔄`).
-     - Assistente visual de configuração (*Setup Guide*) integrado para monitoramento do status das variáveis de ambiente (`METABASE_SITE_URL`, `METABASE_SECRET_KEY`, `METABASE_EXEC_DASHBOARD_ID`).
-   - **Modelagem Analítica SQL & Cobertura dos 33 Grupos do Protheus (`SBM010`):**
-     - Script DDL e Seeding `sql/bi/00_tabela_grupos_sbm.sql` cobrindo 100% dos **33 Grupos Oficiais do Protheus Empresa 01** (`001 - Cofres` até `091 - Insumos Produção Cofres`), garantindo suporte total a vendas passadas e presentes.
-     - Scripts SQL de Views analíticas em `sql/bi/`: `01_vw_produtos_estoque.sql` (Saldos por empresa MP 14/GSI 15/OACO 16, preços, valor total de estoque, SC6, SC7 e rupturas), `02_vw_analise_credito.sql` (Histórico de crédito, scores, riscos e decisões), `03_vw_atividades_auditoria.sql` (Telemetria de operadores) e `04_vw_demandas_grupos_comerciais.sql` (Demandas e faturamento por grupo comercial).
-    - **Documentação e Esteira de Auditoria Completa:**
-      - Guia completo de implantação em `docs/metabase/GUIA_SETUP_METABASE.md` e manual de arquitetura corporativa em `docs/metabase/ARQUITETURA_BI_EXECUTIVO.md`.
-      - **Esteira Completa de IA (5 Auditores Especializados):** Suíte de testes automatizados `test_bi_embed.js` expandida com **19 asserções cobrindo os 5 vetores**:
-        1. *Auditor de Segurança & Red Team:* Zero-Trust, bloqueios RBAC (401/403/200) e integridade de token HMAC-SHA256 com TTL efêmero.
-        2. *Auditor de Serviço & Criptografia:* Normalização e protocolo seguro de URL, signed JWT com dashboard ID e parâmetros.
-        3. *Auditor de Clean Code:* Modularização IIFE estrita em `public/js/bi.js` e desacoplamento backend em `services/bi_service.js`.
-        4. *Auditor de SRE & Resiliência:* Proteção contra DOM XSS com `escapeHtml`, `referrerpolicy="no-referrer"`, acessibilidade WCAG (`title`), bloqueio anti-concorrência `isBiLoading` e degradação graciosa para Setup Guide.
-        5. *Auditor de UI/UX & Acessibilidade:* Integridade estrutural do DOM no `index.html`, estilos CSS responsivos e tela cheia `bi-fullscreen-active` (100% de aprovação).
-35. [x] **Correção da Renderização de HTML/CSS na Coluna "Último Acesso Ativo" em Auditoria (`public/app.js`, `public/index.html`, `test_dom_xss_and_secrets.js`):**
-    - **Causa Raiz & Resolução:** A função `formatTimeAgo()` gera marcação HTML segura (badges com cor, borda e timestamp legível). Na interpolação da tabela `auditUsersTableBody`, o resultado estava envolvido por `escapeHtml(...)`, convertendo tags como `<span>` e `<small>` em entidades textuais visíveis (`&lt;span...&gt;`).
-    - **Correção Aplicada:** Remoção do `escapeHtml` sobre o retorno de `formatTimeAgo` em `auditUsersTableBody`, calibração visual dos badges com bordas suaves (`border: 1px solid rgba(16, 185, 129, 0.3)`) e inclusão de salvaguarda contra pequenas variações de relógio (`diffSec < 0`).
-    - **Suíte de Testes:** Atualização em `test_dom_xss_and_secrets.js` validando que a tabela renderiza `formatTimeAgo` sem escape e preserva 100% das regras de sanitização XSS.
-36. [x] **Módulo de Faturamento Mês a Mês & Vendas por Grupo de Produto no BI Executivo (`sql/bi/05_tabela_e_views_faturamento.sql`, `protheus_db.js`, `postgres_db.js`, `server.js`, `test_bi_faturamento.js`):**
-    - **Extração Histórica Multi-Empresa Protheus:**
-      - Consulta unificada e limpa de itens de notas fiscais faturadas (`SD2140` / `SF2140` Metal Pleno 14, `SD2150` / `SF2150` GSI 15 e `SD2160` / `SF2160` OACO 16), cruzando com `SB1010` (catálogo) e `SA1010` (clientes).
-      - Filtros de integridade fiscal: exclusão estrita de canceladas e devoluções (`F2_TIPO IN ('N', 'C')`, `D_E_L_E_T_ = ' '`).
-    - **Data Warehouse Analítico & Views no Supabase:**
-      - Tabela `faturamento_itens_historico` com chave primária e constraint única determinística (`empresa_cod, nota_doc, nota_serie, item_num`), datas nativas (`data_emissao DATE`, `mes_ano VARCHAR(7)`), índices B-Tree e RLS ativo.
-      - **View `vw_bi_faturamento_mensal`:** Faturamento bruto de mercadorias, volume de notas fiscais, clientes atendidos, total de unidades e cálculo de ticket médio por nota mês a mês.
-      - **View `vw_bi_faturamento_grupo_mes`:** Vendas e faturamento discriminados mês a mês por cada um dos 33 Grupos de Produtos do Protheus (`SBM010` — Cofres, Fragmentadoras, Plastificação, Armários, etc.).
-      - **View `vw_bi_faturamento_vendedor_mes`:** Desempenho e volume faturado mensal por consultor comercial.
-    - **Segurança RBAC, Endpoints & Testes Automatizados:**
-      - Endpoints `/api/bi/sync-faturamento` e `/api/bi/faturamento-stats` protegidos por autenticação JWT e restritos a administradores.
-      - Suíte automatizada `test_bi_faturamento.js` com 11 asserções cobrindo mapeamento de grupos, persistência com fallback em cache JSON, DDLs e controle de acesso RBAC (100% de aprovação).
-37. [x] **Sub-abas no BI Executivo, Módulo de Índices Financeiros de Liquidez & Integração Metabase (`sql/bi/06_tabelas_indices_liquidez.sql`, `bi_indices_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_indices.js`, `public/style.css`, `test_bi_indices.js`):**
-    - **Navegação de 2 Sub-abas no BI Executivo:**
-      - Sub-aba 1 (Default): `📊 Índices` (`#tab-bi-indices` / `btnTabBiIndices`) exibindo os índices de liquidez, cartões de componentes e tabela comparativa multi-empresa.
-      - Sub-aba 2: `📈 Metabase Analytics` (`#tab-bi-metabase` / `btnTabBiMetabase`) mantendo a integração embedded do painel analítico Metabase.
-    - **Fórmulas Matemáticas Oficiais de Liquidez Auditáveis:**
-      - **Liquidez Corrente ($LC$):** $\frac{\text{Ativo Circulante}}{\text{Passivo Circulante}} = \frac{\text{Estoque (Custo PA)} + \text{Disponibilidades Bancárias (SE8)} + \text{Receber Válido (}\le\text{5d)}}{\text{Passivo Circulante (SE2 com PR)}}$.
-      - **Liquidez Seca ($LS$):** $\frac{\text{Ativo Circulante} - \text{Estoque}}{\text{Passivo Circulante}} = \frac{\text{Disponibilidades Bancárias (SE8)} + \text{Receber Válido (}\le\text{5d)}}{\text{Passivo Circulante (SE2 com PR)}}$.
-      - **Liquidez Imediata ($LI$):** $\frac{\text{Disponibilidades Bancárias (SE8)}}{\text{Passivo Circulante (SE2 com PR)}}$.
-    - **Regras Contábeis & Fiscais Estritas:**
-      - **Estoque PA:** Leitura combinada de `SB2` com `SB1` usando custo unitário (`B1_VLUNIT`) de produtos tipo `PA` com quantidade $> 0$.
-      - **Saldos Bancários (SE8):** Extração particionada por banco/agência/conta com `ROW_NUMBER() OVER (PARTITION BY E8_BANCO, E8_AGENCIA, E8_CONTA ORDER BY E8_DTSALAT DESC)` para obter o último saldo real disponível de cada uma das 22 contas bancárias.
-      - **Contas a Receber (SE1):** Considera títulos em aberto com saldo $> \text{R\$\ 0,01}$ e exclusão automática de títulos inadimplentes com vencimento superior a 5 dias de atraso (`dias_vencido > 5`).
-      - **Contas a Pagar (SE2):** Considera títulos com saldo pendente $> \text{R\$\ 0,01}$ (suportando títulos com baixa parcial considerando o saldo residual real), inclusão integral de provisórios do tipo `PR` e **exclusão expressa de pagamentos antecipados `PA`** (pois o valor já foi desembolsado e não constitui passivo futuro).
-    - **Preservação de Títulos Provisórios (`PR`) via `RECNO` Físico Protheus:**
-      - Títulos provisórios (`PR`) não possuem número de nota (`E2_NUM = '000000000'`). Para evitar colisões e perda de títulos, a extração e o banco utilizam a coluna física `recno` (`R_E_C_N_O_`), preservando 100% dos 141 títulos reais (39 MP + 46 GSI + 56 OAÇO, totalizando `R$ 475.747,40`).
-      - Remoção das constraints únicas legadas conflitantes `uq_contas_a_pagar` e `uq_contas_a_receber` no PostgreSQL.
-    - **Snapshot Diário por Upsert & View Analítica para o Metabase (`vw_indices_liquidez_diario`):**
-      - Índice único `uq_indices_hist_dia_empresa ON indices_liquidez_historico(data_registro, empresa_cod)` com `ON CONFLICT DO UPDATE` e deduplicação diária no cache JSON, assegurando exatamente 1 snapshot consolidado por dia por empresa (evitando dentes de serra e repetições intraday).
-      - View SQL `vw_indices_liquidez_diario` particionada por `ROW_NUMBER() OVER (PARTITION BY data_registro, empresa_cod ORDER BY timestamp_registro DESC)` para visualização limpa e linear nos gráficos e dashboards do Metabase.
-    - **Tabelas Relacionais no Supabase & RLS:**
-      - Criação das tabelas `estoque`, `contas_a_receber`, `contas_a_pagar`, `saldos_bancarios`, `indices_sync_logs` e `indices_liquidez_historico` com Row-Level Security (RLS) habilitado.
-    - **UX e Drilldown Interativo:**
-      - 3 Cards principais de Liquidez com badges de saúde financeira (*Excelente*, *Saudável*, *Atenção*) e fórmulas matemáticas exibidas.
-      - 4 Cards de componentes (Estoque PA, Bancos SE8, Contas a Receber, Contas a Pagar).
-      - Tabela comparativa multi-empresa (Metal Pleno 14, GSI 15, OAÇO 16 e Consolidado).
-      - Modal de Drilldown com 5 guias internas (Extrato Matemático passo a passo, Saldos Bancários, Títulos a Receber, Títulos a Pagar, Estoques PA) e busca instantânea.
-    - **Segurança RBAC e Suíte de Testes:**
-      - Endpoints `/api/bi/indices`, `/api/bi/indices/sync`, `/api/bi/indices/drilldown` e `/api/bi/indices/historico` protegidos por JWT e restritos a administradores.
-      - Suíte automatizada `test_bi_indices.js` com 18 asserções aprovadas com 100% de sucesso.
-38. [x] **Desbloqueio de Visão Unificada para Vendedores & Coluna Nome em Comissões (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_vendedores_desbloqueio.js`, `test_pedidos_abertos.js`):**
-    - **Desativação da Trava Restritiva de Vendedores:**
-      - Remoção do bloqueio/override de isolamento (`codVend = user.vendorCode`) nas rotas `/api/vendedores/pedidos/abertos`, `/api/vendedores/comissoes` e `/api/vendedores/pedidos/detalhes`.
-      - Usuários com perfil `vendedor` agora podem consultar e visualizar comissões e pedidos em aberto de todos os vendedores ou filtrar interativamente por qualquer vendedor pelo menu seletor.
-      - Remoção do bloqueio de formulário na função `ajustarEscopoVendedor` no frontend (`public/app.js`), mantendo os seletores `#comisVendorSelect` e `#pedidosAbertosVendedorFilter` habilitados e editáveis por qualquer operador.
-    - **Nova Coluna "Nome" no Relatório de Comissões:**
-      - Consulta Protheus em `protheus_db.js` (`buscarComissoesPeriodo`) atualizada com `LEFT JOIN SA1010 A1` cruzando o código do cliente (`E3_CODCLI` com `A1_COD`).
-      - Extração e truncamento do nome do cliente (`A1_NOME`) nas **primeiras 20 letras (incluindo espaços)** (`nomeCliente: rawNome.substring(0, 20)`), com preservação do nome completo no tooltip (`title="${item.nomeClienteCompleto}"`).
-      - Tabela de Comissões atualizada em `public/index.html` e `public/app.js` com 8 colunas: inserção da coluna `Nome` (22% de largura) imediatamente ao lado de `Cliente` (11%) e redução da coluna `Vendedor` (de 16% para 12%) para distribuição harmônica do layout da tabela. Empty state ajustado para `colspan="8"`.
-39. [x] **Sub-abas "Ped. pra Faturar" (MATA460A) e "Ped. Bloq Estoque" na Aba 📦 LOGÍSTICA (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `openapi.json`, `test_pedidos_faturar.js`):**
-    - **Reestruturação da Navegação da Aba Logística (4 Sub-abas):**
-      - Sub-aba 1 (Padrão/Inicial): `🟢 Ped. pra Faturar` (`#tab-pedidos-faturar` / `btnTabPedidosFaturar`).
-      - Sub-aba 2: `🔴 Ped. Bloq Estoque` (`#tab-pedidos-bloq-estoque` / `btnTabPedidosBloqEstoque`).
-      - Sub-aba 3: `📄 Upload Fatura Transp.` (`#tab-upload` / `btnTabUploadTransp`).
-      - Sub-aba 4: `📦 Fatura Correios & ViPP` (`#tab-correios` / `btnTabCorreios`).
-    - **Regras de Negócio Oficiais do Protheus MATA460A (Legenda Verde - Prontos para Faturar):**
-      - Consulta T-SQL multi-empresa (`SC9` + `SC5` + `SC6` + `SA4` + `SF2` nas empresas OACO 16, GSI 15 e Metal Pleno 14).
-      - Filtro de liberação: `C9_BLEST NOT IN ('02')`, `C9_BLCRED NOT IN ('01')`, `C9_BLOQUEI = ''`, `C9_QTDLIB > 0`, sem NF ativa em `SF2` (`F2_DOC IS NULL` ou `C9_NFISCAL = ''`) e `C5_NOTA` não faturada/reaberta (`XXXXXXXXX`).
-      - Na **OACO (16)**: Retorna exclusivamente o pedido **`000221`** (MOHAMMED NAHED RAJAB KHDAIR - R$ 515,07), cuja NF antiga `000132` foi cancelada/excluída (`SF2.D_E_L_E_T_ = '*'`).
-      - Na **GSI (15)**: Retorna 4 pedidos liberados (`001887`, `001886`, `000257`, `001845`).
-      - Na **MP (14)**: 0 pedidos.
-    - **Regras de Negócio para Pedidos Bloqueados por Estoque (`C9_BLEST = '02'`):**
-      - Identifica pedidos com pendência de estoque retidos no Protheus.
-      - Na **OACO (16)**: Lista com precisão os **8 pedidos** bloqueados (`000723`, `000729`, `000736`, `000754`, `000755`, `000762`, `000763`, `000764`).
-      - Na **MP (14)**: 4 pedidos bloqueados (`000338`, `000354`, `000346`, `000200`).
-      - Na **GSI (15)**: 0 pedidos bloqueados.
-    - **Interface, KPIs, Ordenação, Isolamento Estrito & Links Pipedrive:**
-      - 3 Cards KPIs por sub-aba (*Pedidos Prontos/Bloqueados*, *Total de Peças*, *Valor Total R$*).
-      - Barra de filtros com busca instantânea textual, seletor de empresa e botão de limpeza.
-      - **Isolamento Estrito de Abas:** Classe `hidden` aplicada na tag `#tab-conciliacao-bancaria` e salvaguarda no startup em `public/app.js` e em `switchMainTab` para ocultar 100% dos painéis inativos, eliminando vazamento visual de abas não selecionadas.
-      - **URL Oficial do CRM Pipedrive:** Links de `CodWeb` gerados via helper `formatPipedriveDealLink` apontando para o subdomínio oficial `https://benetroncomercial.pipedrive.com/deal/${digits}`.
-      - Integração seamless com o modal `#pedidoDetalhesModal` via clique no Pedido de Venda.
-    - **Segurança RBAC e Suíte de Testes Automatizados:**
-      - Endpoints `/api/logistica/pedidos-faturar` e `/api/logistica/pedidos-bloq-estoque` protegidos por JWT e auditados em `user_activities`.
-      - Suíte automatizada `test_pedidos_faturar.js` com 11 asserções aprovadas com 100% de sucesso.
-40. [x] **Sub-aba "Ped. Lib Estoque" com Fila Sequencial FIFO (MATA455 / MATA456) na Aba 📦 LOGÍSTICA (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_pedidos_lib_estoque.js`):**
-    - **Reestruturação da Navegação da Aba Logística (5 Sub-abas):**
-      - Sub-aba 1 (Padrão/Inicial): `🟢 Ped. pra Faturar` (`#tab-pedidos-faturar` / `btnTabPedidosFaturar`).
-      - Sub-aba 2: `📋 Ped. Lib Estoque` (`#tab-pedidos-lib-estoque` / `btnTabPedidosLibEstoque`).
-      - Sub-aba 3: `🔴 Ped. Bloq Estoque` (`#tab-pedidos-bloq-estoque` / `btnTabPedidosBloqEstoque`).
-      - Sub-aba 4: `📄 Upload Fatura Transp.` (`#tab-upload` / `btnTabUploadTransp`).
-      - Sub-aba 5: `📦 Fatura Correios & ViPP` (`#tab-correios` / `btnTabCorreios`).
-    - **Algoritmo de Fila Sequencial FIFO por Produto contra SB2:**
-      - Consulta multi-empresa (`SC9` + `SC5` + `SC6` + `SA4` + `SF2` + `SB2` nas empresas OACO 16, GSI 15 e Metal Pleno 14) filtrando `C9_BLEST = '02'` e pedidos em aberto.
-      - Saldo disponível calculado por filial e produto em `SB2`: `saldoDisponivel = Math.max(0, B2_QATU - B2_RESERVA - B2_QEMP)`.
-      - Ordenação estrita da fila de atendimento por produto:
-        1. **1º Critério:** Data de Liberação (`C9_DATALIB`) mais antiga (formato `YYYYMMDD`, fallback `C5_EMISSAO`).
-        2. **2º Critério (Desempate):** Número do Pedido (`C9_PEDIDO`) menor/mais antigo (ordem numérica crescente).
-        3. **3º Critério:** Sequência do Item (`C9_ITEM` / `C9_SEQUEN`).
-      - Alocação virtual sequencial que deduz o saldo disponível item a item, calculando: `qtdAlocada`, `saldoFaltante`, `posicaoFila` e status do item (`TOTAL`, `PARCIAL`, `SEM_SALDO`).
-    - **Classificação Inteligente do Status do Pedido:**
-      - `🟢 Ped. Pronto pra Ser Liberado` (`badge-lib-pronto`): 100% dos itens do pedido com saldo suficiente em estoque alocado pela fila FIFO (ex: Pedido `000346` na MP 14).
-      - `🟡 Lib Parcial` (`badge-lib-parcial`): Pedido com múltiplos itens (ou item parcial) onde parte possui estoque disponível e parte ainda aguarda entrada de produção/NF (ex: Pedido `000763` na OACO 16, com saldo 6 para demanda de 11).
-      - `🔴 Aguardando Estoque` (`badge-lib-aguardando`): Nenhum item possui saldo disponível no momento.
-    - **Indicação da Rotina Protheus Sugerida:**
-      - `MATA455 (Liberação de Estoque)`: Para pedidos com bloqueio de estoque puro.
-      - `MATA456 (Liberação Crédito e Estoque)`: Para pedidos que também possuem pendência financeira/crédito (`C9_BLCRED = '01'`).
-    - **Interface, KPIs, Ordenação & Modal Drilldown:**
-      - 4 Cards KPIs no topo (*Prontos p/ Liberar*, *Liberação Parcial*, *Aguardando Estoque*, *Total em Fila*).
-      - Barra de filtros com busca textual em tempo real, seletor de empresa, seletor de status e botão de limpeza.
-      - Modal interativo `#modalLibEstoqueItens` detalhando a auditoria da fila FIFO por item: Código, Descrição, Qtd Bloqueada, Saldo Físico `SB2`, Qtd Alocada, Saldo Faltante, Posição na Fila (`#1`, `#2`, `#3`...) e Status do Item.
-    - **Segurança RBAC e Suíte de Testes Automatizados:**
-      - Endpoint `/api/logistica/pedidos-lib-estoque` protegido por JWT e registrado em `user_activities` (`CONSULTA_PEDIDOS_LIB_ESTOQUE`).
-      - Suíte automatizada `test_pedidos_lib_estoque.js` com 8 asserções cobrindo algoritmo FIFO, desempates, cenários parciais, integração HTTP e integridade visual do DOM (100% aprovada).
-41. [x] **Auditoria Completa da Sub-aba Análise de Crédito na Esteira de IA (`analise_credito_engine.js`, `public/js/credito.js`, `sql/bi/02_vw_analise_credito.sql`, `public/app.js`, `server.js`, 12 Suítes de Testes):**
-    - **Correção Crítica de Reatribuição no Histórico:** Eliminação de erro de runtime na renderização do histórico de crédito substituindo reatribuição indevida de constante por variável mutável (`let sugestoes = item.sugestoes_lista || []` em `public/app.js`), assegurando renderização fluida e sem interrupções das análises registradas.
-    - **Contratos de API Padronizados em `public/js/credito.js`:** Modularização e desacoplamento do cliente HTTP no frontend com contratos REST canônicos (`consultarCreditoProtheus`, `parseSerasaPdf`, `carregarScoreConfig`, `salvarScoreConfig`, `salvarAnaliseCredito`, `carregarHistoricoCredito`) consumindo endpoints same-origin com Bearer token JWT.
-    - **Modelagem Analítica BI SQL com Suporte JSONB Híbrido (`vw_bi_analise_credito`):** Atualização da view analítica no PostgreSQL Supabase (`sql/bi/02_vw_analise_credito.sql`) suportando leitura transparente de schemas legados planos e novos esquemas aninhados (`dados_completos->'protheus'`, `dados_completos->'receita'`, `dados_completos->'serasa'`, `dados_completos->'fgts'`) com castings defensivos via regex (`~ '^[0-9.]+$'`) para prevenção de exceções de conversão de tipos em campos numéricos.
-    - **Mascaramento e Segurança de Tokens de Integração:** Proteção do token de API InfoSimples no frontend e logs, prevenindo exposição acidental de credenciais em relatórios ou payloads de telemetria.
-    - **Robustez Numérica e Decimais com Ponto:** Tratamento defensivo em pontuações de score, idades decimais (ex: 24.3 meses, anos de fundação) e valores monetários com ponto flutuante, eliminando distorções de arredondamento.
-    - **Homologação Completa em 12 Suítes Automatizadas (78 Testes 100% Aprovados):**
-      1. `test_analise_credito_detalhes.js` (4 asserções - Imutabilidade e consistência matemática de pontuação)
-      2. `test_capital_social_isento.js` (5 asserções - Pontuação neutra e liberação de cadastro)
-      3. `test_deteccao_entrega.js` (10 asserções - Detecção semântica em `C5_MENNOTA` e transportadora `000009`)
-      4. `test_farois_resiliencia_credito.js` (9 asserções - Matriz FMEA fail-neutral e timeouts)
-      5. `test_infosimples_fgts.js` (8 asserções - Integração InfoSimples REST e regras antifraude)
-      6. `test_novos_criterios_credito.js` (8 asserções - Alteração de sócios, aumento de capital e 1-clique Caixa)
-      7. `test_registro_br_automacao.js` (8 asserções - Consulta RDAP NIC.br e confronto de raiz CNPJ)
-      8. `test_score_config.js` (5 asserções - Calibração de pesos e sincronização dinâmica de rótulos)
-      9. `test_serasa_pdf_parser.js` (10 asserções - Validação temporal &le; 4 meses, default e travas)
-      10. `test_totais_pedido.js` (4 asserções - Segregação de frete normal `C5_FRETE` vs frete embutido `C5_VLR_FRT`)
-      11. `test_frontend_modules.js` (5 asserções - Contratos ES6 e rotas de crédito)
-      12. `test_dom_xss_and_secrets.js` (2 asserções - Sanitização XSS e integridade de armazenamento de crédito)
-42. [x] **Central "Minhas Tarefas" na 1ª Tela Pós-Login, Gestão e Delegação de Demandas, Links Preferidos & Auto-organização (`postgres_db.js`, `server.js`, `public/js/tarefas.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_minhas_tarefas.js`):**
-    - **Tela de Pouso Principal Pós-Login (1ª Tela):**
-      - O portal abre diretamente na central **`📋 Minhas Tarefas`** (`#tab-minhas-tarefas` / `mainTabTarefas`) após o login/2FA de todos os colaboradores (`alexandre`, `juliana`, `andrea`, `figueiredo`, `erica`, `wallerson`, etc.), permitindo que cada membro da equipe inicie a jornada com foco total em sua pauta operacional.
-    - **Segurança RBAC Zero-Trust & Isolamento Rigoroso de Escopo:**
-      - Colaboradores comuns só visualizam e interagem com as tarefas atribuídas a eles (`responsavel_username = user.username`).
-      - Tentativas de acessar tarefas de terceiros por ID direto ou forçar parâmetros de busca de outros usuários retornam **HTTP 403 Forbidden**.
-      - Gestores e Administradores (`alexandre` / `admin`) possuem visão unificada e global de todas as demandas da empresa, com filtros de busca por colaborador, status e criticidade.
-    - **Auto-criação de Tarefas & Coluna Solicitante:**
-      - Qualquer usuário pode criar tarefas e anotações para si mesmo.
-      - A tabela de demandas exibe a coluna **Solicitante** discriminando com clareza se a tarefa foi demandada pela gestão (`👤 Alexandre Gestor`) ou auto-gerada pelo próprio colaborador (`👤 Próprio Usuário`).
-    - **Workflow de Validação em Duas Etapas & Governança Estrita:**
-      - O colaborador executa a tarefa e clica em **`✅ Marcar como Concluída`** (status `CONCLUIDA`), entregando para validação da liderança.
-      - Apenas o gestor/admin possui autorização para aprovar e finalizar (**`✨ Aprovar e Finalizar`** - status `FINALIZADA`) ou reabrir apontando o que faltou (**`🔄 Reabrir Tarefa`** - status `REABERTA` com justificativa obrigatória registrada na linha do tempo).
-      - Tentativas de operadores alterarem para status restritos são bloqueadas no backend com **HTTP 403 Forbidden**.
-    - **Histórico & Chat de Linha do Tempo (JSONB Atômico):**
-      - Cada tarefa possui feed de comentários em tempo real (`autor_username`, `autor_nome`, `mensagem`, `created_at`) persistido nativamente na coluna `comentarios JSONB` da tabela `tarefas` no Supabase (com fallback em `data/tarefas.json`), sanitização contra injeções XSS (`escapeHtml`) e auto-scroll no chat.
-    - **Divisão em Dois Cards Distintos (Links Úteis & Painel de Tarefas):**
-      - **1º Card (Superior):** `⭐ Meus Links Úteis` com botão de inclusão `➕ Adicionar Link` no cabeçalho e grade de atalhos logo abaixo.
-      - **2º Card (Inferior):** `📋 Painel de Tarefas` contendo contadores KPIs, formulário compacto de busca/filtros, tabela paginada e ações.
-    - **Barra de Links Preferidos (Atalhos Operacionais do Dia a Dia):**
-      - Seção no topo da tela permitindo que cada colaborador cadastre, utilize e remova seus próprios atalhos web diários (*Gmail, Google Drive, Consulta CNPJ Receita Federal, Sintegra, PipeDrive CRM, Protheus, portais bancários*).
-      - Persistência na coluna `links_favoritos JSONB` da tabela `users` no Supabase (com fallback em `data/users.json`), inicialização com os 5 atalhos padrão na primeira sessão e abertura segura em nova janela com proteção contra *tabnabbing* (`target="_blank" rel="noopener noreferrer"`).
-    - **Centralização Fixa de Modais na Viewport:**
-      - Modais `#modalNovoLink`, `#modalNovaTarefa` e `#modalTarefaDetalhes` estilizados com a classe nativa `.modal`, garantindo renderização fixa e centralizada sobre a tela (`position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center;`).
-    - **Correção de Isolamento de Abas no Startup (F5/Refresh):**
-      - Ajustada a rotina de encerramento do script `public/app.js` para preservar `tab-minhas-tarefas` como visível e ativa por padrão, eliminando o mascaramento que ocultava o painel durante recarregamentos de página.
-    - **Segmented Control & Alternância Rápida de Pauta:**
-      - Botões no topo da tabela para troca rápida de contexto com 1 clique: **`⏳ Pauta Ativa`** vs **`✅ Tarefas Concluídas`**.
-    - **Seleção Dinâmica de Responsáveis (`GET /api/auth/users`):**
-      - Endpoint REST autenticado (`requireAuth`) retornando a lista de colaboradores ativos para atribuição no modal de criação (`#tarefaRespSelect`). Recarregamento sob demanda e proteção contra vazamento de senhas.
-    - **Unificação de Prioridades (Normal Default | Alta | Urgente):**
-      - Eliminação da opção `Média` e renomeação de `Baixa` para `Normal`, estabelecendo o trio: `🟢 Normal` (padrão / default), `🟠 Alta` e `🔴 Urgente`.
-      - Migração e retrocompatibilidade automática de registros legados no PostgreSQL, renderização e backend.
-    - **Suíte de Testes Automatizados (20 Asserções 100% Aprovadas):**
-      - Script `test_minhas_tarefas.js` cobrindo DDL de banco, métodos CRUD, append de JSONB, autenticação JWT, bloqueios RBAC/IDOR, governança de status, auto-criação, CRUD de links preferidos, novo endpoint `/api/auth/users` e integridade sintática via Node.js `vm.Script`.
-43. [x] **Expurgo Estrito de Produtos Bloqueados (`B1_MSBLQL`), Descarte de Catálogo Legado (`SB1010`) & Ajuste de Joins no Faturamento (`protheus_db.js`, `test_saldos_estoque.js`):**
-    - **Causa Raiz & Resolução do Surgimento de Produtos Bloqueados:**
-      - **Dicionário Protheus `B1_MSBLQL`:** No ERP TOTVS Protheus, `B1_MSBLQL = '1'` significa **Bloqueado/Inativo** e `B1_MSBLQL = '2'` significa **Não Bloqueado/Ativo**.
-      - **Isolamento de Catálogo Legado (`SB1010`):** Identificado que o código `001010101011016` e outros 294 itens obsoletos pertenciam à antiga **Empresa 01** (`SB1010`), onde estavam registrados com `B1_MSBLQL = '2'` desde 2019/2020. Nas empresas ativas do grupo (Holding `SB1090`, Metal Pleno `SB2140`, GSI `SB2150` e OACO `SB1160`), esse código nem existia. A inclusão de `SB1010` na sincronização trazia esses produtos com saldo zero para o catálogo.
-      - **Exclusão de Tabelas Legadas:** A lista `sb1Tables` foi enxugada para consultar estritamente os catálogos oficiais operacionais: `['SB1090', 'SB1160']`.
-    - **Varredura e Expurgo Bidirecional de Códigos Bloqueados:**
-      - A rotina de sincronização coleta preventivamente todos os códigos com `B1_MSBLQL IN ('1', 'S', 's')` em `SB1090` e `SB1160` (mais de 530 códigos identificados) e garante a exclusão determinística (`produtosMap.delete(cod)`), impedindo que produtos bloqueados apareçam na visualização de estoque.
-    - **Correção de Joins no Faturamento Protheus (`SD2`):**
-      - Substituição de `LEFT JOIN SB1010 B1` por `LEFT JOIN SB1090 B19` e `LEFT JOIN SB1160 B16` com `COALESCE(B19.B1_DESC, B16.B1_DESC, '')`, garantindo descrições 100% corretas para todos os itens faturados das empresas ativas.
-    - **Homologação:** 100% das 13 suítes automatizadas aprovadas sem regressões.
-44. [x] **Sub-Aba "Gordura Frete" no Módulo Vendedores com Fechamento 26 a 25 (`gordura_frete_engine.js`, `server.js`, `public/js/gordura_frete.js`, `public/js/vendedores.js`, `public/index.html`, `public/style.css`, `test_gordura_frete.js`):**
-    - **Acompanhamento de Gordura de Frete em Tempo Real:**
-      - Nova sub-aba dedicada no módulo de Vendedores (`#tab-vend-gordura-frete` / `#btnTabVendGorduraFrete`) que permite aos vendedores e gestores acompanharem o desempenho e cumprimento de metas de frete nos fechamentos mensais.
-    - **Regra Oficial de Ciclo de Fechamento (26 a 25):**
-      - Cálculo automatizado do período padrão baseado na regra: se hoje &le; dia 25, o ciclo ativo compreende do dia 26 do mês anterior até o dia 25 do mês atual (ex: em 02/09/2026 ➔ **26/08/2026 a 25/09/2026**).
-      - **3 Botões de Atalho Rápido no Topo:** `📌 Ciclo Atual`, `⏮️ Ciclo Anterior` e `⏮️ 2 Ciclos Atrás`, permitindo alternância instantânea com 1 clique, além de Datepickers livres para intervalos personalizados.
-    - **Arquitetura Direta Otimizada no Protheus com Trava de 3 Períodos:**
-      - Consulta T-SQL executada diretamente no Protheus DB via Railway API com índice em `SF1.F1_EMISSAO`, garantindo **dados 100% em tempo real (zero lag de sincronização)** assim que as notas são amarradas na rotina `AMARFRET.PRW`.
-      - **Trava de Proteção de Performance:** Limite máximo estrito de **95 dias (3 períodos de fechamento)** por consulta, impedindo varreduras pesadas que possam onerar o ERP.
-    - **Fórmulas Oficiais de Frete e Margem:**
-      - **Frete Cobrado do Cliente (`COBCLI`):** `SC5.C5_FRETE` (Adicional) + `SC5.C5_VLR_FRT` (Embutido).
-      - **Custo Real da Transportadora (`Custo`):** `SF1.F1_VALMERC` / `SF1.F1_VALBRUT`.
-      - **Gordura de Frete Líquida:** `COBCLI - Custo Real` (Verde para Superávit/Lucro `> 0`, Vermelho para Déficit `< 0`, Neutro para `R$ 0,00`).
-      - **% Margem / Aproveitamento:** `((COBCLI - Custo) / COBCLI) * 100`.
-      - **Prevenção de Duplicidade de Itens:** Uso de `OUTER APPLY` com `SELECT DISTINCT D2_PEDIDO, D2_FILIAL` para impedir que múltiplos itens na `SD2` multipliquem o frete do pedido `SC5`.
-    - **Segurança RBAC Zero-Trust & Isolamento de Vendedores:**
-      - Perfil `vendedor`: O backend força compulsoriamente `SF2.F2_VEND1 = user.vendorCode`. Cada vendedor **só enxerga estritamente os seus próprios fretes e notas**.
-      - Perfil `admin` / diretoria: Visualiza o consolidado multi-empresa (14 Metal Pleno, 15 GSI, 16 OACO) com seletor para filtrar por vendedor específico (`Todos`, `Juliana`, `Andrea`, `Figueiredo`).
-    - **Arquitetura Desacoplada & Zero Regressão:**
-      - Motor backend isolado em `gordura_frete_engine.js`.
-      - Módulo frontend isolado dentro de IIFE em `public/js/gordura_frete.js` sem inflar o monolito SPA `public/app.js`.
-      - Sincronização completa de Tema Claro/Escuro em `public/js/vendedores.js` e tokens de estilo em `public/style.css`.
-    - **Exportação Completa para Excel (CSV UTF-8):**
-      - Botão `📥 Exp. Excel` gerando arquivo CSV com BOM UTF-8 (`\uFEFF`) e delimitador `;` contendo todos os 17 campos detalhados de faturamento e custos de frete.
-    - **Suíte de Testes Automatizados (11/11 Aprovados):**
-      - Script `test_gordura_frete.js` cobrindo regras de data, limites temporais, query T-SQL, cálculos matemáticos e integridade léxica/sintática via Node.js `vm.Script`.
-45. [x] **Sub-Aba "Fechamento" no Módulo Vendedores & Sub-Aba "Metas Vendas" em Configurações (`fechamento_vendedores_engine.js`, `postgres_db.js`, `server.js`, `public/js/fechamento_vendedores.js`, `public/js/vendedores.js`, `public/index.html`, `public/style.css`, `sql/fechamentos/01_tabela_fechamentos_vendedores.sql`, `test_fechamento_vendedores.js`):**
-    - **Regra Temporal Estrita de Fechamento (26 a 25) & Job Noturno:**
-      - Até o dia 25 de cada mês (23:59:59), a interface exibe o último fechamento consolidado oficial disponível (ciclo encerrado no dia 25 do mês anterior).
-      - No dia 26 às 00:30 de Brasília, a rotina noturna agendada (`startFechamentoVendedoresJob` / `executarJobFechamentoMensal`) consolida e persiste no banco de dados o ciclo recém-encerrado (`26/M-1` a `25/M`), que passa a ser o novo fechamento ativo disponível na tela até o próximo dia 25.
-    - **Fórmulas Matemáticas Oficiais, Dedução de Frete Embutido e Inadimplência:**
-      - **1. Venda Base Bruta:** Soma de `SE3.E3_BASE` das empresas 14 (Metal Pleno), 15 (GSI) e 16 (OACO).
-      - **2. Dedução de Frete Embutido (`C5_VLR_FRT`):** Deduplicado por `DISTINCT D2_PEDIDO` na `SD2` para notas com múltiplos itens. Subtraído da Venda Bruta para compor a **Base Líquida de Vendas** (`Venda Líquida = Venda Bruta - C5_VLR_FRT`).
-      - **3. Base de Metas e Comissões:** A Base Líquida de Vendas é a base oficial para apuração da Meta de Vendas e do cálculo da comissão de 1,3% (`Comissão Bruta = Venda Líquida * 0,013`).
-      - **4. Dedução de Inadimplentes (`SE1`):** Títulos vencidos e não baixados (`E1_SALDO > 0.01` e vencimento &le; data final do ciclo) são deduzidos da Comissão Bruta (`Comissão Líquida = max(0, Comissão Bruta - Inadimplência)`).
-      - **5. Premiações de Metas de Vendas (Base Parametrizável = R$ 120.000,00):**
-        - $\ge$ 100% (R$ 120k a R$ 179.999): **R$ 400,00**
-        - $\ge$ 150% (R$ 180k a R$ 239.999): **R$ 600,00**
-        - $\ge$ 200% (R$ 240k+): **R$ 1.000,00**
-      - **6. Premiações de Gordura de Frete:**
-        - $\ge$ R$ 700: **R$ 200,00** | $\ge$ R$ 1.100: **R$ 300,00** | $\ge$ R$ 1.500: **R$ 400,00** | $\ge$ R$ 2.100: **R$ 500,00** | $\ge$ R$ 3.000: **R$ 600,00**
-      - **7. Total Geral a Receber:** `Comissão Líquida + Prêmio Meta Vendas + Prêmio Gordura Frete`.
-    - **Sub-Aba "Metas Vendas" na Aba Configurações & Snapshots Imutáveis:**
-      - Sub-aba `#tab-config-metas-vendas` com 8 campos parametrizáveis (Meta Base de Vendas, Prêmios 100%, 150%, 200% e Prêmios de Gordura de Frete R$ 700 a R$ 3.000).
-      - Persistência na tabela `system_configs` (`key = 'metas_vendas'`) no Supabase / PostgreSQL com fallback em `data/config_metas_vendas.json`.
-      - No ato da consolidação, o fechamento grava um snapshot JSON imutável das regras vigentes (`metas_snapshot_json`), garantindo integridade histórica caso as metas sejam alteradas futuramente.
-    - **Faturamento por Empresa & Benchmarking da Equipe de Vendas:**
-      - Extração e rateio multi-empresa do faturamento do período (GSI 15, OACO 16, MP 14 e Total Geral).
-      - Gravação e exibição comparativa da performance do vendedor contra a média da equipe de vendas em Vendas Líquidas e Gordura de Frete (`diffVendasPct` e `diffGorduraPct`).
-    - **UI Gamificada, Troféu Dourado Exclusivo, Inversão de Cards & Confetes:**
-      - **Troféu Dourado 🏆 Exclusivo:** O troféu dourado brilhante com animação de pulso `@keyframes pulseTrofeu` e chuva de confetes em micro-canvas é exibido exclusivamente para vendedores que bateram a meta de vendas ($\ge 100\%$).
-      - **Inversão de Cards:** Card superior (Hero Card - Topo Direito - Amarelo `#fbbf24`) destaca **💵 Total a Receber**, enquanto o Card 4 (Stat Card - Baixo Direito - Verde `#10b981`) discrimina **🎁 Total Premiações** (Meta de Vendas + Prêmio Gordura de Frete).
-      - **Badges do Hero Card:** Exibição explícita do valor conquistado no badge de frete: `🚚 Prêmio Gordura Frete: R$ <valor>` (ou `R$ 0,00` quando sem prêmio).
-      - **Centralização do Botão de Recálculo:** Botão `🔄 Recalcular Fechamento` posicionado na sub-aba *Configurações > Metas Vendas (Configuração)*, permitindo reprocessar e consolidar no Protheus o fechamento oficial de todos os vendedores com 1 clique.
-      - **Tema Claro / Escuro 100% Funcional:** Integração e correção completa dos seletores CSS e lista JS em todas as 7 sub-abas comerciais (*Saldos em Estoque, Consulta Ped Venda, Ped Vendas Abertos, Prod x Ped Compras, Comissões, Gordura Frete e Fechamento*) e modais.
-    - **Segurança RBAC Zero-Trust, DDL Supabase com RLS & Testes:**
-      - Tabela relacional `fechamentos_vendedores` no Supabase com RLS ativo e chave única `(ciclo_id, cod_vendedor)`.
-      - Vendedores autenticados acessam exclusivamente seus próprios números; administradores acessam visão global e individual.
-      - Suíte automatizada `test_fechamento_vendedores.js` com **18 asserções 100% aprovadas**.
-46. [x] **Filtro Exclusor de Notas Fiscais de Retorno de Assistência Técnica (CFOP 5916 e 6916) na Gordura de Frete e Fechamento Mensal (`gordura_frete_engine.js`, `test_gordura_frete.js`):**
-    - **Causa Raiz & Problema Identificado:**
-      - Notas fiscais de retorno de assistência técnica e conserto (ex: NFs `000001941`, `000001942` e `000001945` da GSI 15) emitidas após reparos eram amarradas a conhecimentos de transporte (`SF1.F1_DOC` via `SF2.F2_COFRETE`).
-      - Como não há frete cobrado comercial do cliente nessas remessas (`COBCLI = R$ 0,00` ou valor residual), o custo do frete cobrado pela transportadora (R$ 300,00, R$ 400,00 e R$ 219,89) era debitado indevidamente na conta do vendedor, gerando um prejuízo/déficit artificial de quase R$ 700,00 na apuração da gordura de frete e no fechamento mensal.
-    - **Regra de Exclusão Fiscal Estrita por CFOP (5916 e 6916):**
-      - Inclusão de cláusula `NOT EXISTS` na função geradora T-SQL `buildGorduraFreteSql`:
-        ```sql
-        AND NOT EXISTS (
-          SELECT 1 
-          FROM SD2${sufixo} SD2_EXC 
-          WHERE SD2_EXC.D2_DOC = SF2.F2_DOC 
-            AND SD2_EXC.D2_SERIE = SF2.F2_SERIE 
-            AND SD2_EXC.D2_CLIENTE = SF2.F2_CLIENTE
-            AND SD2_EXC.D_E_L_E_T_ = ' '
-            AND RTRIM(SD2_EXC.D2_CF) IN ('5916', '6916')
-        )
-        ```
-      - O tratamento com `RTRIM(D2_CF)` elimina falsos negativos decorrentes de padding de caracteres no Protheus (`CHAR(5)` / `CHAR(4)`).
-      - Isolamento perfeito: preserva 100% das notas comerciais legítimas de venda (CFOPs 5102, 6108, 6102, etc.) e notas de entrega futura (`5117`, `6117`), expurgando exclusivamente retornos de conserto e assistência técnica.
-    - **Auditoria Adversarial & Testes Automatizados:**
-      - Auditoria do subagente `adversarial-verifier` concluída com veredicto **🟢 APROVADO** (risco de SQL injection zero, execução Left Anti Semi Join no MS SQL Server e páginas de buffer pool já aquecidas em memória).
-      - Suíte `test_gordura_frete.js` atualizada com asserção específica para o filtro CFOP e **12/12 testes 100% aprovados**.
-      - Suíte `test_fechamento_vendedores.js` com **23/23 testes 100% aprovados** e `test_modal_fretes_fechamento.js` com **16/16 testes 100% aprovados**.
-47. [x] **Unificação do Filtro de Status "Pendente / Reaberta" e Default Ativo na Central "Minhas Tarefas" (`postgres_db.js`, `public/index.html`, `public/js/tarefas.js`, `test_minhas_tarefas.js`):**
-    - **Demanda e Objetivo Operacional:**
-      - Atendimento ao fluxo de resolução de tarefas: ao entrar na central "Minhas Tarefas" (tela inicial pós-login), o operador ou gestor precisa enxergar de imediato tudo o que demanda ação ou resolução pendente.
-      - Unificação no filtro inicial das tarefas com status `PENDENTE` (novas demandas) e `REABERTA` (demandas que retornaram da validação da liderança para correções).
-    - **Filtro Unificado no Backend (`getTarefasDB`):**
-      - Quando `status = 'PENDENTE'` (ou `'PENDENTE,REABERTA'`), a consulta SQL filtra via `status IN ('PENDENTE', 'REABERTA')` e o fallback JSON local filtra `t.status === 'PENDENTE' || t.status === 'REABERTA'`.
-      - Preservação da integridade interna dos status individuais (`REABERTA`, `PENDENTE`, `CONCLUIDA`, `FINALIZADA`) no banco de dados e nos feeds da linha do tempo.
-      - Ordenação de prioridade preservada: tarefas `REABERTA` aparecem no topo com destaque visual urgente/reaberto, seguidas pelas tarefas `PENDENTE`, ambas ordenadas por criticidade (`URGENTE` > `ALTA` > `NORMAL`) e `created_at DESC`.
-    - **Ajustes de UI e Estado Padrão (Frontend):**
-      - No `<select id="filterTarefaStatus">` em `public/index.html`, a opção default passa a ser `<option value="PENDENTE" selected>⏳ Pendente / Reaberta</option>`.
-      - Opções individuais mantidas para consultas específicas: `🟡 Concluída (Validação)`, `🔄 Reaberta (Apenas)`, `✅ Finalizada` e `Todos os Status`.
-      - Em `public/js/tarefas.js`: inicialização de `tarefasState.filterStatus = 'PENDENTE'`, sincronização do seletor e do botão de pauta rápida `btnVerTarefasAtivas` (⏳ Pauta Ativa) e redefinição no botão de limpeza `btnLimparFiltrosTarefas`.
-    - **Testes Automatizados (24/24 Aprovados):**
-      - Expansão de `test_minhas_tarefas.js` com testes para agregação de status no helper DB (1.5), rota REST `GET /api/tarefas?status=PENDENTE` (2.11) e integridade dos contratos de frontend (4.4 e 4.5).
-48. [x] **Correção da Extração de Nota Fiscal (Doc Originário) e Metadados no Parser Rodonaves (`parser_rodonaves.py`, `test_parsers.py`):**
-    - **Causa Raiz & Resolução do Erro de NFe e CodCli Repetidos:**
-      - No processamento de faturas Rodonaves (ex: `FAT RODONAVES 15 09 26.pdf`), a tabela de CT-es contém 10 colunas: `[0] Doc`, `[1] Nº frete`, `[2] UnE`, `[3] Data emissão`, `[4] Doc originário (QTD)`, `[5] Valor R$`, `[6] Valor cobrado R$`, `[7] ICMS/ISS R$`, `[8] Cliente`, `[9] T`.
-      - O loop anterior (`for item in row_clean[2:]: if re.search(r'\d+', item): doc_orig = item; break`) capturava cegamente a coluna `UnE` (`207` - filial da transportadora) por conter dígitos, preenchendo com zeros à esquerda (`000000207`) para todas as linhas da fatura.
-      - Na consulta ao ERP Protheus (`consultarProtheusNF`), a NF `000000207` retornava repetidamente o mesmo Pedido de Venda (`000298`), mesmo Cliente (`144228`) e mesmo Frete Cobrado (`R$ 385,00`) para todos os conhecimentos de transporte na tela de batimento.
-    - **Mapeamento Dinâmico de Colunas (`col_map`) & Heurística de Fallback:**
-      - O parser agora lê o cabeçalho da tabela identificando posições de colunas (`doc_orig` / `nf`, `num_frete`, `une`, `data_emissao`, `valor_cobrado`, `cliente`).
-      - Heurística de fallback resiliente descartando explicitamente datas (`\d{2}/\d{2}/\d{4}`), valores monetários e códigos de filial `UnE` de 3 dígitos, capturando a Nota Fiscal real mesmo em páginas secundárias ou variações de layout.
-      - Sanitização da NF descartando a contagem de volumes entre parênteses (`000000665 (1)` ➔ `000000665`).
-    - **Aprimoramento na Extração de Metadados da Fatura:**
-      - `dataVencimento`: Regex multi-linha e boleto capturando a data de vencimento real da fatura (`15/09/2026`) em vez de manter o valor default legado hardcoded (`31/07/2026`).
-      - `dataEmissao`, `numeroFatura` e identificação automática da empresa sem campos estáticos mockados.
-    - **Homologação e Testes:**
-      - Atualização de `test_parsers.py` com testes unitários para a coluna `UnE` e teste de regressão ponta a ponta com `FAT RODONAVES 15 09 26.pdf` (**9/9 testes pytest aprovados**).
-      - Validação de 100% dos 5 arquivos de amostra Rodonaves do projeto com zero duplicações.
-      - Teste E2E de batimento Protheus confirmando 12 NFs únicas, 12 pedidos de venda e clientes distintos.
-49. [x] **Módulo CRM Comercial Nativo no BI Executivo (`sql/bi/07_tabelas_crm.sql`, `crm_engine.js`, `crm_routes.js`, `public/js/crm.js`, `public/index.html`, `public/style.css`, `test_crm_module.js`):**
-    - **Pipeline Kanban Canônico de 5 Fases:**
-      - *Novos Info Pendentes* (`LEAD`), *Sem Contato Não Responde* (`CONTATO`), *Proposta feita* (`PROPOSTA`), *Negociação Quente* (`NEGOCIACAO`) e *Venda Efetuada* (`GANHO`), além de suporte completo a *Perdido* (`PERDIDO`) com justificativa.
-      - Drag and Drop nativo HTML5 para movimentação ágil entre colunas com cálculo dinâmico de quantidade e somatório financeiro (R$) em cada etapa.
-    - **Ficha Completa de Oportunidade (Deal):**
-      - Cadastro detalhado com Título, Vendedor responsável, Condição de Pagamento (`SE4`), Tipo de Frete (`CIF`/`FOB`), Frete Cobrado vs Frete Embutido (respeitando a regra do pedido de venda), Transportadora, Pedido de Compra do Cliente, Observações da NF-e e Grade de Itens Cotados.
-    - **Linha do Tempo de Atividades & Follow-up:**
-      - Registro cronológico de interações comerciais (Notas internas, Reuniões, Ligações telefônicas, mensagens de WhatsApp e Tarefas de retorno), com identificação auditável do autor e timestamp.
-    - **Segurança RBAC e Isolamento Estrito:**
-      - Acesso restrito exclusivamente ao usuário `alexandre` / `admin` dentro da aba `📊 BI EXECUTIVO > 💼 CRM Comercial` (`#tab-bi-crm`). Vendedores recebem HTTP 403 Forbidden.
-    - **Persistência ACID no Supabase Postgres & Fallback JSON:**
-      - Tabelas `crm_deals` e `crm_atividades` com Row-Level Security (RLS) habilitado e fallback atômico em `data/crm_deals_cache.json` via `safe_json_storage.js`.
-    - **Suíte de Testes:** Script `test_crm_module.js` com 10 asserções 100% aprovadas.
-50. [x] **Módulo de Gestão e Cadastro de Clientes B2B no CRM Comercial (`sql/bi/08_tabela_crm_clientes.sql`, `crm_engine.js`, `crm_routes.js`, `public/js/crm.js`, `public/index.html`, `public/style.css`, `test_crm_clientes.js`):**
-    - **Independência do Protheus para Novos Prospects / Leads (75% da Base):**
-      - Mapeamento da regra real de negócio: 75% dos contatos no CRM são novos prospects B2B que ainda não existem no ERP Protheus `SA1010`.
-      - Modelagem relacional da tabela `crm_clientes` no Supabase com RLS ativo (`ENABLE/FORCE ROW LEVEL SECURITY`), índices B-Tree e chave primária resiliente (`id VARCHAR(64)`).
-      - Campos essenciais de negócio: Tipo PJ/PF, Razão Social / Nome, Nome Fantasia, CNPJ/CPF, Inscrição Estadual, Pessoa de Contato, Celular / WhatsApp, Telefone Fixo, E-mail, Origem do Lead, Vendedor Responsável, Endereço completo (seção retrátil) e Observações.
-    - **Auditoria de 200 Clientes Protheus SA1010 & Expansão Cadastral:**
-      - Auditoria nos 200 clientes mais recentes da base `SA1010` (Empresa 01) via API Railway (`CNVYB3_184594_PR_PD`), identificando as colunas customizadas e campos realmente preenchidos por digitação.
-      - Mapeamento e inclusão dos 7 novos campos:
-        * `tipo_cliente_protheus`: Mantido fixo/default como `Consumidor Final (F)` (ao migrar pro Protheus só essa opção é selecionada).
-        * `site_url`: Home Page corporativa (`A1_HPAGE`), com link `🌐` clicável na listagem e na ficha.
-        * `email_nfe`: E-mail para envio de NF-e XML/DANFE (`A1_MAILNFE`).
-        * `email_boleto`: E-mail para envio de boletos de cobrança (`A1_MAILBOL`).
-        * Bloco 3 "💳 3. Faturamento, Boletos & Contas a Pagar": `contato_financeiro_nome` (`A1_ZPESPAG`), `contato_financeiro_tel` (`A1_ZTELPAG`) e `contato_financeiro_email` (`A1_ZMAILPA`).
-      - Migrações DDL idempotentes no Supabase (`ALTER TABLE IF EXISTS crm_clientes ADD COLUMN IF NOT EXISTS ...`) e suporte completo no fallback JSON local (`data/crm_clientes_cache.json`).
-    - **Segmented Control no Topo do CRM & Visualização de Clientes:**
-      - Alternância instantânea de contexto no topo da aba: `📊 Funil de Oportunidades` vs `👥 Clientes Cadastrados` com atributos de acessibilidade `aria-pressed`.
-      - Tabela paginada de clientes com busca textual instantânea (debounce), filtro por vendedor responsável e 3 Mini KPIs no topo (*Total de Clientes Cadastrados*, *Novos Prospects CRM*, *Clientes Protheus*).
-      - Ações na linha: `✏️ Editar`, `➕ Deal` (abre oportunidade com dados pré-preenchidos) e `🗑️ Excluir` (soft delete com confirmação amigável).
-    - **Botão de WhatsApp 1-Clique (`wa.me`):**
-      - Link nativo direto `https://wa.me/55<celular>` que abre a conversa com o comprador diretamente no WhatsApp Desktop ou Web sem intermediários pagos.
-    - **Cadastro Rápido Inline no Deal (Sem Perda de Contexto):**
-      - Botão `➕ Novo Cliente` (`#btnCrmNovoClienteFromDeal`) inserido no modal de Oportunidade imediatamente acima do autocomplete.
-      - Ao salvar o novo cliente, os dados (Razão, CNPJ e Código) são injetados automaticamente nos campos da oportunidade sem fechar o formulário e sem perder nenhum dado já digitado pelo vendedor.
-    - **Autocomplete Híbrido com Deduplicação e Precedência CRM:**
-      - Endpoint `/api/bi/crm/clientes/autocomplete` busca prioritariamente na base `crm_clientes` (badge verde `[CRM]`) e complementa com clientes históricos do Protheus `SA1010` (badge roxo `[Protheus]`), retornando os 7 novos campos Protheus mapeados e usando `Map` por CNPJ para deduplicação automática.
-    - **Auto-preenchimento de Endereço por CEP (ViaCEP / Tab Key) & Normalização de Site Corporativo:**
-      - **Busca Automática de CEP (`setupCepAutoLookup` & `consultarCep`):** Ao digitar os 8 dígitos do CEP e pressionar `TAB` ou `Enter` (ou sair do campo), o sistema consulta o endpoint `/api/bi/crm/cep/:cep` (com cache em memória `Map` e fallback no ViaCEP), preenchendo automaticamente Logradouro, Bairro, Cidade e UF.
-      - **Sem Número ou Complemento:** Mantém Número e Complemento estritamente livres/vazios para preenchimento manual pelo operador, expande o bloco colapsável de endereço e foca automaticamente no campo `Número` para digitação contínua.
-      - **Normalização de Site Corporativo (`normalizarSiteUrl`):** Campo `crmClienteSiteUrl` alterado para `type="text"` (eliminando travas nativas do browser), aceitando endereços com ou sem `www` (ex: `www.cliente.com.br` ou `cliente.com.br`), sem necessidade de `http://` ou `https://`, higienizando protocolos e gerando links clicáveis `https://${site}` na interface.
-    - **Suíte de Testes Automatizados:** Script `test_crm_clientes.js` com 10 asserções cobrindo autenticação, bloqueio RBAC para vendedores (403), criação, edição, busca por ID, listagem paginada, autocomplete prioritário, soft delete, busca de CEP no ViaCEP (com e sem hífen, validação de 8 dígitos) e normalização de site corporativo (100% de sucesso).
+A matriz abaixo consolida as 9 macro-areas e as 35 sub-abas ativas no DOM do Portal GSI:
 
-51. [x] **Módulo de Cadastro Geral de Funcionários & Colaboradores DP (`postgres_db.js`, `server.js`, `public/js/funcionarios_dp.js`, `public/index.html`, `public/style.css`, `data/dp_colaboradores.json`, `test_funcionarios_dp.js`):**
-    - **Aba "ANALISTA FIN > Cadastro Funcion." e Sub-abas de DP:**
-      - Sub-aba dedicada `#tab-dp-colaboradores` para gestão de colaboradores do Departamento Pessoal.
-      - Suporte integral a todas as modalidades contratuais: CLT, Sócios (`SOCIO`), Prestadores PJ (`PJ`) e Colaboradores Sem Registro (`SEM`).
-      - Badges de identificação visual de empresa e regime: `GSI`, `OAÇO`, `MP` (Metal Pleno), `PJ` (Prestador de Serviços) e `SEM` (Sem Registro).
-    - **Ingestão e Sincronização dos 22 Colaboradores Oficiais da Planilha:**
-      - Cadastro integral dos 22 colaboradores com datas de aniversário, chaves PIX, bancos, agências, contas correntes e telefones.
-      - **Resolução da Causa Raiz dos 11 Colaboradores dos Holerites:**
-        * A sincronização anterior extraía colaboradores exclusivamente dos arquivos PDF de holerites contábeis (`holerites_documentos`), que continham apenas os 11 funcionários CLT registrados da GSI/OAÇO (sem Sócios, sem prestadores PJ e sem colaboradores sem registro, além de não conterem datas de aniversário e dados bancários).
-        * Como a tabela já possuía 11 registros, a condição anterior `if (colabCount === 0)` impedia a carga automática em produção.
-        * Implementada rotina de consolidação e UPSERT automático no startup (`initDB`), além do endpoint `POST /api/dp/colaboradores/sync-planilha` e botão visual `📋 Base Oficial (22 Colab.)` na interface para enriquecimento e carga instantânea sob demanda.
-    - **Filtros Dinâmicos, Modal de Ficha, Edição, Exportação CSV e Cópia de PIX:**
-      - Filtros por Empresa (`TODAS`, `GSI`, `OAÇO`, `MP`, `PJ`, `SEM`), filtros por Status (`TODOS`, `ATIVO`, `AFASTADO`, `DEMITIDO`) e busca universal instantânea.
-      - Modal de Ficha Completa do Colaborador, formulário de edição/inclusão com validações, botão de cópia de chave PIX em 1 clique e exportação completa em CSV com codificação UTF-8 (`\uFEFF`).
-    - **Suíte de Testes Automatizados (6/6 Aprovados):**
-      - `test_funcionarios_dp.js` validando persistência, filtros, busca universal, edição funcional, auto-sincronização de holerites, exclusão e os 22 registros oficiais.
-
-52. [x] **Deduplicação Inteligente de Colaboradores DP, Fusão/Concatenação de Dados e Campo "Cód Protheus" (`postgres_db.js`, `server.js`, `public/js/funcionarios_dp.js`, `public/index.html`, `data/dp_colaboradores.json`, `test_funcionarios_dp.js`):**
-    - **Causa Raiz da Duplicação Resolvida:**
-      - A importação inicial de PDFs de holerites contábeis gerou registros com nomes em maiúsculas sem acentuação (ex: `ANDREA DA CONCEICAO FERREIRA`) e com `cpf = null`.
-      - A importação da planilha oficial continha nomes acentuados (ex: `ANDRÉA DA CONCEIÇÃO FERREIRA`) e CPF preenchido.
-      - A busca anterior por igualdade textual simples não encontrava a correspondência, gerando duplicidade para os 11 funcionários com holerite.
-    - **Algoritmo de Deduplicação e Fusão Inteligente (`limparEDeduplicarColaboradoresDB`):**
-      - Função `normalizarNome(nome)` com remoção determinística de acentuação (Unicode NFD `[\u0300-\u036f]`), pontuação e espaços extras.
-      - Função `nomesSaoCompativeis(n1, n2)` e `saoMesmoColaborador(c1, c2)` comparando CPF normalizado, tokens de nomes (primeiro nome + último sobrenome + subconjunto de nomes intermediários), chaves PIX numéricas e Códigos Protheus.
-      - Agrupamento em clusters conexos e ranqueamento de registro master (preferência para cadastros que possuem data de nascimento, PIX, CPF, Cód Protheus ou menor ID).
-      - Função `mesclarColaboradores(principal, secundario)` que absorve e concatena todos os dados complementares (aniversários, PIX, bancos, salários reais dos holerites, Cód Protheus, datas de admissão/demissão, CTPS, PIS, contatos e observações concatenadas com `|`), atualizando o registro mestre e excluindo os secundários redundantes no banco e no JSON local.
-      - Execução automática da deduplicação no startup (`initDB`), após sync da planilha oficial e após sync de holerites.
-    - **Campo "Cód Protheus" & Mapeamento 100% dos Códigos de Fornecedor Protheus (SA2):**
-      - DDL relacional `ALTER TABLE dp_colaboradores ADD COLUMN IF NOT EXISTS cod_protheus VARCHAR(30);` com índice `idx_dp_colab_cod_protheus`.
-      - Campo integrado no CRUD do PostgreSQL e no cache JSON local com suporte a busca textual insensível a acentos (`ILIKE` / `removerAcentos`).
-      - Inclusão da coluna `Cód Protheus` na tabela HTML, no formulário de inclusão/edição (`#colabInputCodProtheus`), na Ficha Executiva (`#modalColaboradorFicha`) e na exportação CSV (`exportarColaboradoresCsv`).
-      - **Vinculação de 100% dos Códigos Oficiais de Fornecedores (`SA2010`) para Geração Futura de Contas a Pagar (`SE2`):**
-        * *Adriano Rovaris:* `120946`
-        * *Alexandre Rodrigues Arrais:* `000221`
-        * *Anderson Toshio Tama:* `120892`
-        * *Andréa Da Conceição Ferreira:* `001132`
-        * *Beatriz Negrão Arrais:* `121046`
-        * *Carlos Henrique da Silva Rossi:* `120428`
-        * *Erica Santos Silva:* `000826`
-        * *Juliana Barbosa Ferreira Lopes:* `001501`
-        * *Leticia Arrais Gonçalves:* `120255`
-        * *Lucas da Silva Borges de Oliveira:* `121179`
-        * *Lucas Santana da Silva:* `121181`
-        * *Lucas Wenderson Silva Santos:* `120948`
-        * *Luis Antonio Bernardino Gomes:* `120980`
-        * *Luis Carlos da Silva (tec assistência):* `000687`
-        * *Luiz Claudio Figueiredo:* `000271`
-        * *Marina Madeira Lage (sócia MP):* `121136`
-        * *Odair Barbosa do Carmo:* `120565`
-        * *Rubens da Silva:* `120897`
-        * *Vanessa Mary da Silva Santos Carlos (diarista):* `120278`
-        * *Wallerson Eustáquio de Souza:* `120351`
-        * *William Conceição Pinheiro:* `121148`
-        * *Yan Lucas Madureira e Sousa Belline Cabral:* `121166`
-    - **Ação Rápida de Limpeza em 1 Clique na UI:**
-      - Botão `🧹 Limpar / Unificar Duplicados` (`#btnDeduplicarColaboradores`) no topo da sub-aba DP.
-      - Endpoint seguro `POST /api/dp/colaboradores/limpar-duplicados` com autenticação JWT e registro de telemetria/auditoria (`DEDUPLICAR_COLABORADORES`).
-    - **Suíte de Testes Automatizados (8/8 Aprovados):**
-      - Expansão de `test_funcionarios_dp.js` com Teste 7 (validação de fusão de campos complementares e eliminação de duplicatas) e Teste 8 (validação dos códigos de fornecedor Protheus para os 22 colaboradores com asserções estritas), 100% aprovados.
-
-53. [x] **Gestão de Ex-Funcionários (Flag `DESLIGADO`), Filtro Padrão de Colaboradores `ATIVO` e Cód Protheus `000089` de Fabiane Rodrigues Arrais (`postgres_db.js`, `public/js/funcionarios_dp.js`, `public/index.html`, `data/dp_colaboradores.json`, `test_funcionarios_dp.js`):**
-    - **Flag de Ex-Funcionários (`status = 'DESLIGADO'`):**
-      - Identificação e atualização dos colaboradores *Davi de Carvalho Aguiar* e *Paulo Cesar de Moraes* como ex-funcionários com a flag `DESLIGADO`.
-      - Prevenção de regressão na sincronização de holerites (`sincronizarColaboradoresDosHoleritesDB`): mesmo que os PDFs legados de folha contenham holerites antigos deles, o sistema identifica os nomes e preserva permanentemente o status `DESLIGADO` (não voltando a reativá-los como `ATIVO`).
-      - Regra de preservação no motor de fusão (`mesclarColaboradores`): se qualquer registro do cluster possuir status `DESLIGADO`, o status resultante permanece estritamente `DESLIGADO`.
-      - Migração DML de auto-cura no startup (`initDB`) atualizando no PostgreSQL `status = 'DESLIGADO'` para Davi e Paulo.
-    - **Filtro Padrão da Listagem de Colaboradores (`ATIVO`):**
-      - A interface do usuário (`#groupFiltroStatusColab`) e o estado inicial (`state.statusFiltro = 'ATIVO'`) foram ajustados para exibir por padrão **exclusivamente os funcionários ativos**.
-      - Botão `🟢 Ativos` posicionado como primeira opção com destaque visual ativo (`btn-primary active`), e botão `Todos` posicionado como alternativo (`btn-outline`).
-      - Davi e Paulo ficam automaticamente ocultos na listagem regular de trabalho, podendo ser consultados a qualquer momento ao clicar em `🔴 Desligados` ou `Todos`.
-    - **Cód Protheus Oficial de Fabiane Rodrigues Arrais (`000089`):**
-      - Cadastro e atualização de *Fabiane Rodrigues Arrais* (GSI, Supervisora Financeira, Cód Interno 11) com o código de fornecedor Protheus `000089` e `status = 'ATIVO'`.
-      - Migração DML no boot (`initDB`), atualização no JSON oficial [`data/dp_colaboradores.json`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/data/dp_colaboradores.json) e no sync de holerites.
-    - **Suíte de Testes Automatizados (9/9 Aprovados):**
-      - Adicionado Teste 9 em `test_funcionarios_dp.js` com asserções cobrindo:
-        1. Fabiane com `status = 'ATIVO'` e `cod_protheus = '000089'`.
-        2. Davi com `status = 'DESLIGADO'`.
-        3. Paulo com `status = 'DESLIGADO'`.
-        4. Listagem com filtro `{ status: 'ATIVO' }` ocultando 100% dos ex-funcionários.
-        5. Listagem com filtro `{ status: 'DESLIGADO' }` retornando Davi e Paulo.
-
-### Prioridade 1 (Resiliencia/SRE)
-1. [x] **Eliminacao de Concorrencia em Arquivos JSON (`data/*.json`):** Módulo `safe_json_storage.js` com filas FIFO sequenciais, substituição atômica `.tmp` + rename resiliente em 100% dos arquivos locais.
-2. [x] **Resiliencia e Circuit Breaker nas Integracoes Bancarias:** Circuit Breakers isolados por empresa, retries com backoff exponencial, jitter aleatório e timeouts explícitos em `circuit_breaker.js` e `inter_api.js`.
-3. [x] **Tratamento de Exaustao de Memoria no Frontend:** Event Delegation nos `tbody` de todas as tabelas em `public/app.js`, eliminando acumuladores de eventos no DOM.
-4. [x] **Health Check, Reconexão e Keep-Alive Supabase (`postgres_db.js`):** Implementada rotina automática de Keep-Alive periódico (a cada 2 horas via `SELECT 1;`) e reconexão automática em background, prevenindo congelamento por inatividade de 7 dias no plano gratuito da Supabase.
-5. [x] **Configuração de Subdomínio Personalizado no Render:** Implementado suporte no CORS dinâmico em `server.js` para o subdomínio oficial `portal.gsicofres.com.br`, `conciliacao.gsicofres.com.br`, `portal.gsi.com.br`, `portal.oaco.com.br` e variáveis de ambiente `CUSTOM_DOMAIN` / `ALLOWED_ORIGINS`. CNAME validado e provisionamento automático de certificado SSL Let's Encrypt gerenciado pelo Render.
-
-### Prioridade 2 (Qualidade & Testes)
-1. [x] **Testes Unitarios para Conciliacao e Regras de Negocio:** Suíte unitária em `test_conciliacao_bancaria.js` validando cálculos 1:1, cartão líquido, N:1 subset-sum e tolerâncias monetárias.
-2. [x] **Testes de Parsers Logicos (Python):** Suíte em `pytest` (`test_parsers.py`) cobrindo edge cases de layouts dos Correios, Rodonaves e ViPP Tipo 2.
-3. [x] **Mapeamento de Casos Infelizes (Unhappy Paths & E2E):** Cobertura E2E via Playwright (`test_playwright_e2e.js`) e suíte de testes de regressão de segurança, 2FA e conexões offline.
-4. [x] **Validacao Rigorosa de Schemas:** Schemas Zod em `webhook_validator.js` cobrindo 100% dos formatos de eventos de webhook do Banco Inter (Pix, Boleto, Banking).
-
-28. [x] **Modularização ES6 da Arquitetura do Frontend (`public/js/*.js`, `test_frontend_modules.js`):**
-   - Decomposição modular da SPA em 8 submódulos ES6 univalentes: `utils.js` (sanitização XSS, formatação BRL, datas e `apiFetch` same-origin), `auth.js` (sessão, 2FA, RBAC e heartbeat), `vendedores.js` (estoque Power BI, pedidos abertos SC9, compras SC7 e alternância de temas), `credito.js` (análise de crédito, score e Serasa PDF), `financeiro.js` (conciliação bancária e extratos), `logistica.js` (faturas e fretes), `config.js` (auditoria e gestão de usuários) e `index.js` (barrel export central).
-29. [x] **Documentação de Contratos de API OpenAPI 3.0 & Swagger UI (`openapi.json`, `server.js`, `test_frontend_modules.js`):**
-   - Especificação OpenAPI 3.0 completa cobrindo 100% dos contratos das rotas de autenticação, 2FA, vendedores, análise de crédito, conciliação bancária, faturas e webhooks com esquemas de requisição e resposta.
-   - Disponibilização interativa via Swagger UI nos endpoints `/api-docs` e `/api/docs`, e JSON bruto em `/api/openapi.json`.
-30. [x] **Detecção Automática de Endereço de Entrega Diferente (`C5_MENNOTA` e `C5_TRANSP = '000009'`) (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_deteccao_entrega.js`):**
-   - **Dupla Regra Semântica e Transportadora Especial:**
-     - **Regra 1 (`C5_TRANSP = '000009'`):** Detecta pedidos com transportadora `000009` (Cliente Retira / Redespacho Próprio).
-     - **Regra 2 (`C5_MENNOTA`):** Parser semântico com expressões regulares capturando marcadores de endereço de entrega alternativo (`END ENTREGA`, `ENDERECO DE ENTREGA`, `END DE ENTREGA`, `LOCAL DE ENTREGA`, `ENTREGAR EM/NA/NO/PARA`) e descartando falsos positivos operacionais (apenas menção de horários como `8H AS 18H`).
-   - **Automação no Motor de Análise de Crédito & Redução de Esforço Manual:**
-     - Preenchimento automático do seletor `Entrega = Cadastro?` como **"Não"** (aplicando a penalidade de risco `-9.0 pts` e ativando `PERIGO CHECAGEM REVERSA` para pedidos a prazo) se qualquer uma das duas regras for atendida, ou como **"Sim"** (`+2.0 pts`) se o endereço for compatível.
-     - Remoção do asterisco (`*`) do campo `Entrega = Cadastro?` em `public/index.html`, preservando asteriscos exclusivamente nos 11 campos estritamente manuais.
-     - Renderização de badge de alerta inteligente no Bloco 3 (`#cr_entrega_diferente_badge`) informando o motivo e o endereço extraído para auditoria imediata.
-   - **Alerta Visual nos Detalhes do Pedido (`#pedidoDetalhesModal`):**
-     - Exibição de badge destacado em vermelho/âmbar no cabeçalho de logística ao visualizar detalhes de qualquer pedido com entrega diferente, prevenindo erros na expedição/vendas.
-   - **Suíte de Testes Automatizados:** Script `test_deteccao_entrega.js` com 10 asserções automatizadas cobrindo variações de códigos de transportadora, múltiplos padrões de texto em `C5_MENNOTA`, filtragem de falsos positivos e pontuação integrada no motor de crédito.
-31. [x] **Disponibilização Unificada de Saldos em Estoque na Aba Logística (`public/index.html`, `test_frontend_modules.js`, `test_playwright_e2e.js`):**
-   - **Arquitetura DRY (Single Source of Truth / Fonte Única da Verdade):**
-     - Inclusão da sub-aba `btnTabLogSaldosEstoque` no grupo de navegação `#subGroupLogistica` apontando diretamente para o container DOM compartilhado `tab-vend-saldos-estoque`.
-     - Zero duplicação de marcação HTML, classes CSS ou funções JavaScript: qualquer melhoria, adição de colunas, novos filtros ou customizações visuais feitas na tela refletem instantânea e simultaneamente em ambas as abas (Vendedores e Logística).
-   - **Acessibilidade para Perfis Operacionais:**
-     - Usuários com acesso restrito à aba Logística (ex: operadores de expedição) agora podem consultar em tempo real os saldos físicos multi-empresa (Metal Pleno 14, GSI 15, OACO 16), compras pendentes SC7, vendas em carteira SC6 e abrir o modal de drilldown.
-   - **Validação Automatizada Completa:** Cobertura por testes unitários e testes E2E Playwright validando a navegação, visibilidade e garantia de elemento DOM único.
-32. [x] **Nova Aba Principal COMPRAS com 4 Sub-Abas Reaproveitadas (DRY) (`public/index.html`, `public/style.css`, `public/app.js`, `public/js/vendedores.js`, `server.js`, `postgres_db.js`, `test_compras_tab.js`):**
-   - **Criação da Aba Principal `COMPRAS`:**
-     - Botão `#mainTabCompras` posicionado na 1ª camada de navegação com atributo `data-main-tab="compras"`.
-    - **Sub-Grupo de Navegação `#subGroupCompras` com 4 Sub-Abas:**
-      1. *Saldos em Estoque* ➔ aponta diretamente para `#tab-vend-saldos-estoque`
-      2. *Consulta Ped Venda* ➔ aponta diretamente para `#tab-vend-pedidos`
-      3. *Ped Vendas Abertos* ➔ aponta diretamente para `#tab-vend-pedidos-abertos`
-      4. *Prod x Ped Compras* ➔ aponta diretamente para `#tab-vend-pedidos-compras`
-   - **Arquitetura Estritamente DRY (Single Source of Truth):**
-     - Zero duplicação de marcação HTML de tela, formulários ou regras de CSS.
-     - Estado compartilhado em tempo real: qualquer filtro, ordenação, busca ou seleção efetuada em uma aba reflete imediatamente nas demais, mantendo o estado de memória único e sincronizado.
-   - **Controle de Acesso Granular (RBAC):**
-     - Inclusão da permissão `compras` no modal de gerenciamento de usuários (`#permCompras`), renderização de badge auditável na tabela (`.perm-badge-compras`) e autorização em `server.js` (`allowedTabs`) e `postgres_db.js`.
-   - **Suporte a Tema Claro/Escuro:**
-     - Botão `#btnToggleThemeCompras` integrado à rotina unificada de temas, sincronizando ícones e labels (`☀️ Modo Claro` / `🌙 Modo Escuro`).
-     - **Suíte de Testes Automatizados:** Script `test_compras_tab.js` com 6 asserções cobrindo integridade HTML, diretriz DRY, RBAC, alternância de abas, sincronização de temas e compilação `vm.Script` sem erros.
-33. [x] **Sub-Aba "Ped Compras Aberto" na Aba Principal COMPRAS com Alertas de Prazos < Hoje & Modal Completo (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `test_pedidos_compras_abertos.js`):**
-    - **Agregação Multi-Empresa de Pedidos SC7:**
-      - Consulta unificada nas 3 empresas (Metal Pleno 14, GSI 15, OACO 16) de pedidos de compra em aberto (`(C7_QUANT - C7_QUJE) > 0`, `C7_ENCER <> 'E'`, `C7_RESIDUO <> 'S'` e `D_E_L_E_T_ = ' '`), expurgando pedidos encerrados, entregues ou cancelados.
-      - Cobertura completa de todas as categorias de compra (matérias-primas, insumos, embalagens, serviços e produtos acabados).
-    - **Alertas Visuais de Prazos de Entrega (< hoje):**
-      - Confronto da data de previsão mais próxima (`MIN(C7_DATPRF)`) com a data atual de Brasília (`hojeRaw`).
-      - Destaque em evidência com badge vermelho (`🔴 DD/MM/AAAA (X dias atrasado)`) para ação imediata do comprador junto ao fornecedor. Badges dedicados para pedidos que vencem hoje (`🟡`) e no prazo (`🟢`).
-    - **Modal Rico de Detalhes do Pedido (`#modalPedidoCompraDetalhes`):**
-      - Clique no número do pedido abre modal com dados cadastrais e de contato do fornecedor (`SA2010`: CNPJ, Telefone, E-mail, Contato), condição de pagamento (`SE4010`), datas, status geral e grade completa de itens (`C7_ITEM`, `C7_PRODUTO`, `C7_DESCRI`, `C7_UM`, `C7_QUANT`, `C7_QUJE`, `SALDO`, `C7_PRECO`, `C7_TOTAL`, `C7_DATPRF`).
-      - Rodapé consolidado com comprador/usuário solicitante, quantidade total pedida, saldo total e valor total (R$).
-    - **Barra de Filtros, KPIs & Sincronização de Temas:**
-      - 4 Cards KPIs no topo (`Pedidos em Aberto`, `Pedidos Atrasados`, `Peças a Receber`, `Valor Total em Aberto R$`).
-      - Filtros reativos por Empresa, Busca Textual (pedido, fornecedor, código, produto) e Status do Prazo (Todos, Atrasados, Vence Hoje, No Prazo).
-      - Sincronização total com o seletor de Modo Claro/Modo Escuro (`modal-theme-light` e `tab-theme-light`).
-    - **Suíte de Testes Automatizados:** Script `test_pedidos_compras_abertos.js` com 10 asserções cobrindo cenários abertos/encerrados validados com os exemplos da OACO 16 (`000263`, `000264`, `000265`, `000255`, `000258` vs `000256`, `000260`, `000181`, `000108`), cálculo determinístico de dias de atraso, proteção RBAC / JWT nos endpoints HTTP e integridade sintática (100% de aprovação).
-34. [x] **Sub-Aba "Consulta Ped/NF Compras" na Aba Principal COMPRAS com Consulta Multi-Empresa Direta no Protheus e Atalho em Vendedores (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/compras_consulta_ped_nf.js`, `public/js/vendedores.js`, `test_compras_consulta_ped_nf.js`):**
-    - **Consultas Multi-Empresa 100% Diretas no Protheus (Sem Replicação):**
-      - Sub-aba `#tab-compras-consulta-ped-nf` integrada ao subgrupo `#subGroupCompras` e atalho de acesso direto `#btnTabVendConsultaPedNf` em `#subGroupVendedores` (arquitetura DRY sem duplicação de DOM ou rotas).
-      - Sincronização plena do Tema Claro/Escuro via `public/js/vendedores.js` e `.tab-theme-light`.
-      - Busca unificada nas 3 empresas ativas (`OACO 16`, `GSI 15`, `Metal Pleno 14`) diretamente no Protheus SQL Server via Railway API (`executeRailwayQuery`), sem replicar linhas analíticas no PostgreSQL do portal.
-    - **4 Modos de Pesquisa & Validações:**
-      - **Número do Pedido de Compra (`ped`):** Busca em `SC7` e `SD1`/`SF1` para localizar tanto o pedido em aberto quanto NFs de entrada já faturadas para aquele pedido.
-      - **Número da NFe (`nf`):** Busca em `SF1` cruzando com `SD1` e `SC7` para recuperar dados fiscais e pedido amarrado.
-      - **Código do Fornecedor (`codFornec`):** Campo `#searchComprasCodFornec` com tag `#tagComprasCodFornec`, suporte ao alias semântico *"Nod Fornec."* (`data-alias="Nod Fornec."` / `title="Código do Fornecedor (Cód. Fornec.)"`), normalização automática com zero-fill de 6 dígitos (`cleanTerm.padStart(6, '0')`) restrita a códigos numéricos (preservando alfanuméricos sem colisão), busca em `SF1` (`F1_FORNECE`), `SA2` (`A2_COD`) e pedidos em aberto em `SC7` (`C7_FORNECE`), com filtro estrito de resíduo ativo (`C7_RESIDUO <> 'S'`), saldo positivo (`C7_QUANT - C7_QUJE > 0`) e `NOT EXISTS` em `SD1` para evitar falsos pendentes.
-      - **Razão Social / Nome Fantasia Fornecedor (`fornec`):** Busca por termo com no mínimo 3 caracteres em `SA2010` (`A2_NOME` ou `A2_NREDUZ`) cruzando com as NFs `SF1`.
-    - **Trava de Segurança Anti-Sobrecarga (Intervalo Máximo de 90 Dias):**
-      - Ao pesquisar por Razão Social ou Código do Fornecedor, a data de emissão é obrigatória e limitada a um intervalo máximo estrito de **90 dias** (`dataFim - dataIni <= 90 dias`), aplicada de forma fail-closed tanto no frontend (`compras_consulta_ped_nf.js`) quanto no backend (`protheus_db.js`).
-      - Default inteligente pré-carregado: data final = hoje, data inicial = 90 dias atrás. Cláusula `TOP 100` por empresa para salvaguardar a estabilidade do Protheus.
-    - **Layout Responsivo Flexbox nos Filtros:**
-      - Barra de pesquisa refatorada com Flexbox (`flex: 1 1 200px` para inputs e `flex: 0 0 auto` para divisores "OU"), eliminando blocos vazios em telas médias.
-    - **Grade de Resultados Completa:**
-      - Colunas: `Empresa` | `Razão Social Fornecedor` | `Ped. Compra` | `NFe / Série` | `Data Emissão` | `Valor NF (R$)` | `Ações ("👁️ Ver")`.
-      - Exibição de badges claras para pedidos de compra com NF pendente (`🟡 Pendente (Sem NF)`).
-    - **Modal de Detalhes da NFe de Entrada (`#modalNFeEntradaDetalhes`):**
-      - Cabeçalho com Número da NF, Série, Empresa, CNPJ/Razão Social, Condição de Pagamento (`SE4`), Data de Emissão e Digitação.
-      - Chave de Acesso de 44 dígitos com botão de cópia instantânea em 1 clique (`📋 Copiar`).
-      - Resumo de Tributos e Frete (Total Produtos, Frete, Desconto, ICMS, IPI, Valor Bruto).
-      - Tabela analítica de itens (`SD1`) com Código, Descrição (`SB1`), Quantidade, Unidade, Valor Unitário, Valor Total, TES e CFOP.
-      - Tabela de Títulos a Pagar (`SE2`) com Parcela, Vencimento, Valor e Data de Baixa (se liquidado).
-    - **Suíte de Testes Automatizados (26 Asserções 100% Aprovadas):**
-      - Script `test_compras_consulta_ped_nf.js` expandido para 26 asserções cobrindo validações de entrada, trava de 90 dias com data inicial maior que final, montagem das queries T-SQL com resíduo e saldo, busca real por fornecedor e código `121187`, rotas de API com JWT/RBAC, integridade do módulo cliente IIFE, consistência de `vendedores.js` e compilação de sintaxe `vm.Script`.
-44. [x] **Sub-aba "Autorizações" (Desconto & Análise de Margem Pipedrive <-> Protheus ERP) na Aba 📊 BI EXECUTIVO (`bi_autorizacoes_engine.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/bi_autorizacoes.js`, `test_bi_autorizacoes.js`):**
-    - **Navegação & Nova Sub-aba no BI Executivo:**
-      - Criação da sub-aba `🎯 Autorizações de Desconto` (`#tab-bi-autorizacoes` / `#btnTabBiAutorizacoes`) ao lado de `📊 Índices Financeiros` e `📈 Metabase Analytics` no grupo `#subGroupBi`.
-    - **Integração Completa Pipedrive CRM <-> Protheus ERP (SB1090 / SA1010):**
-      - Extração inteligente de Deal ID a partir de URLs completas (`/deal/25238`), IDs numéricos ou textos com suporte a query params e hashes.
-      - Extração e limpeza do código Protheus (`XX-YYYY...` ➔ `YYYY...`) com consulta direta no cadastro mestre `SB1090` (Filial 09) para obtenção do custo real (`B1_VLUNIT`) e preço de tabela oficial (`B1_PRV1`).
-      - Resolução textual automática da forma de pagamento (`bdbc4635...` ➔ label como `015-APPMAX` ou `074-1X DEPTEDDOC 10D`) com cache de 10 minutos.
-      - Identificação de clientes Revenda (`SA1010.A1_SATIV1 LIKE '%000085%'`) com isenção do alerta de desconto excessivo.
-    - **Fórmulas Matemáticas Oficiais e Regra Estrita do Frete Embutido:**
-      - $\text{Valor Líquido} = \text{Valor Vendido} - \text{Frete Embutido}$
-      - $\text{Desconto \%} = \frac{\text{Preço de Tabela Total} - \text{Valor Líquido}}{\text{Preço de Tabela Total}} \times 100$
-      - Equivalência com Ágio: $\text{Desconto R\$} = \text{Frete Embutido} - (\text{Valor Vendido} - \text{Preço Tabela Total})$
-      - $\text{Lucro Bruto} = \text{Valor Vendido} - \text{Custo Total} - \text{Frete Embutido}$
-      - $\text{Margem \%} = \frac{\text{Lucro Bruto}}{\text{Valor Vendido}} \times 100$
-      - O frete embutido pago pela empresa (`cd279b00...` / `C5_VLR_FRT`) é **sempre subtraído** do valor vendido, nunca somado.
-      - **Caso Homologado Deal 26569 (Produção):** Produto vendido por R$ 6.804,00 (+R$ 204,00 acima da tabela de R$ 6.600,00) com Frete Embutido de R$ 600,00 assumido pela empresa. O frete de R$ 600 absorve o ágio de R$ 204, resultando em desconto líquido de R$ 396,00 (6,00%) e margem líquida de 49,58% (Lucro R$ 3.373,62 sobre custo SB1090 de R$ 2.830,38).
-    - **Painel Visual de Decisão & Gravação Auditável no Pipedrive:**
-      - Modal rico `#modalBiAutorizacaoDetalhes` com 3 cards de KPIs (Venda com destaque de ágio, Desconto com indicação de valor líquido e Margem após frete), dados comerciais, tabela de itens cruzando Protheus x Deal e dois botões oficiais: `✅ AUTORIZADO` e `❌ NÃO AUTORIZADO`.
-      - Ao decidir, grava automaticamente uma nota oficial fixada no Deal (`pinned_to_deal_flag="1"`):
-        - Autorizado: `Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (ok autorizado)`
-        - Não Autorizado: `Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (NAO AUTORIZADO)`
-    - **Persistência Relacional com Paginação Compulsória (50 em 50) no Supabase:**
-      - Tabela `bi_autorizacoes_desconto` com índices em `deal_id`, `status` e `created_at DESC`, RLS ativo e fallback resiliente em `data/bi_autorizacoes_cache.json`.
-      - Envelope de paginação padronizado `{ items, pagination: { page, limit: 50, total, totalPages, hasNext, hasPrev } }` com filtros reativos por status e busca debounceada.
-    - **Suíte de Testes Automatizados (19 Asserções 100% Aprovadas):**
-      - Script `test_bi_autorizacoes.js` validando todos os casos de referência do manual (Deals 19039, 24827 e 23193) e o caso real de produção Deal 26569, extração de URLs com query params e hashes, regras de frete, formatação de notas, DDL/DB, paginação e compilação `vm.Script`.
-45. [x] **Inclusão da Coluna e Card "Total Gordura de Frete Embut." (`C5_VLR_FRT`) na Tabela de Comissões (`protheus_db.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_vendedores_desbloqueio.js`):**
-    - **Integração no Backend (`protheus_db.js`):**
-      - Adicionado `sc5` no mapa de empresas (`SC5160` para OACO, `SC5150` para GSI e `SC5140` para Metal Pleno).
-      - Na query T-SQL de `buscarComissoesPeriodo`, incluído `LEFT JOIN ${emp.sc5} C5 ON (C5.C5_NUM = E3.E3_PEDIDO OR C5.C5_NUM = RIGHT('000000' + RTRIM(E3.E3_PEDIDO), 6)) AND C5.D_E_L_E_T_ = ' '` e selecionado `ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT`.
-      - Exportado `freteEmbutido: roundVal(freteEmbutido)`, `gorduraFreteEmbut: roundVal(freteEmbutido)` e o somatório `totalGeralGorduraFrete: roundVal(totalGorduraFrete)` no payload retornado.
-    - **Renderização e Distribuição no Frontend (`public/index.html`, `public/app.js`, `public/style.css`):**
-      - **Coluna na Tabela:** Inserida coluna `<th style="width: 13%; text-align: right;">Gordura de Frete Embut.</th>` logo após `Nome` e antes de `Valor Base`. Larguras calibradas somando 100%. Valores zerados mantidos como `R$ 0,00`. Empty state com `colspan="9"`.
-      - **Card de Resumo:** Substituição do card *Lançamentos* pelo card **`🚚 Total Gordura de Frete Embut.`** (`#comisTotalGorduraFrete`), exibindo em destaque a soma total dos fretes embutidos (`C5_VLR_FRT`) de todos os registros do período consultado com suporte visual aos temas escuro e claro.
-    - **Testes Automatizados:** Suíte `test_vendedores_desbloqueio.js` atualizada e 100% aprovada (8/8 testes).
-46. [x] **Correção do Cálculo de Frete Embutido (`C5_VLR_FRT`) no Fechamento Mensal dos Vendedores com Paridade Total à Aba Comissões (`fechamento_vendedores_engine.js`, `test_fechamento_vendedores.js`):**
-    - **Causa Raiz & Diagnóstico:** `buscarFretesEmbutidosPeriodo` consultava `SF2` (Notas Fiscais de Saída) diretamente. Na empresa GSI (15), a NF `000001942` (Pedido `001881` com `C5_VLR_FRT = R$ 230,00`) foi emitida com `F2_VEND1 = '000074'` (Juliana) para `RETORNO DE CONSERTO/TROCA` (TES `543`, `F4_DUPLIC = 'N'`). Essa remessa não gerou comissão e não constava na `SE3` (Venda Base Bruta). Como o fechamento consultava `SF2`, subtraía indevidamente R$ 230,00 de um frete não incluso na base de vendas, elevando o Frete Embutido para R$ 3.006,00 (Venda Líquida R$ 169.014,14).
-    - **Alinhamento e Deduplicação por Venda Comercial (`SE3 x SC5`):**
-      - Refatorada `buscarFretesEmbutidosPeriodo` para consultar `SE3` (tabela oficial de comissões que compõe a Venda Base Bruta), agrupando por `(E3_PEDIDO, E3_VEND)` e fazendo `INNER JOIN` com `SC5` (`C5_VLR_FRT > 0`).
-      - Garante que apenas fretes vinculados a vendas comerciais faturadas do vendedor e integrantes da base bruta sejam deduzidos.
-    - **Resultados Homologados e Paridade 100%:**
-      - **Juliana (000074):** Frete Embutido corrigido para **R$ 2.776,00** (exatamente idêntico à aba Comissões). Venda Base Líquida corrigida para **R$ 169.244,14** (172.020,14 - 2.776,00). Comissão Bruta (1,3%): **R$ 2.200,17**. Prêmio Metas: **R$ 400,00** (Meta R$ 120k batida). Total a Receber: **R$ 2.600,17**.
-      - **Figueiredo (000004):** Frete Embutido: R$ 2.306,00 (100% consistente).
-      - **Andrea (000064):** Frete Embutido: R$ 4.828,00 (100% consistente).
-    - **Testes Automatizados:** Inserido teste 4.2 em `test_fechamento_vendedores.js` com 19 asserções 100% aprovadas.
-47. [x] **Dropdown de 12 Ciclos de Fechamento Predefinidos, Consolidação Sob Demanda e Ciclo 26/06 a 25/07 Registrado (`fechamento_vendedores_engine.js`, `server.js`, `public/js/fechamento_vendedores.js`, `scripts/gerar_fechamento_manual.js`, `test_fechamento_vendedores.js`):**
-    - **12 Ciclos Mensais Predefinidos (26 a 25):** Implementada a função `obterCiclosPredefinidosFechamento(qtd = 12)` no backend e `gerarCiclosPredefinidosClient(12)` no frontend para listar permanentemente os 12 ciclos mensais oficiais no dropdown `#fechamentoHistoricoSelect`, com identificadores claros (`📌 Ciclo Atual: 26/07/2026 a 25/08/2026`, `⏮️ Mês Anterior: 26/06/2026 a 25/07/2026`, `⏮️ Ciclo: ...`).
-    - **Consolidação Automática Sob Demanda:** Rota `/api/vendedores/fechamento/ciclo/:cicloId` atualizada para, caso um ciclo selecionado ainda não esteja no banco de dados, invocar automaticamente `consolidarFechamentoMensal` com `triggeredBy: 'ON_DEMAND'` e persistir no banco e cache em tempo real.
-    - **Ciclo Anterior 26/06/2026 a 25/07/2026 Consolidado & Script Utilitário:** Executada e homologada a extração completa do ciclo anterior com faturamento global de R$ 409.691,88 (MP 14: R$ 304.886,63, OACO 16: R$ 100.198,25, GSI 15: R$ 4.607,00), metas (Andrea: R$ 3.475,97, Figueiredo: R$ 2.169,24, Juliana: R$ 1.048,16), persistido no cache/banco e disponibilizado o utilitário `scripts/gerar_fechamento_manual.js`.
-    - **Suíte de Testes Automatizados:** Teste 1.4 adicionado a `test_fechamento_vendedores.js` totalizando 20/20 testes (100% de aprovação).
-48. [x] **Regra de Elegibilidade da Meta de Gordura de Frete Condicionada a &ge; 85% da Meta Cheia de Vendas (`fechamento_vendedores_engine.js`, `public/js/fechamento_vendedores.js`, `public/index.html`, `test_fechamento_vendedores.js`):**
-    - **Regra de Negócio Mandatória de Condicionalidade:**
-      - A premiação sobre Gordura de Frete (R$ 200 a R$ 600 nas faixas $\ge$ R$ 700 a $\ge$ R$ 3.000) **só é concedida para vendedores que atingem no mínimo 85,00% da Meta Base de Vendas** ($VendaBaseLiquida \ge MetaBase \times 0.85$).
-      - Vendedores com vendas inferiores a 85% (ex: 84,99% ou menos) recebem **R$ 0,00 de prêmio de gordura de frete**, com status `BLOQUEADO_META_VENDAS` e faixa `Bloqueado (< 85% Meta Vendas)`, mesmo que tenham superado os patamares de gordura líquida.
-    - **Transparência Visual no Frontend:**
-      - Badge do Hero Card (`#fechamentoBadgePremioFrete`), Stat Card de Gordura (`#cardFechamentoGorduraSub`) e Extrato Detalhado do Fechamento (`#fechamentoExtratoTableBody` linha 8) atualizados para informar claramente quando o prêmio de frete está bloqueado devido a vendas $< 85\%$.
-      - Textos informativos e badges adicionados na sub-aba de Configuração de Metas Comerciais (`#tab-config-metas-vendas`) e na aba Fechamento.
-    - **Exemplo Real do Mês 12/2025 Homologado:**
-      - Ciclo 26/11/2025 a 25/12/2025 validado com exatidão: Luiz Figueiredo (Gordura R$ 2.382,74) e Juliana Barbosa (Gordura R$ 1.073,21) com vendas abaixo de 85% recebem R$ 0,00 de prêmio de frete.
-49. [x] **Cards Gamificados de Metas (Vendas e Frete de 0 à 1ª Faixa) e Ranking de Desempenho da Equipe (`public/index.html`, `public/style.css`, `public/js/fechamento_vendedores.js`, `test_fechamento_cards_gamificados.js`):**
-    - **Diagnóstico do Problema & Calibração Exata:**
-      - As barras de progresso anteriores usavam escalas desproporcionais (0 a 200% em vendas, 0 a R$ 3.000 em frete) associadas a réguas com `justify-content: space-between`, gerando descalibração visual grave (ex: venda de 133,46% parava em cima do rótulo 150%, e superávit de R$ 689,56 parecia preencher até R$ 1.100).
-      - Além disso, exigia a supermeta para encher a barra, transmitindo constante sensação de "dever não cumprido" mesmo para vendedores que bateram a meta estipulada (100% de vendas ou R$ 700 de frete).
-    - **Nova Régua de 0 à 1ª Faixa da Meta ("Dever Cumprido"):**
-      - **Card 1 (Meta de Vendas):** Escala calibrada de 0 a 100% da Meta Base (R$ 120.000,00). Ao atingir R$ 120k ou superior (ex: 133,46% como no print de homologação), a barra enche 100% com gradiente esmeralda/celeste e exibe o **Troféu Dourado 🏆** pulsante. Se $< 100\%$ ou negativa, exibe **Cara Triste 😞** e indica exatamente o valor que falta.
-      - **Card 2 (Meta de Gordura de Frete):** Escala calibrada de 0 a R$ 700,00 (1ª Faixa de premiação). No print de homologação com superávit de R$ 689,56, a barra preenche exatamente 98,51% (quase cheia, a apenas R$ 10,44 da meta) com **Cara Triste 😞** por ainda não ter batido. Ao alcançar R$ 700 (com vendas $\ge 85\%$), enche 100% com **Troféu Dourado 🏆**.
-    - **Card 3: Desempenho e Ranking da Equipe (Competição Saudável):**
-      - Exibição de destaque: *"Este mês você ficou em:"* acompanhado de número grande (~2.8rem, mesmo tamanho dos emojis/troféus):
-        - **1º Lugar:** Número `1` dourado (`.ranking-num-ouro`, `#fbbf24` com glow metálico), medalha 🥇 e destaque de liderança.
-        - **2º Lugar:** Número `2` prateado (`.ranking-num-prata`, `#e2e8f0` com glow prateado) e medalha 🥈.
-        - **3º Lugar:** Número `3` bronze (`.ranking-num-bronze`, `#f97316` com glow bronze) e medalha 🥉.
-        - **4º+ Lugar:** Número neutro (`#94a3b8`) estimulando o avanço rumo ao Top 3.
-      - Bloco comparativo com média de vendas da equipe e badge de percentual (▲ / ▼).
-    - **Suíte de Testes Automatizados:** Script dedicado `test_fechamento_cards_gamificados.js` com 17 asserções automatizadas cobrindo calibrações matemáticas, cenários de trava 85%, ordenação de pódio e sintaxe (100% aprovados).
-50. [x] **Botão Lupa & Popup Grande de Detalhamento de Gordura de Frete no Fechamento Mensal dos Vendedores (`public/index.html`, `public/style.css`, `public/js/fechamento_vendedores.js`, `public/app.js`, `public/js/vendedores.js`, `test_modal_fretes_fechamento.js`):**
-    - **Demanda Operacional & Solução:**
-      - Atendendo à necessidade dos vendedores e gestores de auditar exatamente quais conhecimentos de frete geraram o valor apurado no card **`🚚 Gordura de Frete (Gatilho ≥ 85%)`**, foi implementado o botão `🔍 Ver Fretes` no cabeçalho do Card 2 e a mini-lupa no Card 3 (`cardFechamentoGorduraVal`).
-    - **Modal Drilldown em Formato Oficial (10 Colunas Idênticas à Tela Gordura Frete):**
-      - Popup responsivo (`#modalFretesFechamento`) em largura estendida (`max-width: 1120px; width: 95%`) com as 10 colunas oficiais: *Empresa, Emissão, NF-e, Ped. Venda, Cliente, Vendedor, Transportadora, Cobrado (R$), Custo (R$) e Gordura (R$)*.
-      - Badges de alto contraste para superávit (`.badge-gordura-pos`), déficit (`.badge-gordura-neg`) e neutro (`.badge-gordura-neu`).
-    - **Mini KPIs & Filtros Dinâmicos no Modal:**
-      - 4 Cards de resumo no topo: *Frete Cobrado (COBCLI), Custo Real (Transportadora), Gordura de Frete Líquida* e *Total de Conhecimentos/Notas* com discriminação de superávits vs déficits.
-      - Barra de pesquisa rápida textual filtrando simultaneamente por cliente, nota, pedido e transportadora.
-      - Filtro por status (*Todos, Apenas Superávit, Apenas Déficit, Neutro*).
-      - Ordenação interativa bidirecional (crescente/decrescente) em todas as colunas clicando no cabeçalho.
-    - **Exportação CSV para Excel:**
-      - Botão `📥 Exportar CSV (Excel)` que gera arquivo `.csv` formatado no padrão brasileiro (delimitador `;`, valores com vírgula e cabeçalho completo) com codificação UTF-8 com BOM (`\uFEFF`), iniciando download automático imediato.
-    - **Arquitetura Resiliente, Cache em Memória & Tema Claro:**
-      - Consulta centralizada no motor `POST /api/vendedores/gordura-frete` passando as datas do ciclo e o vendedor selecionado (com proteção RBAC).
-      - Cache em memória efêmero (`fretesFechamentoCache`) garantindo abertura instantânea em reconsultas do mesmo ciclo.
-      - Suporte total aos Modos Escuro e Claro via `#modalFretesFechamento.modal-theme-light` integrado a `aplicarTemaVendedores`.
-    - **Suíte de Testes Automatizados:** Script dedicado `test_modal_fretes_fechamento.js` com 16 asserções automatizadas cobrindo elementos de UI, regras CSS, compilação sintática via `vm.Script` e lógica em memória (100% aprovados).
-51. [ ] **Evolução e Regras de Negócio do Módulo de Inadimplentes no Fechamento dos Vendedores (`fechamento_vendedores_engine.js`, `public/js/fechamento_vendedores.js`, `test_fechamento_vendedores.js`):**
-    - **Contexto & Escopo:**
-      - Revisão aprofundada do cálculo e das deduções de títulos inadimplentes (`SE1140`, `SE1150`, `SE1160`) na apuração das comissões mensais dos vendedores.
-      - **Tópicos Prioritários para Tratamento em Breve:**
-        1. *Regras de Carência e Tolerância:* Avaliar faixa de dias de atraso/tolerância para enquadramento como inadimplente.
-        2. *Tratamento de Títulos Recuperados/Pagos após a Data de Corte:* Definir a mecânica de estorno/crédito retroativo da dedução em fechamentos futuros.
-        3. *Impacto na Composição da Renda:* Alinhamento se a inadimplência deve abater exclusivamente a comissão líquida ou se impacta também a elegibilidade das premiações de metas.
-        4. *Drilldown Visual & Extrato Auditável:* Interface para consulta analítica dos títulos vencidos com filtros por cliente, vencimento e empresa filial.
-52. [x] **Agendamento Externo do Fechamento Mensal via GitHub Actions Cron & Endpoint Seguro (`.github/workflows/fechamento_mensal.yml`, `server.js`, `fechamento_vendedores_engine.js`, `docs/GUIA_SETUP_GITHUB_CRON.md`, `test_cron_fechamento.js`):**
-    - **Contexto e Motivação Operacional:**
-      - Desacoplamento da rotina mensal oficial de fechamento dos vendedores (ciclo 26 a 25) do processo em memória do Node.js (`setInterval`). Em plataformas de nuvem com suspensão por inatividade (*sleep/spin-down* do Render plano gratuito), o processo hiberna na madrugada e o timer interno não acorda pontualmente às 00:30 BRT.
-    - **Workflow GitHub Actions (`.github/workflows/fechamento_mensal.yml`):**
-      - Agendamento cron universal: `cron: '30 3 26 * *'` (03:30 UTC = 00:30 Horário Oficial de Brasília todo dia 26 do mês).
-      - Disparo manual em 1 clique (`workflow_dispatch`) com inputs configuráveis (`force: boolean`, `data_ini: string`, `data_fim: string`).
-      - Chamada HTTP resiliente com `curl` e política de retries contra spin-down da nuvem (`--retry 3 --retry-delay 10 --connect-timeout 30 --max-time 180`).
-      - Tratamento seguro de falhas com saída estruturada e logs de status HTTP.
-    - **Endpoint Seguro no Backend Express (`server.js`):**
-      - Rotas gêmeas: `POST /api/cron/fechamento-mensal` e alias `POST /api/vendedores/fechamento/cron`.
-      - Middleware de segurança `requireCronAuth` com validação de segredo compartilhado (`CRON_SECRET`) em tempo constante via `crypto.timingSafeEqual` (defesa ativa contra timing attacks).
-      - Suporte a cabeçalhos `Authorization: Bearer <token>` e `x-cron-secret: <token>`, com fallback para JWT administrativo (`admin` / `diretoria`).
-      - Registro de telemetria e auditoria perene via `logUserActivity` com tipo `CRON_FECHAMENTO_MENSAL` e medição de duração em ms.
-    - **Motor Atualizado (`fechamento_vendedores_engine.js`):**
-      - Função `executarJobFechamentoMensal` aprimorada para suportar identificação de origem (`triggeredBy: 'GITHUB_ACTIONS'`), execução forçada e consolidação transparente do ciclo recém-encerrado.
-    - **Documentação e Guia Operacional:**
-      - Manual criado em `docs/GUIA_SETUP_GITHUB_CRON.md` detalhando a configuração das secrets `API_BASE_URL` e `CRON_SECRET` no repositório GitHub.
-    - **Suíte de Testes Automatizados:**
-      - Arquivo `test_cron_fechamento.js` homologado com 9 asserções cobrindo integridade do YAML, timingSafeEqual, bloqueio 401 sem secret/com secret inválido, aceitação 200 via Bearer e x-cron-secret, fallback admin JWT e testes assíncronos (100% aprovados).
-53. [ ] **Configuração das Secrets de Produção e Homologação E2E do GitHub Actions Cron (`API_BASE_URL` e `CRON_SECRET`):**
-    - **Status:** Secrets cadastradas no GitHub Actions; pendente apenas inserção de `CRON_SECRET` nas Environment Variables do Render pelo administrador.
-    - **Progresso:**
-      1. [x] *Cadastro no GitHub Actions:* `API_BASE_URL` (`https://conciliacao-fretes.onrender.com`) e `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) cadastrados com sucesso via GitHub CLI (`gh secret set`).
-      2. [ ] *Cadastro no Servidor / Render:* Incluir `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) nas Environment Variables do serviço `conciliacao-fretes` no painel do Render (`dashboard.render.com`).
-      3. [ ] *Disparo de Teste em Produção:* Acionar via `gh workflow run fechamento_mensal.yml -f force=true` ou botão `Run workflow` no GitHub Actions e validar consolidação com HTTP 200.
-54. [x] **Módulo de Upload, Gestão e Geração de Holerites Personalizados (GSI, OAÇO e Sem Registro):**
-    - **Visão Geral e Propósito:**
-      - Sub-aba criada sob `💰 ASSIST. FINANC.` (`#subGroupFinanceiro` ➔ `#tab-holerites`) para centralizar a recepção de relatórios de folha da contabilidade (GSI BW e OAÇO) e planilhas de colaboradores sem registro/avulsos, gerando holerites executivos em formato moderno, padronizado, com logotipos oficiais e quadro para comunicados personalizados.
-    - **Suporte Multi-Formato & Parser Autônomo (`parser_holerites.py`):**
-      - *PDFs Contábeis (GSI e OAÇO):* Leitura geométrica via `pdfplumber` recortando a metade superior (`p.crop((0, 0, width, height/2))`), neutralizando duplicação dos recibos superior/inferior. Detecção autônoma de razão social, CNPJ, competência, funcionário, cargo, CBO, admissão, eventos de proventos/descontos e bases de cálculo de INSS, FGTS e IRRF.
-      - *Planilhas Excel Sem Registro (.xlsx):* Leitura nativa via stdlib (`zipfile` e `xml.etree.ElementTree`) sem dependência de pacotes pesados de terceiros, extraindo proventos, vales de adiantamento, dados cadastrais e valor líquido.
-      - *Valor por Extenso Automático:* Função `numero_por_extenso` em português para preenchimento formal de recibos.
-    - **Persistência Estruturada no Supabase (`postgres_db.js`):**
-      - Tabela relacional `holerites_documentos` com DDL idempotente, índices de busca por competência e restrição UNIQUE (`empresa, tipo_documento, competencia_ano, competencia_mes, funcionario_nome`).
-      - Estratégia de `UPSERT` que atualiza valores e eventos ao reimportar uma folha corrigida, mas preserva a `mensagem_personalizada` previamente gravada.
-      - Fallback resiliente em disco em `data/holerites_documentos.json` mantendo integridade mesmo em modo offline do banco.
-    - **API REST Robusta (`server.js`):**
-      - `POST /api/financeiro/holerites/upload`: Upload multi-arquivos com `multer.memoryStorage()`, orquestração do parser Python e persistência com sanitização.
-      - `GET /api/financeiro/holerites`: Listagem filtrada por competência (`ano`, `mes`), empresa (`GSI`, `OACO`, `SEM_REGISTRO`), tipo de recibo e busca instantânea.
-      - `GET /api/financeiro/holerites/competencias`: Agregação dinâmica de meses disponíveis com contadores de colaboradores.
-      - `GET /api/financeiro/holerites/:id`: Obtenção do documento completo para renderização.
-      - `PATCH /api/financeiro/holerites/:id/mensagem`: Atualização de comunicado específico individual.
-      - `PATCH /api/financeiro/holerites/mensagem-lote`: Aplicação de recado institucional a múltiplos colaboradores selecionados.
-      - `DELETE /api/financeiro/holerites/:id`: Exclusão lógica/física de recibo.
-    - **Interface de Usuário & Experiência de Navegação (`index.html`, `style.css`, `public/js/holerites.js`):**
-      - *Área de Upload Drag-and-Drop:* Feedback visual instantâneo, fila de arquivos e upload em 1 clique.
-      - *5 Cards de KPIs Dinâmicos:* Total de Colaboradores, Líquido GSI, Líquido OAÇO, Líquido Sem Registro e Folha Total Líquida recalculados em tempo real.
-      - *Resolução da Escolha do Documento Certo:* Carrossel dinâmico de competências (`[ Mês Ativo ] [ Anteriores ] [ Todos ]`), filtros rápidos por Empresa e Tipo de Folha (Salário Mensal, Adiantamento, 13º, Férias) e campo de busca por nome/CPF.
-      - *Holerite Executivo em Folha A4:* Modal com cabeçalho com logo oficial da empresa (`logo-gsi.png` / `logo-oaco.png`), grade de eventos estilizada (verde esmeralda para créditos e coral para descontos), card de valor líquido em destaque, bases de cálculo legais, quadro de aviso/mensagem e canhoto de quitação destacável para assinatura.
-      - *Regras de Impressão (@media print):* Oculta menus, sidebars e botões, formatando a folha em formato A4 perfeito para impressão física ou geração direta de PDF.
-      - *Exportação Excel:* Botão de exportação universal de tabela em CSV com BOM UTF-8 e delimitador `;`.
-    - **Testes Automatizados:**
-      - 6 Testes Pytest em `test_parser_holerites.py` cobrindo 100% dos modelos de amostra de PDFs e planilhas.
-      - 7 Testes de API em `test_holerites_api.js` validando gravação, filtros, busca por nome/CPF, atualização de mensagens individual/lote, agregação de competências e exclusão.
-      - Validação de integridade sintática e modular em `test_frontend_modules.js` (100% aprovados).
-55. [x] **Sub-Aba Independente "Cadastro Funcion." sob AN. FINANCEIRO (`postgres_db.js`, `server.js`, `public/index.html`, `public/js/funcionarios_dp.js`, `test_funcionarios_dp.js`):**
-    - **Visão Geral e Arquitetura:**
-      - Criada sub-aba dedicada e exclusiva **Cadastro Funcion.** (`#tab-funcionarios`) no grupo `subGroupFinanceiro` sob a aba principal `💰 ASSIST. FINANC.`, separada da sub-aba `Documentos DP` conforme solicitação explícita do usuário.
-      - Atua como repositório mestre de colaboradores (GSI BW Empresa 15, OAÇO Empresa 16 e Prestadores Sem Registro / Avulsos) para gestão centralizada de dados pessoais, contatos, endereços, chaves PIX, documentos e vínculos trabalhistas.
-    - **Modelagem Relacional & DDL Supabase (`postgres_db.js`):**
-      - Tabela `dp_colaboradores` criada com índices estratégicos por empresa, CPF, status e nome completo (`idx_dp_colab_empresa`, `idx_dp_colab_cpf`, `idx_dp_colab_status`, `idx_dp_colab_nome`).
-      - Campos contemplados: `empresa`, `nome_completo`, `cpf`, `rg`, `data_nascimento`, `codigo_interno`, `cargo`, `cbo`, `departamento`, `tipo_contrato`, `data_admissao`, `data_demissao`, `ctps_numero`, `ctps_serie`, `pis_pasep`, `status` (ATIVO, FERIAS, AFASTADO, DESLIGADO), `salario_base`, `telefone_celular`, `telefone_fixo`, `email_pessoal`, `endereco_cep`, `endereco_logradouro`, `endereco_numero`, `endereco_complemento`, `endereco_bairro`, `endereco_cidade`, `endereco_uf`, `tipo_chave_pix`, `chave_pix`, `banco_nome`, `banco_codigo`, `agencia`, `conta_corrente`, `tipo_conta`, `observacoes`.
-      - Suporte a cache e fallback offline em `data/dp_colaboradores.json`.
-    - **Rotas RESTful no Backend (`server.js`):**
-      - `GET /api/dp/colaboradores`: Consulta com filtros facetados por empresa, status e busca universal.
-      - `GET /api/dp/colaboradores/:id`: Consulta individual de colaborador.
-      - `POST /api/dp/colaboradores`: Cadastro com auditoria de usuário no feed de atividades (`CADASTRO_COLABORADOR`).
-      - `PUT /api/dp/colaboradores/:id`: Edição completa com auditoria (`EDICAO_COLABORADOR`).
-      - `DELETE /api/dp/colaboradores/:id`: Exclusão de ficha funcional (`EXCLUSAO_COLABORADOR`).
-      - `POST /api/dp/colaboradores/sync-holerites`: Rotina de auto-sincronização que varre o histórico de holerites e cadastra automaticamente colaboradores não matriculados.
-      - **Auto-Sync Transparente no Upload:** O endpoint de upload de holerites (`POST /api/financeiro/holerites/upload`) aciona em background `sincronizarColaboradoresDosHoleritesDB`, garantindo que novos funcionários contidos nos PDFs contábeis ou planilhas apareçam instantaneamente no cadastro geral sem intervenção manual.
-    - **Interface Moderna e Enriquecimento em Holerites (`public/index.html`, `public/js/funcionarios_dp.js`, `public/js/holerites.js`):**
-      - *KPIs do Topo (6 Cards):* Total de Colaboradores, Ativos, GSI BW, OAÇO, Sem Registro e Desligados/Afastados com contadores em tempo real.
-      - *Filtros Facetados & Busca Instantânea:* Filtros por empresa, botões de status e busca rápida com debounce por nome, CPF, cargo, celular ou chave PIX.
-      - *Tabela Funcional:* Exibe empresa, colaborador/CPF, cargo/departamento, admissão, contato com atalho direto para WhatsApp (`https://wa.me/...`), chave PIX com badge mono e botão `📋 Copiar` em 1 clique, e status com badge colorido.
-      - *Modais Operacionais:* `#modalColaboradorForm` dividido em 5 blocos lógicos com validação, e `#modalColaboradorFicha` apresentando a ficha executiva detalhada.
-      - *Enriquecimento Cruzado em Documentos DP:* Na pré-visualização de qualquer holerite (`visualizarHolerite`), o sistema localiza a ficha do funcionário e renderiza no topo um card destacado com a Chave PIX, botão de cópia rápida e telefone celular para agilizar o pagamento financeiro.
-      - *Exportação CSV Excel:* Exportação completa com BOM UTF-8 e delimitador `;`.
-    - **Suíte de Testes Automatizados:**
-      - `test_funcionarios_dp.js` com 5 asserções automatizadas cobrindo CRUD, filtros por PIX/empresa, atualização de ficha funcional, auto-sincronização a partir de holerites e exclusão segura (100% aprovados).
-56. [x] **Aba Principal Independente "ANALISTA FIN" com Sub-Abas "Documentos DP" e "Cadastro Funcion." (`public/index.html`, `public/app.js`, `test_frontend_modules.js`, `test_pedidos_compras.js`):**
-    - **Demanda Operacional & Arquitetura:**
-      - Atendendo à especificação do usuário, foi criada a nova aba principal de 1º nível **`📑 ANALISTA FIN`** (`#mainTabAnalistaFin`, `data-main-tab="analista-fin"`), posicionada estrategicamente no menu de navegação da SPA.
-      - Desacoplamento e extração total das sub-abas **`Documentos DP`** (`tab-holerites`) e **`Cadastro Funcion.`** (`tab-funcionarios`) de dentro de `💰 ASSIST. FINANC.`, alocando-as no seu container dedicado **`#subGroupAnalistaFin`**.
-      - A aba `💰 ASSIST. FINANC.` permanece focada em rotinas estritamente bancárias e crédito (*Conciliação Bancária, Extrato API Inter, Webhooks Pix Inter e Análise de Crédito*).
-    - **Navegação & RBAC (Controle de Acesso):**
-      - Integração completa em `switchMainTab` para ativação reativa de `#subGroupAnalistaFin` com foco automático na primeira sub-aba (*Documentos DP*).
-      - Controle de permissões (`applyUserPermissions`): visível para quem possuir permissão `analista-fin` ou herança de `financeiro` / perfil `admin`.
-      - Checkbox `permAnalistaFin` adicionado ao modal de usuários para atribuição granular de acessos.
-    - **Qualidade & Testes Automatizados:**
-      - Adicionado Teste 7 em `test_frontend_modules.js` validando a existência de `#mainTabAnalistaFin`, `#subGroupAnalistaFin`, a presença exclusiva das duas sub-abas no novo grupo e sua ausência em `#subGroupFinanceiro`.
-      - Correção de porta dinâmica em `test_pedidos_compras.js` prevenindo conflitos EADDRINUSE com servidores em background.
-57. [x] **Consulta Automática de Dívida Ativa da União e FGTS (PGFN / Receita Federal via InfoSimples) (`server.js`, `analise_credito_engine.js`, `public/index.html`, `public/app.js`, `test_infosimples_pgfn.js`):**
-    - **Demanda de Negócio & Especificação:**
-      - Inclusão da verificação de débitos inscritos na Dívida Ativa da União e FGTS mantida pela Procuradoria-Geral da Fazenda Nacional (PGFN) e Receita Federal do Brasil via API oficial da InfoSimples (`/receita-federal/pgfn-devedores`).
-      - Identificação transparente de valores em aberto que representam risco severo de execução fiscal e penhora de contas bancárias.
-    - **Regras Matemáticas e Pesos no Motor de Risco (`analise_credito_engine.js`):**
-      - *Nada Consta (Dívida = R$ 0,00):* `+2.0 pts` (`peso_pgfn_zero`).
-      - *Dívida Ativa > R$ 50.000,00:* `-7.0 pts` (`peso_pgfn_gt_50k`).
-      - *Dívida Ativa > Capital Social:* `-20.0 pts` (`peso_pgfn_gt_capital`). Precedência estrita e não-cumulativa sobre os -7 pts quando ambas as condições forem verdadeiras.
-      - *Dívida Intermediária (R$ 0,01 a R$ 50.000,00 quando $\le$ Capital Social):* `0 pts` (neutro).
-      - *Arquitetura Fail-Neutral:* Em caso de timeout (25s), token não configurado ou instabilidade externa da InfoSimples/PGFN, a pontuação é fixada em `0 pts`, prevenindo qualquer penalização indevida ao cliente.
-      - A pontuação da PGFN integra-se ao sub-índice `subGrandeFalindo`.
-    - **Backend & Unificação HTTP (`server.js`):**
-      - Refatoração estrutural com a extração de `executarConsultaInfoSimples(servicoSlug, postBody, servicoNome)` genérica, eliminando ~130 linhas de duplicação entre as consultas de CRF Caixa e PGFN Devedores.
-      - Endpoint dedicado `POST /api/financeiro/analise-credito/consultar-pgfn`.
-      - Inclusão da promessa `consultarPgfnInfoSimples(cnpj)` no `Promise.allSettled` da rota `/protheus`, telemetria de latência no farol SRE `status_conexoes.pgfn_uniao` e retorno dos campos `pgfn_info`, `pgfn_total_divida`, `pgfn_executado`, `pgfn_tem_divida` e `pgfn_total_divida_formatado`.
-      - Reuso estrito do `INFOSIMPLES_TOKEN`, timeouts de 25s (`AbortController`), tratamento de códigos 600 a 622 e disparador de e-mail de alerta para erros 601/603 com cooldown de 15 minutos.
-    - **Interface, Acessibilidade WCAG e Ciclo de Vida do DOM (`public/index.html` & `public/app.js`):**
-      - *Bloco 6:* Botão outline âmbar `#btnConsultarPgfnInfoSimples` (`⚡ Consultar PGFN (InfoSimples)`), com feedback visual de carregamento (`⏳ Consultando PGFN...`).
-      - *Blindagem do DOM:* Container visual `#cr_pgfn_badge` desacoplado dos inputs `<input type="hidden" id="cr_pgfn_total_divida">` e `<input type="hidden" id="cr_pgfn_executado">`, garantindo que atualizações de `innerHTML` não destruam os nós de formulário do DOM.
-      - *Contraste WCAG:* Cores calibradas com fundo translúcido e texto esmeralda `#22c55e` para nada consta (AAA), vermelho `#f87171` para dívida ativa (AA) e amarelo `#fbbf24` para indisponibilidade.
-      - *Ficha do Pedido & Extrato Matemático:* Apresentação clara do valor devido com máscara monetária brasileira, badge de pontuação contextual (`+2 pts`, `-7 pts`, `-20 pts`, `0 pts`) e linha discriminada na tabela de auditoria de pontuação.
-      - *Configurações do Score (`#tab-config-score`):* Bloco de parâmetros parametrizável com os inputs `cfg_peso_pgfn_zero`, `cfg_peso_pgfn_gt_50k` e `cfg_peso_pgfn_gt_capital`, sincronizados em tempo real com o motor de pontuação.
-    - **Garantia de Qualidade & Verificação Adversarial:**
-58. [x] **Diagnóstico da Tela Metabase Analytics, Resolução do Lockout RLS no Supabase, Telemetria e Sincronização de Faturamento (`postgres_db.js`, `server.js`, `sql/fix_supabase_metabase_permissions.sql`, `public/index.html`, `public/js/bi.js`, `test_bi_embed.js`):**
-    - **Causa Raiz & Diagnóstico Aprofundado (0 Linhas no Metabase):**
-      - O usuário relatou que a tela `📈 Metabase Analytics` não estava trazendo nenhuma informação. Na captura `metabase-01.png`, queries diretas em `indices_liquidez_historico` retornavam *"Nenhum resultado! Mostrando 0 linhas"*.
-      - *Causa Técnica:* O script de hardening anterior ativou `FORCE ROW LEVEL SECURITY` com a política `CREATE POLICY "Acesso exclusivo backend" ON public.<tabela> TO service_role`.
-      - O Metabase (hospedado em `bi-gsi.onrender.com`) conecta via driver PostgreSQL padrão (porta 5432) com o usuário `postgres`. Como a tabela possuía `FORCE RLS` e o usuário `postgres` não é superuser no Supabase gerenciado, o PostgreSQL aplicou o *Default Deny* silencioso do RLS em todas as consultas `SELECT`, retornando conjunto vazio sem emitir erro de permissão.
-    - **Correção da Política de RLS no Backend (`postgres_db.js`):**
-      - Rotina `initDB` atualizada para recriar a política com as roles unificadas: `CREATE POLICY "Acesso exclusivo backend" ON public."${tbl}" TO service_role, postgres USING (true) WITH CHECK (true);`.
-      - As roles anônimas e públicas (`anon`, `authenticated`) continuam 100% bloqueadas via `REVOKE ALL` e sem política no PostgREST, mantendo íntegros os requisitos de segurança e os alertas do Supabase.
-    - **Script SQL de Remediação para o Supabase (`sql/fix_supabase_metabase_permissions.sql`):**
-      - Script SQL autônomo com aspas duplas estritas (`"Acesso exclusivo backend"`), concessão de privilégios de schema para `postgres, service_role`, atualização dinâmica de RLS em todas as tabelas e concessão de `GRANT SELECT` em todas as views analíticas (`vw_bi_faturamento_mensal`, `vw_bi_faturamento_grupo_mes`, `vw_bi_produtos_estoque`, `vw_indices_liquidez_diario`, etc.).
-    - **Controles de Sincronização e Telemetria no Frontend (`public/index.html` & `public/js/bi.js`):**
-      - Toolbar da sub-aba `📈 Metabase Analytics` enriquecida com os botões:
-        * `📥 Sync Faturamento` (`#btnBiSyncFaturamento`): dispara a carga Protheus -> Supabase das notas fiscais e vendas consolidadas das empresas MP (14), GSI (15) e OACO (16).
-        * `📊 Sync Índices` (`#btnBiSyncIndices`): dispara o recálculo e snapshot diário de liquidez e saldos bancários.
-        * `↗️ Abrir Metabase` (`#btnBiOpenExternal`): link dinâmico para acesso direto em nova aba ao painel do Metabase (`bi-gsi.onrender.com`).
-      - Barra de telemetria visual (`#biTelemetryBar`) abaixo da toolbar exibindo a quantidade de itens faturados sincronizados, contagem de snapshots de índices e status de RLS.
-    - **Resiliência SRE e Proteção de Concorrência (`server.js`):**
-      - Adicionada trava de cooldown de 60 segundos (`FATURAMENTO_SYNC_COOLDOWN_MS = 60 * 1000`) no endpoint `POST /api/bi/sync-faturamento`, evitando sobrecarga de consultas concorrentes pesadas no Protheus.
-    - **Auditoria Adversarial & Suíte de Testes:**
-      - Parecer formal do auditor aprovando a solução e garantindo conformidade com o princípio de menor privilégio.
-      - Expansão de `test_bi_embed.js` de 19 para 22 asserções cobrindo política de RLS para a role `postgres`, validação DOM dos novos botões e verificação dos métodos em `bi.js` (100% aprovados).
-59. [x] **Homologação em Produção da Incorporação Estática Metabase, Resolução de Erro de Incorporação e Switcher Dinâmico de Dashboard ID (`services/bi_service.js`, `server.js`, `public/index.html`, `public/js/bi.js`, `test_bi_embed.js`):**
-    - **Diagnóstico & Causa Raiz do Erro de Iframe (*"Incorporação não está habilitada para esse projeto"*):**
-      - O token assinado HMAC-SHA256 gerado pelo portal era matematicamente válido com a chave `METABASE_SECRET_KEY`.
-      - No Metabase, a criação do Dashboard "Dashboard Executivo GSI" (`/dashboard/1-dashboard-executivo-gsi`) não ativa a incorporação estática por padrão. O Metabase exige ação explícita de publicação individual do dashboard através do menu *Compartilhamento/Incorporação* ➔ *Incorporação Estática* ➔ Botão azul **"Publicar"** (*Publish*).
-      - Enquanto o botão "Publicar" não for acionado, o Metabase bloqueia consultas externas com a mensagem *"Incorporação não está habilitada para esse projeto"*.
-    - **Backend com Suporte a `dashboardId` Sobrecarregável (`server.js` & `services/bi_service.js`):**
-      - Endpoint `/api/bi/dashboard-executivo` atualizado para receber `req.query.dashboardId`, permitindo testes e alternância imediata de painéis analíticos sem necessidade de redeploy ou alteração de variáveis no Render.
-    - **Frontend com Seletor Interativo e Telemetria no Portal (`public/index.html` & `public/js/bi.js`):**
-      - Barra de telemetria enriquecida com o badge interativo `🎯 Dashboard: [ 1 ✏️ ]` (`#btnBiChangeDashboardId` e `#biTelDashboardId`).
-      - Ao clicar, o administrador pode digitar o número do Dashboard (ex: `1`, `2`, `3`) ou limpar para restaurar o padrão do servidor. A preferência é memorizada no `localStorage ('metabase_active_dashboard_id')` e o iframe é recarregado instantaneamente em tempo real.
-      - Funções `getActiveDashboardId()` e `setActiveDashboardId(id)` exportadas globalmente no objeto `window` (`window.getActiveBIDashboardId`, `window.setActiveBIDashboardId`).
-    - **Garantia de Qualidade & Suíte Automatizada (`test_bi_embed.js`):**
-      - Expansão da esteira de testes com as novas asserções `2.6` (validação de sobreposição de `dashboardId` via query param no endpoint REST e verificação do payload JWT decodificado) e `5.5` (validação DOM e exportações das funções de seleção de ID no cliente).
-      - 24 de 24 asserções aprovadas com 100% de sucesso.
-60. [x] **Módulo de CRM Comercial Nativo no BI Executivo, Kanban de 5 Fases, RLS Supabase & Acesso Restrito Alexandre (`sql/bi/07_tabelas_crm.sql`, `crm_engine.js`, `crm_routes.js`, `public/js/crm.js`, `public/index.html`, `public/style.css`, `public/app.js`, `server.js`, `test_crm_module.js`):**
-    - **Visão Geral e Propósito de Negócio:**
-      - Substituição progressiva do CRM Pipedrive (custo recorrente de ~R$ 800/mês para 3 vendedores: Figueiredo, Andrea e Juliana) por uma solução nativa, sem custos adicionais de infraestrutura externa e totalmente integrada ao portal e ao banco Protheus.
-      - Fase de prototipação, homologação e validação de UX restrita exclusivamente ao administrador (`alexandre` / `admin`) sob a aba `📊 BI EXECUTIVO` (`#tab-bi-crm` / `#btnTabBiCrm`), mantendo os dados no Supabase / cache local sem inserção precoce no ERP Protheus (`SC5`/`SC6`).
-    - **Modelagem Relacional Enxuta & RLS no Supabase (`sql/bi/07_tabelas_crm.sql`):**
-      - Topologia mínima baseada na poda YAGNI (de 7 tabelas para 2 entidades principais):
-        1. `crm_deals`: Armazena oportunidades comerciais, dados cadastrais de clientes, campos de frete, observações e itens cotados via JSONB (`itens_cotados JSONB`). Identificadores em formato `VARCHAR(64)` (`CRM-...`) compatíveis entre Postgres e fallback JSON.
-        2. `crm_atividades`: Linha do tempo cronológica de follow-ups (ligações, reuniões, anotações, tarefas, mensagens de WhatsApp).
-      - Row-Level Security ativado compulsoriamente (`ENABLE` e `FORCE ROW LEVEL SECURITY`) com políticas de acesso irrestrito para `service_role` e `postgres`, prevenindo o lockout silencioso do pooler Supabase.
-      - Índices B-Tree em `estagio`, `vendedor_nome`, `cliente_cod`, `deleted_at` e `created_at DESC`, além de índice GIN na coluna JSONB `itens_cotados`.
-    - **Motor de Negócio Resiliente & Fallback ACID (`crm_engine.js`):**
-      - Suporte dual transparente: Supabase PostgreSQL em nuvem com fallback atômico em `data/crm_deals_cache.json` através do módulo `safe_json_storage.js`.
-      - Autocomplete de clientes ao vivo consultando a tabela `SA1010` do Protheus (com sanitização defensiva contra caracteres especiais e colchetes T-SQL) e histórico de contatos gravados no CRM.
-      - **Regra Oficial de Frete Embutido:** O campo `frete_embutido` é registrado para fins de cálculo de margem, mas **nunca é somado** ao `valor_total` do pedido/deal, preservando a coerência comercial com o Protheus.
-      - Validação canônica de estágios (`lead`, `contato`, `proposta`, `negociacao`, `ganho`, `perdido`).
-      - Suporte a soft-delete (`deleted_at`) e reversibilidade total de exclusão através da função `restaurarDeal(id)`.
-      - Telemetria e auditoria de ações do operador registradas via `logUserActivity` (`CRIACAO_DEAL`, `TRANSICAO_KANBAN`, `FOLLOWUP_CRM`, `EXCLUSAO_DEAL`).
-    - **Segurança RBAC Zero-Trust & Endpoints REST (`crm_routes.js`):**
-      - Middleware de segurança com tripla barreira: `requireAuth`, `requireRole('admin')` e bloqueio estrito para vendedores comuns (`403 FORBIDDEN_VENDOR`), garantindo que apenas `alexandre` acesse os dados durante a fase de validação.
-      - Endpoints RESTful em `/api/bi/crm`: `GET/POST /deals`, `GET/PUT/DELETE /deals/:id`, `PATCH /deals/:id/stage`, `POST /deals/:id/restore`, `GET/POST /deals/:id/activities`, `GET /clientes/autocomplete` e `GET /vendedores`.
-    - **Interface Kanban Reativa & Design do Módulo (`public/js/crm.js`, `public/style.css`, `public/index.html`):**
-      - Quadro Kanban fluido com os 5 estágios canônicos oficiais da operação:
-        1. 📥 *Novos Info Pendentes* (`lead`)
-        2. ⏳ *Sem Contato Não Responde* (`contato`)
-        3. 📋 *Proposta feita* (`proposta`)
-        4. 🔥 *Negociação Quente* (`negociacao`)
-        5. 🏆 *Venda Efetuada* (`ganho`)
-      - Cabeçalhos de colunas com contadores dinâmicos de quantidade de negócios e somatório de valores (R$).
-      - Drag and Drop nativo HTML5 (`dragstart`, `dragover`, `dragleave`, `drop`) com animações de elevação de card e realce da coluna destino.
-      - Modais dedicados acessíveis (`role="dialog"`, `aria-modal="true"`):
-        * *Modal Nova/Editar Oportunidade:* Autocomplete de cliente, vendedor responsável, campos comerciais (condição de pagamento, frete cobrado, frete embutido, frete CIF/FOB, transportadora, número do pedido de compra do cliente, prazo e observações de NFe).
-        * *Modal Ficha de Oportunidade & Timeline:* Histórico completo de interações com adição de novas anotações, status e transições rápidas.
-        * *Modal Marcar como Perdido:* Exigência obrigatória de justificativa de perda antes de arquivar a oportunidade.
-      - Sanitização contextual contra DOM XSS em todos os campos via `escapeHtml()`.
-      - Compatibilidade total de contraste WCAG com Tema Claro (`tab-theme-light` / `modal-theme-light`) e Tema Escuro.
-    - **Garantia de Qualidade & Verificação Adversarial (10/10 Testes Aprovados):**
-      - Suíte automatizada em `test_crm_module.js` cobrindo 10 baterias de testes: criação de deal, transição de estágio Kanban, registro de atividades na timeline, autocomplete com caracteres especiais, bloqueios de segurança RBAC (401/403/200), soft-delete, restauração de deals, listagem de vendedores, rejeição de estágios inválidos e regra estrita de frete embutido.
-      - Testes de integridade sintática e modular em `test_frontend_modules.js` 100% aprovados.
-61. [x] **Sub-Aba "Ponto de Pedido Ideal" no Módulo COMPRAS & Motor Analítico Protheus Consolidado (`ponto_pedido_engine.js`, `server.js`, `public/js/compras_ponto_pedido.js`, `public/index.html`, `public/style.css`, `public/app.js`, `test_compras_ponto_pedido.js`):**
-    - **Objetivo & Demanda de Negócio do Comprador:**
-      - Nova sub-aba isolada e modular dentro do menu de 1º nível `COMPRAS` (`#tab-compras-ponto-pedido` / `#btnTabComprasPontoPedido`), permitindo ao comprador digitar o código de um produto, ID do Pipedrive ou descrição parcial com autocomplete debounceado (300ms) sem onerar o banco.
-      - **Popup de 2 Fases com Quantidade em Destaque:**
-        1. *Fase A (Loading Imediato):* Modal responsivo `#modalPontoPedidoIdeal` abre instantaneamente exibindo: *"Verificando histórico... Calculando..."* com spinner animado enquanto consulta o Protheus via Railway.
-        2. *Fase B (Resultado Claro & Quantidade em Evidência):* Exibição do texto simples *"De acordo com o histórico consolidado, o ponto de pedido recomendado: 8 unidades"* com o número em destaque tipográfico gigante (~2.6rem) e cor semântica (verde esmeralda para normal, âmbar para crítico e vermelho para ruptura).
-    - **Alinhamento com Diretrizes Operacionais Oficiais da IA Especialista:**
-      - Leitura minuciosa e aplicação estrita das regras de `ponto-de-pedido-instrucao-analise.md` e caso real `ponto-de-pedido-cofre-box-2-0-black.md`.
-      - **Resolução Inteligente de Identificadores (Passo 1):** Suporte a código puro (`00101010102B009`), código com prefixo de empresa (`15-...` ➔ extração do sufixo pós-hífen), ID de produto do Pipedrive (`11569` ou URL `benetroncomercial.pipedrive.com/product/11569` via `B1_XCODPD`) e busca textual por descrição na `SB1090` (Filial 01).
-      - **As 6 Consultas Protheus Via Gateway Railway (Passos 3.1 a 3.6):**
-        1. `SB1090`: Catálogo mestre oficial da empresa 09, filial 01 (`B1_COD`, `B1_DESC`, `B1_PE`, `B1_LE`, `B1_VLUNIT`, `B1_PRV1`, `B1_EMIN`).
-        2. `SD2`: Vendas mês a mês dos últimos 24 meses com `UNION ALL` nas empresas 14 (Metal Pleno), 15 (GSI) e 16 (OACO).
-        3. `SD2`: Clientes distintos unificados na janela 12M e detecção de devoluções.
-        4. `SD2`: Data da primeira venda histórica do item.
-        5. `SB2`: Estoques físicos atuais varrendo filiais 140, 150, 160 e 090.
-        6. `SC6`: Carteira de pedidos de venda em aberto não faturados (`C6_QTDVEN > C6_QTDENT`) e `SD3`: últimas entradas (TM < 500).
-      - **Preenchimento Mandatório de Meses Zerados (Passo 4):**
-        - O Protheus omite linhas para meses sem venda na `SD2`. O motor preenche compulsoriamente os meses ausentes com `0` na série móvel de 12 meses (`listaMeses12`), evitando distorção artificial do desvio-padrão e CV.
-      - **Os Três Cenários Matemáticos (Passo 5):**
-        - *Cenário 1 (Oficial do ERP):* $PP = \text{Consumo Médio Diário} \times \text{Lead Time (dias)}$.
-        - *Cenário 2 (Média 12M + Estoque de Segurança):* $PP = \text{Demanda no Lead Time} + (Z \times \sigma_{LT})$ nas confianças de 90% (Z=1.28), 95% (Z=1.65) e 98% (Z=2.05).
-        - *Cenário 3 (Run Rate Recente + Estoque de Segurança 95%):* Projeção sobre a média dos últimos 3 a 4 meses + $1.65 \times \sigma_{LT}$.
-      - **Regra Oficial de Decisão:**
-        - Tendência de alta (> +15% no 2º semestre) ➔ Cenário 3 a 95%.
-        - Tendência de queda (< -15%) ➔ Cenário 2 a 90% conservador.
-        - Demanda estável ➔ Cenário 2 a 95% clássico. Alta volatilidade ($CV > 60\%$) com ressalva explícita.
-        - Vendas zeradas nos 12 meses ➔ PP = 0 un para não imobilizar capital.
-      - **Diagnóstico de Ruptura em Curso & Compra Urgente:**
-        - Detecção ativa quando `saldoFisicoTotal === 0` e `pedidosAbertosQtd > 0`.
-        - Cálculo de reposição urgente cobrindo o déficit da carteira atrasada da SC6 + PP de segurança + consumo estimado durante o lead time.
-      - **Impacto Financeiro:** Avaliação de Capital Imobilizado no PP ($PP \times B1\_VLUNIT$) confrontado com Margem de Contribuição e Lucro Bruto Unitário.
-    - **Botão Expansível `+info` & Cópia Markdown 1-Clique:**
-      - Botão reativo `#btnToggleInfoPontoPedido` revela/recolhe a memória de cálculo completa com os 3 cenários, lead time, saldos físicos por filial, tabela mês a mês com meses zerados explicitados e pedidos em aberto na SC6.
-      - Botão `📋 Copiar Relatório Markdown` copia instantaneamente o estudo completo formatado em Markdown com padrão executivo para envio no Pipedrive, WhatsApp ou e-mail.
-    - **Auditoria Adversarial (Red Team) & Hardening de Segurança:**
-      - Zero credenciais hardcoded no repositório: leitura dinâmica de `PROTHEUS_API_KEY` com suporte universal (Windows/Linux) a `claude_desktop_config.json`.
-      - Sanitização estrita contra SQL injection e wildcard blast (`cleanTermo.length >= 2`, expurgo de caracteres perigosos e `TOP 20`).
-      - Proteção contra Memory Leak e duplicação de requisições: flag `_initialized` no frontend prevenindo multiplicação de listeners na alternância de abas.
-      - Sanitização com `escapeHtml()` em todos os parâmetros interpolados (prevenção contra DOM XSS).
-      - Tratamento fail-safe: falhas no Railway API em tabelas vitais (SD2/SB2/SC6) não mascaram dados falsos de estoque zero.
-    - **Acessibilidade WCAG 2.1, Tema Claro/Escuro & Refinamento de UX (v8.175):**
-      - `role="dialog"`, `aria-modal="true"`, `aria-labelledby`, `role="listbox"`, `aria-expanded`, `aria-controls`, suporte a fechar no `Escape` e clique no backdrop.
-      - **Rolagem Vertical sem Corte de Dados:** `.modal-content` com `max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;`, corpo do modal com `id="pontoPedidoModalBody"` (`overflow-y: auto; flex: 1;`), cabeçalho e rodapé sempre fixos e visíveis (`flex-shrink: 0;`).
-      - **Exibição do Ponto de Pedido Atual:** Elemento `#pontoPedidoPPAtualDestaque` exibindo `Ponto de Pedido Atual: xx unidades` logo abaixo da quantidade recomendada em evidência, extraído de `B1_EMIN` com tratamento seguro para não cadastrado (`0 unidades (não cadastrado)`).
-      - **Scroll Suave & Ergonomia Visual:** Alternância suave no `+info` com `block: 'nearest'`, evitando que o botão de recolher seja empurrado para fora da tela.
-      - **Resiliência e Fallback de Cópia (Área de Transferência):** Detecção de disponibilidade de `navigator.clipboard` com fallback para `textarea` efêmero e `document.execCommand('copy')` para uso em conexões HTTP sem TLS na intranet corporativa.
-      - **Blindagem de Estado (Anti-Stale State):** Reset compulsório de `currentEstudoData = null` em `abrirModalLoading()` e `renderErro()`, desabilitando o botão de cópia de markdown durante o processamento.
-      - **Contraste de Alto Nível & Mobile:** Sobrescritas para fundos translúcidos em `.modal-theme-light`, scrollbar estilizada e regras de colapso de colunas para telas móveis (`@media (max-width: 640px)`).
-    - **Restrição Estrita de Saldos Físicos às 3 Empresas Ativas (v8.176):**
-      - **Escopo Exclusivo de Estoque:** Consulta de saldos físicos `SB2` e consolidação de `saldoFisicoTotal` reconfiguradas para considerar única e exclusivamente as 3 empresas ativas de operação: **Metal Pleno (14)** (`SB2140`), **GSI (15)** (`SB2150`) e **OAÇO (16)** (`SB2160`).
-      - **Expurgo Total da Empresa 09:** Desconsideração completa dos saldos da `SB2090` e de quaisquer filiais não operacionais na rotina analítica de compras.
-      - **Ajustes de UI & Relatório:** Bloco do modal renomeado para *"Saldos Físicos (3 Empresas Ativas)"* com expurgo da linha `Empresa 09` (`#infoSaldo09`), e relatório Markdown atualizado para explicitar o saldo segregado por empresa ativa (`Estoque atual (SB2 - 14/15/16)`).
-    - **Suíte de Testes Automatizados:** 9 testes em `test_compras_ponto_pedido.js`, 6 testes em `test_compras_tab.js` e 8 testes em `test_frontend_modules.js` (100% de aprovação).
-62. [x] **Renomeação da Sub-Aba para "Holerites DP", Logos Oficiais Base64 Síncronos (OAÇO e GSI) e Layout de Assinatura Digital Espaçado e Centralizado (`public/index.html`, `public/js/holerites.js`, `public/style.css`, `test_frontend_modules.js`, `test_holerites_visual_signature.js`):**
-    - **Demanda Operacional & Ajustes de Interface:**
-      - Renomeação oficial da sub-aba sob `📑 ANALISTA FIN` de `Documentos DP` para **`Holerites DP`** (`#btnTabHolerites`), além da atualização dos cabeçalhos de tela e do modal de permissões de usuários.
-    - **Resolução Definitiva do Logo OAÇO (Disponibilidade Perene em Base64):**
-      - *Causa Raiz:* Nos recibos de adiantamento e holerites da empresa OAÇO, o logo corporativo falhava silenciosamente em decorrência de restrições de cache, latência de rede assíncrona ou acionamento prematuro do diálogo de impressão/exportação com `onerror="this.style.display='none'"`.
-      - *Solução:* Incorporação síncrona dos logos oficiais em Base64 Data URI (`LOGO_GSI_B64` e `LOGO_OACO_B64`) diretamente no gerador de template HTML (`public/js/holerites.js`). O carregamento é 100% imediato e imune a erros de rede, CORS, 404, bloqueadores de rastreamento ou timing de drivers de impressão.
-      - Detecção tolerante a variações contábeis e de cadastro (`OACO`, `OAÇO`, razão social contendo GSI/OAÇO) e fallback automático para arquivo estático em caso de anomalia.
-    - **Espaçamento e Ergonomia para Assinatura Digital ("Bem mais pra baixo" & Centralizado):**
-      - *Causa Raiz:* A distância vertical de apenas 24px entre a declaração de quitação e o traço de assinatura provocava sobreposição e colisão visual quando carimbos, rubricas e certificados de plataformas de assinatura digital (Clicksign, ZapSign, DocuSign, D4Sign, Adobe Sign) eram aplicados.
-      - *Solução:* Aumento substancial do espaçamento superior para **80px** (`margin: 80px auto 0 auto;` no desktop/modal e `margin: 24mm auto 0 auto;` em `@media print`), criando uma área livre e generosa de ~24mm para assinaturas eletrônicas.
-      - *Centralização Estética:* Limitação de largura em `max-width: 620px` (e `160mm` na impressão) com centralização automática horizontal (`margin: ... auto`), puxando tanto a data quanto o traço de assinatura para longe das extremidades da folha A4.
-      - Traço de assinatura expandido para `280px` (`75mm` na impressão) com tipografia em caixa alta para perfeita legibilidade do nome do colaborador.
-    - **Verificação Visual Adversarial & Suíte de Testes:**
-      - Captura de telas reais via navegador headless Edge confrontando os laudos `adiantamento-salario.png` e `salario-01.png`, confirmando visualmente a presença nítida do logo OAÇO e o posicionamento ergonômico da assinatura.
-      - Suíte automatizada dedicada `test_holerites_visual_signature.js` com 3 asserções (100% aprovados) e atualização de `test_frontend_modules.js` (8/8 aprovados).
-63. [x] **Cadastro e Ingestão de 22 Colaboradores DP (Funcionários, Sócios e Prestadores PJ) com Datas de Aniversário e Chaves PIX (`data/dp_colaboradores.json`, `postgres_db.js`, `public/index.html`, `public/style.css`, `public/js/funcionarios_dp.js`, `test_funcionarios_dp.js`):**
-    - **Demanda Operacional & Ingestão da Planilha (`funcionarios-2026-10.png`):**
-      - Cadastro dos 22 colaboradores na sub-aba **`Cadastro Funcion.`** sob a aba principal `📑 ANALISTA FIN`.
-      - Mapeamento abrangente de todas as categorias: colaboradores CLT, prestadores de serviços com emissão de NF (`PJ`), colaboradores sem registro formal (`SEM_REGISTRO` / Avulsos) e sócios/diretores das empresas do grupo.
-      - Preservação estrita das datas de nascimento no formato `DD/MM/AAAA` para viabilizar rotinas de felicitações e votos de feliz aniversário nos holerites executivos e mensagens automatizadas.
-    - **Persistência Perene & Auto-Seeder no Supabase (`data/dp_colaboradores.json`, `postgres_db.js`):**
-      - Gravação atômica de todos os 22 registros no armazenamento local `data/dp_colaboradores.json` via módulo `safe_json_storage`.
-      - Rotina de auto-seeder / migração em `postgres_db.js` (`initDB()`), garantindo que a tabela `dp_colaboradores` receba automaticamente os 22 colaboradores no startup caso a tabela esteja vazia no Supabase PostgreSQL.
-      - Inclusão das tabelas `dp_colaboradores` e `holerites_documentos` na matriz `knownTablesToSecure` do Row-Level Security (RLS).
-    - **Interface, Badges de Empresa e Ficha Executiva (`public/index.html`, `public/style.css`, `public/js/funcionarios_dp.js`):**
-      - Inclusão dos seletores de filtro por empresa **`🟧 MP`** (Metal Pleno / Filial 14) e **`🟩 PJ`** (Prestador PJ), além de `GSI`, `OACO` e `SEM_REGISTRO`.
-      - Estilização de badges `.badge-mp` e `.badge-pj` em conformidade visual com o design system do portal.
-      - Inclusão da opção `SOCIO` no select de tipo de contrato do formulário de cadastro.
-      - Exibição destacada da data de nascimento (`🎂 Nascim.: DD/MM/AAAA`) e tipo de vínculo no cabeçalho e corpo da Ficha Executiva do Colaborador.
-    - **Qualidade & Testes Automatizados (`test_funcionarios_dp.js`, `test_frontend_modules.js`):**
-      - *Criação do Teste 6 em `test_funcionarios_dp.js` validando a presença e integridade dos 22 colaboradores, presença dos sócios (Alexandre, Leticia, Marina), prestadores PJ (Luis Carlos, Vanessa Mary), colaboradores Sem Registro (Adriano, Juliana, Odair, etc.), preenchimento obrigatório de data de nascimento e filtros por empresa (100% aprovados, 6 testes).
-64. [x] **Tabela Clássica de Lançamentos com Subtotais e Valor Líquido Alinhados nos Holerites DP (`public/js/holerites.js`, `public/style.css`, `postgres_db.js`, `test_holerites_visual_signature.js`, `test_holerites_api.js`):**
-    - **Demanda Operacional & Preservação do Padrão dos Colaboradores:**
-      - Reestruturação completa do grid de eventos nos recibos de salário (`RECIBO DE PAGAMENTO DE SALÁRIO`) e recibos de adiantamento (`RECIBO DE ADIANTAMENTO SALARIAL`), mantendo total fidelidade aos modelos contábeis oficiais (`Recibo de Pagamento 07.2026 exemplo OAÇO.pdf` e `Recibo de Pagamento 07.2026 exemplo GSI BW.pdf`) para evitar estranhamento por parte dos colaboradores.
-      - Preservação intacta de toda a identidade visual executiva (logos em Base64 de alta resolução da OAÇO e GSI, quadro de comunicado/mensagem institucional, bases de cálculo e canhoto de quitação com espaçamento amplo para assinaturas digitais).
-    - **Engenharia de Layout Tabular Clássico (`public/js/holerites.js`, `public/style.css`):**
-      - **Matriz Canônica de 5 Colunas:** `Código` (55px centrado), `Descrição` (largura flexível), `Referência` (75px centrado), `Vencimentos` (120px à direita em verde `#047857`) e `Descontos` (120px à direita em vermelho `#b91c1c`).
-      - **Padronização 100% em Preto Sólido (`#000000`):** Eliminação de qualquer borda cinza (`#cbd5e1`, `#e2e8f0`) ou sombreado intermediário (`#f8fafc`, `#f1f5f9`). Borda externa da tabela, linhas divisórias verticais entre colunas, divisórias horizontais de linhas e do rodapé padronizadas em `1px solid #000000` (com divisória do rodapé em `1.5px solid #000000`). Cabeçalhos `th` com fundo branco limpo, tipografia preta em negrito (`#000000`) e rótulos de subtotais e valor líquido rigorosamente em preto (`#000000`), tanto no preview quanto na impressão em folha A4 (`@media print`).
-      - **Subtotais Integrados no `<tfoot>`:** Eliminação do antigo card flutuante externo (`.holerite-totais-grid`). Implementação de linha `.holerite-linha-subtotais` com `colspan="3"` vazio para as três primeiras colunas e alinhamento colunar rigoroso do **Total de Vencimentos** na coluna 4 (embaixo dos proventos) e do **Total de Descontos** na coluna 5 (embaixo dos descontos).
-      - **Valor Líquido Imediatamente Abaixo:** Linha `.holerite-linha-liquido` posicionando o rótulo **`Valor Líquido ⇨`** na coluna 4 e o montante final em destaque verde esmeralda (`.holerite-liquido-val`) na coluna 5.
-      - **Linhas Espaçadoras Estéticas (`.holerite-linha-vazia`):** Preenchimento automático de no mínimo 5 linhas na grade com fundo branco puro (`background: #ffffff !important;`) e bordas pretas sólidas, impedindo o colapso visual em recibos enxutos (ex: adiantamentos de 1 item) e mantendo a grade visualmente perfeita até o rodapé.
-    - **Remediações Adversariais de Segurança e Resiliência (Red Team):**
-      - **Sanitização Universal contra Stored XSS:** Criação e aplicação sistemática da função `escapeHtml()` sobre todos os campos interpolados no DOM (`doc.mensagem_personalizada`, `doc.funcionario_nome`, `e.descricao`, `c.chave_pix`, etc.), neutralizando injeções de scripts e tags maliciosas.
-      - **Parser Monetário Seguro PT-BR (`parseNumeroPtBr`):** Tratamento correto de valores monetários passados como string brasileira (ex: `"1.356,80"` ou `"848,00"`), prevenindo truncamento no separador de milhar por `parseFloat` nativo e garantindo cálculo fidedigno.
-      - **Eliminação de Duplicação e Prevenção de Estouro de Inteiro (`postgres_db.js`):** Sincronização limpa entre PostgreSQL e cache JSON local sem reinserção duplicada em `saved`, e geração de IDs inteiros sequenciais seguros ($ \le 2.147.483.647 $) no modo offline, prevenindo falhas `out of range for type integer` em queries PostgreSQL.
-      - **Otimização de Impressão A4:** Ajuste cirúrgico da margem vertical superior do canhoto de assinatura no `@media print` para `18mm` (mantendo $\ge 60$px na tela), garantindo encaixe estrito em 1 página por folha sem transbordo de página em impressoras físicas ou virtuais.
-      - `test_holerites_visual_signature.js`: 5 asserções (Sub-aba, Logos Base64, Espaçamento de Assinatura, Tabela Clássica com Subtotais/Líquido e Testes Adversariais de XSS e Formatação PT-BR).
-      - `test_holerites_api.js`: 7 asserções com validação estrita de cardinalidade `salvos.length === 3`.
-      - `test_parser_holerites.py`: 6 testes pytest com validação dos 6 PDFs/planilhas oficiais.
-      - `test_frontend_modules.js`: 8 testes de integridade sintática e modular.
-      - `test_funcionarios_dp.js`: 9 testes de colaboradores DP.
-65. [x] **Ampliação do Espaçamento de Assinatura Digital (+80%) para Plataformas Eletrônicas (ZapSign) em Holerites e Adiantamentos DP (`public/style.css`, `test_holerites_visual_signature.js`):**
-    - **Diagnóstico da Evidência Real (`holerite-ass-01.png`):**
-      - A análise de laudo assinado eletronicamente via ZapSign demonstrou colisão e sobreposição direta entre o carimbo digital da plataforma (*"Assinado digitalmente via ZapSign por ALEXANDRE ARRAIS"*, rubrica cursiva e carimbo de data/hora) e o traço/nome impresso do colaborador no canhoto de quitação.
-    - **Aumento Cirúrgico de +80% no Espaçamento Superior (`.holerite-canhoto-linhas`):**
-      - **Em Tela / Preview Web:** Margem superior ampliada de `80px` para **`144px`** (`80px * 1.8 = 144px`, exatos +80%), criando uma folga generosa entre a declaração de quitação e o traço de assinatura.
-      - **Em Impressão A4 / Exportação PDF (`@media print`):** Margem superior de impressão ajustada de `18mm` para **`32mm`** (`18mm * 1.8 = 32.4mm` ➔ `32mm`), garantindo que documentos salvos em PDF e submetidos a plataformas de assinatura (ZapSign, Clicksign, DocuSign, D4Sign) disponham de espaço confortável sem colisão visual.
-    - **Contenção Estrita em Folha Única A4:**
-      - Verificação da área útil vertical: a folha A4 possui 297mm (com área útil de ~261mm). O holerite completo com tabela clássica (5 a 8 linhas) e margem de 32mm totaliza ~190-215mm, preservando mais de 45mm de folga antes de qualquer risco de page break (100% de garantia de página única sem transbordo).
-    - **Unificação para Holerites e Adiantamentos:**
-      - Como a função `gerarHoleriteHtml()` em `public/js/holerites.js` atende tanto aos holerites mensais quanto aos recibos de adiantamento, a melhoria beneficia 100% dos documentos gerados pelo sistema.
-    - **Homologação Adversarial & Testes:**
-      - Subagente de oposição adversarial aprovou a solução sem ressalvas após validação em `test_holerites_visual_signature.js` (5/5), `test_frontend_modules.js` (8/8), `test_holerites_api.js` (7/7) e `test_funcionarios_dp.js` (9/9).
-66. [x] **Arquitetura Extensível de Abas & Permissões RBAC Dinâmicas (`server.js`, `public/app.js`, `public/style.css`, `postgres_db.js`, `data/users.json`, `test_rbac_dynamic_permissions.js`):**
-    - **Diagnóstico da Causa Raiz da Omissão de Permissões:**
-      - *Filtro no Backend (`server.js`):* Ao salvar um usuário (`/api/admin/users/save`), o array estático `allowedTabs` não continha `'analista-fin'` nem telas futuras, descartando silenciosamente essas permissões antes de persistir no PostgreSQL e `users.json`.
-      - *Renderização Estática no Frontend (`public/app.js`):* A função `renderUsersTable` possuía uma lista fixa de 6 ternários hardcoded. Permissões que não estivessem explicitamente no array eram ignoradas e nunca geravam badges na coluna "Abas Permitidas".
-      - *Checkboxes Rígidos no Modal:* Manipulação individual por ID exigia alteração manual em 4 pontos do código para cada nova tela.
-    - **Solução Arquitetural em 3 Camadas (Resiliente a Futuras Telas):**
-      - *1. Backend Aberto a Slugs Válidos (`server.js`):* Expansão do catálogo `allowedTabs` e inclusão do regex `/^[a-z0-9_-]{2,50}$/`, garantindo que abas homologadas e qualquer nova tela adicionada em rotas/plugins sejam salvas e validadas sem intervenção no backend.
-      - *2. Descoberta Dinâmica no Frontend (`public/app.js`):* Criação de `SYSTEM_TABS_REGISTRY`, função `getTabBadgeMeta()` com 3 níveis (Catálogo ➔ Descoberta via DOM em `button[data-main-tab]` e `#userModal` ➔ Fallback Genérico `.perm-badge-generic`), e renderização por mapeamento `perms.map(p => renderPermBadgeHtml(p))`, assegurando que 100% das permissões associadas a um usuário sempre tenham badges visíveis.
-      - *3. Checkboxes Dinâmicos no Modal de Usuários:* Varredura automática via `querySelectorAll('#userModal input[type="checkbox"][value]')` em `openUserModalForNew`, `openUserModalForEdit` e `submit`, permitindo adicionar novos checkboxes no HTML sem precisar alterar o JavaScript.
-      - *4. Estilos CSS Dedicados (`public/style.css`):* Inclusão das classes `.perm-badge-analista-fin` (rosa `#f472b6`), `.perm-badge-tarefas` (índigo `#818cf8`), `.perm-badge-bi` (violeta `#a78bfa`) e `.perm-badge-generic` (slate `#94a3b8`).
-      - *5. Correção de Dados da Usuária Érica:* Atualização das permissões de `erica` em `data/users.json` para `['logistica', 'consulta', 'financeiro', 'analista-fin']`.
-    - **Cobertura de Testes Automatizados:** Suíte dedicada `test_rbac_dynamic_permissions.js` com 9 asserções aprovadas com 100% de sucesso e integrada ao `npm test`.
-67. [x] **Sub-Aba "🧾 NFS-e Pendentes" sob 📑 ANALISTA FIN, Conciliação Protheus SF1, Ingestão Contínua e Celebração Zero Pendências (`sql/create_nfse_recebidas.sql`, `postgres_db.js`, `server.js`, `public/index.html`, `public/js/nfse_pendentes.js`, `public/app.js`, `scripts/import_nfse_historico.js`, `claude-job-nfse/src/job.js`, `test_nfse_pendentes.js`):**
-    - **Contexto e Problema de Origem:**
-      - O job de captura de NFS-e no Ambiente de Dados Nacional (ADN) rodava 3x por semana (`claude-job-nfse`), porém gravava apenas em um arquivo CSV local (`data/nfse.csv`) e arquivava os XMLs no Google Drive.
-      - A analista financeira não possuía visibilidade integrada no ERP/Portal sobre quais dessas notas já haviam sido lançadas no Protheus (`SF1`) e quais continuavam pendentes de entrada.
-    - **Arquitetura Resiliente & Modelo de Dados Relacional (`sql/create_nfse_recebidas.sql`, `postgres_db.js`):**
-      - Criação da tabela `nfse_recebidas` no Supabase PostgreSQL com chave única `chave_acesso VARCHAR(60) PRIMARY KEY`.
-      - Campos normalizados: `empresa_cnpj`, `empresa_nome`, `empresa_cod_protheus` (14, 15, 16), `nsu`, `numero_nota`, `data_emissao`, `prestador_cnpj`, `prestador_nome`, `valor_liquido`, `municipio`, `descricao`, `status_entrada` (`PENDENTE`, `LANCADA`, `CANCELADA`, `IGNORADA`), `protheus_doc`, `protheus_emissao`, `protheus_valbrut`, `protheus_fornece`, `protheus_loja`, `data_ultima_conferencia`.
-      - Índices de alta performance: `idx_nfse_status_emissao`, `idx_nfse_empresa_status`, `idx_nfse_prestador`.
-      - Row-Level Security (RLS) automático e compulsório no Supabase com permissões restritas ao backend.
-      - Fallback transparente para cache JSON local em `data/nfse_recebidas.json`, mantendo a aplicação 100% operacional mesmo em caso de indisponibilidade momentânea do PostgreSQL.
-    - **Extração Determinística do Número da NFS-e Nacional (`extrairNumeroNfse`):**
-      - Desvendada a estrutura técnica da chave de 50 dígitos do ADN Nacional: `cUF(2) + cMun(5) + tpAmb(1) + tpInsc(1) + CNPJ(14) + [Mod(2)+Serie(3)+Num(até 13 zeros)] + [AAMM(4)] + [Cod(8)+DV(1)]`.
-      - Algoritmo que localiza o CNPJ do prestador e a competência AAMM (derivada da emissão), descartando os prefixos de modelo 25 e série 000, com 100% de precisão nos 346 registros históricos.
-    - **Motor de Conciliação em Lote com o TOTVS Protheus (`reconciliarNfseComProtheusDB`):**
-      - Consultas T-SQL paralelas em duas frentes do Protheus: **Documentos de Entrada (`SF1`)** e **Contas a Pagar (`SE2`)** nas 3 empresas (14 Metal Pleno, 15 GSI, 16 OAÇO) com `JOIN SA2010` via API Protheus/Railway.
-      - Resolução da divergência Matriz x Filial com matching inteligente em 3 níveis:
-        1. *Match Exato:* CNPJ 14 dígitos + Número do Documento.
-        2. *Match por Alias:* Mapeamento de CNPJs alternativos (`BENEFICIO DIGITAL TECNOLOGIA LTDA` `40314164000108` ➔ `08655788000186`).
-        3. *Match por Raiz de CNPJ (8 dígitos):* Identificação de notas emitidas por filiais mas lançadas no ERP sob o CNPJ da matriz (ex: `SND DISTRIBUIÇÃO` notas `353712` e `359229`, `LOJA INTEGRADA`, `TOTVS`, `SERASA`, `GOOGLE CLOUD`, `DRIVE IT`, `ZAPSIGN`, etc.).
-      - Cruzamento em memória O(1) via Map `[cnpjPrestador::numDoc]` e `[raizCnpj::numDoc]`.
-      - **Resultados Atualizados:** Total de notas avaliadas: 346. Notas já lançadas no Protheus (`LANCADA`): **191** (aumento expressivo frente às 102 anteriores). Notas pendentes no filtro ativo de 120 dias reduzidas de 51 para **39 pendentes reais** (GSI: 14 / R$ 8.168,89, Metal Pleno: 6 / R$ 26.323,56, OAÇO: 19 / R$ 67.322,62).
-    - **Interface Visual do Usuário (`public/index.html`, `public/js/nfse_pendentes.js`, `public/app.js`):**
-      - Sub-aba `#btnTabNfsePendentes` perfeitamente integrada sob a aba principal `📑 ANALISTA FIN` (`#subGroupAnalistaFin`).
-      - **Cards de Métricas:** Total de NFS-e Pendentes, Valor Total Pendente (R$), e breakdown por empresa (GSI, Metal Pleno, OAÇO).
-      - **Filtros Flexíveis:** Dropdown de Empresa (*Todas, GSI, Metal Pleno, OAÇO*), Datas *De* e *Até* pré-populadas com os últimos 120 dias (`today - 120` até `today`), seletor de Status e busca rápida instantânea.
-      - **Ordenação Dinâmica de Colunas:** Padrão do mais antigo para o mais novo (`dataEmissao ASC`), com alternância interativa via setinhas (`▲`/`▼`/`↕`) em todas as colunas.
-      - **Modal de Detalhes:** Exibição completa dos metadados da nota, descrição integral do serviço, dados fiscais Protheus e botão com clique único para copiar a chave de acesso de 50 dígitos para a área de transferência.
-      - **Exportação CSV:** Botão `📥 Exportar CSV` gerando arquivo formatado com BOM UTF-8 (`\uFEFF`) e delimitador `;`, abrindo nativamente no Excel sem corrupção de acentos.
-      - **Celebração Zero Pendências:** Quando o volume de pendências é zerado pela analista financeira, um card congratulatório dourado/verde é exibido e dispara uma animação de confetes e serpentinas multicoloridas via micro-canvas puro (`#nfseConfettiCanvas`), sem dependência de bibliotecas externas.
-    - **Integração Push Contínua (`claude-job-nfse`):**
-      - Função assíncrona `enviarParaGeminiCli(linhasNovas)` em `claude-job-nfse/src/job.js` e configuração de secrets (`GEMINI_CLI_URL`, `PROTHEUS_API_KEY`) no GitHub Actions `.github/workflows/nfse.yml`. Ao detectar novas notas nas segundas, quartas e sextas às 06h, o job notifica e alimenta o Gemini-Cli automaticamente.
-    - **Qualidade & Testes Automatizados (`test_nfse_pendentes.js`):**
-      - Suíte completa de 11 testes aprovados com 100% de sucesso validando extração de chaves, filtros, cálculo de KPIs, estrutura DOM, inicialização modular e rotas no backend. Zero regressões em `test_frontend_modules.js` (8/8) e `test_rbac_dynamic_permissions.js` (9/9).
-68. [x] **Sub-Aba "📊 Fechamento Fiscal" sob 📑 ANALISTA FIN, Batimento 100% Protheus (SF2/SF1), Exclusão ROMA, Incidência Tributária, Histórico RBT12 e Exportação CSV (`protheus_db.js`, `postgres_db.js`, `server.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `public/app.js`, `test_fechamento_fiscal.js`):**
-    - **Requisitos de Negócio e Comportamento Inicial:**
-      - Nova sub-aba `#tab-fechamento-fiscal` acessível pelo botão `#btnTabFechamentoFiscal` dentro do subgrupo Analista Financeiro (`#subGroupAnalistaFin`).
-      - **Zero Pesquisa Automática ao Entrar:** Ao abrir a aba, nenhuma consulta é disparada ao ERP; um placeholder elegante orienta a seleção da empresa e clique no botão de consulta.
-      - **Filtro Temporal Mês Anterior:** Os seletores *Data De* e *Data Até* vêm automaticamente pré-populados com o primeiro e último dia do mês anterior (ex: `01/08/2026` a `31/08/2026`).
-      - **Ação Explícita de Apuração:** A consulta só é realizada após o operador selecionar a empresa (`16 - OAÇO`, `14 - Metal Pleno`, `15 - GSI`) e acionar o botão `⚡ Consultar Fechamento`.
-    - **KPIs Estruturados no Topo (8 Cards com Contagem e Valor R$):**
-      - *Saídas:*
-        1. **Total NFs Saída:** Volume total e soma de todas as notas fiscais emitidas no período.
-        2. **Total de Devolução:** Notas de devolução de vendas/compras (F2_TIPO = 'D' ou CFOPs 12xx/22xx).
-        3. **Total de Remessa:** Remessas com CFOP 59xx / 69xx (sem incidência de impostos).
-        4. **Total Tributado (Base da Receita):** Soma exclusiva das notas com incidência real de impostos (venda regular, duplicata ativa e CFOPs tributáveis).
-      - *Entradas:*
-        5. **Total NFs de Entrada (sem ROMA):** Total líquido de documentos de entrada fiscais legítimos.
-        6. **Total NFE:** Notas fiscais eletrônicas de fornecedores mercantis (`NFE` / `NF`).
-        7. **Total CTRs:** Conhecimentos de transporte rodoviário de cargas (`CTR` / `CTE`).
-        8. **Total Impostos:** Guia e documentos fiscais de recolhimento tributário (aglutinação de Tipo Doc `IMP` e `DAS`).
-    - **Regra de Exclusão de Romaneios (`ROMA`):**
-      - Documentos classificados como Tipo Doc `ROMA` (romaneios internos sem valor fiscal) são estritamente expurgados de todos os KPIs de entrada e da listagem de notas.
-    - **Critério Rígido de Incidência do Total Tributado de Saídas:**
-      - Investigação profunda nas regras fiscais do Protheus (`SF2`, `SD2`, `SF4`):
-        - Exclusão de notas com `F2_TIPO <> 'N'` (devoluções, remessas ou complementos não tributáveis).
-        - Exclusão de CFOPs de simples remessa (`59xx`, `69xx`) e devoluções a fornecedor (`52xx`, `62xx`).
-        - Exclusão de faturamento de entrega futura (`5922`, `6922`) que já tiveram apuração no pedido de origem.
-        - Exclusão de notas emitidas com TES de não-incidência (sem geração de duplicata/financeiro `F4_DUPLIC <> 'S'`).
-    - **Batimento e Auditoria 100% contra a Planilha de Homologação (`REL GERAL OACO AGOSTO 2026.xlsx`):**
-      - Total Saídas: **70 notas | R$ 182.680,74** (100% idêntico à planilha oficial).
-      - Total Tributado: **70 notas | R$ 182.680,74** (100% idêntico à planilha oficial).
-      - Total CTRs: **37 notas | R$ 6.468,36** (100% idêntico).
-      - Total Impostos (IMP + DAS): **3 guias | R$ 15.818,17** (100% idêntico).
-      - Romaneios ROMA Excluídos: **6 movimentos | R$ 32.076,19** (100% filtrados).
-      - Total Entradas Reais (sem ROMA): **60 notas | R$ 89.963,79** (Protheus real SF1160 auditado; identificada e sanada a duplicação no Excel onde a nota 1064 de 2 itens aparecia somada duas vezes pelo valor cheio).
-    - **Visão Futura / Fase 2 — Apuração Histórica dos 12 Meses (RBT12):**
-      - Implementado painel retrátil `Receita Bruta Acumulada dos Últimos 12 Meses (RBT12)` consultando os 12 meses anteriores à competência para apuração precisa das alíquotas efetivas do Simples Nacional (OAÇO e Metal Pleno) e ICMS (GSI).
-    - **Grid Reativo de Notas e Exportação:**
-      - Tabela com 12 colunas oficiais (*Tipo Doc, Documento, Série, Emissão, Cliente/Fornecedor, CNPJ/CPF, UF, CFOP, Gera Imposto?, Valor Bruto, Descrição/Obs, Ações*).
-      - Filtros instantâneos por texto (Doc, Fornecedor/Cliente, CNPJ/CPF), Tipo (Saída/Entrada) e Tipo Doc.
-      - Botão `📥 Exportar CSV` gerando arquivo formatado com BOM UTF-8 (`\uFEFF`) e delimitador `;` para abertura direta no Microsoft Excel.
-    - **Suíte de Testes Automatizados (`test_fechamento_fiscal.js`):**
-      - 9 testes automatizados cobrindo batimento de saídas/entradas contra o Excel, descarte de ROMA, regras de incidência tributária, empresas MP 14 e GSI 15, RBT12, persistência com RLS e integridade sintática (100% aprovados).
-69. [x] **Sub-Aba "Movimentações do Estoque" na Aba Principal COMPRAS com Consulta Multi-Empresa Direta no Protheus (SD1/SD2/SF4), Identificação de Entradas Manuais, Filtro de TES e Período Dinâmico de 12 Meses (`protheus_db.js`, `server.js`, `public/index.html`, `public/app.js`, `public/js/compras_movimentacoes_estoque.js`, `public/style.css`, `test_compras_movimentacoes_estoque.js`):**
-    - **Demanda Operacional & Inspiração Power BI (`SD1140`):**
-      - Nova sub-aba dedicada no menu de 1º nível `COMPRAS` (`#tab-compras-movimentacoes-estoque` / `#btnTabComprasMovimentacoesEstoque`), permitindo aos compradores e gestores auditarem o fluxo completo de movimentações de estoque (entradas e saídas manuais e faturadas) de qualquer produto.
-    - **Consulta de 1 Produto por Vez & Resolução Automática de Identificadores:**
-      - Campo de busca instantânea `#movEstoqueInputProduto` com autocomplete debounceado (250ms) alimentado por `/api/compras/ponto-pedido/produtos`.
-      - **Resolução Automática por Código ou Descrição:** Caso o operador digite a descrição do produto (ex: `"ARMARIO CORTA FOGO"`) ou cole um código com prefixo (ex: `"14-00101..."`) e pressione Enter/consulte sem clicar no dropdown, o motor resolve automaticamente o produto na `SB1090` / `SB1160` por código exato ou `B1_DESC LIKE`, recuperando o código Protheus oficial para cruzar com as tabelas de movimentação.
-    - **Agregação Multi-Empresa Paralela (SD1 e SD2):**
-      - Consultas diretas em `SD1140/SD2140` (Metal Pleno 14), `SD1150/SD2150` (GSI 15) e `SD1160/SD2160` (OAÇO 16) executadas em paralelo via `Promise.all`, acelerando o tempo de resposta em ~60%.
-      - JOINs em `SF4010/SF4160` para descrições de TES (`F4_TEXTO`) e indicador de atualização de estoque (`F4_ESTOQUE`), `SA2010` para fornecedores e `SA1010/SA1160` para clientes.
-    - **Identificação e Taxonomia de Entradas Manuais vs NF:**
-      - **Entrada Manual (`ENTRADA_MANUAL`):** Documentos com prefixo `ROM%` (romaneios), `TFE%` (transferências manuais), série vazia (`D1_SERIE = ''`) ou TES manuais de acerto (`084`, `085`, `099`). Badge em roxo de alto contraste (`📦 Entrada Manual`).
-      - **Entrada por NF (`ENTRADA_NF`):** Notas fiscais mercantis de fornecedores com série preenchida e TES comercial. Badge em verde esmeralda (`🟢 Entrada NF`).
-      - **Saída por NF (`SAIDA_NF`):** Vendas e transferências faturadas emitidas na `SD2`. Badge em vermelho/coral (`🔴 Saída NF`).
-    - **Filtro por Código da Movimentação (TES) & Preservação de Estado:**
-      - Seletor dedicado `#movEstoqueFiltroTes` populado dinamicamente com todas as TES movimentadas pelo produto no período, indicando o sentido (`📥 [ENTRADA]` / `📤 [SAÍDA]`), código, descrição oficial do Protheus e contagem de ocorrências.
-      - A consulta mantém o catálogo completo de TES do produto e aplica filtragem e recálculo de KPIs instantâneo em memória no cliente, preservando as opções do dropdown mesmo em novas pesquisas.
-    - **Período Padrão Dinâmico de 12 Meses Customizável:**
-      - Seletores *Data Inicial* e *Data Final* inicializados automaticamente com a janela dos últimos 12 meses móveis (ex: de hoje - 1 ano até hoje), permitindo ajuste livre para qualquer intervalo desejado com validação defensiva contra data inicial maior que final.
-    - **Painel de 7 Cards de KPIs Dinâmicos & Tabela Paginada Enxuta (10 Colunas):**
-      - Cards reativos no topo: *Entradas (Qtd)*, *Saídas (Qtd)*, *Saldo do Período (Qtd)*, *Total Entradas (R$)*, *Total Saídas (R$)*, *Qtd Movimentações* e *Entradas Manuais*.
-      - Tabela com 10 colunas enxutas (*Data, Emp., Tipo, Doc / Romaneio, Qtd, Unitário, Total, TES / Movimentação, CFOP, Fornecedor / Cliente*) após remoção das colunas desnecessárias **Série** e **Item**.
-      - **Coluna TES / Movimentação:** Exibe o código da TES e a descrição da movimentação com truncamento em **no máximo 15 caracteres** (`slice(0, 15) + '...'`) para impedir que textos longos estufem a tabela, preservando a descrição integral no tooltip nativo `title`.
-      - **Coluna Fornecedor / Cliente:** Largura contida com `max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;` e tooltip `title` para exibição de nomes longos sem quebrar o alinhamento.
-      - Empty state da tabela ajustado para `colspan="10"`.
-    - **Segurança Defensiva, Sanitização & Proteção CSV Formula Injection (CWE-1236):**
-      - Proteção estrita via `requireAuth` com JWT Bearer no endpoint `GET /api/compras/movimentacoes-estoque`.
-      - Sanitização contra SQL Injection via `sanitizeSqlParam()`.
-      - Sanitização contra XSS via `escapeHtml()` e manipulação do DOM segura com `textContent`.
-      - Exportação para Excel (CSV com BOM UTF-8 `\uFEFF` e delimitador `;`) com função `escapeCsvCell()` que neutraliza fórmulas executáveis iniciadas por `=`, `+`, `-`, `@`, tab ou CR com prefixo de apóstrofo (`'`).
-    - **Sincronização com Tema Claro/Escuro:**
-      - Compatibilidade total via `.tab-theme-light`, tokens de alto contraste WCAG AA e responsividade mobile para telas menores que 768px.
-    - **Suíte de Testes Automatizados (14/14 Aprovados):**
-      - Script `test_compras_movimentacoes_estoque.js` homologado com 14 asserções cobrindo validações de código e data, consultas reais multi-empresa, identificação de entradas manuais, filtros por TES, compilação léxica `vm.Script`, resolução por descrição, mitigação CSV Formula Injection, integridade do DOM, expurgo das colunas Série/Item e trava de 15 caracteres na descrição de TES.
-70. [x] **Sub-Aba "📊 Fechamento Fiscal" (Analista Fin): Apuração de Devoluções com Formulário Próprio MATA103 (`F1_FORMUL = 'S'`), Resolução de Clientes SA1 e Filtro Dedicado (`protheus_db.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `test_fechamento_fiscal.js`):**
-    - **Causa Raiz & Diagnóstico Operacional:**
-      - No TOTVS Protheus, devoluções de venda realizadas por clientes que não emitem NF (ex: Pessoa Física / Consumidor Final) são registradas no módulo de Documento de Entrada (`MATA103`) com Formulário Próprio (`F1_FORMUL = 'S'`), Tipo de Documento Devolução (`F1_TIPO = 'D'`), CFOPs de devolução (12xx, 22xx, 32xx) e amarração com a nota de saída original (`D1_NFORI` e `D1_SERIORI`).
-      - Na regra anterior, a consulta em `SF1` classificava incondicionalmente todas as entradas como `tipoOperacao: 'ENTRADA'`, desconsiderando `F1_TIPO = 'D'`, e calculava o card `Total Devolução` exclusivamente sobre as saídas (`SF2`). Além disso, o campo `F1_FORNECE` em devoluções aponta para a tabela de clientes (`SA1`), mas o JOIN era feito exclusivamente em fornecedores (`SA2`), retornando Razão Social e CNPJ/CPF em branco.
-    - **Resolução de Clientes e Fornecedores com Fallback Híbrido:**
-      - Atualização do mapeamento da empresa `16` (OAÇO) para utilizar `SA1010` (tabela mestre de clientes compartilhada com `SA1160`).
-      - Implementação de `COALESCE` inteligente no SQL de entradas (`SF1`): quando `F1_TIPO = 'D'`, a busca prioriza o cliente na `SA1` (`A1_NOME`, `A1_CGC`), mantendo fallback para `SA2` para notas mercantis normais (`F1_TIPO = 'N'`).
-    - **Classificação Precisa de Devoluções e KPIs no Topo:**
-      - Identificação determinística de devolução em entradas: `F1_TIPO = 'D'`, CFOPs iniciados em `12`, `22` ou `32`, ou `F1_FORMUL = 'S'` com devolução.
-      - Card `↩️ Total Devolução` no topo agora aglutina devoluções de venda (entradas) e de compra (saídas), exibindo corretamente a contagem e soma financeira (ex: em 08/2026 na OAÇO: 1 devolução | R$ 607,00 correspondente à NFe `000660`).
-      - Inclusão dos sub-totais segregados no envelope de retorno (`totais.totalDevolucao.entradas` e `totais.totalDevolucao.saidas`).
-    - **Grid Reativo, Identificação Visual & Filtro no Frontend:**
-      - Badge de fluxo em roxo de alto contraste: `ENTRA (DEV)` com tooltip descritivo (*"Devolução de Venda (Formulário Próprio MATA103)"*).
-      - Indicação visual de formulário próprio (`Próprio`) na coluna Tipo Doc e exibição da nota de origem devolvida (`Orig: 000634`) na coluna Num NF.
-      - Novo filtro no seletor de fluxo: `<option value="DEVOLUCAO">Apenas Devoluções</option>`.
-      - Busca textual livre otimizada para capturar termos como *"devolução"*, *"proprio"*, número da NF e número da NF de origem.
-      - Exportação para CSV atualizada com colunas *Operação*, *Formulário Próprio* e *NF Origem*.
-    - **Suíte de Testes Automatizados (10/10 Aprovados):**
-      - Adicionado o **Teste 10** em `test_fechamento_fiscal.js` validando especificamente a NFe `000660`, seu valor (R$ 607,00), cliente resolvido (*Cicero Augusto Figueira* / *243.877.387-15*), CFOP `2202`, TES `040`, formulário próprio `true` e NF original `000634`. Zero falhas em toda a suíte de regressão (`npm test`).
-71. [x] **Sub-Aba "📊 Fechamento Fiscal" (Analista Fin): Card de Resumo de Faturamento de Notas de Serviço na Saída, Classificação Determinística Protheus (CFOP 5933/6933, NFS/RPS, TES 594), Filtro e 11 Testes Automatizados 100% Aprovados (`protheus_db.js`, `postgres_db.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `test_fechamento_fiscal.js`):**
-   - **Novo Card de KPI no Topo (Grid Perfeito de 9 Cards):**
-     - Adicionado o card **`🛠️ Total NFs Serviço`** (com contadores `#kpiTotalServicoQtd` e `#kpiTotalServicoValor`), posicionado imediatamente após o card *Total Remessa* (Saídas) e antes de *⭐ Total Tributado*.
-     - O grid agora totaliza exatamente **9 cards de KPIs**, preenchendo a vaga remanescente e formando uma grade 3x3 perfeitamente simétrica e responsiva.
-     - Contraste visual AAA (7.05:1 no número e 14.1:1 no valor) em Sky Blue (`#38bdf8`) e borda `#0284c7`.
-   - **Classificação Determinística Fiscal no Backend (`protheus_db.js`):**
-     - Identificação de notas de prestação de serviços nas saídas (SF2/SD2):
-       - Tipo de documento/espécie fiscal: `NFS`, `RPS`, `NFPS`, `SE`, `NFSE`, `NFS-E`.
-       - Tipo Protheus: `F2_TIPO = 'S'`.
-       - CFOPs municipais de serviço: `5933` (dentro do estado) e `6933` (fora do estado).
-       - TES de serviço: `594` (*VENDA DE SERVICO*), `099` (*SERVICOS*), `108` (*SERVICO COM RETENCAO*) ou descrições contendo `"VENDA DE SERV"` / `"PRESTACAO DE SERV"`.
-     - Precedência estrita: Avaliada após devoluções e **antes** de remessas (`59xx`/`69xx`), evitando que serviços com CFOP 5933/6933 caiam equivocadamente em remessas.
-     - `tipoOperacao: 'SERVICO'`, `geraImposto: 'Sim'`, e normalização automática de `tipoDoc` para `'NFS'`.
-     - Objeto de retorno `totais.totalServico: { qtd, valor }`.
-   - **Camada Frontend & Tabela (`public/js/fechamento_fiscal.js`):**
-     - Atualização reativa de contadores via `setCard` em `renderizarTotais`.
-     - Badge visual `<span class="...">SERVIÇO</span>` com fundo ciano e texto em Sky Blue.
-     - Suporte a filtro por `Apenas Serviços` (`SERVICO`) no dropdown de fluxo e busca instantânea por `servico` / `serviço`.
-   - **Persistência Relacional & Cache JSON (`postgres_db.js`):**
-     - Persistência das colunas `total_servico_qtd` e `total_servico_valor` na tabela `fechamento_fiscal_consolidado` com auto-migration `ADD COLUMN IF NOT EXISTS`.
-      - Assertions no Teste 1 (confirmando 0 serviços no período de homologação 08/2026 da OACO).
-     - Teste 6 atualizado com verificação de persistência e recuperação de `totalServico`.
-     - Teste 8 atualizado validando os elementos do card e seletor no DOM.
-     - Novo **Teste 11** validando cenários determinísticos de classificação de notas de serviço (CFOP 5933, Espécie NFS, TES 594 e isolamento de remessa 5949 comum).
-     - 11 testes 100% aprovados com zero falhas.
-
-72. [x] **Integração de NFS-e Nota Paulistana (Prefeitura de SP) no Fechamento Fiscal da GSI (Empresa 15) com Guarda de XML, Exportação ZIP Nativa e Batimento do Total Tributado & RBT12 (`paulistana_client.js`, `zip_util.js`, `postgres_db.js`, `protheus_db.js`, `server.js`, `public/index.html`, `public/js/fechamento_fiscal.js`, `test_nfse_paulistana_fechamento.js`):**
-    - **Contexto Operacional & Causa Raiz:**
-      - A Empresa 15 (GSI BW) não emite Notas Fiscais de Serviço através do ERP TOTVS Protheus (`SF2150`/`SD2150`), emitindo-as exclusivamente de forma direta no portal da Nota Paulistana da Prefeitura de São Paulo (`nfe.prefeitura.sp.gov.br`).
-      - Por essa razão, as NFS-e emitidas ficavam fora do Fechamento Fiscal Mensal no sistema e distorciam o cálculo do Faturamento Tributado e a evolução da receita bruta acumulada dos últimos 12 meses (RBT12).
-    - **Persistência Relacional com Guarda Perpétua de XML Bruto (`nfse_emitidas`):**
-      - Criação da tabela `nfse_emitidas` no PostgreSQL Supabase (com fallback atômico em `data/nfse_emitidas.json`) armazenando a íntegra dos dados fiscais e o XML original na coluna `xml_conteudo TEXT`.
-      - Projeção leve otimizada para listagens em massa: a consulta omite a coluna `xml_conteudo` (`tem_xml: Boolean`), garantindo tempo de resposta sub-50ms no fechamento mensal.
-      - Idempotência rigorosa com chave primária `chave_acesso` (`14061778000115_<num_nota>`) e UPSERT no Supabase / mapa em memória.
-    - **Utilitário Nativo de Geração PKZIP sem Dependências (`zip_util.js`):**
-      - Implementado gerador completo em conformidade com o padrão PKZIP 2.0 e codificação UTF-8 utilizando estritamente a biblioteca nativa `node:zlib` (`deflateRawSync`) e tabela pré-calculada de CRC-32 IEEE 802.3, respeitando rigorosamente a diretriz YAGNI (zero dependências npm adicionais no `package.json`).
-    - **Exportação e Download de XMLs na Interface:**
-      - Botão **`📦 Exportar Lote XML (.zip)`** (`#btnExportarLoteXmlZip`): faz o streaming direto de arquivo compactado contendo todos os XMLs individuais de notas de serviço da competência selecionada para envio à contabilidade.
-      - Download individual de XML (`📄`) e modal de espelho da nota (`#modalNfsePaulistanaDetalhes`) exibindo tomador, discriminação dos serviços, deduções, retenções federais (PIS, COFINS, INSS, IR, CSLL) e alíquota de ISS.
-    - **Motor de Consulta & Parser da Nota Paulistana (`paulistana_client.js`):**
-      - Suporte à consulta via WebService SOAP HTTPS com mTLS e assinatura digital RSA-SHA1 via certificado A1 da GSI.
-      - Parser robusto do envelope XML `<RetornoConsulta>` e `<NFe>`.
-      - Parser flexível de arquivo TXT de lote emitido pela Prefeitura de SP (suporta tanto layout posicional oficial de largura fixa quanto formato delimitado por pipe gerado por sistemas contábeis).
-      - Gerador de XML sintético de contingência para notas importadas via TXT.
-    - **Fluxo Híbrido Resiliente & Contingência:**
-      - Disparo sob demanda via botão **`🔄 Sincronizar NFS-e SP`** (`#btnSincronizarNfseSp`) com feedback visual de progresso.
-      - Contingência com botão **`📂 Importar Lote SP`** (`#btnImportarLoteNfseSp`) para upload manual (`multer.memoryStorage()`) de arquivos `.xml` ou `.txt` exportados do portal da prefeitura.
-    - **Integração no Motor Fiscal Protheus & Regra Tributária:**
-      - As notas de serviço da Prefeitura de SP são mescladas transparentemente às saídas da Empresa 15 (GSI), classificadas com `especie: 'NFS-e SP'`, `cfop: '5933'`, `tipoOperacao: 'SERVICO'` e `geraImposto: 'Sim'`.
-      - O card de resumo de faturamento de serviços discrimina a origem `🏛️ Prefeitura de SP` e totaliza no **Total Tributado** e no **Total Saídas**.
-      - O cálculo do **RBT12** (`obterHistoricoFaturamento12MesesProtheus`) agrega os serviços mês a mês, assegurando o valor correto da faixa do Simples Nacional da GSI.
-      - **Isolamento Estrito:** As Empresas 14 (Metal Pleno) e 16 (OAÇO) permanecem 100% Protheus padrão sem qualquer interferência de notas de serviço externas.
-    - **Suíte de Testes Automatizados (11/11 Aprovados):**
-      - Script `test_nfse_paulistana_fechamento.js` validando parsers XML/TXT, XML sintético, geração de buffer PKZIP, persistência e idempotência no banco/cache local, mesclagem e totalização no fechamento da GSI, isolamento de empresas, RBT12, integridade de componentes de UI e segurança de rotas (100% aprovados).
-
-73. [x] **Compatibilidade OpenSSL 3.0, Diagnóstico de DECODER Routines, Suporte Híbrido PEM/PFX e Fluxo Oficial de Importação de Lote SP (`package.json`, `paulistana_client.js`, `test_nfse_paulistana_fechamento.js`):**
-    - **Diagnóstico das Falhas Criptográficas:**
-      - *Falha 1 (OpenSSL Legacy Provider):* O PFX original utilizava algoritmos legados (RC2-40/3DES). O script `scripts/converter_certificado_pfx.py` modernizou o container para AES-256-CBC, resolvendo o handshake TLS.
-      - *Falha 2 (DECODER routines::unsupported):* O método `crypto.sign` do Node.js não aceita containers PKCS#12 (.pfx) diretamente como chave privada de assinatura. Além disso, o WebService SOAP `ConsultaNFeEmitidas` da Prefeitura de SP valida o schema `PedidoConsultaNFePeriodo` exigindo assinatura em envelope completo W3C XMLDSig (`ds:Signature`).
-    - **Suporte Híbrido Flexível no Backend (`paulistana_client.js`):**
-      - O cliente agora aceita opcionalmente pares PEM diretos via `NFSE_CERT_GSI_KEY_PEM` e `NFSE_CERT_GSI_CERT_PEM` (em texto puro ou Base64), contornando qualquer restrição de containers PFX.
-    - **Fluxo Oficial de Contingência e Produção (`📂 Importar Lote SP`):**
-      - Como o portal da Nota Paulistana (`nfe.prefeitura.sp.gov.br`) disponibiliza exportação instantânea em 1 clique de todas as notas emitidas do mês em `.xml` ou `.txt`, o fluxo de ingestão pelo botão **`📂 Importar Lote SP`** constitui a solução mais rápida, estável e segura para o fechamento fiscal, gerando os registros com guarda de XML e habilitando o botão **`📦 Exportar Lote XML (.zip)`** imediatamente.
-    - **Suíte de Testes Automatizados (13/13 Aprovados):**
-      - Teste 12 e Teste 13 cobrindo diagnóstico de erros do OpenSSL, DECODER routines e conformidade com o script de inicialização do `package.json`.
-
-74. [x] **Sub-Aba "📑 Auditoria Protheus x Sefaz" (Analista Fin): Mapeamento Numérico Contínuo (Série 1), Detecção de Gaps/Saltos, Batimento Fiscal mTLS (SF2/SF3 x SEFAZ) e Alertas de Divergências Críticas (`sefaz_nfe_client.js`, `protheus_db.js`, `server.js`, `public/index.html`, `public/js/auditoria_protheus_sefaz.js`, `public/app.js`, `test_auditoria_protheus_sefaz.js`):**
-    - **Contexto Operacional & Causa Raiz:**
-      - No fechamento fiscal mensal das empresas (Metal Pleno 14, GSI 15 e OAÇO 16), a equipe precisava verificar manualmente notas fiscais, saltos na sequência numérica e checar se cancelamentos feitos no ERP foram devidamente homologados junto à SEFAZ.
-      - Frequentemente ocorriam cenários graves em que uma NF constava como cancelada/excluída no Protheus, mas permanecia ativa (status 100 - Autorizada) na base de dados da SEFAZ, gerando risco iminente de passivo tributário e autuação fiscal.
-    - **Mapeamento Preciso no ERP Protheus (`SF2` + `SF3`):**
-      - As NFs canceladas/excluídas no Protheus permanecem gravadas na tabela `SF2` com `D_E_L_E_T_ = '*'`. A função preserva a chave de acesso de 44 dígitos (`F2_CHVNFE`), número, destinatário e valor original.
-      - A tabela de livros fiscais `SF3` (filtrada rigorosamente por `F3_ESPECIE = 'SPED'` e Série 1) registra o rastro contábil de cancelamentos (`NF CANCELADA`) e inutilizações (`NF INUTILIZADA`), diferenciando-as de notas de terceiros (`NFE`, `CTR`, `NFS`).
-      - Algoritmo de varredura matemática contínua `[Min(Doc) .. Max(Doc)]` que identifica todos os números inteiros ausentes como **SALTO DE NUMERAÇÃO / FALTANTE** (`isGap: true`).
-    - **Integração com WebService Oficial da SEFAZ (`sefaz_nfe_client.js`):**
-       - Comunicação SOAP 1.2 com `NFeConsultaProtocolo4` da SEFAZ-SP (`nfe.fazenda.sp.gov.br/ws/nfeconsultaprotocolo4.asmx`) via HTTPS com mTLS.
-       - Resolução de handshake TLS para ACs ICP-Brasil com `rejectUnauthorized: false`, `secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT` e `ciphers: DEFAULT:@SECLEVEL=1`.
-       - Namespaces SOAP 1.2 corrigidos para os padrões da Fazenda: `xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4"` e `xmlns="http://www.portalfiscal.inf.br/nfe"`.
-       - Headers HTTP com `action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4/nfeConsultaNF"` e `SOAPAction`.
-       - Tratamento resiliente de leitura de PFX com try/catch contra `mac verify failure` e humanização de erros de certificado.
-       - Controle anti-throttling com pausa sequencial otimizada para 100ms entre chamadas em lote.
-    - **Matriz de Diagnóstico e Alertas Fiscais:**
-       - 🚨 **CRÍTICA:** *Cancelada no ERP / Ativa na SEFAZ* (badge vermelho piscante).
-       - 🚨 **CRÍTICA:** *Ativa no ERP / Cancelada na SEFAZ* (badge vermelho piscante).
-       - ⚠️ **ALERTA:** *Salto de Numeração sem Inutilização* (badge âmbar).
-       - ✅ **CONCILIADO:** *Ativa em ambos, Cancelada em ambos ou Salto Inutilizado na SEFAZ* (badge verde esmeralda).
-       - 🔌 **FALHA DE CONEXÃO SEFAZ / SEM CERTIFICADO A1:** Alertas humanizados com tooltips informativos em vez de siglas cruas de erro.
-    - **Interface do Usuário & UX:**
-       - Sub-aba `#tab-auditoria-protheus-sefaz` no menu **📑 ANALISTA FIN**.
-       - Botão unificado **`🔍 Carregar & Auditar na SEFAZ`** com encadeamento automático da consulta SEFAZ após o carregamento do Protheus.
-       - Checkbox reativo `☑️ Consultar SEFAZ automaticamente` permitindo consultas rápidas apenas no Protheus sob demanda.
-       - 6 Cards de KPIs dinâmicos no topo (Total na Faixa, Ativas, Canceladas, Inutilizadas, Saltos/Gaps e Divergências SEFAZ).
-       - Tabela com badges visuais, botão de cópia de chave de 44 dígitos 📋 com toast informativo e atalho direto para consulta pública no Portal Nacional da NF-e [🌐].
-       - Filtro rápido por status (Todas, Apenas Divergências, Apenas Canceladas, Apenas Inutilizadas, Apenas Saltos).
-       - Exportação completa em formato CSV formatado com BOM UTF-8 (`\uFEFF`) e delimitador ponto-e-vírgula (`;`) para Excel.
-    - **Parser de Respostas XML da SEFAZ & Matriz de Batimento Fiscal v8.212 (`sefaz_nfe_client.js`):**
-      - Resolução definitiva de parsing para respostas da SEFAZ-SP onde os nós XML internos são retornados com entidades escapadas (`&lt;retConsSitNFe...&gt;&lt;cStat&gt;100&lt;/cStat&gt;`), decodificando e extraindo `cStat`, `xMotivo`, `nProt` e `dhRecbto` com precisão cirúrgica sem cair em `OUTRO`.
-      - Identificação inteligente de eventos oficiais de cancelamento (`tpEvento 110111`) e inutilização (`tpEvento 110110`) mesmo com envelopes complexos.
-      - **Matriz de Diagnóstico Fidedigna & Sem Risco Fiscal 217:**
-        - `ATIVA` (ERP) + `AUTORIZADA` (SEFAZ) ➔ `✅ CONCILIADO` (OK).
-        - `CANCELADA` (ERP) + `CANCELADA` (SEFAZ) ➔ `✅ CANCELAMENTO CONFIRMADO` (OK).
-        - `CANCELADA` (ERP) + `NAO_CONSTA` (SEFAZ 217) ➔ `✅ SEM RISCO FISCAL (217)` (OK - nota cancelada internamente antes da transmissão sem passivo fiscal).
-        - `INUTILIZADA` (ERP) + `INUTILIZADA`/`NAO_CONSTA` (SEFAZ) ➔ `✅ INUTILIZAÇÃO CONFIRMADA` (OK).
-    - **Eliminação da Rejeição 588 da SEFAZ & Envelope SOAP 1.2 Compacto v8.213 (`sefaz_nfe_client.js`):**
-      - Diagnóstico e resolução da **Rejeição 588** (*"Não é permitida a presença de caracteres de edição no início/fim da mensagem ou entre as tags da mensagem"*), provocada por quebras de linha (`\n`) e espaços de indentação no envelope XML.
-    - **Barra de Progresso Dinâmica & Feedback em Tempo Real v8.215 (`public/js/auditoria_protheus_sefaz.js`, `public/style.css`, `public/index.html`):**
-      - Substituição da barra estática por animação contínua de shimmer gradiente (`@keyframes sefazShimmer` e `@keyframes sefazGlowPulse`).
-      - Inclusão de spinner ativo (`.sefaz-spinner`), cronômetro de tempo decorrido em segundos (`0s`, `1s`, `2s`...) e percentual com progressão orgânica até o retorno do lote da Fazenda.
-      - Transição de encerramento elegante: ao concluir a consulta com sucesso, fixa a barra em 100% verde com ícone `✅`, exibe o resumo e executa fade out suave (`opacity: 0`, `translateY(-6px)`) após 2.2 segundos para focar a atenção do operador na tabela e KPIs.
-    - **Suíte de Testes Automatizados (8/8 Aprovados):**
-      - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências (incluindo 217 sem risco e garantias anti-`/ OUTRO`), SOAP 1.2 / XML parser (puro e escapado), consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
-
-75. [x] **Substituição do Metabase Iframe por Gráficos Nativos Chart.js no BI Executivo (`public/js/chart.umd.min.js`, `public/js/bi.js`, `public/index.html`, `server.js`, `bi_indices_engine.js`, `test_bi_embed.js`):**
-    - **Contexto Operacional & Causa Raiz:**
-      - A sub-aba do Metabase Analytics sofria de instabilidade recorrente (`The embedding secret key has not been set`) causada pela volatilidade do contêiner Docker do Metabase no Render (que consome 1–2 GB RAM em JVM e perde variáveis de incorporação em reinicializações sem volume persistente).
-      - Demanda executiva por gráficos limpos, rápidos e interativos de Linha (evolução diária de Liquidez e Finanças) e Coluna (comparativos multi-empresa e mensais).
-    - **Solução Nativa de Alto Desempenho (HTML5 Canvas + Chart.js 4.4.x):**
-      - Vendor local da biblioteca em `public/js/chart.umd.min.js` (~205 KB), eliminando dependências externas de CDN ou iframes de terceiros.
-      - Renderização nativa no elemento `<canvas id="biExecutiveChart">` em menos de 50ms, com suporte a gradientes, curvas suaves (tension: 0.35), tooltips dinâmicos em moeda `R$` e 4 decimais para índices.
-      - Alternância instantânea entre gráficos de **Linha** (`btnBiTypeLine`) e **Colunas** (`btnBiTypeBar`).
-      - Filtros integrados por **Métricas** (*Índices de Liquidez LC/LS/LI*, *Ativo vs Passivo Circulante*, *Disponibilidades vs A Pagar*, *Comparativo Multi-Empresa*), **Empresa** (*Consolidado ALL, MP 14, GSI 15, OACO 16*) e **Período** (*7 dias, 30 dias, 90 dias, Histórico Completo*).
-      - 4 Mini Cards de KPIs no topo (`#biChartKpiRow`) com badges de conformidade (*Saudável, Regular, Crítico*) calculados dinamicamente a partir do snapshot mais recente.
-      - Adaptação automática e reativa aos temas Escuro e Claro do portal.
-      - Preservação integral de botões operacionais (`📊 Sync Índices`, `📥 Sync Faturamento`, `🔄 Atualizar`, `↗️ Abrir Metabase Externo` e `⛶ Tela Cheia`).
-    - **Expansão do Backend (`bi_indices_engine.js` & `server.js`):**
-      - Endpoint `/api/bi/indices/historico` agora suporta `empresa=COMPARATIVO` ou `empresa=MULTI` (trazendo as filiais 14, 15 e 16 juntas) e `dias=0` para extração do histórico completo.
-    - **Esteira de Testes Automatizados (27/27 Aprovados):**
-76. [x] **Renomeação da Aba para BUSCA CODWEB/PED/NF, Otimização da Coluna Empresa e Inclusão de Dt Ganho, Dt Migração e Dt Emissão (`protheus_db.js`, `public/index.html`, `public/app.js`, `package.json`, `test_busca_codweb_ped_nf.js`):**
-    - **Demanda Operacional & Ajuste de Nomenclatura:**
-      - Alteração do rótulo da 2ª aba de navegação principal de `CONSULTA PED/NF` para `BUSCA CODWEB/PED/NF` (`#mainTabConsulta`), alinhando o título à tríade de critérios de busca utilizados pelos operadores (Código Web do Pipedrive, Pedido de Venda e Nota Fiscal).
-      - Atualização correspondente no seletor de permissões de operadores no modal de configurações de usuários.
-    - **Otimização da Coluna Empresa (Eliminação de Redundância):**
-      - Remoção do prefixo redundante `"Empresa "` nos resultados da busca tanto no backend (`protheus_db.js` `empresasInfo`) quanto na camada reativa de renderização (`app.js`).
-      - Exibição limpa das filiais: `16 (OACO)`, `15 (GSI)` e `14 (METAL PLENO)`.
-    - **Inserção Estruturada das Novas Colunas de Datas e Remoção de Frete Cobrado:**
-      - **`Dt Ganho` (Data de Ganho do Negócio):** Posicionada imediatamente após a coluna `CodWeb`. Obtida de forma resiliente e paralela diretamente do Pipedrive CRM (`won_time`), com cache em memória efêmero e conversão para o formato brasileiro `DD/MM/YYYY`.
-      - **`Dt Migração` (Data de Entrada no Protheus):** Posicionada imediatamente após a coluna `Ped Venda`. Extraída do campo nativo do ERP `C5_EMISSAO` no formato `DD/MM/YYYY`.
-      - **`Dt Emissão` (Data de Emissão da NF):** Posicionada imediatamente após a coluna `NF`. Extraída dos campos `F2_EMISSAO` / `D2_EMISSAO`, exibida apenas quando a nota foi emitida e exibindo `-` quando pendente de faturamento.
-      - **Remoção de `Vlr Frete Cob.`:** Excluída tanto do cabeçalho `<thead>` quanto do corpo `<tbody>` da tabela para despoluir a visualização operacional.
-    - **Ajuste na Query de Pedido de Venda (`protheus_db.js`):**
-      - A pesquisa por `pedVenda` agora consulta a tabela `SC5` com `LEFT JOIN SD2` e `LEFT JOIN SF2`, garantindo que pedidos criados que ainda não foram faturados sejam localizados normalmente com suas respectivas datas.
-    - **Suíte de Testes Automatizados (13/13 Aprovados):**
-      - Script `test_busca_codweb_ped_nf.js` integrado ao `npm test` validando estrutura HTML, ordem estrita das 9 colunas do cabeçalho, compilação `vm.Script` de `public/app.js`, sanitização de prefixos, consultas reais no banco de dados Protheus e enriquecimento assíncrono Pipedrive (100% aprovados).
-
-77. [x] **Auditoria Protheus x SEFAZ: Correção de Parsing XML, Distinção Estrita de Carta de Correção (`tpEvento 110110`) vs Inutilização (`cStat 102`) e Badge Visual `📝 CC-e` (`sefaz_nfe_client.js`, `public/js/auditoria_protheus_sefaz.js`, `test_auditoria_protheus_sefaz.js`):**
-    - **Causa Raiz Investigada & Diagnóstico Técnico:**
-      - Na empresa **16 (OACO)**, a NF `000652` aparecia incorretamente como `⚪ INUTILIZADA (102)` na coluna Status SEFAZ, apesar de estar regularmente emitida, ativa e autorizada no Protheus (`SF2160`/`SF3160`, protocolo `135263282224493`) e na SEFAZ.
-      - O mesmo sintoma afetava diversas outras notas na **OACO 16** e **Metal Pleno 14**.
-      - Identificou-se que a NF `000652` possuía Carta de Correção Eletrônica (`F2_IDCCE = 'ID1101103526086123779000011855001000000652160899524901'`).
-      - No parser `sefaz_nfe_client.js`, a regra anterior confundia o código `tpEvento 110110` (que é estritamente Carta de Correção no manual da SEFAZ) com Inutilização, sobrescrevendo `cStat = '100'` (*Autorizada*) para `cStat = '102'` (*Inutilizada*).
-    - **Resolução Arquitetural & Refatoração Limpa:**
-      - Remoção imediata da cláusula `<tpEvento>110110</tpEvento>` da checagem de inutilização. Inutilização homologada passa a exigir código `cStat = 102` ou texto explícito de homologação de inutilização.
-      - Extração da função modular desacoplada `processarRespostaXmlSefaz(data, chaveLimpa)` no backend, permitindo validação e testes unitários 100% isolados de rede.
-      - Detecção explícita e elegante de Carta de Correção: quando a NF possui `tpEvento 110110`, a flag `temCce = true` é atribuída, o status fiscal permanece intacto em `AUTORIZADA` (`cStat 100`) e o rótulo é enriquecido para `Autorizada (CC-e)`.
-      - Apoio a cancelamentos por substituição (`tpEvento 110112`) ao lado do cancelamento tradicional (`110111`).
-    - **Interface do Usuário & Batimento Conciliado:**
-      - Na tabela de auditoria, notas autorizadas com CC-e exibem agora `🟢 AUTORIZADA (100)` acompanhado de um badge dedicado em azul suave: `📝 CC-e` com tooltip explicativo (*"Possui Carta de Correção Eletrônica (CC-e) vinculada na SEFAZ"*).
-      - O algoritmo de diagnóstico `classificarDivergencia('ATIVA', 'AUTORIZADA')` categoriza a nota perfeitamente como `✅ CONCILIADO`, eliminando falsos alertas de divergência.
-    - **Cobertura de Testes Automatizados (8/8 Aprovados):**
-      - Expansão do Teste 4 em `test_auditoria_protheus_sefaz.js` com asserções simulando XMLs da SEFAZ com CC-e (garantindo `cStat 100` e `temCce = true`), Cancelamento (`101`) e Inutilização (`102`), além de validação léxica em `test_frontend_modules.js`.
-
-### Prioridade 3 (Divida Tecnica & Manutenibilidade)
-1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.
-2. **Conclusao da Migracao para PostgreSQL:** Descontinuar leitura/escrita em `data/*.json` e migrar integralmente as entidades (Usuarios, Atividades, Webhooks, Historico) para tabelas relacionais com migrations controladas.
-3. **Padronizacao de Tipagem e Tratamento de Erros:** Adicionar Type Hints nos scripts Python e padronizar o logging estruturado em JSON com codificacao UTF-8 nativa.
-4. [x] **Documentacao de Contratos de API:** Especificação OpenAPI 3.0.3 gerada em `openapi.json` e documentação interativa Swagger UI servida em `/api-docs`.
-5. **Separação da Autenticação em Página Dedicada (`public/login.html`):** Isolar o fluxo de login e 2FA em uma página HTML/JS própria (~80 linhas), eliminando o elemento `#loginOverlay` do `index.html` e garantindo que erros de renderização ou scripts em outras views nunca congelem o modal de login.
-
-
----
-
-## 4. Matriz FMEA de Resiliência das Consultas Externas & Faróis SRE
-
-A tabela abaixo define o comportamento formal de cada serviço externo consumido no módulo de Análise de Crédito, prevenindo falhas silenciosas e distorções matemáticas de pontuação:
-
-| Serviço / Provedor | Timeout Técnico | Comportamento em Falha de Rede / Queda | Pontuação no Score (Fail-Neutral) | Indicador no Farol SRE | Ação Operacional Exigida |
+| Macro-Área | Sub-Aba / Tela | Identificador DOM | Perfil RBAC | Descrição Funcional | Documentação Detalhada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Receita Federal** *(BrasilAPI / ReceitaWS)* | 8.000 ms | Fallback BrasilAPI ➔ ReceitaWS. Se ambas falharem, retorna `receita_offline = true`. | `0 pts` (Não assume `'S'` falso nem penaliza) | 🔴 Vermelho (`farol-error`) | Exibe `RECEITA OFFLINE - CONFERIR ENDEREÇO` no cabeçalho e orienta conferência manual. |
-| **Registro.br (RDAP)** *(NIC.br)* | 6.000 ms | Captura erro de socket/timeout e sinaliza `idade_dominio_rdap_erro = true`. | `0 pts` (Elimina penalidade de `-7 pts`) | 🔴 Vermelho ou 🟡 Alerta | Informa `Indisponível (Registro.br)` no campo de idade do domínio. |
-| **Wayback Machine** *(Archive.org)* | 5.000 ms | Captura erro HTTP/timeout e sinaliza `wayback_offline = true`. | `0 pts` (Neutro) | 🔴 Vermelho ou 🟡 Alerta | Informa `Indisponível (Archive.org)` na maturidade digital. |
-| **Servidor MX** *(DNS Resolution)* | 5.000 ms | Captura `SERVFAIL`/`ETIMEOUT` e sinaliza `servidor_mx_offline = true`. | `0 pts` (Elimina penalidade de `-4 pts`) | 🔴 Vermelho | Informa `Falha DNS` sem taxar o domínio corporativo como inexistente. |
-| **FGTS Caixa** *(InfoSimples REST API)* | 25.000 ms | Retorna `executado = false` com mensagem descritiva do motivo da recusa/latência. | `0 pts` (Neutro) | 🟡 Alerta ou 🔵 Info | Renderiza badge explicativo em amarelo com motivo (`Token não configurado`, `Timeout Caixa`) em vez de ocultar. |
-| **PGFN Dívida Ativa** *(InfoSimples REST API)* | 25.000 ms | Retorna `executado = false` com motivo descritivo da recusa/latência. | `0 pts` (Neutro) | 🟡 Alerta ou 🔵 Info | Exibe badge explicativo em amarelo/vermelho com motivo sem penalizar pontuação. |
-| **ERP TOTVS Protheus** *(Railway SQL Relay)* | 15.000 ms | Distingue `404` (Pedido não existe) de `500/504` (Instabilidade de infraestrutura). | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Exibe banner informativo de erro de rede sem induzir operador a crer que digitou pedido errado. |
-| **Parser Serasa PDF** *(Python in-memory)* | 15.000 ms | Processo Python cancelado com `SIGKILL` após 15s se PDF travar ou for corrompido. | N/A | N/A | Exibe mensagem de erro orientando reenvio de PDF válido. |
+| **1. Tarefas** | Painel de Tarefas | `#tab-minhas-tarefas` | Todos (`admin`, `user`, `vendedor`) | Central de tarefas e delegacao operacional com status, prioridades e comentarios JSONB. | [minhas_tarefas.md](docs/telas/01_tarefas/minhas_tarefas.md) |
+| **2. Logística** | Ped. pra Faturar | `#tab-pedidos-faturar` | `admin`, `user` (Logística) | Acompanhamento de pedidos prontos para emissao de nota fiscal e faturamento. | [pedidos_faturar.md](docs/telas/02_logistica/pedidos_faturar.md) |
+| **2. Logística** | Ped. Lib Estoque | `#tab-pedidos-lib-estoque` | `admin`, `user` (Logística) | Pedidos liberados no estoque fisico para fluxo de separacao e expedicao. | [pedidos_lib_estoque.md](docs/telas/02_logistica/pedidos_lib_estoque.md) |
+| **2. Logística** | Ped. Bloq Estoque | `#tab-pedidos-bloq-estoque` | `admin`, `user` (Logística) | Monitoramento de pedidos com pendencia de saldo ou bloqueio SC9 no Protheus. | [pedidos_bloq_estoque.md](docs/telas/02_logistica/pedidos_bloq_estoque.md) |
+| **2. Logística** | Saldos em Estoque | `#tab-vend-saldos-estoque` | `admin`, `user` (Logística) | Saldos fisicos PA multi-empresa (14, 15, 16) com KPIs, filtros e drilldown. | [saldos_estoque.md](docs/telas/04_vendedores/saldos_estoque.md) |
+| **2. Logística** | Upload Fatura Transp. | `#tab-upload` | `admin`, `user` (Logística) | Upload e parsing de faturas de frete de transportadoras rodoviarias parceiras. | [upload_fatura.md](docs/telas/02_logistica/upload_fatura.md) |
+| **2. Logística** | Fatura Correios & ViPP | `#tab-correios` | `admin`, `user` (Logística) | Conciliacao de faturas Correios e plataforma ViPP com batimento de postagens. | [correios_vipp.md](docs/telas/02_logistica/correios_vipp.md) |
+| **3. Busca Multi-Empresa** | Consulta NFe ou Pedido | `#tab-consulta` | `admin`, `user` (Consulta) | Busca por CodWeb Pipedrive, Pedido Protheus, NF ou Cliente com enriquecimento de datas. | [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md) |
+| **4. Vendedores** | Saldos em Estoque | `#tab-vend-saldos-estoque` | `admin`, `vendedor`, `user` | Visao de saldos PA com selecao de filial, disponibilidade e exportacao CSV. | [saldos_estoque.md](docs/telas/04_vendedores/saldos_estoque.md) |
+| **4. Vendedores** | Consulta Ped Venda | `#tab-vend-pedidos` | `admin`, `vendedor`, `user` | Pesquisa de pedidos de venda (`SC5`/`SC6`), condicoes de pagamento e itens. | [consulta_ped_venda.md](docs/telas/04_vendedores/consulta_ped_venda.md) |
+| **4. Vendedores** | Ped Vendas Abertos | `#tab-vend-pedidos-abertos` | `admin`, `vendedor`, `user` | Carteira de pedidos abertos com status de bloqueio SC9 e integracao Pipedrive. | [pedidos_abertos.md](docs/telas/04_vendedores/pedidos_abertos.md) |
+| **4. Vendedores** | Prod x Ped Compras | `#tab-vend-pedidos-compras` | `admin`, `vendedor`, `user` | Consulta de ordens de compra em aberto (`SC7`) de produtos PA e previsao de chegada. | [pedidos_compras.md](docs/telas/04_vendedores/pedidos_compras.md) |
+| **4. Vendedores** | Consulta Ped/NF Compras | `#tab-compras-consulta-ped-nf` | `admin`, `vendedor`, `user` | Consulta direta de compras e NFs de entrada por pedido, NF ou fornecedor (90 dias). | [consulta_ped_nf_compras.md](docs/telas/05_compras/consulta_ped_nf_compras.md) |
+| **4. Vendedores** | Comissões | `#tab-vend-comissoes` | `admin`, `vendedor`, `user` | Apuracao analitica de comissoes SE3 por vendedor e metas proporcionais. | [comissoes.md](docs/telas/04_vendedores/comissoes.md) |
+| **4. Vendedores** | Gordura Frete | `#tab-vend-gordura-frete` | `admin`, `vendedor`, `user` | Apuracao de margem e sobrepreco embutido de frete negociado vs custo de tabela. | [gordura_frete.md](docs/telas/04_vendedores/gordura_frete.md) |
+| **4. Vendedores** | Fechamento | `#tab-vend-fechamento` | `admin`, `vendedor`, `user` | Resumo de fechamento mensal comercial consolidado por vendedor e filial. | [fechamento.md](docs/telas/04_vendedores/fechamento.md) |
+| **5. Compras** | Saldos em Estoque | `#tab-vend-saldos-estoque` | `admin`, `user` (Compras) | Saldos para planejamento de reposicao de estoque multi-empresa (DRY). | [saldos_estoque.md](docs/telas/04_vendedores/saldos_estoque.md) |
+| **5. Compras** | Consulta Ped Venda | `#tab-vend-pedidos` | `admin`, `user` (Compras) | Avaliacao de demanda comercial de vendas para compras de insumos (DRY). | [consulta_ped_venda.md](docs/telas/04_vendedores/consulta_ped_venda.md) |
+| **5. Compras** | Ped Vendas Abertos | `#tab-vend-pedidos-abertos` | `admin`, `user` (Compras) | Pedidos represados por falta de saldo para priorizacao de reposicao (DRY). | [pedidos_abertos.md](docs/telas/04_vendedores/pedidos_abertos.md) |
+| **5. Compras** | Ped Compras em Aberto | `#tab-compras-pedidos-abertos` | `admin`, `user` (Compras) | Gestao de ordens de compra SC7 com saldo pendente nas filiais 14, 15 e 16. | [pedidos_compras_abertos.md](docs/telas/05_compras/pedidos_compras_abertos.md) |
+| **5. Compras** | Prod x Ped Compras | `#tab-vend-pedidos-compras` | `admin`, `user` (Compras) | Relacao de produtos acabados com ordens de compra vigentes (DRY). | [pedidos_compras.md](docs/telas/04_vendedores/pedidos_compras.md) |
+| **5. Compras** | Ponto de Pedido Ideal | `#tab-compras-ponto-pedido` | `admin`, `user` (Compras) | Calculo estatistico de consumo medio diario, lead time e ressuprimento. | [ponto_pedido_ideal.md](docs/telas/05_compras/ponto_pedido_ideal.md) |
+| **5. Compras** | Consulta Ped/NF Compras | `#tab-compras-consulta-ped-nf` | `admin`, `user` (Compras) | Busca multi-empresa por Pedido, NF de Entrada, Fornecedor e Razao Social. | [consulta_ped_nf_compras.md](docs/telas/05_compras/consulta_ped_nf_compras.md) |
+| **5. Compras** | Movimentações do Estoque | `#tab-compras-movimentacoes-estoque` | `admin`, `user` (Compras) | Extrato historico de entradas, saidas, requisicoes e transferencias SD3. | [movimentacoes_estoque.md](docs/telas/05_compras/movimentacoes_estoque.md) |
+| **6. Assist. Financ.** | Conciliação Bancária | `#tab-conciliacao-bancaria` | `admin`, `user` (Financeiro) | Conciliacao automatica N:1 e 1:1 entre extratos e titulos Protheus (`SE5`/`SE8`). | [conciliacao_bancaria.md](docs/telas/06_assist_financeiro/conciliacao_bancaria.md) |
+| **6. Assist. Financ.** | Extrato API Inter | `#tab-inter-extrato` | `admin`, `user` (Financeiro) | Conexao ao vivo mTLS de saldos, extratos e batimento financeiro Banco Inter. | [extrato_api_inter.md](docs/telas/06_assist_financeiro/extrato_api_inter.md) |
+| **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas com chave de deduplicacao idempotente. | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
+| **6. Assist. Financ.** | Análise de Crédito | `#tab-analise-credito` | `admin`, `user` (Financeiro) | Motor de score com Protheus, Receita, RDAP, Wayback, Serasa e InfoSimples. | [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md) |
+| **7. Analista Fin.** | Holerites DP | `#tab-holerites` | `admin`, `user` (Analista Fin) | Emissao e distribuicao digital de holerites do Departamento Pessoal. | [holerites_dp.md](docs/telas/07_analista_fin/holerites_dp.md) |
+| **7. Analista Fin.** | Cadastro Funcion. | `#tab-funcionarios` | `admin`, `user` (Analista Fin) | Manutencao cadastral de colaboradores, cargos, salarios e chaves Pix. | [cadastro_funcionarios.md](docs/telas/07_analista_fin/cadastro_funcionarios.md) |
+| **7. Analista Fin.** | NFS-e Pendentes | `#tab-nfse-pendentes` | `admin`, `user` (Analista Fin) | Gestao fiscal de NFS-e recebidas com conciliacao automatica Protheus SF1. | [nfse_pendentes.md](docs/telas/07_analista_fin/nfse_pendentes.md) |
+| **7. Analista Fin.** | Fechamento Fiscal | `#tab-fechamento-fiscal` | `admin`, `user` (Analista Fin) | Fechamento fiscal periodico, livros de entrada/saida e validacoes de impostos. | [fechamento_fiscal.md](docs/telas/07_analista_fin/fechamento_fiscal.md) |
+| **7. Analista Fin.** | Auditoria Protheus x Sefaz | `#tab-auditoria-protheus-sefaz` | `admin`, `user` (Analista Fin) | Batimento fiscal com distincao estrita de CC-e (`tpEvento 110110`) e Inutilizacoes. | [auditoria_protheus_sefaz.md](docs/telas/07_analista_fin/auditoria_protheus_sefaz.md) |
+| **8. BI Executivo** | Índices Financeiros | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
+| **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
+| **8. BI Executivo** | Autorizações de Desconto | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
+| **8. BI Executivo** | CRM Comercial | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial de vendas, metas e integracao com Pipedrive CRM. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
+| **9. Configurações** | Usuários & Permissões | `#tab-configuracoes` | `admin` exclusivo | Gestao de contas, senhas bcrypt, permissoes RBAC, e-mails e 2FA. | [usuarios_permissoes.md](docs/telas/09_configuracoes/usuarios_permissoes.md) |
+| **9. Configurações** | Atividades & Auditoria | `#tab-config-logs` | `admin` exclusivo | Trilha de auditoria em tempo real (`user_activities`), sessoes e heartbeats. | [atividades_auditoria.md](docs/telas/09_configuracoes/atividades_auditoria.md) |
+| **9. Configurações** | Configuração do Score | `#tab-config-score` | `admin` exclusivo | Calibracao dos pesos parametricos e limites do motor de Score em 6 blocos. | [config_score.md](docs/telas/09_configuracoes/config_score.md) |
+| **9. Configurações** | Metas de Vendas | `#tab-config-metas-vendas` | `admin` exclusivo | Parametrizacao de metas mensais por vendedor, piso/teto e comissoes. | [metas_vendas.md](docs/telas/09_configuracoes/metas_vendas.md) |
 
 ---
 
-## 5. Diretrizes Operacionais para Agentes de IA
-
-Qualquer agente de IA que atue neste repositorio deve seguir estritamente as regras abaixo:
-
-1. **Codificacao UTF-8 Obrigatoria:** Todo script, leitura/escrita de arquivo e manipulacao de I/O (PowerShell, Python, Node.js) deve forcar explicitamente o encoding UTF-8 (`-Encoding utf8`, `encoding='utf-8'`, `[System.Text.Encoding]::UTF8`).
-2. **Seguranca Zero-Trust no Frontend:** Nunca delegue decisoes de autorizacao ou autenticacao ao navegador. Nao inclua tokens de admin ou credenciais em variaveis de escopo global no client-side.
-3. **Desacoplamento e YAGNI:** Ao criar novas funcionalidades ou refatorar, nao crie novas dependencias de runtime caso as bibliotecas padrao ou estruturas existentes resolvam o problema.
-4. **Tratamento de Excecoes e Resiliencia:** Toda chamada assincrona ou I/O externo deve conter blocos `try/catch` estruturados, com log contextual e degradacao graciosa (sem interrupcao abrupta do processo pai).
-5. **Preservacao de Memoria e Documentacao:** Todas as alteracoes arquiteturais relevantes ou correcoes no fluxo de integracao bancaria/ERP devem ser registradas neste arquivo (`GEMINI.md`) e nas notas tecnicas de versao.
-6. **Validacao Obrigatoria de Sintaxe JS (`node -c public/app.js`):** Antes de qualquer commit envolvendo o frontend, e compulsorio validar a sintaxe JavaScript de todos os arquivos modificados para evitar quebras silenciosas no ciclo de autenticacao e no carregamento da SPA.
-7. **Atualizacao Obrigatoria de Versao e Cache Buster (`bump_version.js`):** Toda entrega ou modificacao concluida no sistema DEVE obrigatoriamente atualizar o carimbo de data/hora e a descricao no topo da pagina executando `node bump_version.js "<descricao da mudanca>"` (ou `npm run version:bump`). Isso garante a atualizacao automatica da tag `Última Versão: DD/MM/AAAA HH:mm (<descricao>)` e a invalidacao de cache dos navegadores (`?v=X.XX`) em `public/index.html`.
-
----
-
-## 6. Diretrizes Mandatórias de Arquitetura para Novos Projetos e Expansões (Portal GSI & Novos Módulos)
-
-Todo novo projeto, módulo ou expansão arquitetural desenvolvido no ecossistema **Portal GSI / Gemini-Cli** deve obrigatoriamente aderir aos três pilares de engenharia abaixo:
+## 4. Diretrizes Mandatórias de Engenharia de Software
 
 ### Pilar 1: Paginação Compulsória em Todas as Consultas e Buscas
-1. **Sem Buscas Irrestritas:** Nenhuma consulta de listagem ou busca em banco de dados (PostgreSQL, Supabase, ERP TOTVS Protheus MSSQL/Oracle ou APIs externas) pode retornar conjuntos de dados sem limite e paginação definidos no backend.
-2. **Envelope Padrão de Resposta REST:**
+1. **Sem Consultas Irrestritas:** Nenhuma rota de API ou query em banco relacional pode retornar dados sem limites e paginacao controlados no servidor.
+2. **Envelope REST Padronizado:**
    ```json
    {
      "items": [ ... ],
@@ -1551,41 +101,84 @@ Todo novo projeto, módulo ou expansão arquitetural desenvolvido no ecossistema
      }
    }
    ```
-3. **Estratégia Offset vs Cursor (Keyset):**
-   - Para tabelas de catálogo ou listagens administrativas com navegação direta por página, utilizar paginação com `LIMIT` e `OFFSET` padronizada (padrão de 50 registros por página).
-   - Para tabelas de alto volume ou registros sequenciais/históricos (extratos bancários, logs de auditoria, faturamento `faturamento_itens_historico`, títulos `SE1`/`SD2`), utilizar **Keyset/Cursor Pagination** (`WHERE id < :ultimo_id ORDER BY id DESC LIMIT 50`) para garantir tempo de resposta constante $O(1)$ sem degradação em páginas profundas.
-4. **Prevenção da Armadilha de `COUNT(*)`:** Em tabelas gigantes do ERP Protheus, desacoplar a contagem total da query principal de registros ou usar contagem estimada/sob demanda para não atrasar a resposta da primeira página.
-5. **Componentização no Frontend:** Interfaces de listagem devem incorporar controles reutilizáveis de paginação (resumo `Exibindo X a Y de Z`, navegação `Primeira`, `Anterior`, `Próxima`, `Última`, páginas numéricas e seletor configurável de itens por página).
+3. **Estratégia Keyset vs Offset:** Listagens administrativas usam `LIMIT/OFFSET`. Tabelas de alto volume ou logs usam Keyset/Cursor (`WHERE id < :cursor ORDER BY id DESC LIMIT 50`) com tempo de resposta constante $O(1)$.
+4. **Proteção de `COUNT(*)`:** Em tabelas volumosas do Protheus, desacoplar a contagem ou empregar estimativas para resposta instantanea na primeira pagina.
+5. **Componentização Frontend:** Controles reutilizaveis de paginacao com navegadores, seletor de itens por pagina e resumo visual.
 
 ### Pilar 2: Indexação Estratégica Obrigatória em Banco de Dados
-1. **Índices Planejados por Padrão de Acesso:** Nenhuma tabela em banco relacional pode entrar em produção sem índices B-Tree estrategicamente criados para as colunas presentes em cláusulas `WHERE`, `ORDER BY`, `JOIN` e chaves estrangeiras (`FOREIGN KEY`).
-2. **Índices Compostos Direcionados:** A ordem das colunas em índices compostos deve seguir rigorosamente a seletividade e a frequência dos filtros de negócio (ex: `(empresa_cod, data_emissao, status)`).
-3. **Índices Parciais no PostgreSQL / Supabase:** Em tabelas com grande volume de dados inativos, finalizados ou históricos, priorizar índices parciais com filtro condicional (ex: `CREATE INDEX idx_pedidos_abertos ON pedidos (empresa, emissao) WHERE status <> 'FATURADO'`), economizando memória RAM e cache do banco.
-4. **Harmonização com ERP TOTVS Protheus:**
-   - Respeitar estritamente os índices nativos do Protheus mantidos pelo dicionário de dados (`SIX`) e as chaves primárias de recno (`R_E_C_N_O_`).
-   - Não criar índices diretos em tabelas padrão do Protheus que possam ser removidos ou entrar em colisão durante migrações de release (`APSRDU`/`UPDISTR`). Consultas customizadas devem se alinhar à ordem das chaves do `SIX`.
-5. **Contenção de Sobrecarga de Escrita:** Evitar criação redundante de índices em tabelas de alto volume transacional de escrita (`INSERT`/`UPDATE`) para não degradar a taxa de processamento (IOPS).
+1. **Índices Orientados a Padrões de Acesso:** Toda tabela relacional de producao deve possuir indices B-Tree cobrindo colunas em `WHERE`, `JOIN`, `ORDER BY` e chaves estrangeiras (`FK`).
+2. **Índices Compostos e Parciais:** Ordem de colunas orientada pela seletividade. No PostgreSQL Supabase, priorizar indices parciais (`WHERE status <> 'FINALIZADO'`) para economizar memoria RAM.
+3. **Harmonização com ERP Protheus:** Respeitar indices nativos do dicionario `SIX` e chaves de recno (`R_E_C_N_O_`), sem criar indices concorrentes que colidam com releases (`APSRDU`/`UPDISTR`).
 
 ### Pilar 3: Modularização e Separação de Código (>1 View / Telas Complexas)
-1. **Fim dos Arquivos Monolíticos:** É estritamente proibido concentrar múltiplas telas, fluxos de regras de negócio ou lógicas de visualização em arquivos únicos com milhares de linhas. Sempre que um projeto possuir mais de uma view/sub-aba, o código deve ser decomposto em submódulos independentes.
-2. **Padrão de Fatias Verticais (Feature-Based / Vertical Slice):**
-   - Organização de arquivos segregada por domínio funcional:
-     ```text
-     public/
-     ├── app.js                   (Router, Auth e inicialização geral)
-     ├── core/
-     │   ├── api.js               (Cliente HTTP Same-Origin com Bearer token)
-     │   ├── ui.js                (Modais, Toasts, Paginador compartilhado)
-     │   └── theme.js             (Controle unificado de Tema Claro/Escuro)
-     └── modules/
-         ├── credito/             (View, regras e renderização de Análise de Crédito)
-         ├── vendedores/          (Saldos de estoque, pedidos abertos, compras)
-         ├── financeiro/          (Conciliação bancária, extratos e webhooks)
-         └── logistica/           (Importação de faturas e cálculo de fretes)
-     ```
-3. **Uso de ES Modules Nativos (`import` / `export`):** No frontend, utilizar módulos nativos JavaScript (`<script type="module">`) para garantir isolamento de escopo e eliminar poluição de variáveis globais no objeto `window`.
-4. **Ciclo de Vida Limpo e Desacoplado:** Cada submódulo de view deve exportar métodos explícitos de ciclo de vida:
-   - `initView()`: Inicializa listeners de eventos, busca dados iniciais e monta o estado local.
-   - `destroyView()`: Limpa timers/intervals, desassina observadores e libera memória para evitar vazamentos (*memory leaks*).
-5. **Comunicação Inter-Módulos sem Acoplamento:** A troca de dados e sinalizações entre módulos distintos deve ocorrer por eventos desacoplados (ex: `EventTarget` nativo ou padrão Pub/Sub customizado), nunca por mutação direta de variáveis globais de outros módulos.
-6. **Backend Modularizado:** Rotas e serviços do servidor Node.js/Express devem residir em controllers e rotas dedicadas por domínio (`routes/vendedores.js`, `routes/credito.js`, `routes/financeiro.js`), mantendo `server.js` apenas como orquestrador de middlewares e bootstrap.
+1. **Fim dos Monólitos:** Proibido acumular regras de multiplas telas em arquivos unicos. Toda divisao com mais de uma view deve ser decomposta em submodulos verticais.
+2. **Padrão Vertical Slice:** Segregacao funcional em `public/js/` (`credito.js`, `vendedores.js`, `financeiro.js`, `logistica.js`, `config.js`).
+3. **ES Modules Nativos:** Uso de `<script type="module">` com isolamento de escopo sem poluir o objeto `window`.
+4. **Ciclo de Vida Limpo:** Cada view exporta metodos explicitos de montagem (`initView`) e desmontagem/limpeza de memoria (`destroyView`).
+5. **Backend Modular:** Rotas Express em controllers dedicados (`routes/*.js`), mantendo `server.js` como orquestrador e bootstrap.
+
+### Diretrizes de Segurança, Qualidade e I/O
+- **Codificação UTF-8 Obrigatória:** Manipulacoes de arquivo e I/O (Node.js, Python, PowerShell) devem forcar UTF-8 estrito (`encoding='utf-8'`, `-Encoding utf8`, `utf8`).
+- **Segurança Zero-Trust:** Validacao de autorizacao no servidor com JWT assinado e RBAC (`requireRole`). Sanitizar inputs contra SQLi e escapar outputs via `escapeHtml()`. Restringir envio de credenciais a origens `same-origin`.
+- **Atualização Compulsória de Versão (`bump_version`):** Apos qualquer entrega, rodar `node bump_version.js "<descricao>"` para atualizar a tag de versao e cache buster (`?v=X.XX`) em `index.html`.
+- **Validação de Sintaxe JS:** Compulsorio rodar `node -c public/app.js` e scripts alterados antes de commits.
+
+---
+
+## 5. Matriz FMEA de Resiliência & Faróis SRE
+
+Tratamento formal de contingencia e comportamento fail-neutral dos servicos externos integrados:
+
+| Serviço / Provedor | Timeout | Comportamento em Falha / Queda | Score (Fail-Neutral) | Farol SRE | Ação Operacional Exigida |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Receita Federal** *(BrasilAPI / ReceitaWS)* | 8.000 ms | Fallback automatico BrasilAPI ➔ ReceitaWS. Se ambas falharem: `receita_offline = true`. | `0 pts` (Sem penalidade) | 🔴 Vermelho (`farol-error`) | Exibe banner `RECEITA OFFLINE` e orienta conferencia manual de cadastro. |
+| **Registro.br (RDAP)** *(NIC.br)* | 6.000 ms | Captura erro de socket/timeout e marca `idade_dominio_rdap_erro = true`. | `0 pts` (Elimina perda de 7 pts) | 🔴 Vermelho / 🟡 Alerta | Registra `Indisponível (Registro.br)` no campo de maturidade. |
+| **Wayback Machine** *(Archive.org)* | 5.000 ms | Captura erro HTTP ou timeout e seta `wayback_offline = true`. | `0 pts` (Neutro) | 🔴 Vermelho / 🟡 Alerta | Exibe `Indisponível (Archive.org)` sem impactar pontuacao. |
+| **Servidor MX** *(DNS)* | 5.000 ms | Trata `SERVFAIL`/`ETIMEOUT` e seta `servidor_mx_offline = true`. | `0 pts` (Elimina perda de 4 pts) | 🔴 Vermelho | Informa `Falha DNS` sem presumir inexistencia do dominio. |
+| **FGTS Caixa** *(InfoSimples)* | 25.000 ms | Retorna `executado = false` com motivo descritivo retornado pelo gateway. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Badge descritivo amarelo (`Timeout Caixa`, etc.) sem descarte. |
+| **PGFN Dívida Ativa** *(InfoSimples)* | 25.000 ms | Retorna `executado = false` com detalhamento retornado pela consulta. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Badge descritivo amarelo/vermelho sem penalizar pontuacao. |
+| **TOTVS Protheus** *(Railway Relay)* | 15.000 ms | Distingue `404` (inexistente) de instabilidade de infraestrutura `500/504`. | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Banner de erro de rede sem induzir operador a crer em erro de digitacao. |
+| **Parser Serasa PDF** *(Python)* | 15.000 ms | Mata subprocesso Python com `SIGKILL` apos 15s em travamentos. | N/A | N/A | Exibe mensagem orientando reenvio de PDF integro. |
+
+---
+
+## 6. Protocolo de Documentação para o `/fui` & Agentes de IA
+
+Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolvedores e agentes de IA devem seguir este protocolo:
+
+1. **Preservação do `GEMINI.md` Pai Enxuto (< 25 KB):**
+   - O `GEMINI.md` na raiz e o guia master de alto nivel (arquitetura, seguranca, navegacao, SRE e governanca).
+   - **É estritamente proibido** adicionar changelogs detalhados, payloads extensos ou regras especificas de uma tela neste arquivo.
+2. **Atualização Descentralizada em `docs/telas/`:**
+   - Ao alterar ou criar fluxos funcionais, documentar detalhes tecnicos, DOM IDs, endpoints e regras no arquivo correspondente em `docs/telas/` (ex: `docs/telas/04_vendedores/saldos_estoque.md`).
+3. **Preservação do Histórico Completo em `docs/legado/`:**
+   - O historico detalhado dos 77 itens concluidos do backlog e versoes legadas esta mantido em [`docs/legado/GEMINI_HISTORICO.md`](docs/legado/GEMINI_HISTORICO.md).
+4. **Checklist Obrigatório de Conclusão (`/fui`):**
+   - [ ] Validar sintaxe JavaScript: `node -c public/app.js` e scripts alterados.
+   - [ ] Executar suite de testes pertinentes (`npm test`).
+   - [ ] Executar bump de versao: `node bump_version.js "<resumo conciso da entrega>"`.
+   - [ ] Atualizar status em `TODO.md`.
+   - [ ] Documentar especificidades no arquivo da tela em `docs/telas/`.
+   - [ ] Registrar apenas 1 a 2 linhas executivas na Secao 7 deste `GEMINI.md`.
+5. **Garantia de UTF-8:**
+   - Garantir gravacao em disco em UTF-8 puro, sem caracteres corrompidos.
+
+---
+
+## 7. Changelog Executivo Recente
+
+> O historico detalhado dos 77 itens tecnicos concluidos, refatoracoes de seguranca e entregas anteriores esta arquivado em:  
+> 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
+
+### Versões Recentes Homologadas:
+- **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.
+- **v8.219 (15/09/2026):** Auditoria Protheus x SEFAZ com distincao de CC-e (`tpEvento 110110`) vs Inutilizacao (`cStat 102`), badge visual e conciliacao de batimento.
+- **v8.218 (15/09/2026):** Renomeacao da aba BUSCA CODWEB/PED/NF, novas colunas temporais (Dt Ganho, Migracao, Emissao) e remocao de frete cobrado.
+- **v8.217 (15/09/2026):** Homologacao de calculo de agio e frete embutido no Deal 26569 e refinamento de cards do modal de autorizacao de desconto.
+- **v8.216 (14/09/2026):** Implementacao da sub-aba NFS-e Pendentes para o Analista Financeiro com conciliacao automatica Protheus e webhook continuo `claude-job-nfse`.
+- **v8.215 (14/09/2026):** Central de Tarefas e Delegacao operacional entre colaboradores com governanca de status, comentarios JSONB e painel de KPIs em linha unica.
+- **v8.214 (14/09/2026):** Sub-aba Consulta Ped/NF Compras multi-empresa com 4 chaves de busca Protheus (`SA2010`, `SC7`, `SF1`) e trava de seguranca de 90 dias.
+- **v8.213 (13/09/2026):** Arquitetura extensivel de abas e permissoes RBAC dinamicas auto-descobertas no DOM (`SYSTEM_TABS_REGISTRY`) e restauracao de acessos.
+- **v8.212 (13/09/2026):** Criacao da macro-aba COMPRAS com 4 sub-abas reaproveitadas sob principio DRY (Saldos em Estoque, Pedidos Venda, Pedidos Abertos e Compras).
+- **v8.211 (12/09/2026):** Habilitacao de Row-Level Security (RLS) e hardening no Supabase PostgreSQL, zerando 100% dos alertas criticos do Security Advisor.
+- **v8.210 (12/09/2026):** Homologacao da incorporacao de dashboards do Metabase Analytics no BI Executivo com telemetria e sincronizacao de dados.
