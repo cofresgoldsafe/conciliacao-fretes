@@ -306,7 +306,14 @@
       if (loading) loading.style.display = 'none';
       if (resultados) resultados.style.display = 'block';
 
-      exibirToast(`Consulta concluída: ${dados.kpis.totalRegistros} registros na faixa ${dados.faixa.min} a ${dados.faixa.max}.`, 'sucesso');
+      exibirToast(`Consulta Protheus concluída: ${dados.kpis.totalRegistros} registros na faixa ${dados.faixa.min} a ${dados.faixa.max}.`, 'sucesso');
+
+      // Se a opção de consultar SEFAZ automaticamente estiver ativa, dispara a consulta em lote
+      const chkAuto = document.getElementById('chkAuditoriaAutoSefaz');
+      const deveConsultarSefaz = !chkAuto || chkAuto.checked;
+      if (deveConsultarSefaz && estado.itensComSefaz.length > 0) {
+        consultarSefazEmLote();
+      }
     } catch (err) {
       console.error('Erro ao consultar auditoria no Protheus:', err);
       if (loading) loading.style.display = 'none';
@@ -567,7 +574,7 @@
       // 7. Status na SEFAZ
       const tdStatusSefaz = document.createElement('td');
       tdStatusSefaz.style.textAlign = 'center';
-      tdStatusSefaz.innerHTML = renderizarBadgeSefaz(it.statusSefaz, it.sefazProt);
+      tdStatusSefaz.innerHTML = renderizarBadgeSefaz(it.statusSefaz, it.sefazProt, it.sefazDesc);
 
       // 8. Diagnóstico / Batimento
       const tdDiag = document.createElement('td');
@@ -624,20 +631,26 @@
     return `<span class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">${status || '-'}</span>`;
   }
 
-  function renderizarBadgeSefaz(status, prot) {
-    const protInfo = prot ? ` title="Protocolo SEFAZ: ${prot}"` : '';
+  function renderizarBadgeSefaz(status, prot, desc) {
+    const info = prot ? ` title="Protocolo SEFAZ: ${prot}"` : (desc ? ` title="${desc}"` : '');
     if (status === 'AUTORIZADA') {
-      return `<span class="badge"${protInfo} style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 AUTORIZADA (100)</span>`;
+      return `<span class="badge"${info} style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 AUTORIZADA (100)</span>`;
     } else if (status === 'CANCELADA') {
-      return `<span class="badge"${protInfo} style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3);">🔴 CANCELADA (101)</span>`;
+      return `<span class="badge"${info} style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3);">🔴 CANCELADA (101)</span>`;
     } else if (status === 'INUTILIZADA') {
-      return `<span class="badge"${protInfo} style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">⚪ INUTILIZADA (102)</span>`;
+      return `<span class="badge"${info} style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">⚪ INUTILIZADA (102)</span>`;
     } else if (status === 'NAO_CONSTA') {
-      return '<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">❌ NÃO CONSTA (217)</span>';
+      return `<span class="badge"${info} style="background: rgba(148, 163, 184, 0.15); color: #94a3b8;">❌ NÃO CONSTA (217)</span>`;
     } else if (status === 'NAO_CONSULTADA') {
       return '<span class="badge" style="background: rgba(148, 163, 184, 0.1); color: #64748b;">❓ PENDENTE</span>';
+    } else if (status === 'ERRO_CONEXAO') {
+      return `<span class="badge"${info} style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);">🔌 ERRO CONEXÃO</span>`;
+    } else if (status === 'SEM_CERTIFICADO') {
+      return `<span class="badge"${info} style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);">⚠️ SEM CERTIFICADO</span>`;
+    } else if (status === 'ERRO_CERTIFICADO' || status === 'CERTIFICADO_REJEITADO') {
+      return `<span class="badge"${info} style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);">🚫 ERRO CERTIFICADO</span>`;
     }
-    return `<span class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">${status || '-'}</span>`;
+    return `<span class="badge"${info} style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">${status || '-'}</span>`;
   }
 
   function renderizarBadgeDiagnostico(diag) {

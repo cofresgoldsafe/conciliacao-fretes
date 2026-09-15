@@ -5107,7 +5107,7 @@ app.post('/api/analista-fin/auditoria-protheus-sefaz/consultar-sefaz', requireAu
     const maxItens = 300;
     const lote = itens.slice(0, maxItens);
 
-    const resultados = await consultarLoteSefaz(lote, empresa || '14', 150);
+    const resultados = await consultarLoteSefaz(lote, empresa || '14', 100);
 
     let countDivergencias = 0;
     for (const r of resultados) {

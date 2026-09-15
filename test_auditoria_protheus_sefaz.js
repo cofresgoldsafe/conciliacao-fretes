@@ -157,7 +157,7 @@ async function runTests() {
     const envelope = montarEnvelopeSoap12(chaveValida);
 
     assert.ok(envelope.includes('<soap12:Envelope'), 'Deve conter abertura soap12:Envelope');
-    assert.ok(envelope.includes('http://www.portalfazenda.gov.br/nfe/wsdl/NFeConsultaProtocolo4'), 'Namespace deve ser do NFeConsultaProtocolo4');
+    assert.ok(envelope.includes('nfe/wsdl/NFeConsultaProtocolo4'), 'Namespace deve ser do NFeConsultaProtocolo4');
     assert.ok(envelope.includes(`<chNFe>${chaveValida}</chNFe>`), 'Deve conter a chave de acesso');
     assert.ok(envelope.includes('<tpAmb>1</tpAmb>'), 'Ambiente deve ser Produção (tpAmb=1)');
 

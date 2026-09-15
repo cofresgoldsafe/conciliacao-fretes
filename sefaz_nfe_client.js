@@ -55,7 +55,7 @@ function extrairTag(xml, tag) {
  * com fallback para qualquer certificado disponível no ambiente.
  */
 function obterCertificadoA1(empresaCod) {
-  const pfxBase64 =
+  let pfxBase64 =
     (empresaCod === '14' && (process.env.NFE_CERT_MP_PFX_BASE64 || process.env.MP_PFX_BASE64)) ||
     (empresaCod === '15' && (process.env.NFE_CERT_GSI_PFX_BASE64 || process.env.NFSE_CERT_GSI_PFX_BASE64)) ||
     (empresaCod === '16' && (process.env.NFE_CERT_OACO_PFX_BASE64 || process.env.OACO_PFX_BASE64)) ||
@@ -92,9 +92,28 @@ function obterCertificadoA1(empresaCod) {
 
   if (pfxBase64) {
     return {
-      pfx: Buffer.from(pfxBase64.replace(/\s+/g, ''), 'base64'),
+      pfx: Buffer.isBuffer(pfxBase64) ? pfxBase64 : Buffer.from(String(pfxBase64).replace(/\s+/g, ''), 'base64'),
       passphrase: senha
     };
+  }
+
+  // Fallback para arquivo PFX local na máquina (mesmo padrão de paulistana_client.js)
+  const fs = require('fs');
+  const path = require('path');
+  const localCands = [
+    'C:/Users/Alexandre/Downloads/120a2609105ad966.pfx',
+    'C:/Users/Alexandre/Downloads/120a2601206670b4.pfx',
+    path.join(__dirname, 'certs', 'gsi.pfx')
+  ];
+  for (const c of localCands) {
+    if (fs.existsSync(c)) {
+      try {
+        return {
+          pfx: fs.readFileSync(c),
+          passphrase: senha || ''
+        };
+      } catch (e) {}
+    }
   }
 
   if (certPem && keyPem) {
@@ -116,8 +135,8 @@ function montarEnvelopeSoap12(chaveNfe) {
   return `<?xml version="1.0" encoding="utf-8"?>
 <soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
   <soap12:Body>
-    <nfeDadosMsg xmlns="http://www.portalfazenda.gov.br/nfe/wsdl/NFeConsultaProtocolo4">
-      <consSitNFe xmlns="http://www.portalfazenda.gov.br/nfe" versao="4.00">
+    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4">
+      <consSitNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
         <tpAmb>1</tpAmb>
         <xServ>CONSULTAR</xServ>
         <chNFe>${chaveLimpa}</chNFe>
@@ -167,8 +186,12 @@ async function consultarSituacaoNfeSefaz(chaveNfe, empresaCod = '14') {
     port: 443,
     path: SEFAZ_SP_PATH,
     method: 'POST',
+    rejectUnauthorized: false,
+    secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT,
+    ciphers: 'DEFAULT:@SECLEVEL=1',
     headers: {
-      'Content-Type': 'application/soap+xml; charset=utf-8',
+      'Content-Type': 'application/soap+xml; charset=utf-8; action="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4/nfeConsultaNF"',
+      'SOAPAction': 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4/nfeConsultaNF',
       'Content-Length': postData.length,
       'User-Agent': 'Antigravity-Fiscal/1.0'
     },
@@ -185,49 +208,92 @@ async function consultarSituacaoNfeSefaz(chaveNfe, empresaCod = '14') {
   }
 
   return new Promise((resolve) => {
-    const req = https.request(reqOptions, (res) => {
-      let data = '';
-      res.setEncoding('utf8');
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const cStat = extrairTag(data, 'cStat') || 'DESCONHECIDO';
-          const xMotivo = extrairTag(data, 'xMotivo') || 'Resposta recebida da SEFAZ';
-          const nProt = extrairTag(data, 'nProt') || '';
-          const dhRecbto = extrairTag(data, 'dhRecbto') || '';
+    let req;
+    try {
+      req = https.request(reqOptions, (res) => {
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            if (res.statusCode === 403) {
+              resolve({
+                sucesso: false,
+                cStat: 'CERTIFICADO_REJEITADO',
+                status: 'CERTIFICADO_REJEITADO',
+                rotulo: 'Certificado Rejeitado (403)',
+                xMotivo: 'A SEFAZ-SP rejeitou o Certificado Digital (HTTP 403 Forbidden). Verifique a validade e senha do certificado A1.',
+                protocolo: '',
+                dataHora: '',
+                chave: chaveLimpa
+              });
+              return;
+            }
 
-          const mapeado = CSTAT_MAP[cStat] || {
-            status: 'OUTRO',
-            rotulo: `cStat ${cStat}`,
-            desc: xMotivo,
-            badgeClass: 'badge-secondary'
-          };
+            if (res.statusCode >= 500) {
+              resolve({
+                sucesso: false,
+                cStat: 'SEFAZ_INDISPONIVEL',
+                status: 'SEFAZ_INDISPONIVEL',
+                rotulo: `SEFAZ Erro ${res.statusCode}`,
+                xMotivo: `WebService SEFAZ-SP retornou erro HTTP ${res.statusCode}`,
+                protocolo: '',
+                dataHora: '',
+                chave: chaveLimpa
+              });
+              return;
+            }
 
-          resolve({
-            sucesso: true,
-            cStat,
-            status: mapeado.status,
-            rotulo: mapeado.rotulo,
-            xMotivo,
-            protocolo: nProt,
-            dataHora: dhRecbto,
-            chave: chaveLimpa,
-            rawXmlSnippet: data.slice(0, 300)
-          });
-        } catch (parseErr) {
-          resolve({
-            sucesso: false,
-            cStat: 'ERRO_PARSE',
-            status: 'ERRO_PARSE',
-            rotulo: 'Erro Parse',
-            xMotivo: `Falha ao processar resposta XML da SEFAZ: ${parseErr.message}`,
-            protocolo: '',
-            dataHora: '',
-            chave: chaveLimpa
-          });
-        }
+            const cStat = extrairTag(data, 'cStat') || 'DESCONHECIDO';
+            const xMotivo = extrairTag(data, 'xMotivo') || 'Resposta recebida da SEFAZ';
+            const nProt = extrairTag(data, 'nProt') || '';
+            const dhRecbto = extrairTag(data, 'dhRecbto') || '';
+
+            const mapeado = CSTAT_MAP[cStat] || {
+              status: 'OUTRO',
+              rotulo: `cStat ${cStat}`,
+              desc: xMotivo,
+              badgeClass: 'badge-secondary'
+            };
+
+            resolve({
+              sucesso: true,
+              cStat,
+              status: mapeado.status,
+              rotulo: mapeado.rotulo,
+              xMotivo,
+              protocolo: nProt,
+              dataHora: dhRecbto,
+              chave: chaveLimpa,
+              rawXmlSnippet: data.slice(0, 300)
+            });
+          } catch (parseErr) {
+            resolve({
+              sucesso: false,
+              cStat: 'ERRO_PARSE',
+              status: 'ERRO_PARSE',
+              rotulo: 'Erro Parse',
+              xMotivo: `Falha ao processar resposta XML da SEFAZ: ${parseErr.message}`,
+              protocolo: '',
+              dataHora: '',
+              chave: chaveLimpa
+            });
+          }
+        });
       });
-    });
+    } catch (reqInitErr) {
+      resolve({
+        sucesso: false,
+        cStat: 'ERRO_CERTIFICADO',
+        status: 'ERRO_CERTIFICADO',
+        rotulo: 'Erro no Certificado',
+        xMotivo: `Falha ao carregar Certificado Digital A1: ${reqInitErr.message}`,
+        protocolo: '',
+        dataHora: '',
+        chave: chaveLimpa
+      });
+      return;
+    }
 
     req.on('error', (err) => {
       resolve({
@@ -256,8 +322,21 @@ async function consultarSituacaoNfeSefaz(chaveNfe, empresaCod = '14') {
       });
     });
 
-    req.write(postData);
-    req.end();
+    try {
+      req.write(postData);
+      req.end();
+    } catch (writeErr) {
+      resolve({
+        sucesso: false,
+        cStat: 'ERRO_CONEXAO',
+        status: 'ERRO_CONEXAO',
+        rotulo: 'Erro Envio',
+        xMotivo: `Falha no envio da mensagem para SEFAZ-SP: ${writeErr.message}`,
+        protocolo: '',
+        dataHora: '',
+        chave: chaveLimpa
+      });
+    }
   });
 }
 
@@ -340,7 +419,30 @@ function classificarDivergencia(statusProtheus, statusSefaz) {
     };
   }
 
-  // Caso 6: Outros status ou advertências
+  // Caso 6: Erros de infraestrutura ou ausência de certificado
+  if (s === 'ERRO_CONEXAO' || s === 'TIMEOUT') {
+    return {
+      divergencia: false,
+      gravidade: 'ALERTA',
+      tipo: 'ERRO_CONEXAO',
+      label: '🔌 FALHA DE CONEXÃO SEFAZ',
+      tooltip: 'Falha de comunicação ou timeout com o WebService da SEFAZ-SP.',
+      badgeClass: 'badge-warning'
+    };
+  }
+
+  if (s === 'SEM_CERTIFICADO' || s === 'CERTIFICADO_REJEITADO' || s === 'ERRO_CERTIFICADO') {
+    return {
+      divergencia: false,
+      gravidade: 'ALERTA',
+      tipo: 'SEM_CERTIFICADO',
+      label: '⚠️ ERRO NO CERTIFICADO A1',
+      tooltip: 'Certificado Digital A1 com falha de leitura, senha incorreta ou não configurado. Utilize o link do Portal da NF-e.',
+      badgeClass: 'badge-warning'
+    };
+  }
+
+  // Caso 7: Outros status ou advertências
   return {
     divergencia: s === 'NAO_CONSTA' && p === 'ATIVA',
     gravidade: s === 'NAO_CONSTA' && p === 'ATIVA' ? 'ALERTA' : 'INFORMATIVO',
