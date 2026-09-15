@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.216 (Homologada em 15/09/2026 00:08)  
+> **Versão da Documentação:** v8.217 (Homologada em 15/09/2026 00:40)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (BI Executivo: Gráficos Nativos Chart.js com Linhas, Colunas e KPIs Multi-Empresa)  
-> **Data da Última Auditoria:** 15/09/2026 00:08 (v8.216 - Sub-aba BI Executivo: Transição do Metabase para Gráficos Nativos Canvas + Chart.js)  
+> **Status:** Estável / Operacional em Produção (BI Executivo: Autorizações de Desconto com Ágio e Abatimento de Frete Embutido)  
+> **Data da Última Auditoria:** 15/09/2026 00:40 (v8.217 - Sub-aba BI Executivo: Homologação de Desconto Líquido com Frete Embutido e Ágio no Deal 26569)  
 
 ---
 
