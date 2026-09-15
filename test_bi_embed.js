@@ -346,6 +346,34 @@ async function runTests() {
       assert.ok(pgDbContent.includes('TO service_role, postgres'), 'A política de RLS deve contemplar as roles service_role e postgres para permitir consultas do Metabase');
     });
 
+    runAssertion('6.1 Vendor Chart.js: public/js/chart.umd.min.js existe, possui tamanho adequado e é referenciado no index.html', () => {
+      const chartPath = path.join(__dirname, 'public', 'js', 'chart.umd.min.js');
+      assert.ok(fs.existsSync(chartPath), 'O arquivo public/js/chart.umd.min.js deve existir localmente');
+      const stats = fs.statSync(chartPath);
+      assert.ok(stats.size > 150000, 'Tamanho do Chart.js deve ser maior que 150 KB');
+      const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+      assert.ok(htmlContent.includes('<script src="js/chart.umd.min.js'), 'Deve importar js/chart.umd.min.js no HTML');
+    });
+
+    runAssertion('6.2 Controles Nativos de Gráfico: index.html contém canvas, seletores de métrica, empresa, período e botões linha/coluna', () => {
+      const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+      assert.ok(htmlContent.includes('id="biExecutiveChart"'), 'Deve conter #biExecutiveChart');
+      assert.ok(htmlContent.includes('id="biMetricSelect"'), 'Deve conter #biMetricSelect');
+      assert.ok(htmlContent.includes('id="biEmpresaSelect"'), 'Deve conter #biEmpresaSelect');
+      assert.ok(htmlContent.includes('id="biPeriodoSelect"'), 'Deve conter #biPeriodoSelect');
+      assert.ok(htmlContent.includes('id="btnBiTypeLine"'), 'Deve conter #btnBiTypeLine');
+      assert.ok(htmlContent.includes('id="btnBiTypeBar"'), 'Deve conter #btnBiTypeBar');
+      assert.ok(htmlContent.includes('id="biChartKpiRow"'), 'Deve conter #biChartKpiRow');
+    });
+
+    runAssertion('6.3 Controlador Gráfico em public/js/bi.js: implementa loadBIExecutiveChart, renderExecutiveChart e atualizarCardsResumo', () => {
+      const biJsContent = fs.readFileSync(path.join(__dirname, 'public', 'js', 'bi.js'), 'utf8');
+      assert.ok(biJsContent.includes('loadBIExecutiveChart'), 'Deve implementar loadBIExecutiveChart');
+      assert.ok(biJsContent.includes('renderExecutiveChart'), 'Deve implementar renderExecutiveChart');
+      assert.ok(biJsContent.includes('atualizarCardsResumo'), 'Deve implementar atualizarCardsResumo');
+      assert.ok(biJsContent.includes('window.loadBIExecutiveChart'), 'Deve exportar loadBIExecutiveChart globalmente');
+    });
+
     // Restaura variáveis de ambiente originais
     if (origUrl !== undefined) process.env.METABASE_SITE_URL = origUrl; else delete process.env.METABASE_SITE_URL;
     if (origKey !== undefined) process.env.METABASE_SECRET_KEY = origKey; else delete process.env.METABASE_SECRET_KEY;

@@ -9,3 +9,4 @@ data/.*.tmp*
 __pycache__/
 *.pyc
 *.xlsx
+audit*.png

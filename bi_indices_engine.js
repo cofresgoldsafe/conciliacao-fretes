@@ -1081,11 +1081,18 @@ async function obterHistoricoIndices({ empresa = 'ALL', dias = 30, limit = 100 }
     try {
       let query = `
         SELECT * FROM indices_liquidez_historico
-        WHERE data_registro >= CURRENT_DATE - ($1 || ' days')::INTERVAL
+        WHERE 1=1
       `;
-      const params = [dias];
+      const params = [];
 
-      if (empresa && empresa !== 'ALL') {
+      if (dias && dias > 0) {
+        params.push(dias);
+        query += ` AND data_registro >= CURRENT_DATE - ($${params.length} || ' days')::INTERVAL`;
+      }
+
+      if (empresa === 'COMPARATIVO' || empresa === 'MULTI') {
+        query += ` AND empresa_cod <> 'CONSOLIDADO'`;
+      } else if (empresa && empresa !== 'ALL') {
         params.push(empresa);
         query += ` AND (empresa_cod = $${params.length} OR empresa_sigla = $${params.length})`;
       } else if (empresa === 'ALL') {
@@ -1115,7 +1122,9 @@ async function obterHistoricoIndices({ empresa = 'ALL', dias = 30, limit = 100 }
       const raw = await fs.promises.readFile(indicesCacheFile, 'utf-8');
       const cache = JSON.parse(raw);
       let list = cache.historicoSnapshots || [];
-      if (empresa && empresa !== 'ALL') {
+      if (empresa === 'COMPARATIVO' || empresa === 'MULTI') {
+        list = list.filter(r => r.empresa_cod !== 'CONSOLIDADO');
+      } else if (empresa && empresa !== 'ALL') {
         list = list.filter(r => r.empresa_cod === empresa || r.empresa_sigla === empresa);
       } else if (empresa === 'ALL') {
         list = list.filter(r => r.empresa_cod === 'CONSOLIDADO');

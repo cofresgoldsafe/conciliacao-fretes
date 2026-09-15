@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.206">
+  <link rel="stylesheet" href="style.css?v=8.207">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 23:47 (Auditoria Protheus x Sefaz: Barra de Progresso Animada com Shimmer, Cronometro e Auto-Hide)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 15/09/2026 00:10 (BI Executivo: Gráficos Nativos Chart.js com Linhas e Colunas Multi-Empresa)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -278,8 +278,8 @@
             <span>📊 Índices Financeiros</span>
           </button>
           <button class="nav-tab-btn" data-tab="tab-bi-metabase" id="btnTabBiMetabase">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-            <span>📈 Metabase Analytics</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+            <span>📈 Gráficos & Tendências</span>
           </button>
           <button class="nav-tab-btn" data-tab="tab-bi-autorizacoes" id="btnTabBiAutorizacoes">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -5767,24 +5767,24 @@
       </div>
     </div>
 
-    <!-- ABA 2 BI: Metabase Embedded Analytics -->
+    <!-- ABA 2 BI: Gráficos & Tendências Executivas (Chart.js Nativo) -->
     <div id="tab-bi-metabase" class="tab-pane hidden">
       <div class="bi-wrapper" id="biWrapper">
-        <!-- Toolbar do Metabase -->
+        <!-- Toolbar Principal -->
         <div class="bi-toolbar card">
           <div class="bi-title-group">
-            <h2>📈 Painel Executivo Metabase</h2>
-            <p class="desc">Visão Estratégica Consolidada — Vendas, Margens Brutas e Controladoria Financeira</p>
+            <h2>📈 Gráficos & Tendências Executivas</h2>
+            <p class="desc">Visão Analítica Nativa em Tempo Real — Séries Históricas de Liquidez, Ativos, Passivos e Faturamento</p>
           </div>
           <div class="bi-actions">
             <span id="biLastUpdated" class="bi-last-updated"></span>
-            <button id="btnBiSyncFaturamento" class="btn btn-outline btn-sm" title="Sincronizar histórico de notas e faturamento do Protheus para o Metabase">
+            <button id="btnBiSyncFaturamento" class="btn btn-outline btn-sm" title="Sincronizar histórico de notas e faturamento do Protheus">
               📥 Sync Faturamento
             </button>
-            <button id="btnBiSyncIndices" class="btn btn-outline btn-sm" title="Sincronizar índices de liquidez, bancos e contas do Protheus para o Metabase">
+            <button id="btnBiSyncIndices" class="btn btn-outline btn-sm" title="Sincronizar índices de liquidez, bancos e contas do Protheus">
               📊 Sync Índices
             </button>
-            <button id="btnBiRefresh" class="btn btn-outline btn-sm" title="Recarregar dados do painel">
+            <button id="btnBiRefresh" class="btn btn-outline btn-sm" title="Recarregar dados do gráfico">
               🔄 Atualizar
             </button>
             <a id="btnBiOpenExternal" class="btn btn-outline btn-sm" href="https://bi-gsi.onrender.com" target="_blank" rel="noopener noreferrer" title="Abrir Metabase em nova aba">
@@ -5797,26 +5797,115 @@
         </div>
 
         <!-- Barra de Telemetria e Status dos Dados de BI -->
-        <div id="biTelemetryBar" class="card" style="padding: 0.65rem 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; font-size: 0.85rem; border-left: 4px solid var(--primary-color, #3b82f6);">
+        <div id="biTelemetryBar" class="card" style="padding: 0.65rem 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; font-size: 0.85rem; border-left: 4px solid var(--primary-color, #3b82f6); margin-bottom: 1rem;">
           <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;" id="biTelemetryMetrics">
             <span>📦 <strong>Faturamento:</strong> <span id="biTelFaturamento">Carregando...</span></span>
             <span>📊 <strong>Índices Liquidez:</strong> <span id="biTelIndices">Carregando...</span></span>
-            <span>🛡️ <strong>Banco Supabase:</strong> <span id="biTelSupabase" class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">RLS Seguro</span></span>
+            <span>🛡️ <strong>Motor Gráfico:</strong> <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 600;">⚡ Chart.js Nativo</span></span>
             <span>🎯 <strong>Dashboard:</strong> <button id="btnBiChangeDashboardId" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.4); cursor: pointer; padding: 2px 8px; border-radius: 4px; font-weight: bold;" title="Clique para testar outro ID de Dashboard (ex: 1, 2, 3...)"><span id="biTelDashboardId">1</span> ✏️</button></span>
           </div>
           <div id="biTelemetryMsg" style="color: var(--text-muted, #94a3b8); font-size: 0.8rem;"></div>
         </div>
 
-        <!-- Container de Status / Guia de Configuração (Exibido se Metabase não configurado) -->
-        <div id="biStatusContainer" class="hidden"></div>
+        <!-- BARRA DE FILTROS E CONTROLES DO GRÁFICO -->
+        <div class="card" style="padding: 0.85rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+          <!-- Controles à esquerda: Métrica, Empresa e Período -->
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <label for="biMetricSelect" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #94a3b8);">📊 Métrica:</label>
+              <select id="biMetricSelect" class="form-control" style="font-size: 0.82rem; padding: 4px 10px; height: 32px; border-radius: 6px; min-width: 210px; background: var(--input-bg, #0f172a); color: var(--text-color, #f8fafc); border: 1px solid var(--panel-border, #334155);">
+                <option value="liquidez">📈 Índices de Liquidez (LC, LS, LI)</option>
+                <option value="ativo_passivo">💰 Ativo vs Passivo Circulante (R$)</option>
+                <option value="disponibilidade_pagar">🏦 Disponibilidades vs A Pagar (R$)</option>
+                <option value="comparativo_lc">🏢 Comparativo Multi-Empresa (LC)</option>
+              </select>
+            </div>
 
-        <!-- Container de Carregamento -->
-        <div id="biLoadingSpinner" class="loading-state hidden" style="padding: 3rem; text-align: center;">
-          <div class="spinner"></div>
-          <p style="margin-top: 1rem; color: var(--text-muted);">Carregando painel de BI executivo em tempo real...</p>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <label for="biEmpresaSelect" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #94a3b8);">🏢 Empresa:</label>
+              <select id="biEmpresaSelect" class="form-control" style="font-size: 0.82rem; padding: 4px 10px; height: 32px; border-radius: 6px; min-width: 170px; background: var(--input-bg, #0f172a); color: var(--text-color, #f8fafc); border: 1px solid var(--panel-border, #334155);">
+                <option value="ALL">🌐 Consolidado (3 Emp)</option>
+                <option value="14">🏭 Metal Pleno (14)</option>
+                <option value="15">🛡️ GSI Cofres (15)</option>
+                <option value="16">⚙️ OAÇO (16)</option>
+              </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <label for="biPeriodoSelect" style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #94a3b8);">📅 Período:</label>
+              <select id="biPeriodoSelect" class="form-control" style="font-size: 0.82rem; padding: 4px 10px; height: 32px; border-radius: 6px; min-width: 140px; background: var(--input-bg, #0f172a); color: var(--text-color, #f8fafc); border: 1px solid var(--panel-border, #334155);">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+                <option value="0">Histórico Completo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Controles à direita: Tipo de Gráfico (Linha vs Coluna) -->
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted, #94a3b8);">Visualização:</span>
+            <div class="btn-group" role="group" style="display: flex; border: 1px solid var(--panel-border, #334155); border-radius: 6px; overflow: hidden;">
+              <button type="button" id="btnBiTypeLine" class="btn btn-sm active" style="padding: 4px 12px; font-size: 0.8rem; background: var(--primary-color, #3b82f6); color: #ffffff; border: none; cursor: pointer;" title="Visualizar como gráfico de linha contínua">
+                📈 Linha
+              </button>
+              <button type="button" id="btnBiTypeBar" class="btn btn-sm" style="padding: 4px 12px; font-size: 0.8rem; background: transparent; color: var(--text-muted, #94a3b8); border: none; cursor: pointer;" title="Visualizar como gráfico de colunas / barras">
+                📊 Colunas
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Container do Iframe -->
+        <!-- CARDS DE RESUMO DO ÚLTIMO FECHAMENTO DISPONÍVEL -->
+        <div id="biChartKpiRow" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+          <div class="card" style="padding: 1rem; border-left: 4px solid #3b82f6;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Última Liquidez Corrente</div>
+            <div id="biKpiLc" style="font-size: 1.45rem; font-weight: 700; color: #3b82f6; font-family: var(--font-mono); margin-top: 4px;">---</div>
+            <div id="biKpiLcStatus" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Meta: &ge; 1,50</div>
+          </div>
+          <div class="card" style="padding: 1rem; border-left: 4px solid #f59e0b;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Última Liquidez Seca</div>
+            <div id="biKpiLs" style="font-size: 1.45rem; font-weight: 700; color: #f59e0b; font-family: var(--font-mono); margin-top: 4px;">---</div>
+            <div id="biKpiLsStatus" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Meta: &ge; 1,00</div>
+          </div>
+          <div class="card" style="padding: 1rem; border-left: 4px solid #10b981;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Última Liquidez Imediata</div>
+            <div id="biKpiLi" style="font-size: 1.45rem; font-weight: 700; color: #10b981; font-family: var(--font-mono); margin-top: 4px;">---</div>
+            <div id="biKpiLiStatus" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Meta: &ge; 0,20 - 0,50</div>
+          </div>
+          <div class="card" style="padding: 1rem; border-left: 4px solid #8b5cf6;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Data do Fechamento</div>
+            <div id="biKpiData" style="font-size: 1.25rem; font-weight: 700; color: var(--text-color, #f8fafc); font-family: var(--font-mono); margin-top: 4px;">---</div>
+            <div id="biKpiTotalPontos" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">0 pontos na série temporal</div>
+          </div>
+        </div>
+
+        <!-- CONTAINER DO GRÁFICO NATIVO CHART.JS -->
+        <div id="biChartCard" class="card" style="padding: 1.25rem; position: relative; min-height: 440px;">
+          <!-- Spinner de carregamento interno do gráfico -->
+          <div id="biChartLoading" class="loading-state hidden" style="position: absolute; inset: 0; background: rgba(15, 23, 42, 0.7); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; border-radius: 8px;">
+            <div class="spinner"></div>
+            <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Processando série temporal do gráfico...</p>
+          </div>
+
+          <!-- Mensagem se não houver dados -->
+          <div id="biChartEmpty" class="hidden" style="text-align: center; padding: 4rem 1rem;">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📊</div>
+            <h4 style="color: var(--text-color, #f8fafc); margin-bottom: 0.5rem;">Nenhum snapshot histórico encontrado para o filtro selecionado</h4>
+            <p style="color: var(--text-muted, #94a3b8); max-width: 500px; margin: 0 auto 1.25rem;">
+              Clique no botão <strong>📊 Sync Índices</strong> no topo para extrair os dados atuais do Protheus e registrar um novo snapshot diário.
+            </p>
+          </div>
+
+          <!-- Canvas do Gráfico -->
+          <div id="biChartCanvasWrapper" style="position: relative; height: 380px; width: 100%;">
+            <canvas id="biExecutiveChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Preservação de Containers para Compatibilidade de Testes e Fallbacks -->
+        <div id="biStatusContainer" class="hidden"></div>
+        <div id="biLoadingSpinner" class="loading-state hidden"></div>
         <div id="biIframeContainer" class="bi-iframe-wrapper hidden"></div>
       </div>
     </div>
@@ -8310,21 +8399,22 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.206"></script>
-  <script src="js/bi_indices.js?v=8.206"></script>
-  <script src="js/bi_autorizacoes.js?v=8.206"></script>
-  <script src="js/gordura_frete.js?v=8.206"></script>
-  <script src="js/fechamento_vendedores.js?v=8.206"></script>
-  <script type="module" src="js/tarefas.js?v=8.206"></script>
-  <script src="js/holerites.js?v=8.206"></script>
-  <script src="js/funcionarios_dp.js?v=8.206"></script>
-  <script src="js/crm.js?v=8.206"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.206"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.206"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.206"></script>
-  <script src="js/nfse_pendentes.js?v=8.206"></script>
-  <script src="js/fechamento_fiscal.js?v=8.206"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.206"></script>
-  <script src="app.js?v=8.206"></script>
+  <script src="js/chart.umd.min.js?v=8.207"></script>
+  <script src="js/bi.js?v=8.207"></script>
+  <script src="js/bi_indices.js?v=8.207"></script>
+  <script src="js/bi_autorizacoes.js?v=8.207"></script>
+  <script src="js/gordura_frete.js?v=8.207"></script>
+  <script src="js/fechamento_vendedores.js?v=8.207"></script>
+  <script type="module" src="js/tarefas.js?v=8.207"></script>
+  <script src="js/holerites.js?v=8.207"></script>
+  <script src="js/funcionarios_dp.js?v=8.207"></script>
+  <script src="js/crm.js?v=8.207"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.207"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.207"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.207"></script>
+  <script src="js/nfse_pendentes.js?v=8.207"></script>
+  <script src="js/fechamento_fiscal.js?v=8.207"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.207"></script>
+  <script src="app.js?v=8.207"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.215 (Homologada em 14/09/2026 23:48)  
+> **Versão da Documentação:** v8.216 (Homologada em 15/09/2026 00:08)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Barra de Progresso Animada com Shimmer, Cronômetro e Auto-Hide)  
-> **Data da Última Auditoria:** 14/09/2026 23:48 (v8.215 - UX Aprimorada: Loader Dinâmico com Gradiente Fluido, Spinner Ativo e Auto-Hide)  
+> **Status:** Estável / Operacional em Produção (BI Executivo: Gráficos Nativos Chart.js com Linhas, Colunas e KPIs Multi-Empresa)  
+> **Data da Última Auditoria:** 15/09/2026 00:08 (v8.216 - Sub-aba BI Executivo: Transição do Metabase para Gráficos Nativos Canvas + Chart.js)  
 
 ---
 
@@ -1439,6 +1439,23 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Transição de encerramento elegante: ao concluir a consulta com sucesso, fixa a barra em 100% verde com ícone `✅`, exibe o resumo e executa fade out suave (`opacity: 0`, `translateY(-6px)`) após 2.2 segundos para focar a atenção do operador na tabela e KPIs.
     - **Suíte de Testes Automatizados (8/8 Aprovados):**
       - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências (incluindo 217 sem risco e garantias anti-`/ OUTRO`), SOAP 1.2 / XML parser (puro e escapado), consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
+
+75. [x] **Substituição do Metabase Iframe por Gráficos Nativos Chart.js no BI Executivo (`public/js/chart.umd.min.js`, `public/js/bi.js`, `public/index.html`, `server.js`, `bi_indices_engine.js`, `test_bi_embed.js`):**
+    - **Contexto Operacional & Causa Raiz:**
+      - A sub-aba do Metabase Analytics sofria de instabilidade recorrente (`The embedding secret key has not been set`) causada pela volatilidade do contêiner Docker do Metabase no Render (que consome 1–2 GB RAM em JVM e perde variáveis de incorporação em reinicializações sem volume persistente).
+      - Demanda executiva por gráficos limpos, rápidos e interativos de Linha (evolução diária de Liquidez e Finanças) e Coluna (comparativos multi-empresa e mensais).
+    - **Solução Nativa de Alto Desempenho (HTML5 Canvas + Chart.js 4.4.x):**
+      - Vendor local da biblioteca em `public/js/chart.umd.min.js` (~205 KB), eliminando dependências externas de CDN ou iframes de terceiros.
+      - Renderização nativa no elemento `<canvas id="biExecutiveChart">` em menos de 50ms, com suporte a gradientes, curvas suaves (tension: 0.35), tooltips dinâmicos em moeda `R$` e 4 decimais para índices.
+      - Alternância instantânea entre gráficos de **Linha** (`btnBiTypeLine`) e **Colunas** (`btnBiTypeBar`).
+      - Filtros integrados por **Métricas** (*Índices de Liquidez LC/LS/LI*, *Ativo vs Passivo Circulante*, *Disponibilidades vs A Pagar*, *Comparativo Multi-Empresa*), **Empresa** (*Consolidado ALL, MP 14, GSI 15, OACO 16*) e **Período** (*7 dias, 30 dias, 90 dias, Histórico Completo*).
+      - 4 Mini Cards de KPIs no topo (`#biChartKpiRow`) com badges de conformidade (*Saudável, Regular, Crítico*) calculados dinamicamente a partir do snapshot mais recente.
+      - Adaptação automática e reativa aos temas Escuro e Claro do portal.
+      - Preservação integral de botões operacionais (`📊 Sync Índices`, `📥 Sync Faturamento`, `🔄 Atualizar`, `↗️ Abrir Metabase Externo` e `⛶ Tela Cheia`).
+    - **Expansão do Backend (`bi_indices_engine.js` & `server.js`):**
+      - Endpoint `/api/bi/indices/historico` agora suporta `empresa=COMPARATIVO` ou `empresa=MULTI` (trazendo as filiais 14, 15 e 16 juntas) e `dias=0` para extração do histórico completo.
+    - **Esteira de Testes Automatizados (27/27 Aprovados):**
+      - Suíte `test_bi_embed.js` expandida de 24 para 27 asserções cobrindo integridade do arquivo vendor Chart.js, estrutura do DOM, métodos no `bi.js` e controles reativos.
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

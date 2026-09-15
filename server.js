@@ -5332,7 +5332,8 @@ app.get('/api/bi/indices/drilldown', requireAuth, requireRole('admin'), async (r
 app.get('/api/bi/indices/historico', requireAuth, requireRole('admin'), async (req, res) => {
   try {
     const empresa = req.query.empresa || 'ALL';
-    const dias = parseInt(req.query.dias, 10) || 30;
+    const parsedDias = req.query.dias !== undefined ? parseInt(req.query.dias, 10) : 30;
+    const dias = isNaN(parsedDias) ? 30 : parsedDias;
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
 
     const hist = await obterHistoricoIndices({ empresa, dias, limit });

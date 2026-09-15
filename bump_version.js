@@ -36,6 +36,7 @@ if (regexVersionTag.test(html)) {
 
 html = html.replace(/style\.css\?v=[0-9.]+/g, `style.css?v=${novaVersaoNum}`);
 html = html.replace(/app\.js\?v=[0-9.]+/g, `app.js?v=${novaVersaoNum}`);
+html = html.replace(/js\/chart\.umd\.min\.js\?v=[0-9.]+/g, `js/chart.umd.min.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi\.js\?v=[0-9.]+/g, `js/bi.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi_indices\.js\?v=[0-9.]+/g, `js/bi_indices.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi_autorizacoes\.js\?v=[0-9.]+/g, `js/bi_autorizacoes.js?v=${novaVersaoNum}`);
