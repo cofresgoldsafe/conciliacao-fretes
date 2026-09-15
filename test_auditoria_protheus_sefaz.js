@@ -133,26 +133,67 @@ async function runTests() {
     assert.strictEqual(d3.divergencia, false, 'Não deve ter divergência');
     assert.strictEqual(d3.gravidade, 'OK', 'Gravidade deve ser OK');
     assert.strictEqual(d3.tipo, 'CONCILIADO', 'Tipo deve ser CONCILIADO');
+    assert.strictEqual(d3.label, '✅ CONCILIADO');
 
-    // 3.4 Cancelada no Protheus e Cancelada na SEFAZ (CONCILIADO OK)
+    // 3.4 Cancelada no Protheus e Cancelada na SEFAZ (CANCELAMENTO CONFIRMADO OK)
     const d4 = classificarDivergencia('CANCELADA', 'CANCELADA');
     assert.strictEqual(d4.divergencia, false, 'Não deve ter divergência');
-    assert.strictEqual(d4.tipo, 'CONCILIADO', 'Tipo deve ser CONCILIADO');
+    assert.strictEqual(d4.gravidade, 'OK');
+    assert.strictEqual(d4.tipo, 'CANCELAMENTO_CONFIRMADO', 'Tipo deve ser CANCELAMENTO_CONFIRMADO');
+    assert.strictEqual(d4.label, '✅ CANCELAMENTO CONFIRMADO');
 
-    // 3.5 Salto de Numeração sem registro na SEFAZ (ALERTA)
+    // 3.5 Cancelada no Protheus e Não Consta na SEFAZ (SEM RISCO FISCAL 217 OK)
+    const d4b = classificarDivergencia('CANCELADA', 'NAO_CONSTA');
+    assert.strictEqual(d4b.divergencia, false, 'Não deve ter divergência');
+    assert.strictEqual(d4b.gravidade, 'OK');
+    assert.strictEqual(d4b.tipo, 'CANCELADA_NAO_CONSTA');
+    assert.strictEqual(d4b.label, '✅ SEM RISCO FISCAL (217)');
+
+    // 3.6 Inutilizada no Protheus e Inutilizada / Não Consta na SEFAZ (INUTILIZAÇÃO CONFIRMADA OK)
+    const d4c1 = classificarDivergencia('INUTILIZADA', 'INUTILIZADA');
+    assert.strictEqual(d4c1.divergencia, false);
+    assert.strictEqual(d4c1.gravidade, 'OK');
+    assert.strictEqual(d4c1.tipo, 'INUTILIZACAO_CONFIRMADA');
+    assert.strictEqual(d4c1.label, '✅ INUTILIZAÇÃO CONFIRMADA');
+
+    const d4c2 = classificarDivergencia('INUTILIZADA', 'NAO_CONSTA');
+    assert.strictEqual(d4c2.divergencia, false);
+    assert.strictEqual(d4c2.gravidade, 'OK');
+    assert.strictEqual(d4c2.tipo, 'INUTILIZACAO_CONFIRMADA');
+    assert.strictEqual(d4c2.label, '✅ INUTILIZAÇÃO CONFIRMADA');
+
+    // 3.7 Salto de Numeração sem registro na SEFAZ (ALERTA)
     const d5 = classificarDivergencia('FALTANTE', 'NAO_CONSTA');
     assert.strictEqual(d5.divergencia, true, 'Salto sem inutilização deve ser divergência');
     assert.strictEqual(d5.gravidade, 'ALERTA', 'Gravidade deve ser ALERTA');
     assert.strictEqual(d5.tipo, 'NUMERACAO_FALTANTE', 'Tipo deve ser NUMERACAO_FALTANTE');
 
-    // 3.6 Salto de Numeração com Inutilização homologada na SEFAZ (OK)
+    // 3.8 Salto de Numeração com Inutilização homologada na SEFAZ (OK)
     const d6 = classificarDivergencia('FALTANTE', 'INUTILIZADA');
     assert.strictEqual(d6.divergencia, false, 'Salto devidamente inutilizado não é divergência');
     assert.strictEqual(d6.tipo, 'SALTO_INUTILIZADO', 'Tipo deve ser SALTO_INUTILIZADO');
+
+    // 3.9 Ativa no Protheus e Não Consta na SEFAZ (ALERTA)
+    const d7 = classificarDivergencia('ATIVA', 'NAO_CONSTA');
+    assert.strictEqual(d7.divergencia, true);
+    assert.strictEqual(d7.gravidade, 'ALERTA');
+    assert.strictEqual(d7.tipo, 'ATIVA_PROTHEUS_NAO_CONSTA_SEFAZ');
+
+    // 3.10 Garantia de Ausência do rótulo '/ OUTRO'
+    const statusCombinacoes = [
+      ['ATIVA', 'OUTRO'],
+      ['INUTILIZADA', 'OUTRO'],
+      ['CANCELADA', 'OUTRO'],
+      ['OUTRO', 'OUTRO']
+    ];
+    for (const [p, s] of statusCombinacoes) {
+      const d = classificarDivergencia(p, s);
+      assert.ok(!d.label.includes('/ OUTRO'), `Rótulo não deve conter '/ OUTRO': ${d.label}`);
+    }
   });
 
   // 4. Montagem de Envelope SOAP 1.2 e Parser XML SEFAZ
-  report('Teste 4: Envelope SOAP 1.2 e parser de XML da SEFAZ', () => {
+  report('Teste 4: Envelope SOAP 1.2 e parser de XML da SEFAZ (Puro e Entidades Escapadas)', () => {
     const chaveValida = '35260948758821000118550010000004201206129449';
     const envelope = montarEnvelopeSoap12(chaveValida);
 
@@ -161,7 +202,7 @@ async function runTests() {
     assert.ok(envelope.includes(`<chNFe>${chaveValida}</chNFe>`), 'Deve conter a chave de acesso');
     assert.ok(envelope.includes('<tpAmb>1</tpAmb>'), 'Ambiente deve ser Produção (tpAmb=1)');
 
-    const xmlRetorno = `
+    const xmlRetornoPuro = `
       <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
         <soap:Body>
           <nfeResultMsg xmlns="http://www.portalfazenda.gov.br/nfe/wsdl/NFeConsultaProtocolo4">
@@ -182,9 +223,22 @@ async function runTests() {
       </soap:Envelope>
     `;
 
-    assert.strictEqual(extrairTag(xmlRetorno, 'cStat'), '101', 'Deve extrair cStat = 101');
-    assert.strictEqual(extrairTag(xmlRetorno, 'xMotivo'), 'Cancelamento de NF-e homologado', 'Deve extrair xMotivo correto');
-    assert.strictEqual(extrairTag(xmlRetorno, 'nProt'), '135260000123456', 'Deve extrair nProt correto');
+    assert.strictEqual(extrairTag(xmlRetornoPuro, 'cStat'), '101', 'Deve extrair cStat = 101 de XML puro');
+    assert.strictEqual(extrairTag(xmlRetornoPuro, 'xMotivo'), 'Cancelamento de NF-e homologado', 'Deve extrair xMotivo correto');
+    assert.strictEqual(extrairTag(xmlRetornoPuro, 'nProt'), '135260000123456', 'Deve extrair nProt correto');
+
+    // Teste com entidades escapadas (&lt;cStat&gt;100&lt;/cStat&gt;) comum em WebServices ASMX
+    const xmlRetornoEscapado = `
+      <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
+        <soap:Body>
+          <nfeResultMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4">&lt;retConsSitNFe versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"&gt;&lt;tpAmb&gt;1&lt;/tpAmb&gt;&lt;cStat&gt;100&lt;/cStat&gt;&lt;xMotivo&gt;Autorizado o uso da NF-e&lt;/xMotivo&gt;&lt;dhRecbto&gt;2026-09-14T20:00:00-03:00&lt;/dhRecbto&gt;&lt;chNFe&gt;${chaveValida}&lt;/chNFe&gt;&lt;protNFe versao="4.00"&gt;&lt;infProt&gt;&lt;nProt&gt;135260000999888&lt;/nProt&gt;&lt;/infProt&gt;&lt;/protNFe&gt;&lt;/retConsSitNFe&gt;</nfeResultMsg>
+        </soap:Body>
+      </soap:Envelope>
+    `;
+
+    assert.strictEqual(extrairTag(xmlRetornoEscapado, 'cStat'), '100', 'Deve extrair cStat = 100 de XML escapado');
+    assert.strictEqual(extrairTag(xmlRetornoEscapado, 'xMotivo'), 'Autorizado o uso da NF-e', 'Deve extrair xMotivo de XML escapado');
+    assert.strictEqual(extrairTag(xmlRetornoEscapado, 'nProt'), '135260000999888', 'Deve extrair nProt de XML escapado');
   });
 
   // 5. Integração com Backend Protheus (consultarAuditoriaNfeProtheus)

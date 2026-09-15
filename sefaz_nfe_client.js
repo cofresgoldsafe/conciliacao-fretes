@@ -41,13 +41,26 @@ function decodificarXml(str) {
 }
 
 /**
- * Extrai o texto contido em uma tag XML simples
+ * Extrai o texto contido em uma tag XML simples (suporta XML puro e entidades escapadas)
  */
 function extrairTag(xml, tag) {
   if (!xml) return '';
-  const regex = new RegExp(`<(?:[\\w.-]+:)?${tag}[^>]*>([^<]*)</(?:[\\w.-]+:)?${tag}>`, 'i');
-  const match = xml.match(regex);
-  return match ? decodificarXml(match[1]) : '';
+  // 1. Tenta tag XML pura direta
+  let regex = new RegExp(`<(?:[\\w.-]+:)?${tag}[^>]*>([\\s\\S]*?)</(?:[\\w.-]+:)?${tag}>`, 'i');
+  let match = xml.match(regex);
+  if (match) return decodificarXml(match[1]);
+
+  // 2. Tenta tag XML com entidades escapadas (&lt;tag&gt;...&lt;/tag&gt;)
+  let regexEscapado = new RegExp(`(?:&lt;|<)(?:[\\w.-]+:)?${tag}(?:&gt;|>)([\\s\\S]*?)(?:&lt;|<)/(?:[\\w.-]+:)?${tag}(?:&gt;|>)`, 'i');
+  match = xml.match(regexEscapado);
+  if (match) return decodificarXml(match[1]);
+
+  // 3. Fallback: decodifica entidades da string inteira e busca novamente
+  const xmlDec = decodificarXml(xml);
+  match = xmlDec.match(regex);
+  if (match) return decodificarXml(match[1]);
+
+  return '';
 }
 
 /**
@@ -244,15 +257,39 @@ async function consultarSituacaoNfeSefaz(chaveNfe, empresaCod = '14') {
               return;
             }
 
-            const cStat = extrairTag(data, 'cStat') || 'DESCONHECIDO';
-            const xMotivo = extrairTag(data, 'xMotivo') || 'Resposta recebida da SEFAZ';
-            const nProt = extrairTag(data, 'nProt') || '';
-            const dhRecbto = extrairTag(data, 'dhRecbto') || '';
+            // Garante decodificação completa se houver XML encapsulado como texto
+            const xmlCompleto = (data && data.includes('&lt;')) ? decodificarXml(data) : (data || '');
+
+            let cStat = extrairTag(xmlCompleto, 'cStat') || extrairTag(data, 'cStat') || '';
+            let xMotivo = extrairTag(xmlCompleto, 'xMotivo') || extrairTag(data, 'xMotivo') || '';
+            let nProt = extrairTag(xmlCompleto, 'nProt') || extrairTag(data, 'nProt') || '';
+            let dhRecbto = extrairTag(xmlCompleto, 'dhRecbto') || extrairTag(data, 'dhRecbto') || '';
+
+            // Inteligência Adicional para Eventos Vinculados (ex: Cancelamento 110111)
+            if (xmlCompleto.includes('<tpEvento>110111</tpEvento>') || 
+                xmlCompleto.includes('&lt;tpEvento&gt;110111&lt;/tpEvento&gt;') ||
+                /Cancelamento de NF-e homologado/i.test(xmlCompleto)) {
+              cStat = '101';
+              if (!xMotivo || xMotivo.includes('Autorizado')) {
+                xMotivo = 'Cancelamento de NF-e homologado';
+              }
+            } else if (xmlCompleto.includes('<tpEvento>110110</tpEvento>') ||
+                       /Inutilizacao de numero homologada/i.test(xmlCompleto)) {
+              cStat = '102';
+              if (!xMotivo) xMotivo = 'Inutilização de número homologada';
+            } else if (/nao consta na base de dados/i.test(xmlCompleto)) {
+              cStat = '217';
+              if (!xMotivo) xMotivo = 'NF-e não consta na base de dados da SEFAZ';
+            }
+
+            if (!cStat) {
+              cStat = 'DESCONHECIDO';
+            }
 
             const mapeado = CSTAT_MAP[cStat] || {
-              status: 'OUTRO',
-              rotulo: `cStat ${cStat}`,
-              desc: xMotivo,
+              status: cStat && cStat !== 'DESCONHECIDO' ? `CSTAT_${cStat}` : 'OUTRO',
+              rotulo: cStat && cStat !== 'DESCONHECIDO' ? `cStat ${cStat}` : 'Outro Status',
+              desc: xMotivo || 'Resposta recebida da SEFAZ',
               badgeClass: 'badge-secondary'
             };
 
@@ -371,7 +408,19 @@ function classificarDivergencia(statusProtheus, statusSefaz) {
     };
   }
 
-  // Caso 3: Salto / Numeração Faltante
+  // Caso 3: Ativa no Protheus e Não Consta na SEFAZ (ALERTA - NF não transmitida ou pendente)
+  if (p === 'ATIVA' && s === 'NAO_CONSTA') {
+    return {
+      divergencia: true,
+      gravidade: 'ALERTA',
+      tipo: 'ATIVA_PROTHEUS_NAO_CONSTA_SEFAZ',
+      label: '⚠️ ATIVA NO ERP / NÃO CONSTA NA SEFAZ',
+      tooltip: 'A NF está ativa no Protheus mas não consta na base de dados da SEFAZ (risco de não transmissão).',
+      badgeClass: 'badge-warning'
+    };
+  }
+
+  // Caso 4: Salto / Numeração Faltante
   if (p === 'FALTANTE') {
     if (s === 'INUTILIZADA') {
       return {
@@ -393,21 +442,56 @@ function classificarDivergencia(statusProtheus, statusSefaz) {
     };
   }
 
-  // Caso 4: Conciliado Normal
-  if ((p === 'ATIVA' && s === 'AUTORIZADA') ||
-      (p === 'CANCELADA' && s === 'CANCELADA') ||
-      (p === 'INUTILIZADA' && (s === 'INUTILIZADA' || s === 'NAO_CONSTA'))) {
+  // Caso 5: Cancelada no Protheus e Não Consta na SEFAZ (SEM RISCO FISCAL 217)
+  // Nota cancelada internamente no ERP antes de ser transmitida à SEFAZ (sem passivo fiscal)
+  if (p === 'CANCELADA' && s === 'NAO_CONSTA') {
+    return {
+      divergencia: false,
+      gravidade: 'OK',
+      tipo: 'CANCELADA_NAO_CONSTA',
+      label: '✅ SEM RISCO FISCAL (217)',
+      tooltip: 'Nota cancelada/excluída internamente no ERP antes de ser transmitida à SEFAZ (sem passivo fiscal).',
+      badgeClass: 'badge-success'
+    };
+  }
+
+  // Caso 6: Cancelamento Confirmado em Ambos
+  if (p === 'CANCELADA' && s === 'CANCELADA') {
+    return {
+      divergencia: false,
+      gravidade: 'OK',
+      tipo: 'CANCELAMENTO_CONFIRMADO',
+      label: '✅ CANCELAMENTO CONFIRMADO',
+      tooltip: 'Cancelamento devidamente homologado tanto no Protheus quanto na SEFAZ.',
+      badgeClass: 'badge-success'
+    };
+  }
+
+  // Caso 7: Inutilização Confirmada em Ambos (ou não consta pois foi apenas reservada)
+  if (p === 'INUTILIZADA' && (s === 'INUTILIZADA' || s === 'NAO_CONSTA')) {
+    return {
+      divergencia: false,
+      gravidade: 'OK',
+      tipo: 'INUTILIZACAO_CONFIRMADA',
+      label: '✅ INUTILIZAÇÃO CONFIRMADA',
+      tooltip: 'Numeração devidamente inutilizada no Protheus e sem emissão válida na SEFAZ.',
+      badgeClass: 'badge-success'
+    };
+  }
+
+  // Caso 8: Ativa no Protheus e Autorizada na SEFAZ (CONCILIADO OK)
+  if (p === 'ATIVA' && s === 'AUTORIZADA') {
     return {
       divergencia: false,
       gravidade: 'OK',
       tipo: 'CONCILIADO',
       label: '✅ CONCILIADO',
-      tooltip: 'Status coincidente entre o ERP Protheus e a SEFAZ.',
+      tooltip: 'Status coincidente entre o ERP Protheus e a SEFAZ (Autorizada).',
       badgeClass: 'badge-success'
     };
   }
 
-  // Caso 5: Pendente de Consulta na SEFAZ
+  // Caso 9: Pendente de Consulta na SEFAZ
   if (!s || s === 'NAO_CONSULTADA') {
     return {
       divergencia: false,
@@ -419,7 +503,7 @@ function classificarDivergencia(statusProtheus, statusSefaz) {
     };
   }
 
-  // Caso 6: Erros de infraestrutura ou ausência de certificado
+  // Caso 10: Erros de infraestrutura ou ausência de certificado
   if (s === 'ERRO_CONEXAO' || s === 'TIMEOUT') {
     return {
       divergencia: false,
@@ -442,12 +526,45 @@ function classificarDivergencia(statusProtheus, statusSefaz) {
     };
   }
 
-  // Caso 7: Outros status ou advertências
+  // Caso 11: Fallbacks Limpos (Sem rótulo bruto '/ OUTRO')
+  if (p === 'ATIVA') {
+    return {
+      divergencia: false,
+      gravidade: 'INFORMATIVO',
+      tipo: 'ATIVA_OUTRO_STATUS',
+      label: 'ℹ️ ATIVA NO ERP (CONSULTAR PORTAL)',
+      tooltip: `Protheus: ATIVA | SEFAZ: ${s || 'Status Diverso'}. Verifique no Portal da Fazenda.`,
+      badgeClass: 'badge-secondary'
+    };
+  }
+
+  if (p === 'INUTILIZADA') {
+    return {
+      divergencia: false,
+      gravidade: 'OK',
+      tipo: 'INUTILIZADA_ERP',
+      label: '✅ INUTILIZADA NO ERP',
+      tooltip: 'Numeração inutilizada no Protheus.',
+      badgeClass: 'badge-success'
+    };
+  }
+
+  if (p === 'CANCELADA') {
+    return {
+      divergencia: false,
+      gravidade: 'INFORMATIVO',
+      tipo: 'CANCELADA_ERP',
+      label: 'ℹ️ CANCELADA NO ERP',
+      tooltip: `Nota cancelada no Protheus | SEFAZ: ${s || 'Não identificado'}.`,
+      badgeClass: 'badge-secondary'
+    };
+  }
+
   return {
-    divergencia: s === 'NAO_CONSTA' && p === 'ATIVA',
-    gravidade: s === 'NAO_CONSTA' && p === 'ATIVA' ? 'ALERTA' : 'INFORMATIVO',
-    tipo: 'OUTRO',
-    label: `${p} / ${s}`,
+    divergencia: false,
+    gravidade: 'INFORMATIVO',
+    tipo: 'STATUS_INFORMATIVO',
+    label: `ℹ️ ${p || 'INFORMATIVO'}`,
     tooltip: `Protheus: ${p} | SEFAZ: ${s}`,
     badgeClass: 'badge-secondary'
   };

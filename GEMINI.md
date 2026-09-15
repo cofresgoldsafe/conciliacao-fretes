@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.211 (Homologada em 14/09/2026 23:00)  
+> **Versão da Documentação:** v8.212 (Homologada em 14/09/2026 23:25)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Resolução mTLS ICP-Brasil, Namespaces SOAP 1.2 e Encadeamento Automático)  
-> **Data da Última Auditoria:** 14/09/2026 23:00 (v8.211 - Resolução de Handshake mTLS ICP-Brasil SEFAZ, Namespaces SOAP 1.2 e Automação de Batimento)  
+> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Parser Entity-Decoded SEFAZ, Matriz Sem Risco 217 e Diagnósticos Limpos)  
+> **Data da Última Auditoria:** 14/09/2026 23:25 (v8.212 - Parser XML Entidades Escapadas SEFAZ, Matriz Sem Risco Fiscal 217 e Eliminação de / OUTRO)  
 
 ---
 
@@ -1423,8 +1423,17 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
        - Tabela com badges visuais, botão de cópia de chave de 44 dígitos 📋 com toast informativo e atalho direto para consulta pública no Portal Nacional da NF-e [🌐].
        - Filtro rápido por status (Todas, Apenas Divergências, Apenas Canceladas, Apenas Inutilizadas, Apenas Saltos).
        - Exportação completa em formato CSV formatado com BOM UTF-8 (`\uFEFF`) e delimitador ponto-e-vírgula (`;`) para Excel.
+    - **Parser de Respostas XML da SEFAZ & Matriz de Batimento Fiscal v8.212 (`sefaz_nfe_client.js`):**
+      - Resolução definitiva de parsing para respostas da SEFAZ-SP onde os nós XML internos são retornados com entidades escapadas (`&lt;retConsSitNFe...&gt;&lt;cStat&gt;100&lt;/cStat&gt;`), decodificando e extraindo `cStat`, `xMotivo`, `nProt` e `dhRecbto` com precisão cirúrgica sem cair em `OUTRO`.
+      - Identificação inteligente de eventos oficiais de cancelamento (`tpEvento 110111`) e inutilização (`tpEvento 110110`) mesmo com envelopes complexos.
+      - **Matriz de Diagnóstico Fidedigna & Sem Risco Fiscal 217:**
+        - `ATIVA` (ERP) + `AUTORIZADA` (SEFAZ) ➔ `✅ CONCILIADO` (OK).
+        - `CANCELADA` (ERP) + `CANCELADA` (SEFAZ) ➔ `✅ CANCELAMENTO CONFIRMADO` (OK).
+        - `CANCELADA` (ERP) + `NAO_CONSTA` (SEFAZ 217) ➔ `✅ SEM RISCO FISCAL (217)` (OK - nota cancelada internamente antes da transmissão sem passivo fiscal).
+        - `INUTILIZADA` (ERP) + `INUTILIZADA`/`NAO_CONSTA` (SEFAZ) ➔ `✅ INUTILIZAÇÃO CONFIRMADA` (OK).
+        - Extinção total de rótulos provisórios ou combinações brutas contendo `/ OUTRO`, substituídos por diagnósticos amigáveis e auditáveis.
     - **Suíte de Testes Automatizados (8/8 Aprovados):**
-      - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências, SOAP 1.2 / XML parser, consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
+      - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências (incluindo 217 sem risco e garantias anti-`/ OUTRO`), SOAP 1.2 / XML parser (puro e escapado), consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

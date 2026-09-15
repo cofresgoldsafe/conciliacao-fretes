@@ -649,6 +649,11 @@
       return `<span class="badge"${info} style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);">⚠️ SEM CERTIFICADO</span>`;
     } else if (status === 'ERRO_CERTIFICADO' || status === 'CERTIFICADO_REJEITADO') {
       return `<span class="badge"${info} style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4);">🚫 ERRO CERTIFICADO</span>`;
+    } else if (status === 'OUTRO') {
+      return `<span class="badge"${info} style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">ℹ️ OUTRO STATUS</span>`;
+    } else if (status && status.startsWith('CSTAT_')) {
+      const cod = status.replace('CSTAT_', '');
+      return `<span class="badge"${info} style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">cStat ${cod}</span>`;
     }
     return `<span class="badge"${info} style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1;">${status || '-'}</span>`;
   }
