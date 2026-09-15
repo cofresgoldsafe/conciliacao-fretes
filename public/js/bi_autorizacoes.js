@@ -258,19 +258,32 @@
     const elLucroBruto = document.getElementById('modalBiLucroBruto');
 
     if (elValorVendido) elValorVendido.innerText = formatCurrency(deal.valorVendaFinal);
-    if (elValorTabela) elValorTabela.innerText = `Tabela: ${formatCurrency(deal.precoTabelaTotal)}`;
+    if (elValorTabela) {
+      const agio = (deal.valorVendaFinal && deal.precoTabelaTotal && deal.valorVendaFinal > deal.precoTabelaTotal)
+        ? (deal.valorVendaFinal - deal.precoTabelaTotal)
+        : 0;
+      elValorTabela.innerText = `Tabela: ${formatCurrency(deal.precoTabelaTotal)}${agio > 0 ? ` (+${formatCurrency(agio)} ágio)` : ''}`;
+    }
 
     if (elDescontoPct) {
       elDescontoPct.innerText = formatPct(deal.descontoPct);
       elDescontoPct.style.color = (deal.descontoPct > 11 && !deal.isRevenda) ? 'var(--danger-color, #ef4444)' : 'var(--success-color, #10b981)';
     }
-    if (elDescontoRs) elDescontoRs.innerText = formatCurrency(deal.descontoReais);
+    if (elDescontoRs) {
+      if (deal.freteEmbutido > 0) {
+        elDescontoRs.innerText = `${formatCurrency(deal.descontoReais)} (Líq: ${formatCurrency(deal.valorLiquido)})`;
+      } else {
+        elDescontoRs.innerText = formatCurrency(deal.descontoReais);
+      }
+    }
 
     if (elMargemPct) {
       elMargemPct.innerText = formatPct(deal.margemPct);
       elMargemPct.style.color = (deal.margemPct < 40) ? 'var(--warning-color, #f59e0b)' : 'var(--success-color, #10b981)';
     }
-    if (elLucroBruto) elLucroBruto.innerText = `Lucro: ${formatCurrency(deal.lucroBruto)}`;
+    if (elLucroBruto) {
+      elLucroBruto.innerText = `Lucro: ${formatCurrency(deal.lucroBruto)}${deal.freteEmbutido > 0 ? ' (após frete)' : ''}`;
+    }
 
     // Alerta de Desconto
     const elAlertaBox = document.getElementById('modalBiAlertaDescontoBox');

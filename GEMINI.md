@@ -800,19 +800,21 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
     - **Fórmulas Matemáticas Oficiais e Regra Estrita do Frete Embutido:**
       - $\text{Valor Líquido} = \text{Valor Vendido} - \text{Frete Embutido}$
       - $\text{Desconto \%} = \frac{\text{Preço de Tabela Total} - \text{Valor Líquido}}{\text{Preço de Tabela Total}} \times 100$
+      - Equivalência com Ágio: $\text{Desconto R\$} = \text{Frete Embutido} - (\text{Valor Vendido} - \text{Preço Tabela Total})$
       - $\text{Lucro Bruto} = \text{Valor Vendido} - \text{Custo Total} - \text{Frete Embutido}$
       - $\text{Margem \%} = \frac{\text{Lucro Bruto}}{\text{Valor Vendido}} \times 100$
       - O frete embutido pago pela empresa (`cd279b00...` / `C5_VLR_FRT`) é **sempre subtraído** do valor vendido, nunca somado.
+      - **Caso Homologado Deal 26569 (Produção):** Produto vendido por R$ 6.804,00 (+R$ 204,00 acima da tabela de R$ 6.600,00) com Frete Embutido de R$ 600,00 assumido pela empresa. O frete de R$ 600 absorve o ágio de R$ 204, resultando em desconto líquido de R$ 396,00 (6,00%) e margem líquida de 49,58% (Lucro R$ 3.373,62 sobre custo SB1090 de R$ 2.830,38).
     - **Painel Visual de Decisão & Gravação Auditável no Pipedrive:**
-      - Modal rico `#modalBiAutorizacaoDetalhes` com 3 cards de KPIs (Venda, Desconto, Margem), dados comerciais, tabela de itens cruzando Protheus x Deal e dois botões oficiais: `✅ AUTORIZADO` e `❌ NÃO AUTORIZADO`.
+      - Modal rico `#modalBiAutorizacaoDetalhes` com 3 cards de KPIs (Venda com destaque de ágio, Desconto com indicação de valor líquido e Margem após frete), dados comerciais, tabela de itens cruzando Protheus x Deal e dois botões oficiais: `✅ AUTORIZADO` e `❌ NÃO AUTORIZADO`.
       - Ao decidir, grava automaticamente uma nota oficial fixada no Deal (`pinned_to_deal_flag="1"`):
         - Autorizado: `Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (ok autorizado)`
         - Não Autorizado: `Deal {id} | Desconto Medio Ponderado do Pedido: {X,XX}% | Forma de Pagamento: {label} | Frete Embutido: R$ {valor} | (NAO AUTORIZADO)`
     - **Persistência Relacional com Paginação Compulsória (50 em 50) no Supabase:**
       - Tabela `bi_autorizacoes_desconto` com índices em `deal_id`, `status` e `created_at DESC`, RLS ativo e fallback resiliente em `data/bi_autorizacoes_cache.json`.
       - Envelope de paginação padronizado `{ items, pagination: { page, limit: 50, total, totalPages, hasNext, hasPrev } }` com filtros reativos por status e busca debounceada.
-    - **Suíte de Testes Automatizados (17 Asserções 100% Aprovadas):**
-      - Script `test_bi_autorizacoes.js` validando todos os casos de referência do manual (Deals 19039, 24827 e 23193), extração de URLs com query params e hashes, regras de frete, formatação de notas, DDL/DB, paginação e compilação `vm.Script`.
+    - **Suíte de Testes Automatizados (19 Asserções 100% Aprovadas):**
+      - Script `test_bi_autorizacoes.js` validando todos os casos de referência do manual (Deals 19039, 24827 e 23193) e o caso real de produção Deal 26569, extração de URLs com query params e hashes, regras de frete, formatação de notas, DDL/DB, paginação e compilação `vm.Script`.
 45. [x] **Inclusão da Coluna e Card "Total Gordura de Frete Embut." (`C5_VLR_FRT`) na Tabela de Comissões (`protheus_db.js`, `public/index.html`, `public/app.js`, `public/style.css`, `test_vendedores_desbloqueio.js`):**
     - **Integração no Backend (`protheus_db.js`):**
       - Adicionado `sc5` no mapa de empresas (`SC5160` para OACO, `SC5150` para GSI e `SC5140` para Metal Pleno).

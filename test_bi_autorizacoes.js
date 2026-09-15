@@ -145,6 +145,20 @@ async function runAsyncTest(name, fn) {
     assert.strictEqual(resComFrete.margemPct, 50.00);
   });
 
+  runTest('3.5 Caso Real Produção: Deal 26569 (Venda=6804, Tabela=6600, Frete=600, Custo=2830.38)', () => {
+    const res = calcularMargemEDesconto({
+      valorVendaTotal: 6804.00,
+      freteEmbutido: 600.00,
+      precoTabelaTotal: 6600.00,
+      custoTotal: 2830.38
+    });
+    assert.strictEqual(res.valorLiquido, 6204.00, 'Valor líquido deve ser 6804 - 600 = 6204');
+    assert.strictEqual(res.descontoReais, 396.00, 'Desconto R$ deve ser 6600 - 6204 = 396 (600 frete - 204 ágio)');
+    assert.strictEqual(res.descontoPct, 6.00, 'Desconto % deve ser 6.00%');
+    assert.strictEqual(res.lucroBruto, 3373.62, 'Lucro bruto deve ser 6804 - 2830.38 - 600 = 3373.62');
+    assert.strictEqual(res.margemPct, 49.58, 'Margem % deve ser 49.58%');
+  });
+
   // 4. Testes de Formatação da Nota Pipedrive (Seção 9)
   runTest('4.1 formatarNotaPipedrive - AUTORIZADO', () => {
     const nota = formatarNotaPipedrive({
@@ -171,6 +185,20 @@ async function runAsyncTest(name, fn) {
     assert.strictEqual(
       nota,
       'Deal 25238 | Desconto Medio Ponderado do Pedido: 15,50% | Forma de Pagamento: 015-APPMAX | Frete Embutido: R$ 120,00 | (NAO AUTORIZADO)'
+    );
+  });
+
+  runTest('4.3 formatarNotaPipedrive - Deal 26569 com Frete Embutido R$ 600,00 e 6,00%', () => {
+    const nota = formatarNotaPipedrive({
+      dealId: 26569,
+      descontoPct: 6.00,
+      condPgtoLabel: '028-1X BOL 28 D',
+      freteEmbutido: 600.00,
+      autorizado: true
+    });
+    assert.strictEqual(
+      nota,
+      'Deal 26569 | Desconto Medio Ponderado do Pedido: 6,00% | Forma de Pagamento: 028-1X BOL 28 D | Frete Embutido: R$ 600,00 | (ok autorizado)'
     );
   });
 
