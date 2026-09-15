@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.212 (Homologada em 14/09/2026 23:25)  
+> **Versão da Documentação:** v8.213 (Homologada em 14/09/2026 23:35)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Parser Entity-Decoded SEFAZ, Matriz Sem Risco 217 e Diagnósticos Limpos)  
-> **Data da Última Auditoria:** 14/09/2026 23:25 (v8.212 - Parser XML Entidades Escapadas SEFAZ, Matriz Sem Risco Fiscal 217 e Eliminação de / OUTRO)  
+> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Resolução Rejeição 588 Envelope Compacto e Conciliação Ativa)  
+> **Data da Última Auditoria:** 14/09/2026 23:35 (v8.213 - Eliminação de Rejeição 588 por Formatação de XML, Compactação SOAP 1.2 e Conciliação Ativa)  
 
 ---
 
@@ -1431,7 +1431,9 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
         - `CANCELADA` (ERP) + `CANCELADA` (SEFAZ) ➔ `✅ CANCELAMENTO CONFIRMADO` (OK).
         - `CANCELADA` (ERP) + `NAO_CONSTA` (SEFAZ 217) ➔ `✅ SEM RISCO FISCAL (217)` (OK - nota cancelada internamente antes da transmissão sem passivo fiscal).
         - `INUTILIZADA` (ERP) + `INUTILIZADA`/`NAO_CONSTA` (SEFAZ) ➔ `✅ INUTILIZAÇÃO CONFIRMADA` (OK).
-        - Extinção total de rótulos provisórios ou combinações brutas contendo `/ OUTRO`, substituídos por diagnósticos amigáveis e auditáveis.
+    - **Eliminação da Rejeição 588 da SEFAZ & Envelope SOAP 1.2 Compacto v8.213 (`sefaz_nfe_client.js`):**
+      - Diagnóstico e resolução da **Rejeição 588** (*"Não é permitida a presença de caracteres de edição no início/fim da mensagem ou entre as tags da mensagem"*), provocada por quebras de linha (`\n`) e espaços de indentação no envelope XML.
+      - Implementação de montagem compacta em linha única estrita sem espaços entre tags (`><`), com `<soap12:Header/>` e cabeçalho `SOAPAction` oficial, restaurando o retorno legítimo de `cStat 100` (Autorizada) e `✅ CONCILIADO` para as notas ativas.
     - **Suíte de Testes Automatizados (8/8 Aprovados):**
       - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências (incluindo 217 sem risco e garantias anti-`/ OUTRO`), SOAP 1.2 / XML parser (puro e escapado), consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
 

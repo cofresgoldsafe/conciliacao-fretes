@@ -23,6 +23,7 @@ const CSTAT_MAP = {
   '110': { status: 'DENEGADA', rotulo: 'Denegada', desc: 'Uso Denegado (irregularidade cadastral)', badgeClass: 'badge-danger' },
   '135': { status: 'EVENTO_VINCULADO', rotulo: 'Evento Registrado', desc: 'Evento registrado e vinculado a NF-e', badgeClass: 'badge-info' },
   '217': { status: 'NAO_CONSTA', rotulo: 'Não Consta', desc: 'NF-e não consta na base de dados da SEFAZ', badgeClass: 'badge-secondary' },
+  '588': { status: 'ERRO_SCHEMA', rotulo: 'Erro XML (588)', desc: 'Rejeição 588: Caracteres de edição indevidos no XML', badgeClass: 'badge-warning' },
   '656': { status: 'CONSUMO_INDEVIDO', rotulo: 'Consumo Indevido', desc: 'Consumo Indevido: limite de requisições excedido temporariamente', badgeClass: 'badge-warning' }
 };
 
@@ -142,21 +143,12 @@ function obterCertificadoA1(empresaCod) {
 
 /**
  * Monta o Envelope SOAP 1.2 oficial para NFeConsultaProtocolo4
+ * ATENÇÃO: A SEFAZ exige estritamente que a mensagem não contenha caracteres de edição
+ * (quebras de linha \r\n, espaços ou tabulações entre tags), sob pena de Rejeição 588.
  */
 function montarEnvelopeSoap12(chaveNfe) {
-  const chaveLimpa = String(chaveNfe).replace(/\D/g, '').trim();
-  return `<?xml version="1.0" encoding="utf-8"?>
-<soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
-    <nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4">
-      <consSitNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
-        <tpAmb>1</tpAmb>
-        <xServ>CONSULTAR</xServ>
-        <chNFe>${chaveLimpa}</chNFe>
-      </consSitNFe>
-    </nfeDadosMsg>
-  </soap12:Body>
-</soap12:Envelope>`.trim();
+  const chaveLimpa = String(chaveNfe || '').replace(/\D/g, '').trim();
+  return `<?xml version="1.0" encoding="utf-8"?><soap12:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://www.w3.org/2003/05/soap-envelope"><soap12:Header/><soap12:Body><nfeDadosMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeConsultaProtocolo4"><consSitNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><tpAmb>1</tpAmb><xServ>CONSULTAR</xServ><chNFe>${chaveLimpa}</chNFe></consSitNFe></nfeDadosMsg></soap12:Body></soap12:Envelope>`;
 }
 
 /**
@@ -522,6 +514,17 @@ function classificarDivergencia(statusProtheus, statusSefaz) {
       tipo: 'SEM_CERTIFICADO',
       label: '⚠️ ERRO NO CERTIFICADO A1',
       tooltip: 'Certificado Digital A1 com falha de leitura, senha incorreta ou não configurado. Utilize o link do Portal da NF-e.',
+      badgeClass: 'badge-warning'
+    };
+  }
+
+  if (s === 'ERRO_SCHEMA' || s === 'CSTAT_588') {
+    return {
+      divergencia: false,
+      gravidade: 'ALERTA',
+      tipo: 'ERRO_SCHEMA',
+      label: '⚠️ ERRO FORMATAÇÃO XML (588)',
+      tooltip: 'A SEFAZ rejeitou o XML por caracteres de edição indevidos (588).',
       badgeClass: 'badge-warning'
     };
   }

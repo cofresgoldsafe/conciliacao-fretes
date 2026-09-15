@@ -201,6 +201,9 @@ async function runTests() {
     assert.ok(envelope.includes('nfe/wsdl/NFeConsultaProtocolo4'), 'Namespace deve ser do NFeConsultaProtocolo4');
     assert.ok(envelope.includes(`<chNFe>${chaveValida}</chNFe>`), 'Deve conter a chave de acesso');
     assert.ok(envelope.includes('<tpAmb>1</tpAmb>'), 'Ambiente deve ser Produção (tpAmb=1)');
+    assert.ok(!envelope.includes('\n'), 'Envelope SOAP não deve conter quebras de linha (anti-588)');
+    assert.ok(!envelope.includes('\r'), 'Envelope SOAP não deve conter retornos de carro (anti-588)');
+    assert.ok(envelope.includes('<soap12:Header/>'), 'Envelope SOAP deve conter elemento Header');
 
     const xmlRetornoPuro = `
       <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope">
