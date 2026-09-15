@@ -816,6 +816,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.FechamentoFiscalModule.init();
         }
       }
+      if (targetTab === 'tab-auditoria-protheus-sefaz') {
+        if (window.AuditoriaProtheusSefazModule && typeof window.AuditoriaProtheusSefazModule.init === 'function') {
+          window.AuditoriaProtheusSefazModule.init();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 

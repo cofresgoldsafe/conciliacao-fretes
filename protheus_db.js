@@ -4645,6 +4645,209 @@ async function consultarMovimentacoesEstoqueProtheus({
   };
 }
 
+/**
+ * Consulta de Auditoria de NF-e e Numeração Faltante (Protheus ERP)
+ * Lê SF2 (ativas e deletadas), cruza com SF3 (SPED - canceladas e inutilizadas)
+ * e detecta matematicamente saltos de numeração (gaps) na sequência oficial.
+ */
+async function consultarAuditoriaNfeProtheus({ empresa, dataDe, dataAte, serie = '1' }) {
+  const empKey = String(empresa || '14').toUpperCase();
+  const cfg = TABELAS_FECHAMENTO[empKey] || TABELAS_FECHAMENTO['14'];
+  const sf3Table = `SF3${cfg.codigo}0`;
+
+  const dtDe = formatarDataSqlFiscal(dataDe) || '20260801';
+  const dtAte = formatarDataSqlFiscal(dataAte) || '20260831';
+  const cleanSerie = sanitizeSqlParam(serie || '1');
+  const seriePadded3 = cleanSerie.padStart(3, '0');
+
+  // 1. Consulta SF2 (Saídas - incluindo canceladas com D_E_L_E_T_ = '*')
+  const sqlSF2 = `
+    SELECT 
+      RTRIM(F2.F2_DOC) AS DOC,
+      RTRIM(F2.F2_SERIE) AS SERIE,
+      RTRIM(F2.F2_EMISSAO) AS EMISSAO,
+      RTRIM(ISNULL(F2.F2_CHVNFE, '')) AS CHVNFE,
+      RTRIM(ISNULL(F2.F2_CLIENT, '')) AS CLIENTE,
+      RTRIM(ISNULL(F2.F2_LOJA, '')) AS LOJA,
+      ISNULL(F2.F2_VALBRUT, 0) AS VALOR,
+      RTRIM(ISNULL(F2.F2_STATUS, '')) AS STATUS,
+      RTRIM(ISNULL(F2.D_E_L_E_T_, '')) AS DELET,
+      ISNULL(A1.A1_NOME, '') AS NOME_CLIENTE,
+      ISNULL(A1.A1_CGC, '') AS CGC_CLIENTE
+    FROM ${cfg.sf2} F2
+    LEFT JOIN ${cfg.sa1} A1 ON A1.A1_COD = F2.F2_CLIENT AND A1.A1_LOJA = F2.F2_LOJA AND A1.D_E_L_E_T_ = ' '
+    WHERE F2.F2_EMISSAO >= '${sanitizeSqlParam(dtDe)}' AND F2.F2_EMISSAO <= '${sanitizeSqlParam(dtAte)}'
+      AND (F2.F2_SERIE = '${cleanSerie}' OR F2.F2_SERIE = '${seriePadded3}')
+    ORDER BY F2.F2_DOC ASC
+  `;
+
+  // 2. Consulta SF3 (Livros Fiscais - apenas emissões próprias F3_ESPECIE = 'SPED')
+  const sqlSF3 = `
+    SELECT 
+      RTRIM(F3.F3_NFISCAL) AS DOC,
+      RTRIM(F3.F3_SERIE) AS SERIE,
+      RTRIM(F3.F3_EMISSAO) AS EMISSAO,
+      RTRIM(ISNULL(F3.F3_DTCANC, '')) AS DTCANC,
+      RTRIM(ISNULL(F3.F3_OBSERV, '')) AS OBSERV,
+      RTRIM(ISNULL(F3.F3_CHVNFE, '')) AS CHVNFE,
+      RTRIM(ISNULL(F3.F3_CLIEFOR, '')) AS CLIENTE,
+      RTRIM(ISNULL(F3.F3_LOJA, '')) AS LOJA,
+      ISNULL(F3.F3_VALCONT, 0) AS VALOR,
+      RTRIM(ISNULL(F3.D_E_L_E_T_, '')) AS DELET
+    FROM ${sf3Table} F3
+    WHERE F3.F3_EMISSAO >= '${sanitizeSqlParam(dtDe)}' AND F3.F3_EMISSAO <= '${sanitizeSqlParam(dtAte)}'
+      AND (F3.F3_SERIE = '${cleanSerie}' OR F3.F3_SERIE = '${seriePadded3}')
+      AND F3.F3_ESPECIE = 'SPED'
+    ORDER BY F3.F3_NFISCAL ASC
+  `;
+
+  const [resSF2, resSF3] = await Promise.all([
+    executeRailwayQuery(sqlSF2),
+    executeRailwayQuery(sqlSF3)
+  ]);
+
+  const docMap = new Map();
+
+  // Ingestão de SF2
+  for (const r of (resSF2.rows || [])) {
+    const num = parseInt(r.DOC, 10);
+    if (isNaN(num)) continue;
+    const isDelet = r.DELET === '*';
+    docMap.set(num, {
+      num,
+      doc: r.DOC,
+      serie: r.SERIE || cleanSerie,
+      emissao: r.EMISSAO,
+      emissaoFormatada: formatarDataBrFiscal(r.EMISSAO),
+      chaveNfe: r.CHVNFE,
+      clienteCod: r.CLIENTE,
+      clienteNome: r.NOME_CLIENTE.trim(),
+      clienteCgc: formatarCgcFiscal(r.CGC_CLIENTE),
+      valor: Number(r.VALOR) || 0,
+      statusProtheus: isDelet ? 'CANCELADA' : 'ATIVA',
+      origem: isDelet ? 'SF2_CANCELADA' : 'SF2_ATIVA'
+    });
+  }
+
+  // Ingestão de SF3 (Livros Fiscais)
+  for (const r of (resSF3.rows || [])) {
+    const num = parseInt(r.DOC, 10);
+    if (isNaN(num)) continue;
+    const isCanc = r.DTCANC !== '' || (r.OBSERV && r.OBSERV.toUpperCase().includes('CANC'));
+    const isInut = r.OBSERV && r.OBSERV.toUpperCase().includes('INUTILIZ');
+    const statusF3 = isInut ? 'INUTILIZADA' : (isCanc ? 'CANCELADA' : 'ATIVA');
+
+    if (docMap.has(num)) {
+      const item = docMap.get(num);
+      if (isInut) item.statusProtheus = 'INUTILIZADA';
+      else if (isCanc) item.statusProtheus = 'CANCELADA';
+      if (!item.chaveNfe && r.CHVNFE) item.chaveNfe = r.CHVNFE;
+    } else {
+      docMap.set(num, {
+        num,
+        doc: r.DOC,
+        serie: r.SERIE || cleanSerie,
+        emissao: r.EMISSAO,
+        emissaoFormatada: formatarDataBrFiscal(r.EMISSAO),
+        chaveNfe: r.CHVNFE,
+        clienteCod: r.CLIENTE,
+        clienteNome: '',
+        clienteCgc: '',
+        valor: Number(r.VALOR) || 0,
+        statusProtheus: statusF3,
+        origem: 'SF3'
+      });
+    }
+  }
+
+  const nums = Array.from(docMap.keys()).sort((a, b) => a - b);
+  const itens = [];
+  let minNum = 0;
+  let maxNum = 0;
+  let countAtivas = 0;
+  let countCanceladas = 0;
+  let countInutilizadas = 0;
+  let countFaltantes = 0;
+
+  if (nums.length > 0) {
+    minNum = nums[0];
+    maxNum = nums[nums.length - 1];
+
+    // Trava de segurança para gaps excessivos (máx 2000 posições de varredura)
+    const limiteVarredura = Math.min(maxNum, minNum + 2000);
+
+    for (let n = minNum; n <= limiteVarredura; n++) {
+      if (docMap.has(n)) {
+        const item = docMap.get(n);
+        itens.push({
+          num: item.num,
+          doc: item.doc,
+          serie: item.serie,
+          emissao: item.emissao,
+          emissaoFormatada: item.emissaoFormatada,
+          chaveNfe: item.chaveNfe,
+          clienteCod: item.clienteCod,
+          clienteNome: item.clienteNome,
+          clienteCgc: item.clienteCgc,
+          valor: item.valor,
+          statusProtheus: item.statusProtheus,
+          origem: item.origem,
+          isGap: false
+        });
+        if (item.statusProtheus === 'ATIVA') countAtivas++;
+        else if (item.statusProtheus === 'CANCELADA') countCanceladas++;
+        else if (item.statusProtheus === 'INUTILIZADA') countInutilizadas++;
+      } else {
+        // Salto de Numeração (GAP)
+        countFaltantes++;
+        itens.push({
+          num: n,
+          doc: String(n).padStart(9, '0'),
+          serie: cleanSerie,
+          emissao: '',
+          emissaoFormatada: '-',
+          chaveNfe: '',
+          clienteCod: '',
+          clienteNome: 'NÚMERO NÃO EMITIDO NO PERÍODO',
+          clienteCgc: '',
+          valor: 0,
+          statusProtheus: 'FALTANTE',
+          origem: 'GAP',
+          isGap: true
+        });
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    empresa: cfg.codigo,
+    empresaNome: cfg.nome,
+    serie: cleanSerie,
+    periodo: {
+      de: dtDe,
+      ate: dtAte,
+      deFormatado: formatarDataBrFiscal(dtDe),
+      ateFormatado: formatarDataBrFiscal(dtAte)
+    },
+    faixa: {
+      min: minNum,
+      max: maxNum,
+      totalFaixa: minNum ? (maxNum - minNum + 1) : 0
+    },
+    kpis: {
+      totalFaixa: minNum ? (maxNum - minNum + 1) : 0,
+      totalRegistros: itens.length,
+      ativas: countAtivas,
+      canceladas: countCanceladas,
+      inutilizadas: countInutilizadas,
+      faltantes: countFaltantes,
+      divergencias: 0
+    },
+    itens
+  };
+}
+
 module.exports = {
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
@@ -4684,6 +4887,7 @@ module.exports = {
   // Exportações do Módulo Fechamento Fiscal
   TABELAS_FECHAMENTO,
   consultarFechamentoFiscalProtheus,
+  consultarAuditoriaNfeProtheus,
   obterHistoricoFaturamento12MesesProtheus,
   formatarDataBrFiscal,
   formatarCgcFiscal

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.200 (Homologada em 14/09/2026 18:20)  
+> **Versão da Documentação:** v8.210 (Homologada em 14/09/2026 22:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
-> **Status:** Estável / Operacional em Produção (Fechamento Fiscal: Diagnóstico Preciso de Decoder Routines, Suporte Híbrido PEM/PFX e Fluxo Oficial de Importação de Lote SP)  
-> **Data da Última Auditoria:** 14/09/2026 18:20 (v8.200 - Fechamento Fiscal: Diagnóstico Decoder Routines e Importação Lote SP)  
+> **Status:** Estável / Operacional em Produção (Auditoria Protheus x Sefaz: Detecção de Saltos/Gaps, Batimento Fiscal mTLS e Suporte Multi-Empresa Série 1)  
+> **Data da Última Auditoria:** 14/09/2026 22:30 (v8.210 - Auditoria Protheus x Sefaz com Detecção de Gaps e mTLS)  
 
 ---
 
@@ -1393,6 +1393,34 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
       - Como o portal da Nota Paulistana (`nfe.prefeitura.sp.gov.br`) disponibiliza exportação instantânea em 1 clique de todas as notas emitidas do mês em `.xml` ou `.txt`, o fluxo de ingestão pelo botão **`📂 Importar Lote SP`** constitui a solução mais rápida, estável e segura para o fechamento fiscal, gerando os registros com guarda de XML e habilitando o botão **`📦 Exportar Lote XML (.zip)`** imediatamente.
     - **Suíte de Testes Automatizados (13/13 Aprovados):**
       - Teste 12 e Teste 13 cobrindo diagnóstico de erros do OpenSSL, DECODER routines e conformidade com o script de inicialização do `package.json`.
+
+74. [x] **Sub-Aba "📑 Auditoria Protheus x Sefaz" (Analista Fin): Mapeamento Numérico Contínuo (Série 1), Detecção de Gaps/Saltos, Batimento Fiscal mTLS (SF2/SF3 x SEFAZ) e Alertas de Divergências Críticas (`sefaz_nfe_client.js`, `protheus_db.js`, `server.js`, `public/index.html`, `public/js/auditoria_protheus_sefaz.js`, `public/app.js`, `test_auditoria_protheus_sefaz.js`):**
+    - **Contexto Operacional & Causa Raiz:**
+      - No fechamento fiscal mensal das empresas (Metal Pleno 14, GSI 15 e OAÇO 16), a equipe precisava verificar manualmente notas fiscais, saltos na sequência numérica e checar se cancelamentos feitos no ERP foram devidamente homologados junto à SEFAZ.
+      - Frequentemente ocorriam cenários graves em que uma NF constava como cancelada/excluída no Protheus, mas permanecia ativa (status 100 - Autorizada) na base de dados da SEFAZ, gerando risco iminente de passivo tributário e autuação fiscal.
+    - **Mapeamento Preciso no ERP Protheus (`SF2` + `SF3`):**
+      - As NFs canceladas/excluídas no Protheus permanecem gravadas na tabela `SF2` com `D_E_L_E_T_ = '*'`. A função preserva a chave de acesso de 44 dígitos (`F2_CHVNFE`), número, destinatário e valor original.
+      - A tabela de livros fiscais `SF3` (filtrada rigorosamente por `F3_ESPECIE = 'SPED'` e Série 1) registra o rastro contábil de cancelamentos (`NF CANCELADA`) e inutilizações (`NF INUTILIZADA`), diferenciando-as de notas de terceiros (`NFE`, `CTR`, `NFS`).
+      - Algoritmo de varredura matemática contínua `[Min(Doc) .. Max(Doc)]` que identifica todos os números inteiros ausentes como **SALTO DE NUMERAÇÃO / FALTANTE** (`isGap: true`).
+    - **Integração com WebService Oficial da SEFAZ (`sefaz_nfe_client.js`):**
+      - Comunicação SOAP 1.2 com `NFeConsultaProtocolo4` da SEFAZ-SP (`nfe.fazenda.sp.gov.br/ws/nfeconsultaprotocolo4.asmx`) via HTTPS com mTLS.
+      - Suporte híbrido e fallback cruzado para certificados digitais A1 de qualquer empresa do grupo (`.pfx` ou `.pem`), pois o serviço de consulta de situação aceita autenticação de qualquer e-CNPJ ICP-Brasil válido.
+      - Parser XML nativo para `cStat`, `xMotivo`, `dhRecbto` e protocolo `nProt`.
+      - Controle anti-throttling com pausa sequencial de 150ms entre chamadas em lote, prevenindo rejeição `cStat 656` (Consumo Indevido).
+    - **Matriz de Diagnóstico e Alertas Fiscais:**
+      - 🚨 **CRÍTICA:** *Cancelada no ERP / Ativa na SEFAZ* (badge vermelho piscante).
+      - 🚨 **CRÍTICA:** *Ativa no ERP / Cancelada na SEFAZ* (badge vermelho piscante).
+      - ⚠️ **ALERTA:** *Salto de Numeração sem Inutilização* (badge âmbar).
+      - ✅ **CONCILIADO:** *Ativa em ambos, Cancelada em ambos ou Salto Inutilizado na SEFAZ* (badge verde esmeralda).
+    - **Interface do Usuário & UX:**
+      - Sub-aba `#tab-auditoria-protheus-sefaz` no menu **📑 ANALISTA FIN**.
+      - Preenchimento automático dos campos `Data De` e `Data Até` no **mês anterior completo** (1º ao último dia do mês).
+      - 6 Cards de KPIs dinâmicos no topo (Total na Faixa, Ativas, Canceladas, Inutilizadas, Saltos/Gaps e Divergências SEFAZ).
+      - Tabela com badges visuais, botão de cópia de chave de 44 dígitos 📋 com toast informativo e atalho direto para consulta pública no Portal Nacional da NF-e.
+      - Filtro rápido por status (Todas, Apenas Divergências, Apenas Canceladas, Apenas Inutilizadas, Apenas Saltos).
+      - Exportação completa em formato CSV formatado com BOM UTF-8 (`\uFEFF`) e delimitador ponto-e-vírgula (`;`) para Excel.
+    - **Suíte de Testes Automatizados (8/8 Aprovados):**
+      - Script `test_auditoria_protheus_sefaz.js` integrado ao `npm test` cobrindo cálculo de datas do mês anterior, algoritmo de detecção de gaps, matriz de classificação de divergências, SOAP 1.2 / XML parser, consulta real no banco Protheus, integridade da interface HTML/DOM, sintaxe léxica com `vm.Script` e validação preventiva de chaves curtas (100% aprovados, 21 suítes e 145+ asserções no pipeline).
 
 ### Prioridade 3 (Divida Tecnica & Manutenibilidade)
 1. [x] **Modularizacao de `public/app.js`:** Decomposição modular concluída em 8 módulos ES6 em `public/js/` com validação automatizada de integridade sintática e testes unitários.

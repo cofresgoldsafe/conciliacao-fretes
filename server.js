@@ -39,9 +39,16 @@ const {
   consultarExtratoSE5,
   algoritmoMatchingConciliacao,
   consultarFechamentoFiscalProtheus,
+  consultarAuditoriaNfeProtheus,
   obterHistoricoFaturamento12MesesProtheus,
   consultarMovimentacoesEstoqueProtheus
 } = require('./protheus_db');
+
+const {
+  consultarSituacaoNfeSefaz,
+  consultarLoteSefaz,
+  classificarDivergencia
+} = require('./sefaz_nfe_client');
 
 const {
   CONTAS_INTER,
@@ -5039,6 +5046,94 @@ app.get('/api/analista-fin/fechamento-fiscal/consolidados', requireAuth, async (
     return res.json({ ok: true, total: lista.length, itens: lista });
   } catch (err) {
     console.error('Erro ao listar fechamentos fiscais consolidados:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// MÓDULO AUDITORIA PROTHEUS X SEFAZ (ANALISTA FIN / FISCAL)
+// ============================================================================
+
+// 1. Consultar NFs e Numeração Faltante no Protheus (SF2 + SF3)
+app.get('/api/analista-fin/auditoria-protheus-sefaz/consulta', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { empresa, de, ate, serie } = req.query;
+
+    if (!empresa) {
+      return res.status(400).json({
+        ok: false,
+        error: 'O parâmetro "empresa" é obrigatório (14 = Metal Pleno, 15 = GSI, 16 = OACO).'
+      });
+    }
+
+    const resultado = await consultarAuditoriaNfeProtheus({
+      empresa,
+      dataDe: de,
+      dataAte: ate,
+      serie: serie || '1'
+    });
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'CONSULTA_AUDITORIA_NFE',
+      description: `Consultou Auditoria de NFs da empresa ${resultado.empresaNome} (${resultado.periodo.de} a ${resultado.periodo.ate}) - ${resultado.kpis.totalRegistros} notas avaliadas, ${resultado.kpis.faltantes} faltantes.`,
+      ip: req.ip,
+      metadata: { empresa, de: resultado.periodo.de, ate: resultado.periodo.ate, kpis: resultado.kpis }
+    }).catch(() => {});
+
+    return res.json(resultado);
+  } catch (err) {
+    console.error('Erro ao consultar auditoria de NFs Protheus:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. Consultar Situação na SEFAZ (individual ou em lote) e Confrontar com Protheus
+app.post('/api/analista-fin/auditoria-protheus-sefaz/consultar-sefaz', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { empresa, itens } = req.body || {};
+
+    if (!Array.isArray(itens) || itens.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'A lista de "itens" para consulta na SEFAZ deve ser informada como array.'
+      });
+    }
+
+    // Trava de segurança para lotes excessivos
+    const maxItens = 300;
+    const lote = itens.slice(0, maxItens);
+
+    const resultados = await consultarLoteSefaz(lote, empresa || '14', 150);
+
+    let countDivergencias = 0;
+    for (const r of resultados) {
+      if (r.diagnostico && r.diagnostico.divergencia) {
+        countDivergencias++;
+      }
+    }
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'CONSULTA_SEFAZ_AUDITORIA',
+      description: `Consultou situação de ${lote.length} NFs junto à SEFAZ-SP (Empresa ${empresa}). ${countDivergencias} divergências encontradas.`,
+      ip: req.ip,
+      metadata: { empresa, totalItens: lote.length, divergencias: countDivergencias }
+    }).catch(() => {});
+
+    return res.json({
+      ok: true,
+      empresa,
+      totalConsultadas: resultados.length,
+      divergencias: countDivergencias,
+      resultados
+    });
+  } catch (err) {
+    console.error('Erro ao consultar situação na SEFAZ:', err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.200">
+  <link rel="stylesheet" href="style.css?v=8.201">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 18:20 (Fechamento Fiscal: Diagnostico Preciso Decoder Routines e Suporte Oficial a Importacao de Lote SP)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 14/09/2026 22:30 (Auditoria Protheus x Sefaz: Detecção de Saltos de Numeração e Batimento Fiscal mTLS)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -243,6 +243,10 @@
         <button class="nav-tab-btn" data-tab="tab-fechamento-fiscal" id="btnTabFechamentoFiscal">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           <span>📊 Fechamento Fiscal</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-auditoria-protheus-sefaz" id="btnTabAuditoriaProtheusSefaz">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><circle cx="11" cy="14" r="3"></circle><line x1="13.5" y1="16.5" x2="16.5" y2="19.5"></line></svg>
+          <span>Auditoria Protheus x Sefaz</span>
         </button>
       </div>
 
@@ -5305,6 +5309,202 @@
 
     </div>
 
+    <!-- SUB-ABA ANALISTA FIN: Auditoria Protheus x Sefaz -->
+    <div id="tab-auditoria-protheus-sefaz" class="tab-pane hidden" style="position: relative;">
+
+      <!-- CABEÇALHO DA ABA & BARRA DE AÇÕES -->
+      <section class="card" style="margin-bottom: 1.25rem;">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(56, 189, 248, 0.12); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+              📑
+            </div>
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-color, #f8fafc);">
+                Auditoria Protheus x Sefaz (Conferência de Numeração & Situação Fiscal)
+              </h2>
+              <p class="desc" style="margin: 3px 0 0 0; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+                Conferência mensal da sequência de numeração de NF-e (Série 1), detecção de saltos/gaps e batimento de status de cancelamento e inutilização entre o TOTVS Protheus ERP (SF2/SF3) e a SEFAZ.
+              </p>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button id="btnConsultarAuditoriaSefaz" class="btn btn-outline" style="height: 38px; display: none; align-items: center; gap: 6px; border-color: #38bdf8; color: #38bdf8; font-weight: 600;" title="Consultar status oficial de todas as NFs no WebService da SEFAZ via mTLS">
+              <span>🌐 Consultar Situação SEFAZ</span>
+            </button>
+            <button id="btnExportarAuditoriaCsv" class="btn btn-outline" style="height: 38px; display: none; align-items: center; gap: 6px;" title="Exportar listagem completa com status Protheus e SEFAZ para CSV/Excel">
+              <span>📥 Exportar CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO DE SELEÇÃO E FILTROS -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.85rem; align-items: flex-end; background: rgba(15, 23, 42, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border, #334155);">
+          <div>
+            <label for="selAuditoriaEmpresa" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              🏢 Empresa *
+            </label>
+            <select id="selAuditoriaEmpresa" class="form-select" style="width: 100%; height: 38px; font-weight: 600;">
+              <option value="">-- Selecione a Empresa --</option>
+              <option value="14" selected>14 - Metal Pleno / S4BW (Simples Nacional)</option>
+              <option value="15">15 - GSI Brasil (Lucro Presumido)</option>
+              <option value="16">16 - OAÇO (Simples Nacional)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="inputAuditoriaSerie" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              🔢 Série
+            </label>
+            <input type="text" id="inputAuditoriaSerie" class="form-input" value="1" readonly style="width: 100%; height: 38px; background: rgba(30, 41, 59, 0.6); color: #94a3b8; font-weight: 600; text-align: center;" title="Série fixa em 1 conforme diretriz oficial das empresas" />
+          </div>
+
+          <div>
+            <label for="inputAuditoriaDataDe" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              📅 Data De (Mês Anterior)
+            </label>
+            <input type="date" id="inputAuditoriaDataDe" class="form-input" style="width: 100%; height: 38px;" />
+          </div>
+
+          <div>
+            <label for="inputAuditoriaDataAte" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              📅 Data Até (Mês Anterior)
+            </label>
+            <input type="date" id="inputAuditoriaDataAte" class="form-input" style="width: 100%; height: 38px;" />
+          </div>
+
+          <div>
+            <label for="selAuditoriaFiltroStatus" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #94a3b8); margin-bottom: 4px;">
+              🎯 Filtro por Situação
+            </label>
+            <select id="selAuditoriaFiltroStatus" class="form-select" style="width: 100%; height: 38px;">
+              <option value="TODOS" selected>Todas as Situações</option>
+              <option value="DIVERGENCIAS">🚨 Apenas Divergências</option>
+              <option value="CANCELADAS">🔴 Canceladas no Protheus</option>
+              <option value="INUTILIZADAS">⚪ Inutilizadas no Protheus</option>
+              <option value="FALTANTES">⚠️ Saltos de Numeração (Gaps)</option>
+              <option value="ATIVAS">🟢 Ativas no Protheus</option>
+            </select>
+          </div>
+
+          <div>
+            <button id="btnCarregarAuditoriaProtheus" class="btn btn-primary" style="width: 100%; height: 38px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;">
+              <span>🔍</span>
+              <span>Carregar NFs Protheus</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- BARRA DE PROGRESSO DA CONSULTA SEFAZ -->
+      <div id="boxProgressoSefaz" class="card" style="display: none; margin-bottom: 1.25rem; background: rgba(15, 23, 42, 0.6); border: 1px solid #38bdf8; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 0.85rem; font-weight: 600; color: #38bdf8;">📡 Comunicação com WebService SEFAZ-SP (NFeConsultaProtocolo4)</span>
+          <span id="lblProgressoSefaz" style="font-size: 0.85rem; color: #cbd5e1;">Consultando...</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: rgba(51, 65, 85, 0.5); border-radius: 4px; overflow: hidden;">
+          <div id="barraProgressoSefaz" style="width: 0%; height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- PLACEHOLDER INICIAL -->
+      <div id="auditoriaPlaceholder" class="card" style="text-align: center; padding: 3rem 1.5rem; margin-bottom: 1.5rem; background: rgba(15, 23, 42, 0.3); border: 1px dashed var(--panel-border, #334155);">
+        <div style="font-size: 3rem; margin-bottom: 0.75rem;">📑</div>
+        <h3 style="font-size: 1.15rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.5rem;">
+          Nenhuma consulta realizada
+        </h3>
+        <p style="color: var(--text-muted, #94a3b8); font-size: 0.88rem; max-width: 580px; margin: 0 auto;">
+          Selecione a empresa e clique em <strong>"Carregar NFs Protheus"</strong> para mapear a sequência contínua de NFs, identificar saltos de numeração e conferir cancelamentos e inutilizações.
+        </p>
+      </div>
+
+      <!-- LOADING STATE -->
+      <div id="auditoriaLoading" class="card" style="display: none; text-align: center; padding: 3.5rem 1.5rem; margin-bottom: 1.5rem;">
+        <div class="spinner" style="margin: 0 auto 1rem auto; width: 36px; height: 36px; border: 3px solid rgba(56, 189, 248, 0.2); border-top-color: #38bdf8; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+        <p style="color: #cbd5e1; font-weight: 600; font-size: 0.95rem; margin: 0;">Consultando banco de dados Protheus ERP (SF2 e SF3)...</p>
+        <p style="color: var(--text-muted, #94a3b8); font-size: 0.8rem; margin: 4px 0 0 0;">Analisando sequência numérica contínua e identificando saltos.</p>
+      </div>
+
+      <!-- RESULTADOS E CARDS DE KPIS -->
+      <div id="auditoriaResultados" style="display: none;">
+
+        <!-- GRADE DE KPIS DE CONFERÊNCIA -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+          <div class="card" style="padding: 1rem; border-left: 4px solid #38bdf8; background: rgba(15, 23, 42, 0.4);">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Total na Faixa</div>
+            <div id="kpiAuditoriaTotalFaixa" style="font-size: 1.6rem; font-weight: 700; color: #f8fafc; margin-top: 4px;">0</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">Números avaliados</div>
+          </div>
+
+          <div class="card" style="padding: 1rem; border-left: 4px solid #10b981; background: rgba(15, 23, 42, 0.4);">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Ativas no Protheus</div>
+            <div id="kpiAuditoriaAtivas" style="font-size: 1.6rem; font-weight: 700; color: #10b981; margin-top: 4px;">0</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">Documentos válidos</div>
+          </div>
+
+          <div class="card" style="padding: 1rem; border-left: 4px solid #f43f5e; background: rgba(15, 23, 42, 0.4);">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Canceladas Protheus</div>
+            <div id="kpiAuditoriaCanceladas" style="font-size: 1.6rem; font-weight: 700; color: #f43f5e; margin-top: 4px;">0</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">SF2 deletada / SF3 canc</div>
+          </div>
+
+          <div class="card" style="padding: 1rem; border-left: 4px solid #f59e0b; background: rgba(15, 23, 42, 0.4);">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Inutilizadas Protheus</div>
+            <div id="kpiAuditoriaInutilizadas" style="font-size: 1.6rem; font-weight: 700; color: #f59e0b; margin-top: 4px;">0</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">SF3 Inutilizada</div>
+          </div>
+
+          <div class="card" style="padding: 1rem; border-left: 4px solid #ef4444; background: rgba(15, 23, 42, 0.4);">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Saltos / Faltantes</div>
+            <div id="kpiAuditoriaFaltantes" style="font-size: 1.6rem; font-weight: 700; color: #ef4444; margin-top: 4px;">0</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">Gaps na sequência</div>
+          </div>
+
+          <div id="cardKpiAuditoriaDivergencias" class="card" style="padding: 1rem; border-left: 4px solid #94a3b8; background: rgba(15, 23, 42, 0.4); transition: all 0.3s ease;">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted, #94a3b8); text-transform: uppercase;">Divergências SEFAZ</div>
+            <div id="kpiAuditoriaDivergencias" style="font-size: 1.6rem; font-weight: 700; color: #cbd5e1; margin-top: 4px;">0</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 2px;">Status discordante</div>
+          </div>
+        </div>
+
+        <!-- BARRA DE BUSCA E CONTADOR -->
+        <div class="card" style="margin-bottom: 1.25rem; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="flex: 1; min-width: 260px; max-width: 480px;">
+            <input type="text" id="inputAuditoriaBusca" class="form-input" placeholder="🔍 Filtrar por número da NF, cliente ou chave de acesso..." style="width: 100%; height: 36px; font-size: 0.85rem;" />
+          </div>
+          <div style="font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+            Exibindo: <strong id="auditoriaTableCount" style="color: #f8fafc;">0 notas</strong>
+          </div>
+        </div>
+
+        <!-- TABELA DE RESULTADOS -->
+        <div class="card" style="padding: 0; overflow: hidden;">
+          <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+            <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+              <thead>
+                <tr style="background: rgba(15, 23, 42, 0.95); position: sticky; top: 0; z-index: 5; border-bottom: 2px solid var(--panel-border, #334155);">
+                  <th style="padding: 10px; text-align: center; width: 75px;">Empresa</th>
+                  <th style="padding: 10px; text-align: left; width: 110px;">Número NF</th>
+                  <th style="padding: 10px; text-align: center; width: 90px;">Emissão</th>
+                  <th style="padding: 10px; text-align: left; min-width: 220px;">Cliente / Destinatário</th>
+                  <th style="padding: 10px; text-align: right; width: 115px;">Valor Total</th>
+                  <th style="padding: 10px; text-align: center; width: 120px;">Status Protheus</th>
+                  <th style="padding: 10px; text-align: center; width: 140px;">Status SEFAZ</th>
+                  <th style="padding: 10px; text-align: center; min-width: 180px;">Diagnóstico / Batimento</th>
+                  <th style="padding: 10px; text-align: left; width: 190px;">Chave de Acesso</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAuditoriaProtheusSefaz">
+                <!-- Linhas geradas dinamicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
     <!-- ABA 1 BI: Índices Financeiros de Liquidez -->
     <div id="tab-bi-indices" class="tab-pane hidden">
       <div class="bi-wrapper" id="biIndicesWrapper">
@@ -8094,20 +8294,21 @@
     </div>
   </div>
 
-  <script src="js/bi.js?v=8.200"></script>
-  <script src="js/bi_indices.js?v=8.200"></script>
-  <script src="js/bi_autorizacoes.js?v=8.200"></script>
-  <script src="js/gordura_frete.js?v=8.200"></script>
-  <script src="js/fechamento_vendedores.js?v=8.200"></script>
-  <script type="module" src="js/tarefas.js?v=8.200"></script>
-  <script src="js/holerites.js?v=8.200"></script>
-  <script src="js/funcionarios_dp.js?v=8.200"></script>
-  <script src="js/crm.js?v=8.200"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.200"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.200"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.200"></script>
-  <script src="js/nfse_pendentes.js?v=8.200"></script>
-  <script src="js/fechamento_fiscal.js?v=8.200"></script>
-  <script src="app.js?v=8.200"></script>
+  <script src="js/bi.js?v=8.201"></script>
+  <script src="js/bi_indices.js?v=8.201"></script>
+  <script src="js/bi_autorizacoes.js?v=8.201"></script>
+  <script src="js/gordura_frete.js?v=8.201"></script>
+  <script src="js/fechamento_vendedores.js?v=8.201"></script>
+  <script type="module" src="js/tarefas.js?v=8.201"></script>
+  <script src="js/holerites.js?v=8.201"></script>
+  <script src="js/funcionarios_dp.js?v=8.201"></script>
+  <script src="js/crm.js?v=8.201"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.201"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.201"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.201"></script>
+  <script src="js/nfse_pendentes.js?v=8.201"></script>
+  <script src="js/fechamento_fiscal.js?v=8.201"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.201"></script>
+  <script src="app.js?v=8.201"></script>
 </body>
 </html>
