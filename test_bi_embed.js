@@ -313,21 +313,21 @@ async function runTests() {
       assert.ok(htmlContent.includes('<script src="js/bi.js?v='), 'Deve importar js/bi.js com parâmetro de versão');
     });
 
-    runAssertion('5.4 Toolbar do Metabase inclui botões de sincronização (btnBiSyncFaturamento, btnBiSyncIndices, btnBiOpenExternal) e barra de telemetria', () => {
+    runAssertion('5.4 Toolbar do Metabase inclui botões de sincronização (btnBiSyncFaturamento, btnBiSyncIndices) e barra de telemetria sem btnBiOpenExternal', () => {
       const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
       assert.ok(htmlContent.includes('id="btnBiSyncFaturamento"'), 'Deve conter #btnBiSyncFaturamento');
       assert.ok(htmlContent.includes('id="btnBiSyncIndices"'), 'Deve conter #btnBiSyncIndices');
-      assert.ok(htmlContent.includes('id="btnBiOpenExternal"'), 'Deve conter #btnBiOpenExternal');
+      assert.ok(!htmlContent.includes('id="btnBiOpenExternal"'), 'Não deve conter #btnBiOpenExternal (botão removido)');
       assert.ok(htmlContent.includes('id="biTelemetryBar"'), 'Deve conter #biTelemetryBar');
       assert.ok(htmlContent.includes('id="biTelFaturamento"'), 'Deve conter #biTelFaturamento');
       assert.ok(htmlContent.includes('id="biTelIndices"'), 'Deve conter #biTelIndices');
     });
 
-    runAssertion('5.5 public/index.html e public/js/bi.js incluem seletor e indicador dinâmico de Dashboard ID', () => {
+    runAssertion('5.5 public/index.html não expõe seletor legado de Dashboard ID e public/js/bi.js mantém compatibilidade de métodos', () => {
       const htmlContent = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
       const biJsContent = fs.readFileSync(path.join(__dirname, 'public', 'js', 'bi.js'), 'utf8');
-      assert.ok(htmlContent.includes('id="btnBiChangeDashboardId"'), 'Deve conter #btnBiChangeDashboardId');
-      assert.ok(htmlContent.includes('id="biTelDashboardId"'), 'Deve conter #biTelDashboardId');
+      assert.ok(!htmlContent.includes('id="btnBiChangeDashboardId"'), 'Não deve conter #btnBiChangeDashboardId na barra de telemetria');
+      assert.ok(!htmlContent.includes('id="biTelDashboardId"'), 'Não deve conter #biTelDashboardId');
       assert.ok(biJsContent.includes('getActiveDashboardId'), 'Deve implementar getActiveDashboardId');
       assert.ok(biJsContent.includes('setActiveDashboardId'), 'Deve implementar setActiveDashboardId');
       assert.ok(biJsContent.includes('window.getActiveBIDashboardId'), 'Deve exportar getActiveBIDashboardId');

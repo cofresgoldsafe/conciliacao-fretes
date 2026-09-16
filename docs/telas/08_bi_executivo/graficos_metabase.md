@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-metabase` | **Botão:** `#btnTabBiMetabase`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 15/09/2026 (v8.221 - Homologado)  
+> **Última Atualização:** 16/09/2026 (v8.223 - Homologado)  
 
 ---
 
@@ -61,6 +61,7 @@ node test_bi_indices.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.223 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" (`#btnBiOpenExternal`) e do seletor legado de Dashboard ID (`#btnBiChangeDashboardId`), simplificando a interface executiva e consolidando a barra de telemetria em dados 100% nativos.
 - **v8.221 (15/09/2026):** Implementação do 2º gráfico executivo de tendência de Ativo Circulante Seco (Caixa + Receber) em layout empilhado, com cards analíticos de KPI, detector inteligente de baixa acentuada e orientações práticas de promoções comerciais.
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.
 

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.221 (Homologada em 15/09/2026 17:42)  
+> **Versão da Documentação:** v8.223 (Homologada em 16/09/2026 09:32)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 15/09/2026 17:42 (v8.221 - Segundo gráfico de Ativo Circulante Seco e detector de baixa acentuada no BI Executivo)  
+> **Data da Última Auditoria:** 16/09/2026 09:32 (v8.223 - Remoção do botão Abrir Metabase e seletor legado de Dashboard ID no BI Executivo)  
 
 ---
 
@@ -171,6 +171,8 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.223 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" e do seletor legado de Dashboard ID na tela de Gráficos & Tendências, simplificando a barra de telemetria em dados 100% nativos.
+- **v8.222 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" na tela de Gráficos & Tendências e otimização de telemetria.
 - **v8.221 (15/09/2026):** Segundo gráfico executivo: Monitor de Ativo Circulante Seco (Caixa + Receber) em layout empilhado com detector de baixa acentuada e recomendações comerciais.
 - **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.
 - **v8.219 (15/09/2026):** Auditoria Protheus x SEFAZ com distincao de CC-e (`tpEvento 110110`) vs Inutilizacao (`cStat 102`), badge visual e conciliacao de batimento.

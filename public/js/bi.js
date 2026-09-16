@@ -1105,14 +1105,16 @@
         }
       }
 
-      // 3. Status e URL do Metabase
-      const resStat = await fetch(`/api/bi/status?_t=${Date.now()}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (resStat.ok) {
-        const dataStat = await resStat.json();
-        if (btnOpen && dataStat.siteUrl) {
-          btnOpen.href = dataStat.siteUrl;
+      // 3. Status e URL do Metabase (caso botão externo esteja presente)
+      if (btnOpen) {
+        const resStat = await fetch(`/api/bi/status?_t=${Date.now()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (resStat.ok) {
+          const dataStat = await resStat.json();
+          if (dataStat.siteUrl) {
+            btnOpen.href = dataStat.siteUrl;
+          }
         }
       }
     } catch (e) {
