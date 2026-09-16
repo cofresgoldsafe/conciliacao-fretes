@@ -941,23 +941,77 @@
   }
 
   /**
+   * Notificação visual flutuante dedicada para ações de exportação XML
+   */
+  function notificarExportarXml(msg, tipo = 'warning') {
+    let toast = document.getElementById('toastAvisoFechamentoXml');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toastAvisoFechamentoXml';
+      toast.style.cssText = 'position: fixed; top: 24px; right: 24px; z-index: 10000; padding: 12px 18px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5); font-weight: 600; font-size: 0.9rem; transition: opacity 0.3s ease; display: flex; align-items: center; gap: 8px;';
+      document.body.appendChild(toast);
+    }
+    if (tipo === 'warning') {
+      toast.style.background = '#78350f';
+      toast.style.color = '#fef3c7';
+      toast.style.border = '1px solid #f59e0b';
+      toast.innerHTML = `<span>⚠️</span> <span>${msg}</span>`;
+    } else if (tipo === 'error') {
+      toast.style.background = '#881337';
+      toast.style.color = '#fff1f2';
+      toast.style.border = '1px solid #f43f5e';
+      toast.innerHTML = `<span>❌</span> <span>${msg}</span>`;
+    } else {
+      toast.style.background = '#065f46';
+      toast.style.color = '#ecfdf5';
+      toast.style.border = '1px solid #10b981';
+      toast.innerHTML = `<span>✅</span> <span>${msg}</span>`;
+    }
+    toast.style.opacity = '1';
+    toast.style.display = 'flex';
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => { if (toast) toast.style.display = 'none'; }, 300);
+    }, 4500);
+
+    notificar(msg, tipo);
+  }
+
+  /**
    * Abre o modal de confirmação para exportação de XMLs da SEFAZ
    */
   function abrirModalExportarXml() {
-    if (!modalExportarXml) return;
+    if (!modalExportarXml) {
+      modalExportarXml = document.getElementById('modalExportarXmlNfe');
+    }
+    if (!modalExportarXml) {
+      console.error('Modal #modalExportarXmlNfe não encontrado no DOM.');
+      return;
+    }
 
-    // Obtém as notas fiscais mercantis (SPED / NFE) da listagem filtrada
-    const itens = (estadoFechamento.itensFiltrados || []).filter(item => {
+    // Obtém as notas fiscais mercantis (SPED / NFE) da listagem filtrada ou atual
+    const todosItens = (estadoFechamento && Array.isArray(estadoFechamento.itensFiltrados) && estadoFechamento.itensFiltrados.length > 0)
+      ? estadoFechamento.itensFiltrados
+      : ((estadoFechamento && estadoFechamento.dadosAtuais && Array.isArray(estadoFechamento.dadosAtuais.itens)) ? estadoFechamento.dadosAtuais.itens : []);
+
+    const itens = todosItens.filter(item => {
       const doc = (item.tipoDoc || '').toUpperCase();
       return doc === 'SPED' || doc === 'NFE' || doc === 'NF-E';
     });
 
     if (itens.length === 0) {
-      notificar('Nenhuma nota fiscal mercantil (SPED / NFE) localizada na listagem atual.', 'warning');
+      notificarExportarXml('Nenhuma nota fiscal mercantil (SPED / NFE) carregada na listagem. Por favor, clique em "Filtrar Documentos" antes de exportar.', 'warning');
       return;
     }
 
-    const empNome = selEmpresa ? selEmpresa.options[selEmpresa.selectedIndex].text : 'Empresa';
+    if (!modalXmlEmpresaNome) modalXmlEmpresaNome = document.getElementById('modalXmlEmpresaNome');
+    if (!modalXmlPeriodo) modalXmlPeriodo = document.getElementById('modalXmlPeriodo');
+    if (!modalXmlQtdNotas) modalXmlQtdNotas = document.getElementById('modalXmlQtdNotas');
+    if (!modalXmlProgressoContainer) modalXmlProgressoContainer = document.getElementById('modalXmlProgressoContainer');
+    if (!modalXmlMensagem) modalXmlMensagem = document.getElementById('modalXmlMensagem');
+    if (!btnConfirmarExportarXml) btnConfirmarExportarXml = document.getElementById('btnConfirmarExportarXml');
+
+    const empNome = selEmpresa && selEmpresa.selectedIndex >= 0 ? selEmpresa.options[selEmpresa.selectedIndex].text : 'Empresa';
     const dtDe = inputDataDe ? inputDataDe.value : '';
     const dtAte = inputDataAte ? inputDataAte.value : '';
 
@@ -979,6 +1033,7 @@
       if (tx) tx.textContent = 'Gerar e Baixar .zip';
     }
 
+    modalExportarXml.classList.remove('hidden');
     modalExportarXml.style.display = 'flex';
   }
 
@@ -986,7 +1041,11 @@
    * Fecha o modal de exportação de XMLs
    */
   function fecharModalExportarXml() {
+    if (!modalExportarXml) {
+      modalExportarXml = document.getElementById('modalExportarXmlNfe');
+    }
     if (!modalExportarXml) return;
+    modalExportarXml.classList.add('hidden');
     modalExportarXml.style.display = 'none';
   }
 
@@ -994,13 +1053,17 @@
    * Executa a chamada à API para obter XMLs da SEFAZ e disparar download do .zip
    */
   async function executarExportacaoXmlSefaz() {
-    const itens = (estadoFechamento.itensFiltrados || []).filter(item => {
+    const todosItens = (estadoFechamento && Array.isArray(estadoFechamento.itensFiltrados) && estadoFechamento.itensFiltrados.length > 0)
+      ? estadoFechamento.itensFiltrados
+      : ((estadoFechamento && estadoFechamento.dadosAtuais && Array.isArray(estadoFechamento.dadosAtuais.itens)) ? estadoFechamento.dadosAtuais.itens : []);
+
+    const itens = todosItens.filter(item => {
       const doc = (item.tipoDoc || '').toUpperCase();
       return doc === 'SPED' || doc === 'NFE' || doc === 'NF-E';
     });
 
     if (itens.length === 0) {
-      notificar('Nenhuma nota fiscal selecionada para exportação.', 'warning');
+      notificarExportarXml('Nenhuma nota fiscal selecionada para exportação.', 'warning');
       return;
     }
 

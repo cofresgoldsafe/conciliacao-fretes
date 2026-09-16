@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.225">
+  <link rel="stylesheet" href="style.css?v=8.226">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 16/09/2026 11:57 (Exportação em lote de XMLs de NF-e (.zip) via SEFAZ no Fechamento Fiscal (filtro SPED & NFE))</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 16/09/2026 12:49 (Correção de exibição do modal e acionamento de exportação de XMLs no Fechamento Fiscal)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -5246,6 +5246,7 @@
                 type="button" 
                 id="btnExportarXmlFechamento" 
                 class="btn btn-secondary btn-sm" 
+                onclick="if(window.FechamentoFiscalModule && typeof window.FechamentoFiscalModule.abrirModalExportarXml === 'function') window.FechamentoFiscalModule.abrirModalExportarXml();"
                 style="display: none; height: 38px; padding: 0 10px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; gap: 5px; align-items: center; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); color: #a5b4fc; border-radius: 6px; cursor: pointer;"
                 title="Exportar pacote .zip com os XMLs de todas as NFs da listagem via SEFAZ"
               >
@@ -5321,7 +5322,7 @@
       </div>
 
       <!-- MODAL DE EXPORTAÇÃO EM LOTE DE XMLS DE NF-E (SEFAZ) -->
-      <div id="modalExportarXmlNfe" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+      <div id="modalExportarXmlNfe" class="modal-overlay" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
         <div class="card" style="width: 95%; max-width: 520px; background: var(--panel-bg, #1e293b); border: 1px solid var(--panel-border, #334155); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); padding: 1.5rem; position: relative;">
           
           <!-- Cabeçalho do Modal -->
@@ -5337,7 +5338,7 @@
                 </p>
               </div>
             </div>
-            <button id="btnFecharModalExportarXml" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.85rem; border-radius: 6px; cursor: pointer;">✕</button>
+            <button id="btnFecharModalExportarXml" class="btn btn-outline" onclick="if(window.FechamentoFiscalModule && typeof window.FechamentoFiscalModule.fecharModalExportarXml === 'function') window.FechamentoFiscalModule.fecharModalExportarXml();" style="padding: 4px 10px; font-size: 0.85rem; border-radius: 6px; cursor: pointer;">✕</button>
           </div>
 
           <!-- Resumo da Seleção -->
@@ -5393,10 +5394,10 @@
 
           <!-- Rodapé de Ações -->
           <div style="display: flex; justify-content: flex-end; gap: 0.65rem; border-top: 1px solid var(--panel-border, #334155); padding-top: 1rem;">
-            <button id="btnCancelarExportarXml" type="button" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">
+            <button id="btnCancelarExportarXml" type="button" class="btn btn-secondary" onclick="if(window.FechamentoFiscalModule && typeof window.FechamentoFiscalModule.fecharModalExportarXml === 'function') window.FechamentoFiscalModule.fecharModalExportarXml();" style="padding: 6px 14px; font-size: 0.85rem;">
               Cancelar
             </button>
-            <button id="btnConfirmarExportarXml" type="button" class="btn btn-primary" style="padding: 6px 16px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #6366f1; border-color: #6366f1;">
+            <button id="btnConfirmarExportarXml" type="button" class="btn btn-primary" onclick="if(window.FechamentoFiscalModule && typeof window.FechamentoFiscalModule.executarExportacaoXmlSefaz === 'function') window.FechamentoFiscalModule.executarExportacaoXmlSefaz();" style="padding: 6px 16px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #6366f1; border-color: #6366f1;">
               <span id="btnConfirmarExportarXmlIcon">📥</span>
               <span id="btnConfirmarExportarXmlTexto">Gerar e Baixar .zip</span>
             </button>
@@ -8574,22 +8575,22 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.225"></script>
-  <script src="js/bi.js?v=8.225"></script>
-  <script src="js/bi_indices.js?v=8.225"></script>
-  <script src="js/bi_autorizacoes.js?v=8.225"></script>
-  <script src="js/gordura_frete.js?v=8.225"></script>
-  <script src="js/fechamento_vendedores.js?v=8.225"></script>
-  <script type="module" src="js/tarefas.js?v=8.225"></script>
-  <script src="js/holerites.js?v=8.225"></script>
-  <script src="js/funcionarios_dp.js?v=8.225"></script>
-  <script src="js/crm.js?v=8.225"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.225"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.225"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.225"></script>
-  <script src="js/nfse_pendentes.js?v=8.225"></script>
-  <script src="js/fechamento_fiscal.js?v=8.225"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.225"></script>
-  <script src="app.js?v=8.225"></script>
+  <script src="js/chart.umd.min.js?v=8.226"></script>
+  <script src="js/bi.js?v=8.226"></script>
+  <script src="js/bi_indices.js?v=8.226"></script>
+  <script src="js/bi_autorizacoes.js?v=8.226"></script>
+  <script src="js/gordura_frete.js?v=8.226"></script>
+  <script src="js/fechamento_vendedores.js?v=8.226"></script>
+  <script type="module" src="js/tarefas.js?v=8.226"></script>
+  <script src="js/holerites.js?v=8.226"></script>
+  <script src="js/funcionarios_dp.js?v=8.226"></script>
+  <script src="js/crm.js?v=8.226"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.226"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.226"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.226"></script>
+  <script src="js/nfse_pendentes.js?v=8.226"></script>
+  <script src="js/fechamento_fiscal.js?v=8.226"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.226"></script>
+  <script src="app.js?v=8.226"></script>
 </body>
 </html>
