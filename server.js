@@ -5050,6 +5050,59 @@ app.get('/api/analista-fin/fechamento-fiscal/consolidados', requireAuth, async (
   }
 });
 
+// 5. Exportar Lote de XMLs de NF-e (.zip) via SEFAZ
+app.post('/api/analista-fin/fechamento-fiscal/exportar-xml-sefaz', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const { empresa, itens, passphrase } = req.body || {};
+
+    if (!empresa) {
+      return res.status(400).json({ ok: false, error: 'O código da empresa é obrigatório.' });
+    }
+
+    if (!Array.isArray(itens) || itens.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Nenhuma nota fiscal foi informada para exportação.' });
+    }
+
+    const { processarLoteXmlNfeZip } = require('./exportador_xml_sefaz');
+    const resultado = await processarLoteXmlNfeZip({
+      empresa,
+      itens,
+      passphrase: passphrase || ''
+    });
+
+    if (!resultado.sucesso) {
+      return res.status(422).json({
+        ok: false,
+        error: resultado.erro || 'Não foi possível obter os XMLs na SEFAZ para as notas informadas.',
+        falhas: resultado.falhas
+      });
+    }
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'EXPORTAR_XML_FECHAMENTO_SEFAZ',
+      description: `Exportou ${resultado.totalObtidos} XMLs de NF-e da empresa ${empresa} (.zip) via SEFAZ.`,
+      ip: req.ip,
+      metadata: { empresa, totalItens: resultado.totalItens, obtidos: resultado.totalObtidos, cache: resultado.totalCache, sefaz: resultado.totalSefaz }
+    }).catch(() => {});
+
+    const hoje = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="NFE_XML_EMP${empresa}_${hoje}.zip"`);
+    res.setHeader('Content-Length', resultado.zipBuffer.length);
+    res.setHeader('X-Total-Obtidos', String(resultado.totalObtidos));
+    res.setHeader('X-Total-Cache', String(resultado.totalCache));
+    res.setHeader('X-Total-Sefaz', String(resultado.totalSefaz));
+
+    return res.send(resultado.zipBuffer);
+  } catch (err) {
+    console.error('Erro ao exportar XMLs de NF-e da SEFAZ:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ============================================================================
 // MÓDULO AUDITORIA PROTHEUS X SEFAZ (ANALISTA FIN / FISCAL)
 // ============================================================================

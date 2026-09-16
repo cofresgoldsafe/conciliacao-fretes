@@ -48,6 +48,22 @@
   let tbody12m = null;
   let kpiRbt12 = null;
 
+  let btnExportarXmlNfe = null;
+  let modalExportarXml = null;
+  let btnFecharModalExportarXml = null;
+  let btnCancelarExportarXml = null;
+  let btnConfirmarExportarXml = null;
+  let modalXmlEmpresaNome = null;
+  let modalXmlPeriodo = null;
+  let modalXmlQtdNotas = null;
+  let inputSenhaCertificadoModalXml = null;
+  let modalXmlProgressoContainer = null;
+  let modalXmlProgressoTexto = null;
+  let modalXmlProgressoPerc = null;
+  let modalXmlProgressoBarra = null;
+  let modalXmlProgressoDetalhe = null;
+  let modalXmlMensagem = null;
+
   // Formatador Monetário Brasileiro
   const formatadorMoeda = new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -213,7 +229,40 @@
       selFiltroTipo.addEventListener('change', filtrarItensTabela);
     }
     if (selFiltroDoc) {
-      selFiltroDoc.addEventListener('change', filtrarItensTabela);
+      selFiltroDoc.addEventListener('change', () => {
+        filtrarItensTabela();
+        atualizarVisibilidadeBotaoExportarXml();
+      });
+    }
+
+    // Modal e Ações de Exportação de XMLs da SEFAZ
+    btnExportarXmlNfe = document.getElementById('btnExportarXmlFechamento');
+    modalExportarXml = document.getElementById('modalExportarXmlNfe');
+    btnFecharModalExportarXml = document.getElementById('btnFecharModalExportarXml');
+    btnCancelarExportarXml = document.getElementById('btnCancelarExportarXml');
+    btnConfirmarExportarXml = document.getElementById('btnConfirmarExportarXml');
+    modalXmlEmpresaNome = document.getElementById('modalXmlEmpresaNome');
+    modalXmlPeriodo = document.getElementById('modalXmlPeriodo');
+    modalXmlQtdNotas = document.getElementById('modalXmlQtdNotas');
+    inputSenhaCertificadoModalXml = document.getElementById('inputSenhaCertificadoModalXml');
+    modalXmlProgressoContainer = document.getElementById('modalXmlProgressoContainer');
+    modalXmlProgressoTexto = document.getElementById('modalXmlProgressoTexto');
+    modalXmlProgressoPerc = document.getElementById('modalXmlProgressoPerc');
+    modalXmlProgressoBarra = document.getElementById('modalXmlProgressoBarra');
+    modalXmlProgressoDetalhe = document.getElementById('modalXmlProgressoDetalhe');
+    modalXmlMensagem = document.getElementById('modalXmlMensagem');
+
+    if (btnExportarXmlNfe) {
+      btnExportarXmlNfe.addEventListener('click', abrirModalExportarXml);
+    }
+    if (btnFecharModalExportarXml) {
+      btnFecharModalExportarXml.addEventListener('click', fecharModalExportarXml);
+    }
+    if (btnCancelarExportarXml) {
+      btnCancelarExportarXml.addEventListener('click', fecharModalExportarXml);
+    }
+    if (btnConfirmarExportarXml) {
+      btnConfirmarExportarXml.addEventListener('click', executarExportacaoXmlSefaz);
     }
 
     if (btnToggle12m) {
@@ -310,6 +359,7 @@
       if (resultados) resultados.style.display = 'block';
 
       atualizarVisibilidadeBotoesGsi();
+      atualizarVisibilidadeBotaoExportarXml();
 
       notificar(`Apuração fiscal concluída: ${resFechamento.totalItens} notas processadas com sucesso!`, 'success');
     } catch (err) {
@@ -881,6 +931,169 @@
     }
   }
 
+  /**
+   * Atualiza a visibilidade do botão 'Exportar XML' quando o filtro for 'SPED_NFE'
+   */
+  function atualizarVisibilidadeBotaoExportarXml() {
+    if (!btnExportarXmlNfe || !selFiltroDoc) return;
+    const isSpedNfe = selFiltroDoc.value === 'SPED_NFE' || selFiltroDoc.value === 'SPED & NFE';
+    btnExportarXmlNfe.style.display = isSpedNfe ? 'inline-flex' : 'none';
+  }
+
+  /**
+   * Abre o modal de confirmação para exportação de XMLs da SEFAZ
+   */
+  function abrirModalExportarXml() {
+    if (!modalExportarXml) return;
+
+    // Obtém as notas fiscais mercantis (SPED / NFE) da listagem filtrada
+    const itens = (estadoFechamento.itensFiltrados || []).filter(item => {
+      const doc = (item.tipoDoc || '').toUpperCase();
+      return doc === 'SPED' || doc === 'NFE' || doc === 'NF-E';
+    });
+
+    if (itens.length === 0) {
+      notificar('Nenhuma nota fiscal mercantil (SPED / NFE) localizada na listagem atual.', 'warning');
+      return;
+    }
+
+    const empNome = selEmpresa ? selEmpresa.options[selEmpresa.selectedIndex].text : 'Empresa';
+    const dtDe = inputDataDe ? inputDataDe.value : '';
+    const dtAte = inputDataAte ? inputDataAte.value : '';
+
+    if (modalXmlEmpresaNome) modalXmlEmpresaNome.textContent = empNome;
+    if (modalXmlPeriodo) modalXmlPeriodo.textContent = `${dtDe} a ${dtAte}`;
+    if (modalXmlQtdNotas) modalXmlQtdNotas.textContent = `${itens.length} notas fiscais`;
+
+    // Reseta estado visual do modal
+    if (modalXmlProgressoContainer) modalXmlProgressoContainer.style.display = 'none';
+    if (modalXmlMensagem) {
+      modalXmlMensagem.style.display = 'none';
+      modalXmlMensagem.textContent = '';
+    }
+    if (btnConfirmarExportarXml) {
+      btnConfirmarExportarXml.disabled = false;
+      const ic = document.getElementById('btnConfirmarExportarXmlIcon');
+      const tx = document.getElementById('btnConfirmarExportarXmlTexto');
+      if (ic) ic.textContent = '📥';
+      if (tx) tx.textContent = 'Gerar e Baixar .zip';
+    }
+
+    modalExportarXml.style.display = 'flex';
+  }
+
+  /**
+   * Fecha o modal de exportação de XMLs
+   */
+  function fecharModalExportarXml() {
+    if (!modalExportarXml) return;
+    modalExportarXml.style.display = 'none';
+  }
+
+  /**
+   * Executa a chamada à API para obter XMLs da SEFAZ e disparar download do .zip
+   */
+  async function executarExportacaoXmlSefaz() {
+    const itens = (estadoFechamento.itensFiltrados || []).filter(item => {
+      const doc = (item.tipoDoc || '').toUpperCase();
+      return doc === 'SPED' || doc === 'NFE' || doc === 'NF-E';
+    });
+
+    if (itens.length === 0) {
+      notificar('Nenhuma nota fiscal selecionada para exportação.', 'warning');
+      return;
+    }
+
+    const empresa = selEmpresa ? selEmpresa.value : '16';
+    const passphrase = inputSenhaCertificadoModalXml ? inputSenhaCertificadoModalXml.value.trim() : '';
+
+    // Prepara tela de progresso
+    if (modalXmlProgressoContainer) modalXmlProgressoContainer.style.display = 'block';
+    if (modalXmlMensagem) modalXmlMensagem.style.display = 'none';
+    if (btnConfirmarExportarXml) btnConfirmarExportarXml.disabled = true;
+
+    const textoProg = document.getElementById('modalXmlProgressoTexto');
+    const percProg = document.getElementById('modalXmlProgressoPerc');
+    const barraProg = document.getElementById('modalXmlProgressoBarra');
+    const detalheProg = document.getElementById('modalXmlProgressoDetalhe');
+
+    if (textoProg) textoProg.textContent = `Processando ${itens.length} notas fiscais...`;
+    if (percProg) percProg.textContent = 'Conectando...';
+    if (barraProg) barraProg.style.width = '25%';
+    if (detalheProg) detalheProg.textContent = 'Consultando cache local e WebService SEFAZ com mTLS A1...';
+
+    const token = localStorage.getItem('auth_token');
+
+    try {
+      const payload = {
+        empresa,
+        itens: itens.map(i => ({
+          doc: i.numNf,
+          serie: i.serie,
+          chave: i.chaveAcesso
+        })),
+        passphrase
+      };
+
+      if (barraProg) barraProg.style.width = '50%';
+      if (detalheProg) detalheProg.textContent = 'Obtendo XMLs oficiais e gerando arquivo compactado...';
+
+      const resp = await fetch('/api/analista-fin/fechamento-fiscal/exportar-xml-sefaz', {
+        method: 'POST',
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          token ? { 'Authorization': `Bearer ${token}` } : {}
+        ),
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) {
+        let errJson = {};
+        try { errJson = await resp.json(); } catch {}
+        throw new Error(errJson.error || `Erro HTTP ${resp.status}: ${resp.statusText}`);
+      }
+
+      if (barraProg) barraProg.style.width = '90%';
+      if (detalheProg) detalheProg.textContent = 'Pacote .zip gerado! Iniciando download...';
+
+      const blob = await resp.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+
+      const dtDe = inputDataDe ? inputDataDe.value.replace(/[^0-9]/g, '') : '';
+      const dtAte = inputDataAte ? inputDataAte.value.replace(/[^0-9]/g, '') : '';
+      a.download = `NFE_XML_EMP${empresa}_${dtDe}_${dtAte}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+
+      if (barraProg) barraProg.style.width = '100%';
+      if (percProg) percProg.textContent = '100%';
+      if (detalheProg) detalheProg.textContent = 'Download do pacote .zip concluído!';
+
+      notificar(`Download do lote de ${itens.length} XMLs (.zip) concluído com sucesso!`, 'success');
+
+      setTimeout(() => {
+        fecharModalExportarXml();
+      }, 1500);
+
+    } catch (err) {
+      console.error('Erro ao exportar XMLs da SEFAZ:', err);
+      if (barraProg) barraProg.style.width = '0%';
+      if (modalXmlMensagem) {
+        modalXmlMensagem.style.display = 'block';
+        modalXmlMensagem.style.background = 'rgba(239, 68, 68, 0.15)';
+        modalXmlMensagem.style.color = '#f87171';
+        modalXmlMensagem.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        modalXmlMensagem.innerHTML = `⚠️ <strong>Falha na exportação:</strong> ${err.message}`;
+      }
+    } finally {
+      if (btnConfirmarExportarXml) btnConfirmarExportarXml.disabled = false;
+    }
+  }
+
   // Inicialização Automática após o DOM carregar
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initFechamentoFiscal);
@@ -900,6 +1113,10 @@
     abrirModalNfsePaulistana,
     fecharModalNfsePaulistana,
     baixarXmlIndividual,
+    atualizarVisibilidadeBotaoExportarXml,
+    abrirModalExportarXml,
+    fecharModalExportarXml,
+    executarExportacaoXmlSefaz,
     getEstado: () => estadoFechamento
   };
 

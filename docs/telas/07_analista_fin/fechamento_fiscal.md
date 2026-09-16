@@ -14,7 +14,7 @@
 | **Tab ID DOM** | `#tab-fechamento-fiscal` |
 | **Botão de Acesso DOM** | `#btnTabFechamentoFiscal` |
 | **Permissão RBAC** | `analista-fin`, `admin` |
-| **Versão / Data** | v2.5 — 16/09/2026 |
+| **Versão / Data** | v2.6 — 16/09/2026 |
 | **Status Operacional** | 🟢 Produção Homologada (Batimento 100% com OACO 08/2026) |
 
 ---
@@ -33,6 +33,7 @@ A funcionalidade consolida em segundos:
 1. **Total Tributado Real:** Faturamento contábil tributável para geração das guias do Simples Nacional (DAS) ou apuração do Lucro Presumido.
 2. **Histórico RBT12:** Acumulado das 12 competências anteriores contínuas para enquadramento nas faixas de alíquota do Simples Nacional.
 3. **Módulo de NFS-e Nota Paulistana (SP):** Captura direta via mTLS, importação em lote e exportação de XMLs em arquivo compactado `.zip` para a Empresa 15.
+4. **Exportação de XMLs de NF-e Mercantil (SEFAZ):** Download em lote de arquivos XML oficiais (`<nfeProc>`) das notas filtradas por `SPED & NFE` via WebService Ambiente Nacional com cache em disco (`exportador_xml_sefaz.js`).
 
 ### 1.2 Personas Envolvidas
 - **Analista Fiscal / Financeiro (ex: Érica):** Responsável primária pelo fechamento mensal, auditoria de notas fiscais, verificação de CFOPs e envio dos relatórios consolidados à contabilidade.
@@ -46,8 +47,9 @@ A funcionalidade consolida em segundos:
 4. Clica em **"Consultar Fechamento"**: os dados são extraídos em tempo real do banco MSSQL do Protheus, totalizados e exibidos no painel de KPIs e grid de notas.
 5. (Se Empresa 15) O usuário aciona **"Sincronizar NFS-e SP"** ou faz upload de arquivo `.xml` / `.txt` da Prefeitura de São Paulo para incorporar serviços prestados.
 6. O analista revisa os cards de KPIs (Saídas, Devoluções, Remessas, Serviços, Entradas, CTRs, Impostos e RBT12).
-7. Clica em **"Consolidar Fechamento"** para congelar o período e registrar o log de auditoria no PostgreSQL/Supabase.
-8. Clica em **"Exportar CSV"** ou **"Baixar Lote XML (.zip)"** para enviar o pacote de apuração à contabilidade.
+7. Seleciona o filtro `SPED & NFE` no seletor de tipo de documento: o botão compacto **"Exportar XML"** surge na mesma linha da barra de filtros rápidos.
+8. Clica em **"Exportar XML"** para abrir o modal de confirmação e disparar o download do lote compactado `.zip` com os arquivos XML da SEFAZ.
+9. Clica em **"Consolidar Fechamento"** para congelar o período e registrar o log de auditoria no PostgreSQL/Supabase.
 
 ---
 
@@ -59,19 +61,22 @@ flowchart TD
     SRV -->|Consultar SF1/SF2/SD1/SD2/SA1/SA2| PROTHEUS["protheus_db.js<br/>ERP Totvs Protheus MSSQL"]
     SRV -->|Consultar/Salvar Fechamento Consolidado| PG["postgres_db.js<br/>Supabase / PostgreSQL"]
     SRV -->|Ingestão/Sync NFS-e SP| PAULISTANA["paulistana_client.js<br/>WebService Pref. São Paulo (mTLS)"]
-    SRV -->|Geração de Pacote ZIP| ZIP["zip_util.js<br/>Buffer ZIP Nativo em Memória"]
+    SRV -->|Exportar XMLs de NF-e da SEFAZ| SEFAZ_EXP["exportador_xml_sefaz.js<br/>NFeDistribuicaoDFe + Cache Local"]
+    SEFAZ_EXP -->|Geração de Pacote ZIP| ZIP["zip_util.js<br/>Buffer ZIP Nativo em Memória"]
 ```
 
 ### 2.1 Estrutura Frontend
-- **Arquivo de Script:** [`public/js/fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/js/fechamento_fiscal.js) (902 linhas, estruturado em IIFE modular estrita).
+- **Arquivo de Script:** [`public/js/fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/js/fechamento_fiscal.js) (estruturado em IIFE modular estrita).
 - **Container DOM:** `#tab-fechamento-fiscal` em [`public/index.html`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/public/index.html).
 - **Componentes Visuais Chave:**
   - `#selFechamentoEmpresa`: Seletor de empresa (`14`, `15`, `16`).
   - `#inputFechamentoDataDe` e `#inputFechamentoDataAte`: Seletores de data com inicialização automatizada para o primeiro e último dia do mês anterior.
   - `#selCriterioDataEntrada`: Alternância entre `EMISSAO` (F1_EMISSAO) e `DIGITACAO` (F1_DTDIGIT).
-  - `#inputBuscaFechamento`: Campo de busca rápida no grid (busca por número de NF, razão social, CNPJ/CPF ou CFOP).
+  - `#inputBuscaFechamento`: Campo de busca rápida no grid (largura responsiva compacta `max-width: 300px; min-width: 180px`).
   - `#selFiltroTipoFechamento`: Filtro instantâneo por fluxo/natureza (`ALL` - Todos, `SAIDA`, `ENTRA`, `DEVOLUCAO`, `SERVICO`, `TRIBUTADO`, `NAO_TRIBUTADO`).
   - `#selFiltroDocFechamento`: Filtro instantâneo por tipo de documento (`ALL` - Todos, `SPED_NFE` - SPED & NFE conjuntos, `SPED`, `NFE`, `CTR`, `NFS`, `IMP`, `DAS`, `NTST`).
+  - `#btnExportarXmlFechamento`: Botão compacto na mesma linha do filtro, acionado exclusivamente quando `SPED & NFE` está selecionado.
+  - `#modalExportarXmlNfe`: Modal com resumo de notas, campo de senha do certificado A1 e barra de progresso.
   - Grid de Resultados: Tabela com `#tbodyFechamentoFiscal`, colunas com badges coloridos de operação e indicador explícito de incidência tributária (`Gera Imposto: Sim/Não`).
   - Painel de Metadados Consolidados: Exibição de carimbo com data, hora e usuário responsável pela última consolidação.
 
@@ -79,6 +84,7 @@ flowchart TD
 - **Servidor HTTP:** Endpoints sob o prefixo `/api/analista-fin/fechamento-fiscal` no [`server.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/server.js).
 - **Middleware de Proteção:** `requireAuth` validando token Bearer e verificando se a lista de permissões do usuário contém `analista-fin` ou o papel de `admin`.
 - **Motor Protheus:** Funções `consultarFechamentoFiscalProtheus` e `obterHistoricoFaturamento12MesesProtheus` no [`protheus_db.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/protheus_db.js).
+- **Exportador SEFAZ Modular:** [`exportador_xml_sefaz.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/exportador_xml_sefaz.js) para conexão mTLS com Ambiente Nacional da SEFAZ (`NFeDistribuicaoDFe`), descompressão `docZip` (gzip) e cache local permanente em `data/xml_nfe_cache/`.
 - **Cliente Nota Paulistana:** [`paulistana_client.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/paulistana_client.js) para conexão mTLS SOAP com a Prefeitura de São Paulo e parsers XML/TXT de lote.
 - **Utilitário de Compressão:** [`zip_util.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/zip_util.js) gerador de arquivos ZIP com CRC-32 nativo sem binários nativos ou dependências do sistema operacional.
 - **Repositório Relacional:** [`postgres_db.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/postgres_db.js) para persistência em Supabase com fallback JSON local (`data/fechamentos_fiscais.json`).
@@ -281,6 +287,22 @@ $$\text{RBT12} = \sum_{m = \text{Mês}-12}^{\text{Mês}-1} \text{Total Tributado
 ### 5.6 `GET /api/analista-fin/nfse-emitidas/exportar-zip`
 - **Descrição:** Faz o download em lote de todos os XMLs de NFS-e do período selecionado compactados em arquivo `.zip`.
 
+### 5.7 `POST /api/analista-fin/fechamento-fiscal/exportar-xml-sefaz`
+- **Descrição:** Realiza a busca e download em lote dos XMLs oficiais (`<nfeProc>`) de NF-e na SEFAZ via WebService `NFeDistribuicaoDFe` com Certificado Digital A1 mTLS, gerando um pacote compactado `.zip` em memória.
+- **Autenticação:** `Bearer JWT` (Permissão: `analista-fin` ou `admin`).
+- **Request Body:**
+  ```json
+  {
+    "empresa": "16",
+    "itens": [
+      { "doc": "000727", "serie": "1", "chave": "35260961237790000118550010000007271622483426" }
+    ],
+    "passphrase": "senha_opcional_certificado"
+  }
+  ```
+- **Retorno:** Buffer binário com header `Content-Type: application/zip` e `Content-Disposition: attachment; filename="NFE_XML_EMP[cod]_[data].zip"`.
+- **Cache Local:** Gravação transparente em `data/xml_nfe_cache/<chave>.xml` para consultas futuras com latência zero e mitigação da Rejeição 656 (Consumo Indevido).
+
 ---
 
 ## 6. Testes Automatizados Vinculados
@@ -289,8 +311,8 @@ A conformidade contábil e a estabilidade da tela são verificadas por duas suí
 
 | Arquivo de Teste | Quantidade de Cenários | Foco da Validação |
 | :--- | :--- | :--- |
-| [`test_fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_fechamento_fiscal.js) | 12 Testes | Batimento OACO 08/2026, exclusão de ROMA, classificação de serviços, devoluções MATA103, RBT12, persistência relacional e filtro conjunto SPED & NFE. |
-| [`test_nfse_paulistana_fechamento.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_nfse_paulistana_fechamento.js) | 8 Testes | Parsers XML/TXT da Nota Paulistana, integridade ZIP sem corrupção, isolamento entre filiais e fail-closed security. |
+| [`test_fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_fechamento_fiscal.js) | 17 Testes | Batimento OACO 08/2026, exclusão de ROMA, classificação de serviços, devoluções MATA103, RBT12, persistência relacional, filtro conjunto SPED & NFE, envelope SOAP NFeDistribuicaoDFe, descompressão docZip e geração de .zip de NF-e. |
+| [`test_nfse_paulistana_fechamento.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_nfse_paulistana_fechamento.js) | 13 Testes | Parsers XML/TXT da Nota Paulistana, integridade ZIP sem corrupção, isolamento entre filiais e fail-closed security. |
 
 ### Comandos de Execução dos Testes:
 ```bash
@@ -304,6 +326,7 @@ node test_nfse_paulistana_fechamento.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
+| **v2.6** | 2026-09-16 | Alexandre / Equipe GSI | Implementação de exportação em lote de XMLs de NF-e mercantil via SEFAZ (`exportador_xml_sefaz.js`), botão compacto ao lado de 'SPED & NFE' na mesma linha, modal com barra de progresso e cache local permanente em disco. |
 | **v2.5** | 2026-09-16 | Alexandre / Equipe GSI | Inclusão do filtro conjunto 'SPED & NFE' no seletor `#selFiltroDocFechamento` para visualização simultânea de NFs mercantis no grid e exportação CSV. |
 | **v2.4** | 2026-09-15 | Alexandre / Equipe GSI | Implementação de exportação em lote ZIP nativa em memória (`zip_util.js`) para notas da Prefeitura de SP. |
 | **v2.3** | 2026-09-12 | Alexandre / Equipe GSI | Inclusão de suporte e tratamento a formulário próprio no MATA103 (NFe 000660 OACO) resolvendo cliente via SA1. |

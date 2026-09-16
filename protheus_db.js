@@ -3895,7 +3895,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
   const sqlSaidas = `
     SELECT 
       F2.F2_DOC, F2.F2_SERIE, F2.F2_EMISSAO, F2.F2_VALBRUT, F2.F2_TIPO, F2.F2_ESPECIE,
-      F2.F2_CLIENT, F2.F2_LOJA, F2.F2_EST,
+      F2.F2_CLIENT, F2.F2_LOJA, F2.F2_EST, F2.F2_CHVNFE as CHVNFE,
       COALESCE(
         CASE WHEN F2.F2_TIPO = 'D' THEN NULLIF(A2.A2_CGC, '') END,
         NULLIF(A1.A1_CGC, ''),
@@ -3936,6 +3936,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
   const sqlEntradas = `
     SELECT 
       F1.F1_DOC, F1.F1_SERIE, F1.F1_EMISSAO, F1.F1_DTDIGIT, F1.F1_VALBRUT, F1.F1_TIPO, F1.F1_FORMUL, F1.F1_ESPECIE,
+      ISNULL(F1.F1_CHVNFE, '') as CHVNFE,
       F1.F1_FORNECE, F1.F1_LOJA, F1.F1_EST,
       COALESCE(
         CASE WHEN F1.F1_TIPO = 'D' THEN NULLIF(A1.A1_CGC, '') END,
@@ -4073,6 +4074,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       serieOrigem: '',
       numNf: (row.F2_DOC || '').trim(),
       serie: (row.F2_SERIE || '').trim(),
+      chaveAcesso: (row.CHVNFE || '').trim(),
       dataEmissao: (row.F2_EMISSAO || '').trim(),
       dataEmissaoFmt: formatarDataBrFiscal(row.F2_EMISSAO),
       valor: Math.round(val * 100) / 100,
@@ -4203,6 +4205,7 @@ async function consultarFechamentoFiscalProtheus({ empresa, dataDe, dataAte, cri
       serieOrigem: (row.D1_SERIORI || '').trim(),
       numNf: (row.F1_DOC || '').trim(),
       serie: (row.F1_SERIE || '').trim(),
+      chaveAcesso: (row.CHVNFE || '').trim(),
       dataEmissao: (row.F1_EMISSAO || '').trim(),
       dataEmissaoFmt: formatarDataBrFiscal(row.F1_EMISSAO),
       dataDigitacao: (row.F1_DTDIGIT || '').trim(),

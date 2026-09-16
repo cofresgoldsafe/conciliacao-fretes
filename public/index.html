@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.224">
+  <link rel="stylesheet" href="style.css?v=8.225">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 16/09/2026 10:15 (v8.224 - Adição do filtro SPED & NFE no Fechamento Fiscal)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 16/09/2026 11:57 (Exportação em lote de XMLs de NF-e (.zip) via SEFAZ no Fechamento Fiscal (filtro SPED & NFE))</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -5209,18 +5209,18 @@
         <section class="card" style="margin-bottom: 1rem; padding: 0.85rem 1.25rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.85rem;">
             
-            <div style="flex: 1; min-width: 260px;">
+            <div style="flex: 1; min-width: 180px; max-width: 300px;">
               <input 
                 type="text" 
                 id="inputBuscaFechamento" 
                 class="form-input" 
-                placeholder="🔍 Filtrar instantaneamente por Num NF, Valor, CNPJ/CPF ou Razão Social..." 
+                placeholder="🔍 Filtrar por NF, CNPJ, Razão..." 
                 style="width: 100%; height: 38px; font-size: 0.85rem;" 
               />
             </div>
 
-            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-              <select id="selFiltroTipoFechamento" class="form-select" style="height: 38px; font-size: 0.82rem; min-width: 150px;">
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <select id="selFiltroTipoFechamento" class="form-select" style="height: 38px; font-size: 0.82rem; min-width: 140px;">
                 <option value="ALL">Fluxo: Todos</option>
                 <option value="SAIDA">Apenas Saídas</option>
                 <option value="ENTRA">Apenas Entradas</option>
@@ -5230,7 +5230,7 @@
                 <option value="NAO_TRIBUTADO">Apenas Não Tributadas (Não)</option>
               </select>
 
-              <select id="selFiltroDocFechamento" class="form-select" style="height: 38px; font-size: 0.82rem; min-width: 140px;">
+              <select id="selFiltroDocFechamento" class="form-select" style="height: 38px; font-size: 0.82rem; min-width: 135px;">
                 <option value="ALL">Tipo Doc: Todos</option>
                 <option value="SPED_NFE">SPED & NFE</option>
                 <option value="SPED">SPED</option>
@@ -5241,6 +5241,16 @@
                 <option value="DAS">DAS (Simples)</option>
                 <option value="NTST">NTST</option>
               </select>
+
+              <button 
+                type="button" 
+                id="btnExportarXmlFechamento" 
+                class="btn btn-secondary btn-sm" 
+                style="display: none; height: 38px; padding: 0 10px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; gap: 5px; align-items: center; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); color: #a5b4fc; border-radius: 6px; cursor: pointer;"
+                title="Exportar pacote .zip com os XMLs de todas as NFs da listagem via SEFAZ"
+              >
+                <span>📦 Exportar XML</span>
+              </button>
 
               <span id="contadorRegistrosFechamento" style="font-size: 0.8rem; color: var(--text-muted, #94a3b8); font-weight: 500; white-space: nowrap; margin-left: 4px;">
                 Exibindo 0 de 0 notas
@@ -5307,6 +5317,91 @@
               Fechar
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- MODAL DE EXPORTAÇÃO EM LOTE DE XMLS DE NF-E (SEFAZ) -->
+      <div id="modalExportarXmlNfe" class="modal-overlay hidden" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="card" style="width: 95%; max-width: 520px; background: var(--panel-bg, #1e293b); border: 1px solid var(--panel-border, #334155); border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); padding: 1.5rem; position: relative;">
+          
+          <!-- Cabeçalho do Modal -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border, #334155); padding-bottom: 0.85rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 1.4rem;">📦</span>
+              <div>
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #f8fafc;">
+                  Exportação de XMLs — SEFAZ Nacional
+                </h3>
+                <p style="margin: 2px 0 0 0; font-size: 0.78rem; color: #94a3b8;">
+                  Download oficial de arquivos XML (<code style="color: #38bdf8;">&lt;nfeProc&gt;</code>) em lote compactados em .zip
+                </p>
+              </div>
+            </div>
+            <button id="btnFecharModalExportarXml" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.85rem; border-radius: 6px; cursor: pointer;">✕</button>
+          </div>
+
+          <!-- Resumo da Seleção -->
+          <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--panel-border, #334155); border-radius: 8px; padding: 12px; margin-bottom: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.82rem;">
+              <div>
+                <span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase;">Empresa:</span>
+                <div id="modalXmlEmpresaNome" style="font-weight: 700; color: #f1f5f9;">OACO (16)</div>
+              </div>
+              <div>
+                <span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase;">Período:</span>
+                <div id="modalXmlPeriodo" style="font-weight: 600; color: #cbd5e1;">01/08/2026 a 31/08/2026</div>
+              </div>
+              <div>
+                <span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase;">Notas no Lote:</span>
+                <div id="modalXmlQtdNotas" style="font-weight: 700; color: #38bdf8; font-size: 1rem;">0 notas fiscais</div>
+              </div>
+              <div>
+                <span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase;">Origem:</span>
+                <div style="font-weight: 700; color: #34d399;">🌐 SEFAZ (mTLS A1)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Campo Opcional de Senha do Certificado A1 -->
+          <div style="margin-bottom: 1.25rem;">
+            <label for="inputSenhaCertificadoModalXml" style="display: block; font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 4px;">
+              🔑 Senha do Certificado Digital A1 <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal;">(opcional se já configurada no servidor)</span>
+            </label>
+            <input 
+              type="password" 
+              id="inputSenhaCertificadoModalXml" 
+              class="form-input" 
+              placeholder="Digite a senha se necessário..." 
+              style="width: 100%; height: 38px; font-size: 0.85rem;" 
+            />
+          </div>
+
+          <!-- Barra de Progresso / Feedback -->
+          <div id="modalXmlProgressoContainer" style="display: none; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 5px; color: #cbd5e1;">
+              <span id="modalXmlProgressoTexto">Consultando SEFAZ...</span>
+              <span id="modalXmlProgressoPerc" style="font-weight: 700; color: #38bdf8;">0%</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: rgba(51, 65, 85, 0.6); border-radius: 4px; overflow: hidden;">
+              <div id="modalXmlProgressoBarra" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #38bdf8); transition: width 0.3s ease;"></div>
+            </div>
+            <div id="modalXmlProgressoDetalhe" style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Iniciando conexão segura...</div>
+          </div>
+
+          <!-- Mensagem de Alerta ou Erro -->
+          <div id="modalXmlMensagem" style="display: none; padding: 10px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 1rem;"></div>
+
+          <!-- Rodapé de Ações -->
+          <div style="display: flex; justify-content: flex-end; gap: 0.65rem; border-top: 1px solid var(--panel-border, #334155); padding-top: 1rem;">
+            <button id="btnCancelarExportarXml" type="button" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">
+              Cancelar
+            </button>
+            <button id="btnConfirmarExportarXml" type="button" class="btn btn-primary" style="padding: 6px 16px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 6px; background: #6366f1; border-color: #6366f1;">
+              <span id="btnConfirmarExportarXmlIcon">📥</span>
+              <span id="btnConfirmarExportarXmlTexto">Gerar e Baixar .zip</span>
+            </button>
+          </div>
+
         </div>
       </div>
 
@@ -8479,22 +8574,22 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.224"></script>
-  <script src="js/bi.js?v=8.224"></script>
-  <script src="js/bi_indices.js?v=8.224"></script>
-  <script src="js/bi_autorizacoes.js?v=8.224"></script>
-  <script src="js/gordura_frete.js?v=8.224"></script>
-  <script src="js/fechamento_vendedores.js?v=8.224"></script>
-  <script type="module" src="js/tarefas.js?v=8.224"></script>
-  <script src="js/holerites.js?v=8.224"></script>
-  <script src="js/funcionarios_dp.js?v=8.224"></script>
-  <script src="js/crm.js?v=8.224"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.224"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.224"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.224"></script>
-  <script src="js/nfse_pendentes.js?v=8.224"></script>
-  <script src="js/fechamento_fiscal.js?v=8.224"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.224"></script>
-  <script src="app.js?v=8.224"></script>
+  <script src="js/chart.umd.min.js?v=8.225"></script>
+  <script src="js/bi.js?v=8.225"></script>
+  <script src="js/bi_indices.js?v=8.225"></script>
+  <script src="js/bi_autorizacoes.js?v=8.225"></script>
+  <script src="js/gordura_frete.js?v=8.225"></script>
+  <script src="js/fechamento_vendedores.js?v=8.225"></script>
+  <script type="module" src="js/tarefas.js?v=8.225"></script>
+  <script src="js/holerites.js?v=8.225"></script>
+  <script src="js/funcionarios_dp.js?v=8.225"></script>
+  <script src="js/crm.js?v=8.225"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.225"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.225"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.225"></script>
+  <script src="js/nfse_pendentes.js?v=8.225"></script>
+  <script src="js/fechamento_fiscal.js?v=8.225"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.225"></script>
+  <script src="app.js?v=8.225"></script>
 </body>
 </html>

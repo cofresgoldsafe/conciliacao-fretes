@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.224 (Homologada em 16/09/2026 10:06)  
+> **Versão da Documentação:** v8.225 (Homologada em 16/09/2026 11:57)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 16/09/2026 10:06 (v8.224 - Inclusão da opção unificada 'SPED & NFE' no filtro de tipo de documento do Fechamento Fiscal)  
+> **Data da Última Auditoria:** 16/09/2026 11:57 (v8.225 - Exportação em lote de XMLs de NF-e .zip via SEFAZ no Fechamento Fiscal)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.225 (16/09/2026):** Exportação em lote de XMLs de NF-e (.zip) via SEFAZ no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) (filtro SPED & NFE) com serviço modular desacoplado (`exportador_xml_sefaz.js`), cache anti-limite e mTLS A1.
 - **v8.224 (16/09/2026):** Inclusão da opção unificada 'SPED & NFE' no filtro de tipo de documento do [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) com suporte à filtragem conjunta no grid e na exportação CSV.
 - **v8.223 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" e do seletor legado de Dashboard ID na tela de Gráficos & Tendências, simplificando a barra de telemetria em dados 100% nativos.
 - **v8.222 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" na tela de Gráficos & Tendências e otimização de telemetria.
@@ -185,4 +186,3 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 - **v8.213 (13/09/2026):** Arquitetura extensivel de abas e permissoes RBAC dinamicas auto-descobertas no DOM (`SYSTEM_TABS_REGISTRY`) e restauracao de acessos.
 - **v8.212 (13/09/2026):** Criacao da macro-aba COMPRAS com 4 sub-abas reaproveitadas sob principio DRY (Saldos em Estoque, Pedidos Venda, Pedidos Abertos e Compras).
 - **v8.211 (12/09/2026):** Habilitacao de Row-Level Security (RLS) e hardening no Supabase PostgreSQL, zerando 100% dos alertas criticos do Security Advisor.
-- **v8.210 (12/09/2026):** Homologacao da incorporacao de dashboards do Metabase Analytics no BI Executivo com telemetria e sincronizacao de dados.

@@ -384,6 +384,116 @@ async function runTests() {
     assert.strictEqual(filtradosAll.length, 8, 'ALL deve retornar todos os 8 itens');
   });
 
+  // TESTE 13: Inclusão do campo chaveAcesso nos itens de Saída
+  await reportAsync('Teste 13: Presença do campo chaveAcesso nos itens retornados por consultarFechamentoFiscalProtheus', async () => {
+    const res = await consultarFechamentoFiscalProtheus({
+      empresa: '16',
+      dataDe: '2026-08-01',
+      dataAte: '2026-08-31',
+      criterioDataEntrada: 'EMISSAO'
+    });
+
+    assert.ok(res.itens && res.itens.length > 0, 'Deve retornar itens de notas fiscais');
+    const saidas = res.itens.filter(i => i.entraSaida === 'SAÍDA');
+    assert.ok(saidas.length > 0, 'Deve conter notas de saída');
+    // Verifica que todas as notas de saída possuem o campo chaveAcesso (string)
+    const comChave = saidas.filter(s => typeof s.chaveAcesso === 'string');
+    assert.strictEqual(comChave.length, saidas.length, 'Todas as saídas devem conter chaveAcesso definido como string');
+  });
+
+  // TESTE 14: Validação do Envelope SOAP NFeDistribuicaoDFe (exportador_xml_sefaz)
+  report('Teste 14: Montagem do Envelope SOAP 1.2 oficial para NFeDistribuicaoDFe', () => {
+    const { montarEnvelopeDistDFe } = require('./exportador_xml_sefaz');
+    const chave = '35260961237790000118550010000007271622483426';
+    const cnpj = '61237790000118';
+    const env = montarEnvelopeDistDFe(chave, cnpj);
+
+    assert.ok(env.includes('<soap12:Envelope'), 'Envelope deve ser SOAP 1.2');
+    assert.ok(env.includes('http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe'), 'Namespace do WebService correto');
+    assert.ok(env.includes(`<CNPJ>${cnpj}</CNPJ>`), 'Deve conter a tag CNPJ informada');
+    assert.ok(env.includes(`<chNFe>${chave}</chNFe>`), 'Deve conter a tag chNFe com a chave de 44 dígitos');
+    assert.ok(!env.includes('\n') && !env.includes('\r'), 'Envelope não deve conter quebras de linha para evitar rejeição SEFAZ');
+  });
+
+  // TESTE 15: Descompressão GZIP e Cache Local Persistente
+  report('Teste 15: Simulação de docZip GZIP, descompressão para <nfeProc> e integridade de cache', () => {
+    const zlib = require('zlib');
+    const { CACHE_DIR } = require('./exportador_xml_sefaz');
+    const chaveTeste = '35260900000000000000550010000009991234567890';
+    const xmlMock = `<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe${chaveTeste}"><emit><CNPJ>61237790000118</CNPJ></emit></infNFe></NFe><protNFe versao="4.00"><infProt><cStat>100</cStat><nProt>135260000000001</nProt></infProt></protNFe></nfeProc>`;
+
+    // Comprime como a SEFAZ envia em docZip
+    const gzipped = zlib.gzipSync(Buffer.from(xmlMock, 'utf8'));
+    const docZipBase64 = gzipped.toString('base64');
+
+    // Descomprime
+    const decompressed = zlib.gunzipSync(Buffer.from(docZipBase64, 'base64')).toString('utf8');
+    assert.strictEqual(decompressed, xmlMock, 'XML descomprimido deve ser idêntico ao original');
+    assert.ok(decompressed.includes('<nfeProc'), 'Deve conter tag nfeProc');
+    assert.ok(decompressed.includes('</nfeProc>'), 'Deve fechar tag nfeProc');
+
+    // Testa gravação no cache local
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const cacheFile = path.join(CACHE_DIR, `${chaveTeste}.xml`);
+    fs.writeFileSync(cacheFile, decompressed, 'utf8');
+
+    assert.ok(fs.existsSync(cacheFile), 'Arquivo de cache deve existir em disco');
+    const lidoCache = fs.readFileSync(cacheFile, 'utf8');
+    assert.strictEqual(lidoCache, xmlMock, 'Conteúdo do cache deve ser idêntico');
+
+    // Limpeza
+    fs.unlinkSync(cacheFile);
+  });
+
+  // TESTE 16: Empacotamento em Memória .zip via processarLoteXmlNfeZip
+  await reportAsync('Teste 16: Geração de pacote .zip em memória com múltiplos XMLs e integridade de cabeçalhos', async () => {
+    const { processarLoteXmlNfeZip, CACHE_DIR } = require('./exportador_xml_sefaz');
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+
+    const ch1 = '35260900000000000000550010000000011234567891';
+    const ch2 = '35260900000000000000550010000000021234567892';
+    const xml1 = `<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00"><NFe><infNFe Id="NFe${ch1}"/></NFe></nfeProc>`;
+    const xml2 = `<?xml version="1.0" encoding="UTF-8"?><nfeProc versao="4.00"><NFe><infNFe Id="NFe${ch2}"/></NFe></nfeProc>`;
+
+    fs.writeFileSync(path.join(CACHE_DIR, `${ch1}.xml`), xml1, 'utf8');
+    fs.writeFileSync(path.join(CACHE_DIR, `${ch2}.xml`), xml2, 'utf8');
+
+    try {
+      const lote = await processarLoteXmlNfeZip({
+        empresa: '16',
+        itens: [
+          { doc: '000001', chave: ch1 },
+          { doc: '000002', chave: ch2 }
+        ]
+      });
+
+      assert.strictEqual(lote.sucesso, true, 'Lote com notas em cache deve ter sucesso');
+      assert.strictEqual(lote.totalObtidos, 2, 'Deve empacotar 2 XMLs');
+      assert.strictEqual(lote.totalCache, 2, 'Ambos devem vir do cache local');
+      assert.ok(Buffer.isBuffer(lote.zipBuffer), 'Deve retornar Buffer binário do ZIP');
+      assert.ok(lote.zipBuffer.length > 100, 'Buffer do ZIP deve ser consistente');
+      // Assinatura PKZIP: 0x50 0x4B 0x03 0x04 ("PK\x03\x04")
+      assert.strictEqual(lote.zipBuffer[0], 0x50, 'Byte 0 do ZIP deve ser P (0x50)');
+      assert.strictEqual(lote.zipBuffer[1], 0x4B, 'Byte 1 do ZIP deve ser K (0x4B)');
+    } finally {
+      // Limpeza dos arquivos temporários de teste
+      try { fs.unlinkSync(path.join(CACHE_DIR, `${ch1}.xml`)); } catch {}
+      try { fs.unlinkSync(path.join(CACHE_DIR, `${ch2}.xml`)); } catch {}
+    }
+  });
+
+  // TESTE 17: Presença do botão e do modal no index.html
+  report('Teste 17: Presença dos elementos #btnExportarXmlFechamento e #modalExportarXmlNfe no index.html', () => {
+    const htmlPath = path.join(__dirname, 'public', 'index.html');
+    const html = fs.readFileSync(htmlPath, 'utf8');
+
+    assert.ok(html.includes('id="btnExportarXmlFechamento"'), 'Deve conter botão #btnExportarXmlFechamento no DOM');
+    assert.ok(html.includes('id="modalExportarXmlNfe"'), 'Deve conter modal #modalExportarXmlNfe no DOM');
+    assert.ok(html.includes('id="inputSenhaCertificadoModalXml"'), 'Deve conter campo de senha do certificado');
+    assert.ok(html.includes('id="btnConfirmarExportarXml"'), 'Deve conter botão de confirmação');
+    assert.ok(html.includes('max-width: 300px'), 'Campo de busca deve ter largura máxima reduzida para acomodar o botão');
+  });
+
   console.log('\n========================================================');
   console.log(`📊 RESULTADO DA SUÍTE: ${passed} PASSOU, ${failed} FALHOU (Total: ${passed + failed})`);
   console.log('========================================================\n');
