@@ -425,8 +425,13 @@
       // 2. Filtro de Tipo Doc
       if (filtroDoc !== 'ALL') {
         const docUpper = (item.tipoDoc || '').toUpperCase();
-        if (filtroDoc === 'CTR' && docUpper !== 'CTR' && docUpper !== 'CTE') return false;
-        else if (filtroDoc !== 'CTR' && docUpper !== filtroDoc) return false;
+        if (filtroDoc === 'SPED_NFE' || filtroDoc === 'SPED & NFE') {
+          if (docUpper !== 'SPED' && docUpper !== 'NFE' && docUpper !== 'NF-E') return false;
+        } else if (filtroDoc === 'CTR' && docUpper !== 'CTR' && docUpper !== 'CTE') {
+          return false;
+        } else if (filtroDoc !== 'CTR' && docUpper !== filtroDoc) {
+          return false;
+        }
       }
 
       // 3. Busca por Termo (Num NF, Valor, CNPJ/CPF, Razão Social, Devolução, Serviço ou NF Origem)

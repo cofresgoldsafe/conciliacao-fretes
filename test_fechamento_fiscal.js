@@ -235,6 +235,7 @@ async function runTests() {
     assert.ok(html.includes('id="kpiTotalImpostosValor"'), 'Deve conter card #kpiTotalImpostosValor');
     assert.ok(html.includes('id="inputBuscaFechamento"'), 'Deve conter campo de busca instantânea #inputBuscaFechamento');
     assert.ok(html.includes('value="SERVICO"'), 'Deve conter opção SERVICO no filtro de tipo');
+    assert.ok(html.includes('value="SPED_NFE"'), 'Deve conter opção SPED_NFE no filtro de tipo de documento');
     assert.ok(html.includes('id="tbodyFechamentoFiscal"'), 'Deve conter tabela #tbodyFechamentoFiscal');
     assert.ok(html.includes('src="js/fechamento_fiscal.js'), 'Deve importar script fechamento_fiscal.js');
   });
@@ -338,6 +339,49 @@ async function runTests() {
     const remessa = classificarNotaSaida({ F2_VALBRUT: 300, F2_TIPO: 'N', F2_ESPECIE: 'SPED', CFOP: '5949', TES: '501', DESCR_TES: 'REMESSA P/ CONSERTO', GERA_DUPLIC: 'N' });
     assert.strictEqual(remessa.tipoOperacao, 'REMESSA', 'CFOP 5949 comum deve ser REMESSA');
     assert.strictEqual(remessa.geraImposto, false, 'Remessa não gera imposto');
+  });
+
+  // TESTE 12: Validação da lógica de filtragem conjunta por SPED & NFE
+  report('Teste 12: Validação da lógica de filtragem conjunta por SPED & NFE', () => {
+    const itensMock = [
+      { numNf: '001', tipoDoc: 'SPED' },
+      { numNf: '002', tipoDoc: 'NFE' },
+      { numNf: '003', tipoDoc: 'CTR' },
+      { numNf: '004', tipoDoc: 'NFS' },
+      { numNf: '005', tipoDoc: 'IMP' },
+      { numNf: '006', tipoDoc: 'SPED' },
+      { numNf: '007', tipoDoc: 'DAS' },
+      { numNf: '008', tipoDoc: 'NF-E' }
+    ];
+
+    function filtrarPorDoc(itens, filtroDoc) {
+      return itens.filter(item => {
+        if (filtroDoc !== 'ALL') {
+          const docUpper = (item.tipoDoc || '').toUpperCase();
+          if (filtroDoc === 'SPED_NFE' || filtroDoc === 'SPED & NFE') {
+            if (docUpper !== 'SPED' && docUpper !== 'NFE' && docUpper !== 'NF-E') return false;
+          } else if (filtroDoc === 'CTR' && docUpper !== 'CTR' && docUpper !== 'CTE') {
+            return false;
+          } else if (filtroDoc !== 'CTR' && docUpper !== filtroDoc) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    const filtradosSpedNfe = filtrarPorDoc(itensMock, 'SPED_NFE');
+    assert.strictEqual(filtradosSpedNfe.length, 4, 'SPED & NFE deve retornar 4 itens (2 SPED + 1 NFE + 1 NF-E)');
+    assert.deepStrictEqual(filtradosSpedNfe.map(i => i.numNf), ['001', '002', '006', '008']);
+
+    const filtradosSped = filtrarPorDoc(itensMock, 'SPED');
+    assert.strictEqual(filtradosSped.length, 2, 'SPED isolado deve retornar 2 itens');
+
+    const filtradosNfe = filtrarPorDoc(itensMock, 'NFE');
+    assert.strictEqual(filtradosNfe.length, 1, 'NFE isolado deve retornar 1 item');
+
+    const filtradosAll = filtrarPorDoc(itensMock, 'ALL');
+    assert.strictEqual(filtradosAll.length, 8, 'ALL deve retornar todos os 8 itens');
   });
 
   console.log('\n========================================================');

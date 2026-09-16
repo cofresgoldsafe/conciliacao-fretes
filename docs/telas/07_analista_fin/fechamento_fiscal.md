@@ -70,7 +70,8 @@ flowchart TD
   - `#inputFechamentoDataDe` e `#inputFechamentoDataAte`: Seletores de data com inicialização automatizada para o primeiro e último dia do mês anterior.
   - `#selCriterioDataEntrada`: Alternância entre `EMISSAO` (F1_EMISSAO) e `DIGITACAO` (F1_DTDIGIT).
   - `#inputBuscaFechamento`: Campo de busca rápida no grid (busca por número de NF, razão social, CNPJ/CPF ou CFOP).
-  - `#selFiltroFluxoFechamento` e `#selFiltroTipoFechamento`: Filtros instantâneos por fluxo (`TODOS`, `SAÍDA`, `ENTRA`) e tipo (`TODOS`, `VENDA_TRIBUTADA`, `SERVICO`, `DEVOLUCAO`, `REMESSA`, `CTR`, `IMPOSTO`).
+  - `#selFiltroTipoFechamento`: Filtro instantâneo por fluxo/natureza (`ALL` - Todos, `SAIDA`, `ENTRA`, `DEVOLUCAO`, `SERVICO`, `TRIBUTADO`, `NAO_TRIBUTADO`).
+  - `#selFiltroDocFechamento`: Filtro instantâneo por tipo de documento (`ALL` - Todos, `SPED_NFE` - SPED & NFE conjuntos, `SPED`, `NFE`, `CTR`, `NFS`, `IMP`, `DAS`, `NTST`).
   - Grid de Resultados: Tabela com `#tbodyFechamentoFiscal`, colunas com badges coloridos de operação e indicador explícito de incidência tributária (`Gera Imposto: Sim/Não`).
   - Painel de Metadados Consolidados: Exibição de carimbo com data, hora e usuário responsável pela última consolidação.
 
