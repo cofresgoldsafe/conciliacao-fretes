@@ -171,7 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
-- **v8.224 (16/09/2026):** Inclusão da opção unificada 'SPED & NFE' no seletor de tipo de documento do Fechamento Fiscal com suporte à filtragem conjunta no grid e na exportação CSV.
+- **v8.224 (16/09/2026):** Inclusão da opção unificada 'SPED & NFE' no filtro de tipo de documento do [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) com suporte à filtragem conjunta no grid e na exportação CSV.
 - **v8.223 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" e do seletor legado de Dashboard ID na tela de Gráficos & Tendências, simplificando a barra de telemetria em dados 100% nativos.
 - **v8.222 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" na tela de Gráficos & Tendências e otimização de telemetria.
 - **v8.221 (15/09/2026):** Segundo gráfico executivo: Monitor de Ativo Circulante Seco (Caixa + Receber) em layout empilhado com detector de baixa acentuada e recomendações comerciais.

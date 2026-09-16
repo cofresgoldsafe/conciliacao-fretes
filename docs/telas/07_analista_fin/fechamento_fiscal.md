@@ -14,7 +14,7 @@
 | **Tab ID DOM** | `#tab-fechamento-fiscal` |
 | **Botão de Acesso DOM** | `#btnTabFechamentoFiscal` |
 | **Permissão RBAC** | `analista-fin`, `admin` |
-| **Versão / Data** | v2.4 — Setembro/2026 |
+| **Versão / Data** | v2.5 — 16/09/2026 |
 | **Status Operacional** | 🟢 Produção Homologada (Batimento 100% com OACO 08/2026) |
 
 ---
@@ -289,7 +289,7 @@ A conformidade contábil e a estabilidade da tela são verificadas por duas suí
 
 | Arquivo de Teste | Quantidade de Cenários | Foco da Validação |
 | :--- | :--- | :--- |
-| [`test_fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_fechamento_fiscal.js) | 11 Testes | Batimento OACO 08/2026, exclusão de ROMA, classificação de serviços, devoluções MATA103, RBT12 e persistência relacional. |
+| [`test_fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_fechamento_fiscal.js) | 12 Testes | Batimento OACO 08/2026, exclusão de ROMA, classificação de serviços, devoluções MATA103, RBT12, persistência relacional e filtro conjunto SPED & NFE. |
 | [`test_nfse_paulistana_fechamento.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_nfse_paulistana_fechamento.js) | 8 Testes | Parsers XML/TXT da Nota Paulistana, integridade ZIP sem corrupção, isolamento entre filiais e fail-closed security. |
 
 ### Comandos de Execução dos Testes:
@@ -304,6 +304,7 @@ node test_nfse_paulistana_fechamento.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
+| **v2.5** | 2026-09-16 | Alexandre / Equipe GSI | Inclusão do filtro conjunto 'SPED & NFE' no seletor `#selFiltroDocFechamento` para visualização simultânea de NFs mercantis no grid e exportação CSV. |
 | **v2.4** | 2026-09-15 | Alexandre / Equipe GSI | Implementação de exportação em lote ZIP nativa em memória (`zip_util.js`) para notas da Prefeitura de SP. |
 | **v2.3** | 2026-09-12 | Alexandre / Equipe GSI | Inclusão de suporte e tratamento a formulário próprio no MATA103 (NFe 000660 OACO) resolvendo cliente via SA1. |
 | **v2.2** | 2026-09-08 | Alexandre / Equipe GSI | Ajuste de classificação de serviços na saída (CFOP 5933, TES 594 e espécie NFS) e soma no Total Tributado. |
