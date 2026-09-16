@@ -326,7 +326,7 @@ node test_nfse_paulistana_fechamento.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
-| **v2.6** | 2026-09-16 | Alexandre / Equipe GSI | Implementação de exportação em lote de XMLs de NF-e mercantil via SEFAZ (`exportador_xml_sefaz.js`), botão compacto ao lado de 'SPED & NFE' na mesma linha, modal com barra de progresso e cache local permanente em disco. |
+| **v2.6** | 2026-09-16 | Alexandre / Equipe GSI | Implementação de exportação em lote de XMLs de NF-e mercantil via SEFAZ (`exportador_xml_sefaz.js`), botão compacto ao lado de 'SPED & NFE' na mesma linha, modal com barra de progresso, resolução de conflito de classe CSS `.hidden` com `display: flex`, fallbacks de renderização inline e cache local permanente em disco. |
 | **v2.5** | 2026-09-16 | Alexandre / Equipe GSI | Inclusão do filtro conjunto 'SPED & NFE' no seletor `#selFiltroDocFechamento` para visualização simultânea de NFs mercantis no grid e exportação CSV. |
 | **v2.4** | 2026-09-15 | Alexandre / Equipe GSI | Implementação de exportação em lote ZIP nativa em memória (`zip_util.js`) para notas da Prefeitura de SP. |
 | **v2.3** | 2026-09-12 | Alexandre / Equipe GSI | Inclusão de suporte e tratamento a formulário próprio no MATA103 (NFe 000660 OACO) resolvendo cliente via SA1. |
