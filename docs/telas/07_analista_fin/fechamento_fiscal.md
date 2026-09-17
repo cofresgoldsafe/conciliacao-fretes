@@ -342,11 +342,14 @@ $$\text{RBT12} = \sum_{m = \text{Mês}-12}^{\text{Mês}-1} \text{Total Tributado
 - **Descrição:** Consulta o status e estatísticas da última execução do sincronizador.
 - **Autenticação:** `Bearer JWT` (Exclusivo `admin`).
 
-### 5.11 Rotina Agendada em Background (12:30 e 18:30)
+### 5.11 Rotinas Agendadas em Background (12:30 e 18:30 BRT — Camada Dupla SRE)
 - **Horários Fixos:** Executado diariamente às **12:30** e **18:30** no fuso horário oficial de Brasília (`America/Sao_Paulo`).
+- **Camada 1 (GitHub Actions Cron):** Workflow [`.github/workflows/sync_nfe_central.yml`](file:///.github/workflows/sync_nfe_central.yml) agendado para `30 15 * * *` e `30 21 * * *` (UTC), disparando `POST /api/admin/jobs/sync-nfe-central` com autenticação `CRON_SECRET` e tolerância a cold start no Render. Suporta também execução manual sob demanda (`workflow_dispatch`).
+- **Camada 2 (Scheduler Residente Node.js):** Função `startNfeCentralSyncJob` em [`server.js`](file:///server.js) verificando o relógio de Brasília a cada 2 min com chave diária de slot idempotente.
 - **Etapa 1:** Extração incremental de notas de saída dos últimos 30 dias no Protheus (`SF2` com `OUTER APPLY` em `SD2`/`SC5` e joins com `SA1`/`SA2`).
 - **Etapa 2:** UPSERT de metadados na super tabela `nfe_central_documentos`.
 - **Etapa 3:** Resolução de XMLs pendentes via SEFAZ com mTLS A1, intervalo de 800ms anti-bloqueio, descarte após 3 falhas e Circuit Breaker que aborta imediatamente em caso de Rejeição 656 (Consumo Indevido).
+- **Proteção Anti-Concorrência:** Mutex atômico `isSyncingNfeCentral` rejeitando requisições simultâneas com `409 Conflict`.
 
 ### 5.12 Script de Carga Inicial (Backfill Histórico) — `scripts/carga_inicial_nfe_central.js`
 - **Finalidade:** Popula a super tabela com histórico retroativo completo a partir de `01/07/2026` até a presente data, cobrindo todo o 3º trimestre para as 3 empresas (`14 - Metal Pleno`, `15 - GSI Brasil`, `16 - OAÇO`).
