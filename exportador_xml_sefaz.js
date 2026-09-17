@@ -153,7 +153,23 @@ async function obterXmlNfeSefaz({ chaveNfe, empresaCod, passphrase = '' }) {
   garantirDiretorioCache();
   const cachePath = path.join(CACHE_DIR, `${chaveLimpa}.xml`);
 
-  // 1. Verificação em Cache Local Persistente (Zero latência e zero consumo de cota SEFAZ)
+  // 1. Verificação no Banco de Dados Supabase (nfe_central_documentos) - Prioridade Máxima
+  try {
+    const { obterXmlNfeCentralPorChave } = require('./postgres_db');
+    const dbXml = await obterXmlNfeCentralPorChave(chaveLimpa);
+    if (dbXml && dbXml.includes('<nfeProc') && dbXml.includes('</nfeProc>')) {
+      try { fs.writeFileSync(cachePath, dbXml, 'utf8'); } catch (e) {}
+      return {
+        sucesso: true,
+        xml: dbXml,
+        chave: chaveLimpa,
+        doCache: true,
+        origem: 'BANCO'
+      };
+    }
+  } catch (e) {}
+
+  // 2. Verificação em Cache Local Persistente (Zero latência e zero consumo de cota SEFAZ)
   if (fs.existsSync(cachePath)) {
     try {
       const cachedXml = fs.readFileSync(cachePath, 'utf8');
@@ -162,7 +178,8 @@ async function obterXmlNfeSefaz({ chaveNfe, empresaCod, passphrase = '' }) {
           sucesso: true,
           xml: cachedXml,
           chave: chaveLimpa,
-          doCache: true
+          doCache: true,
+          origem: 'DISCO'
         };
       }
     } catch (e) {}
@@ -252,6 +269,12 @@ async function obterXmlNfeSefaz({ chaveNfe, empresaCod, passphrase = '' }) {
                   // Salva no cache local persistente
                   try {
                     fs.writeFileSync(cachePath, xmlStr, 'utf8');
+                  } catch (e) {}
+
+                  // Salva no Banco de Dados PostgreSQL (Supabase)
+                  try {
+                    const { salvarXmlNfeCentral } = require('./postgres_db');
+                    salvarXmlNfeCentral(chaveLimpa, xmlStr).catch(() => {});
                   } catch (e) {}
 
                   return resolve({
@@ -352,6 +375,16 @@ async function processarLoteXmlNfeZip({ empresa, itens = [], passphrase = '', on
   let totalCache = 0;
   let totalSefaz = 0;
 
+  // Pré-busca em lote no PostgreSQL Supabase (Latência ~20ms para todo o lote)
+  let mapBanco = new Map();
+  try {
+    const { obterLoteXmlsNfeCentral } = require('./postgres_db');
+    const chavesLote = itens.map(i => String(i.chave || i.chaveAcesso || '').replace(/\D/g, '').trim()).filter(c => c.length === 44);
+    if (chavesLote.length > 0) {
+      mapBanco = await obterLoteXmlsNfeCentral(chavesLote);
+    }
+  } catch (e) {}
+
   for (let i = 0; i < itens.length; i++) {
     const item = itens[i];
     const chave = String(item.chave || item.chaveAcesso || '').replace(/\D/g, '').trim();
@@ -363,6 +396,17 @@ async function processarLoteXmlNfeZip({ empresa, itens = [], passphrase = '', on
 
     if (typeof onProgress === 'function') {
       onProgress(i + 1, itens.length, chave);
+    }
+
+    // Se já está no lote pré-carregado do banco de dados
+    if (mapBanco && mapBanco.has(chave)) {
+      const xmlBanco = mapBanco.get(chave);
+      arquivosZip.push({
+        name: `${chave}.xml`,
+        content: xmlBanco
+      });
+      totalCache++;
+      continue;
     }
 
     const res = await obterXmlNfeSefaz({ chaveNfe: chave, empresaCod, passphrase });

@@ -112,7 +112,7 @@ function getDocVariants(docStr) {
  * Consulta no banco de dados real do Protheus (Empresa OACO SD2160 JOIN SC5160)
  * Soma C5_FRETE + C5_VLR_FRT para a coluna unificada "Cobrado Cli."
  */
-async function consultarProtheusNF(numNF, empresaKey = "OACO") {
+async function consultarProtheusNF(numNF, empresaKey = "OACO", { tipo = 'auto' } = {}) {
   const variants = getDocVariants(numNF);
   const cleanNF = variants.raw;
   const padded6 = variants.padded6;
@@ -124,6 +124,7 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
   const sc5Table = infoEmpresa.sc5; // SC5160 para OACO
 
   try {
+    const whereDoc = (tipo === 'pedVenda') ? '' : `D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanNF}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}' OR `;
     const sql = `
       SELECT TOP 1
           RTRIM(D2.D2_DOC) AS D2_DOC,
@@ -138,8 +139,8 @@ async function consultarProtheusNF(numNF, empresaKey = "OACO") {
        AND C5.C5_NUM = D2.D2_PEDIDO 
        AND C5.D_E_L_E_T_ = ' '
       WHERE (
-        D2.D2_DOC = '${padded6}' OR D2.D2_DOC = '${cleanNF}' OR D2.D2_DOC = '${padded9}' OR D2.D2_DOC = '${numOnly}' OR D2.D2_DOC LIKE '%${numOnly}'
-        OR D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanNF}' OR C5.C5_NUM = '${padded6}' OR C5.C5_NUM = '${cleanNF}'
+        ${whereDoc}
+        D2.D2_PEDIDO = '${padded6}' OR D2.D2_PEDIDO = '${cleanNF}' OR C5.C5_NUM = '${padded6}' OR C5.C5_NUM = '${cleanNF}'
       )
         AND D2.D_E_L_E_T_ = ' '
       ORDER BY D2.D2_EMISSAO DESC
@@ -4976,7 +4977,127 @@ async function consultarAuditoriaNfeProtheus({ empresa, dataDe, dataAte, serie =
   };
 }
 
+/**
+ * Extrai notas faturadas (SF2 + SA1 + SD2 + SC5) das 3 empresas para sincronização com a Super Tabela nfe_central_documentos
+ * @param {Object} [params]
+ * @param {number} [params.diasRetroativos=30] Dias para trás a partir da data atual (quando dataInicio for omitida)
+ * @param {string} [params.dataInicio] Data inicial YYYYMMDD ou YYYY-MM-DD
+ * @param {string} [params.dataFim] Data final opcional YYYYMMDD ou YYYY-MM-DD
+ * @param {string} [params.empresaEspecifica] Código opcional ('14', '15' ou '16')
+ * @returns {Promise<Array<Object>>} Lista normalizada de notas
+ */
+async function extrairNotasFaturadasParaCentral({
+  diasRetroativos = 30,
+  dataInicio = null,
+  dataFim = null,
+  empresaEspecifica = null
+} = {}) {
+  let dtInicio = '';
+  if (dataInicio) {
+    dtInicio = String(dataInicio).replace(/\D/g, '').slice(0, 8);
+  } else {
+    const d = new Date();
+    d.setDate(d.getDate() - diasRetroativos);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    dtInicio = `${ano}${mes}${dia}`;
+  }
+
+  const dtFim = dataFim ? String(dataFim).replace(/\D/g, '').slice(0, 8) : null;
+
+  const empresasConfig = [
+    { key: '16', cod: '16', sf2: 'SF2160', sd2: 'SD2160', sc5: 'SC5160', sa1: 'SA1010' },
+    { key: '15', cod: '15', sf2: 'SF2150', sd2: 'SD2150', sc5: 'SC5150', sa1: 'SA1010' },
+    { key: '14', cod: '14', sf2: 'SF2140', sd2: 'SD2140', sc5: 'SC5140', sa1: 'SA1010' }
+  ];
+
+  const filtradas = empresaEspecifica
+    ? empresasConfig.filter(e => e.cod === String(empresaEspecifica).trim())
+    : empresasConfig;
+
+  const notasConsolidadas = [];
+
+  for (const emp of filtradas) {
+    try {
+      const sql = `
+        SELECT 
+          RTRIM(F2.F2_DOC) AS DOC,
+          RTRIM(F2.F2_SERIE) AS SERIE,
+          RTRIM(F2.F2_EMISSAO) AS EMISSAO,
+          RTRIM(ISNULL(F2.F2_CHVNFE, '')) AS CHVNFE,
+          RTRIM(ISNULL(F2.F2_CLIENT, '')) AS CLIENTE,
+          RTRIM(ISNULL(F2.F2_LOJA, '')) AS LOJA,
+          ISNULL(F2.F2_VALBRUT, 0) AS VALOR,
+          RTRIM(ISNULL(F2.F2_TIPO, 'N')) AS TIPO,
+          RTRIM(ISNULL(F2.F2_STATUS, '')) AS STATUS_PROTHEUS,
+          RTRIM(ISNULL(F2.D_E_L_E_T_, '')) AS DELET,
+          COALESCE(CASE WHEN F2.F2_TIPO = 'D' THEN NULLIF(A2.A2_NOME, '') END, A1.A1_NOME, '') AS RAZAO,
+          COALESCE(CASE WHEN F2.F2_TIPO = 'D' THEN NULLIF(A2.A2_CGC, '') END, A1.A1_CGC, '') AS CGC,
+          RTRIM(ISNULL(D2.PEDIDO, '')) AS NUM_PED,
+          RTRIM(ISNULL(D2.CODWEB, '')) AS CODWEB,
+          RTRIM(ISNULL(D2.CFOP, '')) AS CFOP
+        FROM ${emp.sf2} F2
+        LEFT JOIN ${emp.sa1} A1 ON A1.A1_COD = F2.F2_CLIENT AND A1.A1_LOJA = F2.F2_LOJA AND A1.D_E_L_E_T_ = ' '
+        LEFT JOIN ${emp.sa2 || 'SA2010'} A2 ON A2.A2_COD = F2.F2_CLIENT AND A2.A2_LOJA = F2.F2_LOJA AND A2.D_E_L_E_T_ = ' '
+        OUTER APPLY (
+          SELECT TOP 1 
+            RTRIM(ISNULL(SD2.D2_PEDIDO, '')) AS PEDIDO,
+            RTRIM(ISNULL(C5.C5_CODWEB, '')) AS CODWEB,
+            RTRIM(ISNULL(SD2.D2_CF, '')) AS CFOP
+          FROM ${emp.sd2} SD2
+          LEFT JOIN ${emp.sc5} C5 ON C5.C5_NUM = SD2.D2_PEDIDO AND C5.D_E_L_E_T_ = ' '
+          WHERE SD2.D2_DOC = F2.F2_DOC AND SD2.D2_SERIE = F2.F2_SERIE AND SD2.D_E_L_E_T_ = ' '
+        ) D2
+        WHERE F2.F2_EMISSAO >= '${dtInicio}'
+          ${dtFim ? `AND F2.F2_EMISSAO <= '${dtFim}'` : ''}
+          AND F2.F2_CHVNFE IS NOT NULL 
+          AND LEN(RTRIM(F2.F2_CHVNFE)) = 44
+        ORDER BY F2.F2_EMISSAO DESC, F2.F2_DOC DESC
+      `;
+
+      const dbRes = await executeRailwayQuery(sql);
+      if (dbRes && Array.isArray(dbRes.rows)) {
+        for (const r of dbRes.rows) {
+          const ch = String(r.CHVNFE || '').replace(/\D/g, '').trim();
+          if (ch.length !== 44) continue;
+
+          const rawEmissao = String(r.EMISSAO || '').trim();
+          const dtIso = (rawEmissao.length >= 8)
+            ? `${rawEmissao.substring(0, 4)}-${rawEmissao.substring(4, 6)}-${rawEmissao.substring(6, 8)}`
+            : new Date().toISOString().substring(0, 10);
+
+          const isCancelada = (r.DELET === '*' || r.STATUS_PROTHEUS === 'C' || r.STATUS_PROTHEUS === 'S');
+
+          notasConsolidadas.push({
+            chaveAcesso: ch,
+            empresa: emp.cod,
+            numeroNf: r.DOC,
+            serie: r.SERIE || '1',
+            numeroPed: r.NUM_PED || null,
+            codWeb: r.CODWEB || null,
+            clienteCod: r.CLIENTE || null,
+            clienteLoja: r.LOJA || '01',
+            clienteRazao: (r.RAZAO || '').trim() || null,
+            clienteCnpjCpf: (r.CGC || '').replace(/\D/g, '') || null,
+            dataEmissao: dtIso,
+            valorTotal: Number(r.VALOR) || 0,
+            tipoMovimento: r.TIPO === 'D' ? 'DEVOLUCAO' : 'SAIDA',
+            cfopPrincipal: r.CFOP || null,
+            statusSefaz: isCancelada ? 'CANCELADA' : 'AUTORIZADA'
+          });
+        }
+      }
+    } catch (errEmp) {
+      console.warn(`⚠️ [Protheus] Erro ao extrair faturados da empresa ${emp.cod}:`, errEmp.message);
+    }
+  }
+
+  return notasConsolidadas;
+}
+
 module.exports = {
+  extrairNotasFaturadasParaCentral,
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
   buscarConsultaComprasProtheus,

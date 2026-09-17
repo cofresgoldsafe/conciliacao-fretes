@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.231 (Homologada em 17/09/2026 09:15)  
+> **Versão da Documentação:** v8.233 (Homologada em 17/09/2026 10:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/09/2026 09:15 (v8.231 - Disposição horizontal inline dos campos e botões na Busca CodWeb/Ped/NF e higienização de placeholders)  
+> **Data da Última Auditoria:** 17/09/2026 10:15 (v8.233 - Carga Inicial dos meses 07 e 08/2026 com 358 notas, 305 pedidos/codwebs vinculados e fallback local JSON)  
 
 ---
 
@@ -171,6 +171,8 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.233 (17/09/2026):** Carga inicial e backfill retroativo de Julho e Agosto/2026 (`scripts/carga_inicial_nfe_central.js`) sincronizando 358 notas fiscais (R$ 1.54M), 305 pedidos e CodWebs vinculados e 53 canceladas nas filiais 14, 15 e 16, e fallback local JSON com filtros avançados em `consultarNfeCentral`.
+- **v8.232 (17/09/2026):** Super Tabela Central de Documentos Fiscais (`nfe_central_documentos`) no PostgreSQL Supabase com RLS ativa, persistência de XMLs no banco, prioridade máxima de cache em `exportador_xml_sefaz.js`, job agendado em background às 12:30 e 18:30 sincronizando Protheus SF2 (últimos 30 dias) com OUTER APPLY em SD2/SC5, download mTLS com intervalo de 800ms e Circuit Breaker para cStat 656.
 - **v8.231 (17/09/2026):** Disposição horizontal inline dos botões de ação ("🧹 Limpar" e "Buscar no Protheus") com os campos de busca, padronização da altura (40px) e remoção do prefixo "Ex: " nos placeholders (HTML e JS).
 - **v8.230 (17/09/2026):** Simplificação de UI na Busca CodWeb/Ped/NF: remoção do prefixo "2.", reposicionamento da instrução de exclusividade mútua para o subtítulo e eliminação de dicas e notice bars redundantes.
 - **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` (via `LEFT JOIN SA4010 A4`) e `Condição Pagto:` (via `LEFT JOIN SE4010 E4`) no modal de detalhes do pedido ([Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md) e [Busca Multi-Empresa](docs/telas/03_busca/busca_codweb_ped_nf.md)), exibindo `Código - Descrição` com fallback resiliente.
@@ -189,5 +191,3 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 - **v8.216 (14/09/2026):** Implementacao da sub-aba NFS-e Pendentes para o Analista Financeiro com conciliacao automatica Protheus e webhook continuo `claude-job-nfse`.
 - **v8.215 (14/09/2026):** Central de Tarefas e Delegacao operacional entre colaboradores com governanca de status, comentarios JSONB e painel de KPIs em linha unica.
 - **v8.214 (14/09/2026):** Sub-aba Consulta Ped/NF Compras multi-empresa com 4 chaves de busca Protheus (`SA2010`, `SC7`, `SF1`) e trava de seguranca de 90 dias.
-- **v8.213 (13/09/2026):** Arquitetura extensivel de abas e permissoes RBAC dinamicas auto-descobertas no DOM (`SYSTEM_TABS_REGISTRY`) e restauracao de acessos.
-- **v8.212 (13/09/2026):** Criacao da macro-aba COMPRAS com 4 sub-abas reaproveitadas sob principio DRY (Saldos em Estoque, Pedidos Venda, Pedidos Abertos e Compras).

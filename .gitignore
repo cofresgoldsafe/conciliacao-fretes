@@ -6,6 +6,8 @@ uploads/*
 .DS_Store
 data/*.tmp*
 data/.*.tmp*
+data/xml_nfe_cache/*
+!data/xml_nfe_cache/.gitkeep
 __pycache__/
 *.pyc
 *.xlsx

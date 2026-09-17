@@ -46,6 +46,7 @@ const colaboradoresCacheFile = path.join(dataDir, 'dp_colaboradores.json');
 const nfseCacheFile = path.join(dataDir, 'nfse_recebidas.json');
 const nfseEmitidasCacheFile = path.join(dataDir, 'nfse_emitidas.json');
 const fechamentoFiscalCacheFile = path.join(dataDir, 'fechamento_fiscal_cache.json');
+const nfeCentralCacheFile = path.join(dataDir, 'nfe_central_documentos.json');
 
 // Armazenamento em memória para tokens 2FA (Modo Local / Fallback Resiliente)
 const local2FATokens = new Map();
@@ -1054,6 +1055,41 @@ async function initPostgres() {
         CREATE INDEX IF NOT EXISTS idx_fech_fisc_empresa_mes ON fechamento_fiscal_consolidado(empresa, ano_mes DESC);
       `);
 
+      // 10.10 Cria Tabela nfe_central_documentos (Super Tabela de Rastreabilidade Fiscal, Pedidos, CodWeb e XMLs)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS nfe_central_documentos (
+          id BIGSERIAL PRIMARY KEY,
+          chave_acesso VARCHAR(44) UNIQUE NOT NULL,
+          empresa VARCHAR(10) NOT NULL,
+          numero_nf VARCHAR(20) NOT NULL,
+          serie VARCHAR(10) NOT NULL DEFAULT '1',
+          numero_ped VARCHAR(20),
+          codweb VARCHAR(50),
+          cliente_cod VARCHAR(20),
+          cliente_loja VARCHAR(10) DEFAULT '01',
+          cliente_razao VARCHAR(255),
+          cliente_cnpj_cpf VARCHAR(20),
+          data_emissao DATE NOT NULL,
+          valor_total NUMERIC(15,2) NOT NULL DEFAULT 0.00,
+          tipo_movimento VARCHAR(10) NOT NULL DEFAULT 'SAIDA',
+          cfop_principal VARCHAR(10),
+          status_sefaz VARCHAR(20) NOT NULL DEFAULT 'AUTORIZADA',
+          tem_xml BOOLEAN NOT NULL DEFAULT FALSE,
+          xml_conteudo TEXT,
+          tentativas_sync_xml INT NOT NULL DEFAULT 0,
+          ultimo_erro_sefaz TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW(),
+          CONSTRAINT uq_nfe_central_empresa_chave UNIQUE (empresa, chave_acesso)
+        );
+        CREATE INDEX IF NOT EXISTS idx_nfe_central_codweb ON nfe_central_documentos(codweb);
+        CREATE INDEX IF NOT EXISTS idx_nfe_central_numero_ped ON nfe_central_documentos(numero_ped);
+        CREATE INDEX IF NOT EXISTS idx_nfe_central_emp_doc ON nfe_central_documentos(empresa, numero_nf);
+        CREATE INDEX IF NOT EXISTS idx_nfe_central_cnpj ON nfe_central_documentos(cliente_cnpj_cpf);
+        CREATE INDEX IF NOT EXISTS idx_nfe_central_data ON nfe_central_documentos(empresa, data_emissao);
+        CREATE INDEX IF NOT EXISTS idx_nfe_central_pendentes ON nfe_central_documentos(tem_xml) WHERE tem_xml = FALSE;
+      `);
+
       // 11. Auto-Seeder / Migração de Usuários Existentes do JSON para o Banco
       const countRes = await client.query('SELECT COUNT(*) FROM users;');
       const userCount = parseInt(countRes.rows[0].count, 10);
@@ -1150,7 +1186,8 @@ async function initPostgres() {
         'dp_colaboradores',
         'nfse_recebidas',
         'nfse_emitidas',
-        'fechamento_fiscal_consolidado'
+        'fechamento_fiscal_consolidado',
+        'nfe_central_documentos'
       ];
 
       // Busca dinamicamente todas as tabelas do schema public para garantir 100% de cobertura
@@ -5836,6 +5873,383 @@ async function listarFechamentosFiscaisDB(empresa) {
   }
 }
 
+// ============================================================================
+// MÓDULO NFE CENTRAL DE DOCUMENTOS (HUB FISCAL, CODWEB, PEDIDO & XML)
+// ============================================================================
+
+async function upsertNfeCentralDocumentos(lista) {
+  if (!Array.isArray(lista) || lista.length === 0) return { inseridos: 0, total: 0 };
+  let inseridos = 0;
+
+  if (isConnected && pool) {
+    for (const item of lista) {
+      const chave = String(item.chaveAcesso || item.chave || '').replace(/\D/g, '').trim();
+      if (!chave || chave.length !== 44) continue;
+
+      const empresa = String(item.empresa || '').trim();
+      const numNf = String(item.numeroNf || item.numNf || '').trim();
+      const serie = String(item.serie || '1').trim();
+      const numPed = (item.numeroPed || item.numPed) ? String(item.numeroPed || item.numPed).trim() : null;
+      const codWeb = (item.codWeb || item.codweb) ? String(item.codWeb || item.codweb).trim() : null;
+      const clienteCod = (item.clienteCod || item.codCli) ? String(item.clienteCod || item.codCli).trim() : null;
+      const clienteLoja = String(item.clienteLoja || item.lojaCli || '01').trim();
+      const clienteRazao = (item.clienteRazao || item.razaoSocial) ? String(item.clienteRazao || item.razaoSocial).trim() : null;
+      const clienteCnpjCpf = (item.clienteCnpjCpf || item.cnpjCpf) ? String(item.clienteCnpjCpf || item.cnpjCpf).replace(/\D/g, '').trim() : null;
+      const dataEmissao = item.dataEmissao || new Date().toISOString().substring(0, 10);
+      const valorTotal = Number(item.valorTotal || item.valor || 0);
+      const tipoMovimento = String(item.tipoMovimento || 'SAIDA').toUpperCase();
+      const cfop = (item.cfopPrincipal || item.cfop) ? String(item.cfopPrincipal || item.cfop).trim() : null;
+      const statusSefaz = String(item.statusSefaz || 'AUTORIZADA').toUpperCase();
+
+      try {
+        await safeQuery(`
+          INSERT INTO nfe_central_documentos (
+            chave_acesso, empresa, numero_nf, serie, numero_ped, codweb,
+            cliente_cod, cliente_loja, cliente_razao, cliente_cnpj_cpf,
+            data_emissao, valor_total, tipo_movimento, cfop_principal, status_sefaz, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
+          ON CONFLICT (chave_acesso) DO UPDATE SET
+            numero_ped = COALESCE(NULLIF(EXCLUDED.numero_ped, ''), nfe_central_documentos.numero_ped),
+            codweb = COALESCE(NULLIF(EXCLUDED.codweb, ''), nfe_central_documentos.codweb),
+            cliente_razao = COALESCE(NULLIF(EXCLUDED.cliente_razao, ''), nfe_central_documentos.cliente_razao),
+            cliente_cnpj_cpf = COALESCE(NULLIF(EXCLUDED.cliente_cnpj_cpf, ''), nfe_central_documentos.cliente_cnpj_cpf),
+            valor_total = EXCLUDED.valor_total,
+            cfop_principal = COALESCE(NULLIF(EXCLUDED.cfop_principal, ''), nfe_central_documentos.cfop_principal),
+            status_sefaz = EXCLUDED.status_sefaz,
+            updated_at = NOW();
+        `, [
+          chave, empresa, numNf, serie, numPed, codWeb,
+          clienteCod, clienteLoja, clienteRazao, clienteCnpjCpf,
+          dataEmissao, valorTotal, tipoMovimento, cfop, statusSefaz
+        ]);
+        inseridos++;
+      } catch (err) {
+        console.warn(`⚠️ [Postgres] Erro ao upsertar chave ${chave} em nfe_central_documentos:`, err.message);
+      }
+    }
+  }
+
+  // Backup / Fallback local JSON
+  try {
+    const list = safeReadJsonSync(nfeCentralCacheFile, []) || [];
+    const map = new Map();
+    list.forEach(it => map.set(it.chaveAcesso, it));
+    lista.forEach(it => {
+      const ch = String(it.chaveAcesso || it.chave || '').replace(/\D/g, '').trim();
+      if (ch.length === 44) {
+        const existing = map.get(ch) || {};
+        map.set(ch, { ...existing, ...it, chaveAcesso: ch, updatedAt: new Date().toISOString() });
+      }
+    });
+    safeWriteJsonSync(nfeCentralCacheFile, Array.from(map.values()));
+  } catch (e) {}
+
+  return { inseridos, total: lista.length };
+}
+
+async function salvarXmlNfeCentral(chaveAcesso, xmlConteudo) {
+  const chave = String(chaveAcesso || '').replace(/\D/g, '').trim();
+  if (!chave || chave.length !== 44 || !xmlConteudo) return false;
+
+  let atualizado = false;
+  if (isConnected && pool) {
+    try {
+      // 1. Tenta UPDATE direto
+      const res = await safeQuery(`
+        UPDATE nfe_central_documentos
+        SET xml_conteudo = $1, tem_xml = TRUE, ultimo_erro_sefaz = NULL, updated_at = NOW()
+        WHERE chave_acesso = $2;
+      `, [xmlConteudo, chave]);
+
+      if (res && res.rowCount > 0) {
+        atualizado = true;
+      } else {
+        // 2. Se a nota não existia (ex: fora da janela de 30 dias), faz UPSERT com dados derivados da chave
+        const cnpjChave = chave.substring(6, 20);
+        let empCod = '16';
+        if (cnpjChave === '48758821000118') empCod = '14';
+        else if (cnpjChave === '14061778000115') empCod = '15';
+
+        const aamm = chave.substring(2, 6);
+        const dataEmissao = `20${aamm.substring(0, 2)}-${aamm.substring(2, 4)}-01`;
+        const serie = parseInt(chave.substring(22, 25), 10).toString();
+        const numNf = parseInt(chave.substring(25, 34), 10).toString().padStart(6, '0');
+
+        await safeQuery(`
+          INSERT INTO nfe_central_documentos (
+            chave_acesso, empresa, numero_nf, serie, data_emissao, xml_conteudo, tem_xml, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
+          ON CONFLICT (chave_acesso) DO UPDATE SET
+            xml_conteudo = EXCLUDED.xml_conteudo,
+            tem_xml = TRUE,
+            ultimo_erro_sefaz = NULL,
+            updated_at = NOW();
+        `, [chave, empCod, numNf, serie, dataEmissao, xmlConteudo]);
+        atualizado = true;
+      }
+    } catch (err) {
+      console.warn(`⚠️ [Postgres] Falha ao atualizar/upsertar XML da chave ${chave}:`, err.message);
+    }
+  }
+
+  // Grava no disco local como cache perene de arquivos individuais (Zero impacto no Event Loop)
+  try {
+    const cacheDir = path.join(dataDir, 'xml_nfe_cache');
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(path.join(cacheDir, `${chave}.xml`), xmlConteudo, 'utf8');
+    atualizado = true;
+  } catch (e) {}
+
+  // No arquivo de cache JSON de metadados, atualiza apenas a flag temXml sem duplicar dezenas de MBs de XML embutido
+  try {
+    const list = safeReadJsonSync(nfeCentralCacheFile, []) || [];
+    const it = list.find(x => x.chaveAcesso === chave);
+    if (it) {
+      it.temXml = true;
+      it.updatedAt = new Date().toISOString();
+      safeWriteJsonSync(nfeCentralCacheFile, list);
+    }
+  } catch (e) {}
+
+  return atualizado;
+}
+
+async function registrarFalhaXmlNfeCentral(chaveAcesso, erroMsg) {
+  const chave = String(chaveAcesso || '').replace(/\D/g, '').trim();
+  if (!chave || chave.length !== 44) return false;
+
+  if (isConnected && pool) {
+    try {
+      await safeQuery(`
+        UPDATE nfe_central_documentos
+        SET tentativas_sync_xml = tentativas_sync_xml + 1,
+            ultimo_erro_sefaz = $1,
+            updated_at = NOW()
+        WHERE chave_acesso = $2;
+      `, [String(erroMsg || 'Erro SEFAZ'), chave]);
+    } catch (e) {}
+  }
+  return true;
+}
+
+async function obterXmlNfeCentralPorChave(chaveAcesso) {
+  const chave = String(chaveAcesso || '').replace(/\D/g, '').trim();
+  if (!chave || chave.length !== 44) return null;
+
+  if (isConnected && pool) {
+    try {
+      const res = await safeQuery(`
+        SELECT xml_conteudo
+        FROM nfe_central_documentos
+        WHERE chave_acesso = $1 AND xml_conteudo IS NOT NULL
+        LIMIT 1;
+      `, [chave]);
+      if (res && res.rows && res.rows.length > 0 && res.rows[0].xml_conteudo) {
+        return res.rows[0].xml_conteudo;
+      }
+    } catch (err) {
+      console.warn(`⚠️ [Postgres] Erro ao obter XML de ${chave}:`, err.message);
+    }
+  }
+
+  // Fallback cache em disco
+  try {
+    const diskPath = path.join(dataDir, 'xml_nfe_cache', `${chave}.xml`);
+    if (fs.existsSync(diskPath)) {
+      const xmlDisk = fs.readFileSync(diskPath, 'utf8');
+      if (xmlDisk && xmlDisk.includes('<nfeProc')) return xmlDisk;
+    }
+  } catch (e) {}
+
+  // Fallback JSON
+  try {
+    const list = safeReadJsonSync(nfeCentralCacheFile, []) || [];
+    const item = list.find(x => x.chaveAcesso === chave && x.xmlConteudo);
+    if (item) return item.xmlConteudo;
+  } catch (e) {}
+
+  return null;
+}
+
+async function obterLoteXmlsNfeCentral(chaves) {
+  const map = new Map();
+  if (!Array.isArray(chaves) || chaves.length === 0) return map;
+
+  const chavesLimpas = chaves.map(c => String(c || '').replace(/\D/g, '').trim()).filter(c => c.length === 44);
+  if (chavesLimpas.length === 0) return map;
+
+  if (isConnected && pool) {
+    try {
+      const res = await safeQuery(`
+        SELECT chave_acesso, xml_conteudo
+        FROM nfe_central_documentos
+        WHERE chave_acesso = ANY($1) AND xml_conteudo IS NOT NULL;
+      `, [chavesLimpas]);
+      if (res && res.rows) {
+        for (const row of res.rows) {
+          if (row.xml_conteudo) map.set(row.chave_acesso, row.xml_conteudo);
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao obter lote de XMLs:', err.message);
+    }
+  }
+
+  // Fallback para as chaves faltantes via disco
+  for (const ch of chavesLimpas) {
+    if (!map.has(ch)) {
+      try {
+        const diskPath = path.join(dataDir, 'xml_nfe_cache', `${ch}.xml`);
+        if (fs.existsSync(diskPath)) {
+          const xmlDisk = fs.readFileSync(diskPath, 'utf8');
+          if (xmlDisk && xmlDisk.includes('<nfeProc')) map.set(ch, xmlDisk);
+        }
+      } catch (e) {}
+    }
+  }
+
+  return map;
+}
+
+async function obterChavesPendentesXmlNfeCentral(limite = 50) {
+  if (isConnected && pool) {
+    try {
+      const res = await safeQuery(`
+        SELECT chave_acesso, empresa, numero_nf, serie, data_emissao
+        FROM nfe_central_documentos
+        WHERE tem_xml = FALSE
+          AND tentativas_sync_xml < 3
+          AND chave_acesso IS NOT NULL
+          AND LENGTH(chave_acesso) = 44
+        ORDER BY data_emissao DESC
+        LIMIT $1;
+      `, [Math.max(1, Math.min(limite, 100))]);
+      return res ? (res.rows || []) : [];
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao obter chaves pendentes de XML:', err.message);
+    }
+  }
+  return [];
+}
+
+async function consultarNfeCentral({ empresa, termo, de, ate, limite = 50, offset = 0 }) {
+  if (isConnected && pool) {
+    try {
+      let conditions = [];
+      let params = [];
+      let pIdx = 1;
+
+      if (empresa) {
+        conditions.push(`empresa = $${pIdx++}`);
+        params.push(String(empresa).trim());
+      }
+      if (de) {
+        conditions.push(`data_emissao >= $${pIdx++}`);
+        params.push(de);
+      }
+      if (ate) {
+        conditions.push(`data_emissao <= $${pIdx++}`);
+        params.push(ate);
+      }
+      if (termo) {
+        const clean = String(termo).trim();
+        const numClean = clean.replace(/\D/g, '');
+        if (numClean) {
+          const padded6 = numClean.padStart(6, '0');
+          const padded9 = numClean.padStart(9, '0');
+          conditions.push(`(
+            codweb = $${pIdx} OR 
+            numero_ped = $${pIdx} OR numero_ped = $${pIdx + 1} OR
+            numero_nf = $${pIdx} OR numero_nf = $${pIdx + 1} OR numero_nf = $${pIdx + 2} OR
+            chave_acesso = $${pIdx} OR
+            cliente_cnpj_cpf = $${pIdx} OR
+            cliente_razao ILIKE $${pIdx + 3}
+          )`);
+          params.push(numClean);
+          params.push(padded6);
+          params.push(padded9);
+          params.push(`%${clean}%`);
+          pIdx += 4;
+        } else {
+          conditions.push(`cliente_razao ILIKE $${pIdx++}`);
+          params.push(`%${clean}%`);
+        }
+      }
+
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      
+      const countRes = await safeQuery(`SELECT COUNT(*) as total FROM nfe_central_documentos ${whereClause};`, params);
+      const total = parseInt(countRes?.rows?.[0]?.total || '0', 10);
+
+      params.push(limite);
+      params.push(offset);
+      const querySql = `
+        SELECT 
+          id, chave_acesso, empresa, numero_nf, serie, numero_ped, codweb,
+          cliente_cod, cliente_loja, cliente_razao, cliente_cnpj_cpf,
+          data_emissao, valor_total, tipo_movimento, cfop_principal, status_sefaz,
+          tem_xml, created_at, updated_at
+        FROM nfe_central_documentos
+        ${whereClause}
+        ORDER BY data_emissao DESC, id DESC
+        LIMIT $${pIdx++} OFFSET $${pIdx++};
+      `;
+      const res = await safeQuery(querySql, params);
+      return { total, itens: res?.rows || [] };
+    } catch (err) {
+      console.warn('⚠️ [Postgres] Erro ao consultar nfe_central_documentos:', err.message);
+    }
+  }
+
+  // Fallback Local JSON Seguro
+  try {
+    let list = safeReadJsonSync(nfeCentralCacheFile, []) || [];
+    if (empresa) {
+      list = list.filter(it => it.empresa === String(empresa).trim());
+    }
+    if (de) {
+      list = list.filter(it => it.dataEmissao >= de);
+    }
+    if (ate) {
+      list = list.filter(it => it.dataEmissao <= ate);
+    }
+    if (termo) {
+      const clean = String(termo).trim().toLowerCase();
+      const numClean = clean.replace(/\D/g, '');
+      list = list.filter(it => {
+        const nf = String(it.numeroNf || '').toLowerCase();
+        const ped = String(it.numeroPed || '').toLowerCase();
+        const web = String(it.codWeb || '').toLowerCase();
+        const ch = String(it.chaveAcesso || '').toLowerCase();
+        const razao = String(it.clienteRazao || '').toLowerCase();
+        const cnpj = String(it.clienteCnpjCpf || '').toLowerCase();
+
+        return nf.includes(clean) ||
+               (numClean && parseInt(nf, 10) === parseInt(numClean, 10)) ||
+               ped.includes(clean) ||
+               (numClean && parseInt(ped, 10) === parseInt(numClean, 10)) ||
+               web.includes(clean) ||
+               ch.includes(clean) ||
+               razao.includes(clean) ||
+               cnpj.includes(clean);
+      });
+    }
+
+    const total = list.length;
+    const itens = list.slice(offset, offset + limite).map(it => {
+      const copy = { ...it };
+      delete copy.xmlConteudo;
+      return copy;
+    });
+
+    return { total, itens };
+  } catch (errFallback) {
+    console.warn('⚠️ [Postgres] Erro no fallback local de consultarNfeCentral:', errFallback.message);
+  }
+
+  return { total: 0, itens: [] };
+}
+
 function isPostgresConnected() {
   return isConnected;
 }
@@ -5925,6 +6339,14 @@ module.exports = {
   salvarFechamentoFiscalDB,
   obterFechamentoFiscalDB,
   listarFechamentosFiscaisDB,
+  // Módulo NFe Central de Documentos (Hub Fiscal, Pedido, CodWeb & XML)
+  upsertNfeCentralDocumentos,
+  salvarXmlNfeCentral,
+  registrarFalhaXmlNfeCentral,
+  obterXmlNfeCentralPorChave,
+  obterLoteXmlsNfeCentral,
+  obterChavesPendentesXmlNfeCentral,
+  consultarNfeCentral,
   DEFAULT_METAS_VENDAS,
   isPostgresConnected,
   getPool

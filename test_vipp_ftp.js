@@ -86,7 +86,7 @@ async function runTests() {
 
   // Teste 6: Consulta no Protheus por Pedido de Venda direto (ex: 000734 ou 734)
   await test('Consulta no Protheus por Pedido de Venda direto (busca reversa)', async () => {
-    const res = await consultarProtheusNF('000734', 'OACO');
+    const res = await consultarProtheusNF('000734', 'OACO', { tipo: 'pedVenda' });
     assert.strictEqual(res.encontrado, true, 'Pedido 000734 deve ser localizado');
     assert.strictEqual(res.pedVenda, '000734', 'pedVenda deve ser 000734');
     assert.strictEqual(res.freteCobrado, 128.00, 'Frete cobrado deve ser R$ 128,00');

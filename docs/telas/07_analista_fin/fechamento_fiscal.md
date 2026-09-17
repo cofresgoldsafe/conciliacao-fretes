@@ -14,8 +14,8 @@
 | **Tab ID DOM** | `#tab-fechamento-fiscal` |
 | **Botão de Acesso DOM** | `#btnTabFechamentoFiscal` |
 | **Permissão RBAC** | `analista-fin`, `admin` |
-| **Versão / Data** | v2.6 — 16/09/2026 |
-| **Status Operacional** | 🟢 Produção Homologada (Batimento 100% com OACO 08/2026) |
+| **Versão / Data** | v2.7 — 17/09/2026 |
+| **Status Operacional** | 🟢 Produção Homologada (Super Tabela nfe_central_documentos + Job 12:30/18:30) |
 
 ---
 
@@ -176,6 +176,30 @@ Persiste as notas fiscais de serviços tomados ou prestados na capital paulista 
 - `xml_conteudo`: TEXT (Armazenamento íntegro do XML assinado pela prefeitura).
 - `status`: VARCHAR(20) (`CONCILIADO`, `PENDENTE`, `CANCELADO`).
 
+#### Tabela `nfe_central_documentos` (Super Tabela de Documentos Fiscais)
+Hub central de alta performance para conciliação contábil, consulta rápida e armazenamento definitivo de XMLs de NF-e mercantil:
+- `chave_acesso`: VARCHAR(44) PRIMARY KEY (Chave de acesso numérica oficial de 44 dígitos).
+- `empresa`: VARCHAR(10) NOT NULL (`14`, `15`, `16`, `MP`, `GSI`, `OACO`).
+- `numero_nf`: VARCHAR(20) NOT NULL (Número da nota formatado ou cru).
+- `serie`: VARCHAR(10) (Série da nota fiscal, default `'1'`).
+- `numero_ped`: VARCHAR(30) (Número do Pedido de Venda associado `D2_PEDIDO` / `C5_NUM`).
+- `codweb`: VARCHAR(30) (Código do negócio no CRM Pipedrive `C5_CODWEB`).
+- `cod_cli`: VARCHAR(30) (Código do cliente no Protheus `A1_COD`).
+- `cliente_razao`: VARCHAR(255) (Razão Social / Nome do Destinatário).
+- `cliente_cnpj_cpf`: VARCHAR(20) (CNPJ ou CPF do destinatário).
+- `data_emissao`: DATE (Data de emissão fiscal `F2_EMISSAO`).
+- `valor_total`: NUMERIC(15,2) (Valor bruto total da nota `F2_VALBRUT`).
+- `tipo_movimento`: VARCHAR(20) (`SAIDA`, `ENTRADA`, `DEVOLUCAO`).
+- `cfop_principal`: VARCHAR(10) (CFOP do item preponderante).
+- `status_sefaz`: VARCHAR(30) (`AUTORIZADA`, `CANCELADA`, `DENEGADA`, `PENDENTE_XML`).
+- `tem_xml`: BOOLEAN DEFAULT FALSE (Flag booleana indicando disponibilidade do XML no banco).
+- `xml_conteudo`: TEXT (Armazenamento íntegro do arquivo XML `<nfeProc>`, compactado via PostgreSQL TOAST sem overhead de leitura em listagens).
+- `tentativas_sync_xml`: INTEGER DEFAULT 0 (Contador progressivo com descarte após 3 falhas).
+- `ultimo_erro_sefaz`: TEXT (Mensagem de rejeição SEFAZ ou erro de conexão).
+- `criado_em` / `atualizado_em`: TIMESTAMP WITH TIME ZONE.
+- **Índices de Cobertura:** `idx_nfe_central_chave`, `idx_nfe_central_nf_emp`, `idx_nfe_central_ped`, `idx_nfe_central_codweb`, `idx_nfe_central_cli`, `idx_nfe_central_status`, `idx_nfe_central_pendentes` (índice parcial `WHERE tem_xml = FALSE AND tentativas_sync_xml < 3`).
+- **Segurança Zero-Trust:** `FORCE ROW LEVEL SECURITY` habilitado, acessível com chave de serviço `postgres` / `service_role` e revogado de `anon`.
+
 ---
 
 ## 4. Regras de Negócio & Cálculos Chave
@@ -301,21 +325,57 @@ $$\text{RBT12} = \sum_{m = \text{Mês}-12}^{\text{Mês}-1} \text{Total Tributado
   }
   ```
 - **Retorno:** Buffer binário com header `Content-Type: application/zip` e `Content-Disposition: attachment; filename="NFE_XML_EMP[cod]_[data].zip"`.
-- **Cache Local:** Gravação transparente em `data/xml_nfe_cache/<chave>.xml` para consultas futuras com latência zero e mitigação da Rejeição 656 (Consumo Indevido).
+- **Retorno:** Buffer binário com header `Content-Type: application/zip` e `Content-Disposition: attachment; filename="NFE_XML_EMP[cod]_[data].zip"`.
+- **Cache Híbrido:** Prioridade de busca no PostgreSQL (`nfe_central_documentos`) e no cache de disco local (`data/xml_nfe_cache/<chave>.xml`). Novos XMLs baixados são salvos automaticamente no PostgreSQL e em disco, zerando chamadas redundantes e mitigando Rejeição 656 da SEFAZ.
+
+### 5.8 `GET /api/nfe-central/consultar`
+- **Descrição:** Pesquisa multi-critério otimizada na super tabela `nfe_central_documentos` com suporte a chave de acesso, NF, pedido, codweb ou cliente.
+- **Autenticação:** `Bearer JWT` (Permissão: `analista-fin`, `consulta`, `vendedor` ou `admin`).
+- **Query Params:** `chave`, `nf`, `ped`, `codweb`, `cli`, `empresa`, `limite` (default 50).
+
+### 5.9 `POST /api/admin/jobs/sync-nfe-central`
+- **Descrição:** Disparo assíncrono manual do job de sincronização da Central de Documentos com trava anti-reentrância.
+- **Autenticação:** `Bearer JWT` (Exclusivo `admin`).
+- **Retorno:** `202 Accepted` imediato: `{ "success": true, "job": "nfe-central-sync", "status": "running" }`.
+
+### 5.10 `GET /api/admin/jobs/sync-nfe-central/status`
+- **Descrição:** Consulta o status e estatísticas da última execução do sincronizador.
+- **Autenticação:** `Bearer JWT` (Exclusivo `admin`).
+
+### 5.11 Rotina Agendada em Background (12:30 e 18:30)
+- **Horários Fixos:** Executado diariamente às **12:30** e **18:30** no fuso horário oficial de Brasília (`America/Sao_Paulo`).
+- **Etapa 1:** Extração incremental de notas de saída dos últimos 30 dias no Protheus (`SF2` com `OUTER APPLY` em `SD2`/`SC5` e joins com `SA1`/`SA2`).
+- **Etapa 2:** UPSERT de metadados na super tabela `nfe_central_documentos`.
+- **Etapa 3:** Resolução de XMLs pendentes via SEFAZ com mTLS A1, intervalo de 800ms anti-bloqueio, descarte após 3 falhas e Circuit Breaker que aborta imediatamente em caso de Rejeição 656 (Consumo Indevido).
+
+### 5.12 Script de Carga Inicial (Backfill Histórico) — `scripts/carga_inicial_nfe_central.js`
+- **Finalidade:** Popula a super tabela com histórico retroativo completo a partir de `01/07/2026` até a presente data, cobrindo todo o 3º trimestre para as 3 empresas (`14 - Metal Pleno`, `15 - GSI Brasil`, `16 - OAÇO`).
+- **Comando de Execução:**
+  ```bash
+  node scripts/carga_inicial_nfe_central.js
+  node scripts/carga_inicial_nfe_central.js --de=20260701 --ate=20260831 --empresa=ALL
+  ```
+- **Resultado Homologado da Carga Inicial:**
+  - **Metal Pleno (14):** 134 notas (R$ 950.232,41) | 116 com Pedido | 116 com CodWeb | 18 canceladas
+  - **GSI Brasil (15):** 35 notas (R$ 151.407,72) | 11 com Pedido | 11 com CodWeb | 24 canceladas
+  - **OAÇO / Cofres (16):** 189 notas (R$ 438.891,25) | 178 com Pedido | 178 com CodWeb | 11 canceladas
+  - **TOTAL CONSOLIDADO:** **358 notas** | **R$ 1.540.531,38** | **305 com Pedido e CodWeb** | **53 canceladas** | Tempo de execução: 7.9s.
 
 ---
 
 ## 6. Testes Automatizados Vinculados
 
-A conformidade contábil e a estabilidade da tela são verificadas por duas suítes dedicadas:
+A conformidade contábil e a estabilidade da tela são verificadas por três suítes dedicadas:
 
 | Arquivo de Teste | Quantidade de Cenários | Foco da Validação |
 | :--- | :--- | :--- |
+| [`test_nfe_central.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_nfe_central.js) | 9 Testes (Red Team) | Upsert de lote, integridade de XML salvo, upsert autossuficiente de notas órfãs, recuperação em lote por chave, resolução prioritária do banco de dados com zero chamadas SEFAZ, montagem de ZIP sem latência, descarte de notas com >=3 falhas, busca por número sem padding e bloqueio de concorrência no server. |
 | [`test_fechamento_fiscal.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_fechamento_fiscal.js) | 17 Testes | Batimento OACO 08/2026, exclusão de ROMA, classificação de serviços, devoluções MATA103, RBT12, persistência relacional, filtro conjunto SPED & NFE, envelope SOAP NFeDistribuicaoDFe, descompressão docZip e geração de .zip de NF-e. |
 | [`test_nfse_paulistana_fechamento.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_nfse_paulistana_fechamento.js) | 13 Testes | Parsers XML/TXT da Nota Paulistana, integridade ZIP sem corrupção, isolamento entre filiais e fail-closed security. |
 
 ### Comandos de Execução dos Testes:
 ```bash
+node test_nfe_central.js
 node test_fechamento_fiscal.js
 node test_nfse_paulistana_fechamento.js
 ```
@@ -326,6 +386,8 @@ node test_nfse_paulistana_fechamento.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
+| **v2.8** | 2026-09-17 | Alexandre / Equipe GSI | Carga inicial e backfill completo de Julho e Agosto/2026 (`scripts/carga_inicial_nfe_central.js`) sincronizando 358 notas fiscais (R$ 1.54M), 305 com Pedido e CodWeb vinculados; suporte a `dataInicio` e `dataFim` em `extrairNotasFaturadasParaCentral` e fallback local JSON em `consultarNfeCentral`. |
+| **v2.7** | 2026-09-17 | Alexandre / Equipe GSI | Implementação da Super Tabela `nfe_central_documentos` no PostgreSQL Supabase com RLS e índices B-Tree, persistência nativa de XMLs no banco, prioridade máxima de busca no PostgreSQL em `exportador_xml_sefaz.js`, descompressão GZIP integrada e job agendado em background às 12:30 e 18:30 (Brasília) com trava anti-reentrância e Circuit Breaker para cStat 656. |
 | **v2.6** | 2026-09-16 | Alexandre / Equipe GSI | Implementação de exportação em lote de XMLs de NF-e mercantil via SEFAZ (`exportador_xml_sefaz.js`), botão compacto ao lado de 'SPED & NFE' na mesma linha, modal com barra de progresso, resolução de conflito de classe CSS `.hidden` com `display: flex`, fallbacks de renderização inline e cache local permanente em disco. |
 | **v2.5** | 2026-09-16 | Alexandre / Equipe GSI | Inclusão do filtro conjunto 'SPED & NFE' no seletor `#selFiltroDocFechamento` para visualização simultânea de NFs mercantis no grid e exportação CSV. |
 | **v2.4** | 2026-09-15 | Alexandre / Equipe GSI | Implementação de exportação em lote ZIP nativa em memória (`zip_util.js`) para notas da Prefeitura de SP. |

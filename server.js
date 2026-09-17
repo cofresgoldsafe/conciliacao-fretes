@@ -5104,6 +5104,88 @@ app.post('/api/analista-fin/fechamento-fiscal/exportar-xml-sefaz', requireAuth, 
 });
 
 // ============================================================================
+// MÓDULO NFE CENTRAL (SUPER TABELA DE RASTREABILIDADE FISCAL, PEDIDO, CODWEB & XML)
+// ============================================================================
+
+// 1. Consultar NFe Central no PostgreSQL Supabase
+app.get('/api/nfe-central/consultar', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const userPerms = Array.isArray(user?.permissions) ? user.permissions : [];
+    if (user?.role !== 'admin' && !userPerms.includes('analista-fin') && !userPerms.includes('consulta')) {
+      return res.status(403).json({ ok: false, error: 'Acesso restrito ao perfil financeiro, fiscal ou consulta.' });
+    }
+
+    const { empresa, termo, de, ate, limite = 50, offset = 0 } = req.query;
+    const { consultarNfeCentral } = require('./postgres_db');
+    const resultado = await consultarNfeCentral({
+      empresa,
+      termo,
+      de,
+      ate,
+      limite: Number(limite) || 50,
+      offset: Number(offset) || 0
+    });
+    return res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('Erro ao consultar nfe_central_documentos:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 2. Disparo manual da sincronização em background da NFe Central (Admin ou webhook)
+app.post('/api/admin/jobs/sync-nfe-central', async (req, res) => {
+  try {
+    const cronSecret = req.headers['x-cron-secret'];
+    const validCronSecret = (process.env.CRON_SECRET || '').trim();
+    let isAuthorized = false;
+
+    if (validCronSecret && cronSecret && cronSecret === validCronSecret) {
+      isAuthorized = true;
+    } else {
+      const user = getUserFromReq(req);
+      if (user && (user.role === 'admin' || (Array.isArray(user.permissions) && user.permissions.includes('analista-fin')))) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({ ok: false, error: 'Acesso não autorizado para executar este job.' });
+    }
+
+    if (isSyncingNfeCentral) {
+      return res.status(409).json({ ok: false, executando: true, message: 'Sincronização já está em andamento.' });
+    }
+
+    const { limiteXml = 50, diasRetroativos = 30 } = req.body || {};
+
+    // Dispara assincronamente sem bloquear a resposta HTTP (prevenção contra HTTP 504 / 524 Gateway Timeout)
+    executarSincronizacaoNfeCentral({
+      limiteXml: Number(limiteXml) || 50,
+      diasRetroativos: Number(diasRetroativos) || 30
+    }).catch(errAsync => console.error('Erro assíncrono em sync-nfe-central:', errAsync.message));
+
+    return res.status(202).json({
+      ok: true,
+      message: 'Sincronização da NFe Central iniciada em background.',
+      isSyncing: true
+    });
+  } catch (err) {
+    console.error('Erro ao disparar sincronização manual NFe Central:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 3. Status da última sincronização da NFe Central
+app.get('/api/admin/jobs/sync-nfe-central/status', requireAuth, (req, res) => {
+  return res.json({
+    ok: true,
+    isSyncing: isSyncingNfeCentral,
+    ultimoLog: ultimoSyncNfeCentralLog
+  });
+});
+
+// ============================================================================
 // MÓDULO AUDITORIA PROTHEUS X SEFAZ (ANALISTA FIN / FISCAL)
 // ============================================================================
 
@@ -6112,6 +6194,152 @@ function startFechamentoVendedoresJob() {
   }, 5000);
 }
 
+/**
+ * ----------------------------------------------------------------------------
+ * JOB AGENDADO: SINCRONIZAÇÃO NFE CENTRAL (12:30 E 18:30 HORÁRIO DE BRASÍLIA)
+ * ----------------------------------------------------------------------------
+ */
+let nfeCentralJobInterval = null;
+let isSyncingNfeCentral = false;
+let ultimoSyncNfeCentralLog = null;
+let ultimoSlotNfeCentralExecutado = '';
+
+async function executarSincronizacaoNfeCentral({ limiteXml = 50, diasRetroativos = 30 } = {}) {
+  if (isSyncingNfeCentral) {
+    console.log('⚠️ [Job NFe Central] Sincronização já em andamento. Ignorando execução concorrente.');
+    return { ok: false, executando: true, message: 'Sincronização já em andamento.' };
+  }
+
+  isSyncingNfeCentral = true;
+  const inicio = Date.now();
+  const stats = {
+    timestamp: new Date().toISOString(),
+    totalExtraidoProtheus: 0,
+    totalUpsertado: 0,
+    xmlsPendentesAntes: 0,
+    xmlsBaixadosSefaz: 0,
+    xmlsFalhas: 0,
+    duracaoSegundos: 0
+  };
+
+  try {
+    console.log(`🚀 [Job NFe Central] Iniciando sincronização (Janela: últimos ${diasRetroativos} dias)...`);
+
+    // 1. Extração de Notas do Protheus (SF2 + SA1 + SD2 + SC5)
+    const { extrairNotasFaturadasParaCentral } = require('./protheus_db');
+    const notas = await extrairNotasFaturadasParaCentral({ diasRetroativos });
+    stats.totalExtraidoProtheus = notas.length;
+    console.log(`📦 [Job NFe Central] Protheus retornou ${notas.length} notas faturadas com chave NF-e.`);
+
+    // 2. Upsert no PostgreSQL Supabase
+    const { 
+      upsertNfeCentralDocumentos, 
+      obterChavesPendentesXmlNfeCentral, 
+      salvarXmlNfeCentral, 
+      registrarFalhaXmlNfeCentral 
+    } = require('./postgres_db');
+
+    const resUpsert = await upsertNfeCentralDocumentos(notas);
+    stats.totalUpsertado = resUpsert.inseridos;
+    console.log(`💾 [Job NFe Central] Upsert concluído: ${resUpsert.inseridos} registros atualizados/inseridos no Supabase.`);
+
+    // 3. Fila de Download dos XMLs Pendentes na SEFAZ (com controle de taxa anti-bloqueio)
+    const pendentes = await obterChavesPendentesXmlNfeCentral(limiteXml);
+    stats.xmlsPendentesAntes = pendentes.length;
+    console.log(`📥 [Job NFe Central] ${pendentes.length} notas pendentes de download de XML na SEFAZ (limite deste lote: ${limiteXml}).`);
+
+    if (pendentes.length > 0) {
+      const { obterXmlNfeSefaz } = require('./exportador_xml_sefaz');
+
+      for (let i = 0; i < pendentes.length; i++) {
+        const item = pendentes[i];
+        const chave = item.chave_acesso;
+        const emp = item.empresa;
+
+        try {
+          const resXml = await obterXmlNfeSefaz({ chaveNfe: chave, empresaCod: emp });
+          if (resXml.sucesso && resXml.xml) {
+            stats.xmlsBaixadosSefaz++;
+          } else {
+            await registrarFalhaXmlNfeCentral(chave, resXml.erro || resXml.xMotivo || 'Falha SEFAZ');
+            stats.xmlsFalhas++;
+
+            // Circuit Breaker SEFAZ: Rejeição 656 (Consumo Indevido) aborta imediatamente o lote para evitar ban de 24h
+            if (resXml.cStat === '656' || (resXml.erro && String(resXml.erro).includes('656')) || (resXml.xMotivo && String(resXml.xMotivo).includes('Consumo Indevido'))) {
+              console.warn(`🛑 [Job NFe Central] Circuit Breaker ativado na chave ${chave}: SEFAZ retornou Rejeição 656 (Consumo Indevido). Abortando lote.`);
+              stats.circuitBreakerAtivado = true;
+              break;
+            }
+          }
+        } catch (errXml) {
+          await registrarFalhaXmlNfeCentral(chave, errXml.message);
+          stats.xmlsFalhas++;
+        }
+
+        // Pausa anti-throttling de 800ms entre requisições externas para prevenção da Rejeição 656
+        if (i < pendentes.length - 1) {
+          await new Promise(r => setTimeout(r, 800));
+        }
+      }
+    }
+
+    stats.duracaoSegundos = Math.round((Date.now() - inicio) / 1000);
+    console.log(`✅ [Job NFe Central] Sincronização concluída com sucesso em ${stats.duracaoSegundos}s. (${stats.xmlsBaixadosSefaz} XMLs baixados, ${stats.xmlsFalhas} falhas).`);
+    ultimoSyncNfeCentralLog = stats;
+    return { ok: true, stats };
+  } catch (err) {
+    console.error('❌ [Job NFe Central] Erro fatal durante ciclo de sincronização:', err);
+    stats.erro = err.message;
+    ultimoSyncNfeCentralLog = stats;
+    return { ok: false, error: err.message, stats };
+  } finally {
+    isSyncingNfeCentral = false;
+  }
+}
+
+function startNfeCentralSyncJob() {
+  if (nfeCentralJobInterval) return;
+
+  const verificarEExecutar = async () => {
+    try {
+      const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+      const nowBrasilia = new Date(nowStr);
+      const ano = nowBrasilia.getFullYear();
+      const mes = String(nowBrasilia.getMonth() + 1).padStart(2, '0');
+      const dia = String(nowBrasilia.getDate()).padStart(2, '0');
+      const hora = nowBrasilia.getHours();
+      const minuto = nowBrasilia.getMinutes();
+
+      const hoje = `${ano}-${mes}-${dia}`;
+      let slotAtual = '';
+
+      // Slot 1: 12:30 (janela de 10 min: 12:30 a 12:39)
+      if (hora === 12 && minuto >= 30 && minuto <= 39) {
+        slotAtual = `${hoje}_1230`;
+      }
+      // Slot 2: 18:30 (janela de 10 min: 18:30 a 18:39)
+      else if (hora === 18 && minuto >= 30 && minuto <= 39) {
+        slotAtual = `${hoje}_1830`;
+      }
+
+      if (slotAtual && slotAtual !== ultimoSlotNfeCentralExecutado) {
+        ultimoSlotNfeCentralExecutado = slotAtual;
+        console.log(`⏰ [Job NFe Central] Disparando execução agendada do slot ${slotAtual} (${hora}:${String(minuto).padStart(2, '0')} BRT)...`);
+        await executarSincronizacaoNfeCentral({ limiteXml: 50, diasRetroativos: 30 });
+      }
+    } catch (err) {
+      console.warn('⚠️ [Job NFe Central] Erro no scheduler:', err.message);
+    }
+  };
+
+  // Checa a cada 2 minutos
+  nfeCentralJobInterval = setInterval(verificarEExecutar, 2 * 60 * 1000);
+  if (nfeCentralJobInterval.unref) {
+    nfeCentralJobInterval.unref();
+  }
+  console.log('🕒 [Job NFe Central] Scheduler iniciado (programado para 12:30 e 18:30 America/Sao_Paulo).');
+}
+
 if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`=================================================`);
@@ -6123,8 +6351,12 @@ if (require.main === module) {
     startEstoqueSyncJob();
     startIndicesSyncJob();
     startFechamentoVendedoresJob();
+    startNfeCentralSyncJob();
   });
 }
+
+app.executarSincronizacaoNfeCentral = executarSincronizacaoNfeCentral;
+app.startNfeCentralSyncJob = startNfeCentralSyncJob;
 
 module.exports = app;
 
