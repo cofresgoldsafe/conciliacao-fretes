@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.235 (Homologada em 17/09/2026 13:20)  
+> **Versão da Documentação:** v8.236 (Homologada em 17/09/2026 14:03)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/09/2026 13:20 (v8.235 - Suporte a Senha de Certificado A1, Diagnostico SEFAZ e Sync de Sessao no DANFE)  
+> **Data da Última Auditoria:** 17/09/2026 14:03 (v8.236 - Fallback Resiliente Protheus ERP e Sintetizador XML DANFE para SEFAZ cStat 641)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.236 (17/09/2026):** Fallback resiliente Protheus ERP e sintetizador canônico de XML NF-e (`danfe_protheus.js`) para contornar a regra restritiva governamental da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração completa de SF2/SD2/SB1/SA1/SA4/SE1, montagem de dadosDanfe, geração de XML oficial <nfeProc>, persistência assíncrona perene na Super Tabela (nfe_central_documentos) e ativação no job de sincronização periódica (20 testes aprovados em `test_danfe_popup.js`).
 - **v8.235 (17/09/2026):** Suporte a senha de Certificado Digital A1 no modal DANFE (#inputDanfeSenhaCert), captura e envio de passphrase à SEFAZ, sincronização de sessão mútua com Fechamento Fiscal (sessionStorage), diagnóstico transparente de erros SEFAZ e foco para re-tentativa imediata (17 testes aprovados em test_danfe_popup.js).
 - **v8.234 (17/09/2026):** Visualizador de DANFE NF-e em Popup (`#danfeModal`, `@media print` A4) nas telas Busca CodWeb/Ped/NF e Consulta Ped Venda, integração com Super Tabela (`nfe_central_documentos`) e Protheus SF2 (`F2_CHVNFE`), busca on-demand na SEFAZ via mTLS com tela de espera animada, cálculo da próxima sincronização periódica (12:30h / 18:30h) e ações de impressão/PDF, download de XML bruto e cópia de chave (15 testes aprovados em `test_danfe_popup.js`).
 - **v8.233 (17/09/2026):** Carga inicial e backfill retroativo de Julho e Agosto/2026 (`scripts/carga_inicial_nfe_central.js`) sincronizando 358 notas fiscais (R$ 1.54M), 305 pedidos e CodWebs vinculados e 53 canceladas nas filiais 14, 15 e 16, e fallback local JSON com filtros avançados em `consultarNfeCentral`.
@@ -179,6 +180,4 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 - **v8.230 (17/09/2026):** Simplificação de UI na Busca CodWeb/Ped/NF: remoção do prefixo "2.", reposicionamento da instrução de exclusividade mútua para o subtítulo e eliminação de dicas e notice bars redundantes.
 - **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` (via `LEFT JOIN SA4010 A4`) e `Condição Pagto:` (via `LEFT JOIN SE4010 E4`) no modal de detalhes do pedido ([Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md) e [Busca Multi-Empresa](docs/telas/03_busca/busca_codweb_ped_nf.md)), exibindo `Código - Descrição` com fallback resiliente.
 - **v8.228 (17/09/2026):** Redirecionamento da coluna CodWeb para a URL oficial do CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/XXXXX`) na aba [Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md), com paridade à Busca CodWeb/Ped/NF e abertura de detalhes Protheus restrita ao Número do Pedido e botão Detalhes.
-- **v8.227 (17/09/2026):** Link interativo de Ped Venda (`.link-pedido`) com popup de detalhes do pedido (`#pedidoDetalhesModal`) na aba [Busca CodWeb/Ped/NF](docs/telas/03_busca/busca_codweb_ped_nf.md), com paridade à tela de Vendedores e suporte a temas Claro/Escuro.
-- **v8.226 (16/09/2026):** Correção do acionamento do modal de exportação de XMLs no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md): remoção da classe `hidden` conflitante com `display: flex`, fallbacks inline e toast flutuante.
 - **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.

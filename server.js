@@ -5267,6 +5267,35 @@ app.get('/api/nfe/danfe-dados', requireAuth, async (req, res) => {
       }
     }
 
+    // 5.1 Fallback Resiliente Protheus ERP: Se a SEFAZ rejeitar para o emitente (cStat 641) ou XML não constar no ambiente nacional,
+    // extrai os dados completos diretamente do Protheus ERP (SF2/SD2/SB1/SA1/SA4/SE1), sintetiza o XML canônico e grava na Super Tabela
+    try {
+      const { obterDanfeCompletoProtheus, gerarXmlDanfeDeDados } = require('./danfe_protheus');
+      const docParaBusca = doc || (chaveFinal && chaveFinal.length === 44 ? chaveFinal.substring(25, 34) : '');
+      const protheusDanfe = await obterDanfeCompletoProtheus({
+        empresaCod: empCod,
+        doc: docParaBusca,
+        chave: chaveFinal
+      });
+
+      if (protheusDanfe && protheusDanfe.sucesso && protheusDanfe.dadosDanfe) {
+        chaveFinal = protheusDanfe.chave || chaveFinal;
+        const xmlGerado = gerarXmlDanfeDeDados(protheusDanfe.dadosDanfe);
+        salvarXmlNfeCentral(chaveFinal, xmlGerado).catch(() => {});
+
+        return res.json({
+          ok: true,
+          sucesso: true,
+          origem: 'PROTHEUS',
+          chave: chaveFinal,
+          dadosDanfe: protheusDanfe.dadosDanfe,
+          xml: xmlGerado
+        });
+      }
+    } catch (errProtheusDanfe) {
+      console.warn('⚠️ [DANFE] Falha ao sintetizar DANFE direto do Protheus ERP:', errProtheusDanfe.message);
+    }
+
     // 6. Cálculo da próxima sincronização automática (12:30h ou 18:30h - Horário de Brasília)
     const agora = new Date();
     const utcHours = agora.getUTCHours();
@@ -6446,8 +6475,25 @@ async function executarSincronizacaoNfeCentral({ limiteXml = 50, diasRetroativos
         const emp = item.empresa;
 
         try {
-          const resXml = await obterXmlNfeSefaz({ chaveNfe: chave, empresaCod: emp });
-          if (resXml.sucesso && resXml.xml) {
+          let resXml = await obterXmlNfeSefaz({ chaveNfe: chave, empresaCod: emp });
+
+          // Se a SEFAZ rejeitou para o emitente (cStat 641) ou falhou, tenta sintetizar direto do Protheus ERP
+          if (!resXml || !resXml.sucesso) {
+            const ehBloqueioEmitente = resXml && (resXml.cStat === '641' || String(resXml.erro).includes('641') || String(resXml.xMotivo).includes('emitente'));
+            try {
+              const { obterDanfeCompletoProtheus, gerarXmlDanfeDeDados } = require('./danfe_protheus');
+              const protheusDanfe = await obterDanfeCompletoProtheus({ empresaCod: emp, chave });
+              if (protheusDanfe && protheusDanfe.sucesso && protheusDanfe.dadosDanfe) {
+                const xmlGerado = gerarXmlDanfeDeDados(protheusDanfe.dadosDanfe);
+                await salvarXmlNfeCentral(chave, xmlGerado);
+                resXml = { sucesso: true, xml: xmlGerado, origem: 'PROTHEUS' };
+              }
+            } catch (errProt) {
+              console.warn(`⚠️ [Job NFe Central] Falha no fallback Protheus para chave ${chave}:`, errProt.message);
+            }
+          }
+
+          if (resXml && resXml.sucesso && resXml.xml) {
             stats.xmlsBaixadosSefaz++;
           } else {
             await registrarFalhaXmlNfeCentral(chave, resXml.erro || resXml.xMotivo || 'Falha SEFAZ');

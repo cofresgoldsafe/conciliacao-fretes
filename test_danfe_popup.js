@@ -363,6 +363,117 @@ async function runAllTests() {
     assert(serverCode.includes('precisaSenhaCert'), 'precisaSenhaCert não retornado no envelope JSON');
   });
 
+  // 6. Testes do Módulo danfe_protheus (Fallback Resiliente cStat 641)
+  runTest('6.1 - danfe_protheus.js exporta obterDanfeCompletoProtheus e gerarXmlDanfeDeDados', () => {
+    const { obterDanfeCompletoProtheus, gerarXmlDanfeDeDados, DADOS_EMITENTES } = require('./danfe_protheus');
+    assert(typeof obterDanfeCompletoProtheus === 'function', 'obterDanfeCompletoProtheus não é função');
+    assert(typeof gerarXmlDanfeDeDados === 'function', 'gerarXmlDanfeDeDados não é função');
+    assert(DADOS_EMITENTES && DADOS_EMITENTES['16'] && DADOS_EMITENTES['16'].cnpj === '61237790000118', 'CNPJ da OACO incorreto');
+    assert(DADOS_EMITENTES['14'] && DADOS_EMITENTES['14'].cnpj === '48758821000118', 'CNPJ da Metal Pleno incorreto');
+  });
+
+  runTest('6.2 - gerarXmlDanfeDeDados produz XML <nfeProc> compatível com parseDanfeXml', () => {
+    const { gerarXmlDanfeDeDados, DADOS_EMITENTES } = require('./danfe_protheus');
+    const { parseDanfeXml } = require('./danfe_parser');
+
+    const mockDados = {
+      chaveAcesso: '35260961237790000118550010000007351305550150',
+      numeroNf: '000735',
+      serie: '1',
+      naturezaOperacao: 'VENDA DE MERCADORIA (CFOP 6108)',
+      dataEmissao: '17/09/2026',
+      horaEmissao: '13:42:00',
+      dataSaidaEntrada: '17/09/2026',
+      horaSaidaEntrada: '13:42:00',
+      protocolo: {
+        numero: '135260000000735',
+        dataHora: '17/09/2026 13:44:00',
+        cStat: '100',
+        xMotivo: 'Autorizado o uso da NF-e'
+      },
+      emitente: {
+        cnpjCpf: '61237790000118',
+        xNome: 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA',
+        xFant: 'OAÇO PRODUTOS DE AÇO',
+        ie: '535132321110',
+        crt: '3',
+        logradouro: 'RUA MARIA JOSE',
+        numero: '119',
+        bairro: 'BELA VISTA',
+        municipio: 'SAO PAULO',
+        uf: 'SP',
+        cep: '01324-010',
+        fone: '1131419000'
+      },
+      destinatario: {
+        cnpjCpf: '01444899538',
+        xNome: 'Leonardo Damasceno Martins',
+        ie: 'ISENTO',
+        logradouro: 'Avenida Joaquim Hortelio',
+        numero: '520',
+        bairro: 'Recreio',
+        municipio: 'VITORIA DA CONQUISTA',
+        uf: 'BA',
+        cep: '45020-320',
+        fone: '77988261305'
+      },
+      totais: {
+        vBC: 0, vICMS: 0, vBCST: 0, vST: 0, vProd: 100,
+        vFrete: 43.01, vSeg: 0, vDesc: 0, vIPI: 0, vPIS: 0, vCOFINS: 0, vOutro: 0, vNF: 143.01
+      },
+      transportador: {
+        modFrete: '0',
+        xNome: 'CORREIOS SEDEX',
+        cnpjCpf: '55495576000169',
+        ie: '145707309111',
+        xEnder: 'AV ENG ARMANDO DE ARRUDA PEREIRA',
+        xMun: 'SAO PAULO',
+        uf: 'SP',
+        qVol: 1,
+        esp: 'SPED',
+        pesoL: 0.2,
+        pesoB: 0.2
+      },
+      duplicatas: [
+        { nDup: '000735-1', dVenc: '19/09/2026', vDup: 143.01 }
+      ],
+      itens: [
+        {
+          item: 1,
+          codigo: '00101990000B001',
+          descricao: 'KIT EXTRA DE ENERGIA GOLD SAFE',
+          ncm: '83030000',
+          cfop: '6108',
+          unidade: 'UN',
+          quantidade: 1,
+          valorUnitario: 100,
+          valorTotal: 100,
+          vBC: 0, pICMS: 7, vICMS: 0, pIPI: 0, vIPI: 0
+        }
+      ],
+      informacoesComplementares: 'Tributos conforme lei 12.741'
+    };
+
+    const xml = gerarXmlDanfeDeDados(mockDados);
+    assert(xml.includes('<nfeProc'), 'XML não contém tag <nfeProc>');
+    assert(xml.includes('<chNFe>35260961237790000118550010000007351305550150</chNFe>'), 'Chave não encontrada no XML');
+    assert(xml.includes('<xProd>KIT EXTRA DE ENERGIA GOLD SAFE</xProd>'), 'Item não encontrado no XML');
+
+    const parsed = parseDanfeXml(xml);
+    assert.strictEqual(parsed.numeroNf, '735', 'Número de NF parseado divergente');
+    assert.strictEqual(parsed.totais.vNF, 143.01, 'Valor total da NF divergente');
+    assert.strictEqual(parsed.itens.length, 1, 'Quantidade de itens divergente');
+    assert.strictEqual(parsed.duplicatas.length, 1, 'Quantidade de duplicatas divergente');
+  });
+
+  runTest('6.3 - server.js integra fallback do Protheus em danfe-dados e no job de sincronização', () => {
+    const fs = require('fs');
+    const serverCode = fs.readFileSync('./server.js', 'utf8');
+    assert(serverCode.includes("require('./danfe_protheus')"), 'danfe_protheus não importado em server.js');
+    assert(serverCode.includes('obterDanfeCompletoProtheus'), 'obterDanfeCompletoProtheus não chamado em server.js');
+    assert(serverCode.includes("origem: 'PROTHEUS'"), 'Origem PROTHEUS não tratada na rota ou job');
+  });
+
   console.log('\n======================================================');
   console.log(`📊 RESULTADO DOS TESTES: ${passedTests} APROVADOS | ${failedTests} FALHAS`);
   console.log('======================================================\n');
