@@ -1812,13 +1812,17 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<span class="link-pedido" data-empresa="${escapeHtml(empresaKey)}" data-ped="${escapeHtml(row.pedVenda)}" title="Clique para ver detalhes do pedido"><strong>${escapeHtml(row.pedVenda)}</strong></span>`
         : `<span style="color: var(--text-muted);">-</span>`;
 
+      const nfHtml = temNf
+        ? `<span class="link-nfe" data-empresa="${escapeHtml(empresaKey)}" data-nf="${escapeHtml(row.nf)}" data-chave="${escapeHtml(row.chaveNfe || '')}" title="Clique para visualizar o DANFE da NF-e">📄 <strong>${escapeHtml(row.nf)}</strong></span>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
       tr.innerHTML = `
         <td><span class="badge-doc">${escapeHtml(empresaDisplay || '-')}</span></td>
         <td class="mono-text">${codWebHtml}</td>
         <td>${dtGanhoHtml}</td>
         <td>${pedVendaHtml}</td>
         <td>${dtMigracaoHtml}</td>
-        <td class="mono-text"><strong>${escapeHtml(row.nf || '-')}</strong></td>
+        <td class="mono-text">${nfHtml}</td>
         <td>${dtEmissaoHtml}</td>
         <td class="mono-text"><strong>${formatCurrency(row.valorNf || 0)}</strong></td>
         <td><strong>${escapeHtml(row.nomeCli || '-')}</strong></td>
@@ -1833,9 +1837,19 @@ document.addEventListener('DOMContentLoaded', () => {
     consultaResultsSection.classList.remove('hidden');
   }
 
-  // Event Delegation para links de pedidos de venda na Consulta Multi-Empresa
+  // Event Delegation para links de pedidos de venda e DANFE na Consulta Multi-Empresa
   if (consultaTableBody) {
     consultaTableBody.addEventListener('click', (e) => {
+      const nfeEl = e.target.closest('.link-nfe');
+      if (nfeEl) {
+        const emp = nfeEl.getAttribute('data-empresa') || 'OACO';
+        const doc = nfeEl.getAttribute('data-nf') || '';
+        const chave = nfeEl.getAttribute('data-chave') || '';
+        if (typeof abrirDanfeModal === 'function') {
+          abrirDanfeModal({ empresa: emp, doc, chave });
+        }
+        return;
+      }
       const el = e.target.closest('.link-pedido');
       if (el) {
         const emp = el.getAttribute('data-empresa') || 'OACO';
@@ -2520,7 +2534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function formatNFeBadge(notaFiscal) {
+  function formatNFeBadge(notaFiscal, p = {}) {
     const nf = (notaFiscal || '').trim();
     if (!nf || nf === '-' || nf === '0') {
       return `<span style="color: var(--text-muted); font-style: italic; font-size: 0.82rem;">⏳ Não emitida</span>`;
@@ -2529,7 +2543,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (/^X+$/i.test(nf) || nf.toUpperCase().includes('CANCEL')) {
       return `<span class="status-badge divergente" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; padding: 2px 8px; border-radius: 4px;">🚫 Cancelado</span>`;
     }
-    return `<span class="badge-doc" style="font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 3px 8px; border-radius: 4px;">📄 NF ${escapeHtml(nf)}</span>`;
+    const empCod = p.empresaKey || (p.empresa && String(p.empresa).includes('14') ? '14' : (p.empresa && String(p.empresa).includes('15') ? '15' : '16'));
+    const chave = p.chaveNfe || '';
+    return `<span class="link-nfe badge-doc" data-empresa="${escapeHtml(empCod)}" data-nf="${escapeHtml(nf)}" data-chave="${escapeHtml(chave)}" style="font-weight: 600; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 3px 8px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Clique para visualizar o DANFE da NF-e">📄 <strong>NF ${escapeHtml(nf)}</strong></span>`;
   }
 
   function renderVendPedidosTable(pedidos) {
@@ -2555,7 +2571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <strong>${escapeHtml(p.numPed)}</strong>
           </span>
         </td>
-        <td>${formatNFeBadge(p.notaFiscal)}</td>
+        <td>${formatNFeBadge(p.notaFiscal, p)}</td>
         <td>${escapeHtml(p.nomeCli)}</td>
         <td style="text-align: center;">
           <button class="btn btn-outline btn-sm btn-ver-detalhe" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}">
@@ -2567,9 +2583,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Event Delegation para links e detalhes de pedidos de vendedores
+  // Event Delegation para links, detalhes e DANFE de pedidos de vendedores
   if (vendPedidosTableBody) {
     vendPedidosTableBody.addEventListener('click', (e) => {
+      const nfeEl = e.target.closest('.link-nfe');
+      if (nfeEl) {
+        const emp = nfeEl.getAttribute('data-empresa') || 'OACO';
+        const doc = nfeEl.getAttribute('data-nf') || '';
+        const chave = nfeEl.getAttribute('data-chave') || '';
+        if (typeof abrirDanfeModal === 'function') {
+          abrirDanfeModal({ empresa: emp, doc, chave });
+        }
+        return;
+      }
       const el = e.target.closest('.link-pedido, .btn-ver-detalhe');
       if (el) {
         const emp = el.getAttribute('data-empresa') || 'OACO';
@@ -2749,7 +2775,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="company-badge" style="font-size: 0.9rem; padding: 4px 10px;">${escapeHtml(det.empresa)}</span>
           <span style="font-size: 1.15rem; font-weight: 700; color: ${numPedColor};">Pedido Nº ${escapeHtml(det.numPedido)}</span>
           <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">CodWeb: ${escapeHtml(det.codWeb)}</span>
-          ${formatNFeBadge(det.notaFiscal)}
+          ${formatNFeBadge(det.notaFiscal, det)}
           ${badgeGeraFin}
           ${badgeAtuEstoque}
         </div>
@@ -2944,6 +2970,507 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseDetalhesModal) btnCloseDetalhesModal.addEventListener('click', () => pedidoDetalhesModal.classList.add('hidden'));
   if (btnFecharDetalhesModal) btnFecharDetalhesModal.addEventListener('click', () => pedidoDetalhesModal.classList.add('hidden'));
   if (btnImprimirDetalhes) btnImprimirDetalhes.addEventListener('click', () => window.print());
+
+  if (pedidoDetalhesBody) {
+    pedidoDetalhesBody.addEventListener('click', (e) => {
+      const nfeEl = e.target.closest('.link-nfe');
+      if (nfeEl) {
+        const emp = nfeEl.getAttribute('data-empresa') || 'OACO';
+        const doc = nfeEl.getAttribute('data-nf') || '';
+        const chave = nfeEl.getAttribute('data-chave') || '';
+        if (typeof abrirDanfeModal === 'function') {
+          abrirDanfeModal({ empresa: emp, doc, chave });
+        }
+      }
+    });
+  }
+
+  // --- MÓDULO VISUALIZADOR DE DANFE (NF-E) ---
+  const danfeModal = document.getElementById('danfeModal');
+  const danfeModalSubtitulo = document.getElementById('danfeModalSubtitulo');
+  const danfeLoadingSefaz = document.getElementById('danfeLoadingSefaz');
+  const danfeNaoSincronizado = document.getElementById('danfeNaoSincronizado');
+  const danfePaperContainer = document.getElementById('danfePaperContainer');
+  const danfePaper = document.getElementById('danfePaper');
+  const danfeProximaSyncHora = document.getElementById('danfeProximaSyncHora');
+  const danfeAvisoSincronizacao = document.getElementById('danfeAvisoSincronizacao');
+  const btnImprimirDanfe = document.getElementById('btnImprimirDanfe');
+  const btnDownloadXmlDanfe = document.getElementById('btnDownloadXmlDanfe');
+  const btnCopiarChaveDanfe = document.getElementById('btnCopiarChaveDanfe');
+  const btnCloseDanfeModal = document.getElementById('btnCloseDanfeModal');
+  const btnDanfeFecharAviso = document.getElementById('btnDanfeFecharAviso');
+  const btnDanfeTentarNovamente = document.getElementById('btnDanfeTentarNovamente');
+
+  let currentDanfeParams = null;
+  let currentDanfeChave = '';
+  let currentDanfeXml = '';
+
+  function fecharDanfeModal() {
+    if (danfeModal) danfeModal.classList.add('hidden');
+  }
+
+  if (btnCloseDanfeModal) btnCloseDanfeModal.addEventListener('click', fecharDanfeModal);
+  if (btnDanfeFecharAviso) btnDanfeFecharAviso.addEventListener('click', fecharDanfeModal);
+  if (btnImprimirDanfe) btnImprimirDanfe.addEventListener('click', () => window.print());
+
+  if (btnCopiarChaveDanfe) {
+    btnCopiarChaveDanfe.addEventListener('click', async () => {
+      if (!currentDanfeChave) return;
+      try {
+        await navigator.clipboard.writeText(currentDanfeChave);
+        const originalText = btnCopiarChaveDanfe.textContent;
+        btnCopiarChaveDanfe.textContent = '✓ Chave Copiada!';
+        btnCopiarChaveDanfe.style.borderColor = '#10b981';
+        btnCopiarChaveDanfe.style.color = '#10b981';
+        setTimeout(() => {
+          btnCopiarChaveDanfe.textContent = originalText;
+          btnCopiarChaveDanfe.style.borderColor = '';
+          btnCopiarChaveDanfe.style.color = '';
+        }, 2000);
+      } catch (e) {
+        alert(`Chave de Acesso: ${currentDanfeChave}`);
+      }
+    });
+  }
+
+  if (btnDownloadXmlDanfe) {
+    btnDownloadXmlDanfe.addEventListener('click', () => {
+      if (!currentDanfeChave && !currentDanfeXml) {
+        alert('XML não disponível para download.');
+        return;
+      }
+      if (currentDanfeXml) {
+        const blob = new Blob([currentDanfeXml], { type: 'application/xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `NFe_${currentDanfeChave || 'documento'}.xml`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        window.open(`/api/nfe/xml-download/${encodeURIComponent(currentDanfeChave)}`, '_blank');
+      }
+    });
+  }
+
+  if (btnDanfeTentarNovamente) {
+    btnDanfeTentarNovamente.addEventListener('click', () => {
+      if (currentDanfeParams) {
+        carregarDanfe(currentDanfeParams, true);
+      }
+    });
+  }
+
+  async function abrirDanfeModal({ empresa, doc, chave }) {
+    if (!danfeModal) return;
+    currentDanfeParams = { empresa, doc, chave };
+    currentDanfeChave = chave || '';
+    currentDanfeXml = '';
+
+    if (btnCopiarChaveDanfe) btnCopiarChaveDanfe.disabled = !chave;
+    if (btnDownloadXmlDanfe) btnDownloadXmlDanfe.disabled = true;
+    if (btnImprimirDanfe) btnImprimirDanfe.disabled = true;
+
+    if (danfeModalSubtitulo) {
+      danfeModalSubtitulo.textContent = `NF-e ${doc || '-'} — Empresa ${empresa || 'OACO'}`;
+    }
+
+    danfeModal.classList.remove('hidden');
+    await carregarDanfe(currentDanfeParams, true);
+  }
+
+  async function carregarDanfe({ empresa, doc, chave }, onDemand = true) {
+    if (danfeLoadingSefaz) danfeLoadingSefaz.classList.remove('hidden');
+    if (danfeNaoSincronizado) danfeNaoSincronizado.classList.add('hidden');
+    if (danfePaperContainer) danfePaperContainer.classList.add('hidden');
+
+    try {
+      const url = `/api/nfe/danfe-dados?empresa=${encodeURIComponent(empresa || '')}&doc=${encodeURIComponent(doc || '')}&chave=${encodeURIComponent(chave || '')}&onDemand=${onDemand ? 'true' : 'false'}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (danfeLoadingSefaz) danfeLoadingSefaz.classList.add('hidden');
+
+      if (data && data.sucesso && data.dadosDanfe) {
+        currentDanfeChave = data.chave || chave || data.dadosDanfe.chaveAcesso || '';
+        currentDanfeXml = data.xml || '';
+
+        if (danfePaper) {
+          danfePaper.innerHTML = renderDanfeHtml(data.dadosDanfe);
+        }
+        if (danfePaperContainer) danfePaperContainer.classList.remove('hidden');
+
+        if (btnCopiarChaveDanfe) btnCopiarChaveDanfe.disabled = !currentDanfeChave;
+        if (btnDownloadXmlDanfe) btnDownloadXmlDanfe.disabled = !currentDanfeXml;
+        if (btnImprimirDanfe) btnImprimirDanfe.disabled = false;
+      } else {
+        if (danfeNaoSincronizado) danfeNaoSincronizado.classList.remove('hidden');
+        if (danfeProximaSyncHora) {
+          danfeProximaSyncHora.textContent = data.proximaSync || '12:30h';
+        }
+        if (danfeAvisoSincronizacao) {
+          danfeAvisoSincronizacao.innerHTML = `Esta nota fiscal foi emitida no Protheus, mas seu XML ainda não foi sincronizado na Super Tabela.<br>Próxima sincronização automática programada para as <strong style="color: var(--accent-blue);">${escapeHtml(data.proximaSync || '12:30h')}</strong>.`;
+        }
+        if (btnCopiarChaveDanfe) btnCopiarChaveDanfe.disabled = true;
+        if (btnDownloadXmlDanfe) btnDownloadXmlDanfe.disabled = true;
+        if (btnImprimirDanfe) btnImprimirDanfe.disabled = true;
+      }
+    } catch (err) {
+      console.error('Erro ao carregar dados do DANFE:', err);
+      if (danfeLoadingSefaz) danfeLoadingSefaz.classList.add('hidden');
+      if (danfeNaoSincronizado) {
+        danfeNaoSincronizado.classList.remove('hidden');
+        if (danfeAvisoSincronizacao) {
+          danfeAvisoSincronizacao.innerHTML = `Falha na comunicação ao buscar o documento fiscal: <strong>${escapeHtml(err.message)}</strong>.<br>Tente novamente em instantes.`;
+        }
+      }
+    }
+  }
+
+  function renderDanfeHtml(d) {
+    const fmtM = (v) => {
+      const num = typeof v === 'number' ? v : parseFloat(String(v || 0).replace(',', '.'));
+      return isNaN(num) ? '0,00' : num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const emit = d.emitente || {};
+    const dest = d.destinatario || {};
+    const tot = d.totais || {};
+    const transp = d.transportador || {};
+    const prot = d.protocolo || {};
+    const dups = Array.isArray(d.duplicatas) ? d.duplicatas : [];
+    const itens = Array.isArray(d.itens) ? d.itens : [];
+
+    const enderEmit = [
+      emit.logradouro,
+      emit.numero ? 'Nº ' + emit.numero : '',
+      emit.complemento,
+      emit.bairro,
+      emit.municipio ? emit.municipio + ' - ' + (emit.uf || '') : '',
+      emit.cep ? 'CEP: ' + emit.cep : '',
+      emit.fone ? 'FONE: ' + emit.fone : ''
+    ].filter(Boolean).join(', ');
+
+    const enderDest = [
+      dest.logradouro,
+      dest.numero ? 'Nº ' + dest.numero : '',
+      dest.complemento
+    ].filter(Boolean).join(' ');
+
+    let dupsHtml = '';
+    if (dups.length > 0) {
+      dupsHtml = `
+        <div class="danfe-section-header">FATURA / DUPLICATAS</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 5px;">
+          ${dups.map(dup => `
+            <div class="danfe-box" style="flex: 1; min-width: 130px; text-align: center;">
+              <span class="danfe-box-title">Nº: ${escapeHtml(dup.nDup || '-')}</span>
+              <span style="font-size: 7pt; display: block;">VENC: <strong>${escapeHtml(dup.dVenc || '-')}</strong></span>
+              <span class="danfe-box-value">R$ ${escapeHtml(dup.vDupFormatado || fmtM(dup.vDup))}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    const itensHtml = itens.map(it => `
+      <tr>
+        <td style="text-align: center;">${it.item}</td>
+        <td><strong>${escapeHtml(it.codigo || '-')}</strong></td>
+        <td>${escapeHtml(it.descricao || '-')}</td>
+        <td style="text-align: center;">${escapeHtml(it.ncm || '-')}</td>
+        <td style="text-align: center;">${escapeHtml(it.cst || '-')}</td>
+        <td style="text-align: center;">${escapeHtml(it.cfop || '-')}</td>
+        <td style="text-align: center;">${escapeHtml(it.unidade || 'UN')}</td>
+        <td style="text-align: right;">${fmtM(it.quantidade)}</td>
+        <td style="text-align: right;">${fmtM(it.valorUnitario)}</td>
+        <td style="text-align: right;"><strong>${fmtM(it.valorTotal)}</strong></td>
+        <td style="text-align: right;">${fmtM(it.vBC)}</td>
+        <td style="text-align: right;">${fmtM(it.vICMS)}</td>
+        <td style="text-align: right;">${fmtM(it.vIPI)}</td>
+        <td style="text-align: center;">${it.pICMS ? fmtM(it.pICMS) + '%' : '-'}</td>
+      </tr>
+    `).join('');
+
+    return `
+      <!-- Cabeçalho Principal: Emitente + DANFE + Chave -->
+      <div style="display: grid; grid-template-columns: 3.5fr 2.5fr 4fr; gap: 4px; margin-bottom: 4px;">
+        <!-- Bloco 1: Emitente -->
+        <div class="danfe-box" style="display: flex; flex-direction: column; justify-content: center;">
+          <h2 style="font-size: 9.5pt; margin: 0 0 2px 0; font-weight: bold; text-transform: uppercase;">${escapeHtml(emit.xNome || '-')}</h2>
+          <span style="font-size: 7.2pt; color: #333; margin-bottom: 4px;">${escapeHtml(enderEmit)}</span>
+          <div style="font-size: 7pt;">
+            <span>CNPJ: <strong>${escapeHtml(emit.cnpjCpfFormatado || '-')}</strong></span><br>
+            <span>INSCRIÇÃO ESTADUAL: <strong>${escapeHtml(emit.ie || '-')}</strong></span>
+          </div>
+        </div>
+
+        <!-- Bloco 2: Identificação do DANFE -->
+        <div class="danfe-box" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between;">
+          <strong style="font-size: 9pt;">DANFE</strong>
+          <span style="font-size: 6.2pt; line-height: 1;">Documento Auxiliar da Nota Fiscal Eletrônica</span>
+          <div style="display: flex; justify-content: center; gap: 8px; margin: 3px 0;">
+            <div style="border: 1px solid #000; padding: 2px 6px; font-weight: bold; font-size: 8.5pt;">${d.tpNF || '1'}</div>
+            <div style="text-align: left; font-size: 6.2pt; line-height: 1.1;">
+              0 - ENTRADA<br>1 - SAÍDA
+            </div>
+          </div>
+          <div style="font-size: 8.5pt; font-weight: bold;">
+            Nº ${escapeHtml(d.numeroNf || '-')}
+          </div>
+          <div style="font-size: 7pt;">
+            SÉRIE: <strong>${escapeHtml(d.serie || '1')}</strong> — FOLHA 1/1
+          </div>
+        </div>
+
+        <!-- Bloco 3: Código de Barras e Chave de Acesso -->
+        <div class="danfe-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="danfe-barcode-mock"></div>
+          <div>
+            <span class="danfe-box-title">CHAVE DE ACESSO</span>
+            <span style="font-size: 8pt; font-family: monospace; font-weight: bold; word-break: break-all; letter-spacing: 0.5px;">
+              ${escapeHtml(d.chaveFormatada || d.chaveAcesso || '-')}
+            </span>
+          </div>
+          <div style="border-top: 1px solid #000; margin-top: 3px; padding-top: 2px;">
+            <span class="danfe-box-title">PROTOCOLO DE AUTORIZAÇÃO DE USO</span>
+            <span style="font-size: 7.2pt; font-weight: bold;">
+              ${escapeHtml(prot.numero || '-')} — ${escapeHtml(prot.dataHora || '-')}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Natureza da Operação -->
+      <div style="display: grid; grid-template-columns: 6fr 3fr 3fr; gap: 4px; margin-bottom: 4px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">NATUREZA DA OPERAÇÃO</span>
+          <span class="danfe-box-value">${escapeHtml(d.naturezaOperacao || 'VENDA DE MERCADORIA')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">INSCRIÇÃO ESTADUAL</span>
+          <span class="danfe-box-value">${escapeHtml(emit.ie || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">CNPJ EMITENTE</span>
+          <span class="danfe-box-value">${escapeHtml(emit.cnpjCpfFormatado || '-')}</span>
+        </div>
+      </div>
+
+      <!-- Destinatário / Remetente -->
+      <div class="danfe-section-header">DESTINATÁRIO / REMETENTE</div>
+      <div style="display: grid; grid-template-columns: 8fr 4fr; gap: 4px; margin-bottom: 2px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">NOME / RAZÃO SOCIAL</span>
+          <span class="danfe-box-value">${escapeHtml(dest.xNome || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">CNPJ / CPF</span>
+          <span class="danfe-box-value">${escapeHtml(dest.cnpjCpfFormatado || '-')}</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 6fr 3fr 2fr 1fr; gap: 4px; margin-bottom: 2px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">ENDEREÇO</span>
+          <span class="danfe-box-value">${escapeHtml(enderDest || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">BAIRRO / DISTRITO</span>
+          <span class="danfe-box-value">${escapeHtml(dest.bairro || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">CEP</span>
+          <span class="danfe-box-value">${escapeHtml(dest.cep || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">DATA EMISSÃO</span>
+          <span class="danfe-box-value">${escapeHtml(d.dataEmissao || '-')}</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 4fr 1fr 2fr 3fr 2fr; gap: 4px; margin-bottom: 4px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">MUNICÍPIO</span>
+          <span class="danfe-box-value">${escapeHtml(dest.municipio || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">UF</span>
+          <span class="danfe-box-value">${escapeHtml(dest.uf || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">FONE / FAX</span>
+          <span class="danfe-box-value">${escapeHtml(dest.fone || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">INSCRIÇÃO ESTADUAL</span>
+          <span class="danfe-box-value">${escapeHtml(dest.ie || 'ISENTO')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">DATA SAÍDA / ENTRADA</span>
+          <span class="danfe-box-value">${escapeHtml(d.dataSaidaEntrada || d.dataEmissao || '-')}</span>
+        </div>
+      </div>
+
+      <!-- Faturas / Duplicatas -->
+      ${dupsHtml}
+
+      <!-- Cálculo do Imposto -->
+      <div class="danfe-section-header">CÁLCULO DO IMPOSTO</div>
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 2px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">BASE DE CÁLCULO DO ICMS</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vBC)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">VALOR DO ICMS</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vICMS)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">BASE CÁLC. ICMS S.T.</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vBCST)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">VALOR DO ICMS S.T.</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vST)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">VALOR TOTAL DOS PRODUTOS</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vProd)}</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 4px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">VALOR DO FRETE</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vFrete)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">VALOR DO SEGURO</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vSeg)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">DESCONTO</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vDesc)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">OUTRAS DESP. ACESS.</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vOutro)}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">VALOR DO IPI</span>
+          <span class="danfe-box-value">R$ ${fmtM(tot.vIPI)}</span>
+        </div>
+        <div class="danfe-box" style="background: #f8fafc;">
+          <span class="danfe-box-title">VALOR TOTAL DA NOTA</span>
+          <span class="danfe-box-value" style="font-size: 8.5pt;">R$ ${fmtM(tot.vNF)}</span>
+        </div>
+      </div>
+
+      <!-- Transportador / Volumes Transportados -->
+      <div class="danfe-section-header">TRANSPORTADOR / VOLUMES TRANSPORTADOS</div>
+      <div style="display: grid; grid-template-columns: 5fr 3fr 1fr 1fr 2fr; gap: 4px; margin-bottom: 2px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">RAZÃO SOCIAL</span>
+          <span class="danfe-box-value">${escapeHtml(transp.xNome || 'O MESMO')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">FRETE POR CONTA</span>
+          <span class="danfe-box-value">${escapeHtml(transp.modFrete || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">PLACA</span>
+          <span class="danfe-box-value">${escapeHtml(transp.placa || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">UF</span>
+          <span class="danfe-box-value">${escapeHtml(transp.placaUf || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">CNPJ / CPF</span>
+          <span class="danfe-box-value">${escapeHtml(transp.cnpjCpfFormatado || '-')}</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 5fr 3fr 1fr 3fr; gap: 4px; margin-bottom: 2px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">ENDEREÇO</span>
+          <span class="danfe-box-value">${escapeHtml(transp.xEnder || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">MUNICÍPIO</span>
+          <span class="danfe-box-value">${escapeHtml(transp.xMun || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">UF</span>
+          <span class="danfe-box-value">${escapeHtml(transp.uf || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">INSCRIÇÃO ESTADUAL</span>
+          <span class="danfe-box-value">${escapeHtml(transp.ie || '-')}</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 2fr 2fr 2fr 2fr 2fr 2fr; gap: 4px; margin-bottom: 4px;">
+        <div class="danfe-box">
+          <span class="danfe-box-title">QUANTIDADE</span>
+          <span class="danfe-box-value">${escapeHtml(transp.quantidade || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">ESPÉCIE</span>
+          <span class="danfe-box-value">${escapeHtml(transp.especie || 'VOLUMES')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">MARCA</span>
+          <span class="danfe-box-value">${escapeHtml(transp.marca || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">NUMERAÇÃO</span>
+          <span class="danfe-box-value">${escapeHtml(transp.numeracao || '-')}</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">PESO BRUTO</span>
+          <span class="danfe-box-value">${fmtM(transp.pesoBruto)} kg</span>
+        </div>
+        <div class="danfe-box">
+          <span class="danfe-box-title">PESO LÍQUIDO</span>
+          <span class="danfe-box-value">${fmtM(transp.pesoLiquido)} kg</span>
+        </div>
+      </div>
+
+      <!-- Dados dos Produtos / Serviços -->
+      <div class="danfe-section-header">DADOS DOS PRODUTOS / SERVIÇOS</div>
+      <table class="danfe-table">
+        <thead>
+          <tr>
+            <th style="width: 4%; text-align: center;">Item</th>
+            <th style="width: 12%;">Código</th>
+            <th style="width: 32%;">Descrição do Produto / Serviço</th>
+            <th style="width: 8%; text-align: center;">NCM/SH</th>
+            <th style="width: 5%; text-align: center;">CST</th>
+            <th style="width: 5%; text-align: center;">CFOP</th>
+            <th style="width: 4%; text-align: center;">UN</th>
+            <th style="width: 6%; text-align: right;">Qtd</th>
+            <th style="width: 7%; text-align: right;">Vlr Unit</th>
+            <th style="width: 8%; text-align: right;">Vlr Total</th>
+            <th style="width: 7%; text-align: right;">BC ICMS</th>
+            <th style="width: 6%; text-align: right;">Vlr ICMS</th>
+            <th style="width: 6%; text-align: right;">Vlr IPI</th>
+            <th style="width: 4%; text-align: center;">Alíq</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itensHtml || '<tr><td colspan="14" style="text-align: center; padding: 6px;">Nenhum produto listado no XML.</td></tr>'}
+        </tbody>
+      </table>
+
+      <!-- Dados Adicionais -->
+      <div class="danfe-section-header">DADOS ADICIONAIS</div>
+      <div class="danfe-box" style="min-height: 45px; margin-bottom: 5px;">
+        <span class="danfe-box-title">INFORMAÇÕES COMPLEMENTARES</span>
+        <span style="font-size: 7pt; line-height: 1.3; display: block; word-break: break-word;">
+          ${escapeHtml(d.informacoesComplementares || 'Nenhuma informação complementar informada no documento fiscal.')}
+        </span>
+      </div>
+    `;
+  }
 
   // --- SUB-ABA: VENDEDORES - COMISSÕES ---
   const META_POR_VENDEDOR = 120000.00;

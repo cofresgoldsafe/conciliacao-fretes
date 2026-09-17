@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.233 (Homologada em 17/09/2026 10:15)  
+> **Versão da Documentação:** v8.234 (Homologada em 17/09/2026 11:00)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/09/2026 10:15 (v8.233 - Carga Inicial dos meses 07 e 08/2026 com 358 notas, 305 pedidos/codwebs vinculados e fallback local JSON)  
+> **Data da Última Auditoria:** 17/09/2026 11:00 (v8.234 - Visualizador de DANFE NF-e em Popup com Super Tabela e Sincronizacao On-Demand SEFAZ)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.234 (17/09/2026):** Visualizador de DANFE NF-e em Popup (`#danfeModal`, `@media print` A4) nas telas Busca CodWeb/Ped/NF e Consulta Ped Venda, integração com Super Tabela (`nfe_central_documentos`) e Protheus SF2 (`F2_CHVNFE`), busca on-demand na SEFAZ via mTLS com tela de espera animada, cálculo da próxima sincronização periódica (12:30h / 18:30h) e ações de impressão/PDF, download de XML bruto e cópia de chave (15 testes aprovados em `test_danfe_popup.js`).
 - **v8.233 (17/09/2026):** Carga inicial e backfill retroativo de Julho e Agosto/2026 (`scripts/carga_inicial_nfe_central.js`) sincronizando 358 notas fiscais (R$ 1.54M), 305 pedidos e CodWebs vinculados e 53 canceladas nas filiais 14, 15 e 16, e fallback local JSON com filtros avançados em `consultarNfeCentral`.
 - **v8.232 (17/09/2026):** Super Tabela Central de Documentos Fiscais (`nfe_central_documentos`) no PostgreSQL Supabase com RLS ativa, persistência de XMLs no banco, prioridade máxima de cache em `exportador_xml_sefaz.js`, job agendado em background às 12:30 e 18:30 sincronizando Protheus SF2 (últimos 30 dias) com OUTER APPLY em SD2/SC5, download mTLS com intervalo de 800ms e Circuit Breaker para cStat 656.
 - **v8.231 (17/09/2026):** Disposição horizontal inline dos botões de ação ("🧹 Limpar" e "Buscar no Protheus") com os campos de busca, padronização da altura (40px) e remoção do prefixo "Ex: " nos placeholders (HTML e JS).
@@ -180,14 +181,4 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 - **v8.227 (17/09/2026):** Link interativo de Ped Venda (`.link-pedido`) com popup de detalhes do pedido (`#pedidoDetalhesModal`) na aba [Busca CodWeb/Ped/NF](docs/telas/03_busca/busca_codweb_ped_nf.md), com paridade à tela de Vendedores e suporte a temas Claro/Escuro.
 - **v8.226 (16/09/2026):** Correção do acionamento do modal de exportação de XMLs no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md): remoção da classe `hidden` conflitante com `display: flex`, fallbacks inline e toast flutuante.
 - **v8.225 (16/09/2026):** Exportação em lote de XMLs de NF-e (.zip) via SEFAZ no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) (filtro SPED & NFE) com serviço modular desacoplado (`exportador_xml_sefaz.js`), cache anti-limite e mTLS A1.
-- **v8.224 (16/09/2026):** Inclusão da opção unificada 'SPED & NFE' no filtro de tipo de documento do [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) com suporte à filtragem conjunta no grid e na exportação CSV.
-- **v8.223 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" e do seletor legado de Dashboard ID na tela de Gráficos & Tendências, simplificando a barra de telemetria em dados 100% nativos.
-- **v8.222 (16/09/2026):** Remoção do botão de acesso externo "↗️ Abrir Metabase" na tela de Gráficos & Tendências e otimização de telemetria.
-- **v8.221 (15/09/2026):** Segundo gráfico executivo: Monitor de Ativo Circulante Seco (Caixa + Receber) em layout empilhado com detector de baixa acentuada e recomendações comerciais.
 - **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.
-- **v8.219 (15/09/2026):** Auditoria Protheus x SEFAZ com distincao de CC-e (`tpEvento 110110`) vs Inutilizacao (`cStat 102`), badge visual e conciliacao de batimento.
-- **v8.218 (15/09/2026):** Renomeacao da aba BUSCA CODWEB/PED/NF, novas colunas temporais (Dt Ganho, Migracao, Emissao) e remocao de frete cobrado.
-- **v8.217 (15/09/2026):** Homologacao de calculo de agio e frete embutido no Deal 26569 e refinamento de cards do modal de autorizacao de desconto.
-- **v8.216 (14/09/2026):** Implementacao da sub-aba NFS-e Pendentes para o Analista Financeiro com conciliacao automatica Protheus e webhook continuo `claude-job-nfse`.
-- **v8.215 (14/09/2026):** Central de Tarefas e Delegacao operacional entre colaboradores com governanca de status, comentarios JSONB e painel de KPIs em linha unica.
-- **v8.214 (14/09/2026):** Sub-aba Consulta Ped/NF Compras multi-empresa com 4 chaves de busca Protheus (`SA2010`, `SC7`, `SF1`) e trava de seguranca de 90 dias.

@@ -5133,6 +5133,164 @@ app.get('/api/nfe-central/consultar', requireAuth, async (req, res) => {
   }
 });
 
+// 1.1 Obter dados estruturados para exibição do DANFE e XML da NF-e
+app.get('/api/nfe/danfe-dados', requireAuth, async (req, res) => {
+  try {
+    const { parseDanfeXml } = require('./danfe_parser');
+    const {
+      obterXmlNfeCentralPorChave,
+      obterDocumentoNfeCentralPorChaveOuDoc,
+      salvarXmlNfeCentral
+    } = require('./postgres_db');
+    const { obterXmlNfeSefaz } = require('./exportador_xml_sefaz');
+
+    let { chave = '', empresa = '', doc = '', onDemand = 'true' } = req.query;
+    chave = String(chave || '').replace(/\D/g, '').trim();
+    doc = String(doc || '').replace(/\D/g, '').trim();
+    empresa = String(empresa || '').trim();
+
+    // Normalização do código de empresa (14, 15, 16)
+    let empCod = '16';
+    const empUp = empresa.toUpperCase();
+    if (empUp === '14' || empUp.includes('METAL') || empUp.includes('14')) empCod = '14';
+    else if (empUp === '15' || empUp.includes('GSI') || empUp.includes('15')) empCod = '15';
+    else if (empUp === '16' || empUp.includes('OACO') || empUp.includes('16')) empCod = '16';
+
+    let chaveFinal = chave;
+    let xmlConteudo = null;
+    let origem = 'BANCO';
+
+    // 1. Se não tem chave de 44 dígitos mas tem doc/empresa, busca primeiro na Super Tabela nfe_central_documentos
+    if ((!chaveFinal || chaveFinal.length !== 44) && doc) {
+      const docCentral = await obterDocumentoNfeCentralPorChaveOuDoc({ chave: chaveFinal, empresa: empCod, numeroNf: doc });
+      if (docCentral) {
+        if (docCentral.chave_acesso || docCentral.chaveAcesso) {
+          chaveFinal = String(docCentral.chave_acesso || docCentral.chaveAcesso).replace(/\D/g, '').trim();
+        }
+        if (docCentral.xml_conteudo || docCentral.xmlConteudo) {
+          xmlConteudo = docCentral.xml_conteudo || docCentral.xmlConteudo;
+        }
+      }
+    }
+
+    // 2. Se ainda não tem chave, tenta buscar no Protheus SF2 para obter F2_CHVNFE
+    if ((!chaveFinal || chaveFinal.length !== 44) && doc) {
+      try {
+        const sf2Table = empCod === '14' ? 'SF2140' : (empCod === '15' ? 'SF2150' : 'SF2160');
+        const paddedDoc = doc.padStart(9, '0');
+        const paddedDoc6 = doc.padStart(6, '0');
+        const sql = `
+          SELECT TOP 1 RTRIM(ISNULL(F2_CHVNFE, '')) AS CHVNFE
+          FROM ${sf2Table}
+          WHERE (F2_DOC = '${doc}' OR F2_DOC = '${paddedDoc}' OR F2_DOC = '${paddedDoc6}')
+            AND D_E_L_E_T_ = ' '
+          ORDER BY F2_EMISSAO DESC;
+        `;
+        const { executeRailwayQuery } = require('./protheus_db');
+        const sf2Res = await executeRailwayQuery(sql);
+        if (sf2Res && sf2Res.rows && sf2Res.rows.length > 0 && sf2Res.rows[0].CHVNFE) {
+          chaveFinal = String(sf2Res.rows[0].CHVNFE).replace(/\D/g, '').trim();
+        }
+      } catch (errProtheus) {
+        console.warn('⚠️ [DANFE] Erro ao buscar chave no Protheus SF2:', errProtheus.message);
+      }
+    }
+
+    // 3. Verifica se já temos o XML no banco ou disco
+    if (chaveFinal && chaveFinal.length === 44 && !xmlConteudo) {
+      xmlConteudo = await obterXmlNfeCentralPorChave(chaveFinal);
+    }
+
+    // 4. Se encontrou XML no banco/disco, faz o parse e retorna imediatamente
+    if (xmlConteudo && xmlConteudo.includes('<nfeProc') && xmlConteudo.includes('</nfeProc>')) {
+      try {
+        const dadosDanfe = parseDanfeXml(xmlConteudo);
+        return res.json({
+          ok: true,
+          sucesso: true,
+          origem,
+          chave: chaveFinal,
+          dadosDanfe,
+          xml: xmlConteudo
+        });
+      } catch (errParse) {
+        console.warn('⚠️ [DANFE] Erro ao parsear XML do banco:', errParse.message);
+      }
+    }
+
+    // 5. Se não temos XML e onDemand for 'true', tenta buscar na SEFAZ via certificado A1 mTLS
+    const buscarNaSefaz = onDemand === 'true' || onDemand === true;
+    if (buscarNaSefaz && chaveFinal && chaveFinal.length === 44) {
+      try {
+        const sefazRes = await obterXmlNfeSefaz({ chaveNfe: chaveFinal, empresaCod: empCod });
+        if (sefazRes && sefazRes.sucesso && sefazRes.xml) {
+          xmlConteudo = sefazRes.xml;
+          salvarXmlNfeCentral(chaveFinal, xmlConteudo).catch(() => {});
+          const dadosDanfe = parseDanfeXml(xmlConteudo);
+          return res.json({
+            ok: true,
+            sucesso: true,
+            origem: 'SEFAZ',
+            chave: chaveFinal,
+            dadosDanfe,
+            xml: xmlConteudo
+          });
+        }
+      } catch (errSefaz) {
+        console.warn('⚠️ [DANFE] Erro na consulta on-demand da SEFAZ:', errSefaz.message);
+      }
+    }
+
+    // 6. Cálculo da próxima sincronização automática (12:30h ou 18:30h - Horário de Brasília)
+    const agora = new Date();
+    const utcHours = agora.getUTCHours();
+    const utcMinutes = agora.getUTCMinutes();
+    const brHours = (utcHours - 3 + 24) % 24;
+    let proximaSync = '12:30h';
+    if (brHours < 12 || (brHours === 12 && utcMinutes < 30)) {
+      proximaSync = '12:30h';
+    } else if (brHours < 18 || (brHours === 18 && utcMinutes < 30)) {
+      proximaSync = '18:30h';
+    } else {
+      proximaSync = 'amanhã às 12:30h';
+    }
+
+    return res.status(200).json({
+      ok: false,
+      sucesso: false,
+      chave: chaveFinal || null,
+      doc: doc || null,
+      empresa: empCod,
+      proximaSync,
+      motivo: 'Ainda não disponível no portal. O documento fiscal será sincronizado automaticamente na próxima rotina.',
+      podeTentarNovamente: Boolean(chaveFinal && chaveFinal.length === 44)
+    });
+  } catch (err) {
+    console.error('Erro na rota /api/nfe/danfe-dados:', err);
+    return res.status(500).json({ ok: false, sucesso: false, erro: err.message });
+  }
+});
+
+// 1.2 Download direto do XML original da NF-e
+app.get('/api/nfe/xml-download/:chave', requireAuth, async (req, res) => {
+  try {
+    const chaveLimpa = String(req.params.chave || '').replace(/\D/g, '').trim();
+    if (chaveLimpa.length !== 44) {
+      return res.status(400).send('Chave de acesso inválida (esperado 44 dígitos).');
+    }
+    const { obterXmlNfeCentralPorChave } = require('./postgres_db');
+    const xml = await obterXmlNfeCentralPorChave(chaveLimpa);
+    if (!xml) {
+      return res.status(404).send('XML não encontrado para a chave informada.');
+    }
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="NFe_${chaveLimpa}.xml"`);
+    return res.send(xml);
+  } catch (err) {
+    return res.status(500).send('Erro ao baixar XML: ' + err.message);
+  }
+});
+
 // 2. Disparo manual da sincronização em background da NFe Central (Admin ou webhook)
 app.post('/api/admin/jobs/sync-nfe-central', async (req, res) => {
   try {

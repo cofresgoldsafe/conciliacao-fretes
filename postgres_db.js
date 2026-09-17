@@ -6132,6 +6132,61 @@ async function obterChavesPendentesXmlNfeCentral(limite = 50) {
   return [];
 }
 
+async function obterDocumentoNfeCentralPorChaveOuDoc({ chave, empresa, numeroNf }) {
+  const chaveLimpa = String(chave || '').replace(/\D/g, '').trim();
+  const docLimpo = String(numeroNf || '').replace(/\D/g, '').trim();
+  let empCod = String(empresa || '').trim().toUpperCase();
+  if (empCod === 'METAL_PLENO' || empCod === '14' || empCod.includes('14')) empCod = '14';
+  else if (empCod === 'GSI' || empCod === '15' || empCod.includes('15')) empCod = '15';
+  else if (empCod === 'OACO' || empCod === '16' || empCod.includes('16')) empCod = '16';
+
+  if (chaveLimpa && chaveLimpa.length === 44) {
+    if (isConnected && pool) {
+      try {
+        const res = await safeQuery(`
+          SELECT * FROM nfe_central_documentos WHERE chave_acesso = $1 LIMIT 1;
+        `, [chaveLimpa]);
+        if (res && res.rows && res.rows.length > 0) return res.rows[0];
+      } catch (e) {}
+    }
+  }
+
+  if (docLimpo) {
+    const docPadded = docLimpo.padStart(9, '0');
+    const docPadded6 = docLimpo.padStart(6, '0');
+    if (isConnected && pool) {
+      try {
+        const query = empCod
+          ? `SELECT * FROM nfe_central_documentos WHERE empresa = $1 AND (numero_nf = $2 OR numero_nf = $3 OR numero_nf = $4) LIMIT 1;`
+          : `SELECT * FROM nfe_central_documentos WHERE numero_nf = $1 OR numero_nf = $2 OR numero_nf = $3 LIMIT 1;`;
+        const params = empCod ? [empCod, docLimpo, docPadded, docPadded6] : [docLimpo, docPadded, docPadded6];
+        const res = await safeQuery(query, params);
+        if (res && res.rows && res.rows.length > 0) return res.rows[0];
+      } catch (e) {}
+    }
+  }
+
+  // Fallback local JSON
+  try {
+    const list = safeReadJsonSync(nfeCentralCacheFile, []) || [];
+    if (chaveLimpa && chaveLimpa.length === 44) {
+      const found = list.find(x => (x.chaveAcesso || x.chave_acesso) === chaveLimpa);
+      if (found) return found;
+    }
+    if (docLimpo) {
+      const found = list.find(x => {
+        const xDoc = String(x.numeroNf || x.numero_nf || '').replace(/\D/g, '');
+        const xEmp = String(x.empresa || '').trim();
+        const matchDoc = xDoc === docLimpo || parseInt(xDoc, 10) === parseInt(docLimpo, 10);
+        return empCod ? (matchDoc && (xEmp === empCod || xEmp.includes(empCod))) : matchDoc;
+      });
+      if (found) return found;
+    }
+  } catch (e) {}
+
+  return null;
+}
+
 async function consultarNfeCentral({ empresa, termo, de, ate, limite = 50, offset = 0 }) {
   if (isConnected && pool) {
     try {
@@ -6344,6 +6399,7 @@ module.exports = {
   salvarXmlNfeCentral,
   registrarFalhaXmlNfeCentral,
   obterXmlNfeCentralPorChave,
+  obterDocumentoNfeCentralPorChaveOuDoc,
   obterLoteXmlsNfeCentral,
   obterChavesPendentesXmlNfeCentral,
   consultarNfeCentral,

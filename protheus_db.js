@@ -284,6 +284,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
               RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
               RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS DT_MIGRACAO,
               RTRIM(ISNULL(F2.F2_EMISSAO, ISNULL(D2.D2_EMISSAO, ''))) AS DT_EMISSAO,
+              RTRIM(ISNULL(F2.F2_CHVNFE, '')) AS CHAVE_NFE,
+              RTRIM(ISNULL(F2.F2_SERIE, '1')) AS SERIE_NF,
               ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
               ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
               ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
@@ -309,6 +311,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
               RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
               RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS DT_MIGRACAO,
               RTRIM(ISNULL(F2.F2_EMISSAO, ISNULL(D2.D2_EMISSAO, ''))) AS DT_EMISSAO,
+              RTRIM(ISNULL(F2.F2_CHVNFE, '')) AS CHAVE_NFE,
+              RTRIM(ISNULL(F2.F2_SERIE, '1')) AS SERIE_NF,
               ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
               ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
               ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
@@ -334,6 +338,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
               RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
               RTRIM(ISNULL(C5.C5_EMISSAO, '')) AS DT_MIGRACAO,
               RTRIM(ISNULL(F2.F2_EMISSAO, ISNULL(D2.D2_EMISSAO, ''))) AS DT_EMISSAO,
+              RTRIM(ISNULL(F2.F2_CHVNFE, '')) AS CHAVE_NFE,
+              RTRIM(ISNULL(F2.F2_SERIE, '1')) AS SERIE_NF,
               ISNULL(F2.F2_VALBRUT, ISNULL(D2.D2_TOTAL, 0)) AS VALOR_NF,
               ISNULL(C5.C5_FRETE, 0) AS C5_FRETE,
               ISNULL(C5.C5_VLR_FRT, 0) AS C5_VLR_FRT,
@@ -378,6 +384,8 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
             pedVenda: pedVenda,
             dtMigracao: row.DT_MIGRACAO || '',
             nf: nf,
+            serieNf: row.SERIE_NF ? String(row.SERIE_NF).trim() : '1',
+            chaveNfe: row.CHAVE_NFE ? String(row.CHAVE_NFE).trim() : '',
             dtEmissao: temNf ? (row.DT_EMISSAO || '') : '',
             valorNf: roundVal(valorNf),
             valorCobrado: roundVal(freteCobrado + freteEmbutido),
@@ -441,9 +449,9 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli, codVend } = {}
 
   const paddedPed6 = cleanNumPed ? cleanNumPed.padStart(6, '0') : '';
   const empresas = [
-    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160" },
-    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150" },
-    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140" }
+    { key: "OACO", codigo: "16", nome: "Empresa 16 (OACO)", sc5: "SC5160", sf2: "SF2160" },
+    { key: "GSI", codigo: "15", nome: "Empresa 15 (GSI)", sc5: "SC5150", sf2: "SF2150" },
+    { key: "METAL_PLENO", codigo: "14", nome: "Empresa 14 (METAL PLENO)", sc5: "SC5140", sf2: "SF2140" }
   ];
 
   const results = [];
@@ -469,6 +477,7 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli, codVend } = {}
             RTRIM(C5.C5_NUM) AS C5_NUM,
             RTRIM(ISNULL(C5.C5_CODWEB, '')) AS C5_CODWEB,
             RTRIM(ISNULL(C5.C5_NOTA, '')) AS C5_NOTA,
+            RTRIM(ISNULL(F2.F2_CHVNFE, '')) AS CHAVE_NFE,
             RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS C5_NOMECLI,
             RTRIM(ISNULL(C5.C5_CLIENTE, '')) AS C5_CLIENTE,
             RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS C5_LOJACLI,
@@ -477,6 +486,10 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli, codVend } = {}
             RTRIM(ISNULL(C5.C5_TRANSP, '')) AS C5_TRANSP,
             RTRIM(ISNULL(C5.C5_CONDPAG, '')) AS C5_CONDPAG
         FROM ${emp.sc5} C5
+        LEFT JOIN ${emp.sf2} F2
+          ON F2.F2_FILIAL = C5.C5_FILIAL
+         AND F2.F2_DOC = C5.C5_NOTA
+         AND F2.D_E_L_E_T_ = ' '
         WHERE ${conditions.join(' AND ')}
         ORDER BY C5.C5_EMISSAO DESC
       `;
@@ -490,6 +503,7 @@ async function buscarPedidosVendedores({ codWeb, numPed, nomeCli, codVend } = {}
             codWeb: row.C5_CODWEB || '-',
             numPed: row.C5_NUM || '-',
             notaFiscal: row.C5_NOTA ? String(row.C5_NOTA).trim() : '',
+            chaveNfe: row.CHAVE_NFE ? String(row.CHAVE_NFE).trim() : '',
             nomeCli: row.C5_NOMECLI || 'CLIENTE NÃO INFORMADO',
             emissao: row.C5_EMISSAO || '',
             vendedor: getNomeVendedor(row.C5_VEND1),
