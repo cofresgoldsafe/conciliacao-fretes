@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.226 (Homologada em 16/09/2026 12:49)  
+> **Versão da Documentação:** v8.227 (Homologada em 17/09/2026 08:09)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 16/09/2026 12:49 (v8.226 - Correção de exibição do modal e acionamento de exportação de XMLs no Fechamento Fiscal)  
+> **Data da Última Auditoria:** 17/09/2026 08:09 (v8.227 - Link interativo de Ped Venda abrindo popup de detalhes na Busca CodWeb/Ped/NF)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.227 (17/09/2026):** Link interativo de Ped Venda (`.link-pedido`) com popup de detalhes do pedido (`#pedidoDetalhesModal`) na aba [Busca CodWeb/Ped/NF](docs/telas/03_busca/busca_codweb_ped_nf.md), com paridade à tela de Vendedores e suporte a temas Claro/Escuro.
 - **v8.226 (16/09/2026):** Correção do acionamento do modal de exportação de XMLs no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md): remoção da classe `hidden` conflitante com `display: flex`, fallbacks inline e toast flutuante.
 - **v8.225 (16/09/2026):** Exportação em lote de XMLs de NF-e (.zip) via SEFAZ no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) (filtro SPED & NFE) com serviço modular desacoplado (`exportador_xml_sefaz.js`), cache anti-limite e mTLS A1.
 - **v8.224 (16/09/2026):** Inclusão da opção unificada 'SPED & NFE' no filtro de tipo de documento do [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md) com suporte à filtragem conjunta no grid e na exportação CSV.

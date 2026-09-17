@@ -371,6 +371,7 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
 
           results.push({
             empresa: emp.nome,
+            empresaKey: emp.key,
             codWeb: row.C5_CODWEB || '-',
             dtGanho: '', // Enriquecido em paralelo via Pipedrive
             pedVenda: pedVenda,

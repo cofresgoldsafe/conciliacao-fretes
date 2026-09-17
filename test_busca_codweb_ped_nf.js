@@ -161,6 +161,16 @@ async function main() {
     assert.strictEqual(clean4, '16 (OACO)');
   });
 
+  runTest('2.5 - renderConsultaResults renderiza a coluna Ped Venda com a classe .link-pedido e data-attributes', () => {
+    assert(appJsContent.includes('class="link-pedido" data-empresa="'), 'Deve incluir span com classe link-pedido e data-empresa');
+    assert(appJsContent.includes('data-ped="${escapeHtml(row.pedVenda)}"'), 'Deve incluir data-ped com o número do pedido');
+  });
+
+  runTest('2.6 - Event Delegation em consultaTableBody dispara abrirDetalhesPedidoModal ao clicar no link-pedido', () => {
+    assert(appJsContent.includes("consultaTableBody.addEventListener('click'"), 'Deve registrar listener de clique no consultaTableBody');
+    assert(appJsContent.includes("abrirDetalhesPedidoModal(emp, ped)"), 'Deve chamar abrirDetalhesPedidoModal com os parâmetros corretos');
+  });
+
   // --- 3. VALIDAÇÃO DE BACKEND & CONSULTA PROTHEUS MULTI-EMPRESA ---
   console.log('\n--- 3. Validação de Backend & Consulta Protheus Multi-Empresa ---');
 
@@ -187,6 +197,7 @@ async function main() {
 
     const first = results[0];
     assert.strictEqual(first.empresa, '16 (OACO)', 'Empresa não deve conter prefixo repetido');
+    assert.strictEqual(first.empresaKey, 'OACO', 'empresaKey deve ser OACO');
     assert.strictEqual(first.pedVenda, '000763', 'Pedido deve ser 000763');
     assert.strictEqual(first.codWeb, '26443', 'CodWeb deve ser 26443');
     assert.strictEqual(first.dtMigracao, '20260826', 'Data de migração deve ser 20260826');

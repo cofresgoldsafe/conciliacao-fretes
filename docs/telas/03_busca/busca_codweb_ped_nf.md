@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-consulta` | **Botão:** `#btnTabConsulta`  
 > **Permissão RBAC:** admin, user (Consulta)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 15/09/2026 (v8.219 - Homologado)  
+> **Última Atualização:** 17/09/2026 (v8.227 - Homologado)  
 
 ---
 
@@ -15,8 +15,8 @@
 ---
 
 ## 2. Arquitetura de Código & Componentes
-- **Frontend:** `public/app.js, public/index.html`
-- **Backend / Rotas:** `protheus_db.js, server.js`
+- **Frontend:** `public/app.js, public/index.html` (modal `#pedidoDetalhesModal`, classes `.link-pedido`, Event Delegation em `#consultaTableBody`)
+- **Backend / Rotas:** `protheus_db.js, server.js` (`/api/protheus/consulta-avancada`, `/api/vendedores/pedidos/detalhes`)
 
 ---
 
@@ -27,11 +27,13 @@
 
 ## 4. Regras de Negócio & Cálculos Chave
 - Detecção inteligente do tipo de chave inserida. Enriquecimento temporal: Data de Ganho Comercial, Data de Migração Protheus e Data de Emissão Fiscal.
+- **Link Direto do Pedido de Venda:** A coluna "Ped Venda" é interativa (`.link-pedido`), permitindo ao operador clicar sobre o número do pedido para visualizar em popup os dados completos (itens SC6, faturas SE1, endereço de entrega e transportadora), exatamente como na tela de Vendedores.
 
 ---
 
 ## 5. Endpoints REST da API
-- `GET /api/busca/unificada?termo=:termo`
+- `GET /api/protheus/consulta-avancada?tipo=:tipo&termo=:termo`
+- `GET /api/vendedores/pedidos/detalhes?empresaKey=:empresaKey&numPedido=:numPedido`
 
 ---
 
@@ -44,4 +46,5 @@ node test_busca_codweb_ped_nf.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.227 (17/09/2026):** Coluna "Ped Venda" transformada em link interativo (`.link-pedido`) com abertura do modal `#pedidoDetalhesModal`, com paridade à tela Vendedores > Consulta Ped Venda e suporte a temas Claro/Escuro.
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.

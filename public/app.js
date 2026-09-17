@@ -1798,11 +1798,25 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<span class="mono-text" style="color: #a855f7; font-weight: 600;">${escapeHtml(dtEmissaoFormatada)}</span>`
         : `<span style="color: var(--text-muted);">-</span>`;
 
+      let empresaKey = row.empresaKey;
+      if (!empresaKey) {
+        const empStr = (row.empresa || '').toUpperCase();
+        if (empStr.includes('16') || empStr.includes('OACO')) empresaKey = 'OACO';
+        else if (empStr.includes('15') || empStr.includes('GSI')) empresaKey = 'GSI';
+        else if (empStr.includes('14') || empStr.includes('METAL')) empresaKey = 'METAL_PLENO';
+        else empresaKey = 'OACO';
+      }
+
+      const temPedVenda = row.pedVenda && row.pedVenda !== '-' && String(row.pedVenda).trim() !== '';
+      const pedVendaHtml = temPedVenda
+        ? `<span class="link-pedido" data-empresa="${escapeHtml(empresaKey)}" data-ped="${escapeHtml(row.pedVenda)}" title="Clique para ver detalhes do pedido"><strong>${escapeHtml(row.pedVenda)}</strong></span>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
       tr.innerHTML = `
         <td><span class="badge-doc">${escapeHtml(empresaDisplay || '-')}</span></td>
         <td class="mono-text">${codWebHtml}</td>
         <td>${dtGanhoHtml}</td>
-        <td><span class="ped-venda-badge">${escapeHtml(row.pedVenda || '-')}</span></td>
+        <td>${pedVendaHtml}</td>
         <td>${dtMigracaoHtml}</td>
         <td class="mono-text"><strong>${escapeHtml(row.nf || '-')}</strong></td>
         <td>${dtEmissaoHtml}</td>
@@ -1817,6 +1831,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     consultaEmptyState.classList.add('hidden');
     consultaResultsSection.classList.remove('hidden');
+  }
+
+  // Event Delegation para links de pedidos de venda na Consulta Multi-Empresa
+  if (consultaTableBody) {
+    consultaTableBody.addEventListener('click', (e) => {
+      const el = e.target.closest('.link-pedido');
+      if (el) {
+        const emp = el.getAttribute('data-empresa') || 'OACO';
+        const ped = el.getAttribute('data-ped');
+        if (ped && typeof abrirDetalhesPedidoModal === 'function') {
+          abrirDetalhesPedidoModal(emp, ped);
+        }
+      }
+    });
   }
 
   function renderConsultaEmptyResults(tipo, termo) {
@@ -2555,6 +2583,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const isLight = document.getElementById('tab-vend-saldos-estoque')?.classList.contains('tab-theme-light') ||
                     document.getElementById('tab-vend-pedidos-abertos')?.classList.contains('tab-theme-light') ||
+                    document.getElementById('tab-vend-pedidos')?.classList.contains('tab-theme-light') ||
+                    document.getElementById('tab-consulta')?.classList.contains('tab-theme-light') ||
                     localStorage.getItem('theme_vendedores') === 'light' ||
                     localStorage.getItem('theme_saldos_estoque') === 'light';
 
@@ -2567,7 +2597,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pedidoDetalhesBody.innerHTML = `
       <div style="text-align: center; padding: 2rem;">
         <div class="spinner" style="margin: 0 auto 1rem auto; width: 32px; height: 32px; border: 3px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-        <p>Carregando dados completos do Pedido <strong>${numPedido}</strong> no Protheus...</p>
+        <p>Carregando dados completos do Pedido <strong>${escapeHtml(numPedido)}</strong> no Protheus...</p>
       </div>
     `;
     pedidoDetalhesModal.classList.remove('hidden');
