@@ -1647,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       if (searchCodWeb) {
         searchCodWeb.disabled = false;
-        searchCodWeb.placeholder = 'Ex: 98412 ou WEB-98412';
+        searchCodWeb.placeholder = '98412 ou WEB-98412';
       }
       if (tagCodWeb) {
         tagCodWeb.textContent = 'Ativo';
@@ -1656,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (searchPedVenda) {
         searchPedVenda.disabled = false;
-        searchPedVenda.placeholder = 'Ex: 000630 ou 630';
+        searchPedVenda.placeholder = '000630 ou 630';
       }
       if (tagPedVenda) {
         tagPedVenda.textContent = 'Ativo';
@@ -1665,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (searchNFe) {
         searchNFe.disabled = false;
-        searchNFe.placeholder = 'Ex: 546 ou 000000546';
+        searchNFe.placeholder = '546 ou 000000546';
       }
       if (tagNFe) {
         tagNFe.textContent = 'Ativo';

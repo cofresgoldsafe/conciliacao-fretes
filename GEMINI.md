@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.230 (Homologada em 17/09/2026 09:02)  
+> **Versão da Documentação:** v8.231 (Homologada em 17/09/2026 09:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/09/2026 09:02 (v8.230 - Simplificação de UI e higienização textual no formulário da Busca CodWeb/Ped/NF)  
+> **Data da Última Auditoria:** 17/09/2026 09:15 (v8.231 - Disposição horizontal inline dos campos e botões na Busca CodWeb/Ped/NF e higienização de placeholders)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.231 (17/09/2026):** Disposição horizontal inline dos botões de ação ("🧹 Limpar" e "Buscar no Protheus") com os campos de busca, padronização da altura (40px) e remoção do prefixo "Ex: " nos placeholders (HTML e JS).
 - **v8.230 (17/09/2026):** Simplificação de UI na Busca CodWeb/Ped/NF: remoção do prefixo "2.", reposicionamento da instrução de exclusividade mútua para o subtítulo e eliminação de dicas e notice bars redundantes.
 - **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` (via `LEFT JOIN SA4010 A4`) e `Condição Pagto:` (via `LEFT JOIN SE4010 E4`) no modal de detalhes do pedido ([Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md) e [Busca Multi-Empresa](docs/telas/03_busca/busca_codweb_ped_nf.md)), exibindo `Código - Descrição` com fallback resiliente.
 - **v8.228 (17/09/2026):** Redirecionamento da coluna CodWeb para a URL oficial do CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/XXXXX`) na aba [Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md), com paridade à Busca CodWeb/Ped/NF e abertura de detalhes Protheus restrita ao Número do Pedido e botão Detalhes.

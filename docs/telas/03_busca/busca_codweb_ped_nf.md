@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-consulta` | **Botão:** `#btnTabConsulta`  
 > **Permissão RBAC:** admin, user (Consulta)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 17/09/2026 (v8.230 - Homologado)  
+> **Última Atualização:** 17/09/2026 (v8.231 - Homologado)  
 
 ---
 
@@ -47,6 +47,7 @@ node test_busca_codweb_ped_nf.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.231 (17/09/2026):** Disposição horizontal em linha única (inline layout) dos campos e botões de ação ("🧹 Limpar" e "Buscar no Protheus") com alinhamento na base (`align-items: flex-end`), altura padronizada de 40px, responsividade em telas menores (< 1100px) e higienização estática e dinâmica dos placeholders (remoção do prefixo "Ex: ").
 - **v8.230 (17/09/2026):** Simplificação de UI e higienização textual no formulário de busca: remoção do prefixo numérico `2.` do título principal, migração do texto instrutivo de preenchimento mutuamente exclusivo para logo abaixo do título, remoção de dicas redundantes (`.field-hint`) sob os campos e expurgo do aviso duplicado sobre os botões de ação.
 - **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` e `Condição Pagto:` no modal `#pedidoDetalhesModal` disparado a partir da coluna Ped Venda, exibindo nome e descrição oficial vindos de `SA4010` e `SE4010`.
 - **v8.227 (17/09/2026):** Coluna "Ped Venda" transformada em link interativo (`.link-pedido`) com abertura do modal `#pedidoDetalhesModal`, com paridade à tela Vendedores > Consulta Ped Venda e suporte a temas Claro/Escuro.
