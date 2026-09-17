@@ -5137,10 +5137,12 @@ app.get('/api/nfe-central/consultar', requireAuth, async (req, res) => {
 app.post('/api/admin/jobs/sync-nfe-central', async (req, res) => {
   try {
     const cronSecret = req.headers['x-cron-secret'];
+    const authHeader = req.headers['authorization'];
+    const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
     const validCronSecret = (process.env.CRON_SECRET || '').trim();
     let isAuthorized = false;
 
-    if (validCronSecret && cronSecret && cronSecret === validCronSecret) {
+    if (validCronSecret && ((cronSecret && cronSecret === validCronSecret) || (bearerToken && bearerToken === validCronSecret))) {
       isAuthorized = true;
     } else {
       const user = getUserFromReq(req);

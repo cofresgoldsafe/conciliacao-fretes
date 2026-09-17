@@ -205,6 +205,17 @@ async function executarSuite() {
     assert.strictEqual(typeof app.startNfeCentralSyncJob, 'function', 'startNfeCentralSyncJob deve estar exportado no app');
   });
 
+  // 9. Validação do Workflow do GitHub Actions Cron (12:30 e 18:30 BRT)
+  runTest('9.1 - Workflow YAML existe e contém agendamentos 15:30 UTC e 21:30 UTC (12:30 e 18:30 BRT)', () => {
+    const yamlPath = path.join(__dirname, '.github', 'workflows', 'sync_nfe_central.yml');
+    assert.ok(fs.existsSync(yamlPath), 'Arquivo .github/workflows/sync_nfe_central.yml deve existir');
+    const content = fs.readFileSync(yamlPath, 'utf-8');
+    assert.ok(content.includes("'30 15 * * *'"), 'Deve agendar slot das 12:30 BRT (15:30 UTC)');
+    assert.ok(content.includes("'30 21 * * *'"), 'Deve agendar slot das 18:30 BRT (21:30 UTC)');
+    assert.ok(content.includes('/api/admin/jobs/sync-nfe-central'), 'Deve disparar endpoint de sync da NFe Central');
+    assert.ok(content.includes('workflow_dispatch:'), 'Deve suportar acionamento manual via UI do GitHub');
+  });
+
   console.log('\n======================================================');
   console.log(`📊 RESULTADO DOS TESTES RED-TEAM: ${passedTests} APROVADOS | ${failedTests} FALHAS`);
   console.log('======================================================\n');

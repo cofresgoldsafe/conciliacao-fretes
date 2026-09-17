@@ -15,7 +15,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5101",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:11:23.919Z",
+    "updatedAt": "2026-09-17T13:17:47.100Z",
     "temXml": true,
     "xmlConteudo": "<?xml version=\"1.0\" encoding=\"utf-8\"?><nfeProc versao=\"4.00\" xmlns=\"http://www.portalfiscal.inf.br/nfe\"><NFe><infNFe Id=\"NFe35260961237790000118550010000008881622483421\"><ide><nNF>888</nNF><serie>1</serie></ide></infNFe></NFe><protNFe><infProt><chNFe>35260961237790000118550010000008881622483421</chNFe><cStat>100</cStat></infProt></protNFe></nfeProc>"
   },
@@ -35,7 +35,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5101",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:11:23.936Z",
+    "updatedAt": "2026-09-17T13:17:47.125Z",
     "temXml": true,
     "xmlConteudo": "<?xml version=\"1.0\" encoding=\"utf-8\"?><nfeProc versao=\"4.00\" xmlns=\"http://www.portalfiscal.inf.br/nfe\"><NFe><infNFe Id=\"NFe35260961237790000118550010000008891622483422\"><ide><nNF>889</nNF><serie>1</serie></ide></infNFe></NFe><protNFe><infProt><chNFe>35260961237790000118550010000008891622483422</chNFe><cStat>100</cStat></infProt></protNFe></nfeProc>"
   },
@@ -45,7 +45,7 @@
     "numeroNf": "000999",
     "serie": "1",
     "dataEmissao": "2026-08-25",
-    "updatedAt": "2026-09-17T13:11:23.958Z"
+    "updatedAt": "2026-09-17T13:17:47.144Z"
   },
   {
     "chaveAcesso": "35260961237790000118550010000007341883310899",

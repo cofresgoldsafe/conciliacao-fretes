@@ -1,0 +1,69 @@
+name: Sincronização NFe Central & SEFAZ (12:30 e 18:30 BRT)
+
+on:
+  schedule:
+    # 12:30 BRT (Horário de Brasília, UTC-3) equivale a 15:30 UTC:
+    - cron: '30 15 * * *'
+    # 18:30 BRT (Horário de Brasília, UTC-3) equivale a 21:30 UTC:
+    - cron: '30 21 * * *'
+  workflow_dispatch:
+    inputs:
+      dias_retroativos:
+        description: 'Dias retroativos para extração Protheus (padrão: 30)'
+        required: false
+        default: '30'
+      limite_xml:
+        description: 'Limite de XMLs para baixar da SEFAZ neste ciclo (padrão: 50)'
+        required: false
+        default: '50'
+
+jobs:
+  sincronizar-nfe:
+    name: Sincronizar Documentos Fiscais Protheus & SEFAZ
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Registrar Timestamp e Fuso Horário
+        run: |
+          echo "=========================================================="
+          echo "🚀 GSI / Gemini-Cli - Job Sincronizador NFe Central"
+          echo "=========================================================="
+          echo "Horário UTC: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Horário BRT: $(TZ='America/Sao_Paulo' date '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "Disparo: ${{ github.event_name }}"
+          echo "=========================================================="
+
+      - name: Disparar Sincronização via API
+        env:
+          API_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DIAS: ${{ github.event.inputs.dias_retroativos || '30' }}
+          LIMITE: ${{ github.event.inputs.limite_xml || '50' }}
+        run: |
+          BASE_URL="${API_URL:-https://conciliacao-fretes.onrender.com}"
+          ENDPOINT="${BASE_URL%/}/api/admin/jobs/sync-nfe-central"
+          echo "Disparando POST para: $ENDPOINT"
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -d "{\"diasRetroativos\": $DIAS, \"limiteXml\": $LIMITE}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "Status HTTP retornado: $HTTP_CODE"
+          echo "Resposta: $BODY"
+
+          if [ "$HTTP_CODE" -eq 202 ] || [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Sincronização disparada com sucesso em background!"
+            exit 0
+          elif [ "$HTTP_CODE" -eq 409 ]; then
+            echo "⚠️ Sincronização já está em andamento (concorrência bloqueada com sucesso)."
+            exit 0
+          else
+            echo "❌ Falha ao acionar sincronização: HTTP $HTTP_CODE"
+            exit 1
+          fi
