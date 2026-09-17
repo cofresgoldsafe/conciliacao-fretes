@@ -2542,13 +2542,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     pedidos.forEach(p => {
       const tr = document.createElement('tr');
+      const codWebText = p.codWeb && p.codWeb !== '-' ? String(p.codWeb).trim() : '-';
+      const codWebHtml = codWebText !== '-'
+        ? `<a href="https://benetroncomercial.pipedrive.com/deal/${encodeURIComponent(codWebText)}" target="_blank" rel="noopener noreferrer" class="badge-tag link-codweb-pipedrive" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); font-weight: 600; padding: 2px 8px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Abrir Deal ${escapeHtml(codWebText)} no Pipedrive">${escapeHtml(codWebText)} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>`
+        : `<span style="color: var(--text-muted);">-</span>`;
+
       tr.innerHTML = `
         <td><span class="company-badge">${escapeHtml(p.empresa)}</span></td>
-        <td>
-          <span class="link-codweb" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}" title="Clique para ver detalhes do pedido">
-            ${escapeHtml(p.codWeb)}
-          </span>
-        </td>
+        <td>${codWebHtml}</td>
         <td>
           <span class="link-pedido" data-empresa="${p.empresaKey || 'OACO'}" data-ped="${p.numPed}" title="Clique para ver detalhes do pedido">
             <strong>${escapeHtml(p.numPed)}</strong>
@@ -2569,7 +2570,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Event Delegation para links e detalhes de pedidos de vendedores
   if (vendPedidosTableBody) {
     vendPedidosTableBody.addEventListener('click', (e) => {
-      const el = e.target.closest('.link-pedido, .link-codweb, .btn-ver-detalhe');
+      const el = e.target.closest('.link-pedido, .btn-ver-detalhe');
       if (el) {
         const emp = el.getAttribute('data-empresa') || 'OACO';
         const ped = el.getAttribute('data-ped');

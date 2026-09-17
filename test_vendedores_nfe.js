@@ -5,6 +5,8 @@
  */
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 const protheusDb = require('./protheus_db');
 
 console.log('\n====================================================');
@@ -158,6 +160,59 @@ test('Formatação de datas Protheus YYYYMMDD para DD/MM/AAAA', () => {
 test('protheus_db exporta buscarPedidosVendedores e obterDetalhesPedido', () => {
   assert.strictEqual(typeof protheusDb.buscarPedidosVendedores, 'function');
   assert.strictEqual(typeof protheusDb.obterDetalhesPedido, 'function');
+});
+
+// 5. Testes da Coluna CodWeb & Link do Pipedrive CRM (Consulta Ped Venda)
+test('public/app.js renderiza CodWeb com link oficial do Pipedrive CRM e target="_blank"', () => {
+  const appJsPath = path.join(__dirname, 'public', 'app.js');
+  const appJsContent = fs.readFileSync(appJsPath, 'utf-8');
+
+  // Verifica que renderVendPedidosTable gera o link para Pipedrive
+  assert(
+    appJsContent.includes('https://benetroncomercial.pipedrive.com/deal/${encodeURIComponent(codWebText)}'),
+    'Link do CodWeb deve apontar para https://benetroncomercial.pipedrive.com/deal/${encodeURIComponent(codWebText)}'
+  );
+  assert(
+    appJsContent.includes('title="Abrir Deal ${escapeHtml(codWebText)} no Pipedrive"'),
+    'Link deve conter o title correspondente para abertura de Deal no Pipedrive'
+  );
+  assert(
+    appJsContent.includes('target="_blank" rel="noopener noreferrer"'),
+    'Link deve abrir em nova aba com rel="noopener noreferrer"'
+  );
+});
+
+test('public/app.js restringe abertura do modal de detalhes aos seletores .link-pedido e .btn-ver-detalhe (não intercepta CodWeb)', () => {
+  const appJsPath = path.join(__dirname, 'public', 'app.js');
+  const appJsContent = fs.readFileSync(appJsPath, 'utf-8');
+
+  // Verifica que o event listener em vendPedidosTableBody escuta apenas link-pedido e btn-ver-detalhe
+  assert(
+    appJsContent.includes("e.target.closest('.link-pedido, .btn-ver-detalhe')"),
+    'Listener de clique em vendPedidosTableBody não deve interceptar .link-codweb, permitindo navegação ao Pipedrive'
+  );
+});
+
+test('Simulação de formatação de CodWeb na Consulta Ped Venda', () => {
+  const formatCodWebHtml = (codWeb) => {
+    const codWebText = codWeb && codWeb !== '-' ? String(codWeb).trim() : '-';
+    return codWebText !== '-'
+      ? `<a href="https://benetroncomercial.pipedrive.com/deal/${encodeURIComponent(codWebText)}" target="_blank" rel="noopener noreferrer" class="badge-tag link-codweb-pipedrive">${codWebText}</a>`
+      : `<span style="color: var(--text-muted);">-</span>`;
+  };
+
+  const html1 = formatCodWebHtml('25238');
+  assert(html1.includes('href="https://benetroncomercial.pipedrive.com/deal/25238"'));
+  assert(html1.includes('target="_blank"'));
+
+  const html2 = formatCodWebHtml('');
+  assert.strictEqual(html2, '<span style="color: var(--text-muted);">-</span>');
+
+  const html3 = formatCodWebHtml('-');
+  assert.strictEqual(html3, '<span style="color: var(--text-muted);">-</span>');
+
+  const html4 = formatCodWebHtml(null);
+  assert.strictEqual(html4, '<span style="color: var(--text-muted);">-</span>');
 });
 
 console.log(`\n====================================================`);
