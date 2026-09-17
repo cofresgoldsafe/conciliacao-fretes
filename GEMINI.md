@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.228 (Homologada em 17/09/2026 08:29)  
+> **Versão da Documentação:** v8.229 (Homologada em 17/09/2026 08:48)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/09/2026 08:29 (v8.228 - Link de CodWeb na Consulta Ped Venda apontando para CRM Pipedrive em paridade com Busca CodWeb/Ped/NF)  
+> **Data da Última Auditoria:** 17/09/2026 08:48 (v8.229 - Enriquecimento relacional de Transportadora e Condição de Pagamento nos Detalhes do Pedido de Venda via LEFT JOIN Protheus)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` (via `LEFT JOIN SA4010 A4`) e `Condição Pagto:` (via `LEFT JOIN SE4010 E4`) no modal de detalhes do pedido ([Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md) e [Busca Multi-Empresa](docs/telas/03_busca/busca_codweb_ped_nf.md)), exibindo `Código - Descrição` com fallback resiliente.
 - **v8.228 (17/09/2026):** Redirecionamento da coluna CodWeb para a URL oficial do CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/XXXXX`) na aba [Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md), com paridade à Busca CodWeb/Ped/NF e abertura de detalhes Protheus restrita ao Número do Pedido e botão Detalhes.
 - **v8.227 (17/09/2026):** Link interativo de Ped Venda (`.link-pedido`) com popup de detalhes do pedido (`#pedidoDetalhesModal`) na aba [Busca CodWeb/Ped/NF](docs/telas/03_busca/busca_codweb_ped_nf.md), com paridade à tela de Vendedores e suporte a temas Claro/Escuro.
 - **v8.226 (16/09/2026):** Correção do acionamento do modal de exportação de XMLs no [Fechamento Fiscal](docs/telas/07_analista_fin/fechamento_fiscal.md): remoção da classe `hidden` conflitante com `display: flex`, fallbacks inline e toast flutuante.

@@ -1203,13 +1203,23 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         RTRIM(ISNULL(C5.C5_LOJACLI, '')) AS LOJA_CLI,
         RTRIM(ISNULL(C5.C5_NOMECLI, '')) AS NOME_CLI,
         RTRIM(ISNULL(C5.C5_TRANSP, '')) AS TRANSP,
+        RTRIM(ISNULL(A4.A4_NOME, '')) AS NOME_TRANSP,
         RTRIM(ISNULL(C5.C5_CONDPAG, '')) AS CONDPAG,
+        RTRIM(ISNULL(E4.E4_DESCRI, '')) AS DESC_CONDPAG,
+        RTRIM(ISNULL(E4.E4_COND, '')) AS E4_COND,
+        RTRIM(ISNULL(E4.E4_CTRADT, '')) AS E4_CTRADT,
         RTRIM(ISNULL(C5.C5_VEND1, '')) AS VEND1,
         ISNULL(C5.C5_FRETE, 0) AS FRETE,
         ISNULL(C5.C5_VLR_FRT, 0) AS FRETE_EMBUTIDO,
         ISNULL(C5.C5_DESCONT, 0) AS DESCONTO,
         RTRIM(ISNULL(C5.C5_MENNOTA, '')) AS OBS
       FROM ${emp.sc5} C5
+      LEFT JOIN SA4010 A4
+        ON (A4.A4_COD = C5.C5_TRANSP OR A4.A4_COD = RIGHT('000000' + RTRIM(C5.C5_TRANSP), 6))
+       AND A4.D_E_L_E_T_ = ' '
+      LEFT JOIN SE4010 E4
+        ON (E4.E4_CODIGO = C5.C5_CONDPAG OR E4.E4_CODIGO = RIGHT('000' + RTRIM(C5.C5_CONDPAG), 3))
+       AND E4.D_E_L_E_T_ = ' '
       WHERE (C5.C5_NUM = '${paddedPed6}' OR C5.C5_NUM = '${cleanPed}')
         AND C5.D_E_L_E_T_ = ' '
     `;
@@ -1309,52 +1319,73 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
     // Consulta Condição de Pagamento (SE4) para obter E4_COND e E4_CTRADT
     let condPagInfo = {
       codigo: head ? (head.CONDPAG || '').trim() : '',
-      descricao: '',
-      e4_cond: '',
-      e4_ctradt: '',
+      descricao: head ? (head.DESC_CONDPAG || '').trim() : '',
+      e4_cond: head ? (head.E4_COND || '').trim() : '',
+      e4_ctradt: head ? String(head.E4_CTRADT || '').trim() : '',
       possuiEntrada: 'N',
       faturado: 'N'
     };
 
     if (head && head.CONDPAG) {
+      // Se não veio do LEFT JOIN, faz fallback consultando a SE4010
+      if (!condPagInfo.descricao && !condPagInfo.e4_cond) {
+        try {
+          const cleanCond = sanitizeSqlParam(head.CONDPAG);
+          const paddedCond = cleanCond.padStart(3, '0');
+          const sqlSE4 = `
+            SELECT TOP 1
+              RTRIM(ISNULL(E4_CODIGO, '')) AS E4_CODIGO,
+              RTRIM(ISNULL(E4_COND, '')) AS E4_COND,
+              RTRIM(ISNULL(E4_CTRADT, '')) AS E4_CTRADT,
+              RTRIM(ISNULL(E4_DESCRI, '')) AS E4_DESCRI
+            FROM SE4010
+            WHERE (E4_CODIGO = '${cleanCond}' OR E4_CODIGO = '${paddedCond}')
+              AND D_E_L_E_T_ = ' '
+          `;
+          let resSE4 = await executeRailwayQuery(sqlSE4);
+
+          if (resSE4 && resSE4.rows && resSE4.rows.length > 0) {
+            const rowE4 = resSE4.rows[0];
+            condPagInfo.codigo = rowE4.E4_CODIGO || cleanCond;
+            condPagInfo.descricao = (rowE4.E4_DESCRI || '').trim();
+            condPagInfo.e4_cond = (rowE4.E4_COND || '').trim();
+            condPagInfo.e4_ctradt = String(rowE4.E4_CTRADT || '').trim();
+          }
+        } catch (errSE4) {
+          console.warn('Erro ao consultar SE4010 no fallback:', errSE4.message);
+        }
+      }
+
+      // Regra 1: E4_CTRADT = '1' OU se E4_COND contiver '00,' no início (ex: '00,15') -> possui entrada
+      const hasEntrada = (condPagInfo.e4_ctradt === '1' || condPagInfo.e4_cond.startsWith('00,') || condPagInfo.e4_cond.startsWith('0,'));
+      
+      // Regra 2: E4_COND diferente de '00' e diferente de '0' -> Faturado a Prazo (faturado = 'S')
+      // Se E4_COND for '00' ou '0' -> À Vista / Antecipado (faturado = 'N')
+      const isFaturado = (condPagInfo.e4_cond !== '00' && condPagInfo.e4_cond !== '0' && condPagInfo.e4_cond !== '');
+
+      condPagInfo.possuiEntrada = hasEntrada ? 'S' : 'N';
+      condPagInfo.faturado = isFaturado ? 'S' : 'N';
+    }
+
+    // Consulta Transportadora (SA4) caso o LEFT JOIN não tenha localizado o nome
+    let nomeTransp = head ? (head.NOME_TRANSP || '').trim() : '';
+    if (head && head.TRANSP && !nomeTransp) {
       try {
-        const cleanCond = sanitizeSqlParam(head.CONDPAG);
-        const paddedCond = cleanCond.padStart(3, '0');
-        const sqlSE4 = `
+        const cleanTransp = sanitizeSqlParam(head.TRANSP);
+        const paddedTransp = cleanTransp.padStart(6, '0');
+        const sqlSA4 = `
           SELECT TOP 1
-            RTRIM(ISNULL(E4_CODIGO, '')) AS E4_CODIGO,
-            RTRIM(ISNULL(E4_COND, '')) AS E4_COND,
-            RTRIM(ISNULL(E4_CTRADT, '')) AS E4_CTRADT,
-            RTRIM(ISNULL(E4_DESCRI, '')) AS E4_DESCRI
-          FROM SE4010
-          WHERE (E4_CODIGO = '${cleanCond}' OR E4_CODIGO = '${paddedCond}')
+            RTRIM(ISNULL(A4_NOME, '')) AS A4_NOME
+          FROM SA4010
+          WHERE (A4_COD = '${cleanTransp}' OR A4_COD = '${paddedTransp}')
             AND D_E_L_E_T_ = ' '
         `;
-        let resSE4 = await executeRailwayQuery(sqlSE4);
-
-        if (resSE4 && resSE4.rows && resSE4.rows.length > 0) {
-          const rowE4 = resSE4.rows[0];
-          const e4Cond = (rowE4.E4_COND || '').trim();
-          const e4Ctradt = String(rowE4.E4_CTRADT || '').trim();
-
-          // Regra 1: E4_CTRADT = '1' OU se E4_COND contiver '00,' no início (ex: '00,15') -> possui entrada
-          const hasEntrada = (e4Ctradt === '1' || e4Cond.startsWith('00,') || e4Cond.startsWith('0,'));
-          
-          // Regra 2: E4_COND diferente de '00' e diferente de '0' -> Faturado a Prazo (faturado = 'S')
-          // Se E4_COND for '00' ou '0' -> À Vista / Antecipado (faturado = 'N')
-          const isFaturado = (e4Cond !== '00' && e4Cond !== '0' && e4Cond !== '');
-
-          condPagInfo = {
-            codigo: rowE4.E4_CODIGO || cleanCond,
-            descricao: rowE4.E4_DESCRI || '',
-            e4_cond: e4Cond,
-            e4_ctradt: e4Ctradt,
-            possuiEntrada: hasEntrada ? 'S' : 'N',
-            faturado: isFaturado ? 'S' : 'N'
-          };
+        const resSA4 = await executeRailwayQuery(sqlSA4);
+        if (resSA4 && resSA4.rows && resSA4.rows.length > 0) {
+          nomeTransp = (resSA4.rows[0].A4_NOME || '').trim();
         }
-      } catch (errSE4) {
-        console.warn('Erro ao consultar SE4010:', errSE4.message);
+      } catch (errSA4) {
+        console.warn('Erro ao consultar SA4010 no fallback:', errSA4.message);
       }
     }
 
@@ -1495,9 +1526,16 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
         faturas: faturas,
         historicoFinanceiro: historicoFinanceiro,
         comercial: {
-          transportadora: head.TRANSP || 'Transportadora Padrão',
+          transportadora: nomeTransp 
+            ? `${(head.TRANSP || '').trim()} - ${nomeTransp}`
+            : ((head.TRANSP || '').trim() || 'Transportadora Padrão'),
           codTransp: (head.TRANSP || '').trim(),
-          condPagto: head.CONDPAG || 'À Vista / Boleto',
+          nomeTransp: nomeTransp,
+          condPagto: (condPagInfo.descricao && condPagInfo.descricao.trim())
+            ? `${(head.CONDPAG || '').trim()} - ${condPagInfo.descricao.trim()}`
+            : ((head.CONDPAG || '').trim() || 'À Vista / Boleto'),
+          codCondPag: (head.CONDPAG || '').trim(),
+          descCondPag: (condPagInfo.descricao || '').trim(),
           condPagInfo: condPagInfo,
           vendedor: getNomeVendedor(head.VEND1),
           codVendedor: head.VEND1,

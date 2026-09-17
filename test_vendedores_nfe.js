@@ -215,6 +215,92 @@ test('Simulação de formatação de CodWeb na Consulta Ped Venda', () => {
   assert.strictEqual(html4, '<span style="color: var(--text-muted);">-</span>');
 });
 
+// 6. Testes de Descrição Relacional de Transportadora (SA4) e Condição de Pagamento (SE4)
+test('protheus_db.js realiza LEFT JOIN com SA4010 e SE4010 em obterDetalhesPedido', () => {
+  const protheusDbPath = path.join(__dirname, 'protheus_db.js');
+  const protheusDbContent = fs.readFileSync(protheusDbPath, 'utf-8');
+
+  // Verifica presença dos joins na query sqlC5
+  assert(
+    protheusDbContent.includes('LEFT JOIN SA4010 A4'),
+    'sqlC5 deve conter LEFT JOIN SA4010 A4 para capturar o nome da transportadora'
+  );
+  assert(
+    protheusDbContent.includes('LEFT JOIN SE4010 E4'),
+    'sqlC5 deve conter LEFT JOIN SE4010 E4 para capturar a descrição da condição de pagamento'
+  );
+  assert(
+    protheusDbContent.includes('RTRIM(ISNULL(A4.A4_NOME, \'\')) AS NOME_TRANSP'),
+    'sqlC5 deve projetar NOME_TRANSP'
+  );
+  assert(
+    protheusDbContent.includes('RTRIM(ISNULL(E4.E4_DESCRI, \'\')) AS DESC_CONDPAG'),
+    'sqlC5 deve projetar DESC_CONDPAG'
+  );
+});
+
+test('Simulação de formatação de Transportadora e Condição de Pagamento no objeto comercial', () => {
+  const formatComercial = (head, nomeTransp, condPagInfo) => {
+    return {
+      transportadora: nomeTransp 
+        ? `${(head.TRANSP || '').trim()} - ${nomeTransp}`
+        : ((head.TRANSP || '').trim() || 'Transportadora Padrão'),
+      codTransp: (head.TRANSP || '').trim(),
+      nomeTransp: nomeTransp,
+      condPagto: (condPagInfo.descricao && condPagInfo.descricao.trim())
+        ? `${(head.CONDPAG || '').trim()} - ${condPagInfo.descricao.trim()}`
+        : ((head.CONDPAG || '').trim() || 'À Vista / Boleto'),
+      codCondPag: (head.CONDPAG || '').trim(),
+      descCondPag: (condPagInfo.descricao || '').trim(),
+      condPagInfo: condPagInfo
+    };
+  };
+
+  // Caso 1: Código + Descrição presentes
+  const c1 = formatComercial(
+    { TRANSP: '000003', CONDPAG: '014' },
+    'BRASPRESS TRANSPORTES URGENTES',
+    { codigo: '014', descricao: '30/60 DIAS', e4_cond: '30,60', e4_ctradt: '0', possuiEntrada: 'N', faturado: 'S' }
+  );
+  assert.strictEqual(c1.transportadora, '000003 - BRASPRESS TRANSPORTES URGENTES');
+  assert.strictEqual(c1.condPagto, '014 - 30/60 DIAS');
+  assert.strictEqual(c1.codTransp, '000003');
+  assert.strictEqual(c1.nomeTransp, 'BRASPRESS TRANSPORTES URGENTES');
+  assert.strictEqual(c1.condPagInfo.faturado, 'S');
+
+  // Caso 2: Somente código sem nome encontrado no cadastro
+  const c2 = formatComercial(
+    { TRANSP: '000999', CONDPAG: '999' },
+    '',
+    { codigo: '999', descricao: '', e4_cond: '', e4_ctradt: '', possuiEntrada: 'N', faturado: 'N' }
+  );
+  assert.strictEqual(c2.transportadora, '000999');
+  assert.strictEqual(c2.condPagto, '999');
+
+  // Caso 3: Campos vazios utilizam fallbacks amigáveis
+  const c3 = formatComercial(
+    { TRANSP: '', CONDPAG: '' },
+    '',
+    { codigo: '', descricao: '', e4_cond: '', e4_ctradt: '', possuiEntrada: 'N', faturado: 'N' }
+  );
+  assert.strictEqual(c3.transportadora, 'Transportadora Padrão');
+  assert.strictEqual(c3.condPagto, 'À Vista / Boleto');
+});
+
+test('public/app.js renderiza campos de Transportadora e Condição Pagto no modal #pedidoDetalhesModal', () => {
+  const appJsPath = path.join(__dirname, 'public', 'app.js');
+  const appJsContent = fs.readFileSync(appJsPath, 'utf-8');
+
+  assert(
+    appJsContent.includes('${escapeHtml(com.transportadora || \'\-\')}'),
+    'Modal deve renderizar com.transportadora com escapeHtml'
+  );
+  assert(
+    appJsContent.includes('${escapeHtml(com.condPagto || \'\-\')}'),
+    'Modal deve renderizar com.condPagto com escapeHtml'
+  );
+});
+
 console.log(`\n====================================================`);
 console.log(`📊 RESULTADOS: ${passCount} aprovados, ${failCount} falhas`);
 console.log(`====================================================\n`);
@@ -224,3 +310,4 @@ if (failCount > 0) {
 } else {
   process.exit(0);
 }
+

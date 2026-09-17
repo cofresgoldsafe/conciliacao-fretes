@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-consulta` | **Botão:** `#btnTabConsulta`  
 > **Permissão RBAC:** admin, user (Consulta)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 17/09/2026 (v8.227 - Homologado)  
+> **Última Atualização:** 17/09/2026 (v8.229 - Homologado)  
 
 ---
 
@@ -21,13 +21,14 @@
 ---
 
 ## 3. Banco de Dados & Modelagem
-- **Persistência / Tabelas:** Protheus ERP MSSQL (SC5, SC6, SF2, SA1010, SD2 nas empresas 14, 15, 16 e 09)
+- **Persistência / Tabelas:** Protheus ERP MSSQL (`SC5`, `SC6`, `SF2`, `SA1010`, `SA4010`, `SE4010`, `SD2` nas empresas 14, 15, 16 e 09)
 
 ---
 
 ## 4. Regras de Negócio & Cálculos Chave
 - Detecção inteligente do tipo de chave inserida. Enriquecimento temporal: Data de Ganho Comercial, Data de Migração Protheus e Data de Emissão Fiscal.
 - **Link Direto do Pedido de Venda:** A coluna "Ped Venda" é interativa (`.link-pedido`), permitindo ao operador clicar sobre o número do pedido para visualizar em popup os dados completos (itens SC6, faturas SE1, endereço de entrega e transportadora), exatamente como na tela de Vendedores.
+- **Enriquecimento Relacional no Modal:** O modal de detalhes (`#pedidoDetalhesModal`) apresenta descrições amigáveis e oficiais de `Transportadora:` (via `SA4010`) e `Condição Pagto:` (via `SE4010`) no formato `Código - Descrição`.
 
 ---
 
@@ -46,5 +47,6 @@ node test_busca_codweb_ped_nf.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` e `Condição Pagto:` no modal `#pedidoDetalhesModal` disparado a partir da coluna Ped Venda, exibindo nome e descrição oficial vindos de `SA4010` e `SE4010`.
 - **v8.227 (17/09/2026):** Coluna "Ped Venda" transformada em link interativo (`.link-pedido`) com abertura do modal `#pedidoDetalhesModal`, com paridade à tela Vendedores > Consulta Ped Venda e suporte a temas Claro/Escuro.
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.
