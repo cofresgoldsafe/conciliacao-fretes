@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.234">
+  <link rel="stylesheet" href="style.css?v=8.235">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 17/09/2026 11:01 (Visualizador de DANFE NF-e com Super Tabela e Sincronizacao On-Demand SEFAZ)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 17/09/2026 13:18 (Suporte a Senha de Certificado A1, Diagnostico SEFAZ e Sync de Sessao no DANFE (v8.235))</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -7432,14 +7432,46 @@
           </div>
         </div>
 
-        <!-- Estado 2: Aviso de Não Sincronizado / Próxima Sync -->
-        <div id="danfeNaoSincronizado" class="danfe-state-box hidden" style="text-align: center; padding: 3rem 1.5rem;">
-          <div style="font-size: 3rem; margin-bottom: 0.75rem;">⏳</div>
+        <!-- Estado 2: Aviso de Não Sincronizado / Próxima Sync / Entrada de Senha SEFAZ -->
+        <div id="danfeNaoSincronizado" class="danfe-state-box hidden" style="text-align: center; padding: 2rem 1.5rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⏳</div>
           <h3 style="margin: 0 0 0.5rem; font-size: 1.2rem;">Documento fiscal ainda não disponível no portal</h3>
-          <p id="danfeAvisoSincronizacao" style="color: var(--text-muted); font-size: 0.92rem; max-width: 600px; margin: 0 auto 1.5rem; line-height: 1.6;">
+          <p id="danfeAvisoSincronizacao" style="color: var(--text-muted); font-size: 0.92rem; max-width: 600px; margin: 0 auto 1.25rem; line-height: 1.6;">
             Esta nota fiscal foi emitida no Protheus, mas seu XML ainda não foi sincronizado na Super Tabela.<br>
             Próxima sincronização automática programada para as <strong id="danfeProximaSyncHora" style="color: var(--accent-blue);">12:30h</strong>.
           </p>
+
+          <!-- Detalhe do Erro da SEFAZ (se houver) -->
+          <div id="danfeErroSefazBox" class="hidden" style="max-width: 520px; margin: 0 auto 1.25rem; padding: 0.75rem 1rem; border-radius: 8px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); text-align: left; font-size: 0.82rem; color: #fca5a5;">
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; margin-bottom: 4px;">
+              <span>⚠️</span> <span id="danfeErroSefazTitulo">Retorno da SEFAZ</span>
+            </div>
+            <div id="danfeErroSefazMsg" style="line-height: 1.4; color: #cbd5e1;">Certificado Digital A1 não configurado ou senha incorreta.</div>
+          </div>
+
+          <!-- Formulário de Senha do Certificado A1 -->
+          <div id="danfeSenhaCertBox" style="max-width: 520px; margin: 0 auto 1.5rem; padding: 1.1rem; border-radius: 8px; background: rgba(30, 41, 59, 0.6); border: 1px solid var(--panel-border); text-align: left;">
+            <label for="inputDanfeSenhaCert" style="display: block; font-size: 0.82rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px;">
+              🔑 Senha do Certificado Digital A1 <span id="danfeEmpresaCertNome" style="color: #38bdf8; font-weight: 700;"></span>
+            </label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input 
+                type="password" 
+                id="inputDanfeSenhaCert" 
+                class="form-input" 
+                placeholder="Digite a senha do certificado A1..." 
+                style="flex: 1; height: 38px; font-size: 0.85rem;" 
+              />
+              <button type="button" id="btnDanfeBuscarComSenha" class="btn btn-primary btn-sm" style="white-space: nowrap; height: 38px; padding: 0 16px;">
+                ⚡ Buscar na SEFAZ
+              </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.76rem; color: #94a3b8;">
+              <input type="checkbox" id="chkDanfeLembrarSenha" checked style="cursor: pointer;" />
+              <label for="chkDanfeLembrarSenha" style="cursor: pointer; margin: 0;">Lembrar senha nesta sessão de trabalho (compartilhada com Fechamento Fiscal)</label>
+            </div>
+          </div>
+
           <div style="display: flex; gap: 0.75rem; justify-content: center;">
             <button type="button" id="btnDanfeTentarNovamente" class="btn btn-primary btn-sm">⚡ Tentar Sincronizar Novamente</button>
             <button type="button" id="btnDanfeFecharAviso" class="btn btn-outline btn-sm">Fechar</button>
@@ -8631,22 +8663,22 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.234"></script>
-  <script src="js/bi.js?v=8.234"></script>
-  <script src="js/bi_indices.js?v=8.234"></script>
-  <script src="js/bi_autorizacoes.js?v=8.234"></script>
-  <script src="js/gordura_frete.js?v=8.234"></script>
-  <script src="js/fechamento_vendedores.js?v=8.234"></script>
-  <script type="module" src="js/tarefas.js?v=8.234"></script>
-  <script src="js/holerites.js?v=8.234"></script>
-  <script src="js/funcionarios_dp.js?v=8.234"></script>
-  <script src="js/crm.js?v=8.234"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.234"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.234"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.234"></script>
-  <script src="js/nfse_pendentes.js?v=8.234"></script>
-  <script src="js/fechamento_fiscal.js?v=8.234"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.234"></script>
-  <script src="app.js?v=8.234"></script>
+  <script src="js/chart.umd.min.js?v=8.235"></script>
+  <script src="js/bi.js?v=8.235"></script>
+  <script src="js/bi_indices.js?v=8.235"></script>
+  <script src="js/bi_autorizacoes.js?v=8.235"></script>
+  <script src="js/gordura_frete.js?v=8.235"></script>
+  <script src="js/fechamento_vendedores.js?v=8.235"></script>
+  <script type="module" src="js/tarefas.js?v=8.235"></script>
+  <script src="js/holerites.js?v=8.235"></script>
+  <script src="js/funcionarios_dp.js?v=8.235"></script>
+  <script src="js/crm.js?v=8.235"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.235"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.235"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.235"></script>
+  <script src="js/nfse_pendentes.js?v=8.235"></script>
+  <script src="js/fechamento_fiscal.js?v=8.235"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.235"></script>
+  <script src="app.js?v=8.235"></script>
 </body>
 </html>

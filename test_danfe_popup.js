@@ -328,6 +328,17 @@ async function runAllTests() {
     assert(code.includes('link-nfe'), 'Classe link-nfe não referenciada em app.js');
   });
 
+  runTest('4.4 - public/index.html e public/app.js contêm suporte a senha de certificado e diagnóstico de erro SEFAZ', () => {
+    const fs = require('fs');
+    const html = fs.readFileSync('./public/index.html', 'utf8');
+    const appJs = fs.readFileSync('./public/app.js', 'utf8');
+    assert(html.includes('id="inputDanfeSenhaCert"'), 'Campo #inputDanfeSenhaCert não encontrado em index.html');
+    assert(html.includes('id="btnDanfeBuscarComSenha"'), 'Botão #btnDanfeBuscarComSenha não encontrado em index.html');
+    assert(html.includes('id="danfeErroSefazBox"'), 'Container #danfeErroSefazBox não encontrado em index.html');
+    assert(appJs.includes('gsi_cert_passphrase'), 'Sincronização com sessionStorage(gsi_cert_passphrase) não encontrada em app.js');
+    assert(appJs.includes('passphrase='), 'Envio de parâmetro passphrase não encontrado em app.js');
+  });
+
   // 5. Testes de Backend & Protheus DB
   runTest('5.1 - protheus_db.js seleciona CHAVE_NFE e SERIE_NF em buscarProtheusMultiEmpresa', () => {
     const fs = require('fs');
@@ -342,6 +353,14 @@ async function runAllTests() {
     const serverCode = fs.readFileSync('./server.js', 'utf8');
     assert(serverCode.includes("app.get('/api/nfe/danfe-dados'"), 'Rota /api/nfe/danfe-dados não definida em server.js');
     assert(serverCode.includes("app.get('/api/nfe/xml-download/:chave'"), 'Rota /api/nfe/xml-download/:chave não definida em server.js');
+  });
+
+  runTest('5.3 - server.js rota /api/nfe/danfe-dados aceita passphrase e retorna diagnóstico detalhado', () => {
+    const fs = require('fs');
+    const serverCode = fs.readFileSync('./server.js', 'utf8');
+    assert(serverCode.includes('certPassphrase'), 'certPassphrase não tratado na rota');
+    assert(serverCode.includes('erroSefaz:'), 'erroSefaz não retornado no envelope JSON');
+    assert(serverCode.includes('precisaSenhaCert'), 'precisaSenhaCert não retornado no envelope JSON');
   });
 
   console.log('\n======================================================');

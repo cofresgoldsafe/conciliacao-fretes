@@ -2994,6 +2994,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const danfePaper = document.getElementById('danfePaper');
   const danfeProximaSyncHora = document.getElementById('danfeProximaSyncHora');
   const danfeAvisoSincronizacao = document.getElementById('danfeAvisoSincronizacao');
+  const danfeErroSefazBox = document.getElementById('danfeErroSefazBox');
+  const danfeErroSefazMsg = document.getElementById('danfeErroSefazMsg');
+  const danfeSenhaCertBox = document.getElementById('danfeSenhaCertBox');
+  const inputDanfeSenhaCert = document.getElementById('inputDanfeSenhaCert');
+  const btnDanfeBuscarComSenha = document.getElementById('btnDanfeBuscarComSenha');
+  const chkDanfeLembrarSenha = document.getElementById('chkDanfeLembrarSenha');
+  const danfeEmpresaCertNome = document.getElementById('danfeEmpresaCertNome');
   const btnImprimirDanfe = document.getElementById('btnImprimirDanfe');
   const btnDownloadXmlDanfe = document.getElementById('btnDownloadXmlDanfe');
   const btnCopiarChaveDanfe = document.getElementById('btnCopiarChaveDanfe');
@@ -3012,6 +3019,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseDanfeModal) btnCloseDanfeModal.addEventListener('click', fecharDanfeModal);
   if (btnDanfeFecharAviso) btnDanfeFecharAviso.addEventListener('click', fecharDanfeModal);
   if (btnImprimirDanfe) btnImprimirDanfe.addEventListener('click', () => window.print());
+
+  if (btnDanfeBuscarComSenha) {
+    btnDanfeBuscarComSenha.addEventListener('click', () => {
+      const senha = inputDanfeSenhaCert ? inputDanfeSenhaCert.value.trim() : '';
+      if (senha && chkDanfeLembrarSenha && chkDanfeLembrarSenha.checked) {
+        sessionStorage.setItem('gsi_cert_passphrase', senha);
+      }
+      if (currentDanfeParams) {
+        carregarDanfe(currentDanfeParams, true, senha);
+      }
+    });
+  }
+
+  if (inputDanfeSenhaCert) {
+    inputDanfeSenhaCert.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (btnDanfeBuscarComSenha) btnDanfeBuscarComSenha.click();
+      }
+    });
+  }
 
   if (btnCopiarChaveDanfe) {
     btnCopiarChaveDanfe.addEventListener('click', async () => {
@@ -3058,7 +3086,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnDanfeTentarNovamente) {
     btnDanfeTentarNovamente.addEventListener('click', () => {
       if (currentDanfeParams) {
-        carregarDanfe(currentDanfeParams, true);
+        const senha = (inputDanfeSenhaCert ? inputDanfeSenhaCert.value.trim() : '') || sessionStorage.getItem('gsi_cert_passphrase') || '';
+        carregarDanfe(currentDanfeParams, true, senha);
       }
     });
   }
@@ -3073,21 +3102,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnDownloadXmlDanfe) btnDownloadXmlDanfe.disabled = true;
     if (btnImprimirDanfe) btnImprimirDanfe.disabled = true;
 
+    // Normaliza nome amigável da empresa
+    let empNome = 'OAÇO (16)';
+    const empStr = String(empresa || '').toUpperCase();
+    if (empStr === '14' || empStr.includes('METAL')) empNome = 'Metal Pleno (14)';
+    else if (empStr === '15' || empStr.includes('GSI')) empNome = 'GSI Brasil (15)';
+    else if (empStr === '16' || empStr.includes('OACO')) empNome = 'OAÇO (16)';
+
     if (danfeModalSubtitulo) {
-      danfeModalSubtitulo.textContent = `NF-e ${doc || '-'} — Empresa ${empresa || 'OACO'}`;
+      danfeModalSubtitulo.textContent = `NF-e ${doc || '-'} — Empresa ${empNome}`;
+    }
+    if (danfeEmpresaCertNome) {
+      danfeEmpresaCertNome.textContent = `(${empNome})`;
     }
 
+    // Pré-carrega senha da sessão se já foi informada anteriormente
+    const senhaSalva = sessionStorage.getItem('gsi_cert_passphrase') || '';
+    if (inputDanfeSenhaCert && senhaSalva) {
+      inputDanfeSenhaCert.value = senhaSalva;
+    }
+
+    if (danfeErroSefazBox) danfeErroSefazBox.classList.add('hidden');
+
     danfeModal.classList.remove('hidden');
-    await carregarDanfe(currentDanfeParams, true);
+    await carregarDanfe(currentDanfeParams, true, senhaSalva);
   }
 
-  async function carregarDanfe({ empresa, doc, chave }, onDemand = true) {
+  async function carregarDanfe({ empresa, doc, chave }, onDemand = true, passphraseCustom = '') {
     if (danfeLoadingSefaz) danfeLoadingSefaz.classList.remove('hidden');
     if (danfeNaoSincronizado) danfeNaoSincronizado.classList.add('hidden');
     if (danfePaperContainer) danfePaperContainer.classList.add('hidden');
 
+    const senha = passphraseCustom || (inputDanfeSenhaCert ? inputDanfeSenhaCert.value.trim() : '') || sessionStorage.getItem('gsi_cert_passphrase') || '';
+
     try {
-      const url = `/api/nfe/danfe-dados?empresa=${encodeURIComponent(empresa || '')}&doc=${encodeURIComponent(doc || '')}&chave=${encodeURIComponent(chave || '')}&onDemand=${onDemand ? 'true' : 'false'}`;
+      let url = `/api/nfe/danfe-dados?empresa=${encodeURIComponent(empresa || '')}&doc=${encodeURIComponent(doc || '')}&chave=${encodeURIComponent(chave || '')}&onDemand=${onDemand ? 'true' : 'false'}`;
+      if (senha) {
+        url += `&passphrase=${encodeURIComponent(senha)}`;
+      }
+
       const res = await fetch(url);
       const data = await res.json();
 
@@ -3096,6 +3149,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (data && data.sucesso && data.dadosDanfe) {
         currentDanfeChave = data.chave || chave || data.dadosDanfe.chaveAcesso || '';
         currentDanfeXml = data.xml || '';
+
+        // Se funcionou com a senha fornecida e o usuário marcou para lembrar, salva na sessão
+        if (senha && chkDanfeLembrarSenha && chkDanfeLembrarSenha.checked) {
+          sessionStorage.setItem('gsi_cert_passphrase', senha);
+        }
 
         if (danfePaper) {
           danfePaper.innerHTML = renderDanfeHtml(data.dadosDanfe);
@@ -3113,6 +3171,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (danfeAvisoSincronizacao) {
           danfeAvisoSincronizacao.innerHTML = `Esta nota fiscal foi emitida no Protheus, mas seu XML ainda não foi sincronizado na Super Tabela.<br>Próxima sincronização automática programada para as <strong style="color: var(--accent-blue);">${escapeHtml(data.proximaSync || '12:30h')}</strong>.`;
         }
+
+        // Exibe diagnóstico de erro da SEFAZ se disponível
+        if (danfeErroSefazBox && danfeErroSefazMsg) {
+          if (data && data.erroSefaz) {
+            danfeErroSefazMsg.textContent = data.erroSefaz;
+            danfeErroSefazBox.classList.remove('hidden');
+          } else {
+            danfeErroSefazBox.classList.add('hidden');
+          }
+        }
+
+        // Se precisa de senha ou falhou por certificado, foca no campo
+        if (data && (data.precisaSenhaCert || data.erroSefaz)) {
+          if (inputDanfeSenhaCert && !inputDanfeSenhaCert.value) {
+            setTimeout(() => inputDanfeSenhaCert.focus(), 150);
+          }
+        }
+
         if (btnCopiarChaveDanfe) btnCopiarChaveDanfe.disabled = true;
         if (btnDownloadXmlDanfe) btnDownloadXmlDanfe.disabled = true;
         if (btnImprimirDanfe) btnImprimirDanfe.disabled = true;

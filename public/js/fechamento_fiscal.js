@@ -1019,6 +1019,11 @@
     if (modalXmlPeriodo) modalXmlPeriodo.textContent = `${dtDe} a ${dtAte}`;
     if (modalXmlQtdNotas) modalXmlQtdNotas.textContent = `${itens.length} notas fiscais`;
 
+    // Pré-carrega senha da sessão se já informada
+    if (inputSenhaCertificadoModalXml && !inputSenhaCertificadoModalXml.value) {
+      inputSenhaCertificadoModalXml.value = sessionStorage.getItem('gsi_cert_passphrase') || '';
+    }
+
     // Reseta estado visual do modal
     if (modalXmlProgressoContainer) modalXmlProgressoContainer.style.display = 'none';
     if (modalXmlMensagem) {
@@ -1069,6 +1074,9 @@
 
     const empresa = selEmpresa ? selEmpresa.value : '16';
     const passphrase = inputSenhaCertificadoModalXml ? inputSenhaCertificadoModalXml.value.trim() : '';
+    if (passphrase) {
+      sessionStorage.setItem('gsi_cert_passphrase', passphrase);
+    }
 
     // Prepara tela de progresso
     if (modalXmlProgressoContainer) modalXmlProgressoContainer.style.display = 'block';

@@ -5144,10 +5144,11 @@ app.get('/api/nfe/danfe-dados', requireAuth, async (req, res) => {
     } = require('./postgres_db');
     const { obterXmlNfeSefaz } = require('./exportador_xml_sefaz');
 
-    let { chave = '', empresa = '', doc = '', onDemand = 'true' } = req.query;
+    let { chave = '', empresa = '', doc = '', onDemand = 'true', passphrase = '' } = req.query;
     chave = String(chave || '').replace(/\D/g, '').trim();
     doc = String(doc || '').replace(/\D/g, '').trim();
     empresa = String(empresa || '').trim();
+    const certPassphrase = String(passphrase || req.headers['x-cert-passphrase'] || '').trim();
 
     // Normalização do código de empresa (14, 15, 16)
     let empCod = '16';
@@ -5220,9 +5221,17 @@ app.get('/api/nfe/danfe-dados', requireAuth, async (req, res) => {
 
     // 5. Se não temos XML e onDemand for 'true', tenta buscar na SEFAZ via certificado A1 mTLS
     const buscarNaSefaz = onDemand === 'true' || onDemand === true;
+    let erroSefazDetalhe = null;
+    let cStatSefaz = null;
+    let precisaSenhaCert = false;
+
     if (buscarNaSefaz && chaveFinal && chaveFinal.length === 44) {
       try {
-        const sefazRes = await obterXmlNfeSefaz({ chaveNfe: chaveFinal, empresaCod: empCod });
+        const sefazRes = await obterXmlNfeSefaz({
+          chaveNfe: chaveFinal,
+          empresaCod: empCod,
+          passphrase: certPassphrase
+        });
         if (sefazRes && sefazRes.sucesso && sefazRes.xml) {
           xmlConteudo = sefazRes.xml;
           salvarXmlNfeCentral(chaveFinal, xmlConteudo).catch(() => {});
@@ -5235,9 +5244,26 @@ app.get('/api/nfe/danfe-dados', requireAuth, async (req, res) => {
             dadosDanfe,
             xml: xmlConteudo
           });
+        } else if (sefazRes) {
+          erroSefazDetalhe = sefazRes.erro || sefazRes.xMotivo || null;
+          cStatSefaz = sefazRes.cStat || null;
+          if (
+            !certPassphrase &&
+            (String(erroSefazDetalhe).includes('senha') ||
+             String(erroSefazDetalhe).includes('Certificado') ||
+             String(erroSefazDetalhe).includes('mac verify') ||
+             String(erroSefazDetalhe).includes('PKCS12') ||
+             cStatSefaz === '403')
+          ) {
+            precisaSenhaCert = true;
+          }
         }
       } catch (errSefaz) {
         console.warn('⚠️ [DANFE] Erro na consulta on-demand da SEFAZ:', errSefaz.message);
+        erroSefazDetalhe = errSefaz.message;
+        if (String(errSefaz.message).includes('mac verify') || String(errSefaz.message).includes('passphrase')) {
+          precisaSenhaCert = true;
+        }
       }
     }
 
@@ -5262,7 +5288,10 @@ app.get('/api/nfe/danfe-dados', requireAuth, async (req, res) => {
       doc: doc || null,
       empresa: empCod,
       proximaSync,
-      motivo: 'Ainda não disponível no portal. O documento fiscal será sincronizado automaticamente na próxima rotina.',
+      erroSefaz: erroSefazDetalhe,
+      cStat: cStatSefaz,
+      precisaSenhaCert,
+      motivo: erroSefazDetalhe || 'Ainda não disponível no portal. O documento fiscal será sincronizado automaticamente na próxima rotina.',
       podeTentarNovamente: Boolean(chaveFinal && chaveFinal.length === 44)
     });
   } catch (err) {
