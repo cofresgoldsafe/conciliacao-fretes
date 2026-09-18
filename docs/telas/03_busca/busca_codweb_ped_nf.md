@@ -51,6 +51,8 @@ node test_danfe_popup.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.236 (17/09/2026):** Implementação de Fallback Resiliente no TOTVS Protheus ERP (`danfe_protheus.js`) e sintetizador canônico de XML oficial para contornar a regra restritiva da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração automática de SF2/SD2/SB1/SA1/SA4/SE1, renderização instantânea do DANFE em tela e persistência contínua na Super Tabela.
+- **v8.235 (17/09/2026):** Adição de suporte a senha de certificado digital A1 no popup DANFE (#inputDanfeSenhaCert), diagnóstico transparente de erros SEFAZ e compartilhamento de sessão mútua com Fechamento Fiscal (`sessionStorage`).
 - **v8.234 (17/09/2026):** Implementação de links interativos na coluna Nota Fiscal (`.link-nfe`) para abertura de popup de visualização de DANFE em padrão gráfico oficial A4 (`@media print`), gerado a partir do XML da Super Tabela `nfe_central_documentos` com busca on-demand mTLS na SEFAZ, barra de progresso animada e aviso de próxima sincronização (12:30h / 18:30h).
 - **v8.231 (17/09/2026):** Disposição horizontal em linha única (inline layout) dos campos e botões de ação ("🧹 Limpar" e "Buscar no Protheus") com alinhamento na base (`align-items: flex-end`), altura padronizada de 40px, responsividade em telas menores (< 1100px) e higienização estática e dinâmica dos placeholders (remoção do prefixo "Ex: ").
 - **v8.230 (17/09/2026):** Simplificação de UI e higienização textual no formulário de busca: remoção do prefixo numérico `2.` do título principal, migração do texto instrutivo de preenchimento mutuamente exclusivo para logo abaixo do título, remoção de dicas redundantes (`.field-hint`) sob os campos e expurgo do aviso duplicado sobre os botões de ação.

@@ -53,6 +53,8 @@ node test_danfe_popup.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.236 (17/09/2026):** Implementação de Fallback Resiliente no TOTVS Protheus ERP (`danfe_protheus.js`) e sintetizador canônico de XML oficial para contornar a regra restritiva da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração automática de SF2/SD2/SB1/SA1/SA4/SE1, renderização instantânea do DANFE em tela e persistência contínua na Super Tabela.
+- **v8.235 (17/09/2026):** Adição de suporte a senha de certificado digital A1 no popup DANFE (#inputDanfeSenhaCert), diagnóstico transparente de erros SEFAZ e compartilhamento de sessão mútua com Fechamento Fiscal (`sessionStorage`).
 - **v8.234 (17/09/2026):** Integração da coluna "NF-e Gerada" e do campo Nota Fiscal no modal `#pedidoDetalhesModal` com o visualizador de DANFE oficial (`#danfeModal`, `@media print` A4), consulta prioritária à Super Tabela `nfe_central_documentos` com busca on-demand na SEFAZ via mTLS e feedback animado de espera.
 - **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` (via `LEFT JOIN SA4010 A4`) e `Condição Pagto:` (via `LEFT JOIN SE4010 E4`) no modal `#pedidoDetalhesModal`, exibindo código e descrição oficial com fallback gracioso.
 - **v8.228 (17/09/2026):** Redirecionamento da coluna CodWeb para o link oficial do Pipedrive CRM (`https://benetroncomercial.pipedrive.com/deal/XXXXX`) com paridade visual à Busca CodWeb/Ped/NF, isolando a abertura do modal Protheus apenas ao Número do Pedido e ao botão Detalhes.
