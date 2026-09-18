@@ -11,18 +11,19 @@
       "vendedores",
       "compras",
       "financeiro",
+      "analista-fin",
       "configuracoes"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-11T18:00:34.445Z",
+    "lastActiveAt": "2026-09-18T14:46:46.961Z",
     "lastLoginAt": "2026-08-24T18:52:40.764Z",
-    "totalActions": 488
+    "totalActions": 498
   },
   {
     "username": "erica",
     "name": "Érica",
     "email": null,
-    "pass": "$2b$10$cnrDZm2dDmu7r8JbuHLUHe8ISqn9ZqsgIif2D46er8f262ZsFC9K2",
+    "pass": "$2b$10$aN5Q9qlbS35GiqhZgUR/9Oq6.XKFEawcQNeTXIiXOjgvIPG/sD8Hi",
     "role": "user",
     "permissions": [
       "logistica",
@@ -32,8 +33,8 @@
     ],
     "active": true,
     "vendorCode": null,
-    "lastActiveAt": "2026-09-11T18:00:35.389Z",
-    "totalActions": 98
+    "lastActiveAt": "2026-09-18T14:46:06.771Z",
+    "totalActions": 102
   },
   {
     "username": "wallerson",
@@ -58,8 +59,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-11T15:38:16.133Z",
-    "totalActions": 148,
+    "lastActiveAt": "2026-09-18T14:46:46.358Z",
+    "totalActions": 152,
     "links_favoritos": [
       {
         "id": "1",
@@ -104,8 +105,8 @@
       "vendedores"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-11T15:38:12.503Z",
-    "totalActions": 29
+    "lastActiveAt": "2026-09-18T14:46:42.090Z",
+    "totalActions": 30
   },
   {
     "username": "figueiredo",
@@ -136,7 +137,7 @@
     "username": "usuario_2fa_teste",
     "name": "Usuário de Teste 2FA",
     "email": "usuario.2fa@oaco.com.br",
-    "pass": "$2b$10$U7VLDAs5.eBsKzPw9b.jxuiCRMQCekvYbpx3gGIArXiJ2v/BeNzvK",
+    "pass": "$2b$10$KtqXXFfLB8wnRIb81sdoFurKoZnmKDVDexm/uk8Blu7BnGz8n.96i",
     "role": "user",
     "vendorCode": null,
     "permissions": [
@@ -144,14 +145,14 @@
       "consulta"
     ],
     "active": true,
-    "lastActiveAt": "2026-09-11T15:37:19.155Z",
-    "totalActions": 99
+    "lastActiveAt": "2026-09-18T14:46:04.710Z",
+    "totalActions": 103
   },
   {
     "username": "marcos_logistica",
     "name": "Marcos de Oliveira",
     "email": "marcos@oaco.com.br",
-    "pass": "$2b$10$T3yBa67pNq/Oa9zrZK78Eu.kGFWeGSms4d/4iVBqnyUtTvL51H7l2",
+    "pass": "$2b$10$Kxw1YjP.PmdScI5f5tFtTO/zSYbcPdrbNVGZ2.nt.31mEN3TkpQp.",
     "role": "user",
     "vendorCode": null,
     "permissions": [

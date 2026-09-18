@@ -41,7 +41,9 @@ const {
   consultarFechamentoFiscalProtheus,
   consultarAuditoriaNfeProtheus,
   obterHistoricoFaturamento12MesesProtheus,
-  consultarMovimentacoesEstoqueProtheus
+  consultarMovimentacoesEstoqueProtheus,
+  consultarContasPagarSe2,
+  consultarMovimentacoesTituloSe5
 } = require('./protheus_db');
 
 const {
@@ -5122,6 +5124,95 @@ app.post('/api/analista-fin/fechamento-fiscal/exportar-xml-sefaz', requireAuth, 
   } catch (err) {
     console.error('Erro ao exportar XMLs de NF-e da SEFAZ:', err);
     return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// MÓDULO CONTAS A PAGAR (SE2 / SE5 / SA2010) MULTI-EMPRESA
+// ============================================================================
+
+// 1. Consulta paginada e multi-empresa de Contas a Pagar
+app.get('/api/analista-fin/contas-pagar', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const userPerms = Array.isArray(user?.permissions) ? user.permissions : [];
+    if (user?.role !== 'admin' && !userPerms.includes('analista-fin') && !userPerms.includes('financeiro')) {
+      return res.status(403).json({ ok: false, success: false, error: 'Acesso restrito ao perfil financeiro ou analista-fin.' });
+    }
+
+    const {
+      termo,
+      numTitulo,
+      codFornec,
+      nomeFornec,
+      cnpjFornec,
+      empresa,
+      situacao,
+      dataVencIni,
+      dataVencFim,
+      page,
+      pageSize,
+      limit
+    } = req.query;
+
+    const resultado = await consultarContasPagarSe2({
+      termo: termo || '',
+      numTitulo: numTitulo || '',
+      codFornec: codFornec || '',
+      nomeFornec: nomeFornec || '',
+      cnpjFornec: cnpjFornec || '',
+      empresa: empresa || 'TODAS',
+      situacao: situacao || 'TODAS',
+      dataVencIni: dataVencIni || '',
+      dataVencFim: dataVencFim || '',
+      page: parseInt(page, 10) || 1,
+      pageSize: parseInt(pageSize || limit, 10) || 50
+    });
+
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'CONSULTA_CONTAS_PAGAR',
+      description: `Consultou Contas a Pagar (Empresa: ${empresa || 'TODAS'}, Situação: ${situacao || 'TODAS'}, Termo: ${termo || 'Nenhum'}) - ${resultado.summary.totalRegistros} títulos encontrados.`,
+      ip: req.ip,
+      metadata: { empresa, situacao, termo, total: resultado.summary.totalRegistros }
+    }).catch(() => {});
+
+    return res.json({
+      ok: true,
+      success: true,
+      ...resultado
+    });
+  } catch (err) {
+    console.error('❌ Erro na rota /api/analista-fin/contas-pagar:', err);
+    return res.status(500).json({ ok: false, success: false, error: err.message });
+  }
+});
+
+// 2. Consulta de movimentações detalhadas de um título na SE5
+app.get('/api/analista-fin/contas-pagar/movimentacoes', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const userPerms = Array.isArray(user?.permissions) ? user.permissions : [];
+    if (user?.role !== 'admin' && !userPerms.includes('analista-fin') && !userPerms.includes('financeiro')) {
+      return res.status(403).json({ ok: false, success: false, error: 'Acesso restrito ao perfil financeiro ou analista-fin.' });
+    }
+
+    const { empresa, filial, prefixo, num, parcela, tipo, fornece } = req.query;
+    if (!empresa || !num || !fornece) {
+      return res.status(400).json({ ok: false, success: false, error: 'Parâmetros obrigatórios: empresa, num e fornece.' });
+    }
+
+    const movimentacoes = await consultarMovimentacoesTituloSe5(empresa, filial, prefixo, num, parcela, tipo, fornece);
+
+    return res.json({
+      ok: true,
+      success: true,
+      movimentacoes
+    });
+  } catch (err) {
+    console.error('❌ Erro na rota /api/analista-fin/contas-pagar/movimentacoes:', err);
+    return res.status(500).json({ ok: false, success: false, error: err.message });
   }
 });
 

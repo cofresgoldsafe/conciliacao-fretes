@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.237">
+  <link rel="stylesheet" href="style.css?v=8.238">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/09/2026 09:45 (unificacao de autenticacao cron github actions e resolucao de 403 no sync nfe central)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/09/2026 11:00 (Nova tela de Consulta de Contas a Pagar (SE2/SE5/SA2010) na aba Analista Fin com batimento de baixas financeiras vs compensacoes e paginacao multi-empresa)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -224,6 +224,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Análise de Crédito</span>
         </button>
+        <button class="nav-tab-btn" data-tab="tab-contas-pagar" id="btnTabFinContasPagar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          <span>💳 Contas a Pagar</span>
+        </button>
       </div>
 
       <!-- Sub-abas de Analista Financeiro -->
@@ -247,6 +251,10 @@
         <button class="nav-tab-btn" data-tab="tab-auditoria-protheus-sefaz" id="btnTabAuditoriaProtheusSefaz">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><circle cx="11" cy="14" r="3"></circle><line x1="13.5" y1="16.5" x2="16.5" y2="19.5"></line></svg>
           <span>Auditoria Protheus x Sefaz</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-contas-pagar" id="btnTabContasPagar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+          <span>💳 Contas a Pagar</span>
         </button>
       </div>
 
@@ -5612,6 +5620,310 @@
 
     </div>
 
+    <!-- SUB-ABA ANALISTA FIN: Contas a Pagar (SE2 / SE5) -->
+    <div id="tab-contas-pagar" class="tab-pane hidden" style="position: relative;">
+      
+      <!-- CABEÇALHO DA ABA & BARRA DE FILTROS -->
+      <section class="card" style="margin-bottom: 1.25rem;">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.12); display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+              💳
+            </div>
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-color, #f8fafc);">
+                Consulta de Contas a Pagar (TOTVS Protheus SE2 / SE5)
+              </h2>
+              <p class="desc" style="margin: 3px 0 0 0; font-size: 0.85rem; color: var(--text-muted, #94a3b8);">
+                Rastreabilidade de títulos a pagar nas 3 empresas (14 Metal Pleno, 15 GSI, 16 OAÇO) com batimento automático entre baixas financeiras (com débito bancário) e compensações (adiantamento PA, devoluções e acordos).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARDS DE KPIS RESUMO -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin-bottom: 1.25rem;">
+          <div class="card" style="padding: 0.85rem 1rem; border-left: 4px solid var(--primary, #3b82f6); background: rgba(15, 23, 42, 0.3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Total de Títulos</div>
+            <div id="kpiContasPagarTotalQtd" style="font-size: 1.5rem; font-weight: 800; color: var(--text-color, #f8fafc); font-family: monospace;">-</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">títulos encontrados</div>
+          </div>
+          <div class="card" style="padding: 0.85rem 1rem; border-left: 4px solid #6366f1; background: rgba(15, 23, 42, 0.3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Valor Original Total</div>
+            <div id="kpiContasPagarTotalValor" style="font-size: 1.5rem; font-weight: 800; color: #6366f1; font-family: monospace;">R$ -</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">soma dos valores originais</div>
+          </div>
+          <div class="card" style="padding: 0.85rem 1rem; border-left: 4px solid var(--danger, #ef4444); background: rgba(15, 23, 42, 0.3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Saldo em Aberto</div>
+            <div id="kpiContasPagarTotalSaldo" style="font-size: 1.5rem; font-weight: 800; color: var(--danger, #ef4444); font-family: monospace;">R$ -</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">saldo pendente de pagamento</div>
+          </div>
+          <div class="card" style="padding: 0.85rem 1rem; border-left: 4px solid var(--success, #10b981); background: rgba(15, 23, 42, 0.3);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Total Baixado / Quitado</div>
+            <div id="kpiContasPagarTotalBaixado" style="font-size: 1.5rem; font-weight: 800; color: var(--success, #10b981); font-family: monospace;">R$ -</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">valores já liquidados</div>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO DE BUSCA & FILTROS -->
+        <div style="background: rgba(15, 23, 42, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border, #334155); display: flex; flex-direction: column; gap: 0.75rem;">
+          
+          <!-- Linha 1: Pesquisa Principal Rápida -->
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 2; min-width: 260px;">
+              <input type="text" id="searchContasPagarTermo" class="form-input" placeholder="🔍 Cód. Fornecedor, Razão Social, CNPJ ou Número do Título..." style="width: 100%; height: 38px; font-size: 0.9rem;" />
+            </div>
+
+            <div style="flex: 1; min-width: 170px;">
+              <select id="filterContasPagarEmpresa" class="form-select" style="width: 100%; height: 38px; font-weight: 600;">
+                <option value="TODAS" selected>🌐 Todas as Empresas</option>
+                <option value="14">14 - Metal Pleno / S4BW</option>
+                <option value="15">15 - GSI Cofres</option>
+                <option value="16">16 - OAÇO</option>
+              </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+              <select id="filterContasPagarSituacao" class="form-select" style="width: 100%; height: 38px; font-weight: 600;">
+                <option value="TODAS" selected>⚖️ Todas as Situações</option>
+                <option value="ABERTO">⚪ Em Aberto (Pendente)</option>
+                <option value="BAIXA_PARCIAL">🟡 Baixa Parcial</option>
+                <option value="QUITADO">🟢 Todas as Quitações</option>
+                <option value="QUITADO_FIN">🟢 Quitado (Mov. Financeiro)</option>
+                <option value="QUITADO_CMP">🟣 Quitado (Compensação / Sem Mov.)</option>
+              </select>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button id="btnBuscarContasPagar" class="btn btn-primary" style="height: 38px; padding: 0 16px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                Buscar
+              </button>
+              <button id="btnLimparContasPagar" class="btn btn-outline" style="height: 38px; padding: 0 12px;" title="Limpar todos os filtros">
+                Limpar
+              </button>
+              <button id="btnToggleFiltrosAvancadosCP" class="btn btn-outline" style="height: 38px; padding: 0 10px; font-size: 0.8rem;" title="Expandir filtros específicos">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                Mais Filtros
+              </button>
+            </div>
+          </div>
+
+          <!-- Linha 2: Filtros Específicos Avançados (Collapsible) -->
+          <div id="painelFiltrosAvancadosCP" class="hidden" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--panel-border, #334155);">
+            <div>
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px;">Número do Título (E2_NUM)</label>
+              <input type="text" id="searchContasPagarNumTitulo" class="form-input" placeholder="Ex: 5447 ou 144109" style="width: 100%; height: 34px; font-size: 0.85rem;" />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px;">Cód. Fornecedor (E2_FORNECE)</label>
+              <input type="text" id="searchContasPagarCodFornec" class="form-input" placeholder="Ex: 000657 ou 121037" style="width: 100%; height: 34px; font-size: 0.85rem;" />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px;">Nome / Razão Social</label>
+              <input type="text" id="searchContasPagarNomeFornec" class="form-input" placeholder="Ex: MODULAR ou AMR" style="width: 100%; height: 34px; font-size: 0.85rem;" />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px;">CNPJ do Fornecedor</label>
+              <input type="text" id="searchContasPagarCnpjFornec" class="form-input" placeholder="Ex: Somente números" style="width: 100%; height: 34px; font-size: 0.85rem;" />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px;">Vencimento De</label>
+              <input type="date" id="searchContasPagarDataVencIni" class="form-input" style="width: 100%; height: 34px; font-size: 0.85rem;" />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px;">Vencimento Até</label>
+              <input type="date" id="searchContasPagarDataVencFim" class="form-input" style="width: 100%; height: 34px; font-size: 0.85rem;" />
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TABELA DE RESULTADOS -->
+      <section class="card" style="padding: 0; overflow: hidden; margin-bottom: 1.25rem;">
+        
+        <!-- ESTADO DE CARREGAMENTO -->
+        <div id="contasPagarLoadingState" class="hidden" style="text-align: center; padding: 3rem 1rem;">
+          <div class="spinner" style="display: inline-block; width: 32px; height: 32px; border: 3px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 0.75rem;"></div>
+          <div style="font-weight: 600; font-size: 1rem; color: var(--text-color, #f8fafc);">Consultando Contas a Pagar no Protheus...</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Varrendo tabelas SE2140, SE2150 e SE2160 com cruzamento cadastral SA2 e histórico SE5.</div>
+        </div>
+
+        <!-- ESTADO VAZIO -->
+        <div id="contasPagarEmptyState" class="hidden" style="text-align: center; padding: 3.5rem 1rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6;">🔍</div>
+          <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-color, #f8fafc);">Nenhum título a pagar encontrado</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Tente alterar os termos da busca, filtros de empresa ou situação para localizar os títulos.</div>
+        </div>
+
+        <!-- TABELA -->
+        <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+          <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: rgba(15, 23, 42, 0.95); position: sticky; top: 0; z-index: 5; border-bottom: 2px solid var(--panel-border, #334155);">
+                <th style="padding: 10px 8px; text-align: center; width: 75px;">Empresa</th>
+                <th style="padding: 10px 8px; text-align: center; width: 100px;">Data Venc.</th>
+                <th style="padding: 10px 8px; text-align: center; width: 65px;">Tipo</th>
+                <th style="padding: 10px 8px; text-align: left; width: 130px;">Título / Parcela</th>
+                <th style="padding: 10px 8px; text-align: left; width: 95px;">Cód. Fornec.</th>
+                <th style="padding: 10px 8px; text-align: left; min-width: 180px;">Fornecedor</th>
+                <th style="padding: 10px 8px; text-align: left; width: 135px;">CNPJ</th>
+                <th style="padding: 10px 8px; text-align: right; width: 110px;">Valor (R$)</th>
+                <th style="padding: 10px 8px; text-align: right; width: 110px;">Saldo (R$)</th>
+                <th style="padding: 10px 8px; text-align: center; width: 160px;">Situação</th>
+                <th style="padding: 10px 8px; text-align: center; width: 100px;">Data Quitação</th>
+                <th style="padding: 10px 8px; text-align: center; width: 90px;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyContasPagar">
+              <!-- Linhas geradas dinamicamente pelo contas_pagar.js -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- BARRA DE PAGINAÇÃO -->
+        <div id="contasPagarPaginationContainer" class="hidden" style="padding: 0.85rem 1.25rem; border-top: 1px solid var(--panel-border, #334155); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: rgba(15, 23, 42, 0.4);">
+          <div id="contasPagarPaginationInfo" style="font-size: 0.85rem; color: var(--text-muted);">
+            Exibindo 0 títulos
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+              <span>Itens por página:</span>
+              <select id="selectContasPagarPageSize" class="form-select" style="height: 30px; font-size: 0.82rem; padding: 0 6px;">
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+
+            <div id="contasPagarPaginationButtons" style="display: flex; gap: 4px; align-items: center;">
+              <!-- Botões de navegação gerados dinamicamente -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+    <!-- MODAL DETALHES DO TÍTULO E HISTÓRICO SE5 -->
+    <div id="modalDetalhesTituloContasPagar" class="modal-backdrop hidden" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+      <div class="modal-card card" style="width: 100%; max-width: 850px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--panel-border, #334155); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+        
+        <!-- Header do Modal -->
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--panel-border, #334155); display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.6);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="font-size: 1.3rem;">💳</div>
+            <div>
+              <h3 id="modalCpNumTitulo" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-color, #f8fafc);">
+                Título -
+              </h3>
+              <div id="modalCpEmpresa" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">
+                Empresa -
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="modalCpSituacao"></div>
+            <button id="btnFecharModalDetalhesCP" class="btn btn-outline btn-sm" style="padding: 4px 10px;" title="Fechar (ESC)">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Conteúdo do Modal com Scroll -->
+        <div style="padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.25rem;">
+          
+          <!-- Quadro Geral do Título -->
+          <div style="background: rgba(15, 23, 42, 0.4); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border, #334155); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Fornecedor</div>
+              <strong id="modalCpFornecedor" style="font-size: 0.9rem; color: var(--text-color, #f8fafc);">-</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">CNPJ / CPF</div>
+              <strong id="modalCpCnpj" style="font-size: 0.9rem; font-family: monospace;">-</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Emissão</div>
+              <strong id="modalCpEmissao" style="font-size: 0.9rem; font-family: monospace;">-</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Vencimento</div>
+              <strong id="modalCpVencimento" style="font-size: 0.9rem; font-family: monospace; color: var(--primary, #3b82f6);">-</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Valor Original</div>
+              <strong id="modalCpValor" style="font-size: 1rem; color: #6366f1; font-family: monospace;">R$ 0,00</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Saldo Atual</div>
+              <strong id="modalCpSaldo" style="font-size: 1rem; font-family: monospace;">R$ 0,00</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Total Liquidado</div>
+              <strong id="modalCpBaixado" style="font-size: 1rem; color: var(--success, #10b981); font-family: monospace;">R$ 0,00</strong>
+            </div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Data Quitação</div>
+              <strong id="modalCpDataBaixa" style="font-size: 0.9rem; font-family: monospace;">-</strong>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Histórico do Título (E2_HIST)</div>
+              <div id="modalCpHistorico" style="font-size: 0.85rem; color: var(--text-color, #f8fafc); margin-top: 2px;">-</div>
+            </div>
+          </div>
+
+          <!-- Histórico de Movimentações na SE5 -->
+          <div>
+            <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-color, #f8fafc); display: flex; align-items: center; gap: 6px;">
+              <span>📑</span> Lançamentos e Movimentações no Protheus (SE5)
+            </h4>
+            
+            <div style="border: 1px solid var(--panel-border, #334155); border-radius: 8px; overflow: hidden;">
+              <div id="loadingMovimentacoesSE5" class="hidden" style="text-align: center; padding: 2rem 1rem;">
+                <div class="spinner" style="display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(59,130,246,0.2); border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 0.5rem;"></div>
+                <div style="font-size: 0.85rem; color: var(--text-muted);">Consultando movimentações na tabela SE5...</div>
+              </div>
+
+              <div id="emptyMovimentacoesSE5" class="hidden" style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: 0.85rem;">
+                Nenhum lançamento de baixa encontrado para este título na tabela SE5.
+              </div>
+
+              <div class="table-responsive">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem;">
+                  <thead>
+                    <tr style="background: rgba(15, 23, 42, 0.8); border-bottom: 1px solid var(--panel-border, #334155);">
+                      <th style="padding: 8px; text-align: left; width: 95px;">Data Baixa</th>
+                      <th style="padding: 8px; text-align: right; width: 105px;">Valor Baixado</th>
+                      <th style="padding: 8px; text-align: left; min-width: 160px;">Motivo / Tipo</th>
+                      <th style="padding: 8px; text-align: center; width: 120px;">Diferenciação</th>
+                      <th style="padding: 8px; text-align: center; width: 120px;">Banco / Ag.</th>
+                      <th style="padding: 8px; text-align: left;">Histórico da Baixa</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbodyMovimentacoesSE5">
+                    <!-- Linhas geradas dinamicamente -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Rodapé do Modal -->
+        <div style="padding: 0.75rem 1.25rem; border-top: 1px solid var(--panel-border, #334155); background: rgba(15, 23, 42, 0.4); display: flex; justify-content: flex-end;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="ContasPagarModule.fecharModalDetalhes()">
+            Fechar
+          </button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- ABA 1 BI: Índices Financeiros de Liquidez -->
     <div id="tab-bi-indices" class="tab-pane hidden">
       <div class="bi-wrapper" id="biIndicesWrapper">
@@ -8663,22 +8975,23 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.237"></script>
-  <script src="js/bi.js?v=8.237"></script>
-  <script src="js/bi_indices.js?v=8.237"></script>
-  <script src="js/bi_autorizacoes.js?v=8.237"></script>
-  <script src="js/gordura_frete.js?v=8.237"></script>
-  <script src="js/fechamento_vendedores.js?v=8.237"></script>
-  <script type="module" src="js/tarefas.js?v=8.237"></script>
-  <script src="js/holerites.js?v=8.237"></script>
-  <script src="js/funcionarios_dp.js?v=8.237"></script>
-  <script src="js/crm.js?v=8.237"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.237"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.237"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.237"></script>
-  <script src="js/nfse_pendentes.js?v=8.237"></script>
-  <script src="js/fechamento_fiscal.js?v=8.237"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.237"></script>
-  <script src="app.js?v=8.237"></script>
+  <script src="js/chart.umd.min.js?v=8.238"></script>
+  <script src="js/bi.js?v=8.238"></script>
+  <script src="js/bi_indices.js?v=8.238"></script>
+  <script src="js/bi_autorizacoes.js?v=8.238"></script>
+  <script src="js/gordura_frete.js?v=8.238"></script>
+  <script src="js/fechamento_vendedores.js?v=8.238"></script>
+  <script type="module" src="js/tarefas.js?v=8.238"></script>
+  <script src="js/holerites.js?v=8.238"></script>
+  <script src="js/funcionarios_dp.js?v=8.238"></script>
+  <script src="js/crm.js?v=8.238"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.238"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.238"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.238"></script>
+  <script src="js/nfse_pendentes.js?v=8.238"></script>
+  <script src="js/fechamento_fiscal.js?v=8.238"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.238"></script>
+  <script src="js/contas_pagar.js?v=8.238"></script>
+  <script src="app.js?v=8.238"></script>
 </body>
 </html>

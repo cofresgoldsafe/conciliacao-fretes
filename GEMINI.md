@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.237 (Homologada em 18/09/2026 09:45)  
+> **Versão da Documentação:** v8.238 (Homologada em 18/09/2026 11:00)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 18/09/2026 09:45 (v8.237 - Unificação de Autenticação Cron GitHub Actions e Resolução de 403 no Sync NFe Central)  
+> **Data da Última Auditoria:** 18/09/2026 11:00 (v8.238 - Tela de Consulta de Contas a Pagar SE2/SE5 com Batimento de Baixas Financeiras vs Compensação)  
 
 ---
 
@@ -12,7 +12,7 @@
 O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, financeira, logistica e inteligencia executiva do Grupo GSI (Cofres Gold Safe / Metal Pleno / OAÇO / GSI). O sistema atua como ponto central de orquestracao entre operacoes bancarias digitais (Banco Inter via API Pix/Webhooks com mTLS, Mercado Pago), processamento e conciliacao de fretes logisticos (Correios, Rodonaves, layouts customizados e ViPP), motor de analise de credito comercial e integracao direta com o ERP TOTVS Protheus via queries de alta performance e rotinas AdvPL (`AMARFRET.PRW`).
 
 ### Principais Personas Atendidas
-- **Operador Financeiro / Controladoria:** Gestao de extratos, emissao de cobrancas Pix, conciliacao bancaria automatizada N:1 e 1:1, analise de credito com score auditavel, monitoramento de webhooks e gestao fiscal de NFS-e.
+- **Operador Financeiro / Controladoria:** Gestao de extratos, emissao de cobrancas Pix, conciliacao bancaria automatizada N:1 e 1:1, analise de credito com score auditavel, monitoramento de webhooks, contas a pagar multi-empresa e gestao fiscal de NFS-e.
 - **Analista de Logistica / Expedicao:** Acompanhamento de pedidos para faturamento, gestao de bloqueios/liberacoes de estoque (SC9), parsing de faturas de transportadoras e geracao de amarracao contabil.
 - **Equipe Comercial / Vendedores:** Acompanhamento de saldos fisicos PA multi-empresa, carteira de pedidos abertos, previsao de suprimentos (SC7) e apuracao analitica de comissoes.
 - **Gestao de Compras / Suprimentos:** Monitoramento de ordens de compra em aberto com fornecedores, avaliacao de demanda comercial represada, ponto de pedido ideal e movimentacoes de estoque (SD3).
@@ -36,7 +36,7 @@ O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, 
 
 ## 3. Matriz Geral de Navegação do Portal GSI
 
-A matriz abaixo consolida as 9 macro-areas e as 35 sub-abas ativas no DOM do Portal GSI:
+A matriz abaixo consolida as 9 macro-areas e as 36 sub-abas ativas no DOM do Portal GSI:
 
 | Macro-Área | Sub-Aba / Tela | Identificador DOM | Perfil RBAC | Descrição Funcional | Documentação Detalhada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -68,11 +68,13 @@ A matriz abaixo consolida as 9 macro-areas e as 35 sub-abas ativas no DOM do Por
 | **6. Assist. Financ.** | Extrato API Inter | `#tab-inter-extrato` | `admin`, `user` (Financeiro) | Conexao ao vivo mTLS de saldos, extratos e batimento financeiro Banco Inter. | [extrato_api_inter.md](docs/telas/06_assist_financeiro/extrato_api_inter.md) |
 | **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas com chave de deduplicacao idempotente. | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
 | **6. Assist. Financ.** | Análise de Crédito | `#tab-analise-credito` | `admin`, `user` (Financeiro) | Motor de score com Protheus, Receita, RDAP, Wayback, Serasa e InfoSimples. | [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md) |
+| **6. Assist. Financ.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Financeiro) | Consulta de Contas a Pagar SE2/SE5 multi-empresa com batimento de baixas (DRY). | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **7. Analista Fin.** | Holerites DP | `#tab-holerites` | `admin`, `user` (Analista Fin) | Emissao e distribuicao digital de holerites do Departamento Pessoal. | [holerites_dp.md](docs/telas/07_analista_fin/holerites_dp.md) |
 | **7. Analista Fin.** | Cadastro Funcion. | `#tab-funcionarios` | `admin`, `user` (Analista Fin) | Manutencao cadastral de colaboradores, cargos, salarios e chaves Pix. | [cadastro_funcionarios.md](docs/telas/07_analista_fin/cadastro_funcionarios.md) |
 | **7. Analista Fin.** | NFS-e Pendentes | `#tab-nfse-pendentes` | `admin`, `user` (Analista Fin) | Gestao fiscal de NFS-e recebidas com conciliacao automatica Protheus SF1. | [nfse_pendentes.md](docs/telas/07_analista_fin/nfse_pendentes.md) |
 | **7. Analista Fin.** | Fechamento Fiscal | `#tab-fechamento-fiscal` | `admin`, `user` (Analista Fin) | Fechamento fiscal periodico, livros de entrada/saida e validacoes de impostos. | [fechamento_fiscal.md](docs/telas/07_analista_fin/fechamento_fiscal.md) |
 | **7. Analista Fin.** | Auditoria Protheus x Sefaz | `#tab-auditoria-protheus-sefaz` | `admin`, `user` (Analista Fin) | Batimento fiscal com distincao estrita de CC-e (`tpEvento 110110`) e Inutilizacoes. | [auditoria_protheus_sefaz.md](docs/telas/07_analista_fin/auditoria_protheus_sefaz.md) |
+| **7. Analista Fin.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Analista Fin) | Consulta unificada de Contas a Pagar SE2/SE5 multi-empresa com batimento financeiro vs compensação. | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **8. BI Executivo** | Índices Financeiros | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
 | **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
 | **8. BI Executivo** | Autorizações de Desconto | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
@@ -171,12 +173,11 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.238 (18/09/2026):** Nova tela de Consulta de Contas a Pagar na aba Analista Fin (`#tab-contas-pagar`) sobre SE2140/150/160, batimento automático de baixas financeiras (SE5 com banco) vs compensações de carteira (PA/CMP/DEV), paginação no servidor, KPIs e modal de histórico detalhado (13 testes aprovados em `test_contas_pagar.js` — detalhado em [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md)).
 - **v8.237 (18/09/2026):** Unificação de autenticação Cron externa (GitHub Actions / Webhooks) via validador de tempo constante (`validarSegredoCron` com `crypto.timingSafeEqual`) e fallback automático para o segredo canônico compartilhado (`CANONICAL_CRON_SECRET`), eliminando o erro HTTP 403 no agendamento do job `sync-nfe-central` e no fechamento mensal mesmo sem a variável `CRON_SECRET` configurada no Render (14 testes aprovados em `test_cron_fechamento.js` — detalhado em [fechamento_fiscal.md](docs/telas/07_analista_fin/fechamento_fiscal.md)).
 - **v8.236 (17/09/2026):** Fallback resiliente Protheus ERP e sintetizador canônico de XML NF-e (`danfe_protheus.js`) para contornar a regra restritiva governamental da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração completa de SF2/SD2/SB1/SA1/SA4/SE1, montagem de dadosDanfe, geração de XML oficial <nfeProc>, persistência assíncrona perene na Super Tabela (nfe_central_documentos) e ativação no job de sincronização periódica (20 testes aprovados em `test_danfe_popup.js`).
 - **v8.235 (17/09/2026):** Suporte a senha de Certificado Digital A1 no modal DANFE (#inputDanfeSenhaCert), captura e envio de passphrase à SEFAZ, sincronização de sessão mútua com Fechamento Fiscal (sessionStorage), diagnóstico transparente de erros SEFAZ e foco para re-tentativa imediata (17 testes aprovados em test_danfe_popup.js).
 - **v8.234 (17/09/2026):** Visualizador de DANFE NF-e em Popup (`#danfeModal`, `@media print` A4) nas telas Busca CodWeb/Ped/NF e Consulta Ped Venda, integração com Super Tabela (`nfe_central_documentos`) e Protheus SF2 (`F2_CHVNFE`), busca on-demand na SEFAZ via mTLS com tela de espera animada, cálculo da próxima sincronização periódica (12:30h / 18:30h) e ações de impressão/PDF, download de XML bruto e cópia de chave (15 testes aprovados em `test_danfe_popup.js`).
 - **v8.233 (17/09/2026):** Carga inicial e backfill retroativo de Julho e Agosto/2026 (`scripts/carga_inicial_nfe_central.js`) sincronizando 358 notas fiscais (R$ 1.54M), 305 pedidos e CodWebs vinculados e 53 canceladas nas filiais 14, 15 e 16, e fallback local JSON com filtros avançados em `consultarNfeCentral`.
 - **v8.232 (17/09/2026):** Super Tabela Central de Documentos Fiscais (`nfe_central_documentos`) no PostgreSQL Supabase com RLS ativa, persistência de XMLs no banco, prioridade máxima de cache em `exportador_xml_sefaz.js`, job agendado em background às 12:30 e 18:30 sincronizando Protheus SF2 (últimos 30 dias) com OUTER APPLY em SD2/SC5, download mTLS com intervalo de 800ms e Circuit Breaker para cStat 656.
-- **v8.231 (17/09/2026):** Disposição horizontal inline dos botões de ação ("🧹 Limpar" e "Buscar no Protheus") com os campos de busca, padronização da altura (40px) e remoção do prefixo "Ex: " nos placeholders (HTML e JS).
-- **v8.230 (17/09/2026):** Simplificação de UI na Busca CodWeb/Ped/NF: remoção do prefixo "2.", reposicionamento da instrução de exclusividade mútua para o subtítulo e eliminação de dicas e notice bars redundantes.
 - **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.

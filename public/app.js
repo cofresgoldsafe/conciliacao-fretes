@@ -821,6 +821,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.AuditoriaProtheusSefazModule.init();
         }
       }
+      if (targetTab === 'tab-contas-pagar') {
+        if (window.ContasPagarModule && typeof window.ContasPagarModule.init === 'function') {
+          window.ContasPagarModule.init();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 

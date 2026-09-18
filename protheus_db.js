@@ -95,6 +95,7 @@ function sanitizeSqlParam(value) {
     .replace(/\/\*[\s\S]*?\*\//g, '')   // Remove bloco de comentários completo /* ... */
     .replace(/\/\*/g, '')
     .replace(/\*\//g, '')
+    .replace(/[\[\]]/g, '')             // Remove colchetes para evitar quebra de padrão LIKE no T-SQL
     .trim();
 }
 
@@ -5110,6 +5111,493 @@ async function extrairNotasFaturadasParaCentral({
   return notasConsolidadas;
 }
 
+// ============================================================================
+// MÓDULO CONTAS A PAGAR (SE2 / SE5 / SA2010) MULTI-EMPRESA
+// ============================================================================
+
+const EMPRESAS_CONTAS_PAGAR = [
+  { key: 'METAL_PLENO', sigla: 'MP', codigo: '14', nome: 'Metal Pleno', se2: 'SE2140', se5: 'SE5140', sa2: 'SA2010' },
+  { key: 'GSI', sigla: 'GSI', codigo: '15', nome: 'GSI Cofres', se2: 'SE2150', se5: 'SE5150', sa2: 'SA2010' },
+  { key: 'OACO', sigla: 'OACO', codigo: '16', nome: 'OAÇO', se2: 'SE2160', se5: 'SE5160', sa2: 'SA2010' }
+];
+
+const MOTIVOS_BAIXA_MAP = {
+  'DEB': 'Débito em Conta / Borderô',
+  'NOR': 'Baixa Normal',
+  'CMP': 'Compensação (Adiantamento/Carteira)',
+  'DEV': 'Devolução de Mercadorias',
+  'DIS': 'Dispensado / Acordo Comercial',
+  'CEC': 'Compensação entre Carteiras',
+  'CNF': 'Cancelamento / Confisco',
+  'BFT': 'Baixa por Fatura',
+  'DSD': 'Desconto Concedido'
+};
+
+function getDescricaoMotivoBaixa(motivo) {
+  const m = String(motivo || '').trim().toUpperCase();
+  return MOTIVOS_BAIXA_MAP[m] || (m ? `Outro (${m})` : 'Normal');
+}
+
+/**
+ * Classifica a situação do título e identifica se houve movimentação financeira
+ */
+function classificarSituacaoTitulo(valorOriginal, saldoAtual, dataBaixa, motivoBaixa, bancoBaixa) {
+  const vlr = Math.round(Number(valorOriginal || 0) * 100) / 100;
+  const sld = Math.round(Number(saldoAtual || 0) * 100) / 100;
+  const dBaixa = String(dataBaixa || '').trim();
+  const mot = String(motivoBaixa || '').trim().toUpperCase();
+  const bco = String(bancoBaixa || '').trim();
+
+  // 1. Quitado (Integralmente)
+  if (sld <= 0.01 || (dBaixa !== '' && sld === 0)) {
+    const temMovimentoFin = (bco !== '' && bco !== '000') || ['DEB', 'NOR'].includes(mot);
+    if (temMovimentoFin) {
+      return {
+        codigo: 'QUITADO_FIN',
+        label: 'Quitado (Financeiro)',
+        badgeClass: 'badge-success',
+        movFinanceiro: true,
+        descricaoBaixa: `Débito Bancário${bco ? ` (Banco ${bco})` : ''}`,
+        motivo: mot || 'DEB',
+        banco: bco
+      };
+    } else if (mot !== '') {
+      return {
+        codigo: 'QUITADO_CMP',
+        label: 'Quitado (Compensação)',
+        badgeClass: 'badge-purple',
+        movFinanceiro: false,
+        descricaoBaixa: getDescricaoMotivoBaixa(mot),
+        motivo: mot,
+        banco: bco
+      };
+    } else {
+      return {
+        codigo: 'QUITADO_LEG',
+        label: 'Quitado',
+        badgeClass: 'badge-success',
+        movFinanceiro: false,
+        descricaoBaixa: 'Baixa Liquidada (Sem detalhe SE5)',
+        motivo: '',
+        banco: ''
+      };
+    }
+  }
+
+  // 2. Baixa Parcial (Saldo menor que o valor original e maior que zero)
+  if (sld > 0.01 && sld < vlr) {
+    const temMovimentoFin = (bco !== '' && bco !== '000') || ['DEB', 'NOR'].includes(mot);
+    return {
+      codigo: 'BAIXA_PARCIAL',
+      label: 'Baixa Parcial',
+      badgeClass: 'badge-amber',
+      movFinanceiro: temMovimentoFin,
+      descricaoBaixa: `Baixa Parcial (${temMovimentoFin ? 'Financeiro' : 'Compensação'})`,
+      motivo: mot,
+      banco: bco
+    };
+  }
+
+  // 3. Em Aberto
+  return {
+    codigo: 'ABERTO',
+    label: 'Em Aberto',
+    badgeClass: 'badge-warning',
+    movFinanceiro: false,
+    descricaoBaixa: 'Pendente de Pagamento',
+    motivo: '',
+    banco: ''
+  };
+}
+
+/**
+ * Consulta unificada e paginada de Contas a Pagar (SE2) das 3 empresas
+ */
+async function consultarContasPagarSe2(filtros = {}) {
+  const {
+    termo = '',
+    numTitulo = '',
+    codFornec = '',
+    nomeFornec = '',
+    cnpjFornec = '',
+    empresa = 'TODAS',
+    situacao = 'TODAS',
+    dataVencIni = '',
+    dataVencFim = '',
+    page = 1,
+    pageSize = 50
+  } = filtros;
+
+  const curPage = Math.max(1, parseInt(page, 10) || 1);
+  const curLimit = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 50));
+  const offset = (curPage - 1) * curLimit;
+
+  // Sanitização de entradas
+  const sTermo = sanitizeSqlParam(termo);
+  const sNumTitulo = sanitizeSqlParam(numTitulo);
+  const sCodFornec = sanitizeSqlParam(codFornec);
+  const sNomeFornec = sanitizeSqlParam(nomeFornec);
+  const sCnpjFornec = sanitizeSqlParam(cnpjFornec).replace(/\D/g, '');
+  const sEmpresa = sanitizeSqlParam(empresa).toUpperCase();
+  const sSituacao = sanitizeSqlParam(situacao).toUpperCase();
+  const sDataVencIni = sanitizeSqlParam(dataVencIni).replace(/\D/g, '');
+  const sDataVencFim = sanitizeSqlParam(dataVencFim).replace(/\D/g, '');
+
+  // Determinar empresas alvo
+  let empresasAlvo = EMPRESAS_CONTAS_PAGAR;
+  if (sEmpresa && sEmpresa !== 'TODAS' && sEmpresa !== 'TODOS') {
+    empresasAlvo = EMPRESAS_CONTAS_PAGAR.filter(e => 
+      e.codigo === sEmpresa || e.sigla === sEmpresa || e.key === sEmpresa ||
+      (sEmpresa === 'MP' && e.key === 'METAL_PLENO')
+    );
+    if (empresasAlvo.length === 0) empresasAlvo = EMPRESAS_CONTAS_PAGAR;
+  }
+
+  // Variantes para termos
+  const termVariants = getDocVariants(sTermo);
+  const numTitVariants = getDocVariants(sNumTitulo);
+
+  // Montagem das cláusulas WHERE para cada tabela
+  function buildWhere(emp) {
+    const conditions = ["E2.D_E_L_E_T_ = ' '"];
+
+    // 1. Termo de busca livre (título, fornecedor, cnpj)
+    if (sTermo) {
+      const isNum = /^\d+$/.test(sTermo);
+      const orClauses = [];
+      
+      // Número do título
+      orClauses.push(`E2.E2_NUM = '${termVariants.padded6}'`);
+      orClauses.push(`E2.E2_NUM = '${termVariants.padded9}'`);
+      orClauses.push(`E2.E2_NUM = '${termVariants.raw}'`);
+      orClauses.push(`E2.E2_NUM = '${termVariants.numOnly}'`);
+      orClauses.push(`E2.E2_NUM LIKE '%${termVariants.numOnly}%'`);
+
+      // Código do fornecedor
+      orClauses.push(`E2.E2_FORNECE = '${termVariants.padded6}'`);
+      orClauses.push(`E2.E2_FORNECE = '${termVariants.raw}'`);
+
+      // Nome / Razão social do fornecedor
+      orClauses.push(`E2.E2_NOMFOR LIKE '%${termVariants.raw}%'`);
+      orClauses.push(`A2.A2_NOME LIKE '%${termVariants.raw}%'`);
+      orClauses.push(`A2.A2_NREDUZ LIKE '%${termVariants.raw}%'`);
+
+      // CNPJ se numérico
+      if (isNum && sTermo.length >= 4) {
+        orClauses.push(`A2.A2_CGC LIKE '%${termVariants.raw}%'`);
+      }
+
+      conditions.push(`(${orClauses.join(' OR ')})`);
+    }
+
+    // 2. Filtros específicos
+    if (sNumTitulo) {
+      conditions.push(`(E2.E2_NUM = '${numTitVariants.padded6}' OR E2.E2_NUM = '${numTitVariants.padded9}' OR E2.E2_NUM = '${numTitVariants.raw}' OR E2.E2_NUM LIKE '%${numTitVariants.numOnly}%')`);
+    }
+
+    if (sCodFornec) {
+      const codPadded = /^\d+$/.test(sCodFornec) ? sCodFornec.padStart(6, '0') : sCodFornec;
+      conditions.push(`(E2.E2_FORNECE = '${codPadded}' OR E2.E2_FORNECE = '${sCodFornec}')`);
+    }
+
+    if (sNomeFornec) {
+      conditions.push(`(E2.E2_NOMFOR LIKE '%${sNomeFornec}%' OR A2.A2_NOME LIKE '%${sNomeFornec}%' OR A2.A2_NREDUZ LIKE '%${sNomeFornec}%')`);
+    }
+
+    if (sCnpjFornec) {
+      conditions.push(`(A2.A2_CGC LIKE '%${sCnpjFornec}%')`);
+    }
+
+    // Período de Vencimento
+    if (sDataVencIni && sDataVencFim) {
+      conditions.push(`(E2.E2_VENCTO BETWEEN '${sDataVencIni}' AND '${sDataVencFim}')`);
+    } else if (sDataVencIni) {
+      conditions.push(`(E2.E2_VENCTO >= '${sDataVencIni}')`);
+    } else if (sDataVencFim) {
+      conditions.push(`(E2.E2_VENCTO <= '${sDataVencFim}')`);
+    }
+
+    // Filtro de Situação no SQL
+    if (sSituacao === 'ABERTO') {
+      conditions.push(`(E2.E2_SALDO >= E2.E2_VALOR OR (E2.E2_BAIXA = '' AND E2.E2_SALDO > 0.01))`);
+    } else if (sSituacao === 'BAIXA_PARCIAL') {
+      conditions.push(`(E2.E2_SALDO > 0.01 AND E2.E2_SALDO < E2.E2_VALOR)`);
+    } else if (sSituacao === 'QUITADO') {
+      conditions.push(`(E2.E2_SALDO <= 0.01 OR (E2.E2_BAIXA <> '' AND E2.E2_SALDO = 0))`);
+    } else if (sSituacao === 'QUITADO_FIN') {
+      conditions.push(`(E2.E2_SALDO <= 0.01 OR (E2.E2_BAIXA <> '' AND E2.E2_SALDO = 0))`);
+      conditions.push(`((E5.E5_BANCO <> '' AND E5.E5_BANCO <> '000') OR E5.E5_MOTBX IN ('DEB', 'NOR'))`);
+    } else if (sSituacao === 'QUITADO_CMP') {
+      conditions.push(`(E2.E2_SALDO <= 0.01 OR (E2.E2_BAIXA <> '' AND E2.E2_SALDO = 0))`);
+      conditions.push(`((E5.E5_BANCO = '' OR E5.E5_BANCO IS NULL OR E5.E5_BANCO = '000') AND E5.E5_MOTBX IN ('CMP', 'DEV', 'DIS', 'CEC', 'CNF', 'BFT', 'DSD'))`);
+    }
+
+    return conditions.join(' AND ');
+  }
+
+  // Monta SELECT unificado para itens paginados
+  const selects = empresasAlvo.map(emp => `
+    SELECT 
+      '${emp.codigo}' AS EMPRESA_COD,
+      '${emp.sigla}' AS EMPRESA_SIGLA,
+      '${emp.nome}' AS EMPRESA_NOME,
+      RTRIM(E2.E2_FILIAL) AS FILIAL,
+      RTRIM(E2.E2_PREFIXO) AS PREFIXO,
+      RTRIM(E2.E2_NUM) AS NUMERO_TITULO,
+      RTRIM(E2.E2_PARCELA) AS PARCELA,
+      RTRIM(E2.E2_TIPO) AS TIPO,
+      RTRIM(E2.E2_FORNECE) AS FORNECEDOR_COD,
+      RTRIM(E2.E2_LOJA) AS FORNECEDOR_LOJA,
+      RTRIM(ISNULL(A2.A2_NOME, E2.E2_NOMFOR)) AS FORNECEDOR_NOME,
+      RTRIM(ISNULL(A2.A2_CGC, '')) AS FORNECEDOR_CNPJ,
+      RTRIM(E2.E2_EMISSAO) AS DATA_EMISSAO,
+      RTRIM(E2.E2_VENCTO) AS DATA_VENCTO,
+      RTRIM(E2.E2_VENCREA) AS DATA_VENCREA,
+      ISNULL(E2.E2_VALOR, 0) AS VALOR,
+      ISNULL(E2.E2_SALDO, 0) AS SALDO,
+      RTRIM(E2.E2_BAIXA) AS DATA_BAIXA,
+      RTRIM(ISNULL(E2.E2_HIST, '')) AS HISTORICO_TITULO,
+      RTRIM(ISNULL(E5.E5_MOTBX, '')) AS MOTIVO_BAIXA,
+      RTRIM(ISNULL(E5.E5_TIPODOC, '')) AS TIPODOC_BAIXA,
+      RTRIM(ISNULL(E5.E5_BANCO, '')) AS BANCO_BAIXA,
+      RTRIM(ISNULL(E5.E5_HISTOR, '')) AS HISTORICO_BAIXA
+    FROM ${emp.se2} E2
+    LEFT JOIN ${emp.sa2} A2 
+      ON A2.A2_COD = E2.E2_FORNECE 
+     AND A2.A2_LOJA = E2.E2_LOJA 
+     AND A2.D_E_L_E_T_ = ' '
+    OUTER APPLY (
+      SELECT TOP 1
+        E5_MOTBX,
+        E5_TIPODOC,
+        E5_BANCO,
+        E5_HISTOR
+      FROM ${emp.se5} E5
+      WHERE E5.E5_FILIAL = E2.E2_FILIAL
+        AND E5.E5_PREFIXO = E2.E2_PREFIXO
+        AND E5.E5_NUMERO = E2.E2_NUM
+        AND E5.E5_PARCELA = E2.E2_PARCELA
+        AND E5.E5_TIPO = E2.E2_TIPO
+        AND E5.E5_CLIFOR = E2.E2_FORNECE
+        AND E5.E5_RECPAG = 'P'
+        AND E5.D_E_L_E_T_ = ' '
+      ORDER BY E5.E5_DATA DESC, E5.R_E_C_N_O_ DESC
+    ) E5
+    WHERE ${buildWhere(emp)}
+  `);
+
+  const unionSql = selects.join('\n UNION ALL \n');
+
+  // Query de itens paginados
+  const sqlPaged = `
+    WITH TitulosCP AS (
+      ${unionSql}
+    )
+    SELECT *
+    FROM TitulosCP
+    ORDER BY DATA_VENCREA DESC, NUMERO_TITULO DESC, PARCELA ASC
+    OFFSET ${offset} ROWS
+    FETCH NEXT ${curLimit} ROWS ONLY;
+  `;
+
+  // Query de contagem e somatórios otimizada (sem OUTER APPLY se não filtrar por motivo financeiro)
+  const precisaSE5NoSummary = (sSituacao === 'QUITADO_FIN' || sSituacao === 'QUITADO_CMP');
+  let sqlSummary = '';
+
+  if (precisaSE5NoSummary) {
+    sqlSummary = `
+      WITH TitulosCP AS (
+        ${unionSql}
+      )
+      SELECT 
+        COUNT(*) AS TOTAL,
+        ISNULL(SUM(VALOR), 0) AS TOTAL_VALOR,
+        ISNULL(SUM(SALDO), 0) AS TOTAL_SALDO
+      FROM TitulosCP;
+    `;
+  } else {
+    // Versão ultrarrápida sem subquery em SE5
+    const selectsSummary = empresasAlvo.map(emp => `
+      SELECT 
+        ISNULL(E2.E2_VALOR, 0) AS VALOR,
+        ISNULL(E2.E2_SALDO, 0) AS SALDO
+      FROM ${emp.se2} E2
+      LEFT JOIN ${emp.sa2} A2 
+        ON A2.A2_COD = E2.E2_FORNECE 
+       AND A2.A2_LOJA = E2.E2_LOJA 
+       AND A2.D_E_L_E_T_ = ' '
+      WHERE ${buildWhere(emp)}
+    `);
+    sqlSummary = `
+      WITH TitulosCPSummary AS (
+        ${selectsSummary.join('\n UNION ALL \n')}
+      )
+      SELECT 
+        COUNT(*) AS TOTAL,
+        ISNULL(SUM(VALOR), 0) AS TOTAL_VALOR,
+        ISNULL(SUM(SALDO), 0) AS TOTAL_SALDO
+      FROM TitulosCPSummary;
+    `;
+  }
+
+  try {
+    // Execução paralela da página e do somatório
+    const [resPaged, resSummary] = await Promise.all([
+      executeRailwayQuery(sqlPaged),
+      executeRailwayQuery(sqlSummary)
+    ]);
+
+    const rawRows = resPaged.rows || resPaged || [];
+    const sumRow = (resSummary.rows || resSummary || [])[0] || {};
+
+    const total = parseInt(sumRow.TOTAL, 10) || 0;
+    const totalValor = Math.round(Number(sumRow.TOTAL_VALOR || 0) * 100) / 100;
+    const totalSaldo = Math.round(Number(sumRow.TOTAL_SALDO || 0) * 100) / 100;
+    const totalBaixado = Math.max(0, Math.round((totalValor - totalSaldo) * 100) / 100);
+
+    // Formata cada item retornado
+    const items = rawRows.map(r => {
+      const vlr = Math.round(Number(r.VALOR || 0) * 100) / 100;
+      const sld = Math.round(Number(r.SALDO || 0) * 100) / 100;
+      const dtBaixaRaw = String(r.DATA_BAIXA || '').trim();
+      const sit = classificarSituacaoTitulo(vlr, sld, dtBaixaRaw, r.MOTIVO_BAIXA, r.BANCO_BAIXA);
+
+      // Formatação de datas
+      const dtVencBr = formatarDataProtheus(r.DATA_VENCTO || r.DATA_VENCREA);
+      const dtEmissaoBr = formatarDataProtheus(r.DATA_EMISSAO);
+      const dtBaixaBr = dtBaixaRaw ? formatarDataProtheus(dtBaixaRaw) : '-';
+
+      return {
+        empresaCod: r.EMPRESA_COD,
+        empresaSigla: r.EMPRESA_SIGLA,
+        empresaNome: r.EMPRESA_NOME,
+        filial: r.FILIAL,
+        prefixo: r.PREFIXO,
+        numTitulo: r.NUMERO_TITULO,
+        parcela: r.PARCELA,
+        tipo: r.TIPO,
+        codFornecedor: r.FORNECEDOR_COD,
+        lojaFornecedor: r.FORNECEDOR_LOJA,
+        nomeFornecedor: r.FORNECEDOR_NOME,
+        cnpjFornecedor: r.FORNECEDOR_CNPJ ? formatarCgcFiscal(r.FORNECEDOR_CNPJ) : '-',
+        cnpjFornecedorRaw: r.FORNECEDOR_CNPJ || '',
+        dataEmissaoBr: dtEmissaoBr,
+        dataEmissaoRaw: r.DATA_EMISSAO,
+        dataVencBr: dtVencBr,
+        dataVencRaw: r.DATA_VENCTO || r.DATA_VENCREA,
+        valorOriginal: vlr,
+        saldo: sld,
+        valorBaixado: Math.max(0, Math.round((vlr - sld) * 100) / 100),
+        dataBaixaBr: dtBaixaBr,
+        dataBaixaRaw: dtBaixaRaw,
+        situacao: sit,
+        historicoTitulo: r.HISTORICO_TITULO,
+        motivoBaixa: r.MOTIVO_BAIXA,
+        descricaoMotivoBaixa: getDescricaoMotivoBaixa(r.MOTIVO_BAIXA),
+        tipodocBaixa: r.TIPODOC_BAIXA,
+        bancoBaixa: r.BANCO_BAIXA,
+        historicoBaixa: r.HISTORICO_BAIXA
+      };
+    });
+
+    const totalPages = Math.ceil(total / curLimit) || 1;
+
+    return {
+      success: true,
+      items,
+      summary: {
+        totalRegistros: total,
+        totalValor,
+        totalSaldo,
+        totalBaixado
+      },
+      pagination: {
+        page: curPage,
+        limit: curLimit,
+        total,
+        totalPages,
+        hasNext: curPage < totalPages,
+        hasPrev: curPage > 1
+      }
+    };
+  } catch (err) {
+    console.error('❌ [protheus_db] Erro ao consultar Contas a Pagar (SE2):', err.message);
+    throw err;
+  }
+}
+
+/**
+ * Consulta todas as movimentações e baixas de um título específico na tabela SE5
+ */
+async function consultarMovimentacoesTituloSe5(empresaCod, filial, prefixo, numTitulo, parcela, tipo, codFornec) {
+  const emp = EMPRESAS_CONTAS_PAGAR.find(e => e.codigo === String(empresaCod)) || EMPRESAS_CONTAS_PAGAR[0];
+  const sFilial = sanitizeSqlParam(filial);
+  const sPrefixo = sanitizeSqlParam(prefixo);
+  const sNum = sanitizeSqlParam(numTitulo);
+  const sParcela = sanitizeSqlParam(parcela);
+  const sTipo = sanitizeSqlParam(tipo);
+  const sFornec = sanitizeSqlParam(codFornec);
+
+  const numVariants = getDocVariants(sNum);
+
+  const sql = `
+    SELECT 
+      R_E_C_N_O_ AS ID,
+      E5_DATA,
+      E5_VALOR,
+      E5_RECPAG,
+      E5_MOTBX,
+      E5_TIPODOC,
+      E5_BANCO,
+      E5_AGENCIA,
+      E5_CONTA,
+      E5_DOCUMEN,
+      E5_HISTOR,
+      E5_BENEF
+    FROM ${emp.se5}
+    WHERE (E5_NUMERO = '${numVariants.raw}' OR E5_NUMERO = '${numVariants.padded6}' OR E5_NUMERO = '${numVariants.padded9}')
+      AND E5_CLIFOR = '${sFornec}'
+      ${sFilial ? `AND E5_FILIAL = '${sFilial}'` : ''}
+      ${sPrefixo ? `AND E5_PREFIXO = '${sPrefixo}'` : ''}
+      ${sParcela ? `AND E5_PARCELA = '${sParcela}'` : ''}
+      ${sTipo ? `AND E5_TIPO = '${sTipo}'` : ''}
+      AND E5_RECPAG = 'P'
+      AND D_E_L_E_T_ = ' '
+    ORDER BY E5_DATA DESC, R_E_C_N_O_ DESC;
+  `;
+
+  try {
+    const res = await executeRailwayQuery(sql);
+    const rows = res.rows || res || [];
+    return rows.map(r => {
+      const vlr = Math.round(Number(r.E5_VALOR || 0) * 100) / 100;
+      const mot = String(r.E5_MOTBX || '').trim().toUpperCase();
+      const bco = String(r.E5_BANCO || '').trim();
+      const isFin = (bco !== '' && bco !== '000') || ['DEB', 'NOR'].includes(mot);
+
+      return {
+        id: r.ID,
+        dataIso: r.E5_DATA,
+        dataBr: formatarDataProtheus(r.E5_DATA),
+        valor: vlr,
+        motivo: mot,
+        descricaoMotivo: getDescricaoMotivoBaixa(mot),
+        tipoDoc: String(r.E5_TIPODOC || '').trim(),
+        banco: bco,
+        agencia: String(r.E5_AGENCIA || '').trim(),
+        conta: String(r.E5_CONTA || '').trim(),
+        documento: String(r.E5_DOCUMEN || '').trim(),
+        historico: String(r.E5_HISTOR || '').trim(),
+        beneficiario: String(r.E5_BENEF || '').trim(),
+        isMovimentoFinanceiro: isFin
+      };
+    });
+  } catch (err) {
+    console.error(`❌ [protheus_db] Erro ao consultar movimentações SE5 (${emp.sigla}):`, err.message);
+    throw err;
+  }
+}
+
 module.exports = {
   extrairNotasFaturadasParaCentral,
   consultarProtheusNF,
@@ -5153,8 +5641,11 @@ module.exports = {
   consultarAuditoriaNfeProtheus,
   obterHistoricoFaturamento12MesesProtheus,
   formatarDataBrFiscal,
-  formatarCgcFiscal
+  formatarCgcFiscal,
+  // Exportações do Módulo Contas a Pagar (SE2 / SE5)
+  EMPRESAS_CONTAS_PAGAR,
+  MOTIVOS_BAIXA_MAP,
+  classificarSituacaoTitulo,
+  consultarContasPagarSe2,
+  consultarMovimentacoesTituloSe5
 };
-
-
-

@@ -93,12 +93,14 @@
 - [x] [QA-25] Suíte de testes automatizados para o Segundo Gráfico Executivo e Detector de Baixa Acentuada (`test_bi_seco_chart.js` - 18 asserções 100% aprovadas).
 - [x] [QA-26] Suíte de testes automatizados para Fechamento Fiscal e Exportador XML SEFAZ (`test_fechamento_fiscal.js` - 17 asserções 100% aprovadas).
 - [x] [QA-27] Suíte de testes automatizados para Visualizador de DANFE NF-e e Sincronização On-Demand SEFAZ (`test_danfe_popup.js` - 15 asserções 100% aprovadas).
+- [x] [QA-28] Suíte de testes automatizados para Consulta de Contas a Pagar SE2/SE5 e Classificação de Baixas Financeiras vs Compensação (`test_contas_pagar.js` - 13 asserções 100% aprovadas).
 
 ## 💼 Central de Tarefas & Delegação
 - [x] [TASK-01] Central de Delegação e Checagem "Minhas Tarefas": Criação e delegação de demandas operacionais, listagem de colaboradores ativos via `GET /api/auth/users`, unificação de prioridades (`Normal` default, `Alta`, `Urgente`), governança de status, comentários atômicos em JSONB e painel de KPIs em linha única compacta.
 
 ## 📑 Analista Financeiro & Gestão Fiscal (NFS-e Nacional)
 - [x] [FIN-01] Sub-aba NFS-e Pendentes de Entrada: Painel operacional para analista financeira com listagem multi-empresa (GSI 15, Metal Pleno 14, OAÇO 16), filtros dinâmicos por empresa e período (default 120 dias), ordenação interativa de colunas (default mais antigo primeiro), conciliação automática com TOTVS Protheus (`SF1140`, `SF1150`, `SF1160` e fornecedores `SA2010`), busca textual instantânea, exportação CSV com BOM UTF-8, modal de detalhes com cópia de chave de 50 dígitos, card celebrativo com micro-canvas confetti em zero pendências e webhook de ingestão contínua para `claude-job-nfse`.
+- [x] [FIN-02] Sub-aba Consulta Contas a Pagar: Pesquisa multi-empresa (14, 15, 16) sobre tabelas SE2140, SE2150 e SE2160 por Cód. Fornecedor (`E2_FORNECE`), Razão Social (`E2_NOMFOR`), CNPJ (`A2_CGC`) e Título (`E2_NUM`). Batimento inteligente de baixas financeiras com movimentação bancária (`SE5` com banco) vs compensações em carteira (`CMP`, `DEV`, `BFT`, `DIS`, `CEC`, `CNF` sem banco), paginação nativa no SQL Server (`OFFSET FETCH`), filtros de situação (Todos, Abertos, Baixa Parcial, Quitado Financeiro, Quitado Compensação), KPIs consolidados, modal de extrato analítico `SE5` e blindagem RBAC restrita (`admin`, `analista-fin`, `financeiro`) (13 testes aprovados em `test_contas_pagar.js`, v8.238).
 
 ## 🛠️ Dívida Técnica, Arquitetura & Manutenibilidade
 - [x] [TECH-01] Decomposição e Modularização ES6 do Frontend em 8 submódulos desacoplados em `public/js/*.js` (`utils.js`, `auth.js`, `vendedores.js`, `credito.js`, `financeiro.js`, `logistica.js`, `config.js`, `index.js`).

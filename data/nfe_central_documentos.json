@@ -15,7 +15,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5101",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:17:47.100Z",
+    "updatedAt": "2026-09-18T14:49:52.702Z",
     "temXml": true,
     "xmlConteudo": "<?xml version=\"1.0\" encoding=\"utf-8\"?><nfeProc versao=\"4.00\" xmlns=\"http://www.portalfiscal.inf.br/nfe\"><NFe><infNFe Id=\"NFe35260961237790000118550010000008881622483421\"><ide><nNF>888</nNF><serie>1</serie></ide></infNFe></NFe><protNFe><infProt><chNFe>35260961237790000118550010000008881622483421</chNFe><cStat>100</cStat></infProt></protNFe></nfeProc>"
   },
@@ -35,7 +35,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5101",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:17:47.125Z",
+    "updatedAt": "2026-09-18T14:49:52.723Z",
     "temXml": true,
     "xmlConteudo": "<?xml version=\"1.0\" encoding=\"utf-8\"?><nfeProc versao=\"4.00\" xmlns=\"http://www.portalfiscal.inf.br/nfe\"><NFe><infNFe Id=\"NFe35260961237790000118550010000008891622483422\"><ide><nNF>889</nNF><serie>1</serie></ide></infNFe></NFe><protNFe><infProt><chNFe>35260961237790000118550010000008891622483422</chNFe><cStat>100</cStat></infProt></protNFe></nfeProc>"
   },
@@ -45,7 +45,7 @@
     "numeroNf": "000999",
     "serie": "1",
     "dataEmissao": "2026-08-25",
-    "updatedAt": "2026-09-17T13:17:47.144Z"
+    "updatedAt": "2026-09-18T14:49:52.751Z"
   },
   {
     "chaveAcesso": "35260961237790000118550010000007341883310899",
@@ -63,7 +63,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "6102",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.963Z"
+    "updatedAt": "2026-09-18T14:49:24.147Z"
   },
   {
     "chaveAcesso": "35260961237790000118550010000007331948292205",
@@ -81,7 +81,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5102",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.963Z"
+    "updatedAt": "2026-09-18T14:49:24.147Z"
   },
   {
     "chaveAcesso": "35260961237790000118550010000007321161651718",
@@ -4095,7 +4095,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5102",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.965Z"
+    "updatedAt": "2026-09-18T14:49:24.148Z"
   },
   {
     "chaveAcesso": "35260948758821000118550010000004401512781266",
@@ -4113,7 +4113,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5102",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.965Z"
+    "updatedAt": "2026-09-18T14:49:24.148Z"
   },
   {
     "chaveAcesso": "35260948758821000118550010000004391259223492",
@@ -4131,7 +4131,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "5102",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.965Z"
+    "updatedAt": "2026-09-18T14:49:24.148Z"
   },
   {
     "chaveAcesso": "35260948758821000118550010000004381100540140",
@@ -4149,7 +4149,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "6108",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.965Z"
+    "updatedAt": "2026-09-18T14:49:24.148Z"
   },
   {
     "chaveAcesso": "35260948758821000118550010000004371846363327",
@@ -4167,7 +4167,7 @@
     "tipoMovimento": "SAIDA",
     "cfopPrincipal": "6108",
     "statusSefaz": "AUTORIZADA",
-    "updatedAt": "2026-09-17T13:10:32.965Z"
+    "updatedAt": "2026-09-18T14:49:24.148Z"
   },
   {
     "chaveAcesso": "35260948758821000118550010000004361684745001",
@@ -6490,5 +6490,131 @@
     "cfopPrincipal": "6102",
     "statusSefaz": "AUTORIZADA",
     "updatedAt": "2026-09-17T13:10:32.966Z"
+  },
+  {
+    "chaveAcesso": "35260961237790000118550010000007361473790976",
+    "empresa": "16",
+    "numeroNf": "000736",
+    "serie": "1",
+    "numeroPed": "000815",
+    "codWeb": "26670",
+    "clienteCod": "143475",
+    "clienteLoja": "01",
+    "clienteRazao": "Andreia Macabu Semeghini",
+    "clienteCnpjCpf": "00662362748",
+    "dataEmissao": "2026-09-17",
+    "valorTotal": 1030.91,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "6108",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.147Z"
+  },
+  {
+    "chaveAcesso": "35260961237790000118550010000007351305550150",
+    "empresa": "16",
+    "numeroNf": "000735",
+    "serie": "1",
+    "numeroPed": "000814",
+    "codWeb": "26667",
+    "clienteCod": "138389",
+    "clienteLoja": "01",
+    "clienteRazao": "Leonardo Damasceno Martins",
+    "clienteCnpjCpf": "01444899538",
+    "dataEmissao": "2026-09-17",
+    "valorTotal": 143.01,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "6108",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.147Z"
+  },
+  {
+    "chaveAcesso": "35260948758821000118550010000004431376398380",
+    "empresa": "14",
+    "numeroNf": "000000443",
+    "serie": "1",
+    "numeroPed": "000393",
+    "codWeb": "26393",
+    "clienteCod": "002922",
+    "clienteLoja": "01",
+    "clienteRazao": "CENTRO NACIONAL DE PESQUISA EM ENERGIA E MATERIAIS",
+    "clienteCnpjCpf": "01576817000175",
+    "dataEmissao": "2026-09-17",
+    "valorTotal": 6430,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "5102",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.147Z"
+  },
+  {
+    "chaveAcesso": "35260948758821000118550010000004421338698227",
+    "empresa": "14",
+    "numeroNf": "000000442",
+    "serie": "1",
+    "numeroPed": "000392",
+    "codWeb": "26552",
+    "clienteCod": "144586",
+    "clienteLoja": "01",
+    "clienteRazao": "SAMEDIL - SERVICOS DE ATENDIMENTO MEDICO S/A",
+    "clienteCnpjCpf": "31466949001853",
+    "dataEmissao": "2026-09-17",
+    "valorTotal": 2604,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "6102",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.148Z"
+  },
+  {
+    "chaveAcesso": "35260961237790000118550010000007391998086564",
+    "empresa": "16",
+    "numeroNf": "000739",
+    "serie": "1",
+    "numeroPed": "000817",
+    "codWeb": "26676",
+    "clienteCod": "144817",
+    "clienteLoja": "01",
+    "clienteRazao": "J M PARTICIPACOES E ADMINISTRACAO LTDA",
+    "clienteCnpjCpf": "92598739000165",
+    "dataEmissao": "2026-09-18",
+    "valorTotal": 3414.49,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "6108",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.147Z"
+  },
+  {
+    "chaveAcesso": "35260961237790000118550010000007381817853560",
+    "empresa": "16",
+    "numeroNf": "000738",
+    "serie": "1",
+    "numeroPed": "000816",
+    "codWeb": "26674",
+    "clienteCod": "144815",
+    "clienteLoja": "01",
+    "clienteRazao": "Theo Miklos Pereira De Sousa",
+    "clienteCnpjCpf": "11446766730",
+    "dataEmissao": "2026-09-18",
+    "valorTotal": 144.3,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "6108",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.147Z"
+  },
+  {
+    "chaveAcesso": "35260961237790000118550010000007371589908709",
+    "empresa": "16",
+    "numeroNf": "000737",
+    "serie": "1",
+    "numeroPed": "000802",
+    "codWeb": "26622",
+    "clienteCod": "144801",
+    "clienteLoja": "01",
+    "clienteRazao": "KIKO COSMETICS BRASIL LTDA",
+    "clienteCnpjCpf": "23638391002202",
+    "dataEmissao": "2026-09-18",
+    "valorTotal": 1248,
+    "tipoMovimento": "SAIDA",
+    "cfopPrincipal": "5102",
+    "statusSefaz": "AUTORIZADA",
+    "updatedAt": "2026-09-18T14:49:24.147Z"
   }
 ]
