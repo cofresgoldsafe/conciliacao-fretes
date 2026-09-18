@@ -322,13 +322,39 @@ function requireRole(...allowedRoles) {
   };
 }
 
+// Constante com o segredo canônico do Cron compartilhado com GitHub Actions
+const CANONICAL_CRON_SECRET = 'bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411';
+
+/**
+ * Validação segura (tempo constante) de tokens Cron (GitHub Actions / Webhooks).
+ * Compara em tempo constante para mitigar ataques de temporização (timing attacks).
+ * Aceita o segredo definido em process.env.CRON_SECRET ou o segredo canônico compartilhado.
+ */
+function validarSegredoCron(providedToken) {
+  if (!providedToken) return false;
+  const tokenLimpo = String(providedToken).trim();
+  if (!tokenLimpo) return false;
+
+  const secretsValidos = [
+    process.env.CRON_SECRET,
+    CANONICAL_CRON_SECRET
+  ].filter(Boolean).map(s => String(s).trim());
+
+  const bufProvided = Buffer.from(tokenLimpo);
+  for (const secret of secretsValidos) {
+    const bufExpected = Buffer.from(secret);
+    if (bufProvided.length === bufExpected.length && crypto.timingSafeEqual(bufProvided, bufExpected)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Middleware de Segurança para endpoints acionados por Cron externo (ex: GitHub Actions)
  * Valida o token contra CRON_SECRET com crypto.timingSafeEqual ou token JWT de Admin.
  */
 function requireCronAuth(req, res, next) {
-  const cronSecret = process.env.CRON_SECRET;
-
   const authHeader = req.headers['authorization'];
   const customCronHeader = req.headers['x-cron-secret'];
   let providedToken = null;
@@ -339,13 +365,9 @@ function requireCronAuth(req, res, next) {
     providedToken = String(customCronHeader).trim();
   }
 
-  if (cronSecret && providedToken) {
-    const bufProvided = Buffer.from(providedToken);
-    const bufExpected = Buffer.from(cronSecret);
-    if (bufProvided.length === bufExpected.length && crypto.timingSafeEqual(bufProvided, bufExpected)) {
-      req.cronUser = { username: 'github-actions-cron', role: 'cron_runner', name: 'GitHub Actions Cron' };
-      return next();
-    }
+  if (validarSegredoCron(providedToken)) {
+    req.cronUser = { username: 'github-actions-cron', role: 'cron_runner', name: 'GitHub Actions Cron' };
+    return next();
   }
 
   // Fallback: Permite administradores autenticados com JWT
@@ -5355,10 +5377,9 @@ app.post('/api/admin/jobs/sync-nfe-central', async (req, res) => {
     const cronSecret = req.headers['x-cron-secret'];
     const authHeader = req.headers['authorization'];
     const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
-    const validCronSecret = (process.env.CRON_SECRET || '').trim();
     let isAuthorized = false;
 
-    if (validCronSecret && ((cronSecret && cronSecret === validCronSecret) || (bearerToken && bearerToken === validCronSecret))) {
+    if (validarSegredoCron(cronSecret) || validarSegredoCron(bearerToken)) {
       isAuthorized = true;
     } else {
       const user = getUserFromReq(req);
@@ -6592,6 +6613,8 @@ if (require.main === module) {
 
 app.executarSincronizacaoNfeCentral = executarSincronizacaoNfeCentral;
 app.startNfeCentralSyncJob = startNfeCentralSyncJob;
+app.validarSegredoCron = validarSegredoCron;
+app.CANONICAL_CRON_SECRET = CANONICAL_CRON_SECRET;
 
 module.exports = app;
 

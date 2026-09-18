@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.236 (Homologada em 17/09/2026 14:03)  
+> **Versão da Documentação:** v8.237 (Homologada em 18/09/2026 09:45)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/09/2026 14:03 (v8.236 - Fallback Resiliente Protheus ERP e Sintetizador XML DANFE para SEFAZ cStat 641)  
+> **Data da Última Auditoria:** 18/09/2026 09:45 (v8.237 - Unificação de Autenticação Cron GitHub Actions e Resolução de 403 no Sync NFe Central)  
 
 ---
 
@@ -171,6 +171,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.237 (18/09/2026):** Unificação de autenticação Cron externa (GitHub Actions / Webhooks) via validador de tempo constante (`validarSegredoCron` com `crypto.timingSafeEqual`) e fallback automático para o segredo canônico compartilhado (`CANONICAL_CRON_SECRET`), eliminando o erro HTTP 403 no agendamento do job `sync-nfe-central` e no fechamento mensal mesmo sem a variável `CRON_SECRET` configurada no Render (14 testes aprovados em `test_cron_fechamento.js`).
 - **v8.236 (17/09/2026):** Fallback resiliente Protheus ERP e sintetizador canônico de XML NF-e (`danfe_protheus.js`) para contornar a regra restritiva governamental da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração completa de SF2/SD2/SB1/SA1/SA4/SE1, montagem de dadosDanfe, geração de XML oficial <nfeProc>, persistência assíncrona perene na Super Tabela (nfe_central_documentos) e ativação no job de sincronização periódica (20 testes aprovados em `test_danfe_popup.js`).
 - **v8.235 (17/09/2026):** Suporte a senha de Certificado Digital A1 no modal DANFE (#inputDanfeSenhaCert), captura e envio de passphrase à SEFAZ, sincronização de sessão mútua com Fechamento Fiscal (sessionStorage), diagnóstico transparente de erros SEFAZ e foco para re-tentativa imediata (17 testes aprovados em test_danfe_popup.js).
 - **v8.234 (17/09/2026):** Visualizador de DANFE NF-e em Popup (`#danfeModal`, `@media print` A4) nas telas Busca CodWeb/Ped/NF e Consulta Ped Venda, integração com Super Tabela (`nfe_central_documentos`) e Protheus SF2 (`F2_CHVNFE`), busca on-demand na SEFAZ via mTLS com tela de espera animada, cálculo da próxima sincronização periódica (12:30h / 18:30h) e ações de impressão/PDF, download de XML bruto e cópia de chave (15 testes aprovados em `test_danfe_popup.js`).
@@ -178,6 +179,4 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 - **v8.232 (17/09/2026):** Super Tabela Central de Documentos Fiscais (`nfe_central_documentos`) no PostgreSQL Supabase com RLS ativa, persistência de XMLs no banco, prioridade máxima de cache em `exportador_xml_sefaz.js`, job agendado em background às 12:30 e 18:30 sincronizando Protheus SF2 (últimos 30 dias) com OUTER APPLY em SD2/SC5, download mTLS com intervalo de 800ms e Circuit Breaker para cStat 656.
 - **v8.231 (17/09/2026):** Disposição horizontal inline dos botões de ação ("🧹 Limpar" e "Buscar no Protheus") com os campos de busca, padronização da altura (40px) e remoção do prefixo "Ex: " nos placeholders (HTML e JS).
 - **v8.230 (17/09/2026):** Simplificação de UI na Busca CodWeb/Ped/NF: remoção do prefixo "2.", reposicionamento da instrução de exclusividade mútua para o subtítulo e eliminação de dicas e notice bars redundantes.
-- **v8.229 (17/09/2026):** Enriquecimento relacional dos campos `Transportadora:` (via `LEFT JOIN SA4010 A4`) e `Condição Pagto:` (via `LEFT JOIN SE4010 E4`) no modal de detalhes do pedido ([Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md) e [Busca Multi-Empresa](docs/telas/03_busca/busca_codweb_ped_nf.md)), exibindo `Código - Descrição` com fallback resiliente.
-- **v8.228 (17/09/2026):** Redirecionamento da coluna CodWeb para a URL oficial do CRM Pipedrive (`https://benetroncomercial.pipedrive.com/deal/XXXXX`) na aba [Consulta Ped Venda](docs/telas/04_vendedores/consulta_ped_venda.md), com paridade à Busca CodWeb/Ped/NF e abertura de detalhes Protheus restrita ao Número do Pedido e botão Detalhes.
 - **v8.220 (15/09/2026):** Reestruturacao documental Hub-and-Spoke. Documento pai reduzido em 91% (< 25 KB), criacao de 35 documentacoes modulares em `docs/telas/` e congelamento historico dos 77 itens em `docs/legado/GEMINI_HISTORICO.md`.

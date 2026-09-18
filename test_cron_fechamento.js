@@ -187,6 +187,73 @@ async function main() {
       const data = await fetchRes.json();
       assert.strictEqual(data.success, true);
     });
+
+    await runTestAsync('4.6 - sync-nfe-central sem autenticação é bloqueado com 403', async () => {
+      const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
+      });
+      assert.strictEqual(fetchRes.status, 403, 'Deve retornar 403 Forbidden');
+      const data = await fetchRes.json();
+      assert.strictEqual(data.ok, false);
+    });
+
+    await runTestAsync('4.7 - sync-nfe-central com token incorreto é bloqueado com 403', async () => {
+      const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cron-secret': 'token_falso_ou_invalido_xyz'
+        },
+        body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
+      });
+      assert.strictEqual(fetchRes.status, 403, 'Deve retornar 403 Forbidden');
+      const data = await fetchRes.json();
+      assert.strictEqual(data.ok, false);
+    });
+
+    await runTestAsync('4.8 - sync-nfe-central com segredo canônico via x-cron-secret é autorizado (202 ou 409)', async () => {
+      const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cron-secret': app.CANONICAL_CRON_SECRET
+        },
+        body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
+      });
+      assert([202, 409].includes(fetchRes.status), `Status esperado 202 ou 409, recebido: ${fetchRes.status}`);
+      const data = await fetchRes.json();
+      assert(data.ok === true || data.executando === true);
+    });
+
+    await runTestAsync('4.9 - sync-nfe-central com segredo canônico via Bearer mesmo sem process.env.CRON_SECRET é aceito', async () => {
+      const backupSecret = process.env.CRON_SECRET;
+      delete process.env.CRON_SECRET;
+      try {
+        const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${app.CANONICAL_CRON_SECRET}`
+          },
+          body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
+        });
+        assert([202, 409].includes(fetchRes.status), `Status esperado 202 ou 409, recebido: ${fetchRes.status}`);
+        const data = await fetchRes.json();
+        assert(data.ok === true || data.executando === true);
+      } finally {
+        process.env.CRON_SECRET = backupSecret;
+      }
+    });
+
+    runTest('4.10 - validarSegredoCron valida adequadamente segredo canônico e do ambiente', () => {
+      assert.strictEqual(app.validarSegredoCron(null), false);
+      assert.strictEqual(app.validarSegredoCron(''), false);
+      assert.strictEqual(app.validarSegredoCron('token_invalido'), false);
+      assert.strictEqual(app.validarSegredoCron(app.CANONICAL_CRON_SECRET), true);
+      assert.strictEqual(app.validarSegredoCron(`  ${app.CANONICAL_CRON_SECRET}  `), true);
+    });
   } finally {
     server.close();
   }

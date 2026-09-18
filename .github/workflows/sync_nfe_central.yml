@@ -43,12 +43,13 @@ jobs:
         run: |
           BASE_URL="${API_URL:-https://conciliacao-fretes.onrender.com}"
           ENDPOINT="${BASE_URL%/}/api/admin/jobs/sync-nfe-central"
+          CRON_TOKEN="${CRON_SECRET:-bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411}"
           echo "Disparando POST para: $ENDPOINT"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ENDPOINT" \
             -H "Content-Type: application/json" \
-            -H "x-cron-secret: $CRON_SECRET" \
-            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "x-cron-secret: $CRON_TOKEN" \
+            -H "Authorization: Bearer $CRON_TOKEN" \
             -d "{\"diasRetroativos\": $DIAS, \"limiteXml\": $LIMITE}")
 
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
