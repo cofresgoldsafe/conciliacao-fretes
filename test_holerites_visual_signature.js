@@ -137,9 +137,9 @@ try {
   assert.ok(linhaAssContent.includes('text-align: center'), 'Nome deve ser centralizado sob o traço');
 
   // Regras de impressão
-  const mediaPrintIdx = css.lastIndexOf('@media print');
-  assert.ok(mediaPrintIdx !== -1, 'Deve conter @media print');
-  const printContent = css.substring(mediaPrintIdx, mediaPrintIdx + 1200);
+  const mediaPrintIdx = css.indexOf('REGRAS DE IMPRESSÃO CIRÚRGICA (@media print)');
+  assert.ok(mediaPrintIdx !== -1, 'Deve conter @media print para holerites');
+  const printContent = css.substring(mediaPrintIdx, mediaPrintIdx + 1500);
   assert.ok(printContent.includes('.holerite-canhoto-linhas'), '@media print deve conter regras para .holerite-canhoto-linhas');
   assert.ok(printContent.includes('margin: 32mm auto') || printContent.includes('max-width: 160mm'), 'Impressão deve manter margem de 32mm (+80%) e centralização em milímetros');
 

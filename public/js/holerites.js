@@ -253,6 +253,30 @@
     if (btnAplicarMsgLote) {
       btnAplicarMsgLote.addEventListener('click', aplicarMensagemEmLote);
     }
+
+    // Modal Manual PF (Sem Registro)
+    const btnManualPf = document.getElementById('btnManualPfHolerite');
+    const modalManualPf = document.getElementById('modalHoleriteManualPf');
+    const btnFecharManualPf = document.getElementById('btnFecharModalManualPf');
+    const btnCancelarManualPf = document.getElementById('btnCancelarManualPf');
+    const btnConfirmarManualPf = document.getElementById('btnConfirmarManualPf');
+    const selectColabManualPf = document.getElementById('selectManualPfColaborador');
+
+    if (btnManualPf) {
+      btnManualPf.addEventListener('click', abrirModalManualPf);
+    }
+    if (btnFecharManualPf && modalManualPf) {
+      btnFecharManualPf.addEventListener('click', () => modalManualPf.style.display = 'none');
+    }
+    if (btnCancelarManualPf && modalManualPf) {
+      btnCancelarManualPf.addEventListener('click', () => modalManualPf.style.display = 'none');
+    }
+    if (btnConfirmarManualPf) {
+      btnConfirmarManualPf.addEventListener('click', salvarManualPf);
+    }
+    if (selectColabManualPf) {
+      selectColabManualPf.addEventListener('change', handleColaboradorSelectChange);
+    }
   }
 
   // --- CONTROLE DE ARQUIVOS E UPLOAD ---
@@ -627,16 +651,20 @@
   function gerarHoleriteHtml(doc) {
     const emp = String(doc.empresa || '').trim().toUpperCase();
     const rz = String(doc.empresa_razao_social || '').trim().toUpperCase();
-    const isGsi = emp === 'GSI' || rz.includes('GSI');
-    const logoSrc = isGsi ? LOGO_GSI_B64 : LOGO_OACO_B64;
-    const razaoSocial = doc.empresa_razao_social || (isGsi ? 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA' : 'OACO PRODUTOS DE ACO LTDA');
-    const cnpj = doc.empresa_cnpj || (isGsi ? '14.061.778/0001-15' : '61.237.790/0001-18');
+    const isSemRegistro = emp === 'SEM_REGISTRO' || doc.origem_arquivo_tipo === 'MANUAL_PF' || (!doc.empresa_cnpj && emp !== 'GSI' && emp !== 'OACO');
+    const isGsi = !isSemRegistro && (emp === 'GSI' || rz.includes('GSI'));
+    const logoSrc = isSemRegistro ? '' : (isGsi ? LOGO_GSI_B64 : LOGO_OACO_B64);
+    const razaoSocial = isSemRegistro ? '' : (doc.empresa_razao_social || (isGsi ? 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA' : 'OACO PRODUTOS DE ACO LTDA'));
+    const cnpj = isSemRegistro ? '' : (doc.empresa_cnpj || (isGsi ? '14.061.778/0001-15' : '61.237.790/0001-18'));
 
     let tituloDoc = 'RECIBO DE PAGAMENTO DE SALÁRIO';
     if (doc.tipo_documento === 'ADIANTAMENTO') tituloDoc = 'RECIBO DE ADIANTAMENTO SALARIAL';
     else if (doc.tipo_documento === '13_PRIMEIRA_PARCELA') tituloDoc = '13º SALÁRIO - 1ª PARCELA';
     else if (doc.tipo_documento === '13_SEGUNDA_PARCELA') tituloDoc = '13º SALÁRIO - 2ª PARCELA';
     else if (doc.tipo_documento === 'FERIAS') tituloDoc = 'RECIBO DE FÉRIAS';
+    else if (doc.tipo_documento === 'BONIFICACAO') tituloDoc = 'RECIBO DE BONIFICAÇÃO / GRATIFICAÇÃO';
+    else if (doc.tipo_documento === 'RECIBO_AVULSO') tituloDoc = 'RECIBO DE PAGAMENTO AVULSO';
+    else if (doc.tipo_documento_label) tituloDoc = doc.tipo_documento_label.toUpperCase();
 
     // Eventos
     const eventos = Array.isArray(doc.eventos) ? doc.eventos : [];
@@ -687,7 +715,7 @@
       quadroMsg = `
         <div class="holerite-quadro-mensagem">
           <div class="holerite-quadro-mensagem-header">
-            <span>📢 Comunicado da Empresa</span>
+            <span>📢 Comunicado / Observação</span>
           </div>
           <div>${escapeHtml(msgTexto)}</div>
         </div>
@@ -699,24 +727,45 @@
         <!-- Cabeçalho -->
         <table class="holerite-header-table">
           <tr>
-            <td style="width: 200px; vertical-align: middle; text-align: left;">
-              <img src="${logoSrc}" alt="Logo ${isGsi ? 'GSI' : 'OAÇO'}" class="holerite-empresa-logo" onerror="this.onerror=null; this.src='${isGsi ? '/logos/logo-gsi.png' : '/logos/logo-oaco.png'}';">
+            <td style="width: 190px; vertical-align: middle; text-align: left;">
+              ${logoSrc ? `
+                <img src="${logoSrc}" alt="Logo ${isGsi ? 'GSI' : 'OAÇO'}" class="holerite-empresa-logo" onerror="this.onerror=null; this.src='${isGsi ? '/logos/logo-gsi.png' : '/logos/logo-oaco.png'}';">
+              ` : `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 1.6rem;">📝</span>
+                  <div>
+                    <strong style="font-size: 0.88rem; color: #334155; display: block; letter-spacing: 0.04em;">RECIBO PF</strong>
+                    <span style="font-size: 0.7rem; color: #64748b;">Pessoa Física</span>
+                  </div>
+                </div>
+              `}
             </td>
             <td style="text-align: center; vertical-align: middle;">
-              <h2 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #0f172a; text-transform: uppercase;">
-                ${razaoSocial}
+              <h2 style="margin: 0; font-size: ${isSemRegistro ? '1.25rem' : '1.15rem'}; font-weight: 700; color: #0f172a; text-transform: uppercase;">
+                ${isSemRegistro ? 'RECIBO DE PAGAMENTO' : razaoSocial}
               </h2>
-              <span style="font-size: 0.8rem; color: #475569; display: block; margin-top: 2px;">
-                CNPJ: <strong>${cnpj}</strong>
-              </span>
+              ${cnpj ? `
+                <span style="font-size: 0.8rem; color: #475569; display: block; margin-top: 2px;">
+                  CNPJ: <strong>${cnpj}</strong>
+                </span>
+              ` : `
+                <span style="font-size: 0.78rem; color: #64748b; display: block; margin-top: 2px;">
+                  Colaborador Autônomo / Prestador de Serviços
+                </span>
+              `}
             </td>
-            <td style="width: 200px; text-align: right; vertical-align: middle;">
+            <td style="width: 210px; text-align: right; vertical-align: middle;">
               <span style="font-size: 0.82rem; font-weight: 700; color: #1e3a8a; display: block;">
                 ${tituloDoc}
               </span>
-              <span style="font-size: 0.82rem; font-weight: 600; color: #0f172a;">
+              <span style="font-size: 0.82rem; font-weight: 600; color: #0f172a; display: block;">
                 Competência: ${doc.competencia_formatada || `${doc.competencia_mes}/${doc.competencia_ano}`}
               </span>
+              ${doc.data_pagamento ? `
+                <span style="font-size: 0.74rem; color: #64748b; display: block; margin-top: 2px;">
+                  Pagamento: ${escapeHtml(doc.data_pagamento)}
+                </span>
+              ` : ''}
             </td>
           </tr>
         </table>
@@ -730,9 +779,9 @@
           </tr>
           <tr>
             <td style="color: #64748b;">Depto/Filial: <strong>${escapeHtml(doc.funcionario_departamento || '1')}/${escapeHtml(doc.funcionario_filial || '1')}</strong></td>
-            <td>Cargo: <strong>${escapeHtml(doc.funcionario_cargo || '-')}</strong></td>
-            <td>Admissão: <strong>${escapeHtml(doc.funcionario_admissao || '-')}</strong></td>
-            <td style="text-align: right;">${doc.funcionario_cpf ? `CPF: <strong>${escapeHtml(doc.funcionario_cpf)}</strong>` : `Tipo: <strong>${escapeHtml(doc.funcionario_tipo_contrato || 'Mensalista')}</strong>`}</td>
+            <td>Função/Cargo: <strong>${escapeHtml(doc.funcionario_cargo || (isSemRegistro ? 'Prestador de Serviços' : 'Colaborador'))}</strong></td>
+            <td>Vínculo: <strong>${escapeHtml(doc.funcionario_tipo_contrato || (isSemRegistro ? 'Sem Registro' : 'Mensalista'))}</strong></td>
+            <td style="text-align: right;">${doc.funcionario_cpf ? `CPF: <strong>${escapeHtml(doc.funcionario_cpf)}</strong>` : `Doc: <strong>Pessoa Física</strong>`}</td>
           </tr>
         </table>
 
@@ -780,6 +829,7 @@
         </div>
 
         <!-- Bases de Cálculo -->
+        ${!isSemRegistro ? `
         <table class="holerite-bases-table">
           <thead>
             <tr>
@@ -802,6 +852,11 @@
             </tr>
           </tbody>
         </table>
+        ` : `
+        <div style="font-size: 0.74rem; color: #64748b; margin-bottom: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; padding: 6px 12px; border-radius: 4px; text-align: center;">
+          Recibo de quitação para autônomo / pessoa física (Bases de retenção contábil FGTS/INSS CLT não aplicáveis).
+        </div>
+        `}
 
         <!-- Mensagem Personalizada -->
         ${quadroMsg}
@@ -809,11 +864,11 @@
         <!-- Canhoto de Quitação -->
         <div class="holerite-canhoto-recibo">
           <p style="margin: 0; line-height: 1.4;">
-            Declaro ter recebido a importância líquida de <strong>${formatMoney(doc.valor_liquido)}</strong> discriminada neste recibo, referente à quitação integral das verbas correspondentes ao período indicado.
+            Declaro ter recebido a importância líquida de <strong>${formatMoney(doc.valor_liquido)}</strong> discriminada neste recibo, referente à quitação integral de <strong>${escapeHtml(tituloDoc)}</strong> correspondente ao período indicado.
           </p>
           <div class="holerite-canhoto-linhas">
             <div class="holerite-canhoto-data">
-              Data: <strong>____/____/________</strong>
+              Data: <strong>${doc.data_pagamento ? escapeHtml(doc.data_pagamento) : '____/____/________'}</strong>
             </div>
             <div class="holerite-linha-assinatura">
               ${escapeHtml(doc.funcionario_nome || '')}
@@ -1044,6 +1099,229 @@
     }
   }
 
+  // --- MÓDULO MANUAL PF (SEM REGISTRO) ---
+  let colaboradoresCache = [];
+
+  async function carregarColaboradoresParaModal() {
+    const select = document.getElementById('selectManualPfColaborador');
+    if (!select) return;
+
+    try {
+      if (colaboradoresCache.length === 0) {
+        select.innerHTML = '<option value="">⏳ Carregando colaboradores...</option>';
+        const res = await fetch('/api/dp/colaboradores?limit=500', { headers: getAuthHeader() });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.colaboradores)) {
+          colaboradoresCache = data.colaboradores;
+        }
+      }
+
+      let optionsHtml = '<option value="">-- Selecione o Colaborador Cadastrado --</option>';
+
+      // Ordena alfabeticamente por nome
+      const ordenados = [...colaboradoresCache].sort((a, b) => (a.nome_completo || '').localeCompare(b.nome_completo || ''));
+
+      // Separa os 'SEM_REGISTRO' no topo para agilidade
+      const semReg = ordenados.filter(c => c.empresa === 'SEM_REGISTRO');
+      const outros = ordenados.filter(c => c.empresa !== 'SEM_REGISTRO');
+
+      if (semReg.length > 0) {
+        optionsHtml += `<optgroup label="🟪 Colaboradores Sem Registro / Autônomos">`;
+        for (const c of semReg) {
+          optionsHtml += `<option value="${c.id}">${escapeHtml(c.nome_completo)} ${c.cargo ? `(${escapeHtml(c.cargo)})` : ''}</option>`;
+        }
+        optionsHtml += `</optgroup>`;
+      }
+
+      if (outros.length > 0) {
+        optionsHtml += `<optgroup label="👥 Demais Colaboradores (GSI / OAÇO)">`;
+        for (const c of outros) {
+          const empTag = c.empresa === 'GSI' ? '[GSI]' : (c.empresa === 'OACO' ? '[OAÇO]' : '');
+          optionsHtml += `<option value="${c.id}">${escapeHtml(c.nome_completo)} ${empTag}</option>`;
+        }
+        optionsHtml += `</optgroup>`;
+      }
+
+      optionsHtml += `<option value="__NOVO__">➕ Outro (Digitar Nome Manualmente)</option>`;
+      select.innerHTML = optionsHtml;
+    } catch (err) {
+      console.error('Erro ao carregar colaboradores no modal:', err);
+      select.innerHTML = '<option value="__NOVO__">➕ Digitar Nome Manualmente (Erro ao carregar lista)</option>';
+    }
+  }
+
+  function handleColaboradorSelectChange() {
+    const select = document.getElementById('selectManualPfColaborador');
+    const boxManual = document.getElementById('boxManualPfNomeManual');
+    const infoBar = document.getElementById('manualPfColabInfoBar');
+    const inputNome = document.getElementById('inputManualPfNomeManual');
+
+    if (!select) return;
+    const val = select.value;
+
+    if (val === '__NOVO__') {
+      if (boxManual) boxManual.style.display = 'flex';
+      if (infoBar) infoBar.style.display = 'none';
+      if (inputNome) inputNome.focus();
+    } else if (val) {
+      if (boxManual) boxManual.style.display = 'none';
+      const colab = colaboradoresCache.find(c => String(c.id) === String(val));
+      if (colab && infoBar) {
+        let txt = `<strong>${escapeHtml(colab.nome_completo)}</strong>`;
+        if (colab.cargo) txt += ` • Cargo: ${escapeHtml(colab.cargo)}`;
+        if (colab.chave_pix) txt += ` • 💳 PIX: <strong style="font-family: monospace;">${escapeHtml(colab.chave_pix)}</strong>`;
+        infoBar.innerHTML = txt;
+        infoBar.style.display = 'block';
+      } else if (infoBar) {
+        infoBar.style.display = 'none';
+      }
+    } else {
+      if (boxManual) boxManual.style.display = 'none';
+      if (infoBar) infoBar.style.display = 'none';
+    }
+  }
+
+  function abrirModalManualPf() {
+    const modal = document.getElementById('modalHoleriteManualPf');
+    const errorEl = document.getElementById('manualPfErrorMsg');
+    const inputValor = document.getElementById('inputManualPfValor');
+    const inputData = document.getElementById('inputManualPfDataPagto');
+    const selectMes = document.getElementById('selectManualPfMes');
+    const inputAno = document.getElementById('inputManualPfAno');
+    const txtMsg = document.getElementById('txtManualPfMensagem');
+    const boxManual = document.getElementById('boxManualPfNomeManual');
+    const infoBar = document.getElementById('manualPfColabInfoBar');
+
+    if (errorEl) errorEl.style.display = 'none';
+    if (boxManual) boxManual.style.display = 'none';
+    if (infoBar) infoBar.style.display = 'none';
+    if (inputValor) inputValor.value = '';
+    if (txtMsg) txtMsg.value = '';
+
+    const hoje = new Date();
+    if (inputData) {
+      inputData.value = hoje.toLocaleDateString('pt-BR');
+    }
+    if (selectMes) {
+      selectMes.value = state.selectedMes ? String(state.selectedMes) : String(hoje.getMonth() + 1);
+    }
+    if (inputAno) {
+      inputAno.value = state.selectedAno ? String(state.selectedAno) : String(hoje.getFullYear());
+    }
+
+    if (modal) modal.style.display = 'flex';
+    carregarColaboradoresParaModal();
+  }
+
+  async function salvarManualPf() {
+    const errorEl = document.getElementById('manualPfErrorMsg');
+    const btnConfirmar = document.getElementById('btnConfirmarManualPf');
+    const selectTipo = document.getElementById('selectManualPfTipo');
+    const selectColab = document.getElementById('selectManualPfColaborador');
+    const inputNome = document.getElementById('inputManualPfNomeManual');
+    const inputCpf = document.getElementById('inputManualPfCpfManual');
+    const inputCargo = document.getElementById('inputManualPfCargoManual');
+    const inputValor = document.getElementById('inputManualPfValor');
+    const inputData = document.getElementById('inputManualPfDataPagto');
+    const selectMes = document.getElementById('selectManualPfMes');
+    const inputAno = document.getElementById('inputManualPfAno');
+    const txtMsg = document.getElementById('txtManualPfMensagem');
+    const modal = document.getElementById('modalHoleriteManualPf');
+
+    if (errorEl) errorEl.style.display = 'none';
+
+    let nomeFinal = '';
+    let cpfFinal = '';
+    let cargoFinal = 'Prestador de Serviços';
+
+    const colabVal = selectColab ? selectColab.value : '';
+    if (colabVal === '__NOVO__') {
+      nomeFinal = inputNome ? inputNome.value.trim() : '';
+      cpfFinal = inputCpf ? inputCpf.value.trim() : '';
+      cargoFinal = inputCargo && inputCargo.value.trim() ? inputCargo.value.trim() : 'Prestador de Serviços';
+    } else if (colabVal) {
+      const colab = colaboradoresCache.find(c => String(c.id) === String(colabVal));
+      if (colab) {
+        nomeFinal = colab.nome_completo || '';
+        cpfFinal = colab.cpf || '';
+        cargoFinal = colab.cargo || 'Prestador de Serviços';
+      }
+    }
+
+    if (!nomeFinal) {
+      if (errorEl) {
+        errorEl.textContent = 'Por favor, selecione um colaborador da lista ou digite o nome completo.';
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
+
+    const valorStr = inputValor ? inputValor.value.trim() : '';
+    const valorNum = parseNumeroPtBr(valorStr);
+    if (!valorNum || valorNum <= 0) {
+      if (errorEl) {
+        errorEl.textContent = 'Informe um valor válido e superior a zero (Ex: 2.500,00).';
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
+
+    const payload = {
+      funcionario_nome: nomeFinal,
+      funcionario_cpf: cpfFinal,
+      funcionario_cargo: cargoFinal,
+      tipo_documento: selectTipo ? selectTipo.value : 'FOLHA_MENSAL',
+      competencia_mes: selectMes ? parseInt(selectMes.value, 10) : (new Date().getMonth() + 1),
+      competencia_ano: inputAno ? parseInt(inputAno.value, 10) : new Date().getFullYear(),
+      data_pagamento: inputData ? inputData.value.trim() : '',
+      valor: valorNum,
+      mensagem: txtMsg ? txtMsg.value.trim() : ''
+    };
+
+    try {
+      if (btnConfirmar) {
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = '<span>⏳ Gerando...</span>';
+      }
+
+      const res = await fetch('/api/financeiro/holerites/manual', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeader(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Falha ao salvar recibo manual PF.');
+      }
+
+      if (modal) modal.style.display = 'none';
+
+      // Atualiza lista e competências
+      await carregarCompetencias();
+      await carregarHolerites();
+
+      // Abre visualização imediata do recibo gerado
+      if (data.documento && data.documento.id) {
+        visualizarHolerite(data.documento.id);
+      }
+    } catch (err) {
+      console.error('Erro ao salvar manual PF:', err);
+      if (errorEl) {
+        errorEl.textContent = 'Erro: ' + err.message;
+        errorEl.style.display = 'block';
+      }
+    } finally {
+      if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = '<span>🚀 Gerar Recibo PF</span>';
+      }
+    }
+  }
+
   function exportarParaExcel() {
     if (state.holerites.length === 0) {
       alert('Nenhum dado para exportar.');
@@ -1100,7 +1378,9 @@
     abrirEdicaoMensagem,
     toggleSelecionado,
     excluirHolerite,
-    removerArquivoFila
+    removerArquivoFila,
+    abrirModalManualPf,
+    salvarManualPf
   };
 
   // Inicialização no DOMContentLoaded

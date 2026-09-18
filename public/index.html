@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.238">
+  <link rel="stylesheet" href="style.css?v=8.239">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/09/2026 11:00 (Nova tela de Consulta de Contas a Pagar (SE2/SE5/SA2010) na aba Analista Fin com batimento de baixas financeiras vs compensacoes e paginacao multi-empresa)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 18/09/2026 14:29 (Emissão manual de holerites e recibos PF sem registro com layout sem logo e sem CNPJ)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -4317,6 +4317,9 @@
             </div>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button id="btnManualPfHolerite" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 38px; font-weight: 600; border-color: #a855f7; color: #c084fc;" title="Gerar recibo/holerite avulso para pessoa física sem registro">
+              <span>📝 Manual PF</span>
+            </button>
             <button id="btnScrollToUploadHolerite" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; height: 38px; font-weight: 600;">
               <span>📤 Novo Upload</span>
             </button>
@@ -8462,6 +8465,134 @@
         </div>
       </div>
     </div>
+  <!-- MODAL: EMISSÃO MANUAL DE RECIBO / HOLERITE PF (SEM REGISTRO) -->
+  <div id="modalHoleriteManualPf" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
+    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 650px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <!-- Header -->
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8));">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.3rem;">📝</span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-color, #f8fafc);">
+              Emissão Manual PF (Sem Registro)
+            </h3>
+            <span style="font-size: 0.78rem; color: var(--text-muted, #94a3b8);">Recibo avulso limpo, sem logotipo e sem CNPJ corporativo</span>
+          </div>
+        </div>
+        <button type="button" id="btnFecharModalManualPf" class="btn btn-outline btn-sm" style="padding: 2px 8px;">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
+        <!-- Tipo de Documento -->
+        <div class="form-group">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+            📑 Tipo de Documento / Recibo: *
+          </label>
+          <select id="selectManualPfTipo" class="form-control" style="width: 100%; font-size: 0.88rem; padding: 8px 12px; height: 38px;">
+            <option value="13_PRIMEIRA_PARCELA">🎁 13º Salário - 1ª Parcela</option>
+            <option value="13_SEGUNDA_PARCELA">🎁 13º Salário - 2ª Parcela</option>
+            <option value="FOLHA_MENSAL" selected>💵 Recibo de Salário (Folha Mensal)</option>
+            <option value="ADIANTAMENTO">🪙 Recibo de Adiantamento Salarial</option>
+            <option value="FERIAS">🏖️ Recibo de Férias</option>
+            <option value="BONIFICACAO">⭐ Bonificação / Gratificação</option>
+            <option value="RECIBO_AVULSO">📄 Recibo de Pagamento Avulso (Outros)</option>
+          </select>
+        </div>
+
+        <!-- Colaborador / Pessoa -->
+        <div class="form-group">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+            👤 Colaborador / Pessoa Física: *
+          </label>
+          <select id="selectManualPfColaborador" class="form-control" style="width: 100%; font-size: 0.88rem; padding: 8px 12px; height: 38px;">
+            <option value="">Carregando lista de colaboradores...</option>
+          </select>
+          <div id="boxManualPfNomeManual" style="display: none; margin-top: 8px; flex-direction: column; gap: 8px; background: rgba(30, 41, 59, 0.4); padding: 10px; border-radius: 6px; border: 1px dashed var(--panel-border);">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Nome Completo da Pessoa: *</label>
+              <input type="text" id="inputManualPfNomeManual" class="form-control" placeholder="Digite o nome completo..." style="height: 34px; font-size: 0.85rem;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div>
+                <label style="font-size: 0.76rem; color: var(--text-muted); display: block; margin-bottom: 3px;">CPF (opcional):</label>
+                <input type="text" id="inputManualPfCpfManual" class="form-control" placeholder="000.000.000-00" style="height: 34px; font-size: 0.85rem;">
+              </div>
+              <div>
+                <label style="font-size: 0.76rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Função / Cargo (opcional):</label>
+                <input type="text" id="inputManualPfCargoManual" class="form-control" placeholder="Prestador de Serviços" style="height: 34px; font-size: 0.85rem;">
+              </div>
+            </div>
+          </div>
+          <div id="manualPfColabInfoBar" style="display: none; margin-top: 6px; font-size: 0.78rem; padding: 6px 10px; background: rgba(168, 85, 247, 0.1); border-radius: 6px; border: 1px solid rgba(168, 85, 247, 0.25); color: #c084fc;">
+            <!-- Preenchido via JS com chave PIX e detalhes -->
+          </div>
+        </div>
+
+        <!-- Linha Valor e Data -->
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+              💰 Valor Líquido (R$): *
+            </label>
+            <input type="text" id="inputManualPfValor" class="form-control" placeholder="Ex: 2.500,00" style="height: 38px; font-size: 1rem; font-weight: 700; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+              📅 Data de Pagamento:
+            </label>
+            <input type="text" id="inputManualPfDataPagto" class="form-control" placeholder="DD/MM/AAAA" style="height: 38px; font-size: 0.88rem;">
+          </div>
+        </div>
+
+        <!-- Competência (Mês / Ano) -->
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+              🗓️ Mês de Competência: *
+            </label>
+            <select id="selectManualPfMes" class="form-control" style="height: 38px; font-size: 0.88rem;">
+              <option value="1">01 - Janeiro</option>
+              <option value="2">02 - Fevereiro</option>
+              <option value="3">03 - Março</option>
+              <option value="4">04 - Abril</option>
+              <option value="5">05 - Maio</option>
+              <option value="6">06 - Junho</option>
+              <option value="7">07 - Julho</option>
+              <option value="8">08 - Agosto</option>
+              <option value="9">09 - Setembro</option>
+              <option value="10">10 - Outubro</option>
+              <option value="11">11 - Novembro</option>
+              <option value="12">12 - Dezembro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+              Ano: *
+            </label>
+            <input type="number" id="inputManualPfAno" class="form-control" value="2026" style="height: 38px; font-size: 0.88rem;">
+          </div>
+        </div>
+
+        <!-- Mensagem / Observação Opcional -->
+        <div class="form-group">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 5px; color: var(--text-color, #f8fafc);">
+            💬 Observação / Recado (Opcional):
+          </label>
+          <textarea id="txtManualPfMensagem" class="form-control" rows="2" placeholder="Ex: Referente a prestação de serviços técnicos no mês..." style="width: 100%; font-size: 0.85rem; padding: 8px;"></textarea>
+        </div>
+
+        <div id="manualPfErrorMsg" style="display: none; padding: 8px 12px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; color: #f87171; font-size: 0.82rem;"></div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding: 14px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--panel-header-bg, rgba(15, 23, 42, 0.5));">
+        <button type="button" id="btnCancelarManualPf" class="btn btn-outline">Cancelar</button>
+        <button type="button" id="btnConfirmarManualPf" class="btn btn-primary" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+          <span>🚀 Gerar Recibo PF</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL: FORMULÁRIO DE CADASTRO / EDIÇÃO DE COLABORADOR (DP / RH) -->
@@ -8975,23 +9106,23 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.238"></script>
-  <script src="js/bi.js?v=8.238"></script>
-  <script src="js/bi_indices.js?v=8.238"></script>
-  <script src="js/bi_autorizacoes.js?v=8.238"></script>
-  <script src="js/gordura_frete.js?v=8.238"></script>
-  <script src="js/fechamento_vendedores.js?v=8.238"></script>
-  <script type="module" src="js/tarefas.js?v=8.238"></script>
-  <script src="js/holerites.js?v=8.238"></script>
-  <script src="js/funcionarios_dp.js?v=8.238"></script>
-  <script src="js/crm.js?v=8.238"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.238"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.238"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.238"></script>
-  <script src="js/nfse_pendentes.js?v=8.238"></script>
-  <script src="js/fechamento_fiscal.js?v=8.238"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.238"></script>
+  <script src="js/chart.umd.min.js?v=8.239"></script>
+  <script src="js/bi.js?v=8.239"></script>
+  <script src="js/bi_indices.js?v=8.239"></script>
+  <script src="js/bi_autorizacoes.js?v=8.239"></script>
+  <script src="js/gordura_frete.js?v=8.239"></script>
+  <script src="js/fechamento_vendedores.js?v=8.239"></script>
+  <script type="module" src="js/tarefas.js?v=8.239"></script>
+  <script src="js/holerites.js?v=8.239"></script>
+  <script src="js/funcionarios_dp.js?v=8.239"></script>
+  <script src="js/crm.js?v=8.239"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.239"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.239"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.239"></script>
+  <script src="js/nfse_pendentes.js?v=8.239"></script>
+  <script src="js/fechamento_fiscal.js?v=8.239"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.239"></script>
   <script src="js/contas_pagar.js?v=8.238"></script>
-  <script src="app.js?v=8.238"></script>
+  <script src="app.js?v=8.239"></script>
 </body>
 </html>

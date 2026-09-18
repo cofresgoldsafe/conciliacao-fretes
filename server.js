@@ -4485,6 +4485,194 @@ app.delete('/api/financeiro/holerites/:id', requireAuth, async (req, res) => {
   }
 });
 
+// 8. Emissão Manual de Recibo / Holerite PF (Sem Registro)
+function converterNumeroPorExtenso(valor) {
+  const num = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/\./g, '').replace(',', '.'));
+  if (isNaN(num) || num <= 0) return 'Zero reais';
+
+  const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez',
+    'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+  const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+  const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+  function parteExtenso(n) {
+    if (n === 100) return 'cem';
+    const c = Math.floor(n / 100);
+    const d = Math.floor((n % 100) / 10);
+    const u = n % 10;
+    const partes = [];
+    if (c > 0) partes.push(centenas[c]);
+    const du = n % 100;
+    if (du > 0 && du < 20) {
+      partes.push(unidades[du]);
+    } else if (du >= 20) {
+      partes.push(dezenas[d]);
+      if (u > 0) partes.push(unidades[u]);
+    }
+    return partes.join(' e ');
+  }
+
+  const inteiro = Math.floor(num);
+  const centavos = Math.round((num - inteiro) * 100);
+
+  if (inteiro === 0 && centavos === 0) return 'Zero reais';
+
+  const partesTexto = [];
+
+  // Milhões
+  const milhoes = Math.floor(inteiro / 1000000);
+  let resto = inteiro % 1000000;
+  if (milhoes > 0) {
+    const txtM = parteExtenso(milhoes);
+    partesTexto.push(`${txtM} ${milhoes === 1 ? 'milhão' : 'milhões'}`);
+  }
+
+  // Milhares
+  const milhares = Math.floor(resto / 1000);
+  resto = resto % 1000;
+  if (milhares > 0) {
+    const txtK = parteExtenso(milhares);
+    partesTexto.push(milhares === 1 ? 'mil' : `${txtK} mil`);
+  }
+
+  // Centenas / Dezenas / Unidades
+  if (resto > 0) {
+    partesTexto.push(parteExtenso(resto));
+  }
+
+  let textoReais = partesTexto.join(' e ');
+  if (inteiro === 1) textoReais += ' real';
+  else if (inteiro > 1) textoReais += ' reais';
+
+  if (centavos > 0) {
+    const txtCent = parteExtenso(centavos);
+    const rotuloCent = centavos === 1 ? 'centavo' : 'centavos';
+    if (inteiro > 0) {
+      textoReais += ` e ${txtCent} ${rotuloCent}`;
+    } else {
+      textoReais = `${txtCent} ${rotuloCent}`;
+    }
+  }
+
+  return textoReais ? textoReais.charAt(0).toUpperCase() + textoReais.slice(1) : 'Zero reais';
+}
+
+app.post('/api/financeiro/holerites/manual', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const {
+      funcionario_nome,
+      funcionario_cpf,
+      funcionario_cargo,
+      tipo_documento,
+      competencia_mes,
+      competencia_ano,
+      data_pagamento,
+      valor,
+      mensagem
+    } = req.body || {};
+
+    if (!funcionario_nome || !String(funcionario_nome).trim()) {
+      return res.status(400).json({ success: false, error: 'O nome do colaborador é obrigatório.' });
+    }
+
+    const valorNum = typeof valor === 'number' ? valor : parseFloat(String(valor || '').replace(/\./g, '').replace(',', '.'));
+    if (isNaN(valorNum) || valorNum <= 0) {
+      return res.status(400).json({ success: false, error: 'Informe um valor válido e superior a zero.' });
+    }
+
+    const tipoDoc = tipo_documento || 'FOLHA_MENSAL';
+    const tiposLabels = {
+      '13_PRIMEIRA_PARCELA': '13º Salário - 1ª Parcela',
+      '13_SEGUNDA_PARCELA': '13º Salário - 2ª Parcela',
+      'FOLHA_MENSAL': 'Recibo de Salário Mensal',
+      'ADIANTAMENTO': 'Recibo de Adiantamento Salarial',
+      'FERIAS': 'Recibo de Férias',
+      'BONIFICACAO': 'Bonificação / Gratificação',
+      'RECIBO_AVULSO': 'Recibo de Pagamento Avulso'
+    };
+    const tipoLabel = tiposLabels[tipoDoc] || 'Recibo de Pagamento';
+
+    const hoje = new Date();
+    const mesNum = parseInt(competencia_mes, 10) || (hoje.getMonth() + 1);
+    const anoNum = parseInt(competencia_ano, 10) || hoje.getFullYear();
+
+    const mesesNomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const compFormatada = `${mesesNomes[mesNum] || mesNum} de ${anoNum}`;
+
+    const extenso = converterNumeroPorExtenso(valorNum);
+
+    const docNovo = {
+      empresa: 'SEM_REGISTRO',
+      empresa_razao_social: '',
+      empresa_cnpj: '',
+      tipo_documento: tipoDoc,
+      tipo_documento_label: tipoLabel,
+      competencia_mes: mesNum,
+      competencia_ano: anoNum,
+      competencia_formatada: compFormatada,
+      data_pagamento: data_pagamento || hoje.toLocaleDateString('pt-BR'),
+      funcionario_codigo: 'SEM_REG',
+      funcionario_nome: String(funcionario_nome).trim().toUpperCase(),
+      funcionario_cpf: funcionario_cpf ? String(funcionario_cpf).trim() : '',
+      funcionario_cargo: funcionario_cargo ? String(funcionario_cargo).trim() : 'Prestador de Serviços',
+      funcionario_tipo_contrato: 'Sem Registro',
+      salario_base: valorNum,
+      sal_contr_inss: 0.0,
+      base_calc_fgts: 0.0,
+      fgts_mes: 0.0,
+      base_calc_irrf: 0.0,
+      faixa_irrf: 0.0,
+      total_vencimentos: valorNum,
+      total_descontos: 0.0,
+      valor_liquido: valorNum,
+      valor_liquido_extenso: extenso,
+      eventos: [
+        {
+          codigo: '001',
+          descricao: tipoLabel,
+          referencia: '1,00',
+          vencimento: valorNum,
+          desconto: 0.0
+        }
+      ],
+      mensagem_contabilidade: '',
+      mensagem_personalizada: mensagem ? String(mensagem).trim() : '',
+      origem_arquivo_nome: 'Emissão Manual PF',
+      origem_arquivo_tipo: 'MANUAL_PF',
+      origem_pagina: 1,
+      status: 'ATIVO'
+    };
+
+    const salvos = await salvarHoleritesDB([docNovo], user ? user.username : 'sistema');
+    const docSalvo = (salvos && salvos.length > 0) ? salvos[0] : docNovo;
+
+    // Log de auditoria
+    logUserActivity({
+      username: user ? user.username : 'sistema',
+      userName: user ? user.name : 'Sistema',
+      actionType: 'EMISSAO_MANUAL_PF',
+      description: `Emitiu recibo manual PF (${tipoLabel}) para ${docNovo.funcionario_nome} no valor de R$ ${valorNum.toFixed(2)}.`,
+      ip: req.ip,
+      metadata: {
+        funcionario: docNovo.funcionario_nome,
+        tipo: tipoDoc,
+        valor: valorNum,
+        competencia: `${mesNum}/${anoNum}`
+      }
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: 'Recibo manual PF gerado com sucesso.',
+      documento: docSalvo
+    });
+  } catch (err) {
+    console.error('Erro na emissão manual de holerite PF:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ============================================================================
 // MÓDULO DE CADASTRO GERAL DE FUNCIONÁRIOS / COLABORADORES (DP / RH)
 // ============================================================================
