@@ -277,6 +277,11 @@
     if (selectColabManualPf) {
       selectColabManualPf.addEventListener('change', handleColaboradorSelectChange);
     }
+    if (modalManualPf) {
+      modalManualPf.addEventListener('click', (e) => {
+        if (e.target === modalManualPf) modalManualPf.style.display = 'none';
+      });
+    }
   }
 
   // --- CONTROLE DE ARQUIVOS E UPLOAD ---
