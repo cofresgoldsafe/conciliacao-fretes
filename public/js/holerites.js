@@ -229,7 +229,29 @@
     const btnImprimirPreview = document.getElementById('btnImprimirModalHolerite');
     if (btnImprimirPreview) {
       btnImprimirPreview.addEventListener('click', () => {
-        window.print();
+        if (typeof document !== 'undefined' && document.body && document.body.classList) {
+          document.body.classList.add('imprimindo-holerite');
+        }
+        if (typeof window !== 'undefined' && typeof window.print === 'function') {
+          window.print();
+        }
+      });
+    }
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('beforeprint', () => {
+        const modalPreview = document.getElementById('modalHoleritePreview');
+        if (modalPreview && modalPreview.style.display !== 'none') {
+          if (document.body && document.body.classList) {
+            document.body.classList.add('imprimindo-holerite');
+          }
+        }
+      });
+
+      window.addEventListener('afterprint', () => {
+        if (document.body && document.body.classList) {
+          document.body.classList.remove('imprimindo-holerite');
+        }
       });
     }
 
@@ -1073,9 +1095,14 @@
       const allHtml = selecionados.map(d => gerarHoleriteHtml(d)).join('');
       container.innerHTML = allHtml;
       modal.style.display = 'flex';
+      if (typeof document !== 'undefined' && document.body && document.body.classList) {
+        document.body.classList.add('imprimindo-holerite');
+      }
       // Aciona o diálogo nativo de impressão
       setTimeout(() => {
-        window.print();
+        if (typeof window !== 'undefined' && typeof window.print === 'function') {
+          window.print();
+        }
       }, 300);
     }
   }

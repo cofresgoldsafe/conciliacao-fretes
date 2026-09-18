@@ -1916,7 +1916,16 @@ body {
   }
   #modalDetalhesAnaliseCredito,
   #modalDetalhesAnaliseCredito * {
-    visibility: visible;
+    visibility: visible !important;
+  }
+  #modalDetalhesAnaliseCredito.hidden,
+  #modalDetalhesAnaliseCredito[style*="display: none"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  body:has(#modalDetalhesAnaliseCredito:not([style*="display: none"]):not(.hidden)) > header,
+  body:has(#modalDetalhesAnaliseCredito:not([style*="display: none"]):not(.hidden)) > main {
+    display: none !important;
   }
   #modalDetalhesAnaliseCredito {
     position: absolute;
@@ -3868,31 +3877,30 @@ body {
   }
 
   /* Exibe exclusivamente a área de impressão de holerites */
+  #modalHoleritePreview,
+  #modalHoleritePreview *,
   #holeriteDocumentoContainer,
   #holeriteDocumentoContainer * {
-    visibility: visible;
-  }
-
-  #holeriteDocumentoContainer {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
+    visibility: visible !important;
   }
 
   .holerite-folha-a4 {
     box-shadow: none !important;
     border: none !important;
-    padding: 10mm 12mm !important;
-    margin: 0 !important;
+    padding: 6mm 10mm !important;
+    margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
     page-break-after: always !important;
     break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-sizing: border-box !important;
+  }
+
+  .holerite-folha-a4:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
 
   .holerite-canhoto-linhas {
@@ -3918,13 +3926,79 @@ body {
     color: #000000 !important;
   }
 
+  #modalHoleritePreview {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    display: block !important;
+    z-index: 99999 !important;
+    overflow: visible !important;
+  }
+
+  #modalHoleritePreview .modal-content {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #modalHoleritePreview .modal-header-tools,
+  #modalHoleritePreview .no-print,
   .no-print {
     display: none !important;
+    visibility: hidden !important;
+  }
+
+  #modalHoleritePreview .modal-body-scroll {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    border: none !important;
+  }
+
+  #holeriteDocumentoContainer {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    border: none !important;
   }
 
   @page {
     size: A4 portrait;
     margin: 8mm;
+  }
+
+  /* Oculta layout base quando o modal de holerites estiver ativo para evitar páginas de fundo */
+  body.imprimindo-holerite > header,
+  body.imprimindo-holerite > main,
+  body:has(#modalHoleritePreview:not([style*="display: none"]):not(.hidden)) > header,
+  body:has(#modalHoleritePreview:not([style*="display: none"]):not(.hidden)) > main {
+    display: none !important;
+  }
+
+  #modalHoleritePreview[style*="display: none"],
+  #modalHoleritePreview.hidden {
+    display: none !important;
+    visibility: hidden !important;
   }
 }
 
@@ -5315,10 +5389,19 @@ body.theme-light .crm-bloco-titulo-cinza {
     margin: 5mm;
   }
   body * {
-    visibility: hidden !important;
+    visibility: hidden;
   }
   #danfeModal, #danfeModal * {
     visibility: visible !important;
+  }
+  #danfeModal.hidden,
+  #danfeModal[style*="display: none"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  body:has(#danfeModal:not([style*="display: none"]):not(.hidden)) > header,
+  body:has(#danfeModal:not([style*="display: none"]):not(.hidden)) > main {
+    display: none !important;
   }
   #danfeModal {
     position: absolute !important;

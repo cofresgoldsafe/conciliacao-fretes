@@ -53,6 +53,7 @@
 ## 6. Testes Automatizados Vinculados
 - Execução de testes de regressão:
 ```bash
+node test_holerites_impressao.js
 node test_holerite_manual_pf.js
 node test_holerites_visual_signature.js
 node test_holerites_api.js
@@ -62,5 +63,6 @@ node test_funcionarios_dp.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.240 (18/09/2026):** Correção crítica de impressão e geração de PDF de holerites individuais e em lote (`#modalHoleritePreview`, `#btnImprimirModalHolerite`, `#btnImprimirLoteHolerites`). Resolução do conflito de `@media print` (remoção do `body * { visibility: hidden !important; }` do DANFE que ofuscava outros modais), reset posicional absoluto e desativação de scrollbars/backgrounds no modal de pré-visualização, encaixe estrito em exatamente 1 página A4 com `.holerite-folha-a4:last-child { page-break-after: auto; }` eliminando a segunda página em branco e paginação 1:1 perfeita em lotes (4 testes aprovados em `test_holerites_impressao.js`).
 - **v8.239 (18/09/2026):** Botão `📝 Manual PF` e modal `#modalHoleriteManualPf` para emissão de recibos avulsos para pessoas físicas sem registro (13º 1ª parcela, 13º 2ª parcela, Salário, Adiantamento, Férias, etc.) sem logo e sem CNPJ corporativo, com conversão de valor por extenso e integração com a base de colaboradores (4 testes aprovados em `test_holerite_manual_pf.js`).
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.

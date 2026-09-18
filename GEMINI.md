@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.239 (Homologada em 18/09/2026 14:30)  
+> **Versão da Documentação:** v8.240 (Homologada em 18/09/2026 15:32)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 18/09/2026 14:30 (v8.239 - Emissão Manual PF de Holerites/Recibos sem logotipo e sem CNPJ)  
+> **Data da Última Auditoria:** 18/09/2026 15:32 (v8.240 - Correção de Impressão e PDF de Holerites/Recibos)  
 
 ---
 
@@ -173,6 +173,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.240 (18/09/2026):** Correção de impressão e exportação em PDF de holerites/recibos (`#modalHoleritePreview`, `#btnImprimirModalHolerite`), eliminando a tela em branco e a 2ª página vazia através de isolamento `@media print`, eliminação de `break-after` órfão no último item e visibilidade ativa com suporte a lotes (4 testes aprovados em `test_holerites_impressao.js` — detalhado em [holerites_dp.md](docs/telas/07_analista_fin/holerites_dp.md)).
 - **v8.239 (18/09/2026):** Emissão Manual PF na tela Holerites DP (`#btnManualPfHolerite`, `#modalHoleriteManualPf`) para colaboradores sem registro (13º 1ª e 2ª parc, salário, adiantamento, férias, etc.), gerando recibos limpos sem logos corporativos e sem CNPJ, com valor por extenso, quitação formal e integração à base de colaboradores (4 novos testes e 25 da suíte holerites aprovados — detalhado em [holerites_dp.md](docs/telas/07_analista_fin/holerites_dp.md)).
 - **v8.238 (18/09/2026):** Nova tela de Consulta de Contas a Pagar com acesso duplo em Assist. Financ. e Analista Fin (`#tab-contas-pagar`) sobre SE2140/150/160, batimento de baixas financeiras (SE5 com banco) vs compensações de carteira (PA/CMP/DEV), paginação no servidor, KPIs e modal de histórico detalhado (13 testes aprovados em `test_contas_pagar.js` — detalhado em [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md)).
 - **v8.237 (18/09/2026):** Unificação de autenticação Cron externa (GitHub Actions / Webhooks) via validador de tempo constante (`validarSegredoCron` com `crypto.timingSafeEqual`) e fallback automático para o segredo canônico compartilhado (`CANONICAL_CRON_SECRET`), eliminando o erro HTTP 403 no agendamento do job `sync-nfe-central` e no fechamento mensal mesmo sem a variável `CRON_SECRET` configurada no Render (14 testes aprovados em `test_cron_fechamento.js` — detalhado em [fechamento_fiscal.md](docs/telas/07_analista_fin/fechamento_fiscal.md)).
