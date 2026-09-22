@@ -6292,6 +6292,101 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_consultantes_fomento', serasa.consultantes_fomento);
         setVal('cr_documentos_extraviados', serasa.documentos_extraviados);
 
+        // Renderiza o card de sócios extraídos do Serasa e habilita checagem Bolsa Família
+        const sociosCard = document.getElementById('serasaSociosCard');
+        const sociosList = document.getElementById('serasaSociosList');
+        const badgeQtdSocios = document.getElementById('badgeQtdSocios');
+        const btnConsultarBolsa = document.getElementById('btnConsultarBolsaFamilia');
+
+        if (sociosCard && sociosList) {
+          const socios = Array.isArray(serasa.quadro_societario) ? serasa.quadro_societario : [];
+          if (socios.length > 0 || serasa.is_empresa_publica) {
+            sociosCard.classList.remove('hidden');
+            if (badgeQtdSocios) {
+              badgeQtdSocios.textContent = serasa.is_empresa_publica ? 'Empresa Pública / Isenta' : `${socios.length} sócio(s)/adm`;
+            }
+
+            if (serasa.is_empresa_publica) {
+              sociosList.innerHTML = `<div style="padding:4px 8px; border-radius:4px; background:rgba(56, 189, 248, 0.1); color:#38bdf8;">🏛️ <strong>Empresa Pública / Sociedade de Economia Mista:</strong> Isenta de verificação de sócios e Bolsa Família.</div>`;
+              setVal('cr_socio_bolsa_familia', 'ISENTO');
+              if (btnConsultarBolsa) btnConsultarBolsa.style.display = 'none';
+            } else if (socios.length === 0) {
+              sociosList.innerHTML = `<div style="padding:4px 8px; border-radius:4px; background:rgba(255, 255, 255, 0.05); color:#94a3b8;">Nenhum sócio PF identificado no laudo Serasa.</div>`;
+              setVal('cr_socio_bolsa_familia', 'ISENTO');
+            } else {
+              sociosList.innerHTML = socios.map(s => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; border-radius:4px; background:rgba(255, 255, 255, 0.03); border:1px solid rgba(255,255,255,0.06);">
+                  <div>
+                    <strong>${escapeHtml(s.nome)}</strong> 
+                    <span style="font-size:0.75rem; color:#94a3b8;">(${escapeHtml(s.cargo || 'SÓCIO')} - ${escapeHtml(s.documento)})</span>
+                  </div>
+                  <div id="status_socio_${s.documento.replace(/\D/g, '')}">
+                    <span class="badge" style="background:rgba(148, 163, 184, 0.15); color:#94a3b8; font-size:0.7rem;">Aguardando Checagem</span>
+                  </div>
+                </div>
+              `).join('');
+
+              if (btnConsultarBolsa) {
+                btnConsultarBolsa.style.display = 'inline-flex';
+                btnConsultarBolsa.onclick = async () => {
+                  try {
+                    btnConsultarBolsa.disabled = true;
+                    btnConsultarBolsa.textContent = '⏳ Consultando InfoSimples...';
+                    const resBolsa = await fetch('/api/financeiro/analise-credito/consultar-bolsa-familia', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ cpfs: socios })
+                    });
+                    const dataBolsa = await resBolsa.json();
+                    if (dataBolsa.success) {
+                      const badgeBolsa = document.getElementById('cr_bolsa_familia_badge');
+                      if (dataBolsa.alertaLaranja) {
+                        setVal('cr_socio_bolsa_familia', 'S');
+                        if (badgeBolsa) {
+                          badgeBolsa.style.display = 'block';
+                          badgeBolsa.style.background = 'rgba(239, 68, 68, 0.2)';
+                          badgeBolsa.style.border = '1px solid #ef4444';
+                          badgeBolsa.style.color = '#ef4444';
+                          badgeBolsa.innerHTML = `🚨 <strong>ALERTA DE SÓCIO LARANJA:</strong> Sócio <strong>${escapeHtml(dataBolsa.socioLaranjaNome)}</strong> é beneficiário ativo/recente do Bolsa Família!`;
+                        }
+                      } else {
+                        setVal('cr_socio_bolsa_familia', 'N');
+                        if (badgeBolsa) {
+                          badgeBolsa.style.display = 'block';
+                          badgeBolsa.style.background = 'rgba(34, 197, 94, 0.15)';
+                          badgeBolsa.style.border = '1px solid #22c55e';
+                          badgeBolsa.style.color = '#22c55e';
+                          badgeBolsa.innerHTML = `✓ <strong>InfoSimples Bolsa Família:</strong> Nada consta para os sócios consultados.`;
+                        }
+                      }
+                      (dataBolsa.resultados || []).forEach(r => {
+                        const el = document.getElementById(`status_socio_${r.cpf}`);
+                        if (el) {
+                          if (r.recebeu_recente) {
+                            el.innerHTML = `<span class="badge" style="background:rgba(239,68,68,0.2); color:#ef4444; font-size:0.7rem; font-weight:700;">🚨 Beneficiário (${r.ultima_parcela})</span>`;
+                          } else if (r.status === 'BENEFICIARIO_ANTIGO') {
+                            el.innerHTML = `<span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; font-size:0.7rem;">Antigo (> 2 anos)</span>`;
+                          } else {
+                            el.innerHTML = `<span class="badge" style="background:rgba(34,197,94,0.2); color:#22c55e; font-size:0.7rem;">✓ Nada Consta</span>`;
+                          }
+                        }
+                      });
+                      atualizarScoreEmTempoReal();
+                    } else {
+                      alert('Erro ao consultar Bolsa Família: ' + dataBolsa.error);
+                    }
+                  } catch (errBolsa) {
+                    alert('Falha na comunicação com a API InfoSimples: ' + errBolsa.message);
+                  } finally {
+                    btnConsultarBolsa.disabled = false;
+                    btnConsultarBolsa.textContent = '⚡ Checar Bolsa Família (InfoSimples)';
+                  }
+                };
+              }
+            }
+          }
+        }
+
         // Se houver dados cadastrais no Serasa, usa como apoio
         if (serasa.fundacao && !document.getElementById('cr_fundacao_matriz').value) {
           setVal('cr_fundacao_matriz', serasa.fundacao);
@@ -6481,6 +6576,14 @@ document.addEventListener('DOMContentLoaded', () => {
             capInput.placeholder = 'Não informado / Isento';
             capInput.value = '';
           }
+        }
+
+        // Inscrição Estadual (Protheus SA1) e Empresa Pública
+        if (data.inscricao_estadual) {
+          setVal('cr_inscricao_estadual', data.inscricao_estadual);
+        }
+        if (data.is_empresa_publica) {
+          setVal('cr_socio_bolsa_familia', 'ISENTO');
         }
 
         // Comparação de Endereço Protheus vs Receita Federal (Sem assumir default falso se API falhar)
@@ -7008,6 +7111,8 @@ document.addEventListener('DOMContentLoaded', () => {
       pgfn_executado: getVal('cr_pgfn_executado') === 'true',
       alteracao_recente_socios: getVal('cr_alteracao_recente_socios') || 'N',
       aumento_expressivo_capital: getVal('cr_aumento_expressivo_capital') || 'N',
+      socio_bolsa_familia: getVal('cr_socio_bolsa_familia') || 'N',
+      inscricao_estadual: getVal('cr_inscricao_estadual') || 'ATIVA',
       obs: getVal('cr_obs'),
       decisao_final: getVal('cr_decisao_final')
     };
@@ -7218,6 +7323,26 @@ document.addEventListener('DOMContentLoaded', () => {
     pontos.alteracao_recente_socios = dados.alteracao_recente_socios === 'S' ? getCfg('peso_alteracao_recente_socios_sim', -8) : 0;
     pontos.aumento_expressivo_capital = dados.aumento_expressivo_capital === 'S' ? getCfg('peso_aumento_expressivo_capital_sim', -20) : 0;
 
+    // Sócio Bolsa Família (Alerta de Laranja)
+    if (dados.socio_bolsa_familia === 'S') {
+      pontos.socio_bolsa_familia = getCfg('peso_socio_bolsa_familia_sim', -25.0);
+    } else if (dados.socio_bolsa_familia === 'ISENTO') {
+      pontos.socio_bolsa_familia = getCfg('peso_socio_bolsa_familia_isento', 0.0);
+    } else {
+      pontos.socio_bolsa_familia = getCfg('peso_socio_bolsa_familia_nao', 0.0);
+    }
+
+    // Inscrição Estadual (Fiscal / Sintegra)
+    if (dados.inscricao_estadual === 'ATIVA') {
+      pontos.inscricao_estadual = getCfg('peso_ie_ativa', 2.0);
+    } else if (dados.inscricao_estadual === 'INAPTA') {
+      pontos.inscricao_estadual = getCfg('peso_ie_inapta', -15.0);
+    } else if (dados.inscricao_estadual === 'ISENTO') {
+      pontos.inscricao_estadual = getCfg('peso_ie_isento', 0.0);
+    } else {
+      pontos.inscricao_estadual = getCfg('peso_ie_nao_informada', 0.0);
+    }
+
     // Dívida Ativa da União (PGFN / Receita Federal via InfoSimples) - Fail-Neutral
     const dividaPgfn = (dados.pgfn_total_divida !== undefined && dados.pgfn_total_divida !== null && dados.pgfn_total_divida !== '') ? Number(dados.pgfn_total_divida) : null;
     if (dividaPgfn === null || dados.pgfn_executado === false) {
@@ -7234,7 +7359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const totalScore = Object.values(pontos).reduce((acc, p) => acc + (typeof p === 'number' ? p : 0), 0);
 
-    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0) + (pontos.alteracao_recente_socios || 0) + (pontos.aumento_expressivo_capital || 0);
+    const subGolpe = (pontos.email_corporativo || 0) + (pontos.possui_site || 0) + (pontos.mail_gratuito || 0) + (pontos.existe_mail_financeiro || 0) + (pontos.idade_dominio || 0) + (pontos.registro_br || 0) + (pontos.alteracao_recente_socios || 0) + (pontos.aumento_expressivo_capital || 0) + (pontos.socio_bolsa_familia || 0);
     const subEmpresinha = (pontos.idade_empresa || 0) + (pontos.score_serasa || 0) + (pontos.capital_social || 0) + (pontos.fgts_regular || 0) + (pontos.razao_fgts_igual || 0) + (pontos.protestos || 0) + (pontos.pfin || 0) + (pontos.ch_sem_fundo || 0) + (pontos.pgfn_divida_ativa || 0);
 
     let risco = 'MÉDIO RISCO';
@@ -7278,6 +7403,8 @@ document.addEventListener('DOMContentLoaded', () => {
       : (dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A');
 
     const sugestoesLista = [];
+    if (pontos.socio_bolsa_familia < 0) sugestoesLista.push('ALERTA VERMELHO: SÓCIO BENEFICIÁRIO DO BOLSA FAMÍLIA (SUSPEITA DE LARANJA)');
+    if (pontos.inscricao_estadual < 0) sugestoesLista.push('INSCRIÇÃO ESTADUAL INAPTA OU CASSADA NO FISCO');
     if (alertaContratoEntrega !== 'N/A') sugestoesLista.push('SOLIC CONTRATO DE ENTREGA');
     if (alertaPedCompra !== 'N/A') sugestoesLista.push('SOLICITAR PED COMPRA');
     if (alertaPerigoGolpe !== 'N/A') sugestoesLista.push('PERIGO CHECAGEM REVERSA');
@@ -7750,6 +7877,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { cat: '1. Limites & Identificação', nome: 'Endereço Cadastro = Receita', val: item.cadastro_igual_receita === 'S' ? 'Sim' : (item.cadastro_igual_receita === 'N' ? 'Não' : '-'), pts: pts.cadastro_igual_receita },
       { cat: '1. Limites & Identificação', nome: 'Casa / Sala no Endereço', val: item.casa_sala_conj_end === 'S' ? 'Sim' : (item.casa_sala_conj_end === 'N' ? 'Não' : '-'), pts: pts.casa_sala_conj },
       { cat: '1. Limites & Identificação', nome: 'Fundação Matriz (Idade Empresa)', val: item.fundacao_matriz || '-', pts: pts.idade_empresa },
+      { cat: '1. Limites & Identificação', nome: 'Inscrição Estadual (Sintegra/Fisco)', val: item.inscricao_estadual === 'ATIVA' ? 'Ativa (+2)' : (item.inscricao_estadual === 'INAPTA' ? 'Inapta (-15)' : (item.inscricao_estadual === 'ISENTO' ? 'Isento / Não-contribuinte (0)' : 'Não informada (0)')), pts: pts.inscricao_estadual },
       { cat: '1. Limites & Identificação', nome: 'Capital Social Integralizado', val: capSocialFormatado, pts: pts.capital_social },
       { cat: '1. Limites & Identificação', nome: 'Empresa Grande / Notória', val: item.empresa_grande_conhecida === 'S' ? 'Sim' : (item.empresa_grande_conhecida === 'N' ? 'Não' : '-'), pts: pts.empresa_grande_conhecida },
 
@@ -7797,7 +7925,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pts: pts.pgfn_divida_ativa 
       },
       { cat: '6. FGTS, Sócios & Certidões', nome: 'Alteração Recente de Sócios', val: item.alteracao_recente_socios === 'S' ? 'Sim (Alterado)' : 'Não', pts: pts.alteracao_recente_socios },
-      { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital }
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Aumento Expressivo de Capital', val: item.aumento_expressivo_capital === 'S' ? 'Sim (Aumento)' : 'Não', pts: pts.aumento_expressivo_capital },
+      { cat: '6. FGTS, Sócios & Certidões', nome: 'Sócio Bolsa Família (Antifraude)', val: (item.socio_bolsa_familia === 'S' || item.socio_bolsa_familia === 'SIM') ? 'Sim (Alerta Laranja -25)' : (item.socio_bolsa_familia === 'ISENTO' ? 'Isento / Empresa Pública (0)' : 'Não (0)'), pts: pts.socio_bolsa_familia }
     ];
 
     let totalGanhos = 0;
@@ -8121,6 +8250,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setVal('cr_razao_fgts_igual', item.razao_fgts_igual !== undefined ? item.razao_fgts_igual : '');
         setVal('cr_alteracao_recente_socios', item.alteracao_recente_socios !== undefined ? item.alteracao_recente_socios : 'N');
         setVal('cr_aumento_expressivo_capital', item.aumento_expressivo_capital !== undefined ? item.aumento_expressivo_capital : 'N');
+        setVal('cr_socio_bolsa_familia', item.socio_bolsa_familia || 'N');
+        setVal('cr_inscricao_estadual', item.inscricao_estadual || 'ATIVA');
         setVal('cr_obs', item.obs || '');
         setVal('cr_decisao_final', item.decisao_final || 'Decisão (atenção ao gravar)');
 
@@ -8278,6 +8409,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setOptionText('cr_aumento_expressivo_capital', 'N', () => `Não (0 pts)`);
     setOptionText('cr_aumento_expressivo_capital', 'S', () => `Sim (${fmtPts(getCfg('peso_aumento_expressivo_capital_sim', -20))})`);
+
+    // Sócio Bolsa Família (Bloco 6)
+    setOptionText('cr_socio_bolsa_familia', 'N', () => `Não Consta / Regular (${fmtPts(getCfg('peso_socio_bolsa_familia_nao', 0))})`);
+    setOptionText('cr_socio_bolsa_familia', 'S', () => `Sim - Beneficiário Recente (${fmtPts(getCfg('peso_socio_bolsa_familia_sim', -25))} / Laranja)`);
+    setOptionText('cr_socio_bolsa_familia', 'ISENTO', () => `Isento / Pública / Sem Sócios PF (${fmtPts(getCfg('peso_socio_bolsa_familia_isento', 0))})`);
+
+    // Inscrição Estadual (Bloco 1)
+    setOptionText('cr_inscricao_estadual', 'ATIVA', () => `Ativa / Regular (${fmtPts(getCfg('peso_ie_ativa', 2))})`);
+    setOptionText('cr_inscricao_estadual', 'INAPTA', () => `Inapta / Cassada (${fmtPts(getCfg('peso_ie_inapta', -15))})`);
+    setOptionText('cr_inscricao_estadual', 'ISENTO', () => `Isenta / Não Contribuinte (${fmtPts(getCfg('peso_ie_isento', 0))})`);
+    setOptionText('cr_inscricao_estadual', 'NAO_INFORMADA', () => `Não Verificada (${fmtPts(getCfg('peso_ie_nao_informada', 0))})`);
   }
 
   // Carregar Configurações do Score

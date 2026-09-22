@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.244">
+  <link rel="stylesheet" href="style.css?v=8.246">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 22/09/2026 13:44 (tratamento de codigo 620 e fallback automatico de matriz no fgts caixa)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 22/09/2026 16:23 (Extracao de socios Serasa, antifraude Bolsa Familia InfoSimples e Inscricao Estadual isenta)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -3386,6 +3386,22 @@
                 <label for="cfg_peso_pgfn_gt_capital">Dívida Ativa PGFN &gt; Capital Social (-pts)</label>
                 <input type="number" id="cfg_peso_pgfn_gt_capital" class="form-input" value="-20" />
               </div>
+              <div class="form-group">
+                <label for="cfg_peso_socio_bolsa_familia_sim">Sócio c/ Bolsa Família Recente (-pts)</label>
+                <input type="number" id="cfg_peso_socio_bolsa_familia_sim" class="form-input" value="-25" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_ie_ativa">Inscrição Estadual Ativa (+pts)</label>
+                <input type="number" id="cfg_peso_ie_ativa" class="form-input" value="2" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_ie_inapta">IE Inapta / Cassada (-pts)</label>
+                <input type="number" id="cfg_peso_ie_inapta" class="form-input" value="-15" />
+              </div>
+              <div class="form-group">
+                <label for="cfg_peso_ie_isento">IE Isenta / Prestador (pts)</label>
+                <input type="number" id="cfg_peso_ie_isento" class="form-input" value="0" />
+              </div>
             </div>
           </div>
 
@@ -3648,6 +3664,22 @@
           <div id="serasaPdfStatusAlert" class="alert-info-box hidden" style="padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.84rem; line-height: 1.4;">
             <!-- Conteúdo injetado dinamicamente via JS -->
           </div>
+
+          <!-- Card de Quadro Societário e Antifraude InfoSimples (Injetado após upload do Serasa) -->
+          <div id="serasaSociosCard" class="hidden" style="margin-top: 0.85rem; padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.6rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 0.9rem; font-weight: 700; color: #38bdf8;">👥 Quadro Societário Identificado</span>
+                <span id="badgeQtdSocios" class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">0 sócio(s)</span>
+              </div>
+              <button type="button" id="btnConsultarBolsaFamilia" class="btn btn-outline btn-sm" style="border-color: #f59e0b; color: #f59e0b; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;" title="Consultar Bolsa Família dos sócios na InfoSimples para prevenção a sócios laranjas">
+                ⚡ Checar Bolsa Família (InfoSimples)
+              </button>
+            </div>
+            <div id="serasaSociosList" style="font-size: 0.82rem; display: flex; flex-direction: column; gap: 0.35rem;">
+              <!-- Linhas de sócios injetadas via JS -->
+            </div>
+          </div>
         </div>
 
         <!-- Barra de Consulta Protheus (Passo 2) -->
@@ -3870,6 +3902,15 @@
                   </label>
                 </div>
                 <input type="text" id="cr_capital_social" class="form-input" placeholder="0,00" />
+              </div>
+              <div class="form-group">
+                <label>Inscrição Estadual (IE)</label>
+                <select id="cr_inscricao_estadual" class="form-select">
+                  <option value="ATIVA" selected>Ativa / Regular (+2 pts)</option>
+                  <option value="INAPTA">Inapta / Cassada (-15 pts)</option>
+                  <option value="ISENTO">Isenta / Não Contribuinte (0 pts)</option>
+                  <option value="NAO_INFORMADA">Não Verificada (0 pts)</option>
+                </select>
               </div>
             </div>
           </div>
@@ -4150,11 +4191,22 @@
             <div id="cr_fgts_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 0.75rem;"></div>
 
             <!-- Badge de Status Automático da Dívida Ativa PGFN -->
-            <div id="cr_pgfn_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 1rem;"></div>
+            <div id="cr_pgfn_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 0.75rem;"></div>
+            
+            <!-- Badge de Status Automático de Sócios / Bolsa Família -->
+            <div id="cr_bolsa_familia_badge" style="display: none; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.82rem; margin-bottom: 1rem;"></div>
             <input type="hidden" id="cr_pgfn_total_divida" value="" />
             <input type="hidden" id="cr_pgfn_executado" value="" />
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+              <div class="form-group">
+                <label>Sócio c/ Bolsa Família?</label>
+                <select id="cr_socio_bolsa_familia" class="form-select">
+                  <option value="N" selected>Não Consta / Regular (0 pts)</option>
+                  <option value="S">Sim - Beneficiário Recente (-25 pts / Laranja)</option>
+                  <option value="ISENTO">Isento / Pública / Sem Sócios PF (0 pts)</option>
+                </select>
+              </div>
               <div class="form-group">
                 <label>FGTS Regular?</label>
                 <select id="cr_fgts_situacao_regular" class="form-select" required>
@@ -9108,23 +9160,23 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.244"></script>
-  <script src="js/bi.js?v=8.244"></script>
-  <script src="js/bi_indices.js?v=8.244"></script>
-  <script src="js/bi_autorizacoes.js?v=8.244"></script>
-  <script src="js/gordura_frete.js?v=8.244"></script>
-  <script src="js/fechamento_vendedores.js?v=8.244"></script>
-  <script type="module" src="js/tarefas.js?v=8.244"></script>
-  <script src="js/holerites.js?v=8.244"></script>
-  <script src="js/funcionarios_dp.js?v=8.244"></script>
-  <script src="js/crm.js?v=8.244"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.244"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.244"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.244"></script>
-  <script src="js/nfse_pendentes.js?v=8.244"></script>
-  <script src="js/fechamento_fiscal.js?v=8.244"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.244"></script>
+  <script src="js/chart.umd.min.js?v=8.246"></script>
+  <script src="js/bi.js?v=8.246"></script>
+  <script src="js/bi_indices.js?v=8.246"></script>
+  <script src="js/bi_autorizacoes.js?v=8.246"></script>
+  <script src="js/gordura_frete.js?v=8.246"></script>
+  <script src="js/fechamento_vendedores.js?v=8.246"></script>
+  <script type="module" src="js/tarefas.js?v=8.246"></script>
+  <script src="js/holerites.js?v=8.246"></script>
+  <script src="js/funcionarios_dp.js?v=8.246"></script>
+  <script src="js/crm.js?v=8.246"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.246"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.246"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.246"></script>
+  <script src="js/nfse_pendentes.js?v=8.246"></script>
+  <script src="js/fechamento_fiscal.js?v=8.246"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.246"></script>
   <script src="js/contas_pagar.js?v=8.238"></script>
-  <script src="app.js?v=8.244"></script>
+  <script src="app.js?v=8.246"></script>
 </body>
 </html>

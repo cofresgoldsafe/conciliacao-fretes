@@ -4009,6 +4009,168 @@ async function consultarPgfnInfoSimples(cnpjStr) {
   };
 }
 
+// Validador matemático de CPF (Módulo 11) - Previne código 606 (tarifado) na InfoSimples
+function validarCpf(cpfStr) {
+  if (!cpfStr) return false;
+  const digits = String(cpfStr).replace(/\D/g, '');
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false; // Elimina sequências repetidas (111.111.111-11, etc.)
+  let soma = 0;
+  for (let i = 0; i < 9; i++) soma += parseInt(digits.charAt(i), 10) * (10 - i);
+  let resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(digits.charAt(9), 10)) return false;
+  soma = 0;
+  for (let i = 0; i < 10; i++) soma += parseInt(digits.charAt(i), 10) * (11 - i);
+  resto = (soma * 10) % 11;
+  if (resto === 10 || resto === 11) resto = 0;
+  if (resto !== parseInt(digits.charAt(10), 10)) return false;
+  return true;
+}
+
+// Função utilitária para consulta de Benefícios / Bolsa Família via API InfoSimples (Detecção de Laranja)
+async function consultarBolsaFamiliaInfoSimples(cpfStr) {
+  if (!cpfStr) return null;
+  const digits = String(cpfStr).replace(/\D/g, '');
+  if (digits.length !== 11) {
+    return {
+      executado: false,
+      sucesso: false,
+      cpf: cpfStr,
+      motivo: 'CPF inválido: deve conter 11 dígitos numéricos',
+      status: 'CPF_INVALIDO'
+    };
+  }
+
+  // Validação prévia de módulo 11 para evitar tarifação por código 606 na InfoSimples
+  if (!validarCpf(digits)) {
+    return {
+      executado: false,
+      sucesso: false,
+      cpf: digits,
+      motivo: 'Dígito verificador do CPF inválido (Módulo 11)',
+      status: 'CPF_INVALIDO'
+    };
+  }
+
+  const resultadoRaw = await executarConsultaInfoSimples('portal-transparencia-bolsa', { cpf: digits }, 'InfoSimples / Bolsa Família');
+
+  if (!resultadoRaw.sucesso) {
+    const msgLower = ((resultadoRaw.codeMessage || '') + ' ' + (resultadoRaw.motivo || '')).toLowerCase();
+    const isNadaConsta = resultadoRaw.code === 620 ||
+                         msgLower.includes('não foram encontrados') || 
+                         msgLower.includes('nao foram encontrados') || 
+                         msgLower.includes('não consta') || 
+                         msgLower.includes('nao consta') || 
+                         msgLower.includes('nada consta') ||
+                         msgLower.includes('sem registro') ||
+                         msgLower.includes('não cadastrado') ||
+                         msgLower.includes('nao cadastrado');
+    if (isNadaConsta) {
+      return {
+        executado: true,
+        sucesso: true,
+        encontrado: false,
+        cpf: digits,
+        beneficiario: '',
+        nis: '',
+        recebeu_recente: false,
+        status: 'NADA_CONSTA',
+        motivo: 'CPF não localizado no Cadastro Único / Sem benefício Bolsa Família',
+        _status: {
+          status: 'OK',
+          provedor: 'InfoSimples / Bolsa Família',
+          tempoMs: resultadoRaw.tempoMs || 0,
+          mensagem: 'Bolsa Família: Nada Consta (Seguro)'
+        }
+      };
+    }
+    // Fail-Neutral: falha de rede/timeout não penaliza
+    return {
+      ...resultadoRaw,
+      cpf: digits,
+      status: 'ERRO_TECNICO',
+      recebeu_recente: false
+    };
+  }
+
+  const dataList = resultadoRaw.data || [];
+  if (dataList.length === 0) {
+    return {
+      executado: true,
+      sucesso: true,
+      encontrado: false,
+      cpf: digits,
+      beneficiario: '',
+      nis: '',
+      recebeu_recente: false,
+      status: 'NADA_CONSTA',
+      motivo: 'CPF sem registro de parcelas de Bolsa Família',
+      _status: {
+        status: 'OK',
+        provedor: 'InfoSimples / Bolsa Família',
+        tempoMs: resultadoRaw.tempoMs || 0,
+        mensagem: 'Bolsa Família: Nada Consta (Seguro)'
+      }
+    };
+  }
+
+  const item = dataList[0];
+  const beneficiario = item.beneficiario || item.nome || '';
+  const nis = item.nis || '';
+  const recebidos = Array.isArray(item.recebidos) ? item.recebidos : [];
+  const sacados = Array.isArray(item.sacados) ? item.sacados : [];
+  const todasParcelas = [...recebidos, ...sacados];
+
+  // Checa recência das parcelas (últimos 12 meses a partir de hoje)
+  const agora = new Date();
+  const limite12m = new Date(agora.getFullYear(), agora.getMonth() - 12, 1);
+  let recebeuRecente = false;
+  let ultimaParcelaData = '';
+  let ultimaParcelaValor = 0;
+
+  for (const p of todasParcelas) {
+    const strData = String(p.mes_ano || p.data || p.referencia || p.competencia || '');
+    const m = strData.match(/(\d{2})[\/\-](\d{4})/) || strData.match(/(\d{4})[\/\-](\d{2})/);
+    let dtParcela = null;
+    if (m) {
+      const mes = m[1].length === 2 ? parseInt(m[1], 10) : parseInt(m[2], 10);
+      const ano = m[1].length === 4 ? parseInt(m[1], 10) : parseInt(m[2], 10);
+      dtParcela = new Date(ano, mes - 1, 1);
+    }
+    if (dtParcela && dtParcela >= limite12m) {
+      recebeuRecente = true;
+      if (!ultimaParcelaData || dtParcela > new Date(ultimaParcelaData)) {
+        ultimaParcelaData = `${String(dtParcela.getMonth() + 1).padStart(2, '0')}/${dtParcela.getFullYear()}`;
+        ultimaParcelaValor = parseValorMonetarioPgfn(p.valor || p.normalizado_valor || 0);
+      }
+    }
+  }
+
+  const statusBeneficio = recebeuRecente ? 'BENEFICIARIO_RECENTE' : (todasParcelas.length > 0 ? 'BENEFICIARIO_ANTIGO' : 'NADA_CONSTA');
+
+  return {
+    executado: true,
+    sucesso: true,
+    encontrado: true,
+    cpf: digits,
+    beneficiario,
+    nis,
+    recebeu_recente: recebeuRecente,
+    status: statusBeneficio,
+    ultima_parcela: ultimaParcelaData,
+    ultima_parcela_valor: ultimaParcelaValor,
+    total_parcelas: todasParcelas.length,
+    motivo: recebeuRecente ? `Beneficiário com parcelas recentes sacadas em ${ultimaParcelaData}` : 'Sem parcelas recentes nos últimos 12 meses',
+    _status: {
+      status: recebeuRecente ? 'ALERTA' : 'OK',
+      provedor: 'InfoSimples / Bolsa Família',
+      tempoMs: resultadoRaw.tempoMs,
+      mensagem: recebeuRecente ? `Alerta: Beneficiário Recente (${ultimaParcelaData})` : 'Sem benefício recente ativo'
+    }
+  };
+}
+
 // 0. Leitura e Validação em Memória do Laudo Serasa Experian (PDF)
 app.post('/api/financeiro/analise-credito/parse-serasa-pdf', memoryUpload.single('serasa_pdf'), async (req, res) => {
   try {
@@ -4091,6 +4253,53 @@ app.post('/api/financeiro/analise-credito/consultar-pgfn', async (req, res) => {
   } catch (err) {
     console.error('Erro ao consultar PGFN InfoSimples:', err);
     res.status(500).json({ success: false, error: 'Erro ao consultar PGFN: ' + err.message });
+  }
+});
+
+// 1D. Consulta de Sócios no Bolsa Família via API InfoSimples (Detecção de Laranja)
+app.post('/api/financeiro/analise-credito/consultar-bolsa-familia', async (req, res) => {
+  try {
+    const { cpfs } = req.body;
+    if (!cpfs || !Array.isArray(cpfs) || cpfs.length === 0) {
+      return res.status(400).json({ success: false, error: 'Lista de CPFs dos sócios é obrigatória.' });
+    }
+
+    const resultados = [];
+    let alertaLaranja = false;
+    let socioLaranjaNome = '';
+
+    for (const cpfItem of cpfs) {
+      const cpfStr = typeof cpfItem === 'string' ? cpfItem : (cpfItem.documento || cpfItem.cpf || '');
+      const nomeSocio = typeof cpfItem === 'object' ? (cpfItem.nome || '') : '';
+      const cargoSocio = typeof cpfItem === 'object' ? (cpfItem.cargo || '') : '';
+
+      const resConsulta = await consultarBolsaFamiliaInfoSimples(cpfStr);
+      if (resConsulta) {
+        if (nomeSocio && !resConsulta.beneficiario) resConsulta.beneficiario = nomeSocio;
+        resConsulta.cargo = cargoSocio;
+        resultados.push(resConsulta);
+
+        if (resConsulta.recebeu_recente) {
+          alertaLaranja = true;
+          socioLaranjaNome = resConsulta.beneficiario || nomeSocio || cpfStr;
+        }
+      }
+      // Pausa anti-throttling se houver múltiplos sócios
+      if (cpfs.length > 1) {
+        await new Promise(r => setTimeout(r, 250));
+      }
+    }
+
+    res.json({
+      success: true,
+      alertaLaranja,
+      socioLaranjaNome,
+      socio_bolsa_familia: alertaLaranja ? 'S' : 'N',
+      resultados
+    });
+  } catch (err) {
+    console.error('Erro ao consultar Bolsa Família InfoSimples:', err);
+    res.status(500).json({ success: false, error: 'Erro ao consultar Bolsa Família: ' + err.message });
   }
 });
 
@@ -4366,6 +4575,16 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       pgfn_executado: Boolean(infoPgfn && infoPgfn.executado),
       pgfn_tem_divida: infoPgfn && infoPgfn.executado ? Boolean(infoPgfn.tem_divida) : false,
       pgfn_total_divida_formatado: infoPgfn && infoPgfn.executado ? (infoPgfn.total_divida_formatado || 'R$ 0,00') : '',
+
+      // Inscrição Estadual (Protheus SA1 A1_INSCR) e Empresa Pública
+      inscricao_estadual_raw: cli.inscricaoEstadual || '',
+      inscricao_estadual: (() => {
+        const ieStr = String(cli.inscricaoEstadual || '').trim().toUpperCase();
+        if (/^(ISENT[OA]|N[AÃ]O\s*INCIDE|\s*)$/i.test(ieStr)) return 'ISENTO';
+        if (/\d{4,}/.test(ieStr)) return 'ATIVA';
+        return 'ISENTO';
+      })(),
+      is_empresa_publica: Boolean(/^(EMPRESA\s+P[UÚ]BLICA|SOCIEDADE\s+DE\s+ECONOMIA\s+MISTA|AUTARQUIA|[OÓ]RG[AÃ]O\s+P[UÚ]BLICO|MINIST[EÉ]RIO|PREFEITURA|GOVERNO)\b/i.test(cli.nome || '')),
 
       // Telemetria SRE de Faróis de Conectividade
       status_conexoes: statusConexoes,

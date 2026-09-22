@@ -112,6 +112,13 @@ const DEFAULT_CONFIG = {
   peso_pgfn_zero: 2.0,
   peso_pgfn_gt_50k: -7.0,
   peso_pgfn_gt_capital: -20.0,
+  peso_socio_bolsa_familia_sim: -25.0,
+  peso_socio_bolsa_familia_nao: 0.0,
+  peso_socio_bolsa_familia_isento: 0.0,
+  peso_ie_ativa: 2.0,
+  peso_ie_inapta: -15.0,
+  peso_ie_isento: 0.0,
+  peso_ie_nao_informada: 0.0,
   infosimples_token: '',
 };
 
@@ -345,6 +352,26 @@ function calcularScore(dados, config = getScoreConfig()) {
     pontos.pgfn_divida_ativa = 0;
   }
 
+  // Sócio Beneficiário do Bolsa Família (Alerta de Sócio Laranja / Vulnerabilidade Social)
+  if (dados.socio_bolsa_familia === 'S' || dados.socio_bolsa_familia === 'SIM') {
+    pontos.socio_bolsa_familia = config.peso_socio_bolsa_familia_sim !== undefined ? config.peso_socio_bolsa_familia_sim : -25.0;
+  } else if (dados.socio_bolsa_familia === 'ISENTO') {
+    pontos.socio_bolsa_familia = config.peso_socio_bolsa_familia_isento !== undefined ? config.peso_socio_bolsa_familia_isento : 0.0;
+  } else {
+    pontos.socio_bolsa_familia = config.peso_socio_bolsa_familia_nao !== undefined ? config.peso_socio_bolsa_familia_nao : 0.0;
+  }
+
+  // Inscrição Estadual (Sintegra / CADESP / Regularidade Fiscal)
+  if (dados.inscricao_estadual === 'ATIVA') {
+    pontos.inscricao_estadual = config.peso_ie_ativa !== undefined ? config.peso_ie_ativa : 2.0;
+  } else if (dados.inscricao_estadual === 'INAPTA') {
+    pontos.inscricao_estadual = config.peso_ie_inapta !== undefined ? config.peso_ie_inapta : -15.0;
+  } else if (dados.inscricao_estadual === 'ISENTO') {
+    pontos.inscricao_estadual = config.peso_ie_isento !== undefined ? config.peso_ie_isento : 0.0;
+  } else {
+    pontos.inscricao_estadual = config.peso_ie_nao_informada !== undefined ? config.peso_ie_nao_informada : 0.0;
+  }
+
   const totalScore = Object.values(pontos).reduce((acc, curr) => acc + curr, 0);
 
   const subEmpresinha = pontos.capital_social + pontos.mail_gratuito + pontos.casa_sala_conj + pontos.empresa_grande_conhecida;
@@ -359,7 +386,8 @@ function calcularScore(dados, config = getScoreConfig()) {
     pontos.capital_social +
     pontos.razao_fgts_igual +
     pontos.alteracao_recente_socios +
-    pontos.aumento_expressivo_capital;
+    pontos.aumento_expressivo_capital +
+    (pontos.socio_bolsa_familia || 0);
   const subGrandeFalindo = pontos.protestos + pontos.empresa_grande_conhecida + pontos.idade_empresa + (pontos.pgfn_divida_ativa || 0);
 
   let risco = 'SEM-RISCO';
@@ -394,6 +422,8 @@ function calcularScore(dados, config = getScoreConfig()) {
     : (dados.cadastro_igual_receita === 'N' ? 'PRECISA CORRIGIR END DIVERGENTE' : 'N/A');
 
   const sugestoesLista = [];
+  if (pontos.socio_bolsa_familia < 0) sugestoesLista.push('ALERTA VERMELHO: SÓCIO BENEFICIÁRIO DO BOLSA FAMÍLIA (SUSPEITA DE LARANJA)');
+  if (pontos.inscricao_estadual < 0) sugestoesLista.push('INSCRIÇÃO ESTADUAL INAPTA OU CASSADA NO FISCO');
   if (alertaContratoEntrega !== 'N/A') sugestoesLista.push('SOLIC CONTRATO DE ENTREGA');
   if (alertaPedCompra !== 'N/A') sugestoesLista.push('SOLICITAR PED COMPRA');
   if (alertaPerigoGolpe !== 'N/A') sugestoesLista.push('PERIGO CHECAGEM REVERSA');

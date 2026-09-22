@@ -79,10 +79,13 @@ flowchart TD
 - **Componentes Visuais Chave:**
   - `#formAnaliseCredito`: Formulário parametrizado contendo todos os vetores de risco divididos em grupos operacionais.
   - `#dropZoneSerasaPdf`: Área de drag-and-drop para ingestão do laudo Serasa com barra de progresso visual.
+  - `#serasaSociosCard`: Card dinâmico de Quadro Societário com `#badgeQtdSocios`, `#serasaSociosList` e `#btnConsultarBolsaFamilia` para conferência de sócios/administradores e disparo de varredura antifraude na InfoSimples.
+  - `#cr_inscricao_estadual`: Seletor de regularidade de Inscrição Estadual (ATIVA: +2 pts, INAPTA: -15 pts, ISENTO: 0 pts, NÃO INFORMADA: 0 pts) integrado com o campo `A1_INSCR` do Protheus.
+  - `#cr_socio_bolsa_familia`: Seletor e indicador de antifraude de sócio laranja (SIM: -25 pts, NÃO: 0 pts, ISENTO: 0 pts) com farol visual `#cr_bolsa_familia_badge`.
   - `#btnConsultaCaixaFgts`: Botão de consulta assistida em 1-clique para a Caixa Econômica Federal (copia o CNPJ sanitizado para a área de transferência e abre o portal oficial em nova aba).
-  - Faróis de Resiliência: Badges coloridos `#badgeStatusRdap`, `#badgeStatusWayback`, `#badgeStatusFgts`, `#badgeStatusPgfn`.
+  - Faróis de Resiliência: Badges coloridos `#badgeStatusRdap`, `#badgeStatusWayback`, `#badgeStatusFgts`, `#badgeStatusPgfn`, `#cr_bolsa_familia_badge`.
   - `#cardScoreResultado`: Painel de destaque exibindo o Score Final, diagnóstico detalhado (subGolpe, subFinanceiro) e recomendação de crédito.
-  - Tabela de Histórico: Listagem das últimas análises realizadas com modal de conferência.
+  - Tabela de Histórico: Listagem das últimas análises realizadas com modal de conferência e reidratação de formulário.
 
 ### 2.2 Estrutura Backend & Módulos de Apoio
 - **Servidor HTTP:** Rotas sob `/api/financeiro/analise-credito` no [`server.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/server.js).
@@ -226,6 +229,32 @@ stateDiagram-v2
 ### 5.5 `GET /api/financeiro/analise-credito/config` / `POST /api/financeiro/analise-credito/config`
 - **Descrição:** Consulta e calibração dinâmica dos pesos matemáticos do score.
 
+### 5.6 `POST /api/financeiro/analise-credito/consultar-bolsa-familia`
+- **Descrição:** Varredura em lote antifraude de sócios e administradores na API InfoSimples (`portal-transparencia-bolsa`).
+- **Entrada (JSON):**
+  ```json
+  {
+    "cpfs": [
+      { "nome": "MARIANNA DANIELE", "cpf": "278.511.898-70", "cargo": "SÓCIO" },
+      { "nome": "DANILO DE SOUZA", "cpf": "382.419.018-94", "cargo": "SÓCIO" }
+    ]
+  }
+  ```
+- **Processamento:**
+  1. Pré-validação com Módulo 11 oficial para descartar CPFs matematicamente inválidos antes de requisitar a API, prevenindo tarifação de erro 606 da InfoSimples.
+  2. Chamada à API `portal-transparencia-bolsa` avaliando recenticidade: recebimento nos últimos 12 meses classifica como `BENEFICIARIO_RECENTE` (sinal de alerta de sócio laranja); recebimentos há mais de 12 meses como `BENEFICIARIO_ANTIGO`; ou `NADA_CONSTA`.
+  3. Fail-Neutral SRE: timeouts ou indisponibilidades retornam status `ERRO_TECNICO` e são computados como neutros (0 pts).
+- **Resposta Sucesso (HTTP 200):**
+  ```json
+  {
+    "success": true,
+    "totalConsultados": 2,
+    "algumRecebeuRecente": false,
+    "socioLaranjaNome": null,
+    "resultados": [ ... ]
+  }
+  ```
+
 ---
 
 ## 6. Testes Automatizados Vinculados
@@ -234,10 +263,11 @@ O motor de análise de crédito e seus componentes contam com uma das mais abran
 
 | Arquivo de Teste | Quantidade de Testes | Foco de Validação |
 | :--- | :--- | :--- |
-| Arquivo de Teste | Quantidade de Testes | Foco de Validação |
-| :--- | :--- | :--- |
 | [`test_cnpj_matriz_fundacao.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_cnpj_matriz_fundacao.js) | 17 Testes | Resolução de CNPJ Matriz via Módulo 11 da RFB, priorização da matriz com fallback para filial, normalização ISO de datas, proteção anti-CPF e Consolidação de Histórico Financeiro em SE1 por Raiz de CNPJ (8 dígitos). |
-| [`test_serasa_pdf_parser.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_serasa_pdf_parser.js) | 7 Testes | Parsers em memória de laudos reais (WDM, DASS, Equipsea, AP Elettrolight), rejeição de laudos com mais de 4 meses e casos de documentos extraviados. |
+| [`test_serasa_pdf_socios_extraction.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_serasa_pdf_socios_extraction.js) | 5 Testes | Extração precisa de quadro societário e CPFs via RAM stream nos relatórios Serasa de WDM Brasil, AP Elettro Light, DASS Nordeste, Equipsea e resiliência Optimus. |
+| [`test_score_novos_criterios_ie_bolsa.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_score_novos_criterios_ie_bolsa.js) | 4 Testes | Pesos de Bolsa Família (-25 pts) e Inscrição Estadual (+2 ativa, -15 inapta, 0 isento), persistência dinâmica em `score_config.json` e conformidade anti-hardcoding. |
+| [`test_score_backtest.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_score_backtest.js) | 7 Cenários | Backtest completo nos 65 registros reais de `analise_credito_history.json`: baseline, IE ativa (+2 pts), empresas isentas (0 pts), IE inapta (-15 pts), detecção de sócio laranja (rebaixando 37 pedidos para BLOQUEADO/ANÁLISE MANUAL), neutralidade para empresas públicas e parametrização dinâmica em runtime. |
+| [`test_serasa_pdf_parser.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_serasa_pdf_parser.js) | 10 Testes | Parsers em memória de laudos reais (WDM, DASS, Equipsea, AP Elettrolight, Itambé Minas, Prevent Senior), rejeição de laudos com mais de 4 meses e casos de documentos extraviados. |
 | [`test_novos_criterios_credito.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_novos_criterios_credito.js) | 8 Testes | Novos pesos de alteração de sócios (-8 pts), aumento de capital (-20 pts), botão 1-clique Caixa FGTS e persistência de pesos. |
 | [`test_registro_br_automacao.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_registro_br_automacao.js) | 6 Testes | Validação de domínio RDAP e correspondência pela raiz de 8 dígitos do CNPJ. |
 | [`test_infosimples_fgts.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_infosimples_fgts.js) | 7 Testes | Pesos e regras de regularidade e divergência da Razão Social na Caixa FGTS. |
@@ -248,15 +278,14 @@ O motor de análise de crédito e seus componentes contam com uma das mais abran
 
 ### Comandos de Execução dos Testes:
 ```bash
+node test_score_novos_criterios_ie_bolsa.js
+node test_serasa_pdf_socios_extraction.js
+node test_score_backtest.js
 node test_cnpj_matriz_fundacao.js
 node test_serasa_pdf_parser.js
-node test_novos_criterios_credito.js
-node test_registro_br_automacao.js
 node test_infosimples_fgts.js
 node test_infosimples_620_matriz.js
 node test_infosimples_pgfn.js
-node test_farois_resiliencia_credito.js
-node test_score_config.js
 ```
 
 ---
@@ -265,6 +294,7 @@ node test_score_config.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
+| **v4.4** | 2026-09-22 | Alexandre / Equipe GSI | Extração de quadro societário e CPFs de sócios/administradores do laudo Serasa Experian PDF (100% RAM stream via `serasa_pdf_parser.py`); integração com a API `portal-transparencia-bolsa` da InfoSimples para mitigação do risco de sócios "laranjas" (recebimento recente < 12 meses penaliza -25 pts e emite alerta crítico); suporte nativo e neutro (0 pts) para empresas públicas/autarquias e S.A. sem sócios PF; inclusão e normalização da Inscrição Estadual (Sintegra/Fisco) com extração do campo `A1_INSCR` do Protheus (Ativa +2 pts, Inapta -15 pts, Isenta/Não-contribuinte 0 pts neutro); calibração dinâmica dos 7 novos pesos em `#tab-config-score` sem valores mágicos; backtest completo contra os 65 registros históricos em `data/analise_credito_history.json` homologado com 7/7 cenários aprovados. |
 | **v4.3** | 2026-09-22 | Alexandre / Equipe GSI | Motor Dual-Engine no Wayback Machine com priorização da API CDX Server (`web.archive.org/cdx/search/cdx`), imune ao rate limit 429 de `/wayback/available` e com fallback secundário automático, garantindo identificação do primeiro snapshot real na Análise de Crédito. Categorização de gateways corporativos Sophos como `PREMIUM` (`Sophos Email Security`) em `consultarMx`. Tratamento especializado do Código 620 da InfoSimples (`permanent_error` na Caixa) como `ALERTA`/`NE` e Fallback Automático para CNPJ Matriz (`0001`) quando filiais centralizam o recolhimento do FGTS na Matriz (caso homologado: filial 0321 do Madero). Homologado com a suíte `test_infosimples_620_matriz.js` (100% aprovado). |
 | **v4.2** | 2026-09-22 | Alexandre / Equipe GSI | Consolidação de Histórico Financeiro em `SE1` por Raiz de CNPJ (8 dígitos) ou CPF (11 dígitos): resolução de múltiplos códigos de cliente (`A1_COD`) em `SA1010` que compartilham o mesmo grupo empresarial/matriz/filiais, varredura concorrente via `Promise.all` em `SE1090`, `SE1140`, `SE1150` e `SE1160`, deduplicação contábil por documento `${emp}_${prefixo}_${numDoc}`, expurgo de impostos/descontos/NCC, expurgo de compras com parcelas em aberto e cálculo correto dos critérios "Comprou e Pagou 2x+ (+pts)", "Comprou < 2x (-pts)" e "Comprou e Pagou 5x+ (+pts)" (caso homologado: pedido #000822 empresa 16 Madero, onde filial recém-aberta computava 0 compras pagas com penalidade de -3 pts, passando a consolidar 10 compras pagas no grupo totalizando R$ 170.484,12 e bonificação de +32 pts, diferença de +35 pts). 17 testes aprovados em `test_cnpj_matriz_fundacao.js`. |
 | **v4.1** | 2026-09-22 | Alexandre / Equipe GSI | Resolução automática de CNPJ Matriz (Módulo 11 da RFB) para pedidos faturados em filiais recém-abertas, garantindo que a fundação e a idade da empresa computem a história real da matriz (caso homologado: Madero #000822 na empresa 16 pontuando +4 pts em vez de -6 pts). Adição de cache em memória com TTL de 1h contra rate limit e 15 testes dedicados em `test_cnpj_matriz_fundacao.js`. |

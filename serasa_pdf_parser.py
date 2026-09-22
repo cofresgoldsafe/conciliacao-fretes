@@ -238,11 +238,53 @@ def parse_serasa_pdf(pdf_stream, ref_date=None):
         if "CONSTAM OCORRENCIAS" in full_text and "NAO CONSTAM OCORRENCIAS" not in full_text:
             doc_extraviado = True
 
-    # 6. Quadro Societário: Sócios com anotação
+    # 6. Quadro Societário: Sócios com anotação, Administradores, CPFs e Natureza Pública
     socios_anotacao = False
     soc_sim = re.search(r'(?:Sócio|Acionista|Administrador|Capital).*?\bSim\b', full_text, re.IGNORECASE)
     if soc_sim:
         socios_anotacao = True
+
+    # Checa se é empresa pública, sociedade de economia mista ou autarquia
+    is_empresa_publica = bool(re.search(r'\b(EMPRESA\s+P[UÚ]BLICA|SOCIEDADE\s+DE\s+ECONOMIA\s+MISTA|AUTARQUIA|[OÓ]RG[AÃ]O\s+P[UÚ]BLICO|MINIST[EÉ]RIO|PREFEITURA|GOVERNO)\b', full_text, re.IGNORECASE))
+
+    # Extração estruturada de Sócios e Administradores com CPF
+    quadro_societario = []
+    cpfs_socios = []
+    vistos_docs = set()
+
+    soc_cpf_matches = re.finditer(r'([A-ZÀ-Ú\s]{3,60}?)\s+(ADMINISTRADOR|DIRETOR|PRESIDENTE|GERENTE|S[OÓ]CIO|ACIONISTA)?\s*(\d{3}\.\d{3}\.\d{3}-\d{2})\s*(Sim|N[aã]o)?', full_text)
+    for m in soc_cpf_matches:
+        raw_name = m.group(1).strip()
+        clean_name = re.sub(r'^(?:RELAT[OÓ]RIO\s+B[AÁ]SICO|CNPJ:.*?\||Capital|Nome\s+Cargo|S[oó]cio/Acionista|Data\s+Valor.*?Avalista)\s*', '', raw_name, flags=re.IGNORECASE).strip()
+        if '\n' in clean_name:
+            clean_name = clean_name.split('\n')[-1].strip()
+        
+        cargo = m.group(2) or 'SÓCIO'
+        cpf_fmt = m.group(3)
+        cpf_clean = re.sub(r'\D', '', cpf_fmt)
+        anot = 'Sim' if (m.group(4) and m.group(4).lower() in ['sim', 's']) else 'Não'
+
+        if len(clean_name) >= 3 and not re.search(r'TOTAL|DATA|VALOR|CONSULTAS|SERASA|EXPERIAN', clean_name, re.IGNORECASE):
+            if cpf_clean not in vistos_docs:
+                vistos_docs.add(cpf_clean)
+                cpfs_socios.append(cpf_clean)
+                quadro_societario.append({
+                    "nome": clean_name,
+                    "cargo": cargo.upper(),
+                    "documento": cpf_fmt,
+                    "tipo": "PF",
+                    "anotacoes": anot
+                })
+
+    possui_socios_pf = len(cpfs_socios) > 0
+    motivo_sem_socios_pf = None
+    if not possui_socios_pf:
+        if is_empresa_publica:
+            motivo_sem_socios_pf = "EMPRESA_PUBLICA"
+        elif any(s["tipo"] == "PJ" for s in quadro_societario):
+            motivo_sem_socios_pf = "APENAS_PJ"
+        else:
+            motivo_sem_socios_pf = "NAO_CONSTA_NO_LAUDO"
 
     # 7. Consultas Recentes à Serasa (Janela, Contagem, Densidade e Perfil)
     consultas_cnt = 0
@@ -320,6 +362,11 @@ def parse_serasa_pdf(pdf_stream, ref_date=None):
         "total_dividas_valor": total_dividas_val,
         "documentos_extraviados": "S" if doc_extraviado else "N",
         "socios_anotacao": "S" if socios_anotacao else "N",
+        "is_empresa_publica": is_empresa_publica,
+        "quadro_societario": quadro_societario,
+        "cpfs_socios": cpfs_socios,
+        "possui_socios_pf": possui_socios_pf,
+        "motivo_sem_socios_pf": motivo_sem_socios_pf,
         "consultas_total": consultas_cnt,
         "consultas_janela_dias": consultas_dias,
         "consultas_densidade_dia": densidade_dia,

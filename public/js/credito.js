@@ -83,3 +83,17 @@ export async function carregarHistoricoCredito(limit = 200) {
   }
   return await res.json();
 }
+
+export async function consultarBolsaFamilia(cpfs) {
+  const res = await apiFetch('/api/financeiro/analise-credito/consultar-bolsa-familia', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cpfs })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Erro ao consultar Bolsa Família.');
+  }
+  return data;
+}
+
