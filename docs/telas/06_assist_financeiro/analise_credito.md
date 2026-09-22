@@ -244,6 +244,7 @@ O motor de análise de crédito e seus componentes contam com uma das mais abran
 | [`test_infosimples_pgfn.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_infosimples_pgfn.js) | 6 Testes | Apuração de Dívida Ativa da União e penalidade de dívida superior ao Capital Social. |
 | [`test_farois_resiliencia_credito.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_farois_resiliencia_credito.js) | 5 Testes | Comportamento dos faróis em falhas de rede ou indisponibilidade de serviços externos. |
 | [`test_score_config.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_score_config.js) | 4 Testes | Gravação e reset dos parâmetros de configuração do score. |
+| [`test_infosimples_620_matriz.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_infosimples_620_matriz.js) | 3 Testes | Tratamento resiliente do Código 620 da InfoSimples (ALERTA/NE) e fallback automático para CNPJ Matriz no FGTS Caixa. |
 
 ### Comandos de Execução dos Testes:
 ```bash
@@ -252,6 +253,7 @@ node test_serasa_pdf_parser.js
 node test_novos_criterios_credito.js
 node test_registro_br_automacao.js
 node test_infosimples_fgts.js
+node test_infosimples_620_matriz.js
 node test_infosimples_pgfn.js
 node test_farois_resiliencia_credito.js
 node test_score_config.js
@@ -263,6 +265,7 @@ node test_score_config.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
+| **v4.3** | 2026-09-22 | Alexandre / Equipe GSI | Motor Dual-Engine no Wayback Machine com priorização da API CDX Server (`web.archive.org/cdx/search/cdx`), imune ao rate limit 429 de `/wayback/available` e com fallback secundário automático, garantindo identificação do primeiro snapshot real na Análise de Crédito. Categorização de gateways corporativos Sophos como `PREMIUM` (`Sophos Email Security`) em `consultarMx`. Tratamento especializado do Código 620 da InfoSimples (`permanent_error` na Caixa) como `ALERTA`/`NE` e Fallback Automático para CNPJ Matriz (`0001`) quando filiais centralizam o recolhimento do FGTS na Matriz (caso homologado: filial 0321 do Madero). Homologado com a suíte `test_infosimples_620_matriz.js` (100% aprovado). |
 | **v4.2** | 2026-09-22 | Alexandre / Equipe GSI | Consolidação de Histórico Financeiro em `SE1` por Raiz de CNPJ (8 dígitos) ou CPF (11 dígitos): resolução de múltiplos códigos de cliente (`A1_COD`) em `SA1010` que compartilham o mesmo grupo empresarial/matriz/filiais, varredura concorrente via `Promise.all` em `SE1090`, `SE1140`, `SE1150` e `SE1160`, deduplicação contábil por documento `${emp}_${prefixo}_${numDoc}`, expurgo de impostos/descontos/NCC, expurgo de compras com parcelas em aberto e cálculo correto dos critérios "Comprou e Pagou 2x+ (+pts)", "Comprou < 2x (-pts)" e "Comprou e Pagou 5x+ (+pts)" (caso homologado: pedido #000822 empresa 16 Madero, onde filial recém-aberta computava 0 compras pagas com penalidade de -3 pts, passando a consolidar 10 compras pagas no grupo totalizando R$ 170.484,12 e bonificação de +32 pts, diferença de +35 pts). 17 testes aprovados em `test_cnpj_matriz_fundacao.js`. |
 | **v4.1** | 2026-09-22 | Alexandre / Equipe GSI | Resolução automática de CNPJ Matriz (Módulo 11 da RFB) para pedidos faturados em filiais recém-abertas, garantindo que a fundação e a idade da empresa computem a história real da matriz (caso homologado: Madero #000822 na empresa 16 pontuando +4 pts em vez de -6 pts). Adição de cache em memória com TTL de 1h contra rate limit e 15 testes dedicados em `test_cnpj_matriz_fundacao.js`. |
 | **v4.0** | 2026-09-15 | Alexandre / Equipe GSI | Inclusão de certidões Dívida Ativa PGFN e novos pesos anti-golpe de alteração societária e aumento de capital. |
