@@ -13,3 +13,5 @@ __pycache__/
 *.xlsx
 audit*.png
 tela*.png
+score_config.json
+data/score_config.json

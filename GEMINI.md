@@ -139,6 +139,7 @@ Tratamento formal de contingencia e comportamento fail-neutral dos servicos exte
 | **Servidor MX** *(DNS)* | 5.000 ms | Trata `SERVFAIL`/`ETIMEOUT` e seta `servidor_mx_offline = true`. | `0 pts` (Elimina perda de 4 pts) | 🔴 Vermelho | Informa `Falha DNS` sem presumir inexistencia do dominio. |
 | **FGTS Caixa** *(InfoSimples)* | 25.000 ms | Retorna `executado = false` com motivo descritivo retornado pelo gateway. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Badge descritivo amarelo (`Timeout Caixa`, etc.) sem descarte. |
 | **PGFN Dívida Ativa** *(InfoSimples)* | 25.000 ms | Retorna `executado = false` com detalhamento retornado pela consulta. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Badge descritivo amarelo/vermelho sem penalizar pontuacao. |
+| **Bolsa Família** *(InfoSimples)* | 25.000 ms | Captura timeouts ou quedas e seta `status = 'ERRO_TECNICO'`. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Trata como neutro sem penalizar cliente por falhas técnicas de rede. |
 | **TOTVS Protheus** *(Railway Relay)* | 15.000 ms | Distingue `404` (inexistente) de instabilidade de infraestrutura `500/504`. | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Banner de erro de rede sem induzir operador a crer em erro de digitacao. |
 | **Parser Serasa PDF** *(Python)* | 15.000 ms | Mata subprocesso Python com `SIGKILL` apos 15s em travamentos. | N/A | N/A | Exibe mensagem orientando reenvio de PDF integro. |
 

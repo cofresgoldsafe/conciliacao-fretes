@@ -230,7 +230,7 @@ stateDiagram-v2
 - **Descrição:** Consulta e calibração dinâmica dos pesos matemáticos do score.
 
 ### 5.6 `POST /api/financeiro/analise-credito/consultar-bolsa-familia`
-- **Descrição:** Varredura em lote antifraude de sócios e administradores na API InfoSimples (`portal-transparencia-bolsa`).
+- **Descrição:** Varredura em lote antifraude de sócios e administradores na API InfoSimples (`portal-transparencia/bolsa`).
 - **Entrada (JSON):**
   ```json
   {
@@ -242,8 +242,10 @@ stateDiagram-v2
   ```
 - **Processamento:**
   1. Pré-validação com Módulo 11 oficial para descartar CPFs matematicamente inválidos antes de requisitar a API, prevenindo tarifação de erro 606 da InfoSimples.
-  2. Chamada à API `portal-transparencia-bolsa` avaliando recenticidade: recebimento nos últimos 12 meses classifica como `BENEFICIARIO_RECENTE` (sinal de alerta de sócio laranja); recebimentos há mais de 12 meses como `BENEFICIARIO_ANTIGO`; ou `NADA_CONSTA`.
-  3. Fail-Neutral SRE: timeouts ou indisponibilidades retornam status `ERRO_TECNICO` e são computados como neutros (0 pts).
+  2. Chamada à API `portal-transparencia/bolsa` com parâmetros obrigatórios de data (`data_inicio` e `data_fim` com intervalo móvel de 360 dias / ~12 meses, conforme exigência do Portal da Transparência da CGU).
+  3. Reconhecimento nativo do Código 612 (*"A consulta não retornou dados no site ou aplicativo de origem"*) como `NADA_CONSTA` (0 pts seguro).
+  4. Avaliação de recenticidade: recebimento nos últimos 12 meses classifica como `BENEFICIARIO_RECENTE` (sinal crítico de sócio laranja, penalizando -25 pts); recebimentos há mais de 12 meses como `BENEFICIARIO_ANTIGO` (0 pts neutro); ou `NADA_CONSTA` (0 pts seguro).
+  5. Fail-Neutral SRE: timeouts ou indisponibilidades de rede retornam status `ERRO_TECNICO` e são computados como neutros (0 pts).
 - **Resposta Sucesso (HTTP 200):**
   ```json
   {
