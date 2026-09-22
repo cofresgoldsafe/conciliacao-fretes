@@ -3266,10 +3266,63 @@ async function consultarWayback(dominio) {
     };
   }
   const limpo = dominio.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].trim().toLowerCase();
+
+  // 1. Motor Primário: CDX Server API (web.archive.org) — Imune ao rate limit 429 de /wayback/available
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 4500);
+    const resCdx = await fetch(`https://web.archive.org/cdx/search/cdx?url=${limpo}&output=json&limit=1&fl=timestamp`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(t);
+    if (resCdx.ok) {
+      const data = await resCdx.json();
+      if (Array.isArray(data) && data.length > 1 && data[1] && data[1][0]) {
+        const ts = String(data[1][0]);
+        const ano = ts.substring(0, 4);
+        return {
+          temHistorico: true,
+          anoPrimeiroSnapshot: ano,
+          url: `https://web.archive.org/web/${ts}/http://${limpo}`,
+          _status: {
+            status: 'OK',
+            provedor: 'Archive.org (Wayback)',
+            tempoMs: Date.now() - t0,
+            mensagem: `Primeiro snapshot histórico em ${ano}`
+          }
+        };
+      } else if (Array.isArray(data) && data.length <= 1) {
+        return {
+          temHistorico: false,
+          anoPrimeiroSnapshot: null,
+          _status: {
+            status: 'ALERTA',
+            provedor: 'Archive.org (Wayback)',
+            tempoMs: Date.now() - t0,
+            mensagem: 'Sem histórico arquivado no Wayback Machine'
+          }
+        };
+      }
+    }
+  } catch (errCdx) {
+    // CDX indisponível ou timeout; prossegue para fallback
+  }
+
+  // 2. Motor Secundário (Fallback): Wayback Available API (archive.org)
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 3500);
-    const res = await fetch(`https://archive.org/wayback/available?url=${limpo}&timestamp=20000101`, { signal: controller.signal });
+    const res = await fetch(`https://archive.org/wayback/available?url=${limpo}&timestamp=20000101`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      },
+      signal: controller.signal
+    });
     clearTimeout(t);
     if (res.ok) {
       const d = await res.json();
@@ -3302,8 +3355,9 @@ async function consultarWayback(dominio) {
       }
     }
   } catch (e) {
-    console.warn('Wayback erro:', e.message);
+    console.warn('Wayback fallback erro:', e.message);
   }
+
   return {
     temHistorico: false,
     anoPrimeiroSnapshot: null,
@@ -3345,6 +3399,9 @@ async function consultarMx(dominio) {
       } else if (hosts.includes('outlook') || hosts.includes('microsoft') || hosts.includes('protection.outlook')) {
         tipo = 'PREMIUM';
         provedor = 'Microsoft 365';
+      } else if (hosts.includes('sophos') || hosts.includes('hydra.sophos')) {
+        tipo = 'PREMIUM';
+        provedor = 'Sophos Email Security';
       } else if (hosts.includes('locaweb') || hosts.includes('kinghost') || hosts.includes('hostgator') || hosts.includes('hostinger') || hosts.includes('cpanel') || hosts.includes('secureserver')) {
         tipo = 'PADRAO';
         provedor = 'Hospedagem Compartilhada';

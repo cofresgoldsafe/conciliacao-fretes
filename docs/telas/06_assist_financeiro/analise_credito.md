@@ -137,9 +137,15 @@ Para atender às exigências da LGPD e proteger o sigilo financeiro dos clientes
   - Se o domínio for registrado por terceiro sem vínculo ou CPF aleatório: **0 pts**.
 
 #### Wayback Machine (`consultarWayback`)
-- Consulta na API pública do Archive.org para apurar o primeiro snapshot histórico daquele domínio na internet.
+- **Arquitetura Dual-Engine:**
+  1. **Motor Primário (CDX Server API):** Consulta `https://web.archive.org/cdx/search/cdx?url=${limpo}&output=json&limit=1&fl=timestamp`, imune ao rate limit 429 da rota de disponibilidade e retornando o primeiro snapshot real da história do domínio.
+  2. **Motor Secundário (Fallback):** Caso o CDX falhe ou atinja timeout, aciona `https://archive.org/wayback/available?url=${limpo}&timestamp=20000101`.
 - Se o site já possuía páginas ativas há mais de 5 anos: **`peso_wayback_5 = +3 pts`**.
 - Se o domínio foi registrado recentemente e não tem nenhum histórico web: **0 pts** e alerta visual de potencial empresa de fachada.
+- **Fail-Neutral:** Em caso de indisponibilidade ou timeout no Archive.org, o score não penaliza o cliente (`wayback_offline = true`, 0 pts).
+
+#### Servidor MX (`consultarMx`)
+- Resolução de entradas DNS MX do domínio corporativo. Identifica provedores corporativos Premium (**Google Workspace**, **Microsoft 365** e **Sophos Email Security**) e serviços de hospedagem compartilhada.
 
 ### 4.3 Certidões Governamentais InfoSimples (FGTS Caixa & Dívida PGFN)
 - **FGTS Caixa:**
