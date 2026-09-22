@@ -3676,6 +3676,27 @@ async function executarConsultaInfoSimples(servicoSlug, postBody, servicoNome = 
         };
       }
 
+      // Código 620: Erro permanente na fonte de origem / Não cadastrado na Caixa (billable: false)
+      if (code === 620) {
+        const permMsg = `InfoSimples (Código 620): Erro permanente na fonte de origem (Caixa). ${codeMessage || ''}${errorsList}`;
+        console.warn(`⚠️ [${servicoNome}] ${permMsg}`);
+        return {
+          sucesso: false,
+          executado: false,
+          code,
+          codeMessage: codeMessage || 'Erro permanente na fonte de origem',
+          errors: dataJson.errors,
+          billable: isBillable,
+          motivo: permMsg,
+          _status: {
+            status: 'ALERTA',
+            provedor: servicoNome,
+            tempoMs,
+            mensagem: `Erro 620: Não Localizado na Caixa / Sem FGTS`
+          }
+        };
+      }
+
       // Código 600: Erro inesperado no robô/fonte de origem (billable: false)
       if (code === 600) {
         return {
@@ -3747,15 +3768,43 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
   const digits = String(cnpjStr).replace(/\D/g, '');
   if (digits.length !== 14) return null;
 
-  const resultadoRaw = await executarConsultaInfoSimples('caixa/regularidade', { cnpj: digits }, 'InfoSimples / Caixa');
+  let resultadoRaw = await executarConsultaInfoSimples('caixa/regularidade', { cnpj: digits }, 'InfoSimples / Caixa');
+
+  // Se for filial (ex: 0321) e a Caixa retornar erro 620 ou sem cadastro, tenta a Matriz (0001) automaticamente
+  // Empresas frequentemente centralizam o recolhimento e o CRF do FGTS no CNPJ Matriz
+  const cnpjMatriz = typeof obterCnpjMatriz === 'function' ? obterCnpjMatriz(digits) : digits;
+  const ehFilial = Boolean(cnpjMatriz && cnpjMatriz !== digits);
+
+  if (!resultadoRaw.sucesso && ehFilial) {
+    const msgLower = ((resultadoRaw.codeMessage || '') + ' ' + (resultadoRaw.motivo || '')).toLowerCase();
+    const podeSerCentralizado = resultadoRaw.code === 620 || 
+                                resultadoRaw.code === 600 ||
+                                msgLower.includes('não encontrada') || 
+                                msgLower.includes('nao encontrada') || 
+                                msgLower.includes('não cadastrada') || 
+                                msgLower.includes('nao cadastrada') || 
+                                msgLower.includes('sem registro') ||
+                                msgLower.includes('permanente');
+    if (podeSerCentralizado) {
+      console.log(`ℹ️ [InfoSimples / Caixa] Filial ${digits} sem CRF ativo ou com erro ${resultadoRaw.code}. Consultando Matriz ${cnpjMatriz} (FGTS centralizado)...`);
+      const resultadoMatriz = await executarConsultaInfoSimples('caixa/regularidade', { cnpj: cnpjMatriz }, 'InfoSimples / Caixa (Matriz)');
+      if (resultadoMatriz.sucesso && resultadoMatriz.data && resultadoMatriz.data.length > 0) {
+        resultadoRaw = resultadoMatriz;
+        resultadoRaw._consultadoViaMatriz = true;
+      }
+    }
+  }
+
   if (!resultadoRaw.sucesso) {
-    // Tratamento para empresas sem histórico de recolhimento de FGTS
-    const msgLower = (resultadoRaw.codeMessage || '').toLowerCase();
-    const isNaoEncontrada = msgLower.includes('não encontrada') || 
+    // Tratamento para empresas sem histórico de recolhimento de FGTS ou erro permanente
+    const msgLower = ((resultadoRaw.codeMessage || '') + ' ' + (resultadoRaw.motivo || '')).toLowerCase();
+    const isNaoEncontrada = resultadoRaw.code === 620 ||
+                            msgLower.includes('não encontrada') || 
                             msgLower.includes('nao encontrada') || 
                             msgLower.includes('não cadastrada') || 
                             msgLower.includes('nao cadastrada') || 
-                            msgLower.includes('sem registro');
+                            msgLower.includes('sem registro') ||
+                            msgLower.includes('permanente');
     if (isNaoEncontrada) {
       return {
         executado: true,
@@ -3837,11 +3886,12 @@ async function consultarFgtsInfoSimples(cnpjStr, razaoClienteProtheus = '') {
     endereco_caixa: endereco,
     numero_crf: numeroCrf,
     similarity,
+    _consultadoViaMatriz: Boolean(resultadoRaw._consultadoViaMatriz),
     _status: {
       status: isRegular && razaoFgtsIgual === 'S' ? 'OK' : 'ALERTA',
-      provedor: 'InfoSimples / Caixa',
+      provedor: resultadoRaw._consultadoViaMatriz ? 'InfoSimples / Caixa (Matriz)' : 'InfoSimples / Caixa',
       tempoMs: resultadoRaw.tempoMs,
-      mensagem: isRegular ? (razaoFgtsIgual === 'S' ? `CRF Regular (Validade: ${validade || 'Válido'})` : 'Razão Social divergente na Caixa') : 'Certidão Irregular na Caixa'
+      mensagem: isRegular ? (razaoFgtsIgual === 'S' ? `CRF Regular ${resultadoRaw._consultadoViaMatriz ? '(Matriz) ' : ''}(Validade: ${validade || 'Válido'})` : 'Razão Social divergente na Caixa') : 'Certidão Irregular na Caixa'
     }
   };
 }

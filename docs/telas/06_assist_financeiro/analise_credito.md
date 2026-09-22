@@ -148,7 +148,9 @@ Para atender às exigências da LGPD e proteger o sigilo financeiro dos clientes
 - Resolução de entradas DNS MX do domínio corporativo. Identifica provedores corporativos Premium (**Google Workspace**, **Microsoft 365** e **Sophos Email Security**) e serviços de hospedagem compartilhada.
 
 ### 4.3 Certidões Governamentais InfoSimples (FGTS Caixa & Dívida PGFN)
-- **FGTS Caixa:**
+- **FGTS Caixa (`consultarFgtsInfoSimples`):**
+  - **Fallback Automático para Matriz:** Quando uma filial (ex: `0321`) é consultada e a Caixa retorna erro permanente (`código 620`) ou ausência de cadastro, o conector deriva e consulta automaticamente o CNPJ Matriz (`0001`), pois a legislação permite centralização do recolhimento e do CRF na Matriz.
+  - **Tratamento do Código 620 (permanent_error):** Mapeado como status `ALERTA` (amarelo) e `fgts_situacao_regular: 'NE'` (Não Encontrado / Sem funcionários / Nunca recolheu FGTS), eliminando falsos positivos de indisponibilidade técnica (erro vermelho).
   - Situação Não Regular: **`peso_fgts_regular_nao = -6 pts`**.
   - Razão Social na Caixa idêntica ao Protheus: **`peso_razao_fgts_igual_sim = +3 pts`**.
   - Razão Social divergente na Caixa: **`peso_razao_fgts_igual_nao = -15 pts`** (alerta gravíssimo de fraude cadastral).

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.243 (Homologada em 22/09/2026 13:06)  
+> **Versão da Documentação:** v8.244 (Homologada em 22/09/2026 13:44)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 22/09/2026 13:06 (v8.243 - Motor Dual-Engine CDX Server no Wayback Machine e Reconhecimento Sophos MX na Análise de Crédito)  
+> **Data da Última Auditoria:** 22/09/2026 13:44 (v8.244 - Tratamento do Código 620 e Fallback Automático para Matriz no FGTS Caixa)  
 
 ---
 
@@ -173,6 +173,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.244 (22/09/2026):** Tratamento especializado do Código 620 da InfoSimples (`permanent_error` na Caixa Econômica Federal) e Fallback Automático para CNPJ Matriz no FGTS Caixa (`consultarFgtsInfoSimples`). Filiais com recolhimento de FGTS centralizado na matriz (como filial 0321 do Madero) agora consultam e herdam a certidão CRF da matriz (`0001`), e empresas sem cadastro de FGTS passam a ser categorizadas como `ALERTA` (amarelo, `NE`) em vez de erro técnico de sistema (homologado com testes aprovados em `test_infosimples_620_matriz.js` e na suíte `test_infosimples_fgts.js` — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
 - **v8.243 (22/09/2026):** Motor Dual-Engine no Wayback Machine (`consultarWayback`) com priorização da API CDX Server (`web.archive.org/cdx/search/cdx`), imune ao rate limit 429 de `/wayback/available` e com fallback secundário automático, garantindo identificação do primeiro snapshot real na Análise de Crédito (`#tab-analise-credito`). Categorização explícita de servidores corporativos de e-mail Sophos como `PREMIUM` (`Sophos Email Security`) em `consultarMx`, eliminando hostnames brutos no Farol MX (homologado com sucesso na suíte de testes de resiliência e maturidade digital — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
 - **v8.242 (22/09/2026):** Consolidação de Histórico Financeiro em `SE1` por Raiz de CNPJ (8 dígitos) e CPF (11 dígitos) na Análise de Crédito (`#tab-analise-credito`), unificando todos os códigos de cliente (`A1_COD`) em `SA1010` da mesma matriz/filiais em `SE1090`, `SE1140`, `SE1150` e `SE1160` em paralelo via `Promise.all`. Expurgo de compras com parcelas abertas, deduplicação por documento contábil e correção dos campos "Comprou e Pagou 2x+ (+pts)", "Comprou < 2x (-pts)" e "Comprou e Pagou 5x+ (+pts)" (homologado no pedido #000822 empresa 16 Madero: consolidou 10 compras pagas de R$ 170.484,12 e bonificação de +32 pts em vez de penalidade de -3 pts, ganho líquido de +35 pts de score, com 17 testes aprovados em `test_cnpj_matriz_fundacao.js` — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
 - **v8.241 (22/09/2026):** Resolução automática de CNPJ Matriz via Módulo 11 da RFB e data de fundação matriz na Análise de Crédito (`#tab-analise-credito`), corrigindo a apuração de idade de filiais recém-abertas para a fundação original da matriz (homologado no pedido #000822 empresa 16 Madero, revertendo penalização de -6 pts para pontuação real de +4 pts, com cache de 1h e 15 testes aprovados em `test_cnpj_matriz_fundacao.js` — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
