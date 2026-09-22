@@ -226,6 +226,9 @@ O motor de análise de crédito e seus componentes contam com uma das mais abran
 
 | Arquivo de Teste | Quantidade de Testes | Foco de Validação |
 | :--- | :--- | :--- |
+| Arquivo de Teste | Quantidade de Testes | Foco de Validação |
+| :--- | :--- | :--- |
+| [`test_cnpj_matriz_fundacao.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_cnpj_matriz_fundacao.js) | 17 Testes | Resolução de CNPJ Matriz via Módulo 11 da RFB, priorização da matriz com fallback para filial, normalização ISO de datas, proteção anti-CPF e Consolidação de Histórico Financeiro em SE1 por Raiz de CNPJ (8 dígitos). |
 | [`test_serasa_pdf_parser.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_serasa_pdf_parser.js) | 7 Testes | Parsers em memória de laudos reais (WDM, DASS, Equipsea, AP Elettrolight), rejeição de laudos com mais de 4 meses e casos de documentos extraviados. |
 | [`test_novos_criterios_credito.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_novos_criterios_credito.js) | 8 Testes | Novos pesos de alteração de sócios (-8 pts), aumento de capital (-20 pts), botão 1-clique Caixa FGTS e persistência de pesos. |
 | [`test_registro_br_automacao.js`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/test_registro_br_automacao.js) | 6 Testes | Validação de domínio RDAP e correspondência pela raiz de 8 dígitos do CNPJ. |
@@ -236,6 +239,7 @@ O motor de análise de crédito e seus componentes contam com uma das mais abran
 
 ### Comandos de Execução dos Testes:
 ```bash
+node test_cnpj_matriz_fundacao.js
 node test_serasa_pdf_parser.js
 node test_novos_criterios_credito.js
 node test_registro_br_automacao.js
@@ -251,6 +255,8 @@ node test_score_config.js
 
 | Versão | Data | Autor | Principais Alterações |
 | :--- | :--- | :--- | :--- |
+| **v4.2** | 2026-09-22 | Alexandre / Equipe GSI | Consolidação de Histórico Financeiro em `SE1` por Raiz de CNPJ (8 dígitos) ou CPF (11 dígitos): resolução de múltiplos códigos de cliente (`A1_COD`) em `SA1010` que compartilham o mesmo grupo empresarial/matriz/filiais, varredura concorrente via `Promise.all` em `SE1090`, `SE1140`, `SE1150` e `SE1160`, deduplicação contábil por documento `${emp}_${prefixo}_${numDoc}`, expurgo de impostos/descontos/NCC, expurgo de compras com parcelas em aberto e cálculo correto dos critérios "Comprou e Pagou 2x+ (+pts)", "Comprou < 2x (-pts)" e "Comprou e Pagou 5x+ (+pts)" (caso homologado: pedido #000822 empresa 16 Madero, onde filial recém-aberta computava 0 compras pagas com penalidade de -3 pts, passando a consolidar 10 compras pagas no grupo totalizando R$ 170.484,12 e bonificação de +32 pts, diferença de +35 pts). 17 testes aprovados em `test_cnpj_matriz_fundacao.js`. |
+| **v4.1** | 2026-09-22 | Alexandre / Equipe GSI | Resolução automática de CNPJ Matriz (Módulo 11 da RFB) para pedidos faturados em filiais recém-abertas, garantindo que a fundação e a idade da empresa computem a história real da matriz (caso homologado: Madero #000822 na empresa 16 pontuando +4 pts em vez de -6 pts). Adição de cache em memória com TTL de 1h contra rate limit e 15 testes dedicados em `test_cnpj_matriz_fundacao.js`. |
 | **v4.0** | 2026-09-15 | Alexandre / Equipe GSI | Inclusão de certidões Dívida Ativa PGFN e novos pesos anti-golpe de alteração societária e aumento de capital. |
 | **v3.5** | 2026-09-11 | Alexandre / Equipe GSI | Implementação do botão assistido de 1-clique para a Caixa Econômica Federal e integração com certidão de FGTS. |
 | **v3.0** | 2026-09-07 | Alexandre / Equipe GSI | Migração do parser Serasa para stream efêmero em buffer de memória (`serasa_pdf_parser.js`), garantindo Zero-Disk Storage. |

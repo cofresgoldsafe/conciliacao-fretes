@@ -1523,7 +1523,7 @@ async function obterDetalhesPedido(empresaKey = "OACO", numPedido) {
       };
       if (head && head.COD_CLI) {
         try {
-          historicoFinanceiro = await obterHistoricoFinanceiroCliente(head.COD_CLI);
+          historicoFinanceiro = await obterHistoricoFinanceiroCliente(head.COD_CLI, cliInfo.cnpj);
         } catch (errHist) {
           console.warn('Erro ao obter histórico financeiro consolidado SE1:', errHist.message);
         }
@@ -2052,8 +2052,18 @@ function findSubsetSum(items, targetSum, tolerance = 0.01, maxItems = 6) {
  * - Comprou e pagou 2x+ ('S' | 'N')
  * - Comprou e pagou 5x+ ('S' | 'N')
  */
-async function obterHistoricoFinanceiroCliente(codCliente) {
-  if (!codCliente) {
+/**
+ * Consulta Histórico Financeiro Consolidado em SE1 (09, 14, 15, 16)
+ * Agrupa compras por Raiz de CNPJ (8 dígitos) ou CPF (11 dígitos) para contemplar
+ * todas as filiais e códigos distintos do mesmo grupo econômico / cliente.
+ * 
+ * - Total de compras pagas (E1_BAIXA preenchido e E1_SALDO <= 0)
+ * - Se possui títulos em aberto (E1_BAIXA vazio e E1_SALDO > 0)
+ * - Comprou e pagou 2x+ ('S' | 'N')
+ * - Comprou e pagou 5x+ ('S' | 'N')
+ */
+async function obterHistoricoFinanceiroCliente(codCliente, cnpj = null) {
+  if (!codCliente && !cnpj) {
     return {
       totalComprasPagas: 0,
       titulosAbertos: 0,
@@ -2064,8 +2074,75 @@ async function obterHistoricoFinanceiroCliente(codCliente) {
     };
   }
 
-  const cleanCod = sanitizeSqlParam(codCliente);
-  const paddedCod = cleanCod.padStart(6, '0');
+  // 1. Extração da raiz do documento (11 dígitos para CPF, 8 dígitos para CNPJ)
+  const digits = String(cnpj || '').replace(/\D/g, '');
+  let raiz = digits.length === 11 ? digits : (digits.length >= 8 ? digits.slice(0, 8) : '');
+
+  // Se não foi informado CNPJ, busca o documento do cliente no SA1010
+  if (!raiz && codCliente) {
+    try {
+      const cleanCod = sanitizeSqlParam(codCliente);
+      const paddedCod = cleanCod.padStart(6, '0');
+      const sqlCgc = `
+        SELECT TOP 1 RTRIM(A1_CGC) AS CGC 
+        FROM SA1010 
+        WHERE (A1_COD = '${cleanCod}' OR A1_COD = '${paddedCod}') AND D_E_L_E_T_ = ' '
+      `;
+      const resCgc = await executeRailwayQuery(sqlCgc);
+      if (resCgc && resCgc.rows && resCgc.rows[0]) {
+        const cgcDigits = (resCgc.rows[0].CGC || '').replace(/\D/g, '');
+        raiz = cgcDigits.length === 11 ? cgcDigits : (cgcDigits.length >= 8 ? cgcDigits.slice(0, 8) : '');
+      }
+    } catch (eCgc) {
+      console.warn('Erro ao buscar CGC no SA1010:', eCgc.message);
+    }
+  }
+
+  // 2. Localiza todos os códigos A1_COD cadastrados para essa raiz no SA1010
+  let codigos = [];
+  if (raiz) {
+    try {
+      const raizFmt = raiz.length === 8
+        ? `${raiz.slice(0, 2)}.${raiz.slice(2, 5)}.${raiz.slice(5, 8)}`
+        : (raiz.length === 11 ? `${raiz.slice(0, 3)}.${raiz.slice(3, 6)}.${raiz.slice(6, 9)}-${raiz.slice(9, 11)}` : raiz);
+
+      const sqlCodigos = `
+        SELECT DISTINCT RTRIM(A1_COD) AS COD
+        FROM SA1010
+        WHERE D_E_L_E_T_ = ' '
+          AND (A1_CGC LIKE '${sanitizeSqlParam(raiz)}%' OR A1_CGC LIKE '${sanitizeSqlParam(raizFmt)}%')
+      `;
+      const resCodigos = await executeRailwayQuery(sqlCodigos);
+      if (resCodigos && resCodigos.rows) {
+        codigos = resCodigos.rows.map(r => (r.COD || '').trim()).filter(Boolean);
+      }
+    } catch (eCod) {
+      console.warn('Erro ao buscar códigos por raiz no SA1010:', eCod.message);
+    }
+  }
+
+  // Garante inclusão do próprio código do cliente informado (com proteção anti-000000)
+  if (codCliente && String(codCliente).replace(/\D/g, '') !== '' && String(codCliente).replace(/\D/g, '') !== '0') {
+    const cleanCod = sanitizeSqlParam(codCliente);
+    codigos.push(cleanCod);
+    codigos.push(cleanCod.padStart(6, '0'));
+  }
+
+  const codigosUnicos = [...new Set(codigos)].filter(Boolean);
+  if (codigosUnicos.length === 0) {
+    return {
+      totalComprasPagas: 0,
+      titulosAbertos: 0,
+      temPgtosAbertos: 'N',
+      comprou2x: 'N',
+      comprou5x: 'N',
+      detalhesEmpresas: {}
+    };
+  }
+
+  const inClause = codigosUnicos.map(c => `'${sanitizeSqlParam(c)}'`).join(',');
+
+  // 3. Consulta paralela em SE1090, SE1140, SE1150 e SE1160
   const tabelas = [
     { codEmpresa: '09', tabela: 'SE1090', nome: 'Empresa 09' },
     { codEmpresa: '14', tabela: 'SE1140', nome: 'Empresa 14 (Metal Pleno)' },
@@ -2077,7 +2154,7 @@ async function obterHistoricoFinanceiroCliente(codCliente) {
   const titulosAbertosDistintos = new Set();
   const detalhesEmpresas = {};
 
-  for (const emp of tabelas) {
+  const promises = tabelas.map(async emp => {
     try {
       const sql = `
         SELECT
@@ -2091,31 +2168,45 @@ async function obterHistoricoFinanceiroCliente(codCliente) {
           RTRIM(ISNULL(E1_EMISSAO, '')) AS EMISSAO,
           RTRIM(ISNULL(E1_VENCTO, '')) AS VENCTO
         FROM ${emp.tabela}
-        WHERE (E1_CLIENTE = '${cleanCod}' OR E1_CLIENTE = '${paddedCod}')
+        WHERE E1_CLIENTE IN (${inClause})
+          AND RTRIM(E1_TIPO) NOT IN ('TX', 'INS', 'ISS', 'PIS', 'COF', 'CSL', 'NCC')
           AND D_E_L_E_T_ = ' '
       `;
       const res = await executeRailwayQuery(sql);
-      const rows = res && res.rows ? res.rows : [];
-      detalhesEmpresas[emp.codEmpresa] = { totalLinhas: rows.length };
-
-      for (const r of rows) {
-        const numDoc = (r.NUM || '').trim();
-        if (!numDoc) continue;
-        const docKey = `${emp.codEmpresa}_${numDoc}`;
-
-        const isBaixado = r.BAIXA && r.BAIXA.trim() !== '' && Number(r.SALDO || 0) <= 0;
-        const isAberto = (!r.BAIXA || r.BAIXA.trim() === '') && Number(r.SALDO || 0) > 0;
-
-        if (isBaixado) {
-          titulosPagosDistintos.add(docKey);
-        }
-        if (isAberto) {
-          titulosAbertosDistintos.add(docKey);
-        }
-      }
+      return { codEmpresa: emp.codEmpresa, rows: res?.rows || [] };
     } catch (e) {
-      console.warn(`Erro ao consultar histórico financeiro em ${emp.tabela}:`, e.message);
+      console.warn(`Erro ao consultar títulos em ${emp.tabela}:`, e.message);
+      return { codEmpresa: emp.codEmpresa, rows: [] };
     }
+  });
+
+  const resultados = await Promise.all(promises);
+
+  for (const item of resultados) {
+    detalhesEmpresas[item.codEmpresa] = { totalLinhas: item.rows.length };
+    for (const r of item.rows) {
+      const numDoc = (r.NUM || '').trim();
+      if (!numDoc) continue;
+      const prefixo = (r.PREFIXO || '').trim();
+      const docKey = `${item.codEmpresa}_${prefixo}_${numDoc}`;
+
+      const saldo = Number(r.SALDO || 0);
+      const isBaixado = r.BAIXA && r.BAIXA.trim() !== '' && saldo <= 0;
+      const isAberto = saldo > 0; // Se tem saldo devedor ativo, é título em aberto (mesmo com baixa parcial anterior)
+
+      if (isBaixado) {
+        titulosPagosDistintos.add(docKey);
+      }
+      if (isAberto) {
+        titulosAbertosDistintos.add(docKey);
+      }
+    }
+  }
+
+  // Integridade de Crédito: Se qualquer parcela do documento ainda possuir saldo devedor em aberto,
+  // a compra não é considerada 100% quitada e é removida da bonificação de compras pagas
+  for (const docAberto of titulosAbertosDistintos) {
+    titulosPagosDistintos.delete(docAberto);
   }
 
   const totalComprasPagas = titulosPagosDistintos.size;

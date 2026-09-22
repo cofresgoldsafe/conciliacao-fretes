@@ -2818,11 +2818,61 @@ function compararEnderecos(endProtheus, endReceita, numProtheus, numReceita, com
   };
 }
 
+// Normaliza data para formato ISO YYYY-MM-DD (suporta DD/MM/YYYY da ReceitaWS e YYYY-MM-DD da BrasilAPI)
+function formatarDataIso(dataStr) {
+  if (!dataStr) return '';
+  const str = String(dataStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+  const m = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  return str;
+}
+
+// Derivação automática do CNPJ Matriz (0001) para qualquer CNPJ (filial ou matriz) via Módulo 11 da RFB
+function obterCnpjMatriz(cnpjStr) {
+  const digits = String(cnpjStr || '').replace(/\D/g, '');
+  if (digits.length !== 14) return cnpjStr;
+  const ordem = digits.slice(8, 12);
+  if (ordem === '0001') return digits;
+
+  const base12 = digits.slice(0, 8) + '0001';
+  const calcDv = (str, pesos) => {
+    const soma = pesos.reduce((acc, peso, i) => acc + Number(str[i]) * peso, 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  const dv1 = calcDv(base12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const dv2 = calcDv(base12 + String(dv1), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return `${base12}${dv1}${dv2}`;
+}
+
+// Resolução desacoplada da data de fundação: prioriza sempre a matriz com fallback para filial
+function resolverFundacaoMatriz(dadosFilial, dadosMatriz) {
+  if (dadosMatriz && !dadosMatriz._erroTecnico && dadosMatriz.fundacao) {
+    return dadosMatriz.fundacao;
+  }
+  if (dadosFilial && !dadosFilial._erroTecnico && dadosFilial.fundacao) {
+    return dadosFilial.fundacao;
+  }
+  return '';
+}
+
+// Cache em memória de consultas públicas de CNPJ (TTL: 1 hora) para evitar rate limits (429)
+const cnpjPublicoCache = new Map();
+const CNPJ_CACHE_TTL_MS = 60 * 60 * 1000;
+
 // Função utilitária para consulta de CNPJ em bases públicas governamentais (BrasilAPI com fallback ReceitaWS)
 async function consultarCnpjPublico(cnpjStr) {
   if (!cnpjStr) return null;
   const digits = String(cnpjStr).replace(/\D/g, '');
   if (digits.length !== 14) return null;
+
+  // Checa cache em memória antes de disparar requisições externas
+  const cached = cnpjPublicoCache.get(digits);
+  if (cached && (Date.now() - cached.timestamp < CNPJ_CACHE_TTL_MS) && !cached.dados._erroTecnico) {
+    return { ...cached.dados, _fromCache: true };
+  }
+
   const t0 = Date.now();
 
   try {
@@ -2836,8 +2886,8 @@ async function consultarCnpjPublico(cnpjStr) {
 
     if (res.ok) {
       const d = await res.json();
-      return {
-        fundacao: d.data_inicio_atividade || '',
+      const resultado = {
+        fundacao: formatarDataIso(d.data_inicio_atividade) || '',
         capitalSocial: typeof d.capital_social === 'number' ? d.capital_social : parseFloat(d.capital_social) || 0,
         cnpjAtivo: (d.descricao_situacao_cadastral || d.situacao_cadastral || '').toUpperCase().includes('ATIVA') ? 'S' : 'N',
         descricao_tipo_de_logradouro: d.descricao_tipo_de_logradouro || '',
@@ -2856,6 +2906,8 @@ async function consultarCnpjPublico(cnpjStr) {
           mensagem: 'Dados cadastrais e capital obtidos via BrasilAPI'
         }
       };
+      cnpjPublicoCache.set(digits, { timestamp: Date.now(), dados: resultado });
+      return resultado;
     }
   } catch (e) {
     console.warn('Consulta BrasilAPI falhou, tentando fallback ReceitaWS:', e.message);
@@ -2873,8 +2925,8 @@ async function consultarCnpjPublico(cnpjStr) {
     if (res2.ok) {
       const d2 = await res2.json();
       const cap = String(d2.capital_social || '0').replace(/\./g, '').replace(',', '.');
-      return {
-        fundacao: d2.abertura || '',
+      const resultado2 = {
+        fundacao: formatarDataIso(d2.abertura) || '',
         capitalSocial: parseFloat(cap) || 0,
         cnpjAtivo: (d2.situacao || '').toUpperCase().includes('ATIVA') ? 'S' : 'N',
         descricao_tipo_de_logradouro: '',
@@ -2893,6 +2945,8 @@ async function consultarCnpjPublico(cnpjStr) {
           mensagem: 'Dados cadastrais obtidos via ReceitaWS (Fallback)'
         }
       };
+      cnpjPublicoCache.set(digits, { timestamp: Date.now(), dados: resultado2 });
+      return resultado2;
     }
   } catch (e2) {
     console.warn('Consulta CNPJ fallback ReceitaWS falhou:', e2.message);
@@ -3981,10 +4035,24 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
     const faturadoVal = condInfo.faturado || (detalhes.fiscal?.geraFinanceiro === 'S' ? 'S' : 'N');
     const entradaVal = condInfo.possuiEntrada || 'N';
 
-    // Consulta CNPJ em bases públicas (Fundação, Capital Social e Endereço Oficial)
+    // Consulta CNPJ em bases públicas (Fundação da Matriz, Capital Social e Endereço Oficial)
     let dadosCnpj = null;
-    if (cli.cnpj) {
-      dadosCnpj = await consultarCnpjPublico(cli.cnpj);
+    let dadosCnpjMatriz = null;
+    const digitsCli = String(cli.cnpj || '').replace(/\D/g, '');
+    if (digitsCli.length === 14) {
+      const cnpjMatriz = obterCnpjMatriz(digitsCli);
+      const ehFilial = Boolean(cnpjMatriz && cnpjMatriz !== digitsCli);
+      if (ehFilial) {
+        const [resFilial, resMatriz] = await Promise.all([
+          consultarCnpjPublico(digitsCli),
+          consultarCnpjPublico(cnpjMatriz)
+        ]);
+        dadosCnpj = resFilial;
+        dadosCnpjMatriz = resMatriz;
+      } else {
+        dadosCnpj = await consultarCnpjPublico(digitsCli);
+        dadosCnpjMatriz = dadosCnpj;
+      }
     }
 
     // Comparação Inteligente de Endereço Protheus vs Receita Federal
@@ -4126,8 +4194,12 @@ app.post('/api/financeiro/analise-credito/protheus', async (req, res) => {
       armario_cofre_gt_2000: temItemUnitarioGt2k ? 'S' : 'N',
       uf_cliente: (cli.uf || 'SP').toUpperCase().trim(),
       cnpj_ativo: (dadosCnpj && !dadosCnpj._erroTecnico) ? dadosCnpj.cnpjAtivo : '',
-      fundacao_matriz: (dadosCnpj && !dadosCnpj._erroTecnico) ? dadosCnpj.fundacao : '',
-      capital_social: (dadosCnpj && !dadosCnpj._erroTecnico && dadosCnpj.capitalSocial > 0) ? dadosCnpj.capitalSocial : '',
+      fundacao_matriz: resolverFundacaoMatriz(dadosCnpj, dadosCnpjMatriz),
+      capital_social: (() => {
+        const capMat = (dadosCnpjMatriz && !dadosCnpjMatriz._erroTecnico && dadosCnpjMatriz.capitalSocial > 0) ? dadosCnpjMatriz.capitalSocial : 0;
+        const capFil = (dadosCnpj && !dadosCnpj._erroTecnico && dadosCnpj.capitalSocial > 0) ? dadosCnpj.capitalSocial : 0;
+        return capMat || capFil || '';
+      })(),
       receita_offline: Boolean(dadosCnpj && dadosCnpj._erroTecnico),
 
       // Histórico Financeiro Consolidado das empresas 09, 14, 15 e 16 (Protheus SE1)
@@ -6894,6 +6966,11 @@ app.executarSincronizacaoNfeCentral = executarSincronizacaoNfeCentral;
 app.startNfeCentralSyncJob = startNfeCentralSyncJob;
 app.validarSegredoCron = validarSegredoCron;
 app.CANONICAL_CRON_SECRET = CANONICAL_CRON_SECRET;
+app.obterCnpjMatriz = obterCnpjMatriz;
+app.consultarCnpjPublico = consultarCnpjPublico;
+app.formatarDataIso = formatarDataIso;
+app.resolverFundacaoMatriz = resolverFundacaoMatriz;
+app.cnpjPublicoCache = cnpjPublicoCache;
 
 module.exports = app;
 
