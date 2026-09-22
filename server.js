@@ -4053,11 +4053,24 @@ async function consultarBolsaFamiliaInfoSimples(cpfStr) {
     };
   }
 
-  const resultadoRaw = await executarConsultaInfoSimples('portal-transparencia-bolsa', { cpf: digits }, 'InfoSimples / Bolsa Família');
+  // Intervalo de busca no Portal da Transparência (até 12 meses da data atual)
+  const hoje = new Date();
+  const dataFimStr = hoje.toISOString().slice(0, 10);
+  const dataInicio = new Date(hoje.getTime() - 360 * 24 * 60 * 60 * 1000);
+  const dataInicioStr = dataInicio.toISOString().slice(0, 10);
+
+  const resultadoRaw = await executarConsultaInfoSimples('portal-transparencia/bolsa', {
+    cpf: digits,
+    data_inicio: dataInicioStr,
+    data_fim: dataFimStr
+  }, 'InfoSimples / Bolsa Família');
 
   if (!resultadoRaw.sucesso) {
     const msgLower = ((resultadoRaw.codeMessage || '') + ' ' + (resultadoRaw.motivo || '')).toLowerCase();
-    const isNadaConsta = resultadoRaw.code === 620 ||
+    const isNadaConsta = resultadoRaw.code === 612 ||
+                         resultadoRaw.code === 620 ||
+                         msgLower.includes('não retornou dados') ||
+                         msgLower.includes('nao retornou dados') ||
                          msgLower.includes('não foram encontrados') || 
                          msgLower.includes('nao foram encontrados') || 
                          msgLower.includes('não consta') || 
@@ -7297,6 +7310,8 @@ app.consultarCnpjPublico = consultarCnpjPublico;
 app.formatarDataIso = formatarDataIso;
 app.resolverFundacaoMatriz = resolverFundacaoMatriz;
 app.cnpjPublicoCache = cnpjPublicoCache;
+app.consultarBolsaFamiliaInfoSimples = consultarBolsaFamiliaInfoSimples;
+app.validarCpf = validarCpf;
 
 module.exports = app;
 

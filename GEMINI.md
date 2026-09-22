@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.246 (Homologada em 22/09/2026 16:23)  
+> **Versão da Documentação:** v8.247 (Homologada em 22/09/2026 16:40)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 22/09/2026 16:23 (v8.246 - Extração de Sócios Serasa, Antifraude Bolsa Família InfoSimples e IE Isenta)  
+> **Data da Última Auditoria:** 22/09/2026 16:40 (v8.247 - Endpoint Oficial InfoSimples portal-transparencia/bolsa com Intervalo de 12 Meses)  
 
 ---
 
@@ -173,6 +173,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.247 (22/09/2026):** Homologação ao vivo da API InfoSimples Bolsa Família com chave real: ajuste do endpoint oficial para `portal-transparencia/bolsa`, inclusão do parâmetro obrigatório de data com janela de até 12 meses (`data_inicio` e `data_fim` ISO YYYY-MM-DD), reconhecimento nativo do Código 612 como `NADA_CONSTA` e exportação de `consultarBolsaFamiliaInfoSimples` e `validarCpf` em `server.js` (homologado em tempo real com CPF 273.897.148-24).
 - **v8.246 (22/09/2026):** Extração de quadro societário e CPFs de sócios/administradores do laudo Serasa Experian PDF (100% RAM stream via `serasa_pdf_parser.py`); integração com a API `portal-transparencia-bolsa` da InfoSimples para antifraude de sócios laranjas (-25 pts com validação prévia Módulo 11 anti-erro 606); suporte neutro (0 pts) a empresas públicas e S.A. sem sócios PF; integração de Inscrição Estadual (Ativa +2 pts, Inapta -15 pts, Isenta 0 pts neutro); calibração dinâmica dos 7 pesos em `#tab-config-score` e backtest com 100% de aprovação (detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
 - **v8.244 (22/09/2026):** Tratamento especializado do Código 620 da InfoSimples (`permanent_error` na Caixa Econômica Federal) e Fallback Automático para CNPJ Matriz no FGTS Caixa (`consultarFgtsInfoSimples`). Filiais com recolhimento de FGTS centralizado na matriz (como filial 0321 do Madero) agora consultam e herdam a certidão CRF da matriz (`0001`), e empresas sem cadastro de FGTS passam a ser categorizadas como `ALERTA` (amarelo, `NE`) em vez de erro técnico de sistema (homologado com testes aprovados em `test_infosimples_620_matriz.js` e na suíte `test_infosimples_fgts.js` — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
 - **v8.243 (22/09/2026):** Motor Dual-Engine no Wayback Machine (`consultarWayback`) com priorização da API CDX Server (`web.archive.org/cdx/search/cdx`), imune ao rate limit 429 de `/wayback/available` e com fallback secundário automático, garantindo identificação do primeiro snapshot real na Análise de Crédito (`#tab-analise-credito`). Categorização explícita de servidores corporativos de e-mail Sophos como `PREMIUM` (`Sophos Email Security`) em `consultarMx`, eliminando hostnames brutos no Farol MX (homologado com sucesso na suíte de testes de resiliência e maturidade digital — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
