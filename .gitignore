@@ -15,3 +15,7 @@ audit*.png
 tela*.png
 score_config.json
 data/score_config.json
+google_service_account.json
+credentials/
+*service_account*.json
+api-ativa.png

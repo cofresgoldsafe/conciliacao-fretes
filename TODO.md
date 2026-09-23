@@ -25,6 +25,7 @@
 - [x] [SRE-08] Prevenir vazamento de memória e acumuladores de eventos no frontend através de Event Delegation nos containers `tbody` (`public/app.js`).
 
 ## 💼 Funcionalidades & Módulos de Negócio
+- [x] [LOG-01] Módulo de Salvamento de XMLs de Faturamento no Google Drive e Job das 18h: Eliminação do processo manual de recortar e colar de Downloads/xml. Nova sub-aba em Logística (#tab-log-xml-faturamento) com seleção de período (atalhos Hoje, Ontem, Semana, Mês no fuso de Brasília), memorização de pasta via File System Access API no IndexedDB com alteração a qualquer momento, roteamento automático de subpastas [ANO]/[EMPRESA]/[MM.ANO], fatiamento em chunks anti-timeout de 15 notas, gravação direta de arquivos soltos sem ZIP, contingência de download ZIP multi-empresa, governança estrita de canceladas (bloqueio de protocolo falso 100), job agendado diário às 18:00 (segunda a sexta-feira) gravando direto na unidade G:\ e suíte com 12 testes automatizados 100% aprovados (v8.248).
 - [x] [VEND-01] Sub-aba Consulta Ped Venda: Pesquisa multi-empresa (14, 15, 16) com integração `SA1010`, máscaras e itens `SC6`.
 - [x] [VEND-02] Sub-aba Ped Vendas Abertos: Listagem multi-empresa não faturada com regras de bloqueio `SC9` e CRM Pipedrive.
 - [x] [VEND-03] Sub-aba Prod x Ped Compras: Consulta de compras em aberto (`SC7`) de produtos `PA` com fornecedores `SA2010`.

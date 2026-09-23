@@ -2054,6 +2054,74 @@ app.get('/api/logistica/pedidos-faturar', requireAuth, async (req, res) => {
   }
 });
 
+// ============================================================================
+// LOGÍSTICA: XMLS DO FATURAMENTO & SINCRONIZAÇÃO GOOGLE DRIVE
+// ============================================================================
+
+// 1. Consulta de Notas Faturadas no período com cálculo de nomenclatura e pastas sugeridas
+app.get('/api/logistica/faturamento-notas', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const perms = (user && Array.isArray(user.permissions)) ? user.permissions : [];
+    const isAuth = user && (user.role === 'admin' || perms.includes('logistica') || perms.includes('analista-fin'));
+    if (!isAuth) {
+      return res.status(403).json({ success: false, ok: false, error: 'Acesso negado: permissão de Logística ou Analista Financeiro necessária.' });
+    }
+
+    const { dataDe, dataAte, empresa } = req.query || {};
+    const { buscarNotasFaturadasLogistica } = require('./logistica_xml_service');
+    const resultado = await buscarNotasFaturadasLogistica({ dataDe, dataAte, empresa });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_FATURAMENTO_XMLS',
+      description: `Consultou notas faturadas para exportação de XMLs (${resultado.notas ? resultado.notas.length : 0} notas)`,
+      ip: req.ip,
+      metadata: { dataDe, dataAte, empresa, total: resultado.notas ? resultado.notas.length : 0 }
+    }).catch(() => {});
+
+    return res.json({ success: true, ...resultado });
+  } catch (err) {
+    console.error('Erro ao consultar notas faturadas para XMLs:', err);
+    return res.status(500).json({ success: false, ok: false, error: err.message });
+  }
+});
+
+// 2. Resolução e download em lote dos XMLs das notas selecionadas
+app.post('/api/logistica/faturamento-xmls/lote', requireAuth, async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const perms = (user && Array.isArray(user.permissions)) ? user.permissions : [];
+    const isAuth = user && (user.role === 'admin' || perms.includes('logistica') || perms.includes('analista-fin'));
+    if (!isAuth) {
+      return res.status(403).json({ success: false, ok: false, error: 'Acesso negado: permissão de Logística ou Analista Financeiro necessária.' });
+    }
+
+    const { itens = [] } = req.body || {};
+    if (!Array.isArray(itens) || itens.length === 0) {
+      return res.status(400).json({ success: false, ok: false, error: 'Lista de notas não informada ou vazia.' });
+    }
+
+    const { obterLoteXmlsFaturados } = require('./logistica_xml_service');
+    const resultados = await obterLoteXmlsFaturados({ itens });
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'EXPORTACAO_XMLS_LOTE',
+      description: `Resolveu lote de ${itens.length} XMLs de faturamento para gravação no Drive`,
+      ip: req.ip,
+      metadata: { total: itens.length }
+    }).catch(() => {});
+
+    return res.json({ success: true, ok: true, resultados });
+  } catch (err) {
+    console.error('Erro ao obter lote de XMLs de faturamento:', err);
+    return res.status(500).json({ success: false, ok: false, error: err.message });
+  }
+});
+
 // API: Logística - Pedidos Bloqueados por Falta de Estoque (C9_BLEST = '02')
 app.get('/api/logistica/pedidos-bloq-estoque', requireAuth, async (req, res) => {
   try {
@@ -6114,6 +6182,63 @@ app.get('/api/admin/jobs/sync-nfe-central/status', requireAuth, (req, res) => {
   });
 });
 
+// 4. Disparo manual da sincronização de XMLs de faturamento no Google Drive (Admin ou Cron)
+app.post('/api/admin/jobs/sync-drive-xmls-18h', async (req, res) => {
+  try {
+    const cronSecret = req.headers['x-cron-secret'];
+    const authHeader = req.headers['authorization'];
+    const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : null;
+    let isAuthorized = false;
+
+    if (validarSegredoCron(cronSecret) || validarSegredoCron(bearerToken)) {
+      isAuthorized = true;
+    } else {
+      const user = getUserFromReq(req);
+      if (user && (user.role === 'admin' || (Array.isArray(user.permissions) && (user.permissions.includes('logistica') || user.permissions.includes('analista-fin'))))) {
+        isAuthorized = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(401).json({ ok: false, error: 'Acesso não autorizado para disparo do job.' });
+    }
+
+    if (isSyncingDriveXmls) {
+      return res.status(409).json({ ok: false, message: 'Job de sincronização no Drive já está em andamento.' });
+    }
+
+    const { force = false, data = null } = req.body || {};
+
+    // Dispara em background sem prender o client HTTP
+    setImmediate(async () => {
+      try {
+        await dispararJobSincronizacaoDrive18h({ force, dataAlvo: data });
+      } catch (errJob) {
+        console.error('❌ Erro no disparo manual do Job Drive XMLs:', errJob);
+      }
+    });
+
+    return res.status(202).json({
+      ok: true,
+      success: true,
+      message: 'Job de sincronização de XMLs no Google Drive iniciado em background.',
+      isSyncing: true
+    });
+  } catch (err) {
+    console.error('Erro ao disparar job Drive XMLs:', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// 5. Status da sincronização de XMLs de faturamento no Google Drive
+app.get('/api/admin/jobs/sync-drive-xmls-18h/status', requireAuth, (req, res) => {
+  return res.json({
+    ok: true,
+    isSyncing: isSyncingDriveXmls,
+    ultimoLog: ultimoSyncDriveXmlLog
+  });
+});
+
 // ============================================================================
 // MÓDULO AUDITORIA PROTHEUS X SEFAZ (ANALISTA FIN / FISCAL)
 // ============================================================================
@@ -7286,6 +7411,68 @@ function startNfeCentralSyncJob() {
   console.log('🕒 [Job NFe Central] Scheduler iniciado (programado para 12:30 e 18:30 America/Sao_Paulo).');
 }
 
+/**
+ * ============================================================================
+ * AGENDADOR AUTOMÁTICO: SINCRONIZAÇÃO DE XMLS NO GOOGLE DRIVE (18:00 BRT, SEG-SEX)
+ * ============================================================================
+ */
+let driveXmlSyncJobInterval = null;
+let isSyncingDriveXmls = false;
+let ultimoSyncDriveXmlLog = null;
+let ultimoDiaDriveXmlExecutado = '';
+
+async function dispararJobSincronizacaoDrive18h(options = {}) {
+  if (isSyncingDriveXmls) {
+    return { ok: false, message: 'Job de sincronização de XMLs no Drive já está em andamento.' };
+  }
+  isSyncingDriveXmls = true;
+  try {
+    const { executarJobSincronizacaoDrive18h } = require('./logistica_xml_service');
+    const res = await executarJobSincronizacaoDrive18h(options);
+    ultimoSyncDriveXmlLog = res;
+    return res;
+  } catch (err) {
+    console.error('❌ [Job Drive XML 18h] Erro fatal:', err);
+    ultimoSyncDriveXmlLog = { ok: false, erro: err.message };
+    return { ok: false, erro: err.message };
+  } finally {
+    isSyncingDriveXmls = false;
+  }
+}
+
+function startDriveXmlSyncJob18h() {
+  if (driveXmlSyncJobInterval) return;
+
+  const verificarEExecutar = async () => {
+    try {
+      const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+      const nowBr = new Date(nowStr);
+      const diaSemana = nowBr.getDay(); // 0 = Dom, 1 = Seg ... 5 = Sex, 6 = Sab
+      const hora = nowBr.getHours();
+      const minuto = nowBr.getMinutes();
+      const hoje = `${nowBr.getFullYear()}-${String(nowBr.getMonth() + 1).padStart(2, '0')}-${String(nowBr.getDate()).padStart(2, '0')}`;
+
+      // Apenas Segunda a Sexta-feira (dias 1 a 5) às 18:00 (janela de tolerância 18:00 a 18:05)
+      if (diaSemana >= 1 && diaSemana <= 5 && hora === 18 && minuto >= 0 && minuto <= 5) {
+        if (ultimoDiaDriveXmlExecutado !== hoje) {
+          ultimoDiaDriveXmlExecutado = hoje;
+          console.log(`⏰ [Job Drive XML 18h] Disparando sincronização agendada de faturamento no Drive (${hora}:${String(minuto).padStart(2, '0')} BRT)...`);
+          await dispararJobSincronizacaoDrive18h();
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [Job Drive XML 18h] Erro no timer:', err.message);
+    }
+  };
+
+  // Checa a cada minuto
+  driveXmlSyncJobInterval = setInterval(verificarEExecutar, 60 * 1000);
+  if (driveXmlSyncJobInterval.unref) {
+    driveXmlSyncJobInterval.unref();
+  }
+  console.log('🕒 [Job Drive XML 18h] Scheduler iniciado (programado para 18:00 America/Sao_Paulo, Segunda a Sexta).');
+}
+
 if (require.main === module) {
   app.listen(PORT, async () => {
     console.log(`=================================================`);
@@ -7298,11 +7485,14 @@ if (require.main === module) {
     startIndicesSyncJob();
     startFechamentoVendedoresJob();
     startNfeCentralSyncJob();
+    startDriveXmlSyncJob18h();
   });
 }
 
 app.executarSincronizacaoNfeCentral = executarSincronizacaoNfeCentral;
 app.startNfeCentralSyncJob = startNfeCentralSyncJob;
+app.dispararJobSincronizacaoDrive18h = dispararJobSincronizacaoDrive18h;
+app.startDriveXmlSyncJob18h = startDriveXmlSyncJob18h;
 app.validarSegredoCron = validarSegredoCron;
 app.CANONICAL_CRON_SECRET = CANONICAL_CRON_SECRET;
 app.obterCnpjMatriz = obterCnpjMatriz;

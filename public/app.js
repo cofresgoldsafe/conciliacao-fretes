@@ -872,6 +872,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-pedidos-bloq-estoque') {
         carregarPedidosBloqEstoque();
       }
+      if (targetTab === 'tab-log-xml-faturamento') {
+        import('./js/logistica_xml_faturamento.js').then(m => {
+          m.inicializarLogisticaXmlFaturamento();
+          m.carregarNotasFaturadasLogistica();
+        }).catch(err => console.error('Erro ao carregar módulo Logística XML Faturamento:', err));
+      }
       if (targetTab === 'tab-vend-gordura-frete') {
         if (typeof inicializarTemaVendedores === 'function') inicializarTemaVendedores();
         if (window.GorduraFreteModule && typeof window.GorduraFreteModule.consultar === 'function') {

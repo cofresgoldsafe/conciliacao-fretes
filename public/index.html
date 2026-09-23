@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.247">
+  <link rel="stylesheet" href="style.css?v=8.248">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 22/09/2026 16:40 (Ajuste do endpoint oficial portal-transparencia/bolsa com intervalo de 12 meses e codigo 612)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 23/09/2026 18:14 (v8.248 - Modulo de Salvamento de XMLs de Faturamento no Google Drive e Job 18h Nuvem)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -107,6 +107,10 @@
         <button class="nav-tab-btn" data-tab="tab-correios" id="btnTabCorreios">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11"></path><rect x="13" y="11" width="9" height="9" rx="1"></rect><polyline points="22 6 12 13 2 6"></polyline></svg>
           <span>Fatura Correios & ViPP</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="tab-log-xml-faturamento" id="btnTabLogXmlFaturamento">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>XMLs do Faturamento</span>
         </button>
       </div>
 
@@ -1074,6 +1078,160 @@
 
         <div class="construction-footer-note" style="margin-top: 1.5rem; text-align: left;">
           ℹ️ <strong>Como funciona a Automação:</strong> A FATURA do Correio traz as etiquetas (ex: <code>AD578039135BR</code>) e os valores cobrados. O Portal extrai as 50+ postagens e efetua o batimento inteligente com as NFs da <strong>Empresa 16 (OACO)</strong>, <strong>15 (GSI)</strong> e <strong>14 (Metal Pleno)</strong> no Protheus.
+        </div>
+      </section>
+    </div>
+
+    <!-- SUB-ABA LOGÍSTICA: XMLS DO FATURAMENTO & GOOGLE DRIVE -->
+    <div id="tab-log-xml-faturamento" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <h2>📦 XMLs do Faturamento & Google Drive</h2>
+            <p class="desc">Download direto e gravação sem ZIP dos arquivos XML faturados no Protheus (SF2) na estrutura oficial do Google Drive.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; padding: 0.4rem 0.75rem; border-radius: 6px;">
+              ⏰ Job Diário: 18:00 (Seg-Sex)
+            </span>
+          </div>
+        </div>
+
+        <!-- Card de Configuração da Pasta do Google Drive -->
+        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid var(--panel-border, #334155); border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem;">📁</span>
+              <div>
+                <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;">Pasta Raiz do Google Drive Configurada:</div>
+                <div id="lblLogXmlPastaDrive" style="font-family: monospace; font-size: 0.95rem; font-weight: 700; color: #38bdf8; word-break: break-all;">
+                  G:\Drives compartilhados\Fiscal e Faturamento\NF's\XML's Saídas
+                </div>
+              </div>
+            </div>
+            <div>
+              <button type="button" id="btnLogXmlEscolherPasta" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span>Alterar Pasta do Drive</span>
+              </button>
+            </div>
+          </div>
+          <div style="margin-top: 0.75rem; font-size: 0.82rem; color: #cbd5e1; line-height: 1.4; border-top: 1px dashed rgba(148, 163, 184, 0.2); padding-top: 0.5rem;">
+            💡 <strong>Roteamento Automático:</strong> Os XMLs são salvos diretamente em <code>XML's Saídas [ANO] / [EMPRESA] / [MM.ANO]</code> com o nome padronizado <code>[SIGLA]-[NF8]-[CHAVE44]-[CLIENTE6].xml</code>. A pasta escolhida fica memorizada no seu navegador e você pode alterá-la a qualquer momento.
+          </div>
+        </div>
+
+        <!-- Filtros de Busca e Seleção de Período -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.25rem; align-items: flex-end;">
+          <div>
+            <label for="selLogXmlEmpresa" style="display: block; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem;">🏢 Empresa Emissora:</label>
+            <select id="selLogXmlEmpresa" class="form-input" style="width: 100%;">
+              <option value="ALL">Todas as Empresas (14, 15, 16)</option>
+              <option value="16" selected>16 — OAÇO Indústria de Cofres (OACO)</option>
+              <option value="15">15 — GSI Brasil Serviços (GSI)</option>
+              <option value="14">14 — Metal Pleno Fechaduras (MP)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="inputLogXmlDataDe" style="display: block; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem;">📅 Data Inicial (De):</label>
+            <input type="date" id="inputLogXmlDataDe" class="form-input" style="width: 100%;" />
+          </div>
+
+          <div>
+            <label for="inputLogXmlDataAte" style="display: block; font-size: 0.85rem; font-weight: 600; color: #cbd5e1; margin-bottom: 0.35rem;">📅 Data Final (Até):</label>
+            <input type="date" id="inputLogXmlDataAte" class="form-input" style="width: 100%;" />
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" id="btnLogXmlBuscar" class="btn btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; height: 42px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>Localizar Notas</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Atalhos Rápidos de Data -->
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap;">
+          <button type="button" id="btnLogXmlAtalhoHoje" class="btn btn-outline btn-sm">Hoje</button>
+          <button type="button" id="btnLogXmlAtalhoOntem" class="btn btn-outline btn-sm">Ontem</button>
+          <button type="button" id="btnLogXmlAtalhoSemana" class="btn btn-outline btn-sm">Esta Semana</button>
+          <button type="button" id="btnLogXmlAtalhoMes" class="btn btn-outline btn-sm">Mês Atual</button>
+        </div>
+
+        <!-- KPIs Resumo -->
+        <div class="summary-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.25rem;">
+          <div class="summary-card" style="border-left: 4px solid #3b82f6;">
+            <span class="card-label">📄 Notas Faturadas</span>
+            <strong id="lblLogXmlTotalNotas" style="color: #3b82f6; font-size: 1.5rem;">0</strong>
+            <small>Total localizado no período</small>
+          </div>
+          <div class="summary-card" style="border-left: 4px solid #10b981;">
+            <span class="card-label">💰 Valor Total Faturado</span>
+            <strong id="lblLogXmlValorTotal" style="color: #10b981; font-size: 1.5rem;">R$ 0,00</strong>
+            <small>Soma do valor bruto (SF2)</small>
+          </div>
+          <div class="summary-card" style="border-left: 4px solid #8b5cf6;">
+            <span class="card-label">✅ Selecionadas p/ Gravação</span>
+            <strong id="lblLogXmlSelecionadas" style="color: #8b5cf6; font-size: 1.5rem;">0</strong>
+            <small>Notas marcadas no grid</small>
+          </div>
+        </div>
+
+        <!-- Barra de Progresso e Ações de Gravação -->
+        <div id="boxLogXmlProgresso" class="hidden" aria-live="polite" style="margin-top: 1.25rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--panel-border); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+            <span id="lblLogXmlProgressoStatus">Gravando XMLs na pasta do Google Drive...</span>
+            <span id="lblLogXmlProgressoPercent">0%</span>
+          </div>
+          <div style="width: 100%; height: 10px; background: #1e293b; border-radius: 5px; overflow: hidden;">
+            <div id="barLogXmlProgresso" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s ease;"></div>
+          </div>
+          <div id="boxLogXmlProgressoLogs" style="margin-top: 0.75rem; max-height: 120px; overflow-y: auto; font-family: monospace; font-size: 0.75rem; color: #94a3b8; display: flex; flex-direction: column; gap: 0.25rem;"></div>
+        </div>
+
+        <!-- Barra de Ações com Botões Principais -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="chkLogXmlSelectAll" checked aria-label="Selecionar todas as notas fiscais" />
+              <span>Selecionar Todas</span>
+            </label>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" id="btnLogXmlBaixarZip" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 0.4rem;">
+              <span>📦 Baixar ZIP (Contingência)</span>
+            </button>
+            <button type="button" id="btnLogXmlSalvarDrive" class="btn btn-success" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.25rem; font-weight: 600;">
+              <span>🚀 Salvar XMLs na Pasta do Google Drive (Sem Zip)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabela de Notas Faturadas -->
+        <div class="table-responsive" style="margin-top: 1rem; max-height: 480px; overflow-y: auto;">
+          <table class="data-table" aria-label="Notas Fiscais de Faturamento para Exportação" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;"><input type="checkbox" id="chkLogXmlSelectAllHeader" checked aria-label="Selecionar todas as notas fiscais para gravação" /></th>
+                <th>Empresa</th>
+                <th>NF / Série</th>
+                <th>Emissão</th>
+                <th>Pedido / CodWeb</th>
+                <th>Cliente Destinatário</th>
+                <th>Valor Bruto</th>
+                <th>Status SEFAZ</th>
+                <th>Nome do Arquivo no Drive</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyLogXmlNotas">
+              <tr>
+                <td colspan="9" style="text-align: center; padding: 2rem; color: #94a3b8;">
+                  Selecione o período e clique em <strong>"Localizar Notas"</strong> para listar os faturados aptos para gravação no Google Drive.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </div>
@@ -9160,23 +9318,23 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.247"></script>
-  <script src="js/bi.js?v=8.247"></script>
-  <script src="js/bi_indices.js?v=8.247"></script>
-  <script src="js/bi_autorizacoes.js?v=8.247"></script>
-  <script src="js/gordura_frete.js?v=8.247"></script>
-  <script src="js/fechamento_vendedores.js?v=8.247"></script>
-  <script type="module" src="js/tarefas.js?v=8.247"></script>
-  <script src="js/holerites.js?v=8.247"></script>
-  <script src="js/funcionarios_dp.js?v=8.247"></script>
-  <script src="js/crm.js?v=8.247"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.247"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.247"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.247"></script>
-  <script src="js/nfse_pendentes.js?v=8.247"></script>
-  <script src="js/fechamento_fiscal.js?v=8.247"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.247"></script>
+  <script src="js/chart.umd.min.js?v=8.248"></script>
+  <script src="js/bi.js?v=8.248"></script>
+  <script src="js/bi_indices.js?v=8.248"></script>
+  <script src="js/bi_autorizacoes.js?v=8.248"></script>
+  <script src="js/gordura_frete.js?v=8.248"></script>
+  <script src="js/fechamento_vendedores.js?v=8.248"></script>
+  <script type="module" src="js/tarefas.js?v=8.248"></script>
+  <script src="js/holerites.js?v=8.248"></script>
+  <script src="js/funcionarios_dp.js?v=8.248"></script>
+  <script src="js/crm.js?v=8.248"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.248"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.248"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.248"></script>
+  <script src="js/nfse_pendentes.js?v=8.248"></script>
+  <script src="js/fechamento_fiscal.js?v=8.248"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.248"></script>
   <script src="js/contas_pagar.js?v=8.238"></script>
-  <script src="app.js?v=8.247"></script>
+  <script src="app.js?v=8.248"></script>
 </body>
 </html>

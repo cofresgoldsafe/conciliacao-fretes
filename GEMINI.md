@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.247 (Homologada em 22/09/2026 16:40)  
+> **Versão da Documentação:** v8.248 (Homologada em 23/09/2026 17:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 22/09/2026 16:40 (v8.247 - Endpoint Oficial InfoSimples portal-transparencia/bolsa com Intervalo de 12 Meses)  
+> **Data da Última Auditoria:** 23/09/2026 17:15 (v8.248 - Módulo de Salvamento de XMLs de Faturamento no Google Drive e Job 18h)  
 
 ---
 
@@ -36,7 +36,7 @@ O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, 
 
 ## 3. Matriz Geral de Navegação do Portal GSI
 
-A matriz abaixo consolida as 9 macro-areas e as 36 sub-abas ativas no DOM do Portal GSI:
+A matriz abaixo consolida as 9 macro-areas e as 37 sub-abas ativas no DOM do Portal GSI:
 
 | Macro-Área | Sub-Aba / Tela | Identificador DOM | Perfil RBAC | Descrição Funcional | Documentação Detalhada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -45,6 +45,7 @@ A matriz abaixo consolida as 9 macro-areas e as 36 sub-abas ativas no DOM do Por
 | **2. Logística** | Ped. Lib Estoque | `#tab-pedidos-lib-estoque` | `admin`, `user` (Logística) | Pedidos liberados no estoque fisico para fluxo de separacao e expedicao. | [pedidos_lib_estoque.md](docs/telas/02_logistica/pedidos_lib_estoque.md) |
 | **2. Logística** | Ped. Bloq Estoque | `#tab-pedidos-bloq-estoque` | `admin`, `user` (Logística) | Monitoramento de pedidos com pendencia de saldo ou bloqueio SC9 no Protheus. | [pedidos_bloq_estoque.md](docs/telas/02_logistica/pedidos_bloq_estoque.md) |
 | **2. Logística** | Saldos em Estoque | `#tab-vend-saldos-estoque` | `admin`, `user` (Logística) | Saldos fisicos PA multi-empresa (14, 15, 16) com KPIs, filtros e drilldown. | [saldos_estoque.md](docs/telas/04_vendedores/saldos_estoque.md) |
+| **2. Logística** | Salvar XMLs Faturamento | `#tab-log-xml-faturamento` | `admin`, `logistica`, `analista-fin` | Salvamento direto de XMLs soltos no Google Drive via File System Access API e Job das 18h. | [xmls_faturamento.md](docs/telas/02_logistica/xmls_faturamento.md) |
 | **2. Logística** | Upload Fatura Transp. | `#tab-upload` | `admin`, `user` (Logística) | Upload e parsing de faturas de frete de transportadoras rodoviarias parceiras. | [upload_fatura.md](docs/telas/02_logistica/upload_fatura.md) |
 | **2. Logística** | Fatura Correios & ViPP | `#tab-correios` | `admin`, `user` (Logística) | Conciliacao de faturas Correios e plataforma ViPP com batimento de postagens. | [correios_vipp.md](docs/telas/02_logistica/correios_vipp.md) |
 | **3. Busca Multi-Empresa** | Consulta NFe ou Pedido | `#tab-consulta` | `admin`, `user` (Consulta) | Busca por CodWeb Pipedrive, Pedido Protheus, NF ou Cliente com enriquecimento de datas. | [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md) |
