@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-log-xml-faturamento` | **Botão:** `#btnTabLogXmlFaturamento`  
 > **Permissão RBAC:** admin, logistica, analista-fin  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 23/09/2026 (v8.225 - Homologado)  
+> **Última Atualização:** 23/09/2026 (v8.249 - Homologado)  
 
 ---
 
@@ -76,4 +76,5 @@ node scripts/sync_xml_drive_18h.js --dry-run
 ---
 
 ## 7. Histórico & Evolução da Tela
-- **v8.225 (23/09/2026):** Implementação inicial da tela de exportação de XMLs no Google Drive com File System Access API, seleção de período, memorização de pasta, fatiamento em chunks de 15 itens, tratamento anti-duplicação de listeners e Job diário das 18:00 em dias úteis.
+- **v8.249 (23/09/2026):** Ajustes textuais na interface ("Download Automático 18h"), exclusão de avisos redundantes e homologação de salvamento 100% em nuvem via Google Drive API com Service Account.
+- **v8.248 (23/09/2026):** Implementação inicial da tela de exportação de XMLs no Google Drive com File System Access API, seleção de período, memorização de pasta, fatiamento em chunks de 15 itens, tratamento anti-duplicação de listeners e Job diário das 18:00 em dias úteis via Google Drive API e disco local.
