@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 24/09/2026 (v8.251 - Homologado)  
+> **Última Atualização:** 24/09/2026 (v8.253 - Homologado)  
 
 ---
 
@@ -22,6 +22,11 @@
 ---
 
 ## 3. Identificadores DOM & Controles da Interface
+- **Barra de Busca e Filtros de Deals:**
+  - `#crmSearchInput`: Busca textual dinâmica com debounce e sanitização.
+  - `#crmFilterVendedor`: Seletor de proprietário/vendedor (exclui Diretoria, focado em vendedores operacionais).
+  - `#crmFilterStatus`: Seletor de status com 6 opções canônicas: `ABERTAS` ("Oportunidades Abertas"), `TODOS` ("Todas (inclui Perdidos)"), `GANHO` ("Somente Ganhas"), `GANHO_HOJE` ("Ganhas Hoje"), `GANHO_ONTEM` ("Ganhas Ontem") e `PERDIDO` ("Somente Perdidos").
+  - `#btnCrmLimparFiltros`: Botão de reset rápido, restaurando status para `ABERTAS` e vendedor para `TODOS`.
 - **Toggles de Exibição de Oportunidades:**
   - `#btnCrmViewModeKanban`: Ativa modo de exibição em funil Kanban.
   - `#btnCrmViewModeListagem`: Ativa modo de exibição em tabela de listagem.
@@ -59,6 +64,14 @@
 ## 5. Regras de Negócio & Cálculos Chave
 - **Persistência de Preferência:** Armazenada em `localStorage` (`gsi_crm_deal_view_mode`), preservando a escolha do usuário entre reloads.
 - **Busca e Filtros Unificados:** Termo digitado em `#crmSearchInput`, vendedor em `#crmFilterVendedor` e status em `#crmFilterStatus` filtram os negócios e resetam a página para `1`.
+- **Filtro de Status Especializado:**
+  - `ABERTAS`: Exibe apenas negócios em andamento no funil (`LEAD`, `CONTATO`, `PROPOSTA`, `NEGOCIACAO`), excluindo estritamente `GANHO` e `PERDIDO`.
+  - `GANHO`: Retorna todas as oportunidades ganhas independentemente do período.
+  - `GANHO_HOJE`: Retorna oportunidades ganhas na data atual (fuso `America/Sao_Paulo`, com suporte tanto a timestamps ISO quanto DateOnly).
+  - `GANHO_ONTEM`: Retorna oportunidades ganhas no dia anterior (fuso `America/Sao_Paulo`).
+  - `PERDIDO`: Retorna somente oportunidades com status de perda.
+  - `TODOS`: Exibe a base completa de oportunidades sem restrição de estágio.
+- **Filtro de Proprietário:** "Diretoria" é excluída do seletor operacional `#crmFilterVendedor`, mantendo apenas vendedores comerciais ativos.
 - **Prevenção de Custo Duplo de Renderização:** O pipeline só renderiza no DOM o modo ativo (`kanban` ou `listagem`), poupando ciclos de CPU.
 - **Preservação de Dados em Edição:** `contatoNome` e `faturadoPor` são preservados durante atualizações ou salvamento de oportunidades.
 - **Sanitização XSS:** Todos os valores interpolados passam por `escapeHtml()` e valores numéricos por `parseFloat()`.
@@ -67,6 +80,7 @@
 
 ## 6. Endpoints REST da API
 - `GET /api/bi/crm/deals`: Listagem dos negócios do funil com filtros.
+- `GET /api/bi/crm/vendedores`: Lista de vendedores operacionais ativos (sem Diretoria).
 - `POST /api/bi/crm/deals`: Criação de nova oportunidade comercial.
 - `PUT /api/bi/crm/deals/:id`: Edição de oportunidade existente.
 - `PUT /api/bi/crm/deals/:id/stage`: Transição atômica de estágio.
@@ -77,6 +91,7 @@
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_filtros.js
 node test_crm_listagem.js
 node test_crm_module.js
 node test_crm_clientes.js
@@ -85,5 +100,6 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.253 (24/09/2026):** Implementação dos novos filtros de status e proprietário no CRM Comercial: remoção da opção "Diretoria" do filtro de vendedores operacionais, renomeação de "Oportunidades Ativas" para "Oportunidades Abertas" (excluindo ganhos e perdidos), adição dos filtros "Somente Ganhas", "Ganhas Hoje" e "Ganhas Ontem" com tratamento resiliente de fuso horário UTC-3 (ISO e DateOnly), reset para "ABERTAS" no botão limpar e adição de acessibilidade `aria-label` (10 testes aprovados em `test_crm_filtros.js`).
 - **v8.251 (24/09/2026):** Implementação da visualização em **Listagem** com seletor toggle `[ 📊 Kanban ]` / `[ 📋 Listagem ]`, persistência em `localStorage`, tabela paginada com 10 colunas canônicas alinhadas ao `listagem.png`, thead sticky, sanitização XSS estrita e preservação de campos `faturadoPor` e `contatoNome` (6 baterias funcionais aprovadas em `test_crm_listagem.js`).
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.

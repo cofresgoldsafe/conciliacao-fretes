@@ -431,8 +431,7 @@ router.get('/vendedores', (req, res) => {
       { codigo: '000004', nome: 'Figueiredo' },
       { codigo: '000064', nome: 'Andrea' },
       { codigo: '000074', nome: 'Juliana' },
-      { codigo: '000001', nome: 'Alexandre' },
-      { codigo: '000000', nome: 'Diretoria' }
+      { codigo: '000001', nome: 'Alexandre' }
     ]
   });
 });

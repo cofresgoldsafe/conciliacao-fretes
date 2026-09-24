@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.252 (Homologada em 24/09/2026 15:09)  
+> **Versão da Documentação:** v8.253 (Homologada em 24/09/2026 15:38)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 24/09/2026 15:09 (v8.252 - Badges SEM BLOQ com fundo verde claro e letra verde escuro em Pedidos de Venda em Aberto)  
+> **Data da Última Auditoria:** 24/09/2026 15:38 (v8.253 - Novos filtros de status e remocao de Diretoria no CRM Comercial)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.253 (24/09/2026):** Novos filtros de status e proprietário no CRM Comercial (`#tab-bi-crm`): remoção de "Diretoria" do filtro de vendedores operacionais, renomeação de "Oportunidades Ativas" para "Oportunidades Abertas" (excluindo ganhos e perdidos), inclusão dos filtros "Somente Ganhas", "Ganhas Hoje" e "Ganhas Ontem" com tratamento imune a Timezone Shift UTC-3 (ISO e DateOnly), reset para "ABERTAS" no botão limpar e acessibilidade `aria-label` (10 testes aprovados em `test_crm_filtros.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.252 (24/09/2026):** Correção da detecção de bloqueios SC9 em `formatBadgeBloqCredito` e `formatBadgeBloqEstoque` e estilização de badges liberados ("SEM BLOQ") com fundo verde claro (`#dcfce7`) e letra verde escuro (`#14532d`), mantendo vermelho para bloqueio de crédito e amarelo para bloqueio de estoque (20 testes aprovados em `test_pedidos_abertos.js` — detalhado em [pedidos_abertos.md](docs/telas/04_vendedores/pedidos_abertos.md)).
 - **v8.251 (24/09/2026):** Implementação da visualização em **Listagem** com alternância Kanban x Tabela no CRM Comercial (`#tab-bi-crm`), persistência em `localStorage`, tabela paginada com 10 colunas canônicas alinhadas ao `listagem.png`, thead sticky, sanitização XSS e preservação de campos `faturadoPor` e `contatoNome` (6 baterias funcionais aprovadas em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.250 (23/09/2026):** Inclusão da sub-tela `Despesas Análise` no BI Executivo (`#tab-bi-despesas`) com espelhamento SE5 multi-empresa (14, 15, 16) desde Jan/2025, enriquecimento hierárquico por Natureza Financeira SED010 (Pai/Filho), dedução matemática de estornos (`-valor`), segregação de transferências internas/CDBs (2.10/TR/TE), comparativo mensal 2025 vs 2026 lado a lado, sincronização inteligente com janela retroativa de 10 dias e exportação CSV sanitizada (15 testes aprovados em `test_bi_despesas.js` — detalhado em [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md)).

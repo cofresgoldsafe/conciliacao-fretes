@@ -44,8 +44,7 @@
     'Juliana',
     'Andrea Ferreira',
     'Andrea',
-    'Figueiredo',
-    'Diretoria'
+    'Figueiredo'
   ];
 
   // Armazenamento em Cache Local Resiliente
@@ -183,6 +182,7 @@
       faturadoPor: custom.faturadoPor || d.faturado_por || d.faturadoPor || d.empresa_faturamento || (d.cod_filial ? `${d.cod_filial} - ${d.nome_filial || ''}` : '') || '',
       motivoPerda: d.motivo_perda || d.motivoPerda || '',
       observacoesPerda: d.observacoes_perda || d.observacoesPerda || '',
+      dataFechamentoReal: d.data_fechamento_real || d.dataFechamentoReal || null,
       createdAt: d.created_at || d.createdAt || new Date().toISOString(),
       updatedAt: d.updated_at || d.updatedAt || new Date().toISOString()
     };
@@ -502,11 +502,12 @@
       return String(v);
     }).filter(Boolean);
 
-    // 1. Filtro do Kanban
+    // 1. Filtro do Kanban e Listagem (Proprietário/Vendedor) - sem Diretoria
     if (selectFilter) {
       const current = selectFilter.value || 'TODOS';
+      const vendedoresDeals = nomesVendedores.filter(v => String(v).trim().toLowerCase() !== 'diretoria');
       selectFilter.innerHTML = '<option value="TODOS">Todos os Vendedores</option>' +
-        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        vendedoresDeals.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
     }
 
     // 2. Select do Modal de Oportunidade
@@ -592,7 +593,30 @@
   function getFilteredDeals() {
     const filterText = (document.getElementById('crmSearchInput')?.value || '').trim().toLowerCase();
     const filterVendedor = document.getElementById('crmFilterVendedor')?.value || 'TODOS';
-    const filterStatus = document.getElementById('crmFilterStatus')?.value || 'ATIVOS';
+    const filterStatus = document.getElementById('crmFilterStatus')?.value || 'ABERTAS';
+
+    // Helper de formatação de data no fuso de Brasília (UTC-3)
+    const formatBrDate = (val) => {
+      if (!val) return '';
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+        const [y, m, d] = val.trim().split('-');
+        return `${d}/${m}/${y}`;
+      }
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return '';
+      return new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(d);
+    };
+
+    const agora = new Date();
+    const hojeStr = formatBrDate(agora);
+    const ontemData = new Date(agora);
+    ontemData.setDate(ontemData.getDate() - 1);
+    const ontemStr = formatBrDate(ontemData);
 
     return deals.filter(deal => {
       // Filtro de vendedor
@@ -600,9 +624,22 @@
         return false;
       }
 
-      // Filtro de status (Ativos vs Perdidos vs Todos)
-      if (filterStatus === 'ATIVOS' && deal.fase === 'PERDIDO') return false;
-      if (filterStatus === 'PERDIDO' && deal.fase !== 'PERDIDO') return false;
+      // Filtro de status: ABERTAS (não ganho e não perdido), GANHO, GANHO_HOJE, GANHO_ONTEM, PERDIDO, TODOS
+      if (filterStatus === 'ABERTAS' || filterStatus === 'ATIVOS') {
+        if (deal.fase === 'GANHO' || deal.fase === 'PERDIDO') return false;
+      } else if (filterStatus === 'GANHO') {
+        if (deal.fase !== 'GANHO') return false;
+      } else if (filterStatus === 'GANHO_HOJE') {
+        if (deal.fase !== 'GANHO') return false;
+        const dataDeal = deal.dataFechamentoReal || deal.updatedAt;
+        if (!dataDeal || formatBrDate(dataDeal) !== hojeStr) return false;
+      } else if (filterStatus === 'GANHO_ONTEM') {
+        if (deal.fase !== 'GANHO') return false;
+        const dataDeal = deal.dataFechamentoReal || deal.updatedAt;
+        if (!dataDeal || formatBrDate(dataDeal) !== ontemStr) return false;
+      } else if (filterStatus === 'PERDIDO') {
+        if (deal.fase !== 'PERDIDO') return false;
+      }
 
       // Filtro textual amplo
       if (filterText) {
@@ -2695,7 +2732,7 @@
       btnLimpar.addEventListener('click', () => {
         if (searchInput) searchInput.value = '';
         if (filterVend) filterVend.value = 'TODOS';
-        if (filterStatus) filterStatus.value = 'ATIVOS';
+        if (filterStatus) filterStatus.value = 'ABERTAS';
         dealsPage = 1;
         renderDealsViews();
       });
