@@ -180,6 +180,16 @@ const {
 } = require('./bi_autorizacoes_engine');
 
 const {
+  sincronizarDespesasProtheus,
+  obterKpisDespesas,
+  obterGraficoNaturezaPai,
+  obterComparativoMesAMes,
+  obterLancamentosPaginados,
+  obterNaturezasPaisDisponiveis,
+  obterStatusSincronizacao
+} = require('./bi_despesas_engine');
+
+const {
   consultarGorduraFrete,
   obterCiclosPredefinidos
 } = require('./gordura_frete_engine');
@@ -6706,6 +6716,133 @@ app.get('/api/bi/autorizacoes/historico', requireAuth, requireRole('admin'), asy
 
 // --- ROTAS DO MÓDULO DE CRM COMERCIAL NATIVO (DEALS, ATIVIDADES E AUTOCOMPLETE) ---
 app.use('/api/bi/crm', crmRoutes);
+
+// --- ROTAS DO SUB-MÓDULO BI: ANÁLISE DE DESPESAS BANCÁRIAS E NATUREZAS (SE5) ---
+
+// 1. KPIs Consolidados do Período
+app.get('/api/bi/despesas/kpis', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const filtros = {
+      empresa: req.query.empresa || 'TODAS',
+      naturezaPai: req.query.naturezaPai || 'TODAS',
+      dataIni: req.query.dataIni || '',
+      dataFim: req.query.dataFim || '',
+      ano: req.query.ano || '',
+      mes: req.query.mes || '',
+      busca: req.query.busca || '',
+      incluirTransferencias: req.query.incluirTransferencias === 'true'
+    };
+    const kpis = await obterKpisDespesas(filtros);
+    return res.json({ success: true, ...kpis });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao calcular KPIs de despesas.');
+  }
+});
+
+// 2. Agrupamento por Natureza Pai para Gráfico de Barras
+app.get('/api/bi/despesas/grafico-pai', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const filtros = {
+      empresa: req.query.empresa || 'TODAS',
+      naturezaPai: req.query.naturezaPai || 'TODAS',
+      dataIni: req.query.dataIni || '',
+      dataFim: req.query.dataFim || '',
+      ano: req.query.ano || '',
+      mes: req.query.mes || '',
+      busca: req.query.busca || '',
+      incluirTransferencias: req.query.incluirTransferencias === 'true'
+    };
+    const dadosGrafico = await obterGraficoNaturezaPai(filtros);
+    return res.json({ success: true, ...dadosGrafico });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao gerar dados do gráfico por Natureza Pai.');
+  }
+});
+
+// 3. Comparativo Lado a Lado Mês a Mês (2025 vs 2026)
+app.get('/api/bi/despesas/comparativo-anual', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const filtros = {
+      empresa: req.query.empresa || 'TODAS',
+      naturezaPai: req.query.naturezaPai || 'TODAS',
+      busca: req.query.busca || '',
+      incluirTransferencias: req.query.incluirTransferencias === 'true'
+    };
+    const dadosComp = await obterComparativoMesAMes(filtros);
+    return res.json({ success: true, ...dadosComp });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao gerar comparativo de despesas 2025 vs 2026.');
+  }
+});
+
+// 4. Listagem Analítica Paginada (Pilar 1 - Envelope REST)
+app.get('/api/bi/despesas/lancamentos', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const filtros = {
+      empresa: req.query.empresa || 'TODAS',
+      naturezaPai: req.query.naturezaPai || 'TODAS',
+      dataIni: req.query.dataIni || '',
+      dataFim: req.query.dataFim || '',
+      ano: req.query.ano || '',
+      mes: req.query.mes || '',
+      busca: req.query.busca || '',
+      incluirTransferencias: req.query.incluirTransferencias === 'true',
+      page: parseInt(req.query.page, 10) || 1,
+      limit: Math.min(parseInt(req.query.limit, 10) || 50, 100)
+    };
+    const resultado = await obterLancamentosPaginados(filtros);
+    return res.json({ success: true, ...resultado });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao consultar lançamentos de despesas.');
+  }
+});
+
+// 5. Lista de Naturezas Pai para o Filtro Select
+app.get('/api/bi/despesas/naturezas-pais', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const lista = await obterNaturezasPaisDisponiveis();
+    return res.json({ success: true, pais: lista });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao carregar lista de Naturezas Pai.');
+  }
+});
+
+// 6. Status e Metadados da Última Sincronização
+app.get('/api/bi/despesas/sync-status', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const status = await obterStatusSincronizacao();
+    return res.json({ success: true, ...status });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao consultar status da sincronização.');
+  }
+});
+
+// 7. Disparo Manual de Sincronização Protheus (com Janela Retroativa de 10 dias ou Full)
+app.post('/api/bi/despesas/sync', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const modo = (req.body && req.body.modo === 'full') ? 'full' : 'incremental';
+    const retroativoDias = (req.body && req.body.retroativoDias) ? parseInt(req.body.retroativoDias, 10) : 10;
+
+    logUserActivity({
+      userId: user.id || user.username,
+      username: user.username,
+      role: user.role,
+      action: 'BI_DESPESAS_SYNC',
+      details: { modo, retroativoDias }
+    });
+
+    const resultado = await sincronizarDespesasProtheus({
+      modo,
+      retroativoDias,
+      triggeredBy: user.username
+    });
+
+    return res.json({ success: true, ...resultado });
+  } catch (err) {
+    return handleServerError(res, err, err.message || 'Erro ao sincronizar despesas com Protheus.');
+  }
+});
 
 /**
  * ----------------------------------------------------------------------------

@@ -784,6 +784,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.initBIAutorizacoesTab();
         }
       }
+      if (targetTab === 'tab-bi-despesas') {
+        if (typeof window.initBiDespesasView === 'function') {
+          window.initBiDespesasView();
+        }
+      }
       if (targetTab === 'tab-bi-crm') {
         if (window.CRMModule && typeof window.CRMModule.init === 'function') {
           window.CRMModule.init();

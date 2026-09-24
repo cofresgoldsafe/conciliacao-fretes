@@ -40,6 +40,8 @@ html = html.replace(/js\/chart\.umd\.min\.js\?v=[0-9.]+/g, `js/chart.umd.min.js?
 html = html.replace(/js\/bi\.js\?v=[0-9.]+/g, `js/bi.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi_indices\.js\?v=[0-9.]+/g, `js/bi_indices.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/bi_autorizacoes\.js\?v=[0-9.]+/g, `js/bi_autorizacoes.js?v=${novaVersaoNum}`);
+html = html.replace(/js\/bi_despesas\.js\?v=[0-9.]+/g, `js/bi_despesas.js?v=${novaVersaoNum}`);
+html = html.replace(/js\/contas_pagar\.js\?v=[0-9.]+/g, `js/contas_pagar.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/gordura_frete\.js\?v=[0-9.]+/g, `js/gordura_frete.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/fechamento_vendedores\.js\?v=[0-9.]+/g, `js/fechamento_vendedores.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/tarefas\.js\?v=[0-9.]+/g, `js/tarefas.js?v=${novaVersaoNum}`);

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.249">
+  <link rel="stylesheet" href="style.css?v=8.250">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 23/09/2026 18:25 (v8.249 - Ajustes textuais na tela de XMLs de Faturamento)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 23/09/2026 21:30 (Inclusão da sub-tela Despesas Análise no BI Executivo)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -296,6 +296,10 @@
           <button class="nav-tab-btn" data-tab="tab-bi-autorizacoes" id="btnTabBiAutorizacoes">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             <span>🎯 Autorizações de Desconto</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-bi-despesas" id="btnTabBiDespesas">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>💸 Despesas Análise</span>
           </button>
           <button class="nav-tab-btn subtab-btn" id="btnTabBiCrm" data-tab="tab-bi-crm" data-target="tab-bi-crm" style="display: none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
@@ -7167,6 +7171,264 @@
     </div>
   </div>
 
+  <!-- ABA 5 BI: Análise de Despesas Bancárias e Naturezas (SE5) -->
+  <div id="tab-bi-despesas" class="tab-pane hidden">
+    <div class="bi-wrapper" id="biDespesasWrapper">
+      <!-- Toolbar Principal de Filtros -->
+      <div class="bi-toolbar card" style="margin-bottom: 1.25rem; padding: 1.1rem 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.8rem;">💸</span>
+            <div>
+              <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main);">Análise de Despesas & Movimento Bancário (SE5)</h2>
+              <p class="desc" style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">
+                Classificação por Natureza Financeira Pai/Filha das 3 Empresas com Dedução de Estornos
+              </p>
+            </div>
+          </div>
+          <!-- Botão de Sincronização Protheus & Status -->
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span id="biDespesasSyncStatusText" style="font-size: 0.8rem; color: var(--text-muted);">
+              Última sincronização: carregando...
+            </span>
+            <button id="btnBiDespesasSync" type="button" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; font-weight: 600; height: 38px;" title="Sincronizar com Protheus (janela retroativa de 10 dias)">
+              <span>🔄 Sincronizar Protheus</span>
+            </button>
+            <button id="btnBiDespesasSyncFull" type="button" class="btn btn-sm btn-ghost" style="color: var(--text-muted); font-size: 0.75rem; text-decoration: underline;" title="Recarregar todos os movimentos desde Jan/2025">
+              Carga Completa (Jan/2025)
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Filtros Reativos -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: flex-end;">
+          <!-- Período Rápido -->
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Período:</label>
+            <select id="biDespesasFiltroPeriodo" class="form-control" style="width: 100%; height: 36px; font-size: 0.85rem;">
+              <option value="ano_2026" selected>Ano 2026 (Atual)</option>
+              <option value="ano_2025">Ano 2025</option>
+              <option value="comparativo">Comparativo 2025 vs 2026</option>
+              <option value="mes_atual">Mês Atual</option>
+              <option value="mes_anterior">Mês Anterior</option>
+              <option value="todos">Todos (Desde Jan/2025)</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+
+          <!-- Data Início / Fim (visíveis no modo custom) -->
+          <div id="biDespesasCustomDatas" style="display: none; grid-column: span 2; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">De:</label>
+              <input type="date" id="biDespesasDataIni" class="form-control" style="width: 100%; height: 36px; font-size: 0.85rem;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Até:</label>
+              <input type="date" id="biDespesasDataFim" class="form-control" style="width: 100%; height: 36px; font-size: 0.85rem;">
+            </div>
+          </div>
+
+          <!-- Empresa -->
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Empresa:</label>
+            <select id="biDespesasFiltroEmpresa" class="form-control" style="width: 100%; height: 36px; font-size: 0.85rem;">
+              <option value="TODAS">Todas as Empresas (Consolidado)</option>
+              <option value="14">14 - Metal Pleno (MP)</option>
+              <option value="15">15 - GSI Cofres (GSI)</option>
+              <option value="16">16 - OAÇO (OACO)</option>
+            </select>
+          </div>
+
+          <!-- Natureza Pai -->
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Natureza Pai:</label>
+            <select id="biDespesasFiltroNaturezaPai" class="form-control" style="width: 100%; height: 36px; font-size: 0.85rem;">
+              <option value="TODAS">Todas as Naturezas Pai</option>
+            </select>
+          </div>
+
+          <!-- Busca Livre -->
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">Buscar Fornecedor / Doc:</label>
+            <input type="text" id="biDespesasFiltroBusca" class="form-control" placeholder="Razão social, código, histórico..." style="width: 100%; height: 36px; font-size: 0.85rem;">
+          </div>
+
+          <!-- Botão Filtrar -->
+          <div style="display: flex; gap: 6px;">
+            <button id="btnBiDespesasFiltrar" type="button" class="btn btn-primary" style="height: 36px; padding: 0 16px; font-weight: 600;">
+              🔍 Filtrar
+            </button>
+            <button id="btnBiDespesasLimpar" type="button" class="btn btn-outline" style="height: 36px; padding: 0 12px;" title="Limpar Filtros">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Toggle de Transferências Internas -->
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="biDespesasCheckTransferencias" style="cursor: pointer;">
+            <span>Exibir transferências internas e CDBs (Natureza 2.10, TR, TE)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- CARDS DE KPIS EXECUTIVOS -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1.25rem;">
+        <!-- Card 1: Total Despesas Líquidas -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #ef4444;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Despesas Líquidas</span>
+              <h3 id="kpiDespesasLiquidas" style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0; color: #ef4444;">R$ 0,00</h3>
+              <span id="kpiDespesasVariacaoBadge" class="badge" style="font-size: 0.75rem; margin-top: 4px; display: inline-block;">Calculando...</span>
+            </div>
+            <span style="font-size: 1.6rem; opacity: 0.8;">💳</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Total Bruto Desembolsado -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #f59e0b;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Bruto Pago</span>
+              <h3 id="kpiDespesasBrutas" style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0; color: #f59e0b;">R$ 0,00</h3>
+              <span id="kpiDespesasQtdLancamentos" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">0 pagamentos</span>
+            </div>
+            <span style="font-size: 1.6rem; opacity: 0.8;">📤</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Estornos e Cancelamentos Abatidos -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #10b981;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Estornos Abatidos</span>
+              <h3 id="kpiDespesasEstornos" style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0; color: #10b981;">R$ 0,00</h3>
+              <span id="kpiDespesasQtdEstornos" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">0 estornos contabilizados</span>
+            </div>
+            <span style="font-size: 1.6rem; opacity: 0.8;">↩️</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Maior Grupo de Despesa -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #3b82f6;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="min-width: 0;">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Maior Grupo de Despesa</span>
+              <h3 id="kpiDespesasMaiorGrupoValor" style="font-size: 1.4rem; font-weight: 800; margin: 4px 0 0; color: #3b82f6;">R$ 0,00</h3>
+              <span id="kpiDespesasMaiorGrupoNome" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Nome do grupo">-</span>
+            </div>
+            <span style="font-size: 1.6rem; opacity: 0.8;">🏢</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEÇÃO DE GRÁFICOS INTERATIVOS CHART.JS -->
+      <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.25rem;">📊</span>
+            <h3 id="biDespesasChartTitulo" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main);">
+              Distribuição de Despesas por Natureza Pai
+            </h3>
+          </div>
+          <!-- Segmented Control de Gráficos -->
+          <div style="display: flex; gap: 6px;">
+            <button id="btnBiDespesasGraficoPai" type="button" class="btn btn-primary btn-sm" style="font-weight: 600;">
+              📊 Ranking Naturezas Pai
+            </button>
+            <button id="btnBiDespesasGraficoComparativo" type="button" class="btn btn-outline btn-sm" style="font-weight: 600;">
+              📈 Comparativo 2025 x 2026 (Mês a Mês)
+            </button>
+          </div>
+        </div>
+
+        <!-- Canvas do Gráfico 1: Natureza Pai -->
+        <div id="biDespesasWrapperChartPai" style="position: relative; height: 380px; width: 100%;">
+          <canvas id="chartBiDespesasPai"></canvas>
+        </div>
+
+        <!-- Canvas do Gráfico 2: Comparativo Mês a Mês Lado a Lado -->
+        <div id="biDespesasWrapperChartComp" style="position: relative; height: 380px; width: 100%; display: none;">
+          <canvas id="chartBiDespesasComparativo"></canvas>
+        </div>
+      </div>
+
+      <!-- TABELA ANALÍTICA DE LANÇAMENTOS COM PAGINAÇÃO -->
+      <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.25rem;">📑</span>
+            <div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">
+                Detalhamento de Lançamentos Bancários
+              </h3>
+              <span id="biDespesasTabelaResumoRegistros" style="font-size: 0.8rem; color: var(--text-muted);">
+                Carregando registros...
+              </span>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="btnBiDespesasExportCsv" type="button" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px;" title="Exportar visualização atual para arquivo CSV">
+              <span>📥 Exportar CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Container da Tabela com Scroll Horizontal -->
+        <div class="table-responsive" style="overflow-x: auto; max-height: 560px; border: 1px solid var(--panel-border); border-radius: 6px;">
+          <table class="table table-hover" id="biDespesasTabela" style="width: 100%; margin: 0; font-size: 0.85rem;">
+            <thead style="position: sticky; top: 0; background: var(--panel-header-bg, #1e293b); z-index: 5;">
+              <tr>
+                <th style="padding: 10px; width: 95px;">Data</th>
+                <th style="padding: 10px; width: 65px;">Emp.</th>
+                <th style="padding: 10px; width: 180px;">Natureza Pai</th>
+                <th style="padding: 10px; width: 220px;">Natureza Analítica</th>
+                <th style="padding: 10px; min-width: 220px;">Fornecedor / Favorecido</th>
+                <th style="padding: 10px; width: 120px;">Documento</th>
+                <th style="padding: 10px; min-width: 200px;">Histórico</th>
+                <th style="padding: 10px; width: 75px; text-align: center;">Tipo</th>
+                <th style="padding: 10px; width: 120px; text-align: right;">Valor (R$)</th>
+              </tr>
+            </thead>
+            <tbody id="biDespesasTabelaBody">
+              <tr>
+                <td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                  Carregando movimentações de despesas...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Controles de Paginação (Pilar 1) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--panel-border);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Exibir:</span>
+            <select id="biDespesasPageLimit" class="form-control form-control-sm" style="width: 75px; height: 32px; font-size: 0.8rem;">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+            <span id="biDespesasPaginationInfo" style="font-size: 0.8rem; color: var(--text-muted);">
+              Página 1 de 1
+            </span>
+          </div>
+
+          <div style="display: flex; gap: 6px;">
+            <button id="btnBiDespesasPrevPage" type="button" class="btn btn-outline btn-sm" disabled style="height: 32px; padding: 0 12px;">
+              ◀ Anterior
+            </button>
+            <button id="btnBiDespesasNextPage" type="button" class="btn btn-outline btn-sm" disabled style="height: 32px; padding: 0 12px;">
+              Próxima ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL CRM: MARCAR COMO PERDIDO (MOTIVO OBRIGATÓRIO) -->
   <div id="modalCrmPerdido" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmPerdidoTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
     <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
@@ -9315,23 +9577,24 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.249"></script>
-  <script src="js/bi.js?v=8.249"></script>
-  <script src="js/bi_indices.js?v=8.249"></script>
-  <script src="js/bi_autorizacoes.js?v=8.249"></script>
-  <script src="js/gordura_frete.js?v=8.249"></script>
-  <script src="js/fechamento_vendedores.js?v=8.249"></script>
-  <script type="module" src="js/tarefas.js?v=8.249"></script>
-  <script src="js/holerites.js?v=8.249"></script>
-  <script src="js/funcionarios_dp.js?v=8.249"></script>
-  <script src="js/crm.js?v=8.249"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.249"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.249"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.249"></script>
-  <script src="js/nfse_pendentes.js?v=8.249"></script>
-  <script src="js/fechamento_fiscal.js?v=8.249"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.249"></script>
-  <script src="js/contas_pagar.js?v=8.238"></script>
-  <script src="app.js?v=8.249"></script>
+  <script src="js/chart.umd.min.js?v=8.250"></script>
+  <script src="js/bi.js?v=8.250"></script>
+  <script src="js/bi_indices.js?v=8.250"></script>
+  <script src="js/bi_autorizacoes.js?v=8.250"></script>
+  <script src="js/bi_despesas.js?v=8.250"></script>
+  <script src="js/gordura_frete.js?v=8.250"></script>
+  <script src="js/fechamento_vendedores.js?v=8.250"></script>
+  <script type="module" src="js/tarefas.js?v=8.250"></script>
+  <script src="js/holerites.js?v=8.250"></script>
+  <script src="js/funcionarios_dp.js?v=8.250"></script>
+  <script src="js/crm.js?v=8.250"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.250"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.250"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.250"></script>
+  <script src="js/nfse_pendentes.js?v=8.250"></script>
+  <script src="js/fechamento_fiscal.js?v=8.250"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.250"></script>
+  <script src="js/contas_pagar.js?v=8.250"></script>
+  <script src="app.js?v=8.250"></script>
 </body>
 </html>

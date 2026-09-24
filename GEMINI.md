@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.249 (Homologada em 23/09/2026 18:30)  
+> **Versão da Documentação:** v8.250 (Homologada em 23/09/2026 21:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 23/09/2026 18:30 (v8.249 - Ajustes de UI e Integração Nuvem Server-to-Cloud Google Drive API)  
+> **Data da Última Auditoria:** 23/09/2026 21:30 (v8.250 - Inclusão da sub-tela Despesas Análise no BI Executivo com espelhamento SE5 multi-empresa)  
 
 ---
 
@@ -36,7 +36,7 @@ O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, 
 
 ## 3. Matriz Geral de Navegação do Portal GSI
 
-A matriz abaixo consolida as 9 macro-areas e as 37 sub-abas ativas no DOM do Portal GSI:
+A matriz abaixo consolida as 9 macro-areas e as 38 sub-abas ativas no DOM do Portal GSI:
 
 | Macro-Área | Sub-Aba / Tela | Identificador DOM | Perfil RBAC | Descrição Funcional | Documentação Detalhada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -77,6 +77,7 @@ A matriz abaixo consolida as 9 macro-areas e as 37 sub-abas ativas no DOM do Por
 | **7. Analista Fin.** | Auditoria Protheus x Sefaz | `#tab-auditoria-protheus-sefaz` | `admin`, `user` (Analista Fin) | Batimento fiscal com distincao estrita de CC-e (`tpEvento 110110`) e Inutilizacoes. | [auditoria_protheus_sefaz.md](docs/telas/07_analista_fin/auditoria_protheus_sefaz.md) |
 | **7. Analista Fin.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Analista Fin) | Consulta unificada de Contas a Pagar SE2/SE5 multi-empresa com batimento financeiro vs compensação. | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **8. BI Executivo** | Índices Financeiros | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
+| **8. BI Executivo** | Despesas Análise | `#tab-bi-despesas` | `admin`, `diretoria` (BI) | Espelho SE5 multi-empresa com classificação por natureza, estornos negativos e comparativo 2025x2026. | [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md) |
 | **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
 | **8. BI Executivo** | Autorizações de Desconto | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
 | **8. BI Executivo** | CRM Comercial | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial de vendas, metas e integracao com Pipedrive CRM. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
@@ -175,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.250 (23/09/2026):** Inclusão da sub-tela `Despesas Análise` no BI Executivo (`#tab-bi-despesas`) com espelhamento SE5 multi-empresa (14, 15, 16) desde Jan/2025, enriquecimento hierárquico por Natureza Financeira SED010 (Pai/Filho), dedução matemática de estornos (`-valor`), segregação de transferências internas/CDBs (2.10/TR/TE), comparativo mensal 2025 vs 2026 lado a lado, sincronização inteligente com janela retroativa de 10 dias e exportação CSV sanitizada (15 testes aprovados em `test_bi_despesas.js` — detalhado em [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md)).
 - **v8.247 (22/09/2026):** Homologação ao vivo da API InfoSimples Bolsa Família com chave real: ajuste do endpoint oficial para `portal-transparencia/bolsa`, inclusão do parâmetro obrigatório de data com janela de até 12 meses (`data_inicio` e `data_fim` ISO YYYY-MM-DD), reconhecimento nativo do Código 612 como `NADA_CONSTA` e exportação de `consultarBolsaFamiliaInfoSimples` e `validarCpf` em `server.js` (homologado em tempo real com CPF 273.897.148-24).
 - **v8.246 (22/09/2026):** Extração de quadro societário e CPFs de sócios/administradores do laudo Serasa Experian PDF (100% RAM stream via `serasa_pdf_parser.py`); integração com a API `portal-transparencia-bolsa` da InfoSimples para antifraude de sócios laranjas (-25 pts com validação prévia Módulo 11 anti-erro 606); suporte neutro (0 pts) a empresas públicas e S.A. sem sócios PF; integração de Inscrição Estadual (Ativa +2 pts, Inapta -15 pts, Isenta 0 pts neutro); calibração dinâmica dos 7 pesos em `#tab-config-score` e backtest com 100% de aprovação (detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
 - **v8.244 (22/09/2026):** Tratamento especializado do Código 620 da InfoSimples (`permanent_error` na Caixa Econômica Federal) e Fallback Automático para CNPJ Matriz no FGTS Caixa (`consultarFgtsInfoSimples`). Filiais com recolhimento de FGTS centralizado na matriz (como filial 0321 do Madero) agora consultam e herdam a certidão CRF da matriz (`0001`), e empresas sem cadastro de FGTS passam a ser categorizadas como `ALERTA` (amarelo, `NE`) em vez de erro técnico de sistema (homologado com testes aprovados em `test_infosimples_620_matriz.js` e na suíte `test_infosimples_fgts.js` — detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
