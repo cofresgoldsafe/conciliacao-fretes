@@ -3779,19 +3779,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatBadgeBloqCredito(bloqCredito) {
-    const txt = String(bloqCredito || '').trim();
-    if (txt === 'BLOQ NO CREDITO' || txt.includes('BLOQ')) {
-      return `<span class="diverg-badge status-danger" style="font-size: 0.76rem; padding: 3px 8px;">🔒 ${escapeHtml(txt)}</span>`;
+    const raw = String(bloqCredito || '').trim();
+    const upper = raw.toUpperCase();
+    const isBloq = upper === '01' || upper === 'BLOQ NO CREDITO' || (upper.includes('BLOQ') && !upper.includes('SEM BLOQ'));
+    if (isBloq) {
+      const label = raw && raw !== '01' ? raw : 'BLOQ NO CREDITO';
+      return `<span class="diverg-badge status-danger" style="font-size: 0.76rem; padding: 3px 8px;">🔒 ${escapeHtml(label)}</span>`;
     }
-    return `<span class="status-badge sucesso" style="font-size: 0.76rem; padding: 3px 8px; font-weight: 600;">✓ ${escapeHtml(txt || 'SEM BLOQ CREDITO')}</span>`;
+    const label = (raw && raw !== '10') ? raw : 'SEM BLOQ CREDITO';
+    return `<span class="diverg-badge status-success" style="font-size: 0.76rem; padding: 3px 8px; font-weight: 700;">✓ ${escapeHtml(label)}</span>`;
   }
 
   function formatBadgeBloqEstoque(bloqEstoque) {
-    const txt = String(bloqEstoque || '').trim();
-    if (txt === 'BLOQ POR ESTOQUE' || txt.includes('BLOQ')) {
-      return `<span class="diverg-badge status-warning" style="font-size: 0.76rem; padding: 3px 8px;">⚠️ ${escapeHtml(txt)}</span>`;
+    const raw = String(bloqEstoque || '').trim();
+    const upper = raw.toUpperCase();
+    const isBloq = upper === '02' || upper === 'BLOQ POR ESTOQUE' || (upper.includes('BLOQ') && !upper.includes('SEM BLOQ'));
+    if (isBloq) {
+      const label = raw && raw !== '02' ? raw : 'BLOQ POR ESTOQUE';
+      return `<span class="diverg-badge status-warning" style="font-size: 0.76rem; padding: 3px 8px;">⚠️ ${escapeHtml(label)}</span>`;
     }
-    return `<span class="status-badge sucesso" style="font-size: 0.76rem; padding: 3px 8px; font-weight: 600;">✓ ${escapeHtml(txt || 'SEM BLOQ ESTOQ')}</span>`;
+    const label = (raw && raw !== '10') ? raw : 'SEM BLOQ ESTOQ';
+    return `<span class="diverg-badge status-success" style="font-size: 0.76rem; padding: 3px 8px; font-weight: 700;">✓ ${escapeHtml(label)}</span>`;
   }
 
   function renderPedidosAbertosTable(pedidos) {

@@ -234,6 +234,71 @@ test('Descarte de pedidos de controle interno ou vendedores fora da equipe comer
   assert.deepStrictEqual(filtrados.map(x => x.codVendedor), ['000064', '000004', '000074']);
 });
 
+// 9. Teste de Renderização de Badges de Bloqueio (Crédito e Estoque)
+test('Renderização de Badges: Bloqueio de Crédito e Estoque extraído diretamente de public/app.js', () => {
+  const fs = require('fs');
+  const vm = require('vm');
+  const appJs = fs.readFileSync('./public/app.js', 'utf8');
+
+  // Extrai as funções reais diretamente do arquivo public/app.js
+  const fnCreditoMatch = appJs.match(/function formatBadgeBloqCredito\([\s\S]*?\n  \}/);
+  const fnEstoqueMatch = appJs.match(/function formatBadgeBloqEstoque\([\s\S]*?\n  \}/);
+  assert(fnCreditoMatch, 'formatBadgeBloqCredito deve existir em public/app.js');
+  assert(fnEstoqueMatch, 'formatBadgeBloqEstoque deve existir em public/app.js');
+
+  const sandbox = {
+    escapeHtml: (str) => String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(`${fnCreditoMatch[0]}\n${fnEstoqueMatch[0]}`, sandbox);
+
+  const formatBadgeBloqCredito = sandbox.formatBadgeBloqCredito;
+  const formatBadgeBloqEstoque = sandbox.formatBadgeBloqEstoque;
+
+  // Cenário BLOQ NO CREDITO -> status-danger, com cadeado
+  const htmlBloqCred = formatBadgeBloqCredito('BLOQ NO CREDITO');
+  assert(htmlBloqCred.includes('status-danger'), 'Deve conter classe status-danger');
+  assert(htmlBloqCred.includes('🔒 BLOQ NO CREDITO'), 'Deve conter ícone de cadeado e texto de bloqueio');
+  assert(!htmlBloqCred.includes('status-success'), 'Não pode conter status-success');
+
+  // Cenário SEM BLOQ CREDITO -> status-success, SEM status-danger
+  const htmlSemBloqCred = formatBadgeBloqCredito('SEM BLOQ CREDITO');
+  assert(htmlSemBloqCred.includes('status-success'), 'Deve conter classe status-success');
+  assert(!htmlSemBloqCred.includes('status-danger'), 'NÃO pode conter classe status-danger');
+  assert(htmlSemBloqCred.includes('✓ SEM BLOQ CREDITO'), 'Deve conter texto e ícone de liberação');
+
+  // Cenário BLOQ POR ESTOQUE -> status-warning, com triângulo
+  const htmlBloqEst = formatBadgeBloqEstoque('BLOQ POR ESTOQUE');
+  assert(htmlBloqEst.includes('status-warning'), 'Deve conter classe status-warning');
+  assert(htmlBloqEst.includes('⚠️ BLOQ POR ESTOQUE'), 'Deve conter ícone de alerta e texto');
+  assert(!htmlBloqEst.includes('status-success'), 'Não pode conter status-success');
+
+  // Cenário SEM BLOQ ESTOQ -> status-success, SEM status-warning
+  const htmlSemBloqEst = formatBadgeBloqEstoque('SEM BLOQ ESTOQ');
+  assert(htmlSemBloqEst.includes('status-success'), 'Deve conter classe status-success');
+  assert(!htmlSemBloqEst.includes('status-warning'), 'NÃO pode conter classe status-warning');
+  assert(htmlSemBloqEst.includes('✓ SEM BLOQ ESTOQ'), 'Deve conter texto e ícone de liberação');
+
+  // Cenários vazios / nulos (fallback seguro para SEM BLOQ)
+  assert(formatBadgeBloqCredito('').includes('✓ SEM BLOQ CREDITO'));
+  assert(formatBadgeBloqCredito(null).includes('✓ SEM BLOQ CREDITO'));
+  assert(formatBadgeBloqEstoque('').includes('✓ SEM BLOQ ESTOQ'));
+  assert(formatBadgeBloqEstoque(null).includes('✓ SEM BLOQ ESTOQ'));
+
+  // Casos de borda: Códigos nativos Protheus (01, 02, 10) e case-insensitivity
+  assert(formatBadgeBloqCredito('01').includes('status-danger'), '01 Protheus deve acionar bloqueio de crédito');
+  assert(formatBadgeBloqCredito('bloq no credito').includes('status-danger'), 'Minúsculas devem acionar bloqueio');
+  assert(formatBadgeBloqCredito('10').includes('status-success'), '10 Protheus deve acionar liberação de crédito');
+  assert(formatBadgeBloqEstoque('02').includes('status-warning'), '02 Protheus deve acionar bloqueio de estoque');
+  assert(formatBadgeBloqEstoque('bloq por estoque').includes('status-warning'), 'Minúsculas devem acionar bloqueio');
+  assert(formatBadgeBloqEstoque('10').includes('status-success'), '10 Protheus deve acionar liberação de estoque');
+});
+
 // Helper para chamadas HTTP
 function makeRequest(options, postData = null) {
   return new Promise((resolve, reject) => {

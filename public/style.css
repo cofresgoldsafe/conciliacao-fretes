@@ -2382,6 +2382,14 @@ body {
   border: 1px solid rgba(217, 119, 6, 0.3) !important;
 }
 
+#tab-vend-pedidos-abertos .diverg-badge.status-success,
+#tab-compras-pedidos-abertos .diverg-badge.status-success,
+.tab-theme-light .diverg-badge.status-success {
+  background-color: #dcfce7 !important;
+  color: #14532d !important;
+  border: 1px solid #86efac !important;
+}
+
 .tab-theme-light .status-badge.sucesso {
   background-color: rgba(5, 150, 105, 0.1) !important;
   color: #059669 !important;
