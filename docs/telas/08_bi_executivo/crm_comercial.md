@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 24/09/2026 (v8.256 - Homologado)  
+> **Última Atualização:** 24/09/2026 (v8.259 - Homologado)  
 
 ---
 
@@ -27,7 +27,9 @@
   - `#crmFilterVendedor`: Seletor de proprietário/vendedor (exclui Diretoria, focado em vendedores operacionais).
   - `#crmFilterStatus`: Seletor de status com 6 opções canônicas: `ABERTAS` ("Oportunidades Abertas"), `TODOS` ("Todas (inclui Perdidos)"), `GANHO` ("Somente Ganhas"), `GANHO_HOJE` ("Ganhas Hoje"), `GANHO_ONTEM` ("Ganhas Ontem") e `PERDIDO` ("Somente Perdidos").
   - `#btnCrmLimparFiltros`: Botão de reset rápido, restaurando status para `ABERTAS` e vendedor para `TODOS`.
-- **Ações Rápidas de Cliente no Modal de Oportunidades & Detalhes:**
+- **Ações Rápidas de Cliente & Faturamento no Modal de Oportunidades & Detalhes:**
+  - `#crmSelectFaturadoPor`: Seletor de empresa faturadora no Bloco 1 (📌 Identificação da Oportunidade) com as 3 empresas canônicas (`14 - METAL PLENO`, `15 - GSI COFRES`, `16 - OACO`). O container do Cliente foi redimensionado (`grid-template-columns: 2fr 1fr; gap: 12px;`) para acomodar o seletor com alinhamento vertical e harmonia visual.
+  - `#crmDetalhesFaturadoPorBadge` / `#crmDetalhesFaturadoPor`: Exibição explícita da empresa de faturamento na modal de visualização e detalhes (`#modalCrmDetalhes`), visível no cabeçalho da oportunidade e na grade de Condições Comerciais & Faturamento.
   - `#btnCrmNovoClienteFromDeal`: Renomeado para `➕ Add Cliente` (abre modal de cadastro rápido sem sair da oportunidade).
   - `#btnCrmEditarClienteFromDeal`: Botão compacto `✏️ Editar` ao lado do autocomplete de cliente em `#modalCrmOportunidade`, permitindo editar o cadastro comercial do cliente selecionado.
   - `#btnCrmEditarClienteDoDetalhes`: Botão compacto `✏️ Editar` ao lado do nome da organização no cabeçalho do `#modalCrmDetalhes`.

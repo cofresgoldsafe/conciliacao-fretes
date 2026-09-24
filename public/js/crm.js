@@ -1153,6 +1153,18 @@
   }
 
   /**
+   * Normaliza o nome da empresa faturadora para compatibilidade com o seletor das 3 empresas
+   */
+  function normalizeFaturadoPor(val) {
+    if (!val) return '';
+    const s = String(val).toUpperCase().trim();
+    if (s.startsWith('14') || s.includes('METAL')) return '14 - METAL PLENO';
+    if (s.startsWith('15') || s.includes('GSI')) return '15 - GSI COFRES';
+    if (s.startsWith('16') || s.includes('OACO') || s.includes('OAÇO') || s.includes('AÇO')) return '16 - OACO';
+    return val;
+  }
+
+  /**
    * Abre a modal para criação de uma Nova Oportunidade
    */
   function openNewDealModal() {
@@ -1170,6 +1182,9 @@
     document.getElementById('crmInputClienteCod').value = '';
     document.getElementById('crmInputClienteLoja').value = '';
     document.getElementById('crmInputClienteCnpj').value = '';
+
+    const selFaturado = document.getElementById('crmSelectFaturadoPor');
+    if (selFaturado) selFaturado.value = '';
 
     // Vendedor padrão: usuário logado se for vendedor
     const user = getCurrentUser();
@@ -1208,6 +1223,9 @@
     document.getElementById('crmSelectVendedor').value = deal.vendedor || '';
     document.getElementById('crmSelectFase').value = deal.fase || 'LEAD';
     document.getElementById('crmInputValor').value = deal.valor || 0;
+
+    const selFaturado = document.getElementById('crmSelectFaturadoPor');
+    if (selFaturado) selFaturado.value = normalizeFaturadoPor(deal.faturadoPor) || '';
 
     // Campos comerciais
     document.getElementById('crmInputCondPgto').value = deal.condPgto || '28 DDL';
@@ -1593,7 +1611,7 @@
 
     const existingDeal = id ? deals.find(d => String(d.id) === String(id)) : null;
     const contatoNome = existingDeal?.contatoNome || '';
-    const faturadoPor = existingDeal?.faturadoPor || '';
+    const faturadoPor = document.getElementById('crmSelectFaturadoPor')?.value || existingDeal?.faturadoPor || '';
 
     const payload = {
       titulo,
@@ -1601,6 +1619,7 @@
       clienteNome,
       contatoNome,
       faturadoPor,
+      faturado_por: faturadoPor,
       cliente_cod: clienteCod,
       clienteCod,
       cliente_loja: clienteLoja,
@@ -1635,6 +1654,7 @@
         ...(existingDeal?.custom || {}),
         contatoNome,
         faturadoPor,
+        faturado_por: faturadoPor,
         condPgto,
         freteCobrado,
         freteEmbutido,
@@ -1735,6 +1755,12 @@
     document.getElementById('crmDetalhesValor').textContent = formatCurrency(deal.valor);
     document.getElementById('crmDetalhesVendedor').textContent = deal.vendedor || '-';
     document.getElementById('crmDetalhesFaseBadge').innerHTML = getDealAlertBadge(deal);
+
+    const faturadoTexto = deal.faturadoPor || 'Não informado';
+    const elFaturado = document.getElementById('crmDetalhesFaturadoPor');
+    if (elFaturado) elFaturado.textContent = faturadoTexto;
+    const elFaturadoBadge = document.getElementById('crmDetalhesFaturadoPorBadge');
+    if (elFaturadoBadge) elFaturadoBadge.textContent = deal.faturadoPor || '-';
 
     // Campos comerciais na ficha
     document.getElementById('crmDetalhesCondPgto').textContent = deal.condPgto || 'Não informada';

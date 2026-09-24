@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.258 (Homologada em 24/09/2026 18:07)  
+> **Versão da Documentação:** v8.259 (Homologada em 24/09/2026 18:21)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 24/09/2026 18:07 (v8.258 - Remoção do checkbox inútil na listagem do CRM, consolidação em 9 colunas canônicas e YAGNI)  
+> **Data da Última Auditoria:** 24/09/2026 18:21 (v8.259 - Seletor Faturado Por com 3 empresas na criação/edição e visualização de oportunidades no CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.259 (24/09/2026):** Adição do seletor "Faturado Por" (`#crmSelectFaturadoPor`) com as 3 empresas (`14 - METAL PLENO`, `15 - GSI COFRES`, `16 - OACO`) no Bloco 1 (Identificação da Oportunidade) do modal `#modalCrmOportunidade`. O campo Cliente foi redimensionado (`grid-template-columns: 2fr 1fr; gap: 12px;`) mantendo autocomplete e botões de atalho. O campo também passou a ser exibido no cabeçalho e na grade de condições comerciais do modal de visualização `#modalCrmDetalhes`, com persistência plena e normalização inteligente (8 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.258 (24/09/2026):** Remoção da coluna de checkbox inútil da listagem de oportunidades (`crmDealsCheckAll` no `thead` e `.crm-deal-checkbox` nas linhas). Sem ações em lote implementadas, a coluna representava desperdício de espaço e sobre-engenharia (YAGNI/Navalha de Design). Tabela consolidada com 9 colunas canônicas diretas, iniciando com "Ação" seguida diretamente por "Título" (7 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.257 (24/09/2026):** Reformulação da tabela de Oportunidades do CRM e aplicação da Navalha de Texto: criação da coluna "Ação" em 1º lugar com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização), renomeação da coluna "Organização" para "Nome do Cliente", eliminação da coluna "Contato" e remoção da exibição do rótulo desnecessário "UM: UN" nos itens de propostas e produtos cotados (7 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.256 (24/09/2026):** Espelhamento Just-in-Time (*under-the-hood*) de clientes Protheus (`SA1010`) para o Super Banco (`crm_clientes`) sem escrita no Protheus. Novos botões de ação rápida no CRM (`#btnCrmEditarClienteFromDeal` e `#btnCrmEditarClienteDoDetalhes`), botão renomeado para "➕ Add Cliente", resolução multi-chave por ID, código (pad 6 dígitos) e CNPJ, tradução de vendedor e sincronização reativa com o deal (13 testes aprovados em `test_crm_clientes.js` e 10 em `test_crm_module.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

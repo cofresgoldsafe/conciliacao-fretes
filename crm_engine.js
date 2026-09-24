@@ -735,7 +735,10 @@ async function criarDeal(dados, usuario) {
   ];
 
   const contatos = Array.isArray(dados.contatos) ? dados.contatos : [];
-  const custom = typeof dados.custom === 'object' && dados.custom !== null ? dados.custom : {};
+  const custom = typeof dados.custom === 'object' && dados.custom !== null ? { ...dados.custom } : {};
+  if (dados.faturadoPor || dados.faturado_por) {
+    custom.faturadoPor = dados.faturadoPor || dados.faturado_por;
+  }
   const dealId = 'CRM-' + Date.now() + '-' + Math.floor(Math.random() * 8999 + 1000);
 
   let novoDeal = null;
@@ -923,6 +926,13 @@ async function atualizarDeal(id, dados, usuario) {
   const codVendedor = dados.cod_vendedor !== undefined ? String(dados.cod_vendedor).trim() : existente.cod_vendedor;
   const nomeVendedor = dados.nome_vendedor || (dados.cod_vendedor ? getNomeVendedor(codVendedor) : existente.nome_vendedor);
 
+  const customAtual = typeof dados.custom === 'object' && dados.custom !== null
+    ? { ...(existente.custom || {}), ...dados.custom }
+    : { ...(existente.custom || {}) };
+  if (dados.faturadoPor !== undefined || dados.faturado_por !== undefined) {
+    customAtual.faturadoPor = dados.faturadoPor || dados.faturado_por;
+  }
+
   let dealAtualizado = null;
 
   // 1. Tenta Postgres
@@ -996,7 +1006,7 @@ async function atualizarDeal(id, dados, usuario) {
       JSON.stringify(itensCotados),
       JSON.stringify(dados.contatos !== undefined ? dados.contatos : existente.contatos),
       JSON.stringify(historicoEstagios),
-      JSON.stringify(dados.custom !== undefined ? dados.custom : existente.custom),
+      JSON.stringify(customAtual),
       dados.observacoes !== undefined ? dados.observacoes : existente.observacoes,
       u.username,
       cleanId
@@ -1017,6 +1027,7 @@ async function atualizarDeal(id, dados, usuario) {
       dealAtualizado = {
         ...cache.deals[idx],
         ...dados,
+        custom: customAtual,
         valor_total: valorTotal,
         estagio: estagioNovo,
         cod_vendedor: codVendedor,
