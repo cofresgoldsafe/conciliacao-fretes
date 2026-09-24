@@ -13,7 +13,8 @@
 
 const path = require('path');
 const { safeQuery, logUserActivity, isPostgresConnected } = require('./postgres_db');
-const { executeRailwayQuery, sanitizeSqlParam, getNomeVendedor } = require('./protheus_db');
+const protheusDb = require('./protheus_db');
+const { sanitizeSqlParam, getNomeVendedor } = protheusDb;
 const { safeReadJson, safeReadJsonSync, safeWriteJson } = require('./safe_json_storage');
 
 const dataDir = path.join(__dirname, 'data');
@@ -347,6 +348,7 @@ async function initCrmTables() {
       CREATE INDEX IF NOT EXISTS idx_crm_clientes_cnpj_cpf ON crm_clientes(cnpj_cpf);
       CREATE INDEX IF NOT EXISTS idx_crm_clientes_nome ON crm_clientes(nome_razao);
       CREATE INDEX IF NOT EXISTS idx_crm_clientes_vendedor ON crm_clientes(vendedor_responsavel);
+      CREATE INDEX IF NOT EXISTS idx_crm_clientes_protheus_cod ON crm_clientes(protheus_cod);
       CREATE INDEX IF NOT EXISTS idx_crm_clientes_deleted_at ON crm_clientes(deleted_at);
 
       -- Harmonização de colunas para IDs de clientes do CRM (VARCHAR(64))
@@ -1427,7 +1429,8 @@ async function salvarCliente(dados, usuario) {
   }
 
   const cleanId = dados.id ? String(dados.id).trim() : '';
-  const isEdicao = !!cleanId;
+  const isEspelhamento = Boolean(dados.is_espelhamento);
+  const isEdicao = !!cleanId && !isEspelhamento;
 
   if (isEdicao) {
     const clienteExistente = await obterClientePorId(cleanId);
@@ -1439,7 +1442,7 @@ async function salvarCliente(dados, usuario) {
     }
   }
 
-  const clienteId = isEdicao ? cleanId : ('CLI-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 899 + 100).toString(36));
+  const clienteId = cleanId || ('CLI-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 899 + 100).toString(36));
 
   const cnpjLimpo = dados.cnpj_cpf ? String(dados.cnpj_cpf).replace(/\D/g, '').slice(0, 20) : '';
   const tipoPessoa = (dados.tipo_pessoa || (cnpjLimpo.length === 11 ? 'PF' : 'PJ')).toUpperCase().slice(0, 2);
@@ -1537,7 +1540,14 @@ async function salvarCliente(dados, usuario) {
           $22, $23, $24, $25, $26,
           $27, $28, $29,
           NOW(), NOW(), NULL
-        ) RETURNING *;
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          tipo_pessoa = EXCLUDED.tipo_pessoa,
+          nome_razao = EXCLUDED.nome_razao,
+          nome_fantasia = EXCLUDED.nome_fantasia,
+          cnpj_cpf = EXCLUDED.cnpj_cpf,
+          updated_at = NOW()
+        RETURNING *;
       `, [
         clienteId, tipoPessoa, nomeRazao, nomeFantasia, cnpjLimpo, ie,
         contatoNome, telefone, celularWhatsapp, email, cep,
@@ -1808,15 +1818,30 @@ async function restaurarCliente(id, usuario) {
 }
 
 /**
- * 12. OBTER CLIENTE POR ID
+ * 12. OBTER CLIENTE POR ID OU CÓDIGO PROTHEUS (COM ESPELHAMENTO JUST-IN-TIME)
  */
 async function obterClientePorId(id) {
-  if (!id) return null;
+  if (!id || !String(id).trim()) return null;
   const cleanId = String(id).trim();
+  const digitsOnly = cleanId.replace(/\D/g, '');
+  const cleanTerm = sanitizeSqlParam(cleanId).replace(/[\[\]]/g, '');
+  const paddedCod = /^\d+$/.test(cleanTerm) && cleanTerm.length <= 6 ? cleanTerm.padStart(6, '0') : cleanTerm;
 
-  // 1. Tenta Postgres
+  // 1. Tenta Postgres (busca por ID primário, protheus_cod exato ou com pad 6 dígitos, ou CNPJ)
   try {
-    const res = await safeQuery('SELECT * FROM crm_clientes WHERE id = $1 AND deleted_at IS NULL;', [cleanId]);
+    let query = `
+      SELECT * FROM crm_clientes
+      WHERE deleted_at IS NULL
+        AND (id = $1 OR protheus_cod = $1 OR protheus_cod = $2
+    `;
+    const params = [cleanId, paddedCod];
+    if (digitsOnly.length >= 11) {
+      params.push(digitsOnly);
+      query += ` OR cnpj_cpf = $${params.length}`;
+    }
+    query += `) ORDER BY updated_at DESC LIMIT 1;`;
+
+    const res = await safeQuery(query, params);
     if (res && res.rows && res.rows.length > 0) {
       return mapClienteRow(res.rows[0]);
     }
@@ -1824,10 +1849,108 @@ async function obterClientePorId(id) {
     console.warn(`⚠️ [CRM Engine] Erro ao buscar cliente #${cleanId} no Postgres:`, err.message);
   }
 
-  // 2. Cache Local
-  const cache = await readClientesCache();
-  const cliente = (cache.clientes || []).find(c => String(c.id) === cleanId && !c.deleted_at);
-  return cliente ? mapClienteRow(cliente) : null;
+  // 2. Cache Local / Fallback Atômico
+  try {
+    const cache = await readClientesCache();
+    const clienteLocal = (cache.clientes || []).find(c => {
+      if (c.deleted_at) return false;
+      if (String(c.id) === cleanId) return true;
+      if (String(c.protheus_cod || '').trim() === cleanId) return true;
+      if (String(c.protheus_cod || '').trim() === paddedCod) return true;
+      if (digitsOnly.length >= 11 && String(c.cnpj_cpf || '').replace(/\D/g, '') === digitsOnly) return true;
+      return false;
+    });
+    if (clienteLocal) return mapClienteRow(clienteLocal);
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro ao buscar cliente #${cleanId} no cache local:`, err.message);
+  }
+
+  // 3. Just-in-Time Mirroring: Se não está no super banco, consulta SA1010 no Protheus ERP
+  try {
+    const sql = `
+      SELECT TOP 1
+        RTRIM(A1_COD) AS A1_COD,
+        RTRIM(ISNULL(A1_LOJA, '01')) AS A1_LOJA,
+        RTRIM(A1_NOME) AS A1_NOME,
+        RTRIM(ISNULL(A1_NREDUZ, '')) AS A1_NREDUZ,
+        RTRIM(ISNULL(A1_CGC, '')) AS A1_CGC,
+        RTRIM(ISNULL(A1_END, '')) AS A1_END,
+        RTRIM(ISNULL(A1_BAIRRO, '')) AS A1_BAIRRO,
+        RTRIM(ISNULL(A1_MUN, '')) AS A1_MUN,
+        RTRIM(ISNULL(A1_EST, '')) AS A1_EST,
+        RTRIM(ISNULL(A1_CEP, '')) AS A1_CEP,
+        RTRIM(ISNULL(A1_TEL, '')) AS A1_TEL,
+        RTRIM(ISNULL(A1_EMAIL, '')) AS A1_EMAIL,
+        RTRIM(ISNULL(A1_CONTATO, '')) AS A1_CONTATO,
+        RTRIM(ISNULL(A1_VEND, '')) AS A1_VEND,
+        RTRIM(ISNULL(A1_HPAGE, '')) AS A1_HPAGE,
+        RTRIM(ISNULL(A1_MAILNFE, '')) AS A1_MAILNFE,
+        RTRIM(ISNULL(A1_MAILBOL, '')) AS A1_MAILBOL,
+        RTRIM(ISNULL(A1_ZPESPAG, '')) AS A1_ZPESPAG,
+        RTRIM(ISNULL(A1_ZTELPAG, '')) AS A1_ZTELPAG,
+        RTRIM(ISNULL(A1_ZMAILPA, '')) AS A1_ZMAILPA,
+        RTRIM(ISNULL(A1_TIPO, 'F')) AS A1_TIPO
+      FROM SA1010
+      WHERE D_E_L_E_T_ = ' '
+        AND (
+          A1_COD = '${cleanTerm}'
+          OR A1_COD = '${paddedCod}'
+          ${digitsOnly.length >= 11 ? `OR A1_CGC = '${digitsOnly}'` : ''}
+        )
+      ORDER BY A1_LOJA ASC;
+    `;
+
+    const res = await protheusDb.executeRailwayQuery(sql);
+    if (res && Array.isArray(res.rows) && res.rows.length > 0) {
+      const r = res.rows[0];
+      const cod = (r.A1_COD || '').trim();
+      const loja = (r.A1_LOJA || '01').trim();
+      const cnpjLimpo = r.A1_CGC ? String(r.A1_CGC).replace(/\D/g, '') : '';
+      const novoId = `CLI-PROTHEUS-${cod}-${loja}`;
+      const nomeVendedorMapeado = (r.A1_VEND ? getNomeVendedor(r.A1_VEND) : '') || r.A1_VEND || '';
+
+      const dadosParaSalvar = {
+        id: novoId,
+        is_espelhamento: true,
+        tipo_pessoa: cnpjLimpo.length === 11 ? 'PF' : 'PJ',
+        tipo_cliente_protheus: r.A1_TIPO || 'F',
+        nome_razao: r.A1_NOME || '',
+        nome_fantasia: r.A1_NREDUZ || '',
+        cnpj_cpf: cnpjLimpo,
+        ie: '',
+        contato_nome: r.A1_CONTATO || '',
+        telefone: r.A1_TEL || '',
+        celular_whatsapp: '',
+        email: r.A1_EMAIL || '',
+        site_url: r.A1_HPAGE || '',
+        email_nfe: r.A1_MAILNFE || '',
+        email_boleto: r.A1_MAILBOL || '',
+        contato_financeiro_nome: r.A1_ZPESPAG || '',
+        contato_financeiro_tel: r.A1_ZTELPAG || '',
+        contato_financeiro_email: r.A1_ZMAILPA || '',
+        cep: r.A1_CEP || '',
+        logradouro: r.A1_END || '',
+        numero: '',
+        complemento: '',
+        bairro: r.A1_BAIRRO || '',
+        cidade: r.A1_MUN || '',
+        uf: r.A1_EST || '',
+        origem: 'PROTHEUS',
+        vendedor_responsavel: nomeVendedorMapeado,
+        protheus_cod: cod,
+        protheus_loja: loja,
+        observacoes: 'Cliente espelhado automaticamente do ERP Protheus (SA1010).'
+      };
+
+      // Grava no super banco (crm_clientes) de forma atômica e resiliente
+      const clienteEspelhado = await salvarCliente(dadosParaSalvar, { username: 'sistema', name: 'Sincronizador Protheus', role: 'admin' });
+      return clienteEspelhado;
+    }
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro ao consultar SA1010 no Protheus para espelhamento:`, err.message);
+  }
+
+  return null;
 }
 
 /**
@@ -1998,7 +2121,7 @@ async function autocompleteClientes(termo) {
       ORDER BY A1_NOME ASC;
     `;
 
-    const res = await executeRailwayQuery(sql);
+    const res = await protheusDb.executeRailwayQuery(sql);
     if (res && Array.isArray(res.rows) && res.rows.length > 0) {
       for (const r of res.rows) {
         const cnpjLimpo = r.A1_CGC ? String(r.A1_CGC).replace(/\D/g, '') : '';
@@ -2183,7 +2306,7 @@ async function sincronizarProdutosCrmProtheus({ triggeredBy = 'MANUAL' } = {}) {
         ORDER BY B1_COD ASC;
       `;
 
-      const res = await executeRailwayQuery(sql);
+      const res = await protheusDb.executeRailwayQuery(sql);
       if (res && Array.isArray(res.rows) && res.rows.length > 0) {
         for (const r of res.rows) {
           const cod = String(r.B1_COD || '').trim();

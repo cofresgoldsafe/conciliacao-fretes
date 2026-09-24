@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.255">
+  <link rel="stylesheet" href="style.css?v=8.256">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 16:56 (Ordenacao estritamente decrescente na Linha do Tempo e Follow-up do CRM Comercial com autocura de localStorage)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 17:38 (Espelhamento Just-in-Time de clientes Protheus no Super Banco e edicao a partir de oportunidades do CRM)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -6991,9 +6991,14 @@
             <div class="form-group" style="margin: 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <label style="font-size: 0.8rem; font-weight: 600; margin: 0;">Cliente (Razão Social / Nome Fantasia / CNPJ): *</label>
-                <button type="button" id="btnCrmNovoClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 4px;" title="Cadastrar novo cliente rapidamente sem sair da oportunidade">
-                  <span>➕ Novo Cliente</span>
-                </button>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  <button type="button" id="btnCrmEditarClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); display: flex; align-items: center; gap: 4px;" title="Editar cadastro do cliente selecionado">
+                    <span>✏️ Editar</span>
+                  </button>
+                  <button type="button" id="btnCrmNovoClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 4px;" title="Cadastrar novo cliente rapidamente sem sair da oportunidade">
+                    <span>➕ Add Cliente</span>
+                  </button>
+                </div>
               </div>
               <input type="text" id="crmInputCliente" class="form-control" placeholder="Digite 2 ou mais letras para buscar cliente do Protheus ou CRM..." required autocomplete="off" style="width: 100%;">
             </div>
@@ -7133,8 +7138,13 @@
             <h3 id="crmDetalhesTitulo" style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main);">Detalhes do Negócio</h3>
             <span id="crmDetalhesFaseBadge"></span>
           </div>
-          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
-            Cliente: <strong id="crmDetalhesCliente" style="color: var(--text-main);">-</strong> | Vendedor: <span id="crmDetalhesVendedor">-</span> | Valor: <strong id="crmDetalhesValor" style="color: #38bdf8;">R$ 0,00</strong>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+            <span>Cliente:</span> <strong id="crmDetalhesCliente" style="color: var(--text-main);">-</strong>
+            <button type="button" id="btnCrmEditarClienteDoDetalhes" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 1px 6px; height: 20px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); margin-left: 2px;" title="Editar cadastro do cliente">
+              <span>✏️ Editar</span>
+            </button>
+            <span style="margin: 0 4px;">|</span> <span>Vendedor:</span> <span id="crmDetalhesVendedor">-</span>
+            <span style="margin: 0 4px;">|</span> <span>Valor:</span> <strong id="crmDetalhesValor" style="color: #38bdf8;">R$ 0,00</strong>
           </div>
         </div>
         <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal" style="background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
@@ -9646,24 +9656,24 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.255"></script>
-  <script src="js/bi.js?v=8.255"></script>
-  <script src="js/bi_indices.js?v=8.255"></script>
-  <script src="js/bi_autorizacoes.js?v=8.255"></script>
-  <script src="js/bi_despesas.js?v=8.255"></script>
-  <script src="js/gordura_frete.js?v=8.255"></script>
-  <script src="js/fechamento_vendedores.js?v=8.255"></script>
-  <script type="module" src="js/tarefas.js?v=8.255"></script>
-  <script src="js/holerites.js?v=8.255"></script>
-  <script src="js/funcionarios_dp.js?v=8.255"></script>
-  <script src="js/crm.js?v=8.255"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.255"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.255"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.255"></script>
-  <script src="js/nfse_pendentes.js?v=8.255"></script>
-  <script src="js/fechamento_fiscal.js?v=8.255"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.255"></script>
-  <script src="js/contas_pagar.js?v=8.255"></script>
-  <script src="app.js?v=8.255"></script>
+  <script src="js/chart.umd.min.js?v=8.256"></script>
+  <script src="js/bi.js?v=8.256"></script>
+  <script src="js/bi_indices.js?v=8.256"></script>
+  <script src="js/bi_autorizacoes.js?v=8.256"></script>
+  <script src="js/bi_despesas.js?v=8.256"></script>
+  <script src="js/gordura_frete.js?v=8.256"></script>
+  <script src="js/fechamento_vendedores.js?v=8.256"></script>
+  <script type="module" src="js/tarefas.js?v=8.256"></script>
+  <script src="js/holerites.js?v=8.256"></script>
+  <script src="js/funcionarios_dp.js?v=8.256"></script>
+  <script src="js/crm.js?v=8.256"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.256"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.256"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.256"></script>
+  <script src="js/nfse_pendentes.js?v=8.256"></script>
+  <script src="js/fechamento_fiscal.js?v=8.256"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.256"></script>
+  <script src="js/contas_pagar.js?v=8.256"></script>
+  <script src="app.js?v=8.256"></script>
 </body>
 </html>

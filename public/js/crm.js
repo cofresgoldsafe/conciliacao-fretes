@@ -2682,6 +2682,16 @@
         if (cliente.logradouro || cliente.cep || cliente.cidade) {
           if (detailsEndereco) detailsEndereco.open = true;
         }
+      } else if (origin === 'deal') {
+        if (title) title.innerHTML = '👤 Cadastrar / Editar Cliente';
+        const inpDeal = document.getElementById('crmInputCliente');
+        const nomeParaPreencher = (inpDeal && inpDeal.value.trim()) || (currentDeal && currentDeal.clienteNome) || String(clienteId).trim();
+        document.getElementById('crmClienteNomeRazao').value = nomeParaPreencher;
+        const cnpjDeal = (document.getElementById('crmInputClienteCnpj')?.value || (currentDeal && currentDeal.clienteCnpj) || '').trim();
+        if (cnpjDeal) document.getElementById('crmClienteCnpjCpf').value = cnpjDeal;
+        const selVendDeal = document.getElementById('crmSelectVendedor');
+        const vendParaPreencher = (selVendDeal && selVendDeal.value) || (currentDeal && currentDeal.vendedor) || '';
+        if (vendParaPreencher) document.getElementById('crmClienteSelectVendedor').value = vendParaPreencher;
       }
     } else {
       if (title) title.innerHTML = '👤 Cadastro de Cliente (CRM)';
@@ -2690,6 +2700,8 @@
         if (inpDeal && inpDeal.value.trim()) {
           document.getElementById('crmClienteNomeRazao').value = inpDeal.value.trim();
         }
+        const cnpjDeal = (document.getElementById('crmInputClienteCnpj')?.value || (currentDeal && currentDeal.clienteCnpj) || '').trim();
+        if (cnpjDeal) document.getElementById('crmClienteCnpjCpf').value = cnpjDeal;
         const selVendDeal = document.getElementById('crmSelectVendedor');
         if (selVendDeal && selVendDeal.value) {
           document.getElementById('crmClienteSelectVendedor').value = selVendDeal.value;
@@ -2790,15 +2802,58 @@
         const inputCnpj = document.getElementById('crmInputClienteCnpj');
         const selectVend = document.getElementById('crmSelectVendedor');
 
-        if (inputCliente) inputCliente.value = clienteSalvo.nome_razao || nomeRazao;
-        if (inputCod) inputCod.value = clienteSalvo.protheus_cod || clienteSalvo.id || '';
-        if (inputLoja) inputLoja.value = clienteSalvo.protheus_loja || '01';
-        if (inputCnpj) inputCnpj.value = clienteSalvo.cnpj_cpf || '';
+        const nomeFinal = clienteSalvo.nome_razao || nomeRazao;
+        const codFinal = clienteSalvo.protheus_cod || clienteSalvo.id || '';
+        const lojaFinal = clienteSalvo.protheus_loja || '01';
+        const cnpjFinal = clienteSalvo.cnpj_cpf || '';
+
+        if (inputCliente) inputCliente.value = nomeFinal;
+        if (inputCod) inputCod.value = codFinal;
+        if (inputLoja) inputLoja.value = lojaFinal;
+        if (inputCnpj) inputCnpj.value = cnpjFinal;
         if (selectVend && !selectVend.value && clienteSalvo.vendedor_responsavel) {
           selectVend.value = clienteSalvo.vendedor_responsavel;
         }
 
-        mostrarNotificacao('Cliente cadastrado e vinculado à oportunidade!', 'success');
+        // Se o modal de detalhes do negócio estiver aberto, sincroniza imediatamente
+        const elDetalhesCliente = document.getElementById('crmDetalhesCliente');
+        if (elDetalhesCliente) {
+          elDetalhesCliente.textContent = nomeFinal;
+        }
+        if (currentDeal) {
+          currentDeal.clienteNome = nomeFinal;
+          if (codFinal) currentDeal.clienteCod = codFinal;
+          if (lojaFinal) currentDeal.clienteLoja = lojaFinal;
+          if (cnpjFinal) currentDeal.clienteCnpj = cnpjFinal;
+
+          // Se a oportunidade já está salva no banco (possui ID), persiste as alterações no deal
+          if (currentDeal.id) {
+            try {
+              const token = getToken();
+              fetch(`/api/bi/crm/deals/${encodeURIComponent(currentDeal.id)}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                  ...currentDeal,
+                  cliente_nome: nomeFinal,
+                  cliente_cod: codFinal,
+                  cliente_loja: lojaFinal,
+                  cliente_cnpj: cnpjFinal
+                })
+              }).catch(e => console.warn('⚠️ [CRM] Falha assíncrona ao persistir cliente no deal:', e));
+            } catch {}
+          }
+          if (typeof renderDealsViews === 'function') renderDealsViews();
+          else if (typeof renderKanbanBoard === 'function') renderKanbanBoard();
+        }
+
+        const msgSucesso = payload.id
+          ? 'Cadastro do cliente atualizado com sucesso!'
+          : 'Cliente cadastrado e vinculado à oportunidade!';
+        mostrarNotificacao(msgSucesso, 'success');
       } else {
         mostrarNotificacao(json.message || 'Cliente salvo com sucesso!', 'success');
         await carregarClientes(clientesPage);
@@ -2905,6 +2960,24 @@
     if (btnNovoClienteFromDeal && !btnNovoClienteFromDeal._hasListener) {
       btnNovoClienteFromDeal._hasListener = true;
       btnNovoClienteFromDeal.addEventListener('click', () => abrirModalCliente(null, 'deal'));
+    }
+
+    // Botão Editar Cadastro do Cliente acionado de dentro do Deal
+    const btnEditarClienteFromDeal = document.getElementById('btnCrmEditarClienteFromDeal');
+    if (btnEditarClienteFromDeal && !btnEditarClienteFromDeal._hasListener) {
+      btnEditarClienteFromDeal._hasListener = true;
+      btnEditarClienteFromDeal.addEventListener('click', () => {
+        const cod = (document.getElementById('crmInputClienteCod')?.value || '').trim();
+        const cnpj = (document.getElementById('crmInputClienteCnpj')?.value || '').trim();
+        const nome = (document.getElementById('crmInputCliente')?.value || '').trim();
+
+        const identificador = cod || cnpj || nome;
+        if (!identificador) {
+          mostrarNotificacao('Selecione ou busque um cliente antes de editar o cadastro.', 'info');
+          return;
+        }
+        abrirModalCliente(identificador, 'deal');
+      });
     }
 
     // Paginação de Clientes
@@ -3071,6 +3144,20 @@
     }
 
     // Ações no Modal de Detalhes
+    const btnEditarClienteDoDetalhes = document.getElementById('btnCrmEditarClienteDoDetalhes');
+    if (btnEditarClienteDoDetalhes && !btnEditarClienteDoDetalhes._hasListener) {
+      btnEditarClienteDoDetalhes._hasListener = true;
+      btnEditarClienteDoDetalhes.addEventListener('click', () => {
+        if (!currentDeal) return;
+        const cod = (currentDeal.clienteCod || currentDeal.clienteCnpj || currentDeal.clienteNome || '').trim();
+        if (!cod) {
+          mostrarNotificacao('Esta oportunidade não possui cliente associado.', 'info');
+          return;
+        }
+        abrirModalCliente(cod, 'deal');
+      });
+    }
+
     const btnEditarDoDetalhes = document.getElementById('btnCrmEditarDoDetalhes');
     if (btnEditarDoDetalhes && !btnEditarDoDetalhes._hasListener) {
       btnEditarDoDetalhes._hasListener = true;
@@ -3188,6 +3275,9 @@
     if (!modal) return;
     modal.classList.add('hidden');
     modal.style.display = 'none';
+    if (modal.id === 'modalCrmCliente') {
+      clienteModalOrigin = null;
+    }
     const prodDropdown = document.getElementById('crmProductSuggestionsDropdown');
     if (prodDropdown) prodDropdown.style.display = 'none';
   }
