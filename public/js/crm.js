@@ -785,6 +785,12 @@
 
       return `
         <tr style="border-bottom: 1px solid var(--panel-border); transition: background-color 0.15s ease;">
+          <td style="text-align: center; padding: 6px 8px; white-space: nowrap;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+              <button type="button" class="btn btn-outline btn-sm btn-deal-action-edit" data-deal-id="${escapeHtml(d.id)}" title="Editar Oportunidade" style="padding: 2px 6px; font-size: 0.85rem; line-height: 1; height: 26px; width: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;" aria-label="Editar Oportunidade">✏️</button>
+              <button type="button" class="btn btn-outline btn-sm btn-deal-action-view" data-deal-id="${escapeHtml(d.id)}" title="Visualizar Oportunidade" style="padding: 2px 6px; font-size: 0.85rem; line-height: 1; height: 26px; width: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;" aria-label="Visualizar Oportunidade">🔍</button>
+            </div>
+          </td>
           <td style="text-align: center; padding: 10px 8px;">
             <input type="checkbox" class="crm-deal-checkbox" data-deal-id="${escapeHtml(d.id)}" style="cursor: pointer;">
           </td>
@@ -798,9 +804,6 @@
           </td>
           <td style="padding: 10px 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(d.clienteNome || '-')}">
             ${escapeHtml(d.clienteNome || '-')}
-          </td>
-          <td style="padding: 10px 12px; white-space: nowrap;">
-            ${escapeHtml(d.contatoNome || '-')}
           </td>
           <td style="padding: 10px 12px; white-space: nowrap;">
             <span style="color: ${statusColor}; font-weight: ${isGanho ? '600' : 'normal'};">
@@ -837,6 +840,24 @@
     if (!tbody._hasClickListener) {
       tbody._hasClickListener = true;
       tbody.addEventListener('click', (e) => {
+        const btnEdit = e.target.closest('.btn-deal-action-edit');
+        if (btnEdit) {
+          e.preventDefault();
+          e.stopPropagation();
+          const dealId = btnEdit.getAttribute('data-deal-id');
+          if (dealId) openEditDealModal(dealId);
+          return;
+        }
+
+        const btnView = e.target.closest('.btn-deal-action-view');
+        if (btnView) {
+          e.preventDefault();
+          e.stopPropagation();
+          const dealId = btnView.getAttribute('data-deal-id');
+          if (dealId) openDealDetailsModal(dealId);
+          return;
+        }
+
         const link = e.target.closest('.crm-deal-link');
         if (link) {
           e.preventDefault();
@@ -1310,7 +1331,6 @@
                 ${grupo ? `<span style="background: rgba(148, 163, 184, 0.15); padding: 1px 5px; border-radius: 4px;">Grupo: ${grupo}</span>` : ''}
                 ${peso > 0 ? `<span>Peso: <strong>${peso.toFixed(2)} kg</strong></span>` : ''}
                 ${ncm ? `<span>NCM: <strong>${ncm}</strong></span>` : ''}
-                <span>UM: <strong>${um}</strong></span>
               </div>
             </div>
           `;
@@ -1415,7 +1435,7 @@
       sumTotal += subtotal;
       sumPeso += pesoTotalItem;
 
-      const hasMeta = !!(item.ncm || item.pesoLiquido || item.unidade);
+      const hasMeta = !!(item.ncm || (pesoLiq > 0));
 
       html += `
         <tr>
@@ -1428,7 +1448,6 @@
               <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 3px; display: flex; gap: 8px;">
                 ${item.ncm ? `<span>NCM: <strong style="color: #cbd5e1;">${escapeHtml(item.ncm)}</strong></span>` : ''}
                 ${pesoLiq > 0 ? `<span>Peso: <strong style="color: #cbd5e1;">${pesoLiq.toFixed(2)}kg</strong></span>` : ''}
-                ${item.unidade ? `<span>UM: <strong style="color: #cbd5e1;">${escapeHtml(item.unidade)}</strong></span>` : ''}
               </div>
             ` : ''}
           </td>
@@ -1741,11 +1760,10 @@
             <td><code style="color: #38bdf8; font-weight: 600;">${escapeHtml(item.codigo || '-')}</code></td>
             <td>
               <div style="font-weight: 500;">${escapeHtml(item.descricao || '-')}</div>
-              ${(item.ncm || item.pesoLiquido || item.unidade) ? `
+              ${(item.ncm || (Number(item.pesoLiquido) > 0)) ? `
                 <div style="font-size: 0.70rem; color: #94a3b8; display: flex; gap: 8px; margin-top: 2px;">
                   ${item.ncm ? `<span>NCM: <strong>${escapeHtml(item.ncm)}</strong></span>` : ''}
-                  ${item.pesoLiquido ? `<span>Peso: <strong>${Number(item.pesoLiquido).toFixed(2)}kg</strong></span>` : ''}
-                  ${item.unidade ? `<span>UM: <strong>${escapeHtml(item.unidade)}</strong></span>` : ''}
+                  ${Number(item.pesoLiquido) > 0 ? `<span>Peso: <strong>${Number(item.pesoLiquido).toFixed(2)}kg</strong></span>` : ''}
                 </div>
               ` : ''}
             </td>

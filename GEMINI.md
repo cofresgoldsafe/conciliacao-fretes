@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.256 (Homologada em 24/09/2026 17:38)  
+> **Versão da Documentação:** v8.257 (Homologada em 24/09/2026 17:58)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 24/09/2026 17:38 (v8.256 - Espelhamento Just-in-Time de Clientes Protheus no Super Banco e Edicao em Oportunidades do CRM)  
+> **Data da Última Auditoria:** 24/09/2026 17:58 (v8.257 - Coluna Ação com Lápis e Lupa, Nome do Cliente, remoção de Contato e Navalha de Texto em Itens Cotados)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.257 (24/09/2026):** Reformulação da tabela de Oportunidades do CRM e aplicação da Navalha de Texto: criação da coluna "Ação" em 1º lugar com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização), renomeação da coluna "Organização" para "Nome do Cliente", eliminação da coluna "Contato" e remoção da exibição do rótulo desnecessário "UM: UN" nos itens de propostas e produtos cotados (7 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.256 (24/09/2026):** Espelhamento Just-in-Time (*under-the-hood*) de clientes Protheus (`SA1010`) para o Super Banco (`crm_clientes`) sem escrita no Protheus. Novos botões de ação rápida no CRM (`#btnCrmEditarClienteFromDeal` e `#btnCrmEditarClienteDoDetalhes`), botão renomeado para "➕ Add Cliente", resolução multi-chave por ID, código (pad 6 dígitos) e CNPJ, tradução de vendedor e sincronização reativa com o deal (13 testes aprovados em `test_crm_clientes.js` e 10 em `test_crm_module.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.255 (24/09/2026):** Ordenação estritamente decrescente na Linha do Tempo e Follow-up de Atividades (`#crmActivitiesTimeline`). Algoritmo central `sortActivitiesDesc` por timestamp (`dateB - dateA`) com desempate determinístico por ID, autocura de registros do `localStorage`, ordenação defensiva em todas as camadas e desempate no Postgres/fallback local (10 testes aprovados em `test_crm_module.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.254 (24/09/2026):** Catálogo de Produtos Protheus (`SB1090`/`SB1160`) espelhado no Supabase PostgreSQL (`crm_produtos`) e cache local de contingência (`crm_produtos_cache.json` com 1.883 produtos reais). Autocomplete inteligente (< 10ms) na tabela de itens cotados do modal de oportunidades, preenchimento automático de código, descrição, preço de tabela, NCM fiscal (`B1_POSIPI`), peso líquido/bruto (`B1_PESO`/`B1_PESBRU`) e UM, cálculo em tempo real de Peso Total da Proposta (`Σ qtd * peso`), botão `🔄 Sync Produtos` sob demanda e RLS restrita (7 baterias completas aprovadas em `test_crm_produtos.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) e [crm_produtos_arquitetura.md](docs/telas/08_bi_executivo/crm_produtos_arquitetura.md)).

@@ -52,11 +52,11 @@
 ## 4. As 10 Colunas Canônicas da Listagem
 | Coluna | Descrição | Comportamento |
 | :--- | :--- | :--- |
-| **`[ ]`** | Checkbox de Seleção | Permite seleção individual ou global via cabeçalho |
+| **Ação** | Ações Rápidas | Botões compactos: Lápis `✏️` (abre edição da oportunidade) e Lupa `🔍` (abre visualização de detalhes) |
+| **`[ ]`** | Checkbox de Seleção | Permite seleção individual ou global via cabeçalho (`#crmDealsCheckAll`) |
 | **Título** | Nome da Oportunidade | Link verde (`#10b981`) que abre modal de detalhes da oportunidade |
 | **Valor** | Valor total negociado | Formatado em reais (`R$ X.XXX,XX`) com destaque verde |
-| **Organização** | Razão Social / Nome do Cliente | Exibição com tooltip e ellipsis para nomes longos |
-| **Contato** | Pessoa de Contato Principal | Nome do contato comercial do cliente |
+| **Nome do Cliente** | Razão Social / Nome do Cliente | Exibição com tooltip e ellipsis para nomes longos (substitui antiga coluna Organização) |
 | **Status** | Estágio atual do pipeline | Destaque verde para `Ganho`, vermelho para `Perdido` |
 | **Faturado Por** | Filial de faturamento Protheus | Ex: `16 - OACO`, `14 - METAL PLENO`, `15 - GOLD SAFE` |
 | **Cond. Pgto** | Condição de Pagamento negociada | Ex: `053-1X PIX`, `31 - PAGAR ME (LINK ...)`, `28 DDL` |
@@ -88,6 +88,8 @@
 - **Resolução Multi-Chave & Pad Numérico:** Suporte a busca por ID interno (`CLI-...`), código Protheus exato (`004128`), código sem zeros (`4128` com `padStart(6, '0')`) e dígitos de CNPJ.
 - **Sincronização Reativa do Negócio:** Ao salvar alterações do cliente a partir de um deal existente, o backend atualiza automaticamente o negócio vinculado e aciona `renderDealsViews()`, sincronizando o card do Kanban e da Listagem sem necessidade de recarregar a página.
 - **Fallback Resiliente no Modal:** Se o identificador procurado não existir no banco nem no Protheus, o modal não abre vazio: os dados conhecidos do deal (`nome`, `cnpj`, `vendedor`) são pré-carregados para cadastro imediato.
+- **Navalha de Texto em Itens Cotados:** Remoção do rótulo redundante "UM: UN" na exibição dos itens cotados da modal de oportunidade, no modal de detalhes e nas sugestões de produtos, mantendo a interface enxuta e focada em NCM e Peso.
+- **Coluna Ação com Acesso Rápido:** Primeira coluna da listagem tabular de oportunidades reservada para ações rápidas com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização de detalhes), alinhando a coluna "Nome do Cliente" (antiga Organização) e eliminando a coluna "Contato".
 
 ---
 
