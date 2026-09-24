@@ -1282,7 +1282,7 @@ async function listarAtividadesDeal(dealId) {
     const res = await safeQuery(`
       SELECT * FROM crm_atividades 
       WHERE deal_id = $1 
-      ORDER BY created_at DESC;
+      ORDER BY created_at DESC, id DESC;
     `, [cleanDealId]);
 
     if (res && Array.isArray(res.rows)) {
@@ -1298,7 +1298,11 @@ async function listarAtividadesDeal(dealId) {
     const cache = await readCache();
     atividades = (cache.atividades || [])
       .filter(a => String(a.deal_id) === cleanDealId)
-      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      .sort((a, b) => {
+        const diff = new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        if (diff !== 0) return diff;
+        return String(b.id || '').localeCompare(String(a.id || ''));
+      });
   }
 
   return atividades;

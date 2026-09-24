@@ -386,31 +386,47 @@
   }
 
   /**
-   * Salva atividades de um negócio localmente
+   * Ordena atividades em ordem estritamente decrescente de data (mais recente no topo)
+   * Suporta campos createdAt, created_at e data com desempate determinístico por ID.
+   */
+  function sortActivitiesDesc(list) {
+    if (!Array.isArray(list)) return [];
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.created_at || a.data || 0).getTime();
+      const timeB = new Date(b.createdAt || b.created_at || b.data || 0).getTime();
+      if (timeB !== timeA) {
+        return timeB - timeA; // Mais recente primeiro
+      }
+      return String(b.id || '').localeCompare(String(a.id || ''));
+    });
+  }
+
+  /**
+   * Salva atividades de um negócio localmente garantindo ordenação decrescente
    */
   function saveActivitiesLocal(dealId, activities) {
     try {
-      localStorage.setItem(ACTIVITIES_KEY_PREFIX + dealId, JSON.stringify(activities));
+      const sorted = sortActivitiesDesc(activities);
+      localStorage.setItem(ACTIVITIES_KEY_PREFIX + dealId, JSON.stringify(sorted));
     } catch {}
   }
 
   /**
-   * Carrega atividades de um negócio
+   * Carrega atividades de um negócio com autocura de ordenação
    */
   function loadActivitiesLocal(dealId) {
     try {
       const raw = localStorage.getItem(ACTIVITIES_KEY_PREFIX + dealId);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const sorted = sortActivitiesDesc(parsed);
+          saveActivitiesLocal(dealId, sorted);
+          return sorted;
+        }
+      }
     } catch {}
     const mock = [
-      {
-        id: 'act-1',
-        dealId,
-        tipo: 'NOTA',
-        descricao: 'Oportunidade cadastrada no CRM Comercial com itens cotados iniciais.',
-        autor: 'Alexandre',
-        createdAt: new Date(Date.now() - 2 * 86400000).toISOString()
-      },
       {
         id: 'act-2',
         dealId,
@@ -418,6 +434,14 @@
         descricao: 'Enviada proposta comercial em PDF via WhatsApp para o comprador responsável.',
         autor: 'Juliana',
         createdAt: new Date(Date.now() - 1 * 86400000).toISOString()
+      },
+      {
+        id: 'act-1',
+        dealId,
+        tipo: 'NOTA',
+        descricao: 'Oportunidade cadastrada no CRM Comercial com itens cotados iniciais.',
+        autor: 'Alexandre',
+        createdAt: new Date(Date.now() - 2 * 86400000).toISOString()
       }
     ];
     saveActivitiesLocal(dealId, mock);
@@ -1776,19 +1800,26 @@
 
     if (activities.length === 0) {
       activities = loadActivitiesLocal(dealId);
+    } else {
+      // Sincroniza cache local com os registros oficiais vindos do backend
+      saveActivitiesLocal(dealId, activities);
     }
 
-    renderActivitiesList(activities);
+    const sortedActivities = sortActivitiesDesc(activities);
+    renderActivitiesList(sortedActivities);
   }
 
   /**
-   * Renderiza a lista visual da linha do tempo
+   * Renderiza a lista visual da linha do tempo em ordem estritamente decrescente
    */
   function renderActivitiesList(activities) {
     const container = document.getElementById('crmActivitiesTimeline');
     if (!container) return;
 
-    if (!activities || activities.length === 0) {
+    // Defesa em camadas: garante sempre ordem decrescente (mais recente no topo)
+    const sortedActivities = sortActivitiesDesc(activities);
+
+    if (!sortedActivities || sortedActivities.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted);">
           <span>Nenhuma interação registrada ainda. Utilize o formulário acima para registrar anotações, ligações ou contatos.</span>
@@ -1813,7 +1844,7 @@
       'TAREFA': 'Agendamento / Tarefa'
     };
 
-    container.innerHTML = activities.map(act => {
+    container.innerHTML = sortedActivities.map(act => {
       const icon = typeIcons[act.tipo] || '📌';
       const label = typeLabels[act.tipo] || act.tipo || 'Atividade';
       const dt = formatDateTime(act.createdAt || act.data);
@@ -1882,8 +1913,9 @@
 
     try {
       const token = getToken();
+      let backendAct = null;
       try {
-        await fetch(`/api/bi/crm/deals/${encodeURIComponent(currentDeal.id)}/activities`, {
+        const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(currentDeal.id)}/activities`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1896,21 +1928,33 @@
             data_agendada: newActivity.dataAgendamento
           })
         });
+        if (res.ok) {
+          const json = await res.json();
+          if (json && json.data) {
+            backendAct = json.data;
+          }
+        }
       } catch (err) {
         console.warn('⚠️ [CRM Comercial] Falha ao registrar atividade no backend, salvando em cache local:', err.message);
       }
 
-      // Persistência local
+      if (backendAct) {
+        newActivity.id = String(backendAct.id || newActivity.id);
+        newActivity.createdAt = backendAct.created_at || backendAct.createdAt || newActivity.createdAt;
+      }
+
+      // Persistência local garantindo ordenação estritamente decrescente (mais recente no topo)
       const list = loadActivitiesLocal(currentDeal.id);
       list.unshift(newActivity);
-      saveActivitiesLocal(currentDeal.id, list);
+      const sorted = sortActivitiesDesc(list);
+      saveActivitiesLocal(currentDeal.id, sorted);
 
-      // Limpa campos
+      // Limpa campos do formulário
       if (descInput) descInput.value = '';
       if (scheduleInput) scheduleInput.value = '';
 
-      // Atualiza timeline
-      renderActivitiesList(list);
+      // Atualiza timeline imediatamente com a anotação mais recente no topo
+      renderActivitiesList(sorted);
       mostrarNotificacao('Interação registrada na linha do tempo com sucesso!', 'success');
     } catch (err) {
       alert('Erro ao registrar atividade: ' + err.message);

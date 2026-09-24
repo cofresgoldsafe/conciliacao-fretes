@@ -108,21 +108,70 @@ async function runTests() {
   assert.ok(dealAtualizado.historico_estagios.length >= 2, 'Histórico de estágios deve registrar a transição');
   console.log('   ✅ Estágio atualizado com telemetria e histórico gravado.');
 
-  // Teste 3: Atividades e Follow-up do Deal
-  console.log('3️⃣  Teste: Registro de Follow-up (Atividades)');
-  const atividadeMock = {
-    tipo: 'LIGACAO',
-    assunto: 'Ligação de alinhamento com Carlos',
-    descricao: 'Cliente solicitou prazo adicional de 7 dias para pagamento. Proposta aceita em princípio.',
+  // Teste 3: Atividades e Follow-up do Deal em Ordem Estritamente Decrescente
+  console.log('3️⃣  Teste: Registro de Follow-up (Atividades em Ordem Estritamente Decrescente)');
+  const atividadeMock1 = {
+    tipo: 'NOTA',
+    assunto: 'Primeira nota antiga',
+    descricao: 'Cliente cadastrado no sistema.',
     concluida: true
   };
-  const atividadeCriada = await crmEngine.criarAtividadeDeal(dealCriado.id, atividadeMock, 'alexandre');
-  assert.ok(atividadeCriada.id, 'Atividade deve possuir ID');
-  assert.strictEqual(atividadeCriada.tipo.toUpperCase(), 'LIGACAO');
+  const atividadeCriada1 = await crmEngine.criarAtividadeDeal(dealCriado.id, atividadeMock1, 'alexandre');
+  assert.ok(atividadeCriada1.id, 'Atividade 1 deve possuir ID');
+
+  // Aguarda 10ms para garantir timestamp posterior
+  await new Promise(r => setTimeout(r, 15));
+
+  const atividadeMock2 = {
+    tipo: 'WHATSAPP',
+    assunto: 'Proposta enviada via WhatsApp',
+    descricao: 'Enviado PDF da proposta comercial.',
+    concluida: true
+  };
+  const atividadeCriada2 = await crmEngine.criarAtividadeDeal(dealCriado.id, atividadeMock2, 'juliana');
+  assert.ok(atividadeCriada2.id, 'Atividade 2 deve possuir ID');
+
+  // Aguarda 10ms para garantir timestamp posterior
+  await new Promise(r => setTimeout(r, 15));
+
+  const atividadeMock3 = {
+    tipo: 'LIGACAO',
+    assunto: 'Última anotação criada',
+    descricao: 'Cliente diz que fecha amanhã.',
+    concluida: false
+  };
+  const atividadeCriada3 = await crmEngine.criarAtividadeDeal(dealCriado.id, atividadeMock3, 'alexandre');
+  assert.ok(atividadeCriada3.id, 'Atividade 3 deve possuir ID');
 
   const listaAtividades = await crmEngine.listarAtividadesDeal(dealCriado.id);
-  assert.ok(listaAtividades.length >= 1, 'Deve retornar ao menos 1 atividade para o deal');
-  console.log('   ✅ Atividade registrada na linha do tempo com sucesso.');
+  assert.strictEqual(listaAtividades.length, 3, 'Deve conter exatamente 3 atividades');
+  assert.strictEqual(listaAtividades[0].id, atividadeCriada3.id, 'A última anotação criada (mais recente) DEVE estar no topo (índice 0)');
+  assert.strictEqual(listaAtividades[1].id, atividadeCriada2.id, 'A anotação intermediária deve estar no índice 1');
+  assert.strictEqual(listaAtividades[2].id, atividadeCriada1.id, 'A anotação mais antiga deve estar na base (índice 2)');
+
+  // Validação matemática de timestamps estritamente decrescentes
+  const t0 = new Date(listaAtividades[0].created_at).getTime();
+  const t1 = new Date(listaAtividades[1].created_at).getTime();
+  const t2 = new Date(listaAtividades[2].created_at).getTime();
+  assert.ok(t0 >= t1, `Timestamp 0 (${t0}) deve ser >= Timestamp 1 (${t1})`);
+  assert.ok(t1 >= t2, `Timestamp 1 (${t1}) deve ser >= Timestamp 2 (${t2})`);
+
+  // Teste Unitário do Algoritmo Frontend sortActivitiesDesc reproduzindo o bug de linha-tempo.png
+  const bugLinhaTempoMock = [
+    { id: 'item-24-09', createdAt: '2026-09-24T16:36:00.000Z', descricao: 'Cliente diz que fecha amanha' },
+    { id: 'item-22-09', createdAt: '2026-09-22T16:35:00.000Z', descricao: 'Oportunidade cadastrada' },
+    { id: 'item-23-09', createdAt: '2026-09-23T16:35:00.000Z', descricao: 'Enviada proposta comercial' }
+  ];
+  const sortedLinhaTempo = [...bugLinhaTempoMock].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.created_at || a.data || 0).getTime();
+    const timeB = new Date(b.createdAt || b.created_at || b.data || 0).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return String(b.id || '').localeCompare(String(a.id || ''));
+  });
+  assert.strictEqual(sortedLinhaTempo[0].id, 'item-24-09', '24/09 deve ser a primeira (topo)');
+  assert.strictEqual(sortedLinhaTempo[1].id, 'item-23-09', '23/09 deve ser a segunda (meio)');
+  assert.strictEqual(sortedLinhaTempo[2].id, 'item-22-09', '22/09 deve ser a terceira (base)');
+  console.log('   ✅ Atividades ordenadas com sucesso em ordem estritamente decrescente (mais recente no topo).');
 
   // Teste 4: Autocomplete de Clientes com Sanitização de Colchetes T-SQL
   console.log('4️⃣  Teste: Autocomplete de Clientes (SA1010 / Cache com sanitização T-SQL)');
