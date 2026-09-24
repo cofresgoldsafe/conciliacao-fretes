@@ -23,7 +23,6 @@ const elementosObrigatorios = [
   'id="crmListagemContainer"',
   'id="crmDealsTable"',
   'id="crmDealsTableTbody"',
-  'id="crmDealsCheckAll"',
   'id="crmListagemContador"',
   'id="crmListagemValorTotal"',
   'id="crmDealsLimitSelect"',
@@ -42,12 +41,11 @@ assert.ok(htmlContent.includes('position: sticky; top: 0;'), 'Thead deve ter est
 console.log('   ✅ Todos os elementos DOM e o thead sticky foram confirmados.');
 
 // ============================================================================
-// 2. Verificação das 10 Colunas Canônicas (Conforme especificação da Listagem)
+// 2. Verificação das 9 Colunas Canônicas (Conforme especificação da Listagem)
 // ============================================================================
-console.log('2️⃣  Teste: 10 Colunas Canônicas da Listagem (Ação em 1º, Nome do Cliente, sem Contato)');
+console.log('2️⃣  Teste: 9 Colunas Canônicas da Listagem (Ação em 1º, Título em 2º, sem Checkbox inútil)');
 const colunasEsperadas = [
   'Ação',
-  'crmDealsCheckAll',
   'Título',
   'Valor',
   'Nome do Cliente',
@@ -61,21 +59,20 @@ colunasEsperadas.forEach(col => {
   assert.ok(htmlContent.includes(col), `Coluna "${col}" ausente no thead de crmDealsTable`);
 });
 
-// Confirmar que Ação é a primeira coluna do thead
+// Confirmar que Ação é a primeira coluna do thead e antecede Título diretamente
 const indexAcao = htmlContent.indexOf('>Ação<');
-const indexCheckAll = htmlContent.indexOf('id="crmDealsCheckAll"');
 const indexTitulo = htmlContent.indexOf('>Título<');
 assert.ok(indexAcao !== -1, 'Coluna Ação deve estar presente');
-assert.ok(indexAcao < indexCheckAll, 'Coluna Ação deve anteceder o Checkbox (1ª coluna)');
-assert.ok(indexCheckAll < indexTitulo, 'Checkbox deve anteceder o Título');
+assert.ok(indexAcao < indexTitulo, 'Coluna Ação deve anteceder o Título (1ª e 2ª colunas)');
 
-// Garantir que a coluna Contato e Organização não existem no thead
+// Garantir que a coluna Contato, Organização e Checkbox inútil não existem no thead
 const theadContentMatch = htmlContent.match(/<table id="crmDealsTable"[^>]*>([\s\S]*?)<\/thead>/);
 assert.ok(theadContentMatch, 'Tabela crmDealsTable deve possuir thead');
 const theadContent = theadContentMatch[1];
 assert.ok(!theadContent.includes('>Organização<'), 'Coluna Organização não deve mais estar no thead');
 assert.ok(!theadContent.includes('>Contato<'), 'Coluna Contato deve ter sido eliminada do thead');
-console.log('   ✅ 10 colunas canônicas confirmadas (Ação em 1º, Nome do Cliente no lugar de Organização e sem Contato).');
+assert.ok(!theadContent.includes('crmDealsCheckAll'), 'Checkbox crmDealsCheckAll deve ter sido eliminado do thead');
+console.log('   ✅ 9 colunas canônicas confirmadas (Ação em 1º, Título em 2º, sem Checkbox inútil e sem Contato).');
 
 // ============================================================================
 // 3. Teste Funcional de Sanitização XSS Estrita (Anti-Injeção)
@@ -234,6 +231,9 @@ assert.ok(crmJsContent.includes("openDealDetailsModal(dealId)"), 'Handler da Lup
 assert.ok(!crmJsContent.includes('<span>UM: <strong>${um}</strong></span>'), 'UM não deve aparecer no dropdown de sugestão');
 assert.ok(!crmJsContent.includes('<span>UM: <strong'), 'UM não deve aparecer na listagem de itens cotados');
 assert.ok(!crmJsContent.includes('<span>UM: <strong>${escapeHtml(item.unidade)}'), 'UM não deve aparecer na visualização de detalhes');
-console.log('   ✅ Botões de Ação (Lápis e Lupa) e limpeza de "UM: UN" 100% verificados no crm.js.');
+
+// Validar que checkbox individual da listagem foi completamente eliminado
+assert.ok(!crmJsContent.includes('crm-deal-checkbox'), 'Checkboxes individuais crm-deal-checkbox não devem existir no crm.js');
+console.log('   ✅ Botões de Ação (Lápis e Lupa), ausência de checkbox e limpeza de "UM: UN" 100% verificados no crm.js.');
 
 console.log('\n🎉 TODOS OS 7 TESTES FUNCIONAIS DA LISTAGEM DO CRM FORAM APROVADOS COM 100% DE SUCESSO!\n');

@@ -38,7 +38,6 @@
   - `#crmListagemContainer`: Container com `.table-responsive` e scroll vertical `max-height: 68vh`.
   - `#crmDealsTable`: Tabela com cabeçalho sticky (`position: sticky; top: 0`).
   - `#crmDealsTableTbody`: Linhas de negócios paginadas com sanitização XSS estrita.
-  - `#crmDealsCheckAll`: Checkbox no `thead` para seleção individual/lote.
 - **Controles de Paginação Compulsória (Pilar 1 do GEMINI.md):**
   - `#crmDealsLimitSelect`: Seletor de registros por página (25, 50, 100).
   - `#btnCrmDealsPrev`: Botão de navegação para página anterior.
@@ -49,11 +48,10 @@
 
 ---
 
-## 4. As 10 Colunas Canônicas da Listagem
+## 4. As 9 Colunas Canônicas da Listagem
 | Coluna | Descrição | Comportamento |
 | :--- | :--- | :--- |
 | **Ação** | Ações Rápidas | Botões compactos: Lápis `✏️` (abre edição da oportunidade) e Lupa `🔍` (abre visualização de detalhes) |
-| **`[ ]`** | Checkbox de Seleção | Permite seleção individual ou global via cabeçalho (`#crmDealsCheckAll`) |
 | **Título** | Nome da Oportunidade | Link verde (`#10b981`) que abre modal de detalhes da oportunidade |
 | **Valor** | Valor total negociado | Formatado em reais (`R$ X.XXX,XX`) com destaque verde |
 | **Nome do Cliente** | Razão Social / Nome do Cliente | Exibição com tooltip e ellipsis para nomes longos (substitui antiga coluna Organização) |
@@ -121,6 +119,8 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.258 (24/09/2026):** Remoção do checkbox inútil da listagem de oportunidades (`#crmDealsCheckAll` no cabeçalho e `.crm-deal-checkbox` nas linhas). Como não havia ações em massa implementadas, a coluna representava sobre-engenharia e poluição visual (YAGNI/Navalha de Design). A listagem agora consolida 9 colunas canônicas diretas, com a coluna "Ação" (Lápis e Lupa) sendo seguida imediatamente por "Título" (7 testes aprovados em `test_crm_listagem.js`).
+- **v8.257 (24/09/2026):** Reformulação da tabela de Oportunidades do CRM e aplicação da Navalha de Texto: criação da coluna "Ação" em 1º lugar com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização), renomeação da coluna "Organização" para "Nome do Cliente", eliminação da coluna "Contato" e remoção da exibição do rótulo desnecessário "UM: UN" nos itens de propostas e produtos cotados (7 testes aprovados em `test_crm_listagem.js`).
 - **v8.256 (24/09/2026):** Espelhamento Just-in-Time (*under-the-hood*) de clientes Protheus (`SA1010`) para o Super Banco (`crm_clientes` / Supabase Postgres + cache atômico). Novos clientes cadastrados diretamente no Super Banco; clientes localizados no Protheus são persistidos no Super Banco de forma transparente sem escrita em `SA1010` (somente-leitura estrito). Adicionados botões de ação rápida `#btnCrmEditarClienteFromDeal` (`✏️ Editar`) em `#modalCrmOportunidade` e `#btnCrmEditarClienteDoDetalhes` (`✏️ Editar`) em `#modalCrmDetalhes`. Botão `#btnCrmNovoClienteFromDeal` renomeado para `➕ Add Cliente`. Resolução multi-chave por ID, código Protheus (com pad de 6 dígitos) e CNPJ, tradução automática de vendedor `A1_VEND` para nome, fallback com pré-preenchimento do deal caso o cliente não exista, sincronização reativa com persistência no deal e atualização em tempo real de Kanban/Listagem (13 testes aprovados em `test_crm_clientes.js` e 10 em `test_crm_module.js`).
 - **v8.255 (24/09/2026):** Ordenação estritamente decrescente na Linha do Tempo e Follow-up de Atividades (`#crmActivitiesTimeline`). Implementação do algoritmo central `sortActivitiesDesc` com critério cronológico decrescente (`dateB - dateA`) e desempate determinístico por ID, autocura automática (*self-healing*) de históricos prévios salvos desordenados no `localStorage` do navegador, ordenação defensiva em camadas (`saveActivitiesLocal`, `loadActivitiesLocal`, `loadDealActivities`, `handleAddActivity`, `renderActivitiesList`), secundária determinística no Postgres e fallback local no backend, e extensão da suíte de testes com validação matemática de timestamps (10 baterias aprovadas em `test_crm_module.js`).
 - **v8.254 (24/09/2026):** Catálogo de Produtos Protheus (`SB1090`/`SB1160`) espelhado no Supabase PostgreSQL (`crm_produtos`) e cache local de contingência (`crm_produtos_cache.json`). Autocomplete inteligente (< 10ms) na tabela de itens cotados do modal de oportunidades, preenchimento automático de código, descrição, preço de tabela, NCM fiscal, peso líquido/bruto e UM, cálculo em tempo real de Peso Total da Proposta (`Σ qtd * peso`), botão `🔄 Sync Produtos` e RLS restrita (7 baterias completas aprovadas em `test_crm_produtos.js`).

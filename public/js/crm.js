@@ -737,7 +737,6 @@
     const totalPagesEl = document.getElementById('crmDealsTotalPages');
     const btnPrev = document.getElementById('btnCrmDealsPrev');
     const btnNext = document.getElementById('btnCrmDealsNext');
-    const checkAllEl = document.getElementById('crmDealsCheckAll');
     if (!tbody) return;
 
     const rawItems = Array.isArray(filteredDeals) ? filteredDeals : getFilteredDeals();
@@ -757,12 +756,11 @@
     if (totalPagesEl) totalPagesEl.textContent = totalPages;
     if (btnPrev) btnPrev.disabled = (dealsPage <= 1);
     if (btnNext) btnNext.disabled = (dealsPage >= totalPages);
-    if (checkAllEl) checkAllEl.checked = false;
 
     if (totalItems === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="10" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <td colspan="9" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
             Nenhuma oportunidade encontrada com os filtros selecionados.
           </td>
         </tr>
@@ -790,9 +788,6 @@
               <button type="button" class="btn btn-outline btn-sm btn-deal-action-edit" data-deal-id="${escapeHtml(d.id)}" title="Editar Oportunidade" style="padding: 2px 6px; font-size: 0.85rem; line-height: 1; height: 26px; width: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;" aria-label="Editar Oportunidade">✏️</button>
               <button type="button" class="btn btn-outline btn-sm btn-deal-action-view" data-deal-id="${escapeHtml(d.id)}" title="Visualizar Oportunidade" style="padding: 2px 6px; font-size: 0.85rem; line-height: 1; height: 26px; width: 26px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px;" aria-label="Visualizar Oportunidade">🔍</button>
             </div>
-          </td>
-          <td style="text-align: center; padding: 10px 8px;">
-            <input type="checkbox" class="crm-deal-checkbox" data-deal-id="${escapeHtml(d.id)}" style="cursor: pointer;">
           </td>
           <td style="padding: 10px 12px;">
             <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: #10b981; font-weight: 600; text-decoration: none;" title="Abrir detalhes de ${escapeHtml(d.titulo)}">
@@ -3047,18 +3042,6 @@
     if (btnModeListagem && !btnModeListagem._hasListener) {
       btnModeListagem._hasListener = true;
       btnModeListagem.addEventListener('click', () => setDealViewMode('listagem'));
-    }
-
-    // Checkbox global para selecionar/desmarcar todos os deals da lista
-    const checkAll = document.getElementById('crmDealsCheckAll');
-    if (checkAll && !checkAll._hasListener) {
-      checkAll._hasListener = true;
-      checkAll.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        document.querySelectorAll('.crm-deal-checkbox').forEach(cb => {
-          cb.checked = isChecked;
-        });
-      });
     }
 
     // 4. Controles de Paginação da Listagem de Deals (Pilar 1 do GEMINI.md)
