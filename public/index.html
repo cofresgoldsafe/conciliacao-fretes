@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.250">
+  <link rel="stylesheet" href="style.css?v=8.251">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 23/09/2026 21:30 (Inclusão da sub-tela Despesas Análise no BI Executivo)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 14:41 (Visualizacao em Listagem e alternancia Kanban x Tabela no CRM Comercial com paginacao e fidelidade a listagem.png)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -6789,12 +6789,67 @@
               <button id="btnCrmLimparFiltros" type="button" class="btn btn-outline" style="height: 38px;" title="Limpar filtros">
                 ✕ Limpar
               </button>
+              <!-- Toggle de Modo de Apresentação: Kanban vs Listagem -->
+              <div class="crm-deal-view-toggles" role="tablist" aria-label="Modo de Exibição das Oportunidades" style="display: flex; gap: 4px; margin-left: auto;">
+                <button id="btnCrmViewModeKanban" type="button" class="btn btn-primary btn-sm" role="tab" aria-selected="true" style="font-weight: 600; height: 38px; display: flex; align-items: center; gap: 5px;" title="Exibir oportunidades em Kanban">
+                  <span>📊</span><span>Kanban</span>
+                </button>
+                <button id="btnCrmViewModeListagem" type="button" class="btn btn-outline btn-sm" role="tab" aria-selected="false" style="font-weight: 600; height: 38px; display: flex; align-items: center; gap: 5px;" title="Exibir oportunidades em Listagem">
+                  <span>📋</span><span>Listagem</span>
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Quadro Kanban (5 Colunas Canônicas) -->
           <div id="crmKanbanContainer" class="crm-kanban-container">
             <!-- Gerado dinamicamente via crm.js -->
+          </div>
+
+          <!-- VISÃO TABULAR: LISTAGEM DE OPORTUNIDADES (Conforme listagem.png) -->
+          <div id="crmListagemContainer" class="hidden" style="margin-top: 0.5rem;">
+            <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--panel-border);">
+              <div class="table-responsive" style="max-height: 68vh; overflow-y: auto; overflow-x: auto;">
+                <table id="crmDealsTable" class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                  <thead style="position: sticky; top: 0; z-index: 5; background: var(--bg-card);">
+                    <tr style="background: var(--bg-hover, rgba(255,255,255,0.03)); border-bottom: 1px solid var(--panel-border);">
+                      <th style="width: 36px; text-align: center; padding: 10px 8px;">
+                        <input type="checkbox" id="crmDealsCheckAll" title="Selecionar todos" style="cursor: pointer;">
+                      </th>
+                      <th style="padding: 10px 12px; font-weight: 600;">Título</th>
+                      <th style="width: 110px; padding: 10px 12px; font-weight: 600;">Valor</th>
+                      <th style="padding: 10px 12px; font-weight: 600;">Organização</th>
+                      <th style="width: 140px; padding: 10px 12px; font-weight: 600;">Contato</th>
+                      <th style="width: 110px; padding: 10px 12px; font-weight: 600;">Status</th>
+                      <th style="width: 130px; padding: 10px 12px; font-weight: 600;">Faturado Por</th>
+                      <th style="width: 150px; padding: 10px 12px; font-weight: 600;">Cond. Pgto</th>
+                      <th style="width: 80px; padding: 10px 12px; font-weight: 600;">ID</th>
+                      <th style="width: 140px; padding: 10px 12px; font-weight: 600;">Proprietário</th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmDealsTableTbody">
+                    <!-- Linhas geradas dinamicamente via crm.js -->
+                  </tbody>
+                </table>
+              </div>
+              <!-- Rodapé da listagem com controles de paginação (Pilar 1) e contadores -->
+              <div style="padding: 8px 16px; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: var(--bg-card);">
+                <span id="crmListagemContador">0 oportunidades listadas</span>
+                <!-- Controles de Paginação Compulsória (GEMINI.md Pilar 1) -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.8rem;">Exibir:</span>
+                  <select id="crmDealsLimitSelect" class="form-control" style="width: 70px; height: 30px; font-size: 0.8rem; padding: 2px 6px;">
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </select>
+                  <button id="btnCrmDealsPrev" type="button" class="btn btn-outline btn-sm" style="height: 30px; padding: 2px 10px; font-size: 0.8rem;" title="Página anterior">◀ Anterior</button>
+                  <span style="font-size: 0.8rem;">Página <strong id="crmDealsCurrentPage" style="color: var(--text-main);">1</strong> de <strong id="crmDealsTotalPages" style="color: var(--text-main);">1</strong></span>
+                  <button id="btnCrmDealsNext" type="button" class="btn btn-outline btn-sm" style="height: 30px; padding: 2px 10px; font-size: 0.8rem;" title="Próxima página">Próxima ▶</button>
+                </div>
+                <span id="crmListagemValorTotal" style="font-weight: 600; color: #10b981;">Total: R$ 0,00</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -9577,24 +9632,24 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.250"></script>
-  <script src="js/bi.js?v=8.250"></script>
-  <script src="js/bi_indices.js?v=8.250"></script>
-  <script src="js/bi_autorizacoes.js?v=8.250"></script>
-  <script src="js/bi_despesas.js?v=8.250"></script>
-  <script src="js/gordura_frete.js?v=8.250"></script>
-  <script src="js/fechamento_vendedores.js?v=8.250"></script>
-  <script type="module" src="js/tarefas.js?v=8.250"></script>
-  <script src="js/holerites.js?v=8.250"></script>
-  <script src="js/funcionarios_dp.js?v=8.250"></script>
-  <script src="js/crm.js?v=8.250"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.250"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.250"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.250"></script>
-  <script src="js/nfse_pendentes.js?v=8.250"></script>
-  <script src="js/fechamento_fiscal.js?v=8.250"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.250"></script>
-  <script src="js/contas_pagar.js?v=8.250"></script>
-  <script src="app.js?v=8.250"></script>
+  <script src="js/chart.umd.min.js?v=8.251"></script>
+  <script src="js/bi.js?v=8.251"></script>
+  <script src="js/bi_indices.js?v=8.251"></script>
+  <script src="js/bi_autorizacoes.js?v=8.251"></script>
+  <script src="js/bi_despesas.js?v=8.251"></script>
+  <script src="js/gordura_frete.js?v=8.251"></script>
+  <script src="js/fechamento_vendedores.js?v=8.251"></script>
+  <script type="module" src="js/tarefas.js?v=8.251"></script>
+  <script src="js/holerites.js?v=8.251"></script>
+  <script src="js/funcionarios_dp.js?v=8.251"></script>
+  <script src="js/crm.js?v=8.251"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.251"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.251"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.251"></script>
+  <script src="js/nfse_pendentes.js?v=8.251"></script>
+  <script src="js/fechamento_fiscal.js?v=8.251"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.251"></script>
+  <script src="js/contas_pagar.js?v=8.251"></script>
+  <script src="app.js?v=8.251"></script>
 </body>
 </html>

@@ -23,6 +23,9 @@
   let currentItems = [];
   let autocompleteDebounceTimer = null;
   let draggedDealId = null;
+  let dealViewMode = localStorage.getItem('gsi_crm_deal_view_mode') || 'kanban'; // 'kanban' | 'listagem'
+  let dealsPage = 1;
+  let dealsPerPage = 25;
 
   // Estado de Clientes Cadastrados (CRM)
   let activeView = 'kanban'; // 'kanban' | 'clientes'
@@ -39,6 +42,7 @@
   const DEFAULT_VENDEDORES = [
     'Alexandre',
     'Juliana',
+    'Andrea Ferreira',
     'Andrea',
     'Figueiredo',
     'Diretoria'
@@ -175,6 +179,8 @@
       pedidoCompraCliente: custom.pedidoCompraCliente || d.num_pedido_compra || d.pedidoCompraCliente || '',
       observacoesNfe: custom.observacoesNfe || d.obs_nfe || d.observacoesNfe || '',
       itens: Array.isArray(d.itens_cotados) && d.itens_cotados.length > 0 ? d.itens_cotados : (Array.isArray(d.itens) ? d.itens : []),
+      contatoNome: d.contato_nome || d.contatoNome || (Array.isArray(d.contatos) && d.contatos[0]?.nome) || (typeof d.contatos === 'string' ? d.contatos : '') || d.cliente_contato || '',
+      faturadoPor: custom.faturadoPor || d.faturado_por || d.faturadoPor || d.empresa_faturamento || (d.cod_filial ? `${d.cod_filial} - ${d.nome_filial || ''}` : '') || '',
       motivoPerda: d.motivo_perda || d.motivoPerda || '',
       observacoesPerda: d.observacoes_perda || d.observacoesPerda || '',
       createdAt: d.created_at || d.createdAt || new Date().toISOString(),
@@ -222,16 +228,18 @@
   function getInitialMockDeals() {
     return [
       {
-        id: 'crm-101',
-        titulo: 'Cofre Mecânico 40x40 - Rede Farmácias',
-        clienteNome: 'DROGARIA SAO PAULO S/A',
+        id: '25944',
+        titulo: 'ROMANHA INDUSTRIA DE ALIME',
+        clienteNome: 'ROMANHA INDUSTRIA DE ALIMENTOS LTDA',
         clienteCod: '004128',
         clienteLoja: '01',
         clienteCnpj: '61.412.110/0001-55',
-        vendedor: 'Juliana',
-        fase: 'LEAD',
-        valor: 4850.00,
-        condPgto: '28 DDL',
+        vendedor: 'Andrea Ferreira',
+        contatoNome: 'Yuri',
+        faturadoPor: '',
+        fase: 'GANHO',
+        valor: 6402.00,
+        condPgto: '',
         freteCobrado: 250.00,
         freteEmbutido: 0.00,
         tipoFrete: 'FOB',
@@ -240,67 +248,73 @@
         pedidoCompraCliente: 'PO-2026-9812',
         observacoesNfe: 'Entregar com agendamento prévio na portaria de cargas.',
         itens: [
-          { codigo: 'CF-4040', descricao: 'Cofre Mecânico Blindado 40x40', quantidade: 2, precoTabela: 2500.00, precoNegociado: 2425.00, total: 4850.00 }
+          { codigo: 'CF-4040', descricao: 'Cofre Mecânico Blindado 40x40', quantidade: 2, precoTabela: 3300.00, precoNegociado: 3201.00, total: 6402.00 }
         ],
         createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
         updatedAt: new Date(Date.now() - 2 * 86400000).toISOString()
       },
       {
-        id: 'crm-102',
-        titulo: 'Armários de Aço NR-24 - Construtora Sul',
-        clienteNome: 'CONSTRUTORA METROPOLITANA LTDA',
+        id: '26732',
+        titulo: 'COFRES MATOS COMERCIAL DE',
+        clienteNome: 'COFRES MATOS COMERCIAL DE EQUIPAMENTOS',
         clienteCod: '009214',
         clienteLoja: '01',
         clienteCnpj: '08.921.454/0001-30',
-        vendedor: 'Figueiredo',
-        fase: 'CONTATO',
-        valor: 12600.00,
-        condPgto: '30/60 DDL',
+        vendedor: 'Andrea Ferreira',
+        contatoNome: 'SIDNEY',
+        faturadoPor: '16 - OACO',
+        fase: 'GANHO',
+        valor: 1110.00,
+        condPgto: '053-1X PIX',
         freteCobrado: 0.00,
-        freteEmbutido: 600.00,
+        freteEmbutido: 100.00,
         tipoFrete: 'CIF',
         transportadora: 'Rodonaves',
-        prazoEntrega: '15 dias úteis',
+        prazoEntrega: '10 dias úteis',
         pedidoCompraCliente: '',
         observacoesNfe: '',
         itens: [
-          { codigo: 'ARM-NR24-8P', descricao: 'Armário Vestiário 8 Portas Aço Chapa 24', quantidade: 6, precoTabela: 2200.00, precoNegociado: 2100.00, total: 12600.00 }
+          { codigo: 'CF-2020', descricao: 'Cofre Boca de Lobo 20x20', quantidade: 1, precoTabela: 1150.00, precoNegociado: 1110.00, total: 1110.00 }
         ],
         createdAt: new Date(Date.now() - 6 * 86400000).toISOString(),
         updatedAt: new Date(Date.now() - 6 * 86400000).toISOString()
       },
       {
-        id: 'crm-103',
-        titulo: 'Porta Forte Blindada Nível III - Cooperativa',
-        clienteNome: 'COOPERATIVA DE CREDITO VALE VERDE',
+        id: '26719',
+        titulo: 'HBT ENGENHARIA E CONSTRUC',
+        clienteNome: 'HBT ENGENHARIA E CONSTRUCOES LTDA',
         clienteCod: '012543',
         clienteLoja: '01',
         clienteCnpj: '17.382.901/0001-88',
-        vendedor: 'Alexandre',
-        fase: 'PROPOSTA',
-        valor: 38900.00,
-        condPgto: '30/60/90 DDL',
-        freteCobrado: 1200.00,
+        vendedor: 'Andrea Ferreira',
+        contatoNome: 'Caio Fabio Alve...',
+        faturadoPor: '16 - OACO',
+        fase: 'GANHO',
+        valor: 869.00,
+        condPgto: '31 - PAGAR ME (LINK ...)',
+        freteCobrado: 0.00,
         freteEmbutido: 0.00,
         tipoFrete: 'CIF',
         transportadora: 'Transfiat Especial',
-        prazoEntrega: '20 dias úteis',
+        prazoEntrega: '5 dias úteis',
         pedidoCompraCliente: 'PED-VALE-2026-04',
         observacoesNfe: 'Emissão para faturamento direto com dados de entrega em filial bancária.',
         itens: [
-          { codigo: 'PF-NIV3', descricao: 'Porta Forte Blindada Especial ABNT 10636', quantidade: 1, precoTabela: 42000.00, precoNegociado: 38900.00, total: 38900.00 }
+          { codigo: 'ARM-NR24', descricao: 'Armário Especial 4 Portas', quantidade: 1, precoTabela: 950.00, precoNegociado: 869.00, total: 869.00 }
         ],
         createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
         updatedAt: new Date(Date.now() - 1 * 86400000).toISOString()
       },
       {
-        id: 'crm-104',
+        id: '27014',
         titulo: 'Lote 10 Cofres Digitais Hotelaria Premium',
         clienteNome: 'HOTEL RESORT ROYAL PALACE',
         clienteCod: '007321',
         clienteLoja: '01',
         clienteCnpj: '03.732.190/0001-44',
-        vendedor: 'Andrea',
+        vendedor: 'Juliana',
+        contatoNome: 'Mariana Lima',
+        faturadoPor: '16 - OACO',
         fase: 'NEGOCIACAO',
         valor: 14500.00,
         condPgto: '28 DDL',
@@ -318,16 +332,18 @@
         updatedAt: new Date(Date.now() - 1 * 3600000).toISOString()
       },
       {
-        id: 'crm-105',
+        id: '27105',
         titulo: 'Armários Blindados com Fechadura Biométrica',
         clienteNome: 'LABORATORIO BIOCIENCIA DIAGNOSTICOS',
         clienteCod: '018902',
         clienteLoja: '01',
         clienteCnpj: '22.890.231/0001-12',
-        vendedor: 'Juliana',
-        fase: 'GANHO',
+        vendedor: 'Alexandre',
+        contatoNome: 'Dr. Roberto',
+        faturadoPor: '14 - METAL PLENO',
+        fase: 'PROPOSTA',
         valor: 22800.00,
-        condPgto: 'À Vista',
+        condPgto: '30/60 DDL',
         freteCobrado: 0.00,
         freteEmbutido: 450.00,
         tipoFrete: 'CIF',
@@ -417,6 +433,7 @@
     setupEventListeners();
     await loadVendedoresOptions();
     await loadDeals();
+    setDealViewMode(dealViewMode);
     isInitialized = true;
   }
 
@@ -564,19 +581,228 @@
         btnRefresh.disabled = false;
         btnRefresh.innerHTML = '<span>🔄 Atualizar</span>';
       }
-      renderKanbanBoard();
+      renderDealsViews();
       updateTopKpis();
     }
   }
 
   /**
-   * Renderiza os cards nos 5 estágios canônicos e atualiza contadores
+   * Retorna os negócios aplicando os filtros da barra de busca
    */
-  function renderKanbanBoard() {
+  function getFilteredDeals() {
     const filterText = (document.getElementById('crmSearchInput')?.value || '').trim().toLowerCase();
     const filterVendedor = document.getElementById('crmFilterVendedor')?.value || 'TODOS';
     const filterStatus = document.getElementById('crmFilterStatus')?.value || 'ATIVOS';
 
+    return deals.filter(deal => {
+      // Filtro de vendedor
+      if (filterVendedor !== 'TODOS' && deal.vendedor !== filterVendedor) {
+        return false;
+      }
+
+      // Filtro de status (Ativos vs Perdidos vs Todos)
+      if (filterStatus === 'ATIVOS' && deal.fase === 'PERDIDO') return false;
+      if (filterStatus === 'PERDIDO' && deal.fase !== 'PERDIDO') return false;
+
+      // Filtro textual amplo
+      if (filterText) {
+        const strBusca = [
+          deal.titulo || '',
+          deal.clienteNome || '',
+          deal.clienteCnpj || '',
+          deal.vendedor || '',
+          deal.contatoNome || '',
+          deal.faturadoPor || '',
+          deal.condPgto || '',
+          deal.id || '',
+          deal.pedidoCompraCliente || ''
+        ].join(' ').toLowerCase();
+
+        if (!strBusca.includes(filterText)) return false;
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Alterna entre modo de visualização Kanban e Listagem com persistência
+   */
+  function setDealViewMode(mode) {
+    dealViewMode = (mode === 'listagem') ? 'listagem' : 'kanban';
+    try {
+      localStorage.setItem('gsi_crm_deal_view_mode', dealViewMode);
+    } catch {}
+
+    const kanbanCont = document.getElementById('crmKanbanContainer');
+    const listagemCont = document.getElementById('crmListagemContainer');
+    const btnKanban = document.getElementById('btnCrmViewModeKanban');
+    const btnListagem = document.getElementById('btnCrmViewModeListagem');
+
+    if (kanbanCont) kanbanCont.classList.toggle('hidden', dealViewMode !== 'kanban');
+    if (listagemCont) listagemCont.classList.toggle('hidden', dealViewMode !== 'listagem');
+
+    if (btnKanban) {
+      btnKanban.className = `btn btn-sm ${dealViewMode === 'kanban' ? 'btn-primary' : 'btn-outline'}`;
+      btnKanban.setAttribute('aria-selected', dealViewMode === 'kanban' ? 'true' : 'false');
+    }
+    if (btnListagem) {
+      btnListagem.className = `btn btn-sm ${dealViewMode === 'listagem' ? 'btn-primary' : 'btn-outline'}`;
+      btnListagem.setAttribute('aria-selected', dealViewMode === 'listagem' ? 'true' : 'false');
+    }
+
+    renderDealsViews();
+  }
+
+  /**
+   * Retorna o rótulo legível do estágio
+   */
+  function getStageDisplayLabel(faseKey) {
+    if (!faseKey) return '-';
+    if (faseKey === 'GANHO') return 'Ganho';
+    if (faseKey === 'PERDIDO') return 'Perdido';
+    const f = CANONICAL_STAGES.find(s => s.id === faseKey);
+    return f ? f.label : faseKey;
+  }
+
+  /**
+   * Renderiza a visão em listagem tabular (conforme listagem.png e Pilar 1 do GEMINI.md)
+   */
+  function renderListagemBoard(filteredDeals) {
+    const tbody = document.getElementById('crmDealsTableTbody');
+    const contadorEl = document.getElementById('crmListagemContador');
+    const valorTotalEl = document.getElementById('crmListagemValorTotal');
+    const pageNumEl = document.getElementById('crmDealsCurrentPage');
+    const totalPagesEl = document.getElementById('crmDealsTotalPages');
+    const btnPrev = document.getElementById('btnCrmDealsPrev');
+    const btnNext = document.getElementById('btnCrmDealsNext');
+    const checkAllEl = document.getElementById('crmDealsCheckAll');
+    if (!tbody) return;
+
+    const rawItems = Array.isArray(filteredDeals) ? filteredDeals : getFilteredDeals();
+    const items = (rawItems || []).filter(Boolean);
+    const totalItems = items.length;
+
+    // Cálculo da paginação compulsória (Pilar 1)
+    const totalPages = Math.max(1, Math.ceil(totalItems / dealsPerPage));
+    if (dealsPage > totalPages) dealsPage = totalPages;
+    if (dealsPage < 1) dealsPage = 1;
+
+    const startIndex = (dealsPage - 1) * dealsPerPage;
+    const pagedItems = items.slice(startIndex, startIndex + dealsPerPage);
+
+    // Atualiza controles da paginação
+    if (pageNumEl) pageNumEl.textContent = dealsPage;
+    if (totalPagesEl) totalPagesEl.textContent = totalPages;
+    if (btnPrev) btnPrev.disabled = (dealsPage <= 1);
+    if (btnNext) btnNext.disabled = (dealsPage >= totalPages);
+    if (checkAllEl) checkAllEl.checked = false;
+
+    if (totalItems === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="10" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+            Nenhuma oportunidade encontrada com os filtros selecionados.
+          </td>
+        </tr>
+      `;
+      if (contadorEl) contadorEl.textContent = '0 oportunidades listadas';
+      if (valorTotalEl) valorTotalEl.textContent = 'Total: R$ 0,00';
+      return;
+    }
+
+    let somaValor = 0;
+    items.forEach(d => {
+      somaValor += (parseFloat(d.valor) || 0);
+    });
+
+    tbody.innerHTML = pagedItems.map(d => {
+      const statusLabel = getStageDisplayLabel(d.fase);
+      const isGanho = d.fase === 'GANHO';
+      const isPerdido = d.fase === 'PERDIDO';
+      const statusColor = isGanho ? '#10b981' : (isPerdido ? '#ef4444' : 'var(--text-main)');
+
+      return `
+        <tr style="border-bottom: 1px solid var(--panel-border); transition: background-color 0.15s ease;">
+          <td style="text-align: center; padding: 10px 8px;">
+            <input type="checkbox" class="crm-deal-checkbox" data-deal-id="${escapeHtml(d.id)}" style="cursor: pointer;">
+          </td>
+          <td style="padding: 10px 12px;">
+            <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: #10b981; font-weight: 600; text-decoration: none;" title="Abrir detalhes de ${escapeHtml(d.titulo)}">
+              ${escapeHtml(d.titulo || 'Sem título')}
+            </a>
+          </td>
+          <td style="padding: 10px 12px; color: #10b981; font-weight: 700; white-space: nowrap;">
+            ${formatCurrency(d.valor)}
+          </td>
+          <td style="padding: 10px 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(d.clienteNome || '-')}">
+            ${escapeHtml(d.clienteNome || '-')}
+          </td>
+          <td style="padding: 10px 12px; white-space: nowrap;">
+            ${escapeHtml(d.contatoNome || '-')}
+          </td>
+          <td style="padding: 10px 12px; white-space: nowrap;">
+            <span style="color: ${statusColor}; font-weight: ${isGanho ? '600' : 'normal'};">
+              ${escapeHtml(statusLabel)}
+            </span>
+          </td>
+          <td style="padding: 10px 12px; white-space: nowrap; color: var(--text-muted);">
+            ${escapeHtml(d.faturadoPor || '-')}
+          </td>
+          <td style="padding: 10px 12px; white-space: nowrap; color: var(--text-muted);" title="${escapeHtml(d.condPgto || '-')}">
+            ${escapeHtml(d.condPgto || '-')}
+          </td>
+          <td style="padding: 10px 12px; white-space: nowrap;">
+            <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: #10b981; font-weight: 700; text-decoration: none;" title="Abrir oportunidade #${escapeHtml(d.id)}">
+              ${escapeHtml(d.id)}
+            </a>
+          </td>
+          <td style="padding: 10px 12px; white-space: nowrap;">
+            ${escapeHtml(d.vendedor || '-')}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (contadorEl) {
+      const endItem = Math.min(startIndex + dealsPerPage, totalItems);
+      contadorEl.textContent = `${totalItems} oportunidade${totalItems === 1 ? '' : 's'} (exibindo ${startIndex + 1}–${endItem})`;
+    }
+    if (valorTotalEl) {
+      valorTotalEl.textContent = `Total: ${formatCurrency(somaValor)}`;
+    }
+
+    // Delegação de cliques única no tbody
+    if (!tbody._hasClickListener) {
+      tbody._hasClickListener = true;
+      tbody.addEventListener('click', (e) => {
+        const link = e.target.closest('.crm-deal-link');
+        if (link) {
+          e.preventDefault();
+          const dealId = link.getAttribute('data-deal-id');
+          if (dealId) openDealDetailsModal(dealId);
+        }
+      });
+    }
+  }
+
+  /**
+   * Atualiza a visão ativa das oportunidades e os KPIs (sem custo duplo de renderização)
+   */
+  function renderDealsViews() {
+    const filtered = getFilteredDeals();
+    if (dealViewMode === 'kanban') {
+      renderKanbanBoard(filtered);
+    } else {
+      renderListagemBoard(filtered);
+    }
+    updateTopKpis();
+  }
+
+  /**
+   * Renderiza os cards nos 5 estágios canônicos e atualiza contadores
+   */
+  function renderKanbanBoard(filteredDeals) {
     // Limpa colunas
     CANONICAL_STAGES.forEach(stage => {
       const colCards = document.getElementById(`crmCards-${stage.id}`);
@@ -589,35 +815,10 @@
       stats[s.id] = { count: 0, sum: 0 };
     });
 
-    // Filtra negócios
-    const filteredDeals = deals.filter(deal => {
-      // Filtro de vendedor
-      if (filterVendedor !== 'TODOS' && deal.vendedor !== filterVendedor) {
-        return false;
-      }
-
-      // Filtro de status (Ativos vs Perdidos vs Todos)
-      if (filterStatus === 'ATIVOS' && deal.fase === 'PERDIDO') return false;
-      if (filterStatus === 'PERDIDO' && deal.fase !== 'PERDIDO') return false;
-
-      // Filtro textual
-      if (filterText) {
-        const strBusca = [
-          deal.titulo || '',
-          deal.clienteNome || '',
-          deal.clienteCnpj || '',
-          deal.vendedor || '',
-          deal.pedidoCompraCliente || ''
-        ].join(' ').toLowerCase();
-
-        if (!strBusca.includes(filterText)) return false;
-      }
-
-      return true;
-    });
+    const items = Array.isArray(filteredDeals) ? filteredDeals : getFilteredDeals();
 
     // Popula cards
-    filteredDeals.forEach(deal => {
+    items.forEach(deal => {
       const faseKey = deal.fase || 'LEAD';
       const colCards = document.getElementById(`crmCards-${faseKey}`);
       
@@ -790,7 +991,7 @@
 
     // Atualização otimista na tela
     saveDealsLocal(deals);
-    renderKanbanBoard();
+    renderDealsViews();
     updateTopKpis();
 
     // Registra atividade automática na timeline
@@ -1099,10 +1300,16 @@
       return;
     }
 
+    const existingDeal = id ? deals.find(d => String(d.id) === String(id)) : null;
+    const contatoNome = existingDeal?.contatoNome || '';
+    const faturadoPor = existingDeal?.faturadoPor || '';
+
     const payload = {
       titulo,
       cliente_nome: clienteNome,
       clienteNome,
+      contatoNome,
+      faturadoPor,
       cliente_cod: clienteCod,
       clienteCod,
       cliente_loja: clienteLoja,
@@ -1134,6 +1341,9 @@
       itens_cotados: currentItems,
       itens: currentItems,
       custom: {
+        ...(existingDeal?.custom || {}),
+        contatoNome,
+        faturadoPor,
         condPgto,
         freteCobrado,
         freteEmbutido,
@@ -1205,7 +1415,7 @@
 
       saveDealsLocal(deals);
       closeModal(document.getElementById('modalCrmOportunidade'));
-      renderKanbanBoard();
+      renderDealsViews();
       updateTopKpis();
       mostrarNotificacao(`Oportunidade "${titulo}" salva com sucesso!`, 'success');
     } catch (err) {
@@ -1253,9 +1463,9 @@
           <tr>
             <td><code style="color: #38bdf8;">${escapeHtml(item.codigo || '-')}</code></td>
             <td>${escapeHtml(item.descricao || '-')}</td>
-            <td style="text-align: right;">${item.quantidade || 1}</td>
+            <td style="text-align: right;">${parseFloat(item.quantidade) || 1}</td>
             <td style="text-align: right;">${formatCurrency(item.precoNegociado)}</td>
-            <td style="text-align: right; font-weight: 700;">${formatCurrency((item.quantidade || 1) * (item.precoNegociado || 0))}</td>
+            <td style="text-align: right; font-weight: 700;">${formatCurrency((parseFloat(item.quantidade) || 1) * (parseFloat(item.precoNegociado) || 0))}</td>
           </tr>
         `).join('');
       }
@@ -2387,27 +2597,96 @@
       btnRefresh.addEventListener('click', loadDeals);
     }
 
-    // Filtros de busca e vendedor do Kanban
+    // 3. Toggles de Modo de Visualização das Oportunidades (Kanban vs Listagem)
+    const btnModeKanban = document.getElementById('btnCrmViewModeKanban');
+    if (btnModeKanban && !btnModeKanban._hasListener) {
+      btnModeKanban._hasListener = true;
+      btnModeKanban.addEventListener('click', () => setDealViewMode('kanban'));
+    }
+
+    const btnModeListagem = document.getElementById('btnCrmViewModeListagem');
+    if (btnModeListagem && !btnModeListagem._hasListener) {
+      btnModeListagem._hasListener = true;
+      btnModeListagem.addEventListener('click', () => setDealViewMode('listagem'));
+    }
+
+    // Checkbox global para selecionar/desmarcar todos os deals da lista
+    const checkAll = document.getElementById('crmDealsCheckAll');
+    if (checkAll && !checkAll._hasListener) {
+      checkAll._hasListener = true;
+      checkAll.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        document.querySelectorAll('.crm-deal-checkbox').forEach(cb => {
+          cb.checked = isChecked;
+        });
+      });
+    }
+
+    // 4. Controles de Paginação da Listagem de Deals (Pilar 1 do GEMINI.md)
+    const btnPrevDeals = document.getElementById('btnCrmDealsPrev');
+    if (btnPrevDeals && !btnPrevDeals._hasListener) {
+      btnPrevDeals._hasListener = true;
+      btnPrevDeals.addEventListener('click', () => {
+        if (dealsPage > 1) {
+          dealsPage--;
+          renderListagemBoard();
+        }
+      });
+    }
+
+    const btnNextDeals = document.getElementById('btnCrmDealsNext');
+    if (btnNextDeals && !btnNextDeals._hasListener) {
+      btnNextDeals._hasListener = true;
+      btnNextDeals.addEventListener('click', () => {
+        const filtered = getFilteredDeals();
+        const totalPages = Math.max(1, Math.ceil(filtered.length / dealsPerPage));
+        if (dealsPage < totalPages) {
+          dealsPage++;
+          renderListagemBoard(filtered);
+        }
+      });
+    }
+
+    const limitSelect = document.getElementById('crmDealsLimitSelect');
+    if (limitSelect && !limitSelect._hasListener) {
+      limitSelect._hasListener = true;
+      limitSelect.addEventListener('change', () => {
+        dealsPerPage = parseInt(limitSelect.value, 10) || 25;
+        dealsPage = 1;
+        renderListagemBoard();
+      });
+    }
+
+    // Filtros de busca e vendedor do pipeline
     const searchInput = document.getElementById('crmSearchInput');
     if (searchInput && !searchInput._hasListener) {
       searchInput._hasListener = true;
       let timer = null;
       searchInput.addEventListener('input', () => {
         clearTimeout(timer);
-        timer = setTimeout(renderKanbanBoard, 300);
+        timer = setTimeout(() => {
+          dealsPage = 1;
+          renderDealsViews();
+        }, 300);
       });
     }
 
     const filterVend = document.getElementById('crmFilterVendedor');
     if (filterVend && !filterVend._hasListener) {
       filterVend._hasListener = true;
-      filterVend.addEventListener('change', renderKanbanBoard);
+      filterVend.addEventListener('change', () => {
+        dealsPage = 1;
+        renderDealsViews();
+      });
     }
 
     const filterStatus = document.getElementById('crmFilterStatus');
     if (filterStatus && !filterStatus._hasListener) {
       filterStatus._hasListener = true;
-      filterStatus.addEventListener('change', renderKanbanBoard);
+      filterStatus.addEventListener('change', () => {
+        dealsPage = 1;
+        renderDealsViews();
+      });
     }
 
     const btnLimpar = document.getElementById('btnCrmLimparFiltros');
@@ -2417,7 +2696,8 @@
         if (searchInput) searchInput.value = '';
         if (filterVend) filterVend.value = 'TODOS';
         if (filterStatus) filterStatus.value = 'ATIVOS';
-        renderKanbanBoard();
+        dealsPage = 1;
+        renderDealsViews();
       });
     }
 

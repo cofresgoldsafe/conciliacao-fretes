@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.250 (Homologada em 23/09/2026 21:30)  
+> **Versão da Documentação:** v8.251 (Homologada em 24/09/2026 14:42)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 23/09/2026 21:30 (v8.250 - Inclusão da sub-tela Despesas Análise no BI Executivo com espelhamento SE5 multi-empresa)  
+> **Data da Última Auditoria:** 24/09/2026 14:42 (v8.251 - Visualização em Listagem e alternância Kanban x Tabela no CRM Comercial com paginação e fidelidade a listagem.png)  
 
 ---
 
@@ -80,7 +80,7 @@ A matriz abaixo consolida as 9 macro-areas e as 38 sub-abas ativas no DOM do Por
 | **8. BI Executivo** | Despesas Análise | `#tab-bi-despesas` | `admin`, `diretoria` (BI) | Espelho SE5 multi-empresa com classificação por natureza, estornos negativos e comparativo 2025x2026. | [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md) |
 | **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
 | **8. BI Executivo** | Autorizações de Desconto | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
-| **8. BI Executivo** | CRM Comercial | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial de vendas, metas e integracao com Pipedrive CRM. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
+| **8. BI Executivo** | CRM Comercial | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial em Kanban ou Listagem tabular com 10 colunas, paginação e follow-up. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
 | **9. Configurações** | Usuários & Permissões | `#tab-configuracoes` | `admin` exclusivo | Gestao de contas, senhas bcrypt, permissoes RBAC, e-mails e 2FA. | [usuarios_permissoes.md](docs/telas/09_configuracoes/usuarios_permissoes.md) |
 | **9. Configurações** | Atividades & Auditoria | `#tab-config-logs` | `admin` exclusivo | Trilha de auditoria em tempo real (`user_activities`), sessoes e heartbeats. | [atividades_auditoria.md](docs/telas/09_configuracoes/atividades_auditoria.md) |
 | **9. Configurações** | Configuração do Score | `#tab-config-score` | `admin` exclusivo | Calibracao dos pesos parametricos e limites do motor de Score em 6 blocos. | [config_score.md](docs/telas/09_configuracoes/config_score.md) |
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.251 (24/09/2026):** Implementação da visualização em **Listagem** com alternância Kanban x Tabela no CRM Comercial (`#tab-bi-crm`), persistência em `localStorage`, tabela paginada com 10 colunas canônicas alinhadas ao `listagem.png`, thead sticky, sanitização XSS e preservação de campos `faturadoPor` e `contatoNome` (6 baterias funcionais aprovadas em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.250 (23/09/2026):** Inclusão da sub-tela `Despesas Análise` no BI Executivo (`#tab-bi-despesas`) com espelhamento SE5 multi-empresa (14, 15, 16) desde Jan/2025, enriquecimento hierárquico por Natureza Financeira SED010 (Pai/Filho), dedução matemática de estornos (`-valor`), segregação de transferências internas/CDBs (2.10/TR/TE), comparativo mensal 2025 vs 2026 lado a lado, sincronização inteligente com janela retroativa de 10 dias e exportação CSV sanitizada (15 testes aprovados em `test_bi_despesas.js` — detalhado em [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md)).
 - **v8.247 (22/09/2026):** Homologação ao vivo da API InfoSimples Bolsa Família com chave real: ajuste do endpoint oficial para `portal-transparencia/bolsa`, inclusão do parâmetro obrigatório de data com janela de até 12 meses (`data_inicio` e `data_fim` ISO YYYY-MM-DD), reconhecimento nativo do Código 612 como `NADA_CONSTA` e exportação de `consultarBolsaFamiliaInfoSimples` e `validarCpf` em `server.js` (homologado em tempo real com CPF 273.897.148-24).
 - **v8.246 (22/09/2026):** Extração de quadro societário e CPFs de sócios/administradores do laudo Serasa Experian PDF (100% RAM stream via `serasa_pdf_parser.py`); integração com a API `portal-transparencia-bolsa` da InfoSimples para antifraude de sócios laranjas (-25 pts com validação prévia Módulo 11 anti-erro 606); suporte neutro (0 pts) a empresas públicas e S.A. sem sócios PF; integração de Inscrição Estadual (Ativa +2 pts, Inapta -15 pts, Isenta 0 pts neutro); calibração dinâmica dos 7 pesos em `#tab-config-score` e backtest com 100% de aprovação (detalhado em [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md)).
