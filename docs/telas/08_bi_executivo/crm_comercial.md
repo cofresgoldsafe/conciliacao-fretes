@@ -75,6 +75,11 @@
 - **Prevenção de Custo Duplo de Renderização:** O pipeline só renderiza no DOM o modo ativo (`kanban` ou `listagem`), poupando ciclos de CPU.
 - **Preservação de Dados em Edição:** `contatoNome` e `faturadoPor` são preservados durante atualizações ou salvamento de oportunidades.
 - **Sanitização XSS:** Todos os valores interpolados passam por `escapeHtml()` e valores numéricos por `parseFloat()`.
+- **Catálogo de Produtos Espelhado (`crm_produtos`):** Base unificada no PostgreSQL Supabase com sincronização em lote de `SB1090` e `SB1160` (1.883 produtos reais), contingência em `data/crm_produtos_cache.json` e atualização sob demanda via `#btnCrmSyncProdutos`.
+- **Autocomplete Instantâneo de Produtos (< 10ms):** Busca dinâmica no modal de oportunidades por código ou descrição com ordenação por relevância (código exato > prefixo de código > prefixo de descrição), dropdown flutuante `#crmProductSuggestionsDropdown` e sanitização T-SQL/SQLi estrita.
+- **Enriquecimento Automático de Itens Cotados:** Ao selecionar o produto, preenche automaticamente Código, Descrição, Preço de Tabela, Preço Negociado sugerido, NCM (`B1_POSIPI`), Peso Líquido (`B1_PESO`), Peso Bruto (`B1_PESBRU`) e Unidade de Medida (`B1_UM`), posicionando o foco diretamente no campo de quantidade.
+- **Cálculo de Peso Total em Tempo Real:** Mostrador `#crmItensPesoTotalDisplay` calcula dinamicamente o peso acumulado da proposta (`Σ (quantidade * pesoLiquido)`), permitindo cotação instantânea de fretes.
+- **Imutabilidade e Snapshot Histórico:** Itens cotados são salvos como snapshot imutável no JSONB `itens_cotados` de `crm_deals`, preservando a auditoria e os valores da proposta independentemente de alterações cadastrais futuras no ERP.
 
 ---
 
@@ -85,12 +90,16 @@
 - `PUT /api/bi/crm/deals/:id`: Edição de oportunidade existente.
 - `PUT /api/bi/crm/deals/:id/stage`: Transição atômica de estágio.
 - `GET /api/bi/crm/clientes`: Listagem paginada de clientes comerciais.
+- `GET /api/bi/crm/produtos/autocomplete`: Busca instantânea de produtos no catálogo espelhado com suporte a termo `q`, `limite` e `apenasAtivos`.
+- `POST /api/bi/crm/produtos/sync`: Sincronização em lote do catálogo oficial Protheus (`SB1090`/`SB1160`) com o Supabase e cache local.
+- `GET /api/bi/crm/produtos/status`: Telemetria de total de produtos ativos, bloqueados, última sincronização e origem.
 
 ---
 
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_produtos.js
 node test_crm_filtros.js
 node test_crm_listagem.js
 node test_crm_module.js
@@ -100,6 +109,7 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.254 (24/09/2026):** Catálogo de Produtos Protheus (`SB1090`/`SB1160`) espelhado no Supabase PostgreSQL (`crm_produtos`) e cache local de contingência (`crm_produtos_cache.json`). Autocomplete inteligente (< 10ms) na tabela de itens cotados do modal de oportunidades, preenchimento automático de código, descrição, preço de tabela, NCM fiscal, peso líquido/bruto e UM, cálculo em tempo real de Peso Total da Proposta (`Σ qtd * peso`), botão `🔄 Sync Produtos` e RLS restrita (7 baterias completas aprovadas em `test_crm_produtos.js`).
 - **v8.253 (24/09/2026):** Implementação dos novos filtros de status e proprietário no CRM Comercial: remoção da opção "Diretoria" do filtro de vendedores operacionais, renomeação de "Oportunidades Ativas" para "Oportunidades Abertas" (excluindo ganhos e perdidos), adição dos filtros "Somente Ganhas", "Ganhas Hoje" e "Ganhas Ontem" com tratamento resiliente de fuso horário UTC-3 (ISO e DateOnly), reset para "ABERTAS" no botão limpar e adição de acessibilidade `aria-label` (10 testes aprovados em `test_crm_filtros.js`).
 - **v8.251 (24/09/2026):** Implementação da visualização em **Listagem** com seletor toggle `[ 📊 Kanban ]` / `[ 📋 Listagem ]`, persistência em `localStorage`, tabela paginada com 10 colunas canônicas alinhadas ao `listagem.png`, thead sticky, sanitização XSS estrita e preservação de campos `faturadoPor` e `contatoNome` (6 baterias funcionais aprovadas em `test_crm_listagem.js`).
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.

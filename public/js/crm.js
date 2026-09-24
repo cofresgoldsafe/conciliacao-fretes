@@ -1183,54 +1183,244 @@
     openModal(modal);
   }
 
+  let productAutocompleteDebounceTimer = null;
+  let activeProductItemIndex = null;
+
+  /**
+   * Obtém ou cria o elemento singleton dropdown flutuante de sugestões de produtos
+   */
+  function getProductDropdownEl() {
+    let dropdown = document.getElementById('crmProductSuggestionsDropdown');
+    if (!dropdown) {
+      dropdown = document.createElement('div');
+      dropdown.id = 'crmProductSuggestionsDropdown';
+      dropdown.style.cssText = `
+        position: absolute;
+        z-index: 10005;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        max-height: 290px;
+        overflow-y: auto;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+        display: none;
+        width: 480px;
+      `;
+      document.body.appendChild(dropdown);
+
+      // Fecha ao clicar fora
+      document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target) && !e.target.classList.contains('crm-item-code') && !e.target.classList.contains('crm-item-desc')) {
+          dropdown.style.display = 'none';
+        }
+      });
+
+      // Fecha ao rolar
+      window.addEventListener('scroll', () => { dropdown.style.display = 'none'; }, true);
+    }
+    return dropdown;
+  }
+
+  /**
+   * Dispara o autocomplete de produtos Protheus a partir de um input ativo
+   */
+  function triggerProductAutocomplete(inputEl, itemIndex) {
+    clearTimeout(productAutocompleteDebounceTimer);
+    const dropdown = getProductDropdownEl();
+    const termo = (inputEl.value || '').trim();
+
+    if (termo.length < 2) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    activeProductItemIndex = itemIndex;
+
+    productAutocompleteDebounceTimer = setTimeout(async () => {
+      try {
+        const token = getToken();
+        const res = await fetch(`/api/bi/crm/produtos/autocomplete?q=${encodeURIComponent(termo)}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+
+        if (!res.ok) {
+          dropdown.style.display = 'none';
+          return;
+        }
+
+        const data = await res.json();
+        const produtos = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+
+        if (produtos.length === 0) {
+          dropdown.style.display = 'none';
+          return;
+        }
+
+        // Posiciona dropdown relativo ao input ativo
+        const rect = inputEl.getBoundingClientRect();
+        dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+        let left = rect.left + window.scrollX;
+        if (left + 480 > window.innerWidth) {
+          left = window.innerWidth - 490;
+        }
+        dropdown.style.left = `${Math.max(10, left)}px`;
+        dropdown.style.width = '480px';
+
+        dropdown.innerHTML = produtos.map((p, pIdx) => {
+          const cod = escapeHtml(p.codigo || '');
+          const desc = escapeHtml(p.descricao || '');
+          const preco = Number(p.preco_tabela) || 0;
+          const peso = Number(p.peso_liquido) || 0;
+          const grupo = escapeHtml(p.grupo || '');
+          const ncm = escapeHtml(p.ncm || '');
+          const um = escapeHtml(p.unidade || 'UN');
+
+          return `
+            <div class="crm-prod-suggestion-row" data-pindex="${pIdx}" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.06); transition: background 0.15s ease;">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
+                <span style="font-family: var(--font-mono, monospace); font-weight: 700; color: #38bdf8; font-size: 0.84rem;">${cod}</span>
+                <span style="font-weight: 700; color: #10b981; font-size: 0.84rem;">${formatCurrency(preco)}</span>
+              </div>
+              <div style="font-size: 0.82rem; color: #f1f5f9; font-weight: 500; margin-bottom: 3px; line-height: 1.25;">${desc}</div>
+              <div style="display: flex; gap: 8px; font-size: 0.72rem; color: #94a3b8; align-items: center; flex-wrap: wrap;">
+                ${grupo ? `<span style="background: rgba(148, 163, 184, 0.15); padding: 1px 5px; border-radius: 4px;">Grupo: ${grupo}</span>` : ''}
+                ${peso > 0 ? `<span>Peso: <strong>${peso.toFixed(2)} kg</strong></span>` : ''}
+                ${ncm ? `<span>NCM: <strong>${ncm}</strong></span>` : ''}
+                <span>UM: <strong>${um}</strong></span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        dropdown.style.display = 'block';
+
+        // Hover e seleção de itens
+        dropdown.querySelectorAll('.crm-prod-suggestion-row').forEach(row => {
+          row.addEventListener('mouseenter', () => {
+            row.style.background = 'rgba(56, 189, 248, 0.12)';
+          });
+          row.addEventListener('mouseleave', () => {
+            row.style.background = 'transparent';
+          });
+          row.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const pIdx = parseInt(row.getAttribute('data-pindex'), 10);
+            const selProd = produtos[pIdx];
+            if (!selProd || isNaN(activeProductItemIndex) || !currentItems[activeProductItemIndex]) return;
+
+            const idx = activeProductItemIndex;
+            const prevTabela = Number(currentItems[idx].precoTabela) || 0;
+            const prevNegociado = Number(currentItems[idx].precoNegociado) || 0;
+            const novoPrecoTabela = Number(selProd.preco_tabela) || 0;
+
+            currentItems[idx].codigo = selProd.codigo;
+            currentItems[idx].descricao = selProd.descricao;
+            currentItems[idx].precoTabela = novoPrecoTabela;
+
+            // Se precoNegociado for 0 ou igual ao precoTabela anterior, sugere o novo precoTabela
+            if (!prevNegociado || prevNegociado === 0 || prevNegociado === prevTabela) {
+              currentItems[idx].precoNegociado = novoPrecoTabela;
+            }
+
+            currentItems[idx].ncm = selProd.ncm || '';
+            currentItems[idx].pesoLiquido = Number(selProd.peso_liquido) || 0;
+            currentItems[idx].pesoBruto = Number(selProd.peso_bruto) || 0;
+            currentItems[idx].unidade = selProd.unidade || 'UN';
+            currentItems[idx].grupo = selProd.grupo || '';
+
+            dropdown.style.display = 'none';
+            renderItensCotadosTable();
+
+            // Auto-focus no campo de quantidade para agilidade
+            setTimeout(() => {
+              const tbody = document.getElementById('crmTbodyItensCotados');
+              if (tbody) {
+                const qtdInp = tbody.querySelector(`.crm-item-qtd[data-index="${idx}"]`);
+                if (qtdInp) {
+                  qtdInp.focus();
+                  qtdInp.select();
+                }
+              }
+            }, 60);
+          });
+        });
+
+      } catch (err) {
+        console.warn('⚠️ [CRM Autocomplete] Falha ao buscar produtos:', err.message);
+        dropdown.style.display = 'none';
+      }
+    }, 250);
+  }
+
   /**
    * Renderiza a tabela de itens cotados na modal de cadastro
    */
   function renderItensCotadosTable() {
     const tbody = document.getElementById('crmTbodyItensCotados');
     const totalDisplay = document.getElementById('crmItensCotadosTotalDisplay');
+    const pesoDisplay = document.getElementById('crmItensCotadosPesoDisplay');
+    const dropdown = getProductDropdownEl();
+    dropdown.style.display = 'none';
+
     if (!tbody) return;
 
     if (currentItems.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1rem;">
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.2rem;">
             Nenhum produto adicionado. Clique em "+ Adicionar Item" para incluir produtos cotados.
           </td>
         </tr>
       `;
       if (totalDisplay) totalDisplay.textContent = 'R$ 0,00';
+      if (pesoDisplay) pesoDisplay.textContent = '0,000 kg';
       return;
     }
 
     let sumTotal = 0;
+    let sumPeso = 0;
     let html = '';
 
     currentItems.forEach((item, index) => {
-      const subtotal = (parseFloat(item.quantidade) || 0) * (parseFloat(item.precoNegociado) || 0);
+      const qtd = parseFloat(item.quantidade) || 0;
+      const pNeg = parseFloat(item.precoNegociado) || 0;
+      const pesoLiq = parseFloat(item.pesoLiquido) || parseFloat(item.pesoBruto) || 0;
+      const subtotal = qtd * pNeg;
+      const pesoTotalItem = qtd * pesoLiq;
+
       sumTotal += subtotal;
+      sumPeso += pesoTotalItem;
+
+      const hasMeta = !!(item.ncm || item.pesoLiquido || item.unidade);
 
       html += `
         <tr>
           <td>
-            <input type="text" class="form-control form-control-sm crm-item-code" data-index="${index}" value="${escapeHtml(item.codigo || '')}" placeholder="Código (ex: CF-3040)" style="font-family: var(--font-mono); width: 110px;">
+            <input type="text" class="form-control form-control-sm crm-item-code" data-index="${index}" value="${escapeHtml(item.codigo || '')}" placeholder="Cód. Protheus" style="font-family: var(--font-mono); width: 130px;" autocomplete="off" title="Código do produto no Protheus (autocomplete disponível)">
           </td>
           <td>
-            <input type="text" class="form-control form-control-sm crm-item-desc" data-index="${index}" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição do produto cotado" style="width: 100%;">
+            <input type="text" class="form-control form-control-sm crm-item-desc" data-index="${index}" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição do produto cotado" style="width: 100%;" autocomplete="off" title="Descrição do produto (digite para buscar no catálogo)">
+            ${hasMeta ? `
+              <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 3px; display: flex; gap: 8px;">
+                ${item.ncm ? `<span>NCM: <strong style="color: #cbd5e1;">${escapeHtml(item.ncm)}</strong></span>` : ''}
+                ${pesoLiq > 0 ? `<span>Peso: <strong style="color: #cbd5e1;">${pesoLiq.toFixed(2)}kg</strong></span>` : ''}
+                ${item.unidade ? `<span>UM: <strong style="color: #cbd5e1;">${escapeHtml(item.unidade)}</strong></span>` : ''}
+              </div>
+            ` : ''}
           </td>
-          <td style="width: 75px;">
+          <td style="width: 70px;">
             <input type="number" min="1" step="1" class="form-control form-control-sm crm-item-qtd" data-index="${index}" value="${item.quantidade || 1}" style="text-align: right;">
           </td>
-          <td style="width: 115px;">
-            <input type="number" min="0" step="0.01" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${item.precoTabela || 0}" style="text-align: right;">
+          <td style="width: 110px;">
+            <input type="number" min="0" step="0.01" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${item.precoTabela || 0}" style="text-align: right;" title="Preço oficial de tabela (SB1)">
           </td>
           <td style="width: 115px;">
-            <input type="number" min="0" step="0.01" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${item.precoNegociado || 0}" style="text-align: right; font-weight: 600; color: #38bdf8;">
+            <input type="number" min="0" step="0.01" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${item.precoNegociado || 0}" style="text-align: right; font-weight: 600; color: #38bdf8;" title="Preço negociado com o cliente">
           </td>
           <td style="text-align: right; font-weight: 700; white-space: nowrap; width: 110px;">
             ${formatCurrency(subtotal)}
           </td>
-          <td style="text-align: center; width: 45px;">
+          <td style="text-align: center; width: 40px;">
             <button type="button" class="btn btn-outline btn-sm btn-remover-item" data-index="${index}" title="Remover item" style="padding: 2px 6px; color: #f87171;">✕</button>
           </td>
         </tr>
@@ -1239,8 +1429,9 @@
 
     tbody.innerHTML = html;
     if (totalDisplay) totalDisplay.textContent = formatCurrency(sumTotal);
+    if (pesoDisplay) pesoDisplay.textContent = `${sumPeso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
 
-    // Se houver valor dos itens, sincroniza o campo de valor total do negócio
+    // Sincroniza campo total do negócio
     const inputValor = document.getElementById('crmInputValor');
     if (inputValor && sumTotal > 0) {
       inputValor.value = sumTotal.toFixed(2);
@@ -1252,18 +1443,30 @@
         const idx = parseInt(e.target.getAttribute('data-index'), 10);
         if (isNaN(idx) || !currentItems[idx]) return;
 
-        if (e.target.classList.contains('crm-item-code')) currentItems[idx].codigo = e.target.value;
-        if (e.target.classList.contains('crm-item-desc')) currentItems[idx].descricao = e.target.value;
+        if (e.target.classList.contains('crm-item-code')) {
+          currentItems[idx].codigo = e.target.value;
+          triggerProductAutocomplete(e.target, idx);
+        }
+        if (e.target.classList.contains('crm-item-desc')) {
+          currentItems[idx].descricao = e.target.value;
+          triggerProductAutocomplete(e.target, idx);
+        }
         if (e.target.classList.contains('crm-item-qtd')) currentItems[idx].quantidade = parseFloat(e.target.value) || 1;
         if (e.target.classList.contains('crm-item-ptabela')) currentItems[idx].precoTabela = parseFloat(e.target.value) || 0;
         if (e.target.classList.contains('crm-item-pnegociado')) currentItems[idx].precoNegociado = parseFloat(e.target.value) || 0;
 
-        // Recalcula totais
+        // Recalcula totais e peso
         let newSum = 0;
+        let newPeso = 0;
         currentItems.forEach(it => {
-          newSum += (parseFloat(it.quantidade) || 0) * (parseFloat(it.precoNegociado) || 0);
+          const q = parseFloat(it.quantidade) || 0;
+          const p = parseFloat(it.precoNegociado) || 0;
+          const w = parseFloat(it.pesoLiquido) || parseFloat(it.pesoBruto) || 0;
+          newSum += q * p;
+          newPeso += q * w;
         });
         if (totalDisplay) totalDisplay.textContent = formatCurrency(newSum);
+        if (pesoDisplay) pesoDisplay.textContent = `${newPeso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
         if (inputValor && newSum > 0) inputValor.value = newSum.toFixed(2);
       });
     });
@@ -1290,9 +1493,22 @@
       quantidade: 1,
       precoTabela: 0,
       precoNegociado: 0,
-      total: 0
+      total: 0,
+      ncm: '',
+      pesoLiquido: 0,
+      pesoBruto: 0,
+      unidade: 'UN',
+      grupo: ''
     });
     renderItensCotadosTable();
+    setTimeout(() => {
+      const tbody = document.getElementById('crmTbodyItensCotados');
+      if (tbody) {
+        const lastIdx = currentItems.length - 1;
+        const inp = tbody.querySelector(`.crm-item-code[data-index="${lastIdx}"]`);
+        if (inp) inp.focus();
+      }
+    }, 50);
   }
 
   /**
@@ -1498,8 +1714,17 @@
       } else {
         tbody.innerHTML = deal.itens.map(item => `
           <tr>
-            <td><code style="color: #38bdf8;">${escapeHtml(item.codigo || '-')}</code></td>
-            <td>${escapeHtml(item.descricao || '-')}</td>
+            <td><code style="color: #38bdf8; font-weight: 600;">${escapeHtml(item.codigo || '-')}</code></td>
+            <td>
+              <div style="font-weight: 500;">${escapeHtml(item.descricao || '-')}</div>
+              ${(item.ncm || item.pesoLiquido || item.unidade) ? `
+                <div style="font-size: 0.70rem; color: #94a3b8; display: flex; gap: 8px; margin-top: 2px;">
+                  ${item.ncm ? `<span>NCM: <strong>${escapeHtml(item.ncm)}</strong></span>` : ''}
+                  ${item.pesoLiquido ? `<span>Peso: <strong>${Number(item.pesoLiquido).toFixed(2)}kg</strong></span>` : ''}
+                  ${item.unidade ? `<span>UM: <strong>${escapeHtml(item.unidade)}</strong></span>` : ''}
+                </div>
+              ` : ''}
+            </td>
             <td style="text-align: right;">${parseFloat(item.quantidade) || 1}</td>
             <td style="text-align: right;">${formatCurrency(item.precoNegociado)}</td>
             <td style="text-align: right; font-weight: 700;">${formatCurrency((parseFloat(item.quantidade) || 1) * (parseFloat(item.precoNegociado) || 0))}</td>
@@ -1968,6 +2193,48 @@
       if (v.length < 8) {
         lastCheckedCep = '';
         if (statusSpan) statusSpan.style.display = 'none';
+      }
+    });
+  }
+
+  /**
+   * Configura o botão de sincronização manual do catálogo de produtos Protheus (SB1090/SB1160)
+   */
+  function setupProductSyncButton() {
+    const btnSync = document.getElementById('btnCrmSyncProdutos');
+    if (!btnSync || btnSync._hasProductSyncListener) return;
+    btnSync._hasProductSyncListener = true;
+
+    btnSync.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const token = getToken();
+        btnSync.disabled = true;
+        const origHtml = btnSync.innerHTML;
+        btnSync.innerHTML = '⏳ Sincronizando...';
+
+        const res = await fetch('/api/bi/crm/produtos/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+
+        const data = await res.json();
+        btnSync.disabled = false;
+        btnSync.innerHTML = origHtml;
+
+        if (res.ok && data.success) {
+          const meta = data.data || {};
+          mostrarNotificacao(`Catálogo Protheus sincronizado! Total: ${meta.total_produtos || 0} produtos (${meta.produtos_ativos || 0} ativos) em ${meta.duracao_ms || 0}ms.`, 'sucesso');
+        } else {
+          mostrarNotificacao(data.message || 'Erro ao sincronizar catálogo de produtos.', 'erro');
+        }
+      } catch (err) {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '🔄 Sync Produtos';
+        mostrarNotificacao(`Falha na comunicação: ${err.message}`, 'erro');
       }
     });
   }
@@ -2825,6 +3092,12 @@
       document._hasCrmEscapeListener = true;
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
+          // 1. Fecha primeiro o dropdown de sugestões de produtos se estiver visível
+          const prodDropdown = document.getElementById('crmProductSuggestionsDropdown');
+          if (prodDropdown && prodDropdown.style.display !== 'none') {
+            prodDropdown.style.display = 'none';
+            return;
+          }
           // Fecha na ordem inversa de precedência (modal de cliente primeiro se estiver aberto)
           const modalCliente = document.getElementById('modalCrmCliente');
           if (modalCliente && modalCliente.style.display !== 'none' && !modalCliente.classList.contains('hidden')) {
@@ -2852,6 +3125,7 @@
 
     setupClientAutocomplete();
     setupCepAutoLookup();
+    setupProductSyncButton();
   }
 
   /**
@@ -2870,6 +3144,8 @@
     if (!modal) return;
     modal.classList.add('hidden');
     modal.style.display = 'none';
+    const prodDropdown = document.getElementById('crmProductSuggestionsDropdown');
+    if (prodDropdown) prodDropdown.style.display = 'none';
   }
 
   /**
@@ -2886,7 +3162,8 @@
       document.body.appendChild(toast);
     }
 
-    toast.className = `crm-toast crm-toast-${tipo}`;
+    const tipoNorm = (tipo === 'sucesso' ? 'success' : (tipo === 'erro' || tipo === 'error' || tipo === 'danger' ? 'danger' : tipo));
+    toast.className = `crm-toast crm-toast-${tipoNorm}`;
     toast.innerHTML = `<span>${escapeHtml(texto)}</span>`;
     toast.style.display = 'block';
 

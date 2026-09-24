@@ -19,6 +19,7 @@ const { safeReadJson, safeReadJsonSync, safeWriteJson } = require('./safe_json_s
 const dataDir = path.join(__dirname, 'data');
 const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
 const crmClientesCacheFile = path.join(dataDir, 'crm_clientes_cache.json');
+const crmProdutosCacheFile = path.join(dataDir, 'crm_produtos_cache.json');
 const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.json');
 
 // Estágios Canônicos Oficiais
@@ -136,6 +137,44 @@ async function writeClientesCache(data) {
     await safeWriteJson(crmClientesCacheFile, payload);
   } catch (err) {
     console.error('❌ [CRM Clientes Cache] Erro ao gravar cache local:', err.message);
+  }
+}
+
+/**
+ * Lê cache local de contingência de Produtos do CRM
+ */
+async function readProdutosCache() {
+  try {
+    const data = await safeReadJson(crmProdutosCacheFile, null);
+    if (data && typeof data === 'object' && Array.isArray(data.produtos)) {
+      return {
+        updated_at: data.updated_at || new Date().toISOString(),
+        produtos: data.produtos
+      };
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Produtos Cache] Aviso ao ler cache local:', err.message);
+  }
+  return {
+    updated_at: new Date().toISOString(),
+    produtos: []
+  };
+}
+
+/**
+ * Grava cache local de contingência de Produtos de forma atômica
+ */
+async function writeProdutosCache(data) {
+  try {
+    const payload = {
+      updated_at: new Date().toISOString(),
+      produtos: Array.isArray(data?.produtos) ? data.produtos : []
+    };
+    await safeWriteJson(crmProdutosCacheFile, payload);
+    return true;
+  } catch (err) {
+    console.error('❌ [CRM Produtos Cache] Erro ao gravar cache local:', err.message);
+    return false;
   }
 }
 
@@ -341,6 +380,64 @@ async function initCrmTables() {
         END IF;
         DROP POLICY IF EXISTS "Acesso exclusivo backend crm_clientes" ON crm_clientes;
         CREATE POLICY "Acesso exclusivo backend crm_clientes" ON crm_clientes TO service_role, postgres USING (true) WITH CHECK (true);
+      END $$;
+
+      CREATE TABLE IF NOT EXISTS crm_produtos (
+        codigo VARCHAR(50) PRIMARY KEY,
+        descricao VARCHAR(255) NOT NULL,
+        ncm VARCHAR(20),
+        unidade VARCHAR(10) DEFAULT 'UN',
+        tipo VARCHAR(10) DEFAULT 'PA',
+        grupo VARCHAR(50),
+        preco_tabela NUMERIC(14,2) DEFAULT 0.00,
+        peso_liquido NUMERIC(12,4) DEFAULT 0.0000,
+        peso_bruto NUMERIC(12,4) DEFAULT 0.0000,
+        aliquota_ipi NUMERIC(6,2) DEFAULT 0.00,
+        bloqueado BOOLEAN DEFAULT FALSE,
+        custom JSONB DEFAULT '{}'::jsonb,
+        synced_at TIMESTAMPTZ DEFAULT NOW(),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_crm_produtos_descricao ON crm_produtos(descricao);
+      CREATE INDEX IF NOT EXISTS idx_crm_produtos_grupo ON crm_produtos(grupo);
+      CREATE INDEX IF NOT EXISTS idx_crm_produtos_bloqueado ON crm_produtos(bloqueado);
+      CREATE INDEX IF NOT EXISTS idx_crm_produtos_tipo ON crm_produtos(tipo);
+      CREATE INDEX IF NOT EXISTS idx_crm_produtos_synced_at ON crm_produtos(synced_at DESC);
+
+      -- Migrações idempotentes de colunas em crm_produtos
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS ncm VARCHAR(20);
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS unidade VARCHAR(10) DEFAULT 'UN';
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS tipo VARCHAR(10) DEFAULT 'PA';
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS grupo VARCHAR(50);
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS preco_tabela NUMERIC(14,2) DEFAULT 0.00;
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS peso_liquido NUMERIC(12,4) DEFAULT 0.0000;
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS peso_bruto NUMERIC(12,4) DEFAULT 0.0000;
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS aliquota_ipi NUMERIC(6,2) DEFAULT 0.00;
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS bloqueado BOOLEAN DEFAULT FALSE;
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS custom JSONB DEFAULT '{}'::jsonb;
+      ALTER TABLE IF EXISTS crm_produtos ADD COLUMN IF NOT EXISTS synced_at TIMESTAMPTZ DEFAULT NOW();
+
+      -- RLS Estrito para crm_produtos
+      ALTER TABLE crm_produtos ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE crm_produtos FORCE ROW LEVEL SECURITY;
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+          GRANT ALL ON TABLE crm_produtos TO service_role;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+          GRANT ALL ON TABLE crm_produtos TO postgres;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+          REVOKE ALL ON TABLE crm_produtos FROM anon;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+          REVOKE ALL ON TABLE crm_produtos FROM authenticated;
+        END IF;
+        DROP POLICY IF EXISTS "Acesso exclusivo backend crm_produtos" ON crm_produtos;
+        CREATE POLICY "Acesso exclusivo backend crm_produtos" ON crm_produtos TO service_role, postgres USING (true) WITH CHECK (true);
       END $$;
     `);
     console.log('🟢 [CRM Engine] Schema do CRM verificado/inicializado com sucesso no Supabase PostgreSQL.');
@@ -2052,9 +2149,337 @@ async function consultarCep(cepParam) {
   }
 }
 
+/**
+ * 15. SINCRONIZAÇÃO DE PRODUTOS DO PROTHEUS (SB1090/SB1160 -> CRM_PRODUTOS + CACHE)
+ */
+async function sincronizarProdutosCrmProtheus({ triggeredBy = 'MANUAL' } = {}) {
+  const inicioMs = Date.now();
+  console.log(`🔄 [CRM Produtos Sync] Iniciando sincronização do catálogo Protheus disparada por "${triggeredBy}"...`);
+
+  const sb1Tables = ['SB1090', 'SB1160'];
+  const produtosMap = new Map();
+
+  for (const table of sb1Tables) {
+    try {
+      const sql = `
+        SELECT 
+          RTRIM(B1_COD) AS B1_COD,
+          RTRIM(B1_DESC) AS B1_DESC,
+          RTRIM(ISNULL(B1_POSIPI, '')) AS B1_POSIPI,
+          RTRIM(ISNULL(B1_UM, 'UN')) AS B1_UM,
+          RTRIM(ISNULL(B1_TIPO, 'PA')) AS B1_TIPO,
+          RTRIM(ISNULL(B1_GRUPO, '')) AS B1_GRUPO,
+          ISNULL(B1_PRV1, 0) AS B1_PRV1,
+          ISNULL(B1_PESO, 0) AS B1_PESO,
+          ISNULL(B1_PESBRU, 0) AS B1_PESBRU,
+          ISNULL(B1_IPI, 0) AS B1_IPI,
+          RTRIM(ISNULL(B1_MSBLQL, '')) AS B1_MSBLQL
+        FROM ${table}
+        WHERE D_E_L_E_T_ = ' '
+        ORDER BY B1_COD ASC;
+      `;
+
+      const res = await executeRailwayQuery(sql);
+      if (res && Array.isArray(res.rows) && res.rows.length > 0) {
+        for (const r of res.rows) {
+          const cod = String(r.B1_COD || '').trim();
+          if (!cod || cod.length < 2 || cod.toLowerCase() === 'null' || cod.toLowerCase() === 'undefined') {
+            continue;
+          }
+
+          const desc = String(r.B1_DESC || '').trim() || cod;
+          const ncm = String(r.B1_POSIPI || '').trim();
+          const unidade = String(r.B1_UM || 'UN').trim() || 'UN';
+          const tipo = String(r.B1_TIPO || 'PA').trim() || 'PA';
+          const grupo = String(r.B1_GRUPO || '').trim();
+          const preco = Number(r.B1_PRV1) || 0.00;
+          const pesoLiq = Number(r.B1_PESO) || 0.0000;
+          const pesoBru = Number(r.B1_PESBRU) || 0.0000;
+          const ipi = Number(r.B1_IPI) || 0.00;
+          const bloqueado = ['1', 'S', 's'].includes(String(r.B1_MSBLQL || '').trim());
+
+          if (!produtosMap.has(cod)) {
+            produtosMap.set(cod, {
+              codigo: cod,
+              descricao: desc,
+              ncm,
+              unidade,
+              tipo,
+              grupo,
+              preco_tabela: preco,
+              peso_liquido: pesoLiq,
+              peso_bruto: pesoBru,
+              aliquota_ipi: ipi,
+              bloqueado,
+              custom: { fonte: table }
+            });
+          } else {
+            // Mescla/enriquece se campo existente estiver zerado ou vazio
+            const exist = produtosMap.get(cod);
+            if (!exist.descricao && desc) exist.descricao = desc;
+            if (!exist.ncm && ncm) exist.ncm = ncm;
+            if (!exist.grupo && grupo) exist.grupo = grupo;
+            if (exist.preco_tabela === 0 && preco > 0) exist.preco_tabela = preco;
+            if (exist.peso_liquido === 0 && pesoLiq > 0) exist.peso_liquido = pesoLiq;
+            if (exist.peso_bruto === 0 && pesoBru > 0) exist.peso_bruto = pesoBru;
+            if (exist.aliquota_ipi === 0 && ipi > 0) exist.aliquota_ipi = ipi;
+          }
+        }
+      }
+    } catch (errTable) {
+      console.warn(`⚠️ [CRM Produtos Sync] Aviso ao extrair produtos de ${table}:`, errTable.message);
+    }
+  }
+
+  // Se nenhuma tabela Protheus respondeu (offline/erro), verifica se há cache local prévio
+  let produtosArr = Array.from(produtosMap.values());
+  if (produtosArr.length === 0) {
+    console.warn('⚠️ [CRM Produtos Sync] Nenhuma linha retornada das consultas Protheus. Recorrendo ao cache local...');
+    const cacheLocal = await readProdutosCache();
+    if (cacheLocal.produtos && cacheLocal.produtos.length > 0) {
+      produtosArr = cacheLocal.produtos;
+    }
+  }
+
+  // 1. Grava no PostgreSQL Supabase em chunks de 100 itens (se conectado)
+  if (produtosArr.length > 0) {
+    try {
+      const CHUNK_SIZE = 100;
+      for (let i = 0; i < produtosArr.length; i += CHUNK_SIZE) {
+        const chunk = produtosArr.slice(i, i + CHUNK_SIZE);
+        const values = [];
+        const placeholders = [];
+        let pIdx = 1;
+
+        for (const p of chunk) {
+          placeholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, NOW(), NOW())`);
+          values.push(
+            p.codigo,
+            p.descricao,
+            p.ncm || null,
+            p.unidade || 'UN',
+            p.tipo || 'PA',
+            p.grupo || null,
+            p.preco_tabela || 0,
+            p.peso_liquido || 0,
+            p.peso_bruto || 0,
+            p.aliquota_ipi || 0,
+            Boolean(p.bloqueado),
+            JSON.stringify(p.custom || {})
+          );
+        }
+
+        const sqlUpsert = `
+          INSERT INTO crm_produtos (
+            codigo, descricao, ncm, unidade, tipo, grupo,
+            preco_tabela, peso_liquido, peso_bruto, aliquota_ipi,
+            bloqueado, custom, synced_at, updated_at
+          ) VALUES ${placeholders.join(', ')}
+          ON CONFLICT (codigo) DO UPDATE SET
+            descricao = EXCLUDED.descricao,
+            ncm = COALESCE(EXCLUDED.ncm, crm_produtos.ncm),
+            unidade = EXCLUDED.unidade,
+            tipo = EXCLUDED.tipo,
+            grupo = COALESCE(EXCLUDED.grupo, crm_produtos.grupo),
+            preco_tabela = EXCLUDED.preco_tabela,
+            peso_liquido = EXCLUDED.peso_liquido,
+            peso_bruto = EXCLUDED.peso_bruto,
+            aliquota_ipi = EXCLUDED.aliquota_ipi,
+            bloqueado = EXCLUDED.bloqueado,
+            custom = EXCLUDED.custom,
+            synced_at = EXCLUDED.synced_at,
+            updated_at = NOW();
+        `;
+
+        await safeQuery(sqlUpsert, values);
+      }
+    } catch (errPg) {
+      console.warn('⚠️ [CRM Produtos Sync] Aviso ao persistir produtos no PostgreSQL Supabase:', errPg.message);
+    }
+
+    // 2. Grava contingência atômica no cache JSON local
+    await writeProdutosCache({ produtos: produtosArr });
+  }
+
+  const ativosCount = produtosArr.filter(p => !p.bloqueado).length;
+  const duracaoMs = Date.now() - inicioMs;
+
+  await recordTelemetry(
+    { username: triggeredBy },
+    'SYNC_PRODUTOS_CRM',
+    `Catálogo de produtos Protheus sincronizado: ${produtosArr.length} itens (${ativosCount} ativos).`,
+    { total: produtosArr.length, ativos: ativosCount, duracao_ms: duracaoMs }
+  );
+
+  console.log(`🟢 [CRM Produtos Sync] Sincronização concluída: ${produtosArr.length} produtos em ${duracaoMs}ms.`);
+
+  return {
+    success: true,
+    total_produtos: produtosArr.length,
+    produtos_ativos: ativosCount,
+    produtos_bloqueados: produtosArr.length - ativosCount,
+    duracao_ms: duracaoMs,
+    status: 'SINCRONIZADO',
+    triggered_by: triggeredBy
+  };
+}
+
+/**
+ * 16. AUTOCOMPLETE DE PRODUTOS (POSTGRESQL SUPABASE + CACHE LOCAL RESILIENTE)
+ * @param {string} termo Termo de pesquisa (código ou descrição)
+ * @param {object} options Opções de busca
+ * @returns {Promise<Array>} Lista de produtos compatíveis
+ */
+async function autocompleteProdutos(termo, { limite = 15, apenasAtivos = true } = {}) {
+  if (!termo || String(termo).trim().length < 2) {
+    return [];
+  }
+
+  const cleanTerm = sanitizeSqlParam(String(termo).trim()).replace(/[\[\]]/g, '');
+  const termLower = cleanTerm.toLowerCase();
+  const limitNum = Math.min(Math.max(parseInt(limite, 10) || 15, 1), 50);
+
+  // 1. Busca prioritária no Supabase Postgres
+  try {
+    let whereClause = `WHERE (LOWER(codigo) LIKE $1 OR LOWER(descricao) LIKE $1)`;
+    if (apenasAtivos) {
+      whereClause += ` AND (bloqueado IS FALSE OR bloqueado IS NULL)`;
+    }
+
+    const sql = `
+      SELECT 
+        codigo, descricao, ncm, unidade, tipo, grupo,
+        preco_tabela, peso_liquido, peso_bruto, aliquota_ipi,
+        bloqueado, custom, synced_at
+      FROM crm_produtos
+      ${whereClause}
+      ORDER BY 
+        CASE 
+          WHEN LOWER(codigo) = LOWER($2) THEN 0
+          WHEN LOWER(codigo) LIKE LOWER($3) THEN 1
+          WHEN LOWER(descricao) LIKE LOWER($3) THEN 2
+          ELSE 3
+        END,
+        codigo ASC
+      LIMIT $4;
+    `;
+
+    const res = await safeQuery(sql, [
+      `%${termLower}%`,
+      cleanTerm,
+      `${cleanTerm}%`,
+      limitNum
+    ]);
+
+    if (res && Array.isArray(res.rows) && res.rows.length > 0) {
+      return res.rows.map(r => ({
+        codigo: r.codigo,
+        descricao: r.descricao,
+        ncm: r.ncm || '',
+        unidade: r.unidade || 'UN',
+        tipo: r.tipo || 'PA',
+        grupo: r.grupo || '',
+        preco_tabela: Number(r.preco_tabela) || 0,
+        peso_liquido: Number(r.peso_liquido) || 0,
+        peso_bruto: Number(r.peso_bruto) || 0,
+        aliquota_ipi: Number(r.aliquota_ipi) || 0,
+        bloqueado: Boolean(r.bloqueado),
+        synced_at: r.synced_at
+      }));
+    }
+  } catch (errPg) {
+    console.warn('⚠️ [CRM Autocomplete Produtos] Falha ao consultar Supabase Postgres. Usando cache local:', errPg.message);
+  }
+
+  // 2. Fallback resiliente no cache local (crm_produtos_cache.json)
+  const cache = await readProdutosCache();
+  const list = (cache.produtos || []).filter(p => {
+    if (apenasAtivos && p.bloqueado) return false;
+    const c = (p.codigo || '').toLowerCase();
+    const d = (p.descricao || '').toLowerCase();
+    return c.includes(termLower) || d.includes(termLower);
+  });
+
+  list.sort((a, b) => {
+    const aCod = (a.codigo || '').toLowerCase();
+    const bCod = (b.codigo || '').toLowerCase();
+    const aDesc = (a.descricao || '').toLowerCase();
+    const bDesc = (b.descricao || '').toLowerCase();
+    if (aCod === termLower && bCod !== termLower) return -1;
+    if (bCod === termLower && aCod !== termLower) return 1;
+    if (aCod.startsWith(termLower) && !bCod.startsWith(termLower)) return -1;
+    if (bCod.startsWith(termLower) && !aCod.startsWith(termLower)) return 1;
+    if (aDesc.startsWith(termLower) && !bDesc.startsWith(termLower)) return -1;
+    if (bDesc.startsWith(termLower) && !aDesc.startsWith(termLower)) return 1;
+    return aCod.localeCompare(bCod);
+  });
+
+  return list.slice(0, limitNum).map(p => ({
+    codigo: p.codigo,
+    descricao: p.descricao,
+    ncm: p.ncm || '',
+    unidade: p.unidade || 'UN',
+    tipo: p.tipo || 'PA',
+    grupo: p.grupo || '',
+    preco_tabela: Number(p.preco_tabela) || 0,
+    peso_liquido: Number(p.peso_liquido) || 0,
+    peso_bruto: Number(p.peso_bruto) || 0,
+    aliquota_ipi: Number(p.aliquota_ipi) || 0,
+    bloqueado: Boolean(p.bloqueado),
+    synced_at: p.synced_at || cache.updated_at
+  }));
+}
+
+/**
+ * 17. OBTENÇÃO DE STATUS DO CATÁLOGO DE PRODUTOS DO CRM
+ */
+async function obterStatusProdutosCrm() {
+  try {
+    const res = await safeQuery(`
+      SELECT 
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE bloqueado IS FALSE OR bloqueado IS NULL)::int AS ativos,
+        COUNT(*) FILTER (WHERE bloqueado IS TRUE)::int AS bloqueados,
+        MAX(synced_at) AS last_sync
+      FROM crm_produtos;
+    `);
+
+    if (res && Array.isArray(res.rows) && res.rows.length > 0 && res.rows[0].total !== null) {
+      const r = res.rows[0];
+      return {
+        success: true,
+        total_produtos: Number(r.total) || 0,
+        produtos_ativos: Number(r.ativos) || 0,
+        produtos_bloqueados: Number(r.bloqueados) || 0,
+        last_synced_at: r.last_sync || null,
+        origem: 'DATABASE'
+      };
+    }
+  } catch (errPg) {
+    console.warn('⚠️ [CRM Status Produtos] Falha ao consultar PostgreSQL. Usando cache local:', errPg.message);
+  }
+
+  // Fallback para cache local
+  const cache = await readProdutosCache();
+  const prods = cache.produtos || [];
+  const ativos = prods.filter(p => !p.bloqueado).length;
+
+  return {
+    success: true,
+    total_produtos: prods.length,
+    produtos_ativos: ativos,
+    produtos_bloqueados: prods.length - ativos,
+    last_synced_at: cache.updated_at || null,
+    origem: 'CACHE_LOCAL'
+  };
+}
+
+const initCrmDatabase = initCrmTables;
+
 module.exports = {
   CANONICAL_STAGES,
   initCrmTables,
+  initCrmDatabase,
   listarDeals,
   obterDealPorId,
   criarDeal,
@@ -2071,5 +2496,10 @@ module.exports = {
   excluirCliente,
   restaurarCliente,
   consultarCep,
-  normalizarSiteUrl
+  normalizarSiteUrl,
+  readProdutosCache,
+  writeProdutosCache,
+  sincronizarProdutosCrmProtheus,
+  autocompleteProdutos,
+  obterStatusProdutosCrm
 };

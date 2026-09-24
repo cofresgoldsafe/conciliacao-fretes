@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.253 (Homologada em 24/09/2026 15:38)  
+> **Versão da Documentação:** v8.254 (Homologada em 24/09/2026 16:20)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 24/09/2026 15:38 (v8.253 - Novos filtros de status e remocao de Diretoria no CRM Comercial)  
+> **Data da Última Auditoria:** 24/09/2026 16:20 (v8.254 - Catalogo de Produtos Protheus SB1090/SB1160 no CRM Comercial com Autocomplete Instantaneo, NCM, Peso e Calculo Total)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.254 (24/09/2026):** Catálogo de Produtos Protheus (`SB1090`/`SB1160`) espelhado no Supabase PostgreSQL (`crm_produtos`) e cache local de contingência (`crm_produtos_cache.json` com 1.883 produtos reais). Autocomplete inteligente (< 10ms) na tabela de itens cotados do modal de oportunidades, preenchimento automático de código, descrição, preço de tabela, NCM fiscal (`B1_POSIPI`), peso líquido/bruto (`B1_PESO`/`B1_PESBRU`) e UM, cálculo em tempo real de Peso Total da Proposta (`Σ qtd * peso`), botão `🔄 Sync Produtos` sob demanda e RLS restrita (7 baterias completas aprovadas em `test_crm_produtos.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) e [crm_produtos_arquitetura.md](docs/telas/08_bi_executivo/crm_produtos_arquitetura.md)).
 - **v8.253 (24/09/2026):** Novos filtros de status e proprietário no CRM Comercial (`#tab-bi-crm`): remoção de "Diretoria" do filtro de vendedores operacionais, renomeação de "Oportunidades Ativas" para "Oportunidades Abertas" (excluindo ganhos e perdidos), inclusão dos filtros "Somente Ganhas", "Ganhas Hoje" e "Ganhas Ontem" com tratamento imune a Timezone Shift UTC-3 (ISO e DateOnly), reset para "ABERTAS" no botão limpar e acessibilidade `aria-label` (10 testes aprovados em `test_crm_filtros.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.252 (24/09/2026):** Correção da detecção de bloqueios SC9 em `formatBadgeBloqCredito` e `formatBadgeBloqEstoque` e estilização de badges liberados ("SEM BLOQ") com fundo verde claro (`#dcfce7`) e letra verde escuro (`#14532d`), mantendo vermelho para bloqueio de crédito e amarelo para bloqueio de estoque (20 testes aprovados em `test_pedidos_abertos.js` — detalhado em [pedidos_abertos.md](docs/telas/04_vendedores/pedidos_abertos.md)).
 - **v8.251 (24/09/2026):** Implementação da visualização em **Listagem** com alternância Kanban x Tabela no CRM Comercial (`#tab-bi-crm`), persistência em `localStorage`, tabela paginada com 10 colunas canônicas alinhadas ao `listagem.png`, thead sticky, sanitização XSS e preservação de campos `faturadoPor` e `contatoNome` (6 baterias funcionais aprovadas em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

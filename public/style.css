@@ -4442,10 +4442,19 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
-.crm-toast-success {
+.crm-toast-success,
+.crm-toast-sucesso {
   background: #065f46;
   color: #d1fae5;
   border: 1px solid #10b981;
+}
+
+.crm-toast-danger,
+.crm-toast-error,
+.crm-toast-erro {
+  background: #7f1d1d;
+  color: #fee2e2;
+  border: 1px solid #ef4444;
 }
 
 .crm-toast-info {

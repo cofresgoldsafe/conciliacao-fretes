@@ -420,6 +420,83 @@ router.get('/clientes/autocomplete', async (req, res) => {
   }
 });
 
+// ============================================================================
+// ENDPOINTS DE CATÁLOGO E ESPELHO DE PRODUTOS (PROTHEUS SB1090/SB1160)
+// ============================================================================
+
+/**
+ * GET /api/bi/crm/produtos/autocomplete
+ * Busca inteligente de produtos cadastrados no CRM / Protheus ERP por código ou descrição
+ */
+router.get('/produtos/autocomplete', async (req, res) => {
+  try {
+    const termo = (req.query.q || req.query.termo || req.query.busca || '').trim();
+    const limite = req.query.limite ? parseInt(req.query.limite, 10) : 15;
+    const apenasAtivos = req.query.apenasAtivos !== 'false';
+
+    const produtos = await crmEngine.autocompleteProdutos(termo, { limite, apenasAtivos });
+
+    return res.json({
+      success: true,
+      total: produtos.length,
+      data: produtos
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro no autocomplete de produtos',
+      detail: err.message,
+      code: 'PRODUTOS_AUTOCOMPLETE_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/produtos/sync
+ * Força a sincronização do catálogo de produtos das tabelas SB1090 e SB1160 do Protheus
+ */
+router.post('/produtos/sync', async (req, res) => {
+  try {
+    const username = (req.user && req.user.username) || 'sistema';
+    const resultado = await crmEngine.sincronizarProdutosCrmProtheus({ triggeredBy: username });
+
+    return res.json({
+      success: true,
+      message: 'Catálogo de produtos do Protheus sincronizado com sucesso.',
+      data: resultado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro na sincronização de produtos do Protheus',
+      detail: err.message,
+      code: 'PRODUTOS_SYNC_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/produtos/status
+ * Retorna telemetria e integridade do catálogo de produtos (total, ativos, data da última carga)
+ */
+router.get('/produtos/status', async (req, res) => {
+  try {
+    const statusInfo = await crmEngine.obterStatusProdutosCrm();
+
+    return res.json({
+      success: true,
+      data: statusInfo
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao obter status do catálogo de produtos',
+      detail: err.message,
+      code: 'PRODUTOS_STATUS_ERROR'
+    });
+  }
+});
+
 /**
  * GET /api/bi/crm/vendedores
  * Retorna os vendedores ativos mapeados

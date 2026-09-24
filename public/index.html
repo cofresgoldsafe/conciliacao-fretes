@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.253">
+  <link rel="stylesheet" href="style.css?v=8.254">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 15:38 (Novos filtros de status e remocao de Diretoria no CRM Comercial)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 16:18 (Catalogo de Produtos Protheus SB1090/SB1160 no CRM com Autocomplete Instantaneo, NCM, Peso e Calculo Total)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -7060,27 +7060,32 @@
         </div>
 
         <!-- BLOCO 3: ITENS COTADOS -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
             <strong style="font-size: 0.88rem; color: #fbbf24; display: block;">
-              📦 3. Tabela de Itens Cotados
+              📦 3. Tabela de Itens Cotados (Catálogo Protheus)
             </strong>
-            <button type="button" id="btnCrmAddItemCotado" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
-              ➕ Adicionar Item
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" id="btnCrmSyncProdutos" class="btn btn-outline btn-sm" style="font-size: 0.76rem; padding: 3px 8px; color: #94a3b8; display: flex; align-items: center; gap: 4px;" title="Sincronizar produtos com ERP Protheus (SB1090/SB1160)">
+                🔄 Sync Produtos
+              </button>
+              <button type="button" id="btnCrmAddItemCotado" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
+                ➕ Adicionar Item
+              </button>
+            </div>
           </div>
 
-          <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+          <div class="table-responsive" style="max-height: 260px; overflow-y: auto; overflow-x: visible;">
             <table class="data-table" style="font-size: 0.82rem; width: 100%;">
               <thead>
                 <tr>
-                  <th style="width: 120px;">Código</th>
+                  <th style="width: 140px;">Código</th>
                   <th>Descrição do Produto</th>
-                  <th style="width: 75px; text-align: right;">Qtd</th>
-                  <th style="width: 115px; text-align: right;">P. Tabela</th>
+                  <th style="width: 70px; text-align: right;">Qtd</th>
+                  <th style="width: 110px; text-align: right;">P. Tabela</th>
                   <th style="width: 115px; text-align: right;">P. Negociado</th>
                   <th style="width: 110px; text-align: right;">Total</th>
-                  <th style="width: 45px; text-align: center;">Ação</th>
+                  <th style="width: 40px; text-align: center;">Ação</th>
                 </tr>
               </thead>
               <tbody id="crmTbodyItensCotados">
@@ -7089,14 +7094,20 @@
             </table>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--panel-border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--panel-border); flex-wrap: wrap; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Total Oportunidade:</span>
               <input type="number" min="0" step="0.01" id="crmInputValor" class="form-control" style="width: 140px; font-weight: 700; color: #38bdf8; text-align: right;" value="0">
             </div>
-            <div>
-              <span style="font-size: 0.82rem; color: var(--text-muted);">Soma Itens:</span>
-              <strong id="crmItensCotadosTotalDisplay" style="font-size: 1rem; color: #10b981; margin-left: 6px;">R$ 0,00</strong>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Peso Total Est.:</span>
+                <strong id="crmItensCotadosPesoDisplay" style="font-size: 0.92rem; color: #38bdf8; margin-left: 4px;">0,000 kg</strong>
+              </div>
+              <div>
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Soma Itens:</span>
+                <strong id="crmItensCotadosTotalDisplay" style="font-size: 1rem; color: #10b981; margin-left: 6px;">R$ 0,00</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -9635,24 +9646,24 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.253"></script>
-  <script src="js/bi.js?v=8.253"></script>
-  <script src="js/bi_indices.js?v=8.253"></script>
-  <script src="js/bi_autorizacoes.js?v=8.253"></script>
-  <script src="js/bi_despesas.js?v=8.253"></script>
-  <script src="js/gordura_frete.js?v=8.253"></script>
-  <script src="js/fechamento_vendedores.js?v=8.253"></script>
-  <script type="module" src="js/tarefas.js?v=8.253"></script>
-  <script src="js/holerites.js?v=8.253"></script>
-  <script src="js/funcionarios_dp.js?v=8.253"></script>
-  <script src="js/crm.js?v=8.253"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.253"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.253"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.253"></script>
-  <script src="js/nfse_pendentes.js?v=8.253"></script>
-  <script src="js/fechamento_fiscal.js?v=8.253"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.253"></script>
-  <script src="js/contas_pagar.js?v=8.253"></script>
-  <script src="app.js?v=8.253"></script>
+  <script src="js/chart.umd.min.js?v=8.254"></script>
+  <script src="js/bi.js?v=8.254"></script>
+  <script src="js/bi_indices.js?v=8.254"></script>
+  <script src="js/bi_autorizacoes.js?v=8.254"></script>
+  <script src="js/bi_despesas.js?v=8.254"></script>
+  <script src="js/gordura_frete.js?v=8.254"></script>
+  <script src="js/fechamento_vendedores.js?v=8.254"></script>
+  <script type="module" src="js/tarefas.js?v=8.254"></script>
+  <script src="js/holerites.js?v=8.254"></script>
+  <script src="js/funcionarios_dp.js?v=8.254"></script>
+  <script src="js/crm.js?v=8.254"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.254"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.254"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.254"></script>
+  <script src="js/nfse_pendentes.js?v=8.254"></script>
+  <script src="js/fechamento_fiscal.js?v=8.254"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.254"></script>
+  <script src="js/contas_pagar.js?v=8.254"></script>
+  <script src="app.js?v=8.254"></script>
 </body>
 </html>
