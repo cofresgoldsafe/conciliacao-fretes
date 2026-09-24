@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.259">
+  <link rel="stylesheet" href="style.css?v=8.260">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 18:21 (Adição do seletor Faturado Por (3 empresas) na criação/edição e exibição na visualização da oportunidade)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 20:38 (Espelhamento de transportadoras Protheus no Super Banco e campo Transportadora Indicada com autocomplete estrito no CRM)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -7055,9 +7055,16 @@
           </div>
 
           <div style="display: grid; grid-template-columns: 1.5fr 1.2fr 1.3fr; gap: 12px; margin-bottom: 12px;">
-            <div class="form-group" style="margin: 0;">
-              <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Transportadora Indicada:</label>
-              <input type="text" id="crmInputTransportadora" class="form-control" placeholder="Ex: Braspress, Rodonaves..." style="width: 100%;">
+            <div class="form-group" style="margin: 0; position: relative;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="font-size: 0.8rem; font-weight: 600; display: block; margin: 0;">Transportadora Indicada:</label>
+                <button type="button" id="btnCrmSyncTransportadoras" title="Sincronizar transportadoras com o Protheus" style="background: none; border: none; cursor: pointer; color: var(--accent-primary, #38bdf8); font-size: 0.72rem; padding: 0 4px; display: inline-flex; align-items: center; gap: 2px;">
+                  🔄 Atualizar
+                </button>
+              </div>
+              <input type="text" id="crmInputTransportadora" class="form-control" placeholder="Buscar no Protheus..." style="width: 100%;" autocomplete="off">
+              <input type="hidden" id="crmInputTransportadoraCod">
+              <div id="crmTransportadoraDropdown" class="crm-autocomplete-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1050; max-height: 220px; overflow-y: auto; background: var(--bg-card, #1e293b); border: 1px solid var(--panel-border, rgba(255,255,255,0.1)); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);"></div>
             </div>
             <div class="form-group" style="margin: 0;">
               <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Prazo de Entrega:</label>
@@ -9669,24 +9676,24 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.259"></script>
-  <script src="js/bi.js?v=8.259"></script>
-  <script src="js/bi_indices.js?v=8.259"></script>
-  <script src="js/bi_autorizacoes.js?v=8.259"></script>
-  <script src="js/bi_despesas.js?v=8.259"></script>
-  <script src="js/gordura_frete.js?v=8.259"></script>
-  <script src="js/fechamento_vendedores.js?v=8.259"></script>
-  <script type="module" src="js/tarefas.js?v=8.259"></script>
-  <script src="js/holerites.js?v=8.259"></script>
-  <script src="js/funcionarios_dp.js?v=8.259"></script>
-  <script src="js/crm.js?v=8.259"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.259"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.259"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.259"></script>
-  <script src="js/nfse_pendentes.js?v=8.259"></script>
-  <script src="js/fechamento_fiscal.js?v=8.259"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.259"></script>
-  <script src="js/contas_pagar.js?v=8.259"></script>
-  <script src="app.js?v=8.259"></script>
+  <script src="js/chart.umd.min.js?v=8.260"></script>
+  <script src="js/bi.js?v=8.260"></script>
+  <script src="js/bi_indices.js?v=8.260"></script>
+  <script src="js/bi_autorizacoes.js?v=8.260"></script>
+  <script src="js/bi_despesas.js?v=8.260"></script>
+  <script src="js/gordura_frete.js?v=8.260"></script>
+  <script src="js/fechamento_vendedores.js?v=8.260"></script>
+  <script type="module" src="js/tarefas.js?v=8.260"></script>
+  <script src="js/holerites.js?v=8.260"></script>
+  <script src="js/funcionarios_dp.js?v=8.260"></script>
+  <script src="js/crm.js?v=8.260"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.260"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.260"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.260"></script>
+  <script src="js/nfse_pendentes.js?v=8.260"></script>
+  <script src="js/fechamento_fiscal.js?v=8.260"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.260"></script>
+  <script src="js/contas_pagar.js?v=8.260"></script>
+  <script src="app.js?v=8.260"></script>
 </body>
 </html>

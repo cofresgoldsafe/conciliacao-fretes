@@ -174,6 +174,7 @@
       freteEmbutido: parseFloat(custom.freteEmbutido || d.frete_embutido || d.freteEmbutido) || 0,
       tipoFrete: custom.tipoFrete || d.tipo_frete || d.tipoFrete || 'CIF',
       transportadora: custom.transportadora || d.transportadora || '',
+      transportadoraCod: custom.transportadora_cod || custom.transportadoraCod || d.transportadora_cod || d.transportadoraCod || '',
       prazoEntrega: custom.prazoEntrega || d.prazo_entrega || d.prazoEntrega || '',
       pedidoCompraCliente: custom.pedidoCompraCliente || d.num_pedido_compra || d.pedidoCompraCliente || '',
       observacoesNfe: custom.observacoesNfe || d.obs_nfe || d.observacoesNfe || '',
@@ -1183,6 +1184,14 @@
     document.getElementById('crmInputClienteLoja').value = '';
     document.getElementById('crmInputClienteCnpj').value = '';
 
+    const transpCodEl = document.getElementById('crmInputTransportadoraCod');
+    if (transpCodEl) transpCodEl.value = '';
+    const transpDropdown = document.getElementById('crmTransportadoraDropdown');
+    if (transpDropdown) {
+      transpDropdown.classList.add('hidden');
+      transpDropdown.style.display = 'none';
+    }
+
     const selFaturado = document.getElementById('crmSelectFaturadoPor');
     if (selFaturado) selFaturado.value = '';
 
@@ -1233,6 +1242,15 @@
     document.getElementById('crmInputFreteEmbutido').value = deal.freteEmbutido || 0;
     document.getElementById('crmSelectTipoFrete').value = deal.tipoFrete || 'CIF';
     document.getElementById('crmInputTransportadora').value = deal.transportadora || '';
+    const editTranspCodEl = document.getElementById('crmInputTransportadoraCod');
+    if (editTranspCodEl) {
+      editTranspCodEl.value = deal.transportadoraCod || deal.transportadora_cod || deal.custom?.transportadora_cod || deal.custom?.transportadoraCod || '';
+    }
+    const editTranspDropdown = document.getElementById('crmTransportadoraDropdown');
+    if (editTranspDropdown) {
+      editTranspDropdown.classList.add('hidden');
+      editTranspDropdown.style.display = 'none';
+    }
     document.getElementById('crmInputPrazoEntrega').value = deal.prazoEntrega || '';
     document.getElementById('crmInputPedidoCompraCliente').value = deal.pedidoCompraCliente || '';
     document.getElementById('crmInputObsNfe').value = deal.observacoesNfe || '';
@@ -1589,6 +1607,24 @@
     const freteEmbutido = parseFloat(document.getElementById('crmInputFreteEmbutido')?.value) || 0;
     const tipoFrete = document.getElementById('crmSelectTipoFrete')?.value || 'CIF';
     const transportadora = document.getElementById('crmInputTransportadora')?.value.trim();
+    let transportadoraCod = document.getElementById('crmInputTransportadoraCod')?.value.trim();
+
+    const existingDeal = id ? deals.find(d => String(d.id) === String(id)) : null;
+
+    // Se o deal já tinha código e o nome não mudou, preserva o código existente
+    if (transportadora && !transportadoraCod && existingDeal && existingDeal.transportadora === transportadora) {
+      transportadoraCod = existingDeal.transportadoraCod || existingDeal.transportadora_cod || existingDeal.custom?.transportadora_cod || existingDeal.custom?.transportadoraCod || '';
+      const codInputEl = document.getElementById('crmInputTransportadoraCod');
+      if (codInputEl) codInputEl.value = transportadoraCod;
+    }
+
+    // Validação Estrita: Transportadora deve existir no Protheus
+    if (transportadora && !transportadoraCod) {
+      alert('A transportadora indicada deve ser obrigatoriamente selecionada da lista do Protheus.\n\nCaso o cliente deseje uma nova transportadora, solicite o cadastro ao responsável no Protheus e clique em "🔄 Atualizar".');
+      document.getElementById('crmInputTransportadora')?.focus();
+      return;
+    }
+
     const prazoEntrega = document.getElementById('crmInputPrazoEntrega')?.value.trim();
     const pedidoCompraCliente = document.getElementById('crmInputPedidoCompraCliente')?.value.trim();
     const observacoesNfe = document.getElementById('crmInputObsNfe')?.value.trim();
@@ -1609,7 +1645,6 @@
       return;
     }
 
-    const existingDeal = id ? deals.find(d => String(d.id) === String(id)) : null;
     const contatoNome = existingDeal?.contatoNome || '';
     const faturadoPor = document.getElementById('crmSelectFaturadoPor')?.value || existingDeal?.faturadoPor || '';
 
@@ -1642,6 +1677,8 @@
       tipo_frete: tipoFrete,
       tipoFrete,
       transportadora,
+      transportadora_cod: transportadoraCod || '',
+      transportadoraCod: transportadoraCod || '',
       prazo_entrega: prazoEntrega,
       prazoEntrega,
       num_pedido_compra: pedidoCompraCliente,
@@ -1660,6 +1697,8 @@
         freteEmbutido,
         tipoFrete,
         transportadora,
+        transportadora_cod: transportadoraCod || '',
+        transportadoraCod: transportadoraCod || '',
         prazoEntrega,
         pedidoCompraCliente,
         observacoesNfe
@@ -2136,6 +2175,150 @@
         dropdown.style.display = 'none';
       }
     });
+  }
+
+  let transportadoraDebounceTimer = null;
+
+  /**
+   * Autocomplete de Transportadoras homologadas no Protheus (/api/bi/crm/transportadoras/autocomplete)
+   */
+  function setupTransportadoraAutocomplete() {
+    const inputTransp = document.getElementById('crmInputTransportadora');
+    const inputTranspCod = document.getElementById('crmInputTransportadoraCod');
+    const dropdown = document.getElementById('crmTransportadoraDropdown');
+    const btnSync = document.getElementById('btnCrmSyncTransportadoras');
+    if (!inputTransp || !dropdown) return;
+
+    inputTransp.addEventListener('input', () => {
+      clearTimeout(transportadoraDebounceTimer);
+      const q = inputTransp.value.trim();
+
+      if (!q) {
+        if (inputTranspCod) inputTranspCod.value = '';
+        dropdown.classList.add('hidden');
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      // Se o usuário alterou o texto, limpa o código vinculado para forçar seleção válida
+      if (inputTranspCod) inputTranspCod.value = '';
+
+      transportadoraDebounceTimer = setTimeout(async () => {
+        try {
+          const token = getToken();
+          const res = await fetch(`/api/bi/crm/transportadoras/autocomplete?q=${encodeURIComponent(q)}&limite=15`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+
+          let items = [];
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) items = data;
+            else if (data && Array.isArray(data.data)) items = data.data;
+          }
+
+          if (items.length > 0) {
+            dropdown.innerHTML = items.map(t => {
+              const cod = t.codigo || '';
+              const nome = t.nome || '';
+              const fantasia = t.fantasia || '';
+              const cidadeUf = t.cidade_uf || '';
+              const cnpjFmt = t.cnpj_fmt || '';
+              const bloqueado = Boolean(t.bloqueado);
+
+              const subText = [cidadeUf, cnpjFmt].filter(Boolean).join(' | ');
+
+              return `
+                <div class="crm-autocomplete-item ${bloqueado ? 'crm-item-bloqueado' : ''}" 
+                     data-cod="${escapeHtml(cod)}" 
+                     data-nome="${escapeHtml(nome)}" 
+                     data-bloqueado="${bloqueado}"
+                     style="padding: 8px 12px; cursor: ${bloqueado ? 'not-allowed' : 'pointer'}; border-bottom: 1px solid rgba(255,255,255,0.05); opacity: ${bloqueado ? '0.6' : '1'};">
+                  <div style="font-weight: 600; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+                    <span>${escapeHtml(nome)}</span>
+                    ${bloqueado ? '<span style="font-size: 0.68rem; color: #ef4444; background: rgba(239,68,68,0.15); padding: 1px 6px; border-radius: 4px;">Bloqueada</span>' : ''}
+                  </div>
+                  ${fantasia && fantasia !== nome ? `<div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(fantasia)}</div>` : ''}
+                  ${subText ? `<div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono, monospace);">${escapeHtml(subText)}</div>` : ''}
+                </div>
+              `;
+            }).join('');
+
+            dropdown.classList.remove('hidden');
+            dropdown.style.display = 'block';
+
+            dropdown.querySelectorAll('.crm-autocomplete-item').forEach(itemEl => {
+              itemEl.addEventListener('click', () => {
+                if (itemEl.getAttribute('data-bloqueado') === 'true') {
+                  alert('Esta transportadora está bloqueada no Protheus e não pode ser vinculada.');
+                  return;
+                }
+                const selectedNome = itemEl.getAttribute('data-nome');
+                const selectedCod = itemEl.getAttribute('data-cod');
+                inputTransp.value = selectedNome;
+                if (inputTranspCod) inputTranspCod.value = selectedCod;
+                dropdown.classList.add('hidden');
+                dropdown.style.display = 'none';
+              });
+            });
+          } else {
+            dropdown.innerHTML = `
+              <div style="padding: 10px; font-size: 0.82rem; color: var(--text-muted); text-align: center;">
+                Nenhuma transportadora encontrada no Protheus.<br>
+                <span style="font-size: 0.75rem; color: #f59e0b;">Solicite o cadastro ao responsável e clique em "Atualizar".</span>
+              </div>
+            `;
+            dropdown.classList.remove('hidden');
+            dropdown.style.display = 'block';
+          }
+        } catch {
+          dropdown.classList.add('hidden');
+          dropdown.style.display = 'none';
+        }
+      }, 250);
+    });
+
+    // Fecha ao clicar fora
+    document.addEventListener('click', (e) => {
+      if (!inputTransp.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Botão de sincronização manual com o Protheus
+    if (btnSync && !btnSync._hasSyncListener) {
+      btnSync._hasSyncListener = true;
+      btnSync.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const origText = btnSync.innerHTML;
+        btnSync.disabled = true;
+        btnSync.innerHTML = '⏳ Atualizando...';
+
+        try {
+          const token = getToken();
+          const res = await fetch('/api/bi/crm/transportadoras/sync', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+
+          const data = await res.json();
+          if (res.ok && data.success) {
+            alert(`Transportadoras sincronizadas com sucesso com o Protheus (${data.data?.total_transportadoras || 0} carregadas).`);
+          } else {
+            alert(`Aviso ao atualizar transportadoras: ${data.message || 'Falha de comunicação'}`);
+          }
+        } catch (err) {
+          alert(`Erro ao sincronizar transportadoras: ${err.message}`);
+        } finally {
+          btnSync.disabled = false;
+          btnSync.innerHTML = origText;
+        }
+      });
+    }
   }
 
   /**
@@ -3256,6 +3439,13 @@
             prodDropdown.style.display = 'none';
             return;
           }
+          // Fecha dropdown de transportadoras se estiver visível
+          const transpDropdown = document.getElementById('crmTransportadoraDropdown');
+          if (transpDropdown && transpDropdown.style.display !== 'none' && !transpDropdown.classList.contains('hidden')) {
+            transpDropdown.classList.add('hidden');
+            transpDropdown.style.display = 'none';
+            return;
+          }
           // Fecha na ordem inversa de precedência (modal de cliente primeiro se estiver aberto)
           const modalCliente = document.getElementById('modalCrmCliente');
           if (modalCliente && modalCliente.style.display !== 'none' && !modalCliente.classList.contains('hidden')) {
@@ -3282,6 +3472,7 @@
     }
 
     setupClientAutocomplete();
+    setupTransportadoraAutocomplete();
     setupCepAutoLookup();
     setupProductSyncButton();
   }

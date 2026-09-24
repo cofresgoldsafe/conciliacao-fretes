@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.259 (Homologada em 24/09/2026 18:21)  
+> **Versão da Documentação:** v8.260 (Homologada em 24/09/2026 20:38)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 24/09/2026 18:21 (v8.259 - Seletor Faturado Por com 3 empresas na criação/edição e visualização de oportunidades no CRM)  
+> **Data da Última Auditoria:** 24/09/2026 20:38 (v8.260 - Espelhamento de transportadoras Protheus no Super Banco e campo Transportadora Indicada com autocomplete estrito no CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.260 (24/09/2026):** Espelhamento e sincronização de transportadoras homologadas do Protheus (`SA4010`/`SA4160`, 1.151 registros) para o Super Banco de Dados (`crm_transportadoras` / Supabase Postgres + cache local atômico `crm_transportadoras_cache.json`). O campo "Transportadora Indicada" no CRM ganhou autocomplete estrito (< 10ms) e botão `🔄 Atualizar`, persistindo o código Protheus `A4_COD` em campo oculto `#crmInputTransportadoraCod` para preparo direto da migração para `SC5.C5_TRANSP`, com suporte a `000009 - CLIENTE RETIRA` e validação estrita (10 testes aprovados em `test_crm_transportadoras.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.259 (24/09/2026):** Adição do seletor "Faturado Por" (`#crmSelectFaturadoPor`) com as 3 empresas (`14 - METAL PLENO`, `15 - GSI COFRES`, `16 - OACO`) no Bloco 1 (Identificação da Oportunidade) do modal `#modalCrmOportunidade`. O campo Cliente foi redimensionado (`grid-template-columns: 2fr 1fr; gap: 12px;`) mantendo autocomplete e botões de atalho. O campo também passou a ser exibido no cabeçalho e na grade de condições comerciais do modal de visualização `#modalCrmDetalhes`, com persistência plena e normalização inteligente (8 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.258 (24/09/2026):** Remoção da coluna de checkbox inútil da listagem de oportunidades (`crmDealsCheckAll` no `thead` e `.crm-deal-checkbox` nas linhas). Sem ações em lote implementadas, a coluna representava desperdício de espaço e sobre-engenharia (YAGNI/Navalha de Design). Tabela consolidada com 9 colunas canônicas diretas, iniciando com "Ação" seguida diretamente por "Título" (7 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.257 (24/09/2026):** Reformulação da tabela de Oportunidades do CRM e aplicação da Navalha de Texto: criação da coluna "Ação" em 1º lugar com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização), renomeação da coluna "Organização" para "Nome do Cliente", eliminação da coluna "Contato" e remoção da exibição do rótulo desnecessário "UM: UN" nos itens de propostas e produtos cotados (7 testes aprovados em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

@@ -497,6 +497,82 @@ router.get('/produtos/status', async (req, res) => {
   }
 });
 
+// ============================================================================
+// ENDPOINTS DE TRANSPORTADORAS HOMOLOGADAS (PROTHEUS SA4010/SA4160)
+// ============================================================================
+
+/**
+ * GET /api/bi/crm/transportadoras/autocomplete
+ * Busca inteligente de transportadoras homologadas no Protheus ERP por código, nome, fantasia ou CNPJ
+ */
+router.get('/transportadoras/autocomplete', async (req, res) => {
+  try {
+    const termo = (req.query.q || req.query.termo || req.query.busca || '').trim();
+    const limite = req.query.limite ? parseInt(req.query.limite, 10) : 15;
+
+    const transportadoras = await crmEngine.autocompleteTransportadoras(termo, { limite });
+
+    return res.json({
+      success: true,
+      total: transportadoras.length,
+      data: transportadoras
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro no autocomplete de transportadoras',
+      detail: err.message,
+      code: 'TRANSPORTADORAS_AUTOCOMPLETE_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/transportadoras/sync
+ * Força a sincronização das transportadoras homologadas das tabelas SA4010 e SA4160 do Protheus
+ */
+router.post('/transportadoras/sync', async (req, res) => {
+  try {
+    const username = (req.user && req.user.username) || 'sistema';
+    const resultado = await crmEngine.sincronizarTransportadorasProtheus({ triggeredBy: username });
+
+    return res.json({
+      success: true,
+      message: 'Cadastro de transportadoras do Protheus sincronizado com sucesso.',
+      data: resultado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro na sincronização de transportadoras do Protheus',
+      detail: err.message,
+      code: 'TRANSPORTADORAS_SYNC_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/transportadoras/status
+ * Retorna telemetria e integridade do cadastro de transportadoras (total, ativas, data da última carga)
+ */
+router.get('/transportadoras/status', async (req, res) => {
+  try {
+    const statusInfo = await crmEngine.obterStatusTransportadorasCrm();
+
+    return res.json({
+      success: true,
+      data: statusInfo
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao obter status das transportadoras',
+      detail: err.message,
+      code: 'TRANSPORTADORAS_STATUS_ERROR'
+    });
+  }
+});
+
 /**
  * GET /api/bi/crm/vendedores
  * Retorna os vendedores ativos mapeados

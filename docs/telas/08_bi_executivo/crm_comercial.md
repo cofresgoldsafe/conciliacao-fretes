@@ -105,12 +105,16 @@
 - `GET /api/bi/crm/produtos/autocomplete`: Busca instantânea de produtos no catálogo espelhado com suporte a termo `q`, `limite` e `apenasAtivos`.
 - `POST /api/bi/crm/produtos/sync`: Sincronização em lote do catálogo oficial Protheus (`SB1090`/`SB1160`) com o Supabase e cache local.
 - `GET /api/bi/crm/produtos/status`: Telemetria de total de produtos ativos, bloqueados, última sincronização e origem.
+- `GET /api/bi/crm/transportadoras/autocomplete`: Busca inteligente de transportadoras homologadas no Protheus por código, razão social, fantasia ou CNPJ.
+- `POST /api/bi/crm/transportadoras/sync`: Sincronização manual e sob demanda do cadastro Protheus (`SA4010`/`SA4160`) para o Super Banco.
+- `GET /api/bi/crm/transportadoras/status`: Telemetria de transportadoras ativas, bloqueadas e data da última sincronização.
 
 ---
 
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_transportadoras.js
 node test_crm_produtos.js
 node test_crm_filtros.js
 node test_crm_listagem.js
@@ -121,6 +125,8 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.260 (24/09/2026):** Espelhamento e sincronização completa de transportadoras homologadas do Protheus (`SA4010` e `SA4160`, 1.151 registros) para o Super Banco de Dados (`crm_transportadoras` / Supabase Postgres + cache local atômico `crm_transportadoras_cache.json`). Campo "Transportadora Indicada" (`#crmInputTransportadora`) transformado em componente com autocomplete estrito (< 10ms) e botão `🔄 Atualizar` (`#btnCrmSyncTransportadoras`). Vinculação e persistência do código Protheus (`transportadora_cod` / `A4_COD`) em campo oculto `#crmInputTransportadoraCod` para preparo direto da migração do pedido de venda Protheus (`SC5.C5_TRANSP`), sem poluir a interface visual do vendedor. Suporte nativo à opção `000009 - CLIENTE RETIRA` para frete de retirada física independente do tipo FOB/CIF, validação estrita bloqueando nomes não homologados e preservação visual limpa no modal de detalhes `#crmDetalhesTransportadora` (10 testes aprovados em `test_crm_transportadoras.js`).
+- **v8.259 (24/09/2026):** Adição do seletor "Faturado Por" (`#crmSelectFaturadoPor`) com as 3 empresas (`14 - METAL PLENO`, `15 - GSI COFRES`, `16 - OACO`) no Bloco 1 (Identificação da Oportunidade) do modal `#modalCrmOportunidade`. O campo Cliente foi redimensionado (`grid-template-columns: 2fr 1fr; gap: 12px;`) mantendo autocomplete e botões de atalho. O campo também passou a ser exibido no cabeçalho e na grade de condições comerciais do modal de visualização `#modalCrmDetalhes`, com persistência plena e normalização inteligente (8 testes aprovados em `test_crm_listagem.js`).
 - **v8.258 (24/09/2026):** Remoção do checkbox inútil da listagem de oportunidades (`#crmDealsCheckAll` no cabeçalho e `.crm-deal-checkbox` nas linhas). Como não havia ações em massa implementadas, a coluna representava sobre-engenharia e poluição visual (YAGNI/Navalha de Design). A listagem agora consolida 9 colunas canônicas diretas, com a coluna "Ação" (Lápis e Lupa) sendo seguida imediatamente por "Título" (7 testes aprovados em `test_crm_listagem.js`).
 - **v8.257 (24/09/2026):** Reformulação da tabela de Oportunidades do CRM e aplicação da Navalha de Texto: criação da coluna "Ação" em 1º lugar com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização), renomeação da coluna "Organização" para "Nome do Cliente", eliminação da coluna "Contato" e remoção da exibição do rótulo desnecessário "UM: UN" nos itens de propostas e produtos cotados (7 testes aprovados em `test_crm_listagem.js`).
 - **v8.256 (24/09/2026):** Espelhamento Just-in-Time (*under-the-hood*) de clientes Protheus (`SA1010`) para o Super Banco (`crm_clientes` / Supabase Postgres + cache atômico). Novos clientes cadastrados diretamente no Super Banco; clientes localizados no Protheus são persistidos no Super Banco de forma transparente sem escrita em `SA1010` (somente-leitura estrito). Adicionados botões de ação rápida `#btnCrmEditarClienteFromDeal` (`✏️ Editar`) em `#modalCrmOportunidade` e `#btnCrmEditarClienteDoDetalhes` (`✏️ Editar`) em `#modalCrmDetalhes`. Botão `#btnCrmNovoClienteFromDeal` renomeado para `➕ Add Cliente`. Resolução multi-chave por ID, código Protheus (com pad de 6 dígitos) e CNPJ, tradução automática de vendedor `A1_VEND` para nome, fallback com pré-preenchimento do deal caso o cliente não exista, sincronização reativa com persistência no deal e atualização em tempo real de Kanban/Listagem (13 testes aprovados em `test_crm_clientes.js` e 10 em `test_crm_module.js`).

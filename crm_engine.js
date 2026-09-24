@@ -21,6 +21,7 @@ const dataDir = path.join(__dirname, 'data');
 const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
 const crmClientesCacheFile = path.join(dataDir, 'crm_clientes_cache.json');
 const crmProdutosCacheFile = path.join(dataDir, 'crm_produtos_cache.json');
+const crmTransportadorasCacheFile = path.join(dataDir, 'crm_transportadoras_cache.json');
 const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.json');
 
 // Estágios Canônicos Oficiais
@@ -180,6 +181,44 @@ async function writeProdutosCache(data) {
 }
 
 /**
+ * Lê cache local de contingência de Transportadoras do CRM
+ */
+async function readTransportadorasCache() {
+  try {
+    const data = await safeReadJson(crmTransportadorasCacheFile, null);
+    if (data && typeof data === 'object' && Array.isArray(data.transportadoras)) {
+      return {
+        updated_at: data.updated_at || new Date().toISOString(),
+        transportadoras: data.transportadoras
+      };
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Transportadoras Cache] Aviso ao ler cache local:', err.message);
+  }
+  return {
+    updated_at: new Date().toISOString(),
+    transportadoras: []
+  };
+}
+
+/**
+ * Grava cache local de contingência de Transportadoras de forma atômica
+ */
+async function writeTransportadorasCache(data) {
+  try {
+    const payload = {
+      updated_at: new Date().toISOString(),
+      transportadoras: Array.isArray(data?.transportadoras) ? data.transportadoras : []
+    };
+    await safeWriteJson(crmTransportadorasCacheFile, payload);
+    return true;
+  } catch (err) {
+    console.error('❌ [CRM Transportadoras Cache] Erro ao gravar cache local:', err.message);
+    return false;
+  }
+}
+
+/**
  * Converte valor para JSON seguro se já não for objeto
  */
 function parseJsonField(val, defaultVal = []) {
@@ -260,7 +299,8 @@ async function initCrmTables() {
         tipo_frete VARCHAR(10) DEFAULT 'CIF',
         frete_cobrado NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
         frete_embutido NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-        transportadora VARCHAR(100),
+        transportadora VARCHAR(150),
+        transportadora_cod VARCHAR(20),
         prazo_entrega VARCHAR(100),
         num_pedido_compra VARCHAR(100),
         obs_nfe TEXT,
@@ -441,6 +481,50 @@ async function initCrmTables() {
         DROP POLICY IF EXISTS "Acesso exclusivo backend crm_produtos" ON crm_produtos;
         CREATE POLICY "Acesso exclusivo backend crm_produtos" ON crm_produtos TO service_role, postgres USING (true) WITH CHECK (true);
       END $$;
+
+      -- Migração idempotente para crm_deals
+      ALTER TABLE IF EXISTS crm_deals ADD COLUMN IF NOT EXISTS transportadora_cod VARCHAR(20);
+
+      -- Tabela de Transportadoras espelhadas do Protheus ERP
+      CREATE TABLE IF NOT EXISTS crm_transportadoras (
+        codigo VARCHAR(20) PRIMARY KEY,
+        nome VARCHAR(150) NOT NULL,
+        fantasia VARCHAR(100),
+        cnpj VARCHAR(20),
+        cidade VARCHAR(80),
+        uf VARCHAR(10),
+        telefone VARCHAR(50),
+        bloqueado BOOLEAN DEFAULT FALSE,
+        synced_at TIMESTAMPTZ DEFAULT NOW(),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_crm_transp_nome ON crm_transportadoras(nome);
+      CREATE INDEX IF NOT EXISTS idx_crm_transp_fantasia ON crm_transportadoras(fantasia);
+      CREATE INDEX IF NOT EXISTS idx_crm_transp_cnpj ON crm_transportadoras(cnpj);
+      CREATE INDEX IF NOT EXISTS idx_crm_transp_bloqueado ON crm_transportadoras(bloqueado);
+
+      -- RLS Estrito para crm_transportadoras
+      ALTER TABLE crm_transportadoras ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE crm_transportadoras FORCE ROW LEVEL SECURITY;
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+          GRANT ALL ON TABLE crm_transportadoras TO service_role;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+          GRANT ALL ON TABLE crm_transportadoras TO postgres;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+          REVOKE ALL ON TABLE crm_transportadoras FROM anon;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+          REVOKE ALL ON TABLE crm_transportadoras FROM authenticated;
+        END IF;
+        DROP POLICY IF EXISTS "Acesso exclusivo backend crm_transportadoras" ON crm_transportadoras;
+        CREATE POLICY "Acesso exclusivo backend crm_transportadoras" ON crm_transportadoras TO service_role, postgres USING (true) WITH CHECK (true);
+      END $$;
     `);
     console.log('🟢 [CRM Engine] Schema do CRM verificado/inicializado com sucesso no Supabase PostgreSQL.');
   } catch (err) {
@@ -481,6 +565,7 @@ function mapDealRow(row) {
     frete_cobrado: parseFloat(row.frete_cobrado) || 0,
     frete_embutido: parseFloat(row.frete_embutido) || 0,
     transportadora: row.transportadora || '',
+    transportadora_cod: row.transportadora_cod || '',
     prazo_entrega: row.prazo_entrega || '',
     num_pedido_compra: row.num_pedido_compra || '',
     obs_nfe: row.obs_nfe || '',
@@ -739,6 +824,11 @@ async function criarDeal(dados, usuario) {
   if (dados.faturadoPor || dados.faturado_por) {
     custom.faturadoPor = dados.faturadoPor || dados.faturado_por;
   }
+  const transpCod = dados.transportadora_cod || dados.transportadoraCod || (dados.custom && (dados.custom.transportadora_cod || dados.custom.transportadoraCod)) || '';
+  if (transpCod) {
+    custom.transportadora_cod = transpCod;
+    custom.transportadoraCod = transpCod;
+  }
   const dealId = 'CRM-' + Date.now() + '-' + Math.floor(Math.random() * 8999 + 1000);
 
   let novoDeal = null;
@@ -751,7 +841,7 @@ async function criarDeal(dados, usuario) {
         cliente_email, cliente_telefone, cliente_cidade, cliente_uf,
         valor_total, estagio, probabilidade, data_fechamento_esperada,
         cod_vendedor, nome_vendedor, origem, status, motivo_perda,
-        cond_pgto, tipo_frete, frete_cobrado, frete_embutido, transportadora, prazo_entrega, num_pedido_compra, obs_nfe,
+        cond_pgto, tipo_frete, frete_cobrado, frete_embutido, transportadora, transportadora_cod, prazo_entrega, num_pedido_compra, obs_nfe,
         itens_cotados, contatos, historico_estagios, custom, observacoes,
         ativo, created_by, updated_by, created_at, updated_at
       ) VALUES (
@@ -759,9 +849,9 @@ async function criarDeal(dados, usuario) {
         $7, $8, $9, $10,
         $11, $12, $13, $14,
         $15, $16, $17, $18, $19,
-        $20, $21, $22, $23, $24, $25, $26, $27,
-        $28, $29, $30, $31, $32,
-        TRUE, $33, $34, NOW(), NOW()
+        $20, $21, $22, $23, $24, $25, $26, $27, $28,
+        $29, $30, $31, $32, $33,
+        TRUE, $34, $35, NOW(), NOW()
       ) RETURNING *;
     `, [
       dealId,
@@ -788,6 +878,7 @@ async function criarDeal(dados, usuario) {
       freteCobrado,
       freteEmbutido,
       dados.transportadora || '',
+      transpCod,
       dados.prazo_entrega || '',
       dados.num_pedido_compra || '',
       dados.obs_nfe || '',
@@ -838,6 +929,7 @@ async function criarDeal(dados, usuario) {
       frete_cobrado: freteCobrado,
       frete_embutido: freteEmbutido,
       transportadora: dados.transportadora || '',
+      transportadora_cod: transpCod,
       prazo_entrega: dados.prazo_entrega || '',
       num_pedido_compra: dados.num_pedido_compra || '',
       obs_nfe: dados.obs_nfe || '',
@@ -963,17 +1055,18 @@ async function atualizarDeal(id, dados, usuario) {
         frete_cobrado = $22,
         frete_embutido = $23,
         transportadora = COALESCE($24, transportadora),
-        prazo_entrega = COALESCE($25, prazo_entrega),
-        num_pedido_compra = COALESCE($26, num_pedido_compra),
-        obs_nfe = COALESCE($27, obs_nfe),
-        itens_cotados = $28,
-        contatos = $29,
-        historico_estagios = $30,
-        custom = $31,
-        observacoes = $32,
-        updated_by = $33,
+        transportadora_cod = COALESCE($25, transportadora_cod),
+        prazo_entrega = COALESCE($26, prazo_entrega),
+        num_pedido_compra = COALESCE($27, num_pedido_compra),
+        obs_nfe = COALESCE($28, obs_nfe),
+        itens_cotados = $29,
+        contatos = $30,
+        historico_estagios = $31,
+        custom = $32,
+        observacoes = $33,
+        updated_by = $34,
         updated_at = NOW()
-      WHERE id = $34 AND ativo = TRUE
+      WHERE id = $35 AND ativo = TRUE
       RETURNING *;
     `, [
       dados.titulo ? String(dados.titulo).trim() : null,
@@ -1000,6 +1093,7 @@ async function atualizarDeal(id, dados, usuario) {
       freteCobrado,
       freteEmbutido,
       dados.transportadora !== undefined ? dados.transportadora : null,
+      (dados.transportadora_cod !== undefined ? dados.transportadora_cod : (dados.transportadoraCod !== undefined ? dados.transportadoraCod : null)),
       dados.prazo_entrega !== undefined ? dados.prazo_entrega : null,
       dados.num_pedido_compra !== undefined ? dados.num_pedido_compra : null,
       dados.obs_nfe !== undefined ? dados.obs_nfe : null,
@@ -1023,6 +1117,9 @@ async function atualizarDeal(id, dados, usuario) {
   const cache = await readCache();
   const idx = cache.deals.findIndex(d => String(d.id) === cleanId);
   if (idx !== -1) {
+    const transpCodAtual = dados.transportadora_cod !== undefined ? dados.transportadora_cod : (
+      dados.transportadoraCod !== undefined ? dados.transportadoraCod : cache.deals[idx].transportadora_cod || ''
+    );
     if (!dealAtualizado) {
       dealAtualizado = {
         ...cache.deals[idx],
@@ -1034,6 +1131,7 @@ async function atualizarDeal(id, dados, usuario) {
         nome_vendedor: nomeVendedor,
         frete_cobrado: freteCobrado,
         frete_embutido: freteEmbutido,
+        transportadora_cod: transpCodAtual,
         itens_cotados: itensCotados,
         historico_estagios: historicoEstagios,
         updated_by: u.username,
@@ -1041,6 +1139,7 @@ async function atualizarDeal(id, dados, usuario) {
       };
       cache.deals[idx] = dealAtualizado;
     } else {
+      dealAtualizado.transportadora_cod = transpCodAtual;
       cache.deals[idx] = dealAtualizado;
     }
     await writeCache(cache);
@@ -2612,6 +2711,372 @@ async function obterStatusProdutosCrm() {
   };
 }
 
+/**
+ * 18. SINCRONIZAÇÃO DE TRANSPORTADORAS DO PROTHEUS (SA4010/SA4160 -> CRM_TRANSPORTADORAS + CACHE)
+ */
+async function sincronizarTransportadorasProtheus({ triggeredBy = 'MANUAL' } = {}) {
+  const inicioMs = Date.now();
+  console.log(`🔄 [CRM Transportadoras Sync] Iniciando sincronização do cadastro Protheus disparada por "${triggeredBy}"...`);
+
+  const sa4Tables = ['SA4010', 'SA4160'];
+  const transpMap = new Map();
+
+  for (const table of sa4Tables) {
+    try {
+      const sql = `
+        SELECT 
+          RTRIM(A4_COD) AS A4_COD,
+          RTRIM(A4_NOME) AS A4_NOME,
+          RTRIM(ISNULL(A4_NREDUZ, '')) AS A4_NREDUZ,
+          RTRIM(ISNULL(A4_CGC, '')) AS A4_CGC,
+          RTRIM(ISNULL(A4_MUN, '')) AS A4_MUN,
+          RTRIM(ISNULL(A4_EST, '')) AS A4_EST,
+          RTRIM(ISNULL(A4_TEL, '')) AS A4_TEL,
+          RTRIM(ISNULL(A4_MSBLQL, '')) AS A4_MSBLQL
+        FROM ${table}
+        WHERE D_E_L_E_T_ = ' '
+        ORDER BY A4_COD ASC;
+      `;
+
+      const res = await protheusDb.executeRailwayQuery(sql);
+      if (res && Array.isArray(res.rows) && res.rows.length > 0) {
+        for (const r of res.rows) {
+          const cod = String(r.A4_COD || '').trim();
+          if (!cod || cod.length < 1) continue;
+
+          const nome = String(r.A4_NOME || '').trim() || cod;
+          const fantasia = String(r.A4_NREDUZ || '').trim();
+          const cnpj = String(r.A4_CGC || '').replace(/\D/g, '');
+          const cidade = String(r.A4_MUN || '').trim();
+          const uf = String(r.A4_EST || '').trim();
+          const tel = String(r.A4_TEL || '').trim();
+          const bloqueado = ['1', 'S', 's'].includes(String(r.A4_MSBLQL || '').trim());
+
+          if (!transpMap.has(cod)) {
+            transpMap.set(cod, {
+              codigo: cod,
+              nome,
+              fantasia,
+              cnpj,
+              cidade,
+              uf,
+              telefone: tel,
+              bloqueado
+            });
+          } else {
+            const exist = transpMap.get(cod);
+            if (!exist.fantasia && fantasia) exist.fantasia = fantasia;
+            if (!exist.cnpj && cnpj) exist.cnpj = cnpj;
+            if (!exist.cidade && cidade) exist.cidade = cidade;
+            if (!exist.uf && uf) exist.uf = uf;
+          }
+        }
+      }
+    } catch (errTable) {
+      console.warn(`⚠️ [CRM Transportadoras Sync] Aviso ao extrair transportadoras de ${table}:`, errTable.message);
+    }
+  }
+
+  // Garantia de segurança canônica para Cliente Retira (Código 000009)
+  if (!transpMap.has('000009')) {
+    transpMap.set('000009', {
+      codigo: '000009',
+      nome: 'CLIENTE RETIRA',
+      fantasia: 'CLIENTE RETIRA',
+      cnpj: '',
+      cidade: 'SAO PAULO',
+      uf: 'SP',
+      telefone: '',
+      bloqueado: false
+    });
+  }
+
+  let transpArr = Array.from(transpMap.values());
+  if (transpArr.length === 0) {
+    console.warn('⚠️ [CRM Transportadoras Sync] Nenhuma linha retornada das consultas Protheus. Recorrendo ao cache local...');
+    const cacheLocal = await readTransportadorasCache();
+    if (cacheLocal.transportadoras && cacheLocal.transportadoras.length > 0) {
+      transpArr = cacheLocal.transportadoras;
+    }
+  }
+
+  // 1. Grava no PostgreSQL Supabase em chunks de 100 itens (se conectado)
+  if (transpArr.length > 0) {
+    try {
+      const CHUNK_SIZE = 100;
+      for (let i = 0; i < transpArr.length; i += CHUNK_SIZE) {
+        const chunk = transpArr.slice(i, i + CHUNK_SIZE);
+        const values = [];
+        const placeholders = [];
+        let pIdx = 1;
+
+        for (const t of chunk) {
+          placeholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, NOW(), NOW())`);
+          values.push(
+            t.codigo,
+            t.nome,
+            t.fantasia || null,
+            t.cnpj || null,
+            t.cidade || null,
+            t.uf || null,
+            t.telefone || null,
+            Boolean(t.bloqueado)
+          );
+        }
+
+        const sqlUpsert = `
+          INSERT INTO crm_transportadoras (
+            codigo, nome, fantasia, cnpj, cidade, uf, telefone, bloqueado, synced_at, updated_at
+          ) VALUES ${placeholders.join(', ')}
+          ON CONFLICT (codigo) DO UPDATE SET
+            nome = EXCLUDED.nome,
+            fantasia = COALESCE(EXCLUDED.fantasia, crm_transportadoras.fantasia),
+            cnpj = COALESCE(EXCLUDED.cnpj, crm_transportadoras.cnpj),
+            cidade = COALESCE(EXCLUDED.cidade, crm_transportadoras.cidade),
+            uf = COALESCE(EXCLUDED.uf, crm_transportadoras.uf),
+            telefone = COALESCE(EXCLUDED.telefone, crm_transportadoras.telefone),
+            bloqueado = EXCLUDED.bloqueado,
+            synced_at = EXCLUDED.synced_at,
+            updated_at = NOW();
+        `;
+
+        await safeQuery(sqlUpsert, values);
+      }
+    } catch (errPg) {
+      console.warn('⚠️ [CRM Transportadoras Sync] Aviso ao persistir no PostgreSQL Supabase:', errPg.message);
+    }
+
+    // 2. Grava contingência atômica no cache JSON local
+    await writeTransportadorasCache({ transportadoras: transpArr });
+  }
+
+  const ativasCount = transpArr.filter(t => !t.bloqueado).length;
+  const duracaoMs = Date.now() - inicioMs;
+
+  await recordTelemetry(
+    { username: triggeredBy },
+    'SYNC_TRANSPORTADORAS_CRM',
+    `Cadastro de transportadoras Protheus sincronizado: ${transpArr.length} itens (${ativasCount} ativas).`,
+    { total: transpArr.length, ativas: ativasCount, duracao_ms: duracaoMs }
+  );
+
+  console.log(`🟢 [CRM Transportadoras Sync] Sincronização concluída: ${transpArr.length} transportadoras em ${duracaoMs}ms.`);
+
+  return {
+    success: true,
+    total_transportadoras: transpArr.length,
+    transportadoras_ativas: ativasCount,
+    transportadoras_bloqueadas: transpArr.length - ativasCount,
+    duracao_ms: duracaoMs,
+    status: 'SINCRONIZADO',
+    triggered_by: triggeredBy
+  };
+}
+
+/**
+ * 19. AUTOCOMPLETE DE TRANSPORTADORAS (POSTGRESQL SUPABASE + CACHE LOCAL RESILIENTE)
+ */
+async function autocompleteTransportadoras(termo, { limite = 15 } = {}) {
+  const cleanTerm = sanitizeSqlParam(String(termo || '').trim()).replace(/[\[\]]/g, '');
+  const digitsOnly = cleanTerm.replace(/\D/g, '');
+  const termoLower = cleanTerm.toLowerCase();
+  const maxResults = Math.min(Math.max(parseInt(limite, 10) || 15, 1), 50);
+
+  // Se termo vazio, retorna as principais opções (ex: CLIENTE RETIRA, Braspress, etc.)
+  if (!cleanTerm) {
+    const cache = await readTransportadorasCache();
+    const list = cache.transportadoras || [];
+    return list.slice(0, maxResults).map(r => ({
+      codigo: r.codigo,
+      nome: r.nome,
+      fantasia: r.fantasia || '',
+      cnpj: r.cnpj || '',
+      cnpj_fmt: formatarCgc(r.cnpj),
+      cidade: r.cidade || '',
+      uf: r.uf || '',
+      cidade_uf: r.cidade && r.uf ? `${r.cidade}/${r.uf}` : (r.cidade || r.uf || ''),
+      telefone: r.telefone || '',
+      bloqueado: Boolean(r.bloqueado)
+    }));
+  }
+
+  // 1. Tenta buscar no PostgreSQL Supabase
+  try {
+    const params = [`%${termoLower}%`];
+    let query = `
+      SELECT codigo, nome, fantasia, cnpj, cidade, uf, telefone, bloqueado
+      FROM crm_transportadoras
+      WHERE (
+        LOWER(nome) LIKE $1
+        OR LOWER(COALESCE(fantasia, '')) LIKE $1
+        OR LOWER(codigo) LIKE $1
+    `;
+    if (digitsOnly.length >= 3) {
+      params.push(`%${digitsOnly}%`);
+      query += ` OR cnpj LIKE $${params.length}`;
+    }
+    params.push(maxResults);
+    query += `) ORDER BY
+      bloqueado ASC,
+      CASE 
+        WHEN LOWER(codigo) = '${termoLower}' THEN 0
+        WHEN LOWER(codigo) LIKE '${termoLower}%' THEN 1
+        WHEN LOWER(nome) = '${termoLower}' THEN 2
+        WHEN LOWER(nome) LIKE '${termoLower}%' THEN 3
+        WHEN LOWER(COALESCE(fantasia, '')) LIKE '${termoLower}%' THEN 4
+        ELSE 5 
+      END,
+      nome ASC LIMIT $${params.length};`;
+
+    const res = await safeQuery(query, params);
+    if (res && Array.isArray(res.rows) && res.rows.length > 0) {
+      return res.rows.map(r => ({
+        codigo: r.codigo,
+        nome: r.nome,
+        fantasia: r.fantasia || '',
+        cnpj: r.cnpj || '',
+        cnpj_fmt: formatarCgc(r.cnpj),
+        cidade: r.cidade || '',
+        uf: r.uf || '',
+        cidade_uf: r.cidade && r.uf ? `${r.cidade}/${r.uf}` : (r.cidade || r.uf || ''),
+        telefone: r.telefone || '',
+        bloqueado: Boolean(r.bloqueado)
+      }));
+    }
+  } catch (errPg) {
+    console.warn('⚠️ [CRM Transportadoras Autocomplete] Falha ao consultar PostgreSQL. Usando fallback cache:', errPg.message);
+  }
+
+  // 2. Fallback de contingência no Cache Local
+  try {
+    const cache = await readTransportadorasCache();
+    let list = cache.transportadoras || [];
+    
+    // Auto-inicialização sob demanda se o cache ainda estiver zerado
+    if (list.length === 0) {
+      const syncRes = await sincronizarTransportadorasProtheus({ triggeredBy: 'AUTO_INIT' }).catch(() => null);
+      if (syncRes && syncRes.total_transportadoras > 0) {
+        const freshCache = await readTransportadorasCache();
+        list = freshCache.transportadoras || [];
+      }
+    }
+
+    const filtrados = list.filter(t => {
+      const n = (t.nome || '').toLowerCase();
+      const f = (t.fantasia || '').toLowerCase();
+      const c = (t.codigo || '').toLowerCase();
+      const doc = (t.cnpj || '').replace(/\D/g, '');
+      return n.includes(termoLower) || f.includes(termoLower) || c.includes(termoLower) || (digitsOnly.length >= 3 && doc.includes(digitsOnly));
+    });
+
+    filtrados.sort((a, b) => {
+      if (a.bloqueado !== b.bloqueado) return a.bloqueado ? 1 : -1;
+      const aCod = (a.codigo || '').toLowerCase();
+      const bCod = (b.codigo || '').toLowerCase();
+      if (aCod === termoLower && bCod !== termoLower) return -1;
+      if (bCod === termoLower && aCod !== termoLower) return 1;
+      if (aCod.startsWith(termoLower) && !bCod.startsWith(termoLower)) return -1;
+      if (bCod.startsWith(termoLower) && !aCod.startsWith(termoLower)) return 1;
+
+      const aNome = (a.nome || '').toLowerCase();
+      const bNome = (b.nome || '').toLowerCase();
+      if (aNome === termoLower && bNome !== termoLower) return -1;
+      if (bNome === termoLower && aNome !== termoLower) return 1;
+      if (aNome.startsWith(termoLower) && !bNome.startsWith(termoLower)) return -1;
+      if (bNome.startsWith(termoLower) && !aNome.startsWith(termoLower)) return 1;
+
+      const aFan = (a.fantasia || '').toLowerCase();
+      const bFan = (b.fantasia || '').toLowerCase();
+      if (aFan.startsWith(termoLower) && !bFan.startsWith(termoLower)) return -1;
+      if (bFan.startsWith(termoLower) && !aFan.startsWith(termoLower)) return 1;
+
+      return aNome.localeCompare(bNome);
+    });
+
+    return filtrados.slice(0, maxResults).map(r => ({
+      codigo: r.codigo,
+      nome: r.nome,
+      fantasia: r.fantasia || '',
+      cnpj: r.cnpj || '',
+      cnpj_fmt: formatarCgc(r.cnpj),
+      cidade: r.cidade || '',
+      uf: r.uf || '',
+      cidade_uf: r.cidade && r.uf ? `${r.cidade}/${r.uf}` : (r.cidade || r.uf || ''),
+      telefone: r.telefone || '',
+      bloqueado: Boolean(r.bloqueado)
+    }));
+  } catch (errCache) {
+    console.warn('⚠️ [CRM Transportadoras Autocomplete] Falha no fallback cache:', errCache.message);
+  }
+
+  return [];
+}
+
+/**
+ * 20. OBTENÇÃO DE STATUS DAS TRANSPORTADORAS DO CRM
+ */
+async function obterStatusTransportadorasCrm() {
+  try {
+    const res = await safeQuery(`
+      SELECT 
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE bloqueado IS FALSE OR bloqueado IS NULL)::int AS ativos,
+        COUNT(*) FILTER (WHERE bloqueado IS TRUE)::int AS bloqueados,
+        MAX(synced_at) AS last_sync
+      FROM crm_transportadoras;
+    `);
+
+    if (res && Array.isArray(res.rows) && res.rows.length > 0 && res.rows[0].total !== null) {
+      const r = res.rows[0];
+      return {
+        success: true,
+        total_transportadoras: Number(r.total) || 0,
+        transportadoras_ativas: Number(r.ativos) || 0,
+        transportadoras_bloqueadas: Number(r.bloqueados) || 0,
+        last_synced_at: r.last_sync || null,
+        origem: 'DATABASE'
+      };
+    }
+  } catch (errPg) {
+    console.warn('⚠️ [CRM Status Transportadoras] Falha ao consultar PostgreSQL. Usando cache local:', errPg.message);
+  }
+
+  // Fallback para cache local
+  const cache = await readTransportadorasCache();
+  const transps = cache.transportadoras || [];
+  const ativas = transps.filter(t => !t.bloqueado).length;
+
+  return {
+    success: true,
+    total_transportadoras: transps.length,
+    transportadoras_ativas: ativas,
+    transportadoras_bloqueadas: transps.length - ativas,
+    last_synced_at: cache.updated_at || null,
+    origem: 'CACHE_LOCAL'
+  };
+}
+
+/**
+ * 21. VALIDAÇÃO DE TRANSPORTADORA CADASTRADA NO PROTHEUS
+ */
+async function validarTransportadoraProtheus(codigo) {
+  if (!codigo || String(codigo).trim().length === 0) return null;
+  const cleanCod = String(codigo).trim();
+
+  // 1. Tenta Postgres
+  try {
+    const res = await safeQuery('SELECT * FROM crm_transportadoras WHERE codigo = $1 LIMIT 1;', [cleanCod]);
+    if (res && res.rows && res.rows.length > 0) {
+      return res.rows[0];
+    }
+  } catch {}
+
+  // 2. Fallback cache local
+  const cache = await readTransportadorasCache();
+  const found = (cache.transportadoras || []).find(t => String(t.codigo).trim() === cleanCod);
+  return found || null;
+}
+
 const initCrmDatabase = initCrmTables;
 
 module.exports = {
@@ -2639,5 +3104,11 @@ module.exports = {
   writeProdutosCache,
   sincronizarProdutosCrmProtheus,
   autocompleteProdutos,
-  obterStatusProdutosCrm
+  obterStatusProdutosCrm,
+  readTransportadorasCache,
+  writeTransportadorasCache,
+  sincronizarTransportadorasProtheus,
+  autocompleteTransportadoras,
+  obterStatusTransportadorasCrm,
+  validarTransportadoraProtheus
 };
