@@ -139,6 +139,17 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.276 (25/09/2026):** Inteligência de Fidelidade por Raiz de CNPJ nas 7 Empresas Protheus, Coluna 🤝 e Badges Visuais:
+  - **Carga Inicial Consolidada das 7 Empresas:** Extração de 48.782 notas fiscais de saída cruzadas com `SA1010` nas 4 empresas inativas (`01`, `04`, `05`, `09`) e nas 3 empresas ativas (`14`, `15`, `16`) via `scripts/carga_inicial_raizes_cnpj.js`. Agrupamento rigoroso pelos 8 primeiros dígitos de `A1_CGC` gerando 28.974 raízes consolidadas no PostgreSQL Supabase (`crm_clientes_raiz_cnpj`) e cache atômico em `data/crm_clientes_raiz_cnpj_cache.json` (7.7 MB) com consultas em memória $O(1)$ (< 0.001 ms).
+  - **Badges Visuais de Fidelidade (⭐ / 💎):** Classificação automática: 1 a 5 compras faturadas = estrela dourada (`⭐ X`); 6 ou mais compras = diamante VIP (`💎 X`); 0 compras ou cliente novo = célula vazia sem poluição visual (Navalha de Texto / YAGNI).
+  - **Exibição Multitela:**
+    - *Listagem Tabular (`#crmDealsTable`):* Nova coluna `🤝` posicionada estritamente entre Título e Valor com alinhamento centralizado e tooltip explicativo.
+    - *Cards do Kanban (`.crm-card-client`):* Badge visual elegante acoplado ao lado do nome da empresa compradora.
+    - *Ficha de Detalhes (`#modalCrmDetalhes`):* Badge inserido em `#crmDetalhesFaseBadge` imediatamente após o bloco de itens cotados (ex: `#1001 — TITULO 📦 2 itens 💎 12`).
+    - *Modal de Oportunidades (`#modalCrmOportunidade`):* Contêiner `#crmDealClienteFidelidadeBadge` posicionado ao lado do rótulo `Cliente: *`, renderizado reativamente ao selecionar clientes no autocomplete ou na edição.
+  - **Sincronização Mensal Automática:** Script incremental idempotente `scripts/sync_mensal_raizes_cnpj.js` para atualização periódica das empresas ativas (14, 15, 16).
+  - **API REST Protegida:** Endpoint `GET /api/bi/crm/clientes/raiz-cnpj/:cnpj` com autenticação JWT Zero-Trust, validação de dígitos e envelopes RFC.
+  - **Suíte de Testes:** 33 testes aprovados em `test_crm_raizes_cnpj.js`, 134 testes mantidos com 100% de aprovação em `test_crm_standalone.js` e 6 em `test_crm_scoring_engine.js`.
 - **v8.275 (25/09/2026):** Ajuste Ergonômico de Largura do Valor Total NFe (`100px`):
   - **Acomodação dos Centavos:** Ampliação da largura do input `#crmInputValor` de `70px` para `100px` em `public/crm.html` e `public/index.html`. O valor de 70px cortava o último zero após a vírgula em valores formatados (ex: `1.250,00`). A largura de 100px garante visualização nítida de valores de até 6 dígitos com folga e sem quebra de layout na barra de resumo.
   - **Suíte de Testes:** 134 testes mantidos com 100% de aprovação em `test_crm_standalone.js`.
