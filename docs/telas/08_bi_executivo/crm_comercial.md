@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.274 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.275 - Homologado)  
 
 ---
 
@@ -34,7 +34,7 @@
   - `#btnCrmNovoClienteFromDeal`: Renomeado para `➕ Add Cliente` (abre modal de cadastro rápido sem sair da oportunidade).
   - `#btnCrmEditarClienteFromDeal`: Botão compacto `✏️ Editar` ao lado do autocomplete de cliente em `#modalCrmOportunidade`, permitindo editar o cadastro comercial do cliente selecionado.
   - `#btnCrmEditarClienteDoDetalhes`: Botão compacto `✏️ Editar` ao lado do nome da organização no cabeçalho do `#modalCrmDetalhes`.
-  - `#crmInputValor`: Campo inalterável de resumo fiscal e comercial exibindo **Valor Total NFe:** com largura compacta reduzida pela metade para `70px` (`readonly disabled tabindex="-1"` com `cursor: not-allowed`, padding compacto `4px 6px` e estilo cinza translúcido idêntico a P. Tabela e Desc(%), com recálculo reativo automático).
+  - `#crmInputValor`: Campo inalterável de resumo fiscal e comercial exibindo **Valor Total NFe:** com largura ajustada para `100px` (`readonly disabled tabindex="-1"` com `cursor: not-allowed`, padding compacto `4px 6px` e estilo cinza translúcido idêntico a P. Tabela e Desc(%), com recálculo reativo automático, prevenindo corte dos centavos).
   - `#crmInputDescontoTotalGeral`: Campo inalterável exibindo **Desconto Total Geral (%):** na mesma linha de Valor Total NFe (`width: 70px`, `readonly disabled tabindex="-1"`, `cursor: not-allowed`, padding compacto `4px 6px`, coloração dinâmica por faixa de margem e cálculo determinístico oficial do BI de Autorizações).
 - **Toggles de Exibição de Oportunidades:**
   - `#btnCrmViewModeKanban`: Ativa modo de exibição em funil Kanban.
@@ -131,6 +131,9 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.275 (25/09/2026):** Ajuste Ergonômico de Largura do Valor Total NFe (`100px`):
+  - **Acomodação dos Centavos:** Ampliação da largura do input `#crmInputValor` de `70px` para `100px` em `public/crm.html` e `public/index.html`. O valor de 70px cortava o último zero após a vírgula em valores formatados (ex: `1.250,00`). A largura de 100px garante visualização nítida de valores de até 6 dígitos com folga e sem quebra de layout na barra de resumo.
+  - **Suíte de Testes:** 134 testes mantidos com 100% de aprovação em `test_crm_standalone.js`.
 - **v8.274 (25/09/2026):** Redução da largura de Valor Total NFe pela metade (70px) e novo campo inalterável Desconto Total Geral (%) no modal de Oportunidades:
   - **Redução Ergonômica:** O campo `#crmInputValor` teve sua largura reduzida de 140px para 70px com padding compacto 4px 6px em `public/crm.html` e `public/index.html`, liberando espaço horizontal na barra de resumo.
   - **Novo Campo Inalterável Desconto Total Geral (%):** Adicionado `#crmInputDescontoTotalGeral` na mesma linha, com `readonly disabled tabindex="-1"` e `cursor: not-allowed`.

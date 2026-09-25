@@ -254,10 +254,10 @@ async function runTests() {
   // 12.9 Proteção defensiva Math.max contra frete cobrado negativo
   assert(crmJs.includes('Math.max(0, parseFloat(document.getElementById(\'crmInputFreteCobrado\')?.value) || 0)'), 'recalcularTotalNfeOportunidade() protege contra valores negativos no frete');
 
-  // Teste 13: Desconto Total Geral (%) e Redução de Largura do Valor Total NFe pela Metade
-  // 13.1 Campo crmInputValor com largura de 70px (metade de 140px)
-  assert(crmHtml.includes('id="crmInputValor"') && crmHtml.includes('width: 70px;'), 'public/crm.html reduziu a largura de crmInputValor pela metade (width: 70px)');
-  assert(indexHtml.includes('id="crmInputValor"') && indexHtml.includes('width: 70px;'), 'public/index.html reduziu a largura de crmInputValor pela metade (width: 70px)');
+  // Teste 13: Desconto Total Geral (%) e Ajuste Ergonômico de Largura do Valor Total NFe (100px)
+  // 13.1 Campo crmInputValor com largura ajustada para 100px (espaço para centavos sem corte)
+  assert(crmHtml.includes('id="crmInputValor"') && crmHtml.includes('width: 100px;'), 'public/crm.html ajustou a largura de crmInputValor para 100px');
+  assert(indexHtml.includes('id="crmInputValor"') && indexHtml.includes('width: 100px;'), 'public/index.html ajustou a largura de crmInputValor para 100px');
 
   // 13.2 Rótulo Desconto Total Geral (%): em crm.html e index.html
   assert(crmHtml.includes('Desconto Total Geral (%):'), 'public/crm.html exibe o rótulo Desconto Total Geral (%):');
