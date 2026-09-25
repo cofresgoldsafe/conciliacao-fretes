@@ -1901,7 +1901,7 @@
           const maxLocalId = deals.reduce((max, d) => {
             const n = parseInt(d.id, 10);
             return (!isNaN(n) && n > max) ? n : max;
-          }, 1000);
+          }, 28999);
           savedDeal = {
             id: String(maxLocalId + 1),
             ...payload,

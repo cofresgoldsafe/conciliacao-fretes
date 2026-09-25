@@ -1,5 +1,212 @@
 [
   {
+    "id": "ACT-1790350305330",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #29002 (\"Oportunidade Proposta Sequencial 29000+\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29002",
+      "titulo": "Oportunidade Proposta Sequencial 29000+"
+    },
+    "createdAt": "2026-09-25T15:31:45.330Z"
+  },
+  {
+    "id": "ACT-1790350305315",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (LIGACAO: \"Follow-up da cotação sequencial\") no negócio #29002",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29002",
+      "tipo": "ligacao",
+      "assunto": "Follow-up da cotação sequencial"
+    },
+    "createdAt": "2026-09-25T15:31:45.316Z"
+  },
+  {
+    "id": "ACT-1790350305297",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #29002 (\"Oportunidade Proposta Sequencial 29000+\") para Metalúrgica Teste Sequencial Ltda",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29002",
+      "cliente": "Metalúrgica Teste Sequencial Ltda",
+      "valorTotal": 12500.5,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T15:31:45.297Z"
+  },
+  {
+    "id": "ACT-1790350305251",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #2715 (\"Oportunidade Legada 2715\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "2715",
+      "titulo": "Oportunidade Legada 2715"
+    },
+    "createdAt": "2026-09-25T15:31:45.251Z"
+  },
+  {
+    "id": "ACT-1790350305236",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #9273 (\"Oportunidade Legada 9273\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "9273",
+      "titulo": "Oportunidade Legada 9273"
+    },
+    "createdAt": "2026-09-25T15:31:45.236Z"
+  },
+  {
+    "id": "ACT-1790350023850",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #29005 (\"Oportunidade Proposta Sequencial 29000+\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29005",
+      "titulo": "Oportunidade Proposta Sequencial 29000+"
+    },
+    "createdAt": "2026-09-25T15:27:03.850Z"
+  },
+  {
+    "id": "ACT-1790350023838",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (LIGACAO: \"Follow-up da cotação sequencial\") no negócio #29005",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29005",
+      "tipo": "ligacao",
+      "assunto": "Follow-up da cotação sequencial"
+    },
+    "createdAt": "2026-09-25T15:27:03.838Z"
+  },
+  {
+    "id": "ACT-1790350023822",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #29005 (\"Oportunidade Proposta Sequencial 29000+\") para Metalúrgica Teste Sequencial Ltda",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29005",
+      "cliente": "Metalúrgica Teste Sequencial Ltda",
+      "valorTotal": 12500.5,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T15:27:03.822Z"
+  },
+  {
+    "id": "ACT-1790350023790",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #2715 (\"Oportunidade Legada 2715\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "2715",
+      "titulo": "Oportunidade Legada 2715"
+    },
+    "createdAt": "2026-09-25T15:27:03.790Z"
+  },
+  {
+    "id": "ACT-1790350023774",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #9273 (\"Oportunidade Legada 9273\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "9273",
+      "titulo": "Oportunidade Legada 9273"
+    },
+    "createdAt": "2026-09-25T15:27:03.774Z"
+  },
+  {
+    "id": "ACT-1790349928821",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #29002 (\"Oportunidade Proposta Sequencial 29000+\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29002",
+      "titulo": "Oportunidade Proposta Sequencial 29000+"
+    },
+    "createdAt": "2026-09-25T15:25:28.821Z"
+  },
+  {
+    "id": "ACT-1790349928808",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (LIGACAO: \"Follow-up da cotação sequencial\") no negócio #29002",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29002",
+      "tipo": "ligacao",
+      "assunto": "Follow-up da cotação sequencial"
+    },
+    "createdAt": "2026-09-25T15:25:28.808Z"
+  },
+  {
+    "id": "ACT-1790349928794",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #29002 (\"Oportunidade Proposta Sequencial 29000+\") para Metalúrgica Teste Sequencial Ltda",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "29002",
+      "cliente": "Metalúrgica Teste Sequencial Ltda",
+      "valorTotal": 12500.5,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T15:25:28.794Z"
+  },
+  {
+    "id": "ACT-1790349928762",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #2715 (\"Oportunidade Legada 2715\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "2715",
+      "titulo": "Oportunidade Legada 2715"
+    },
+    "createdAt": "2026-09-25T15:25:28.762Z"
+  },
+  {
+    "id": "ACT-1790349928744",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #9273 (\"Oportunidade Legada 9273\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "9273",
+      "titulo": "Oportunidade Legada 9273"
+    },
+    "createdAt": "2026-09-25T15:25:28.745Z"
+  },
+  {
     "id": "ACT-1790349490925",
     "username": "alexandre",
     "userName": "Alexandre Master",
@@ -2632,228 +2839,5 @@
       "motivoPerda": ""
     },
     "createdAt": "2026-09-10T14:22:31.256Z"
-  },
-  {
-    "id": "ACT-1789050151241",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_CRIAR_DEAL",
-    "description": "Criou a oportunidade #CRM-1789050151232-9703 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\") para CLIENTE TESTE COMERCIO LTDA",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789050151232-9703",
-      "cliente": "CLIENTE TESTE COMERCIO LTDA",
-      "valorTotal": 45000.5,
-      "estagio": "proposta",
-      "codVendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:22:31.241Z"
-  },
-  {
-    "id": "ACT-1789050147796",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "EXCLUSAO_CRM_CLIENTE",
-    "description": "Excluiu o cliente comercial #CLI-mtvm9j95-4t (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-mtvm9j95-4t",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
-      "cnpjCpf": ""
-    },
-    "createdAt": "2026-09-10T14:22:27.796Z"
-  },
-  {
-    "id": "ACT-1789050145766",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "EDICAO_CRM_CLIENTE",
-    "description": "Atualizou o cadastro do cliente comercial #CLI-mtvm9j95-4t (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-mtvm9j95-4t",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
-      "cnpjCpf": "",
-      "vendedor": "000074"
-    },
-    "createdAt": "2026-09-10T14:22:25.766Z"
-  },
-  {
-    "id": "ACT-1789050145729",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "CADASTRO_CRM_CLIENTE",
-    "description": "Cadastrou o novo cliente comercial #CLI-mtvm9j95-4t (\"EMPRESA TESTE SEGURANCA LTDA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-mtvm9j95-4t",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA",
-      "cnpjCpf": "12345678000199",
-      "vendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:22:25.729Z"
-  },
-  {
-    "id": "ACT-1789049700750",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_CRIAR_DEAL",
-    "description": "Criou a oportunidade #CRM-1789049700742-6997 (\"Teste Frete Embutido\") para Cliente Frete",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049700742-6997",
-      "cliente": "Cliente Frete",
-      "valorTotal": 1050,
-      "estagio": "proposta",
-      "codVendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:15:00.750Z"
-  },
-  {
-    "id": "ACT-1789049700727",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_RESTAURAR_DEAL",
-    "description": "Restaurou o negócio #CRM-1789049698674-8672 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\")",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049698674-8672"
-    },
-    "createdAt": "2026-09-10T14:15:00.727Z"
-  },
-  {
-    "id": "ACT-1789049700707",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_EXCLUIR_DEAL",
-    "description": "Excluiu (soft delete) a oportunidade #CRM-1789049698674-8672 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\")",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049698674-8672",
-      "titulo": "Cotação Painéis Solares e Inversores - Cliente Teste S/A"
-    },
-    "createdAt": "2026-09-10T14:15:00.707Z"
-  },
-  {
-    "id": "ACT-1789049700686",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_MUDAR_ESTAGIO",
-    "description": "Moveu o negócio #CRM-1789049698674-8672 de \"negociacao\" para \"ganho\"",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049698674-8672",
-      "estagioAnterior": "negociacao",
-      "estagioNovo": "ganho",
-      "justificativa": "Pedido aprovado pelo cliente!",
-      "motivoPerda": ""
-    },
-    "createdAt": "2026-09-10T14:15:00.686Z"
-  },
-  {
-    "id": "ACT-1789049698713",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_REGISTRAR_ATIVIDADE",
-    "description": "Registrou atividade (LIGACAO: \"Ligação de alinhamento com Carlos\") no negócio #CRM-1789049698674-8672",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049698674-8672",
-      "tipo": "ligacao",
-      "assunto": "Ligação de alinhamento com Carlos"
-    },
-    "createdAt": "2026-09-10T14:14:58.713Z"
-  },
-  {
-    "id": "ACT-1789049698697",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_MUDAR_ESTAGIO",
-    "description": "Moveu o negócio #CRM-1789049698674-8672 de \"proposta\" para \"negociacao\"",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049698674-8672",
-      "estagioAnterior": "proposta",
-      "estagioNovo": "negociacao",
-      "justificativa": "Negociação avançada com diretoria",
-      "motivoPerda": ""
-    },
-    "createdAt": "2026-09-10T14:14:58.697Z"
-  },
-  {
-    "id": "ACT-1789049698682",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_CRIAR_DEAL",
-    "description": "Criou a oportunidade #CRM-1789049698674-8672 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\") para CLIENTE TESTE COMERCIO LTDA",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049698674-8672",
-      "cliente": "CLIENTE TESTE COMERCIO LTDA",
-      "valorTotal": 45000.5,
-      "estagio": "proposta",
-      "codVendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:14:58.682Z"
-  },
-  {
-    "id": "ACT-1789049694078",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "EXCLUSAO_CRM_CLIENTE",
-    "description": "Excluiu o cliente comercial #CLI-1789049691968-9090 (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-1789049691968-9090",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
-      "cnpjCpf": ""
-    },
-    "createdAt": "2026-09-10T14:14:54.078Z"
-  },
-  {
-    "id": "ACT-1789049692014",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "EDICAO_CRM_CLIENTE",
-    "description": "Atualizou o cadastro do cliente comercial #CLI-1789049691968-9090 (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-1789049691968-9090",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
-      "cnpjCpf": "",
-      "vendedor": "000074"
-    },
-    "createdAt": "2026-09-10T14:14:52.014Z"
-  },
-  {
-    "id": "ACT-1789049691974",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "CADASTRO_CRM_CLIENTE",
-    "description": "Cadastrou o novo cliente comercial #CLI-1789049691968-9090 (\"EMPRESA TESTE SEGURANCA LTDA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-1789049691968-9090",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA",
-      "cnpjCpf": "12345678000199",
-      "vendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:14:51.974Z"
-  },
-  {
-    "id": "ACT-1789049305229",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_CRIAR_DEAL",
-    "description": "Criou a oportunidade #CRM-1789049305221-4492 (\"Teste Frete Embutido\") para Cliente Frete",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049305221-4492",
-      "cliente": "Cliente Frete",
-      "valorTotal": 1050,
-      "estagio": "proposta",
-      "codVendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:08:25.229Z"
   }
 ]

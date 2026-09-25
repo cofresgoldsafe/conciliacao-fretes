@@ -2,7 +2,7 @@
  * test_crm_id_sequencial.js
  * 
  * Bateria de Testes Automatizados para Validação de IDs Sequenciais Limpos
- * de Oportunidades no CRM (iniciando em 1001, atômico, resiliente e retrocompatível).
+ * de Oportunidades no CRM (iniciando em 29000, atômico, resiliente e retrocompatível).
  */
 
 const assert = require('assert');
@@ -82,20 +82,21 @@ async function runTests() {
   await crmEngine.excluirDeal('9273', usuarioTeste);
   await crmEngine.excluirDeal('2715', usuarioTeste);
 
-  // 3. Teste de obtenção do próximo ID
-  console.log('\n3️⃣  Teste: Incremento atômico de obterProximoIdDeal()');
+  // 3. Teste de obtenção do próximo ID (iniciando em 29000 para evitar colisão com CRM em 26700)
+  console.log('\n3️⃣  Teste: Incremento atômico de obterProximoIdDeal() iniciando em 29000');
   const seq1 = await crmEngine.obterProximoIdDeal();
   const seq2 = await crmEngine.obterProximoIdDeal();
   const num1 = parseInt(seq1, 10);
   const num2 = parseInt(seq2, 10);
 
+  assert.ok(num1 >= 29000, `seq1 (${num1}) deve ser >= 29000 para evitar colisão com o CRM atual em 26700`);
   assert.strictEqual(num2, num1 + 1, `seq2 (${num2}) deve ser exatamente seq1 (${num1}) + 1`);
-  console.log(`   ✅ Incremento sequencial atômico validado: ${seq1} -> ${seq2}.`);
+  console.log(`   ✅ Incremento sequencial atômico validado (>= 29000): ${seq1} -> ${seq2}.`);
 
   // 4. Teste de criação real de Deal via criarDeal()
-  console.log('\n4️⃣  Teste: Criação de Deal registrando ID sequencial');
+  console.log('\n4️⃣  Teste: Criação de Deal registrando ID sequencial >= 29000');
   const dealCriado = await crmEngine.criarDeal({
-    titulo: 'Oportunidade Proposta Sequencial 4 Dígitos',
+    titulo: 'Oportunidade Proposta Sequencial 29000+',
     cliente_nome: 'Metalúrgica Teste Sequencial Ltda',
     cliente_cnpj: '11.222.333/0001-44',
     valor_total: 12500.50,
@@ -105,7 +106,7 @@ async function runTests() {
   }, usuarioTeste);
 
   assert.ok(dealCriado && dealCriado.id, 'Deal criado deve possuir ID');
-  assert.ok(/^\d{4,}$/.test(String(dealCriado.id)), `ID gerado '${dealCriado.id}' deve ser numérico sequencial`);
+  assert.ok(parseInt(dealCriado.id, 10) >= 29000, `ID gerado '${dealCriado.id}' deve ser numérico sequencial >= 29000`);
   console.log(`   ✅ Nova oportunidade criada com sucesso sob o ID sequencial limpo: #${dealCriado.id}`);
 
   // 5. Teste de busca por ID numérico
@@ -113,7 +114,7 @@ async function runTests() {
   const dealConsultado = await crmEngine.obterDealPorId(dealCriado.id);
   assert.ok(dealConsultado, `Deal #${dealCriado.id} deve ser encontrado`);
   assert.strictEqual(dealConsultado.id, dealCriado.id, 'ID retornado deve ser idêntico');
-  assert.strictEqual(dealConsultado.titulo, 'Oportunidade Proposta Sequencial 4 Dígitos');
+  assert.strictEqual(dealConsultado.titulo, 'Oportunidade Proposta Sequencial 29000+');
   console.log(`   ✅ Consulta por ID #${dealCriado.id} validada com sucesso.`);
 
   // 6. Teste de vinculação de atividade na oportunidade com ID numérico
@@ -140,14 +141,18 @@ async function runTests() {
   const crmJs = fs.readFileSync(path.join(__dirname, 'public', 'js', 'crm.js'), 'utf8');
   assert.ok(crmJs.includes("dealIdPrefix = deal.id ? `#${deal.id} — ` : ''"), 'crmDetalhesTitulo deve incluir o prefixo #deal.id');
   assert.ok(crmJs.includes("#${escapeHtml(deal.id)}"), 'Card do Kanban deve exibir o ID da oportunidade com #');
-  assert.ok(crmJs.includes("maxLocalId + 1"), 'Fallback local offline deve calcular próximo ID sequencial');
+  assert.ok(crmJs.includes("28999"), 'Fallback local offline em crm.js deve utilizar 28999 como base para iniciar em 29000');
 
   console.log('   ✅ Frontend configurado com visualização limpa de ID sequencial no Kanban, Detalhes e Edição.');
 
   // Higieniza cache local expurgando deals e atividades temporárias do teste
   const finalCache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
   finalCache.deals = finalCache.deals.filter(d => d.ativo !== false && !d.titulo.includes('Legada') && !d.titulo.includes('Sequencial'));
-  finalCache.atividades = finalCache.atividades.filter(a => !a.id.includes('legado') && String(a.deal_id) !== String(dealCriado.id));
+  const maxRealSeq = finalCache.deals.reduce((max, d) => {
+    const n = parseInt(d.id, 10);
+    return (!isNaN(n) && n > max) ? n : max;
+  }, 28999);
+  finalCache.next_deal_seq = Math.max(29000, maxRealSeq + 1);
   fs.writeFileSync(cachePath, JSON.stringify(finalCache, null, 2), 'utf8');
 
   console.log('\n🏆 =================================================================');

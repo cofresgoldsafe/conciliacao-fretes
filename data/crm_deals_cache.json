@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-25T15:18:10.917Z",
-  "next_deal_seq": 9277,
+  "updated_at": "2026-09-25T15:31:45.324Z",
+  "next_deal_seq": 29000,
   "deals": [
     {
       "id": "1001",
@@ -544,6 +544,35 @@
     }
   ],
   "atividades": [
+    {
+      "id": "ACT-1790350305307-8440",
+      "deal_id": "29002",
+      "tipo": "ligacao",
+      "assunto": "Follow-up da cotação sequencial",
+      "descricao": "Ligação com o comprador para alinhamento de prazos.",
+      "data_agendada": null,
+      "data_concluida": null,
+      "status": "pendente",
+      "prioridade": "media",
+      "responsavel_usuario": "alexandre",
+      "responsavel_nome": "Alexandre Master",
+      "custom": {},
+      "created_by": "alexandre",
+      "created_at": "2026-09-25T15:31:45.309Z",
+      "updated_at": "2026-09-25T15:31:45.309Z"
+    },
+    {
+      "id": "act-legado-2715",
+      "deal_id": "2715",
+      "tipo": "NOTA",
+      "assunto": "Nota da oportunidade 2715"
+    },
+    {
+      "id": "act-legado-9273",
+      "deal_id": "9273",
+      "tipo": "NOTA",
+      "assunto": "Nota da oportunidade 9273"
+    },
     {
       "id": "ACT-1790348196702-9097",
       "deal_id": "1018",

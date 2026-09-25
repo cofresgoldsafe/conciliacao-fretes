@@ -123,13 +123,13 @@ async function migrarDealsLegadosParaSequencial(force = false) {
   // 1. Migração idempotente no Supabase PostgreSQL (se conectado)
   try {
     await safeQuery(`
-      CREATE SEQUENCE IF NOT EXISTS crm_deals_seq START WITH 1001;
+      CREATE SEQUENCE IF NOT EXISTS crm_deals_seq START WITH 29000;
 
       DO $$
       DECLARE
         rec RECORD;
         novo_id VARCHAR(64);
-        max_num BIGINT := 1000;
+        max_num BIGINT := 28999;
         sufixo VARCHAR(64);
       BEGIN
         -- 1. Garante constraint com ON UPDATE CASCADE para que a alteração de crm_deals.id propague automaticamente
@@ -145,7 +145,7 @@ async function migrarDealsLegadosParaSequencial(force = false) {
           IF sufixo IS NOT NULL AND sufixo <> '' THEN
             novo_id := sufixo;
           ELSE
-            SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 1000) + 1 INTO max_num FROM crm_deals;
+            SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 28999) + 1 INTO max_num FROM crm_deals;
             novo_id := max_num::text;
           END IF;
 
@@ -168,10 +168,12 @@ async function migrarDealsLegadosParaSequencial(force = false) {
           END IF;
         END LOOP;
 
-        -- 4. Atualiza a sequence para o maior ID numérico existente
-        SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 1000) INTO max_num FROM crm_deals;
-        IF max_num >= 1000 THEN
+        -- 4. Atualiza a sequence para o maior ID numérico existente ou piso mínimo de 29000
+        SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 0) INTO max_num FROM crm_deals;
+        IF max_num >= 29000 THEN
           PERFORM setval('crm_deals_seq', max_num, true);
+        ELSE
+          PERFORM setval('crm_deals_seq', 29000, false);
         END IF;
       END $$;
     `);
@@ -227,7 +229,9 @@ async function migrarDealsLegadosParaSequencial(force = false) {
     if (alterados > 0 || force) {
       cache.deals = deals;
       cache.atividades = atividades;
-      cache.next_deal_seq = Math.max(maxNum + 1, parseInt(cache.next_deal_seq, 10) || 1001);
+      const cachedSeq = parseInt(cache.next_deal_seq, 10) || 0;
+      const maxDealNum = maxNum >= 29000 ? maxNum + 1 : 29000;
+      cache.next_deal_seq = Math.max(29000, maxDealNum, cachedSeq >= 29000 ? cachedSeq : 29000);
       await writeCache(cache);
       console.log(`🟢 [CRM Engine] ${alterados} oportunidades migradas para seus 4 dígitos finais no cache local. Próximo ID: ${cache.next_deal_seq}`);
     }
@@ -237,7 +241,7 @@ async function migrarDealsLegadosParaSequencial(force = false) {
 }
 
 /**
- * Obtém o próximo ID sequencial de oportunidade (iniciando em 1001)
+ * Obtém o próximo ID sequencial de oportunidade (iniciando em 29000)
  * Utiliza sequence nativa atômica no PostgreSQL com fallback resiliente em cache local
  */
 async function obterProximoIdDeal() {
@@ -249,20 +253,31 @@ async function obterProximoIdDeal() {
   try {
     const res = await safeQuery("SELECT nextval('crm_deals_seq') AS next_id;");
     if (res && res.rows && res.rows.length > 0 && res.rows[0].next_id) {
-      const nextId = String(res.rows[0].next_id);
+      let nextId = parseInt(res.rows[0].next_id, 10);
+      // Garante piso mínimo de 29000 (para evitar colisão com CRM legado em 26700)
+      if (nextId < 29000) {
+        await safeQuery("SELECT setval('crm_deals_seq', 29000, false);");
+        const adjustedRes = await safeQuery("SELECT nextval('crm_deals_seq') AS next_id;");
+        if (adjustedRes && adjustedRes.rows && adjustedRes.rows[0].next_id) {
+          nextId = parseInt(adjustedRes.rows[0].next_id, 10);
+        } else {
+          nextId = 29000;
+        }
+      }
+      const nextIdStr = String(nextId);
       try {
         const cache = await readCache();
-        const numVal = parseInt(nextId, 10);
-        if (!isNaN(numVal) && (!cache.next_deal_seq || numVal >= cache.next_deal_seq)) {
-          cache.next_deal_seq = numVal + 1;
+        if (!cache.next_deal_seq || nextId >= cache.next_deal_seq) {
+          cache.next_deal_seq = nextId + 1;
           await writeCache(cache);
         }
       } catch (_) {}
-      return nextId;
+      return nextIdStr;
     }
   } catch (err) {
     try {
-      await safeQuery("CREATE SEQUENCE IF NOT EXISTS crm_deals_seq START WITH 1001;");
+      await safeQuery("CREATE SEQUENCE IF NOT EXISTS crm_deals_seq START WITH 29000;");
+      await safeQuery("SELECT setval('crm_deals_seq', 29000, false);");
       const res = await safeQuery("SELECT nextval('crm_deals_seq') AS next_id;");
       if (res && res.rows && res.rows.length > 0 && res.rows[0].next_id) {
         return String(res.rows[0].next_id);
@@ -274,7 +289,7 @@ async function obterProximoIdDeal() {
   const cache = await readCache();
   if (!cache.deals) cache.deals = [];
 
-  let maxId = 1000;
+  let maxId = 28999;
   for (const d of cache.deals) {
     const n = parseInt(d.id, 10);
     if (!isNaN(n) && String(n) === String(d.id).trim() && n > maxId) {
@@ -282,7 +297,8 @@ async function obterProximoIdDeal() {
     }
   }
 
-  const currentSeq = Math.max(maxId + 1, parseInt(cache.next_deal_seq, 10) || 1001);
+  const cachedSeq = parseInt(cache.next_deal_seq, 10) || 0;
+  const currentSeq = Math.max(maxId + 1, cachedSeq >= 29000 ? cachedSeq : 29000);
   cache.next_deal_seq = currentSeq + 1;
   await writeCache(cache);
   return String(currentSeq);

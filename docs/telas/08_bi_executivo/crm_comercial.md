@@ -129,6 +129,10 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.272 (25/09/2026):** Reconfiguração do Piso Sequencial de Oportunidades do CRM para `29000` (vinte e nove mil):
+  - **Margem de Segurança Anti-Colisão:** Piso inicial de novas oportunidades configurado para `29000` (`crm_deals_seq START WITH 29000`, `cache.next_deal_seq = 29000`), garantindo margem segura em relação à base do CRM anterior/Pipedrive (que atingiu ~26.700 negócios), prevenindo duplicidade de numeração na futura migração/importação.
+  - **Sincronização em Camadas:** PostgreSQL `setval('crm_deals_seq', 29000, false)` / `max_num >= 29000`, contingência atômica no cache local (`cache.next_deal_seq >= 29000`), piso em `obterProximoIdDeal()` e fallback offline no frontend (`crm.js` com base `28999` gerando `maxLocalId + 1 = 29000`).
+  - **Suíte de Testes:** 8 testes aprovados em `test_crm_id_sequencial.js`, 107 em `test_crm_standalone.js` e 8 em `test_crm_listagem.js`.
 - **v8.270 (25/09/2026):** Migração Estrita dos IDs de Oportunidades Legadas para seus 4 Dígitos Finais (ex: `CRM-1790341501167-9273` ➔ `9273`, `CRM-1789051276950-2715` ➔ `2715`):
   - **Extração Fiel dos 4 Dígitos Finais:** Atualização do motor de migração no PostgreSQL e Cache Local (`migrarDealsLegadosParaSequencial`) para extrair exatamente o sufixo numérico final de cada oportunidade antiga (`-([0-9]+)$`), mantendo a identidade original desejada pelo operador.
   - **Propagação em Cascata no Banco (ON UPDATE CASCADE):** Reconfiguração defensiva da foreign key `crm_atividades_deal_id_fkey` para `ON UPDATE CASCADE`, permitindo que a alteração da PK `crm_deals.id` propague instantaneamente para todas as atividades de follow-up (`crm_atividades.deal_id`) sem violação de integridade referencial.
