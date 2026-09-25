@@ -111,6 +111,31 @@
   }
 
   /**
+   * Formatação numérica pt-BR com 2 casas decimais (ex: 1.234,56)
+   */
+  function formatNumberPtBr(val) {
+    const num = parseFloat(val) || 0;
+    return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  /**
+   * Converte string numérica formato pt-BR ou decimal para float
+   */
+  function parseNumberPtBr(val) {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    let s = String(val).trim();
+    if (!s) return 0;
+    if (s.includes(',') && s.includes('.')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (s.includes(',')) {
+      s = s.replace(',', '.');
+    }
+    const parsed = parseFloat(s);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  /**
    * Formatação de data (DD/MM/AAAA)
    */
   function formatDate(isoStr) {
@@ -1509,8 +1534,6 @@
       sumTotal += subtotal;
       sumPeso += pesoTotalItem;
 
-      const hasMeta = !!(item.ncm || (pesoLiq > 0));
-
       html += `
         <tr>
           <td>
@@ -1518,26 +1541,20 @@
           </td>
           <td>
             <input type="text" class="form-control form-control-sm crm-item-desc" data-index="${index}" value="${escapeHtml(item.descricao || '')}" placeholder="Descrição do produto cotado" style="width: 100%;" autocomplete="off" title="Descrição do produto (digite para buscar no catálogo)">
-            ${hasMeta ? `
-              <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 3px; display: flex; gap: 8px;">
-                ${item.ncm ? `<span>NCM: <strong style="color: #cbd5e1;">${escapeHtml(item.ncm)}</strong></span>` : ''}
-                ${pesoLiq > 0 ? `<span>Peso: <strong style="color: #cbd5e1;">${pesoLiq.toFixed(2)}kg</strong></span>` : ''}
-              </div>
-            ` : ''}
           </td>
-          <td style="width: 70px;">
-            <input type="number" min="1" step="1" class="form-control form-control-sm crm-item-qtd" data-index="${index}" value="${item.quantidade || 1}" style="text-align: right;">
+          <td style="width: 55px;">
+            <input type="number" min="1" max="999" step="1" class="form-control form-control-sm crm-item-qtd" data-index="${index}" value="${item.quantidade || 1}" style="text-align: right; width: 55px; padding-left: 4px; padding-right: 4px;" title="Quantidade">
           </td>
-          <td style="width: 110px;">
-            <input type="number" min="0" step="0.01" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${item.precoTabela || 0}" style="text-align: right;" title="Preço oficial de tabela (SB1)">
+          <td style="width: 95px;">
+            <input type="text" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${formatNumberPtBr(item.precoTabela)}" readonly disabled tabindex="-1" style="text-align: right; width: 95px; background: rgba(148, 163, 184, 0.12) !important; color: #94a3b8 !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500;" title="Preço oficial de tabela SB1 (fixo/bloqueado)">
           </td>
-          <td style="width: 115px;">
-            <input type="number" min="0" step="0.01" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${item.precoNegociado || 0}" style="text-align: right; font-weight: 600; color: #38bdf8;" title="Preço negociado com o cliente">
+          <td style="width: 105px;">
+            <input type="text" inputmode="decimal" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${formatNumberPtBr(item.precoNegociado)}" style="text-align: right; width: 105px; font-weight: 600; color: #38bdf8;" title="Preço negociado com o cliente">
           </td>
           <td style="text-align: right; font-weight: 700; white-space: nowrap; width: 110px;">
             ${formatCurrency(subtotal)}
           </td>
-          <td style="text-align: center; width: 40px;">
+          <td style="text-align: center; width: 45px;">
             <button type="button" class="btn btn-outline btn-sm btn-remover-item" data-index="${index}" title="Remover item" style="padding: 2px 6px; color: #f87171;">✕</button>
           </td>
         </tr>
@@ -1556,6 +1573,21 @@
 
     // Attach listeners dos inputs dos itens
     tbody.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('focus', (e) => {
+        if (e.target.classList.contains('crm-item-pnegociado') || e.target.classList.contains('crm-item-qtd')) {
+          e.target.select();
+        }
+      });
+
+      inp.addEventListener('blur', (e) => {
+        const idx = parseInt(e.target.getAttribute('data-index'), 10);
+        if (isNaN(idx) || !currentItems[idx]) return;
+
+        if (e.target.classList.contains('crm-item-pnegociado')) {
+          e.target.value = formatNumberPtBr(currentItems[idx].precoNegociado);
+        }
+      });
+
       inp.addEventListener('input', (e) => {
         const idx = parseInt(e.target.getAttribute('data-index'), 10);
         if (isNaN(idx) || !currentItems[idx]) return;
@@ -1568,9 +1600,12 @@
           currentItems[idx].descricao = e.target.value;
           triggerProductAutocomplete(e.target, idx);
         }
-        if (e.target.classList.contains('crm-item-qtd')) currentItems[idx].quantidade = parseFloat(e.target.value) || 1;
-        if (e.target.classList.contains('crm-item-ptabela')) currentItems[idx].precoTabela = parseFloat(e.target.value) || 0;
-        if (e.target.classList.contains('crm-item-pnegociado')) currentItems[idx].precoNegociado = parseFloat(e.target.value) || 0;
+        if (e.target.classList.contains('crm-item-qtd')) {
+          currentItems[idx].quantidade = parseFloat(e.target.value) || 1;
+        }
+        if (e.target.classList.contains('crm-item-pnegociado')) {
+          currentItems[idx].precoNegociado = parseNumberPtBr(e.target.value);
+        }
 
         // Recalcula totais e peso
         let newSum = 0;
@@ -1585,6 +1620,17 @@
         if (totalDisplay) totalDisplay.textContent = formatCurrency(newSum);
         if (pesoDisplay) pesoDisplay.textContent = `${newPeso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
         if (inputValor && newSum > 0) inputValor.value = newSum.toFixed(2);
+
+        // Atualiza a célula de subtotal desta linha em tempo real
+        const row = e.target.closest('tr');
+        if (row) {
+          const totalCell = row.querySelector('td:nth-last-child(2)');
+          if (totalCell) {
+            const rowQtd = parseFloat(currentItems[idx].quantidade) || 0;
+            const rowP = parseFloat(currentItems[idx].precoNegociado) || 0;
+            totalCell.textContent = formatCurrency(rowQtd * rowP);
+          }
+        }
       });
     });
 

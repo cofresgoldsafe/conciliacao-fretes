@@ -119,6 +119,36 @@ async function runTests() {
   assert(crmJs.includes('btnSalvar.disabled = !valid'), 'public/js/crm.js controla dinamicamente disabled do botão Salvar');
   assert(crmJs.includes('[\'crmInputTitulo\', \'crmSelectVendedor\', \'crmInputCliente\', \'crmSelectFaturadoPor\']'), 'public/js/crm.js escuta eventos nos 4 campos obrigatórios');
 
+  // Teste 10: Otimização de Colunas, Formato pt-BR e Inativação de P. Tabela nos Itens Cotados
+  // 10.1 Largura reduzida das colunas no thead de crm.html e index.html
+  assert(crmHtml.includes('class="col-qtd" style="width: 55px; text-align: right;"'), 'public/crm.html define largura de 55px para a coluna Qtd');
+  assert(indexHtml.includes('class="col-qtd" style="width: 55px; text-align: right;"'), 'public/index.html define largura de 55px para a coluna Qtd');
+  assert(crmHtml.includes('class="col-ptabela" style="width: 95px; text-align: right;"'), 'public/crm.html define largura de 95px para a coluna P. Tabela');
+  assert(indexHtml.includes('class="col-ptabela" style="width: 95px; text-align: right;"'), 'public/index.html define largura de 95px para a coluna P. Tabela');
+  assert(crmHtml.includes('class="col-pnegociado" style="width: 105px; text-align: right;"'), 'public/crm.html define largura de 105px para a coluna P. Negociado');
+  assert(indexHtml.includes('class="col-pnegociado" style="width: 105px; text-align: right;"'), 'public/index.html define largura de 105px para a coluna P. Negociado');
+  assert(crmHtml.includes('class="col-total" style="width: 110px; text-align: right;"'), 'public/crm.html define largura de 110px para a coluna Total');
+  assert(indexHtml.includes('class="col-total" style="width: 110px; text-align: right;"'), 'public/index.html define largura de 110px para a coluna Total');
+
+  // 10.2 Remoção visual de NCM e Peso na edição do item em public/js/crm.js
+  const renderItensMatch = crmJs.match(/function renderItensCotadosTable\(\)[\s\S]*?function addItemCotado\(\)/);
+  const renderItensContent = renderItensMatch ? renderItensMatch[0] : '';
+  assert(!renderItensContent.includes('${hasMeta ?'), 'renderItensCotadosTable() eliminou o bloco hasMeta debaixo da descrição');
+  assert(!renderItensContent.includes('<span>NCM: <strong>'), 'renderItensCotadosTable() não renderiza tag NCM abaixo da descrição');
+  assert(!renderItensContent.includes('<span>Peso: <strong>'), 'renderItensCotadosTable() não renderiza tag Peso abaixo da descrição');
+
+  // 10.3 Campo P. Tabela inalterável (cinza, readonly e disabled) no 1º item e demais
+  assert(renderItensContent.includes('crm-item-ptabela') && renderItensContent.includes('readonly disabled'), 'Campo P. Tabela possui atributos readonly disabled impedindo alteração');
+  assert(renderItensContent.includes('background: rgba(148, 163, 184, 0.12) !important'), 'Campo P. Tabela possui fundo cinza inabilitado de edição');
+  assert(renderItensContent.includes('cursor: not-allowed'), 'Campo P. Tabela possui cursor not-allowed');
+
+  // 10.4 Formatação numérica padrão brasileiro (pt-BR com 2 casas) e parsing
+  assert(crmJs.includes('function formatNumberPtBr(val)'), 'public/js/crm.js implementa formatNumberPtBr()');
+  assert(crmJs.includes('function parseNumberPtBr(val)'), 'public/js/crm.js implementa parseNumberPtBr()');
+  assert(renderItensContent.includes('formatNumberPtBr(item.precoTabela)'), 'P. Tabela é exibido formatado no padrão brasileiro');
+  assert(renderItensContent.includes('formatNumberPtBr(item.precoNegociado)'), 'P. Negociado é exibido formatado no padrão brasileiro');
+  assert(renderItensContent.includes('parseNumberPtBr(e.target.value)'), 'Edição de P. Negociado realiza parse flexível pt-BR em tempo real');
+
   console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
   if (passedTests === totalTests) {
     console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');

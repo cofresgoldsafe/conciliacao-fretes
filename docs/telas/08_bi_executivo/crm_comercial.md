@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.264 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.265 - Homologado)  
 
 ---
 
@@ -127,6 +127,11 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.265 (25/09/2026):** Otimização ergonômica da tabela de Itens Cotados na edição de oportunidades (`#modalCrmOportunidade`), formatação brasileira com 2 casas decimais e inativação de preço de tabela:
+  - **Navalha de Texto / Limpeza Visual:** Remoção da informação visual de NCM e Peso abaixo da descrição do produto na tabela de edição de itens (`renderItensCotadosTable()`), preservando integralmente os metadados fiscais e logísticos no modelo de dados do item (`item.ncm`, `item.pesoLiquido`) para relatórios, fichas e integração futura.
+  - **Diminuição Compacta de Colunas:** Coluna Qtd reduzida para `55px` (adequada para 1 a 3 dígitos), P. Tabela reduzida para `95px` (adequada para até R$ 99.999,00), P. Negociado reduzida para `105px` (adequada para totais até R$ 999.000,00) e Total reduzida para `110px`, liberando folga horizontal planejada na tabela para a futura adição de nova coluna solicitada pelo usuário.
+  - **P. Tabela Inalterável:** Campo cinza inabilitado de edição (`readonly disabled tabindex="-1"`, `background: rgba(148, 163, 184, 0.12)`, `cursor: not-allowed`) no 1º item e em todos os demais itens adicionados, impedindo alteração indevida de preço de tabela pelo vendedor.
+  - **Formato Numérico Brasileiro (pt-BR):** Implementação de `formatNumberPtBr()` (duas casas decimais e separador de milhar brasileiro) para P. Tabela e P. Negociado, `parseNumberPtBr()` para parsing decimal flexível em tempo real na digitação, autoformatação em `blur` e seleção automática de texto em `focus` (67 testes aprovados em `test_crm_standalone.js`).
 - **v8.264 (25/09/2026):** Validação compulsória dos 4 campos obrigatórios do Deal no modal de oportunidades (`Título da Oportunidade: *`, `Vendedor Responsável: *`, `Cliente: *`, `Faturado Por: *`). Rótulo com asterisco em Faturado Por: * e inclusão de atributo required. Rejeição do placeholder inicial "Selecione a empresa..." configurado com `value="" disabled selected`. Botão Salvar Oportunidade (`#btnSalvarCrmOportunidade`) mantido dinamicamente inativo (`disabled` com tooltip orientativo e cursor `not-allowed`) via `isDealFormValid()` e `updateDealSaveButtonState()` enquanto qualquer um dos 4 campos estiver ausente ou com placeholder, com reatividade imediata a eventos de digitação, seleção de vendedor, autocomplete de cliente e seleção de empresa (48 testes aprovados em `test_crm_standalone.js`).
 - **v8.263 (25/09/2026):** Reposicionamento ergonômico no cabeçalho do CRM Comercial (`/crm` / `public/crm.html`), colocando o botão principal com fundo azul claro `➕ Nova Oportunidade` imediatamente antes do alternador de abas `📊 Funil de Oportunidades` e `👥 Clientes Cadastrados`, alinhando a ordem de leitura ocidental (Ação Principal ➔ Modos de Visualização ➔ Atualizar ➔ Utilidades) (34 testes aprovados em `test_crm_standalone.js`).
 - **v8.262 (25/09/2026):** Unificação do Cabeçalho do CRM Comercial (`public/crm.html`), Eliminação da 2ª Faixa Informativa (Navalha de Texto / YAGNI) e Padronização dos Botões na Topbar com Destaque Exclusivo:
