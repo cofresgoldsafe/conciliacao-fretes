@@ -22,6 +22,7 @@ const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
 const crmClientesCacheFile = path.join(dataDir, 'crm_clientes_cache.json');
 const crmProdutosCacheFile = path.join(dataDir, 'crm_produtos_cache.json');
 const crmTransportadorasCacheFile = path.join(dataDir, 'crm_transportadoras_cache.json');
+const crmRaizesCacheFile = path.join(dataDir, 'crm_clientes_raiz_cnpj_cache.json');
 const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.json');
 
 // Estágios Canônicos Oficiais
@@ -107,6 +108,123 @@ async function writeCache(data) {
   } catch (err) {
     console.error('❌ [CRM Cache] Erro ao gravar cache local:', err.message);
   }
+}
+
+// ============================================================================
+// INTELIGÊNCIA COMERCIAL: FIDELIDADE POR RAIZ DE CNPJ (GRUPO GSI)
+// ============================================================================
+let _raizesCache = null;
+let _raizesCacheLoadedAt = 0;
+
+/**
+ * Carrega e memoriza o cache de raízes de CNPJ das 7 empresas
+ */
+async function obterCacheRaizes() {
+  const now = Date.now();
+  if (_raizesCache && (now - _raizesCacheLoadedAt) < 60000) {
+    return _raizesCache;
+  }
+  try {
+    const raw = await safeReadJson(crmRaizesCacheFile, null);
+    if (raw && raw.raizes) {
+      _raizesCache = raw.raizes;
+      _raizesCacheLoadedAt = now;
+      return _raizesCache;
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Raizes] Falha ao carregar cache de raízes de CNPJ:', err.message);
+  }
+  return _raizesCache || {};
+}
+
+/**
+ * Extrai os 8 primeiros dígitos da raiz do CNPJ (ou 9 do CPF)
+ */
+function extrairRaizCnpj(cgc) {
+  if (!cgc) return null;
+  const digits = String(cgc).replace(/\D/g, '');
+  if (digits.length >= 8) {
+    return digits.slice(0, 8);
+  }
+  return null;
+}
+
+/**
+ * Formata o objeto unificado de fidelidade para consumo no frontend
+ */
+function formatarObjetoFidelidade(item) {
+  if (!item) return null;
+  const total = parseInt(item.total_compras, 10) || 0;
+  if (total <= 0) return null;
+
+  const isVip = total >= 6;
+  const icone = isVip ? '💎' : '⭐';
+  const tipo = isVip ? 'diamante' : 'estrela';
+  const label = `${icone} ${total}`;
+  const tooltip = isVip 
+    ? `Cliente Diamante VIP: ${total} compras faturadas no Grupo GSI`
+    : `Cliente Fidelidade: ${total} ${total === 1 ? 'compra faturada' : 'compras faturadas'} no Grupo GSI`;
+
+  return {
+    raiz_cnpj: item.raiz_cnpj,
+    total_compras: total,
+    valor_total: parseFloat(item.valor_total) || 0,
+    primeira_compra: item.primeira_compra || null,
+    ultima_compra: item.ultima_compra || null,
+    empresas: Array.isArray(item.empresas) ? item.empresas : [],
+    tipo,
+    icone,
+    label,
+    tooltip
+  };
+}
+
+/**
+ * Consulta síncrona ultra-rápida O(1) na memória (ideal para loops de listagem)
+ */
+function obterFidelidadeRaizSync(cgc) {
+  const raiz = extrairRaizCnpj(cgc);
+  if (!raiz) return null;
+  if (!_raizesCache) {
+    try {
+      const raw = safeReadJsonSync(crmRaizesCacheFile, null);
+      if (raw && raw.raizes) {
+        _raizesCache = raw.raizes;
+        _raizesCacheLoadedAt = Date.now();
+      }
+    } catch (_) {}
+  }
+  if (!_raizesCache) return null;
+  const item = _raizesCache[raiz];
+  return item ? formatarObjetoFidelidade(item) : null;
+}
+
+/**
+ * Consulta assíncrona resiliente de fidelidade por raiz de CNPJ (com fallback Postgres/Cache)
+ */
+async function obterFidelidadeRaiz(cgc) {
+  const raiz = extrairRaizCnpj(cgc);
+  if (!raiz) return null;
+
+  // 1. Prioridade: Supabase PostgreSQL (se conectado)
+  if (isPostgresConnected()) {
+    try {
+      const res = await safeQuery(
+        'SELECT raiz_cnpj, razao_social, total_compras, valor_total, primeira_compra, ultima_compra, empresas FROM crm_clientes_raiz_cnpj WHERE raiz_cnpj = $1 LIMIT 1',
+        [raiz]
+      );
+      if (res && res.rows && res.rows.length > 0) {
+        return formatarObjetoFidelidade(res.rows[0]);
+      }
+    } catch (e) {
+      // Fallback gracioso
+    }
+  }
+
+  // 2. Fallback / Memória local
+  const cacheMap = await obterCacheRaizes();
+  const item = cacheMap[raiz];
+  return item ? formatarObjetoFidelidade(item) : null;
 }
 
 let cacheMigrationExecuted = false;
@@ -589,6 +707,20 @@ async function initCrmTables() {
       CREATE INDEX IF NOT EXISTS idx_crm_clientes_protheus_cod ON crm_clientes(protheus_cod);
       CREATE INDEX IF NOT EXISTS idx_crm_clientes_deleted_at ON crm_clientes(deleted_at);
 
+      -- Tabela de Fidelidade de Clientes por Raiz de CNPJ
+      CREATE TABLE IF NOT EXISTS crm_clientes_raiz_cnpj (
+        raiz_cnpj VARCHAR(8) PRIMARY KEY,
+        razao_social VARCHAR(255),
+        total_compras INTEGER NOT NULL DEFAULT 0,
+        valor_total NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+        primeira_compra DATE,
+        ultima_compra DATE,
+        empresas JSONB NOT NULL DEFAULT '[]'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_crm_clientes_raiz_cnpj_total ON crm_clientes_raiz_cnpj(total_compras DESC);
+
       -- Harmonização de colunas para IDs de clientes do CRM (VARCHAR(64))
       ALTER TABLE IF EXISTS crm_deals ALTER COLUMN cliente_cod TYPE VARCHAR(64);
 
@@ -746,6 +878,7 @@ function mapDealRow(row) {
     cliente_nome: row.cliente_nome || '',
     cliente_cnpj: row.cliente_cnpj || '',
     cliente_cnpj_fmt: formatarCgc(row.cliente_cnpj),
+    fidelidade_compras: obterFidelidadeRaizSync(row.cliente_cnpj),
     cliente_email: row.cliente_email || '',
     cliente_telefone: row.cliente_telefone || '',
     cliente_telefone_fmt: formatarTelefone(row.cliente_telefone),
@@ -821,6 +954,7 @@ function mapClienteRow(row) {
     nome_fantasia: row.nome_fantasia || '',
     cnpj_cpf: cnpjLimpo,
     cnpj_cpf_fmt: formatarCgc(cnpjLimpo),
+    fidelidade_compras: obterFidelidadeRaizSync(cnpjLimpo),
     ie: row.ie || '',
     contato_nome: row.contato_nome || '',
     telefone: row.telefone || '',
@@ -939,6 +1073,14 @@ async function listarDeals(filtros = {}) {
     deals.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
   }
 
+  // Enriquece deals com a fidelidade da raiz de CNPJ
+  await obterCacheRaizes();
+  for (const d of deals) {
+    if (!d.fidelidade_compras) {
+      d.fidelidade_compras = obterFidelidadeRaizSync(d.cliente_cnpj || d.clienteCnpj || '');
+    }
+  }
+
   return {
     source: fromDb ? 'supabase_postgres' : 'local_json_cache',
     total: deals.length,
@@ -976,6 +1118,9 @@ async function obterDealPorId(id) {
   const deal = (cache.deals || []).find(d => 
     (String(d.id) === cleanId || (sufixo && String(d.id) === sufixo)) && d.ativo !== false
   );
+  if (deal && !deal.fidelidade_compras) {
+    deal.fidelidade_compras = obterFidelidadeRaizSync(deal.cliente_cnpj || deal.clienteCnpj || '');
+  }
   return deal || null;
 }
 
@@ -2531,8 +2676,13 @@ async function autocompleteClientes(termo) {
     } catch {}
   }
 
-  // Retorna até 15 resultados mesclados
-  return Array.from(clientesMap.values()).slice(0, 15);
+  // Retorna até 15 resultados mesclados enriquecidos com fidelidade de compras
+  const results = Array.from(clientesMap.values()).slice(0, 15);
+  for (const c of results) {
+    const cgc = c.cnpj || c.cnpj_cpf || '';
+    c.fidelidade_compras = obterFidelidadeRaizSync(cgc);
+  }
+  return results;
 }
 
 const cepCache = new Map();
@@ -3328,5 +3478,10 @@ module.exports = {
   obterStatusTransportadorasCrm,
   validarTransportadoraProtheus,
   obterProximoIdDeal,
-  migrarDealsLegadosParaSequencial
+  migrarDealsLegadosParaSequencial,
+  extrairRaizCnpj,
+  obterFidelidadeRaiz,
+  obterFidelidadeRaizSync,
+  formatarObjetoFidelidade,
+  obterCacheRaizes
 };

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.275">
+  <link rel="stylesheet" href="style.css?v=8.276">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -172,6 +172,7 @@
                     <tr style="background: var(--bg-hover, rgba(255,255,255,0.03)); border-bottom: 1px solid var(--panel-border);">
                       <th style="width: 76px; text-align: center; padding: 10px 8px; font-weight: 600;">Ação</th>
                       <th style="padding: 10px 12px; font-weight: 600;">Título</th>
+                      <th style="width: 65px; text-align: center; padding: 10px 4px; font-weight: 600;" title="Fidelidade por Raiz de CNPJ (Compras Faturadas no Grupo GSI)">🤝</th>
                       <th style="width: 110px; padding: 10px 12px; font-weight: 600;">Valor</th>
                       <th style="padding: 10px 12px; font-weight: 600;">Nome do Cliente</th>
                       <th style="width: 110px; padding: 10px 12px; font-weight: 600;">Status</th>
@@ -347,7 +348,10 @@
             <div style="position: relative;">
               <div class="form-group" style="margin: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <label style="font-size: 0.8rem; font-weight: 600; margin: 0;">Cliente: *</label>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 0.8rem; font-weight: 600; margin: 0;">Cliente: *</label>
+                    <span id="crmDealClienteFidelidadeBadge"></span>
+                  </div>
                   <div style="display: flex; gap: 6px; align-items: center;">
                     <button type="button" id="btnCrmEditarClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); display: flex; align-items: center; gap: 4px;" title="Editar cadastro do cliente selecionado">
                       <span>✏️ Editar</span>
@@ -870,8 +874,8 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.275"></script>
-  <script src="js/crm.js?v=8.275"></script>
+  <script src="js/chart.umd.min.js?v=8.276"></script>
+  <script src="js/crm.js?v=8.276"></script>
 
   <script>
     // Inicialização do CRM Comercial (/crm)

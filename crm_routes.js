@@ -805,4 +805,44 @@ router.get('/cep/:cep', requireAuth, requireAdminOrAlexandre, async (req, res) =
   }
 });
 
+/**
+ * GET /api/bi/crm/clientes/raiz-cnpj/:cnpj
+ * Consulta histórico de compras consolidado por Raiz de CNPJ nas 7 empresas do Grupo GSI
+ */
+router.get('/clientes/raiz-cnpj/:cnpj', async (req, res) => {
+  try {
+    const { cnpj } = req.params;
+    const clean = String(cnpj || '').replace(/\D/g, '');
+    if (!clean || clean.length < 8) {
+      return sendRfcError(res, {
+        status: 400,
+        title: 'CNPJ ou CPF inválido',
+        detail: 'O parâmetro deve conter ao menos 8 dígitos numéricos para identificação da raiz.',
+        code: 'INVALID_CNPJ_ROOT'
+      });
+    }
+
+    const fidelidade = await crmEngine.obterFidelidadeRaiz(cnpj);
+
+    return res.json({
+      success: true,
+      data: fidelidade || {
+        raiz_cnpj: clean.slice(0, 8),
+        total_compras: 0,
+        tipo: null,
+        icone: '',
+        label: '',
+        tooltip: ''
+      }
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao consultar fidelidade da raiz de CNPJ',
+      detail: err.message,
+      code: 'RAIZ_CNPJ_ERROR'
+    });
+  }
+});
+
 module.exports = router;

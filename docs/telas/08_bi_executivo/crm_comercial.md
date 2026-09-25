@@ -53,11 +53,12 @@
 
 ---
 
-## 4. As 9 Colunas Canônicas da Listagem
+## 4. As 10 Colunas Canônicas da Listagem
 | Coluna | Descrição | Comportamento |
 | :--- | :--- | :--- |
 | **Ação** | Ações Rápidas | Botões compactos: Lápis `✏️` (abre edição da oportunidade) e Lupa `🔍` (abre visualização de detalhes) |
 | **Título** | Nome da Oportunidade | Link verde (`#10b981`) que abre modal de detalhes da oportunidade |
+| **🤝** | Fidelidade Raiz CNPJ | Histórico de compras consolidadas nas 7 empresas do Grupo GSI: `⭐ X` para 1 a 5 compras; `💎 X` para 6+ compras (VIP); célula vazia se não houver compras |
 | **Valor** | Valor total negociado | Formatado em reais (`R$ X.XXX,XX`) com destaque verde |
 | **Nome do Cliente** | Razão Social / Nome do Cliente | Exibição com tooltip e ellipsis para nomes longos (substitui antiga coluna Organização) |
 | **Status** | Estágio atual do pipeline | Destaque verde para `Ganho`, vermelho para `Perdido` |
@@ -69,6 +70,13 @@
 ---
 
 ## 5. Regras de Negócio & Cálculos Chave
+- **Fidelidade por Raiz de CNPJ (🤝):** Análise histórica de faturamento cruzando as notas fiscais emitidas (`SF2010`, `SF2040`, `SF2050`, `SF2090`, `SF2140`, `SF2150`, `SF2160`) e clientes `SA1010` dos 7 ambientes Protheus (empresas inativas 01, 04, 05, 09 e ativas 14, 15, 16) agrupadas pelos 8 primeiros dígitos do CNPJ/CPF (`A1_CGC`). Total de 28.974 raízes catalogadas com persistência no Supabase (`crm_clientes_raiz_cnpj`) e cache atômico em `data/crm_clientes_raiz_cnpj_cache.json`.
+- **Badges Visuais de Fidelidade (⭐ / 💎):**
+  - **1 a 5 compras:** Selo dourado com estrela (`⭐ X`) com tooltip explicativo.
+  - **6 ou mais compras:** Selo roxo VIP com diamante (`💎 X`) para grandes compradores recorrentes do grupo.
+  - **0 compras ou desconhecido:** Espaço limpo/vazio (princípio da Navalha de Texto e design minimalista sem poluição).
+  - **Pontos de Exibição:** Coluna `🤝` na listagem tabular (`#crmDealsTable`), card do funil Kanban (`.crm-card-client`), cabeçalho da ficha de detalhes (`#crmDetalhesFaseBadge` logo após contagem de itens) e formulário de oportunidade (`#crmDealClienteFidelidadeBadge` ao lado do rótulo `Cliente: *`) atualizado em tempo real via autocomplete ou edição.
+- **Sincronização Mensal Incremental:** Script agendável `scripts/sync_mensal_raizes_cnpj.js` que atualiza as notas fiscais das empresas ativas (14, 15, 16) de forma incremental e idempotente.
 - **Persistência de Preferência:** Armazenada em `localStorage` (`gsi_crm_deal_view_mode`), preservando a escolha do usuário entre reloads.
 - **Busca e Filtros Unificados:** Termo digitado em `#crmSearchInput`, vendedor em `#crmFilterVendedor` e status em `#crmFilterStatus` filtram os negócios e resetam a página para `1`.
 - **Filtro de Status Especializado:**

@@ -309,9 +309,29 @@
       motivoPerda: d.motivo_perda || d.motivoPerda || '',
       observacoesPerda: d.observacoes_perda || d.observacoesPerda || '',
       dataFechamentoReal: d.data_fechamento_real || d.dataFechamentoReal || null,
+      fidelidade_compras: d.fidelidade_compras || null,
       createdAt: d.created_at || d.createdAt || new Date().toISOString(),
       updatedAt: d.updated_at || d.updatedAt || new Date().toISOString()
     };
+  }
+
+  /**
+   * Renderiza badge de fidelidade por raiz de CNPJ (⭐ 1-5 compras | 💎 6+ compras VIP)
+   */
+  function renderFidelidadeBadge(fidelidade, options = {}) {
+    if (!fidelidade || !fidelidade.total_compras || Number(fidelidade.total_compras) <= 0) {
+      return '';
+    }
+    const total = parseInt(fidelidade.total_compras, 10);
+    const isVip = total >= 6;
+    const icone = isVip ? '💎' : '⭐';
+    const bg = isVip ? 'rgba(168, 85, 247, 0.16)' : 'rgba(234, 179, 8, 0.16)';
+    const border = isVip ? 'rgba(168, 85, 247, 0.45)' : 'rgba(234, 179, 8, 0.45)';
+    const color = isVip ? '#c084fc' : '#eab308';
+    const tooltip = escapeHtml(fidelidade.tooltip || (isVip ? `Cliente Diamante VIP: ${total} compras faturadas no Grupo GSI` : `Cliente Fidelidade: ${total} compras faturadas no Grupo GSI`));
+    const styleExtra = options.style || '';
+
+    return `<span class="badge-fidelidade-raiz" style="display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 2px 7px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; background: ${bg}; border: 1px solid ${border}; color: ${color}; line-height: 1; cursor: help; user-select: none; ${styleExtra}" title="${tooltip}"><span>${icone}</span><span>${total}</span></span>`;
   }
 
   /**
@@ -886,7 +906,7 @@
     if (totalItems === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <td colspan="10" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
             Nenhuma oportunidade encontrada com os filtros selecionados.
           </td>
         </tr>
@@ -919,6 +939,9 @@
             <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: #10b981; font-weight: 600; text-decoration: none;" title="Abrir detalhes de ${escapeHtml(d.titulo)}">
               ${escapeHtml(d.titulo || 'Sem título')}
             </a>
+          </td>
+          <td style="text-align: center; padding: 8px 4px; white-space: nowrap;">
+            ${renderFidelidadeBadge(d.fidelidade_compras)}
           </td>
           <td style="padding: 10px 12px; color: #10b981; font-weight: 700; white-space: nowrap;">
             ${formatCurrency(d.valor)}
@@ -1081,6 +1104,7 @@
       <div class="crm-card-client" title="Cliente: ${escapeHtml(deal.clienteNome)}">
         <span class="crm-icon-client">🏢</span>
         <strong>${escapeHtml(deal.clienteNome || 'Cliente não identificado')}</strong>
+        ${renderFidelidadeBadge(deal.fidelidade_compras, { style: 'margin-left: 6px;' })}
       </div>
 
       <div class="crm-card-meta-row">
@@ -1350,6 +1374,9 @@
     document.getElementById('crmInputClienteLoja').value = '';
     document.getElementById('crmInputClienteCnpj').value = '';
 
+    const badgeContainer = document.getElementById('crmDealClienteFidelidadeBadge');
+    if (badgeContainer) badgeContainer.innerHTML = '';
+
     const transpCodEl = document.getElementById('crmInputTransportadoraCod');
     if (transpCodEl) transpCodEl.value = '';
     const transpDropdown = document.getElementById('crmTransportadoraDropdown');
@@ -1396,6 +1423,15 @@
     document.getElementById('crmInputClienteCod').value = deal.clienteCod || '';
     document.getElementById('crmInputClienteLoja').value = deal.clienteLoja || '';
     document.getElementById('crmInputClienteCnpj').value = deal.clienteCnpj || '';
+
+    const editBadgeContainer = document.getElementById('crmDealClienteFidelidadeBadge');
+    if (editBadgeContainer) {
+      editBadgeContainer.innerHTML = deal.fidelidade_compras ? renderFidelidadeBadge(deal.fidelidade_compras, { style: 'margin-left: 8px;' }) : '';
+      if (!deal.fidelidade_compras && deal.clienteCnpj) {
+        atualizarBadgeClienteModal(deal.clienteCnpj);
+      }
+    }
+
     document.getElementById('crmSelectVendedor').value = deal.vendedor || '';
     document.getElementById('crmSelectFase').value = deal.fase || 'LEAD';
     // Valor Total NFe é calculado dinamicamente via recalcularTotalNfeOportunidade() pós-carregamento dos campos comerciais
@@ -2004,7 +2040,11 @@
     document.getElementById('crmDetalhesCliente').textContent = deal.clienteNome || '-';
     document.getElementById('crmDetalhesValor').textContent = formatCurrency(deal.valor);
     document.getElementById('crmDetalhesVendedor').textContent = deal.vendedor || '-';
-    document.getElementById('crmDetalhesFaseBadge').innerHTML = getDealAlertBadge(deal);
+    let badgeHtml = getDealAlertBadge(deal);
+    if (deal.fidelidade_compras) {
+      badgeHtml += ' ' + renderFidelidadeBadge(deal.fidelidade_compras, { style: 'margin-left: 6px;' });
+    }
+    document.getElementById('crmDetalhesFaseBadge').innerHTML = badgeHtml;
 
     const faturadoTexto = deal.faturadoPor || 'Não informado';
     const elFaturado = document.getElementById('crmDetalhesFaturadoPor');
@@ -2286,6 +2326,43 @@
   }
 
   /**
+   * Atualiza o badge de fidelidade por raiz de CNPJ no formulário de Oportunidade
+   */
+  async function atualizarBadgeClienteModal(cnpj, fidelidadeObj) {
+    const badgeContainer = document.getElementById('crmDealClienteFidelidadeBadge');
+    if (!badgeContainer) return;
+
+    if (fidelidadeObj && fidelidadeObj.total_compras > 0) {
+      badgeContainer.innerHTML = renderFidelidadeBadge(fidelidadeObj, { style: 'margin-left: 8px;' });
+      return;
+    }
+
+    const cleanCnpj = String(cnpj || '').replace(/\D/g, '');
+    if (!cleanCnpj || cleanCnpj.length < 8) {
+      badgeContainer.innerHTML = '';
+      return;
+    }
+
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/bi/crm/clientes/raiz-cnpj/${encodeURIComponent(cleanCnpj)}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const data = (json && json.data !== undefined) ? json.data : json;
+        badgeContainer.innerHTML = (data && data.total_compras > 0)
+          ? renderFidelidadeBadge(data, { style: 'margin-left: 8px;' })
+          : '';
+      } else {
+        badgeContainer.innerHTML = '';
+      }
+    } catch {
+      badgeContainer.innerHTML = '';
+    }
+  }
+
+  /**
    * Autocomplete de Clientes buscando no Protheus ERP (/api/bi/crm/clientes/autocomplete)
    */
   function setupClientAutocomplete() {
@@ -2296,6 +2373,13 @@
     inputCliente.addEventListener('input', () => {
       clearTimeout(autocompleteDebounceTimer);
       const q = inputCliente.value.trim();
+
+      if (!q) {
+        document.getElementById('crmInputClienteCod').value = '';
+        document.getElementById('crmInputClienteLoja').value = '';
+        document.getElementById('crmInputClienteCnpj').value = '';
+        atualizarBadgeClienteModal('');
+      }
 
       if (q.length < 2) {
         dropdown.classList.add('hidden');
@@ -2326,7 +2410,8 @@
                 cod: d.clienteCod || '',
                 loja: d.clienteLoja || '01',
                 nome: d.clienteNome,
-                cnpj: d.clienteCnpj || ''
+                cnpj: d.clienteCnpj || '',
+                fidelidade_compras: d.fidelidade_compras || null
               }));
             items = matchLocal.slice(0, 5);
           }
@@ -2341,12 +2426,14 @@
               const badgeOrigem = isCrm
                 ? '<span class="crm-badge-crm" style="font-size: 0.68rem; padding: 1px 6px; margin-left: 6px;">[CRM]</span>'
                 : '<span class="crm-badge-protheus" style="font-size: 0.68rem; padding: 1px 6px; margin-left: 6px;">[Protheus]</span>';
+              const fidelidadeBadgeHtml = cli.fidelidade_compras ? renderFidelidadeBadge(cli.fidelidade_compras, { style: 'margin-left: 6px;' }) : '';
 
               return `
-                <div class="crm-autocomplete-item" data-cod="${escapeHtml(cod)}" data-loja="${escapeHtml(loja)}" data-nome="${escapeHtml(nome)}" data-cnpj="${escapeHtml(cnpj)}">
+                <div class="crm-autocomplete-item" data-cod="${escapeHtml(cod)}" data-loja="${escapeHtml(loja)}" data-nome="${escapeHtml(nome)}" data-cnpj="${escapeHtml(cnpj)}" data-fidelidade="${escapeHtml(JSON.stringify(cli.fidelidade_compras || null))}">
                   <div style="font-weight: 600; color: var(--text-main); display: flex; align-items: center;">
                     <span>${escapeHtml(nome)}</span>
                     ${badgeOrigem}
+                    ${fidelidadeBadgeHtml}
                   </div>
                   <div style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono, monospace);">
                     ${cod ? `Cód: ${escapeHtml(cod)}-${escapeHtml(loja)} | ` : ''}${cnpj ? `CNPJ/CPF: ${escapeHtml(cnpj)}` : ''}
@@ -2363,9 +2450,16 @@
                 inputCliente.value = itemEl.getAttribute('data-nome');
                 document.getElementById('crmInputClienteCod').value = itemEl.getAttribute('data-cod') || '';
                 document.getElementById('crmInputClienteLoja').value = itemEl.getAttribute('data-loja') || '01';
-                document.getElementById('crmInputClienteCnpj').value = itemEl.getAttribute('data-cnpj') || '';
+                const cnpjVal = itemEl.getAttribute('data-cnpj') || '';
+                document.getElementById('crmInputClienteCnpj').value = cnpjVal;
                 dropdown.classList.add('hidden');
                 dropdown.style.display = 'none';
+
+                const fidRaw = itemEl.getAttribute('data-fidelidade');
+                let fidObj = null;
+                try { if (fidRaw) fidObj = JSON.parse(fidRaw); } catch {}
+                atualizarBadgeClienteModal(cnpjVal, fidObj);
+
                 updateDealSaveButtonState();
               });
             });
@@ -3025,6 +3119,9 @@
     if (inputCod) inputCod.value = cliente.protheus_cod || cliente.id || '';
     if (inputLoja) inputLoja.value = cliente.protheus_loja || '01';
     if (inputCnpj) inputCnpj.value = cliente.cnpj_cpf || '';
+    if (cliente.cnpj_cpf) {
+      atualizarBadgeClienteModal(cliente.cnpj_cpf, cliente.fidelidade_compras);
+    }
     if (inputTitulo && cliente.nome_razao) {
       inputTitulo.value = `Cotação Comercial - ${cliente.nome_razao}`;
     }
@@ -3246,6 +3343,9 @@
         if (inputCod) inputCod.value = codFinal;
         if (inputLoja) inputLoja.value = lojaFinal;
         if (inputCnpj) inputCnpj.value = cnpjFinal;
+        if (cnpjFinal) {
+          atualizarBadgeClienteModal(cnpjFinal, clienteSalvo.fidelidade_compras);
+        }
         if (selectVend && !selectVend.value && clienteSalvo.vendedor_responsavel) {
           selectVend.value = clienteSalvo.vendedor_responsavel;
         }
