@@ -147,6 +147,37 @@
   }
 
   /**
+   * Recalcula dinamicamente o Valor Total NFe (Soma dos Itens Cotados + Frete Cobrado)
+   * O Frete Embutido NÃO entra nessa conta (já incorporado no preço negociado dos produtos).
+   * Retorna o valor numérico decimal puro.
+   */
+  function recalcularTotalNfeOportunidade() {
+    let sumItens = 0;
+    if (Array.isArray(currentItems)) {
+      currentItems.forEach(it => {
+        const q = parseFloat(it.quantidade) || 0;
+        const p = parseFloat(it.precoNegociado) || 0;
+        sumItens += q * p;
+      });
+    }
+
+    const freteCobrado = Math.max(0, parseFloat(document.getElementById('crmInputFreteCobrado')?.value) || 0);
+
+    let totalNfe = sumItens + freteCobrado;
+    // Se não houver itens cadastrados mas for oportunidade existente com valor prévio
+    if (currentItems.length === 0 && currentDeal && currentDeal.valor) {
+      totalNfe = (parseFloat(currentDeal.valor) || 0) + freteCobrado;
+    }
+
+    const inputValor = document.getElementById('crmInputValor');
+    if (inputValor) {
+      inputValor.value = formatNumberPtBr(totalNfe);
+    }
+
+    return totalNfe;
+  }
+
+  /**
    * Formatação de data (DD/MM/AAAA)
    */
   function formatDate(isoStr) {
@@ -1309,7 +1340,7 @@
     document.getElementById('crmInputClienteCnpj').value = deal.clienteCnpj || '';
     document.getElementById('crmSelectVendedor').value = deal.vendedor || '';
     document.getElementById('crmSelectFase').value = deal.fase || 'LEAD';
-    document.getElementById('crmInputValor').value = deal.valor || 0;
+    // Valor Total NFe é calculado dinamicamente via recalcularTotalNfeOportunidade() pós-carregamento dos campos comerciais
 
     const selFaturado = document.getElementById('crmSelectFaturadoPor');
     if (selFaturado) selFaturado.value = normalizeFaturadoPor(deal.faturadoPor) || '';
@@ -1528,6 +1559,7 @@
       `;
       if (totalDisplay) totalDisplay.textContent = 'R$ 0,00';
       if (pesoDisplay) pesoDisplay.textContent = '0,000 kg';
+      recalcularTotalNfeOportunidade();
       return;
     }
 
@@ -1582,11 +1614,8 @@
     if (totalDisplay) totalDisplay.textContent = formatCurrency(sumTotal);
     if (pesoDisplay) pesoDisplay.textContent = `${sumPeso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
 
-    // Sincroniza campo total do negócio
-    const inputValor = document.getElementById('crmInputValor');
-    if (inputValor && sumTotal > 0) {
-      inputValor.value = sumTotal.toFixed(2);
-    }
+    // Sincroniza campo Valor Total NFe (Soma Itens + Frete Cobrado)
+    recalcularTotalNfeOportunidade();
 
     // Attach listeners dos inputs dos itens
     tbody.querySelectorAll('input').forEach(inp => {
@@ -1636,7 +1665,7 @@
         });
         if (totalDisplay) totalDisplay.textContent = formatCurrency(newSum);
         if (pesoDisplay) pesoDisplay.textContent = `${newPeso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
-        if (inputValor && newSum > 0) inputValor.value = newSum.toFixed(2);
+        recalcularTotalNfeOportunidade();
 
         // Atualiza a célula de desconto e subtotal desta linha em tempo real
         const row = e.target.closest('tr');
@@ -1714,7 +1743,7 @@
     const clienteCnpj = document.getElementById('crmInputClienteCnpj')?.value.trim();
     const vendedor = document.getElementById('crmSelectVendedor')?.value;
     const fase = document.getElementById('crmSelectFase')?.value || 'LEAD';
-    const valor = parseFloat(document.getElementById('crmInputValor')?.value) || 0;
+    const valor = parseNumberPtBr(document.getElementById('crmInputValor')?.value) || recalcularTotalNfeOportunidade() || 0;
 
     // Campos comerciais
     const condPgto = document.getElementById('crmInputCondPgto')?.value.trim();
@@ -3482,6 +3511,14 @@
       }
     });
 
+    // Recalcula Valor Total NFe em tempo real ao alterar Frete Cobrado
+    const inputFreteCobrado = document.getElementById('crmInputFreteCobrado');
+    if (inputFreteCobrado && !inputFreteCobrado._hasFreteNfeListener) {
+      inputFreteCobrado._hasFreteNfeListener = true;
+      inputFreteCobrado.addEventListener('input', recalcularTotalNfeOportunidade);
+      inputFreteCobrado.addEventListener('change', recalcularTotalNfeOportunidade);
+    }
+
     // Submissão de Atividade / Follow-up
     const formAtividade = document.getElementById('formCrmAtividade');
     if (formAtividade && !formAtividade._hasListener) {
@@ -3652,6 +3689,9 @@
     const transp = document.getElementById('crmInputTransportadora')?.value?.trim() || '';
     const condPgto = document.getElementById('crmInputCondPgto')?.value?.trim() || '';
     const prazoEntrega = document.getElementById('crmInputPrazoEntrega')?.value?.trim() || '';
+    const freteCobrado = parseFloat(document.getElementById('crmInputFreteCobrado')?.value) || 0;
+    const freteEmbutido = parseFloat(document.getElementById('crmInputFreteEmbutido')?.value) || 0;
+    const tipoFrete = document.getElementById('crmSelectTipoFrete')?.value || 'CIF';
     const hasItems = Array.isArray(currentItems) && currentItems.length > 0;
 
     if (currentDeal) {
@@ -3662,11 +3702,14 @@
       if (transp !== (currentDeal.transportadora || '')) return true;
       if (condPgto !== (currentDeal.condPgto || '')) return true;
       if (prazoEntrega !== (currentDeal.prazoEntrega || '')) return true;
+      if (freteCobrado !== (parseFloat(currentDeal.freteCobrado) || 0)) return true;
+      if (freteEmbutido !== (parseFloat(currentDeal.freteEmbutido) || 0)) return true;
+      if (tipoFrete !== (currentDeal.tipoFrete || 'CIF')) return true;
       if (JSON.stringify(currentItems) !== JSON.stringify(currentDeal.itens || [])) return true;
       return false;
     }
 
-    return Boolean(titulo || cliente || obsNfe || pedidoCompra || transp || hasItems);
+    return Boolean(titulo || cliente || obsNfe || pedidoCompra || transp || hasItems || freteCobrado > 0 || freteEmbutido > 0);
   }
 
   /**

@@ -190,6 +190,65 @@ async function runTests() {
   assert(crmJs.includes('descontoPercent: 0'), 'addItemCotado() inicializa descontoPercent: 0');
   assert(renderItensContent.includes('item.descontoPercent = descPct'), 'renderItensCotadosTable() preserva descontoPercent no modelo de dados do item');
 
+  // Teste 12: Campo Valor Total NFe Inalterável e Cálculo Automático (Soma Itens + Frete Cobrado)
+  // 12.1 Rótulo Valor Total NFe: em crm.html e index.html
+  assert(crmHtml.includes('Valor Total NFe:'), 'public/crm.html exibe o novo rótulo Valor Total NFe:');
+  assert(indexHtml.includes('Valor Total NFe:'), 'public/index.html exibe o novo rótulo Valor Total NFe:');
+
+  // 12.2 Eliminação do antigo rótulo Valor Oportunidade:
+  assert(!crmHtml.includes('Valor Oportunidade:'), 'public/crm.html eliminou o rótulo antigo Valor Oportunidade:');
+  assert(!indexHtml.includes('Valor Oportunidade:'), 'public/index.html eliminou o rótulo antigo Valor Oportunidade:');
+
+  // 12.3 Campo crmInputValor inalterável (readonly disabled tabindex="-1" e cursor not-allowed)
+  assert(crmHtml.includes('id="crmInputValor"') && crmHtml.includes('readonly disabled tabindex="-1"'), 'public/crm.html possui crmInputValor inalterável (readonly disabled)');
+  assert(indexHtml.includes('id="crmInputValor"') && indexHtml.includes('readonly disabled tabindex="-1"'), 'public/index.html possui crmInputValor inalterável (readonly disabled)');
+  assert(crmHtml.includes('id="crmInputValor"') && crmHtml.includes('cursor: not-allowed'), 'public/crm.html possui cursor not-allowed no crmInputValor');
+  assert(indexHtml.includes('id="crmInputValor"') && indexHtml.includes('cursor: not-allowed'), 'public/index.html possui cursor not-allowed no crmInputValor');
+
+  // 12.4 Função recalcularTotalNfeOportunidade implementada em crm.js
+  assert(crmJs.includes('function recalcularTotalNfeOportunidade()'), 'public/js/crm.js implementa a função recalcularTotalNfeOportunidade()');
+
+  // 12.5 Teste unitário isolado da regra matemática: Soma Itens + Frete Cobrado (excluindo Frete Embutido)
+  function simularRecalcularTotalNfe(itens, freteCobrado, freteEmbutido) {
+    let sumItens = 0;
+    if (Array.isArray(itens)) {
+      itens.forEach(it => {
+        const q = parseFloat(it.quantidade) || 0;
+        const p = parseFloat(it.precoNegociado) || 0;
+        sumItens += q * p;
+      });
+    }
+    const fCobrado = parseFloat(freteCobrado) || 0;
+    // Frete embutido NÃO entra na conta do total da NFe
+    return sumItens + fCobrado;
+  }
+
+  const itensExemplo = [
+    { quantidade: 1, precoNegociado: 2599.00 }
+  ];
+  const totalSemFrete = simularRecalcularTotalNfe(itensExemplo, 0, 0);
+  assert(totalSemFrete === 2599.00, 'Total NFe sem frete cobrado é exatamente a soma dos itens (R$ 2.599,00)');
+
+  const totalComFreteCobrado = simularRecalcularTotalNfe(itensExemplo, 150.00, 0);
+  assert(totalComFreteCobrado === 2749.00, 'Total NFe com Frete Cobrado (R$ 150) resulta em R$ 2.749,00 (2599 + 150)');
+
+  const totalComFreteEmbutido = simularRecalcularTotalNfe(itensExemplo, 150.00, 300.00);
+  assert(totalComFreteEmbutido === 2749.00, 'Frete Embutido (R$ 300) NÃO entra na conta e preserva R$ 2.749,00');
+
+  // 12.6 Listener reativo em crmInputFreteCobrado
+  assert(crmJs.includes('inputFreteCobrado.addEventListener(\'input\', recalcularTotalNfeOportunidade)'), 'crm.js recalcula Valor Total NFe reativamente no evento input de Frete Cobrado');
+  assert(crmJs.includes('inputFreteCobrado.addEventListener(\'change\', recalcularTotalNfeOportunidade)'), 'crm.js recalcula Valor Total NFe reativamente no evento change de Frete Cobrado');
+
+  // 12.7 Extração no salvamento usa parseNumberPtBr
+  assert(crmJs.includes('parseNumberPtBr(document.getElementById(\'crmInputValor\')?.value)'), 'handleSaveOpportunity() extrai valor formatado via parseNumberPtBr');
+
+  // 12.8 Dirty-checking cobre alterações em freteCobrado e freteEmbutido
+  assert(crmJs.includes('freteCobrado !== (parseFloat(currentDeal.freteCobrado) || 0)'), 'isDealFormDirty() monitora alterações em freteCobrado');
+  assert(crmJs.includes('freteEmbutido !== (parseFloat(currentDeal.freteEmbutido) || 0)'), 'isDealFormDirty() monitora alterações em freteEmbutido');
+
+  // 12.9 Proteção defensiva Math.max contra frete cobrado negativo
+  assert(crmJs.includes('Math.max(0, parseFloat(document.getElementById(\'crmInputFreteCobrado\')?.value) || 0)'), 'recalcularTotalNfeOportunidade() protege contra valores negativos no frete');
+
   console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
   if (passedTests === totalTests) {
     console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');

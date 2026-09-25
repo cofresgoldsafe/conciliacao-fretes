@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.266 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.267 - Homologado)  
 
 ---
 
@@ -34,6 +34,7 @@
   - `#btnCrmNovoClienteFromDeal`: Renomeado para `➕ Add Cliente` (abre modal de cadastro rápido sem sair da oportunidade).
   - `#btnCrmEditarClienteFromDeal`: Botão compacto `✏️ Editar` ao lado do autocomplete de cliente em `#modalCrmOportunidade`, permitindo editar o cadastro comercial do cliente selecionado.
   - `#btnCrmEditarClienteDoDetalhes`: Botão compacto `✏️ Editar` ao lado do nome da organização no cabeçalho do `#modalCrmDetalhes`.
+  - `#crmInputValor`: Campo inalterável de resumo fiscal e comercial exibindo **Valor Total NFe:** (`readonly disabled tabindex="-1"` com `cursor: not-allowed` e estilo cinza translúcido idêntico a P. Tabela e Desc(%), com recálculo reativo automático).
 - **Toggles de Exibição de Oportunidades:**
   - `#btnCrmViewModeKanban`: Ativa modo de exibição em funil Kanban.
   - `#btnCrmViewModeListagem`: Ativa modo de exibição em tabela de listagem.
@@ -91,6 +92,7 @@
 - **Fallback Resiliente no Modal:** Se o identificador procurado não existir no banco nem no Protheus, o modal não abre vazio: os dados conhecidos do deal (`nome`, `cnpj`, `vendedor`) são pré-carregados para cadastro imediato.
 - **Navalha de Texto em Itens Cotados:** Remoção do rótulo redundante "UM: UN" na exibição dos itens cotados da modal de oportunidade, no modal de detalhes e nas sugestões de produtos, mantendo a interface enxuta e focada em NCM e Peso.
 - **Coluna Ação com Acesso Rápido:** Primeira coluna da listagem tabular de oportunidades reservada para ações rápidas com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização de detalhes), alinhando a coluna "Nome do Cliente" (antiga Organização) e eliminando a coluna "Contato".
+- **Cálculo Automático do Valor Total NFe:** O campo `#crmInputValor` computa dinamicamente a soma canônica $\text{Valor Total NFe} = \text{Soma Itens} + \text{Frete Cobrado}$. O Frete Embutido é rigorosamente excluído dessa soma por já constar incorporado no preço negociado dos produtos. O campo é inalterável e recalculado em tempo real em todas as interações (digitação de frete cobrado, alteração de quantidades, preços negociados, adição/remoção de itens e seleção no autocomplete do catálogo Protheus).
 
 ---
 
@@ -127,6 +129,12 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.267 (25/09/2026):** Campo `Valor Total NFe` inalterável e cálculo automático no modal de Oportunidades do CRM:
+  - **Navalha de Texto / Rótulo:** Substituição de `Valor Oportunidade:` por `Valor Total NFe:` em `public/crm.html` e `public/index.html`.
+  - **Inalterabilidade Defensiva:** Campo `#crmInputValor` transformado em input inalterável (`readonly disabled tabindex="-1"` com `cursor: not-allowed` e estilo cinza translúcido idêntico a P. Tabela e Desc(%)), prevenindo divergências de digitação manual de valores com a NFe.
+  - **Cálculo Automático & Reativo:** Implementação de `recalcularTotalNfeOportunidade()` aplicando estritamente $\text{Valor Total NFe} = \text{Soma Itens} + \text{Frete Cobrado}$, com exclusão do Frete Embutido (já embutido nos produtos). Recálculo dinâmico disparado por eventos nos itens cotados e digitação de Frete Cobrado (`input` / `change`).
+  - **Defesas Red Team Adicionadas:** Proteção contra frete cobrado negativo (`Math.max(0, ...)`), monitoramento de fretes no dirty check (`isDealFormDirty()`), preservação de valor legado e parsing pt-BR no salvamento (`parseNumberPtBr`).
+  - **Suíte de Testes:** 104 testes aprovados em `test_crm_standalone.js` (Teste 12 com 9 asserções dedicadas).
 - **v8.266 (25/09/2026):** Inclusão da coluna `Desc(%)` na tabela de Itens Cotados na edição de oportunidades (`#modalCrmOportunidade`):
   - **Cálculo Automático de Desconto:** Implementação de `calcularDescontoPercent(pTab, pNeg)`, computando o percentual de desconto sobre o Preço de Tabela quando o Preço Negociado for menor que a tabela ($((P_{tab} - P_{neg}) / P_{tab}) \times 100$), exibindo `0,00` quando não houver desconto ou se o preço negociado for maior/igual à tabela.
   - **Formato Brasileiro Padronizado:** Exibição com 2 casas decimais no formato `99,99` via `formatNumberPtBr()` (ex: `15,00`, `22,50`, `0,00`).
