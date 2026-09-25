@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.269 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.270 - Homologado)  
 
 ---
 
@@ -129,6 +129,12 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.270 (25/09/2026):** Migração Estrita dos IDs de Oportunidades Legadas para seus 4 Dígitos Finais (ex: `CRM-1790341501167-9273` ➔ `9273`, `CRM-1789051276950-2715` ➔ `2715`):
+  - **Extração Fiel dos 4 Dígitos Finais:** Atualização do motor de migração no PostgreSQL e Cache Local (`migrarDealsLegadosParaSequencial`) para extrair exatamente o sufixo numérico final de cada oportunidade antiga (`-([0-9]+)$`), mantendo a identidade original desejada pelo operador.
+  - **Propagação em Cascata no Banco (ON UPDATE CASCADE):** Reconfiguração defensiva da foreign key `crm_atividades_deal_id_fkey` para `ON UPDATE CASCADE`, permitindo que a alteração da PK `crm_deals.id` propague instantaneamente para todas as atividades de follow-up (`crm_atividades.deal_id`) sem violação de integridade referencial.
+  - **Endpoint Administrativo e Auto-Execução:** Inclusão do endpoint `POST /api/bi/crm/deals/migrate-ids` e execução automática garantida tanto no boot (`initCrmTables`) quanto na consulta de deals (`listarDeals`).
+  - **Busca Defensiva e Retrocompatível:** `obterDealPorId` atualizado para resolver requisições passadas tanto com o ID limpo (`9273`) quanto com o ID legado longo (`CRM-...-9273`).
+  - **Suíte de Testes:** 8 testes aprovados em `test_crm_id_sequencial.js` (incluindo teste com os IDs exatos `9273` e `2715`).
 - **v8.269 (25/09/2026):** Adoção de ID Sequencial Limpo de 4 Dígitos para Oportunidades no CRM (`#1001`, `#1002`...) e Migração Automática de Oportunidades Gravadas:
   - **Fim dos IDs Longos Aleatórios:** Substituição da fórmula anterior (`CRM-` + `Date.now()` + 4 dígitos) por sequência atômica profissional iniciando em `1001`, utilizando `CREATE SEQUENCE IF NOT EXISTS crm_deals_seq START WITH 1001` no PostgreSQL e fallback resiliente com persistência atômica no cache local (`cache.next_deal_seq`).
   - **Migração Automática das Oportunidades Gravadas:** Migração idempotente das oportunidades legadas para IDs sequenciais de 4 dígitos (ordenadas cronologicamente por `created_at ASC`), com atualização automática e atômica das atividades de follow-up vinculadas (`crm_atividades.deal_id`).

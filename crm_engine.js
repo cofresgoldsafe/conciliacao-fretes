@@ -112,12 +112,12 @@ async function writeCache(data) {
 let cacheMigrationExecuted = false;
 
 /**
- * Migra oportunidades com IDs legados longos (ex: CRM-1790...) para IDs sequenciais limpos de 4 dígitos
- * Inicia a contagem a partir de 1001 e renumera em ordem cronológica estrita (created_at ASC).
- * Atualiza também as chaves estrangeiras em crm_atividades para manter integridade referencial.
+ * Migra oportunidades com IDs legados longos (ex: CRM-1790341501167-9273, CRM-1789051276950-2715)
+ * para seus números de 4 dígitos finais limpos (ex: 9273, 2715) em todos os registros e relacionamentos.
+ * Garante constraint ON UPDATE CASCADE em crm_atividades para propagação atômica.
  */
-async function migrarDealsLegadosParaSequencial() {
-  if (cacheMigrationExecuted) return;
+async function migrarDealsLegadosParaSequencial(force = false) {
+  if (cacheMigrationExecuted && !force) return;
   cacheMigrationExecuted = true;
 
   // 1. Migração idempotente no Supabase PostgreSQL (se conectado)
@@ -130,23 +130,54 @@ async function migrarDealsLegadosParaSequencial() {
         rec RECORD;
         novo_id VARCHAR(64);
         max_num BIGINT := 1000;
+        sufixo VARCHAR(64);
       BEGIN
-        SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 1000) INTO max_num FROM crm_deals;
+        -- 1. Garante constraint com ON UPDATE CASCADE para que a alteração de crm_deals.id propague automaticamente
+        ALTER TABLE crm_atividades DROP CONSTRAINT IF EXISTS crm_atividades_deal_id_fkey;
+        ALTER TABLE crm_atividades ADD CONSTRAINT crm_atividades_deal_id_fkey 
+          FOREIGN KEY (deal_id) REFERENCES crm_deals(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
-        FOR rec IN (SELECT id FROM crm_deals WHERE NOT (id ~ '^[0-9]+$') ORDER BY created_at ASC) LOOP
-          max_num := max_num + 1;
-          novo_id := max_num::text;
-          UPDATE crm_atividades SET deal_id = novo_id WHERE deal_id = rec.id;
+        -- 2. Itera sobre todas as oportunidades que possuem formato legado antigo (com hífen ou não puramente numéricas)
+        FOR rec IN (SELECT id FROM crm_deals WHERE id LIKE '%-%' OR NOT (id ~ '^[0-9]+$') ORDER BY created_at ASC) LOOP
+          -- Extrai os 4 dígitos finais após o último hífen (ex: '9273' de 'CRM-1790341501167-9273', '2715' de 'CRM-1789051276950-2715')
+          sufixo := SUBSTRING(rec.id FROM '-([0-9]+)$');
+
+          IF sufixo IS NOT NULL AND sufixo <> '' THEN
+            novo_id := sufixo;
+          ELSE
+            SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 1000) + 1 INTO max_num FROM crm_deals;
+            novo_id := max_num::text;
+          END IF;
+
+          -- Se porventura houver colisão de ID com outro deal já existente, desempata incrementando
+          WHILE EXISTS (SELECT 1 FROM crm_deals WHERE id = novo_id AND id <> rec.id) LOOP
+            novo_id := (novo_id::bigint + 1)::text;
+          END LOOP;
+
+          -- Atualiza o ID do negócio (Postgres propaga automaticamente para crm_atividades via ON UPDATE CASCADE)
           UPDATE crm_deals SET id = novo_id WHERE id = rec.id;
+          -- Garante update defensivo de atividades
+          UPDATE crm_atividades SET deal_id = novo_id WHERE deal_id = rec.id;
         END LOOP;
 
+        -- 3. Atualiza quaisquer atividades órfãs ainda com prefixo legado
+        FOR rec IN (SELECT DISTINCT deal_id FROM crm_atividades WHERE deal_id LIKE '%-%') LOOP
+          sufixo := SUBSTRING(rec.deal_id FROM '-([0-9]+)$');
+          IF sufixo IS NOT NULL AND sufixo <> '' THEN
+            UPDATE crm_atividades SET deal_id = sufixo WHERE deal_id = rec.deal_id;
+          END IF;
+        END LOOP;
+
+        -- 4. Atualiza a sequence para o maior ID numérico existente
+        SELECT COALESCE(MAX(CASE WHEN id ~ '^[0-9]+$' THEN id::bigint ELSE 0 END), 1000) INTO max_num FROM crm_deals;
         IF max_num >= 1000 THEN
           PERFORM setval('crm_deals_seq', max_num, true);
         END IF;
       END $$;
     `);
+    console.log('🟢 [CRM Engine] Migração de IDs legados para os 4 dígitos finais executada com sucesso no PostgreSQL.');
   } catch (err) {
-    // Falha silenciosa caso o Postgres não esteja configurado no momento
+    console.warn('⚠️ [CRM Engine] Aviso ao migrar IDs legados no Postgres:', err.message);
   }
 
   // 2. Migração idempotente no Cache Local de contingência (crm_deals_cache.json)
@@ -155,61 +186,50 @@ async function migrarDealsLegadosParaSequencial() {
     let deals = Array.isArray(cache.deals) ? cache.deals : [];
     let atividades = Array.isArray(cache.atividades) ? cache.atividades : [];
 
-    const hasLegacyIds = deals.some(d => !/^\d+$/.test(String(d.id || '').trim()));
+    let alterados = 0;
+    const idMap = new Map();
+    let maxNum = 1000;
 
-    if (hasLegacyIds) {
-      // Ordena cronologicamente para numerar do mais antigo ao mais recente
-      const sorted = [...deals].sort((a, b) => {
-        const da = new Date(a.created_at || a.createdAt || 0).getTime();
-        const db = new Date(b.created_at || b.createdAt || 0).getTime();
-        return da - db;
-      });
+    deals.forEach(d => {
+      const rawId = String(d.id || '').trim();
+      let novoId = rawId;
 
-      // Se já existirem deals com ID numérico, descobre o maior
-      let currentSeq = 1000;
-      sorted.forEach(d => {
-        const n = parseInt(d.id, 10);
-        if (/^\d+$/.test(String(d.id || '').trim()) && !isNaN(n) && n > currentSeq) {
-          currentSeq = n;
+      const match = rawId.match(/-(\d+)$/);
+      if (match && match[1]) {
+        novoId = match[1];
+      }
+
+      if (novoId !== rawId) {
+        idMap.set(rawId, novoId);
+        d.id = novoId;
+        alterados++;
+      }
+
+      const n = parseInt(d.id, 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    });
+
+    atividades.forEach(a => {
+      const oldDealId = String(a.deal_id || a.dealId || '').trim();
+      if (idMap.has(oldDealId)) {
+        const novoId = idMap.get(oldDealId);
+        a.deal_id = novoId;
+        if (a.dealId) a.dealId = novoId;
+      } else {
+        const match = oldDealId.match(/-(\d+)$/);
+        if (match && match[1]) {
+          a.deal_id = match[1];
+          if (a.dealId) a.dealId = match[1];
         }
-      });
+      }
+    });
 
-      const idMap = new Map();
-      sorted.forEach(d => {
-        const rawId = String(d.id || '').trim();
-        if (!/^\d+$/.test(rawId)) {
-          currentSeq++;
-          const newId = String(currentSeq);
-          idMap.set(rawId, newId);
-          d.id = newId;
-        }
-      });
-
-      // Atualiza referências em atividades vinculadas
-      atividades.forEach(a => {
-        const oldDealId = String(a.deal_id || a.dealId || '').trim();
-        if (idMap.has(oldDealId)) {
-          const newId = idMap.get(oldDealId);
-          a.deal_id = newId;
-          if (a.dealId) a.dealId = newId;
-        }
-      });
-
-      cache.deals = sorted;
+    if (alterados > 0 || force) {
+      cache.deals = deals;
       cache.atividades = atividades;
-      cache.next_deal_seq = currentSeq + 1;
+      cache.next_deal_seq = Math.max(maxNum + 1, parseInt(cache.next_deal_seq, 10) || 1001);
       await writeCache(cache);
-      console.log(`🟢 [CRM Engine] ${idMap.size} oportunidades migradas com sucesso para IDs sequenciais de 4 dígitos. Próximo ID: ${cache.next_deal_seq}`);
-    } else {
-      let maxNum = 1000;
-      for (const d of deals) {
-        const n = parseInt(d.id, 10);
-        if (!isNaN(n) && n > maxNum) maxNum = n;
-      }
-      if (!cache.next_deal_seq || cache.next_deal_seq <= maxNum) {
-        cache.next_deal_seq = maxNum + 1;
-        await writeCache(cache);
-      }
+      console.log(`🟢 [CRM Engine] ${alterados} oportunidades migradas para seus 4 dígitos finais no cache local. Próximo ID: ${cache.next_deal_seq}`);
     }
   } catch (err) {
     console.warn('⚠️ [CRM Engine] Erro ao migrar deals legados no cache local:', err.message);
@@ -826,6 +846,11 @@ async function listarDeals(filtros = {}) {
   let deals = [];
   let fromDb = false;
 
+  // Garante que qualquer deal legado seja migrado para seu ID de 4 dígitos antes da listagem
+  if (!cacheMigrationExecuted) {
+    await migrarDealsLegadosParaSequencial();
+  }
+
   try {
     const params = [];
     let query = `
@@ -911,6 +936,7 @@ async function listarDeals(filtros = {}) {
 async function obterDealPorId(id) {
   if (!id) return null;
   const cleanId = String(id).trim();
+  const sufixo = cleanId.match(/-(\d+)$/)?.[1];
 
   // 1. Tenta Postgres
   try {
@@ -918,13 +944,22 @@ async function obterDealPorId(id) {
     if (res && res.rows && res.rows.length > 0) {
       return mapDealRow(res.rows[0]);
     }
+
+    if (sufixo && sufixo !== cleanId) {
+      const resSuff = await safeQuery('SELECT * FROM crm_deals WHERE id = $1 AND ativo = TRUE;', [sufixo]);
+      if (resSuff && resSuff.rows && resSuff.rows.length > 0) {
+        return mapDealRow(resSuff.rows[0]);
+      }
+    }
   } catch (err) {
     console.warn(`⚠️ [CRM Engine] Erro ao buscar Deal #${cleanId} no Postgres:`, err.message);
   }
 
   // 2. Fallback Cache Local
   const cache = await readCache();
-  const deal = (cache.deals || []).find(d => String(d.id) === cleanId && d.ativo !== false);
+  const deal = (cache.deals || []).find(d => 
+    (String(d.id) === cleanId || (sufixo && String(d.id) === sufixo)) && d.ativo !== false
+  );
   return deal || null;
 }
 

@@ -155,6 +155,27 @@ router.get('/deals', async (req, res) => {
 });
 
 /**
+ * POST /api/bi/crm/deals/migrate-ids
+ * Força a execução da migração de IDs legados para os 4 dígitos finais em todas as tabelas
+ */
+router.post('/deals/migrate-ids', async (req, res) => {
+  try {
+    await crmEngine.migrarDealsLegadosParaSequencial(true);
+    return res.json({
+      success: true,
+      message: 'Migração de IDs legados para 4 dígitos executada com sucesso!'
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao migrar IDs legados',
+      detail: err.message,
+      code: 'MIGRATE_IDS_ERROR'
+    });
+  }
+});
+
+/**
  * POST /api/bi/crm/deals
  * Cria um novo negócio no CRM
  */

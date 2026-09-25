@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.269 (Homologada em 25/09/2026 11:46)  
+> **Versão da Documentação:** v8.270 (Homologada em 25/09/2026 12:14)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 25/09/2026 11:46 (v8.269 - ID Sequencial Limpo de Oportunidades no CRM iniciando em 1001)  
+> **Data da Última Auditoria:** 25/09/2026 12:14 (v8.270 - Migração dos IDs Legados para seus 4 Dígitos Finais com ON UPDATE CASCADE)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.270 (25/09/2026):** Migração Estrita dos IDs de Oportunidades Legadas para seus 4 Dígitos Finais (ex: `CRM-...-9273` ➔ `9273`, `CRM-...-2715` ➔ `2715`): extração de sufixo numérico `-([0-9]+)$` no PostgreSQL e cache, reconfiguração da FK `crm_atividades_deal_id_fkey` para `ON UPDATE CASCADE`, endpoint `POST /api/bi/crm/deals/migrate-ids` e busca defensiva retrocompatível em `obterDealPorId` (8 testes aprovados em `test_crm_id_sequencial.js` e 107 em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.269 (25/09/2026):** Adoção de ID Sequencial Limpo de 4 Dígitos para Oportunidades no CRM (`#1001`, `#1002`...) e Migração Automática de Oportunidades Gravadas: substituição de hash longo por sequence PostgreSQL (`crm_deals_seq START WITH 1001`) com fallback em cache local (`cache.next_deal_seq`), migração de deals gravados e exibição ergonômica em Kanban, Listagem (80px), Edição e Detalhes (7 testes aprovados em `test_crm_id_sequencial.js` e 107 em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.268 (25/09/2026):** Ajuste de contraste e legibilidade nos Itens Cotados do CRM: cor do valor digitado pelo vendedor na coluna `P. Negociado` alterada de azul claro (`#38bdf8`) para preto sólido (`#000000`) em `public/js/crm.js` e `public/style.css` (107 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.267 (25/09/2026):** Campo `Valor Total NFe` inalterável no CRM: rótulo atualizado de `Valor Oportunidade:` para `Valor Total NFe:`, campo não-editável (`readonly disabled tabindex="-1"` com cursor `not-allowed`), cálculo dinâmico reativo $\text{Soma Itens} + \text{Frete Cobrado}$ (excluindo Frete Embutido), defesas Red Team (proteção contra frete negativo e dirty check) e formatação pt-BR (104 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
