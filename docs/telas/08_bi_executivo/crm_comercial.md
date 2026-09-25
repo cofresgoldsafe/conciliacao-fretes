@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.270 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.274 - Homologado)  
 
 ---
 
@@ -34,7 +34,8 @@
   - `#btnCrmNovoClienteFromDeal`: Renomeado para `➕ Add Cliente` (abre modal de cadastro rápido sem sair da oportunidade).
   - `#btnCrmEditarClienteFromDeal`: Botão compacto `✏️ Editar` ao lado do autocomplete de cliente em `#modalCrmOportunidade`, permitindo editar o cadastro comercial do cliente selecionado.
   - `#btnCrmEditarClienteDoDetalhes`: Botão compacto `✏️ Editar` ao lado do nome da organização no cabeçalho do `#modalCrmDetalhes`.
-  - `#crmInputValor`: Campo inalterável de resumo fiscal e comercial exibindo **Valor Total NFe:** (`readonly disabled tabindex="-1"` com `cursor: not-allowed` e estilo cinza translúcido idêntico a P. Tabela e Desc(%), com recálculo reativo automático).
+  - `#crmInputValor`: Campo inalterável de resumo fiscal e comercial exibindo **Valor Total NFe:** com largura compacta reduzida pela metade para `70px` (`readonly disabled tabindex="-1"` com `cursor: not-allowed`, padding compacto `4px 6px` e estilo cinza translúcido idêntico a P. Tabela e Desc(%), com recálculo reativo automático).
+  - `#crmInputDescontoTotalGeral`: Campo inalterável exibindo **Desconto Total Geral (%):** na mesma linha de Valor Total NFe (`width: 70px`, `readonly disabled tabindex="-1"`, `cursor: not-allowed`, padding compacto `4px 6px`, coloração dinâmica por faixa de margem e cálculo determinístico oficial do BI de Autorizações).
 - **Toggles de Exibição de Oportunidades:**
   - `#btnCrmViewModeKanban`: Ativa modo de exibição em funil Kanban.
   - `#btnCrmViewModeListagem`: Ativa modo de exibição em tabela de listagem.
@@ -93,6 +94,7 @@
 - **Navalha de Texto em Itens Cotados:** Remoção do rótulo redundante "UM: UN" na exibição dos itens cotados da modal de oportunidade, no modal de detalhes e nas sugestões de produtos, mantendo a interface enxuta e focada em NCM e Peso.
 - **Coluna Ação com Acesso Rápido:** Primeira coluna da listagem tabular de oportunidades reservada para ações rápidas com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização de detalhes), alinhando a coluna "Nome do Cliente" (antiga Organização) e eliminando a coluna "Contato".
 - **Cálculo Automático do Valor Total NFe:** O campo `#crmInputValor` computa dinamicamente a soma canônica $\text{Valor Total NFe} = \text{Soma Itens} + \text{Frete Cobrado}$. O Frete Embutido é rigorosamente excluído dessa soma por já constar incorporado no preço negociado dos produtos. O campo é inalterável e recalculado em tempo real em todas as interações (digitação de frete cobrado, alteração de quantidades, preços negociados, adição/remoção de itens e seleção no autocomplete do catálogo Protheus).
+- **Cálculo Determinístico do Desconto Total Geral (%):** O campo inalterável `#crmInputDescontoTotalGeral` computa em tempo real a regra canônica oficial do BI de Autorizações (`bi_autorizacoes_engine.js`): Valor Líquido = Soma Itens Negociados - Frete Embutido (R$); Desconto (R$) = Soma Itens Tabela - Valor Líquido; Desconto Total Geral (%) = (Desconto R$ / Soma Itens Tabela) * 100. Possui divisão defensiva contra tabela zerada (`somaTabela > 0`) e coloração dinâmica: vermelho (`#ef4444`) para desconto > 10%, amarelo (`#f59e0b`) entre 6% e 10%, e verde (`#10b981`) para desconto <= 6%. Sincronizado reativamente com alterações nos itens cotados e digitação de Frete Embutido e Cobrado.
 
 ---
 
@@ -129,6 +131,13 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.274 (25/09/2026):** Redução da largura de Valor Total NFe pela metade (70px) e novo campo inalterável Desconto Total Geral (%) no modal de Oportunidades:
+  - **Redução Ergonômica:** O campo `#crmInputValor` teve sua largura reduzida de 140px para 70px com padding compacto 4px 6px em `public/crm.html` e `public/index.html`, liberando espaço horizontal na barra de resumo.
+  - **Novo Campo Inalterável Desconto Total Geral (%):** Adicionado `#crmInputDescontoTotalGeral` na mesma linha, com `readonly disabled tabindex="-1"` e `cursor: not-allowed`.
+  - **Regra Canônica Oficial:** Implementação em `public/js/crm.js` da fórmula determinística idêntica a Autorizações de Desconto (`bi_autorizacoes_engine.js`): Valor Líquido = Soma Negociado - Frete Embutido; Desconto R$ = Soma Tabela - Valor Líquido; Desconto % = (Desconto R$ / Soma Tabela) * 100.
+  - **Coloração Dinâmica por Faixa de Margem:** >10% Vermelho (`#ef4444`), >6% e <=10% Amarelo (`#f59e0b`), <=6% Verde (`#10b981`).
+  - **Reatividade Plena:** Recálculo em tempo real disparado por eventos `input`/`change` em Frete Embutido, Frete Cobrado e na edição de itens cotados.
+  - **Suíte de Testes:** 134 testes aprovados em `test_crm_standalone.js` (com a nova bateria 13 cobrindo layout, inalterabilidade, precisão matemática e cores).
 - **v8.273 (25/09/2026):** Eliminação do fechamento prematuro do Dropdown de Produtos do CRM ao rolar a lista ou usar a barra de rolagem:
   - **Causa Raiz & Remoção de Listener Invasivo:** Remoção do listener global de captura `window.addEventListener('scroll', ..., true)` em `public/js/crm.js`. Anteriormente, qualquer rolagem disparada pela caixa interna do dropdown (`#crmProductSuggestionsDropdown`) era interceptada na janela global e fechava o dropdown no milissegundo em que o operador tentava rolar para ver os últimos itens.
   - **Rolagem Livre e Fluida:** A listagem de produtos agora suporta rolagem completa com a rodinha do mouse (*wheel*) e arrasto da barra de rolagem sem fechamento indevido.

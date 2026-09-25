@@ -174,7 +174,65 @@
       inputValor.value = formatNumberPtBr(totalNfe);
     }
 
+    // Sincroniza também o Desconto Total Geral (%) da oportunidade
+    recalcularDescontoTotalGeral();
+
     return totalNfe;
+  }
+
+  /**
+   * Recalcula dinamicamente o Desconto Total Geral (%) da Oportunidade
+   * Regra canônica idêntica à tela de Autorizações de Desconto (bi_autorizacoes_engine.js):
+   * Valor Líquido = Soma Itens Negociados - Frete Embutido (R$)
+   * Desconto (R$) = Soma Itens Tabela - Valor Líquido
+   * Desconto Total Geral (%) = (Desconto R$ / Soma Itens Tabela) * 100
+   * 
+   * Faixas de coloração dinâmica:
+   * > 10%: Vermelho (#ef4444)
+   * > 6% e <= 10%: Amarelo (#f59e0b)
+   * <= 6%: Verde (#10b981)
+   */
+  function recalcularDescontoTotalGeral() {
+    let somaTabela = 0;
+    let somaNegociado = 0;
+
+    if (Array.isArray(currentItems)) {
+      currentItems.forEach(it => {
+        const q = parseFloat(it.quantidade) || 0;
+        const pt = parseFloat(it.precoTabela) || 0;
+        const pn = parseFloat(it.precoNegociado) || 0;
+        somaTabela += q * pt;
+        somaNegociado += q * pn;
+      });
+    }
+
+    const freteEmbutido = Math.max(0, parseFloat(document.getElementById('crmInputFreteEmbutido')?.value) || 0);
+
+    // Valor Líquido = Soma Itens Negociados - Frete Embutido (regra oficial de BI Autorizações)
+    const valorLiquido = somaNegociado - freteEmbutido;
+    const descontoReais = somaTabela - valorLiquido;
+    const descontoPct = somaTabela > 0 ? (descontoReais / somaTabela) * 100 : 0.0;
+
+    const inputDesconto = document.getElementById('crmInputDescontoTotalGeral');
+    if (inputDesconto) {
+      inputDesconto.value = (descontoPct).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+      if (descontoPct > 10) {
+        inputDesconto.style.color = '#ef4444'; // Vermelho (> 10%)
+      } else if (descontoPct > 6) {
+        inputDesconto.style.color = '#f59e0b'; // Amarelo (> 6% e <= 10%)
+      } else {
+        inputDesconto.style.color = '#10b981'; // Verde (<= 6%)
+      }
+    }
+
+    return {
+      somaTabela,
+      somaNegociado,
+      freteEmbutido,
+      valorLiquido,
+      descontoReais,
+      descontoPct
+    };
   }
 
   /**
@@ -3521,6 +3579,14 @@
       inputFreteCobrado.addEventListener('change', recalcularTotalNfeOportunidade);
     }
 
+    // Recalcula Desconto Total Geral (%) em tempo real ao alterar Frete Embutido
+    const inputFreteEmbutido = document.getElementById('crmInputFreteEmbutido');
+    if (inputFreteEmbutido && !inputFreteEmbutido._hasFreteEmbutidoListener) {
+      inputFreteEmbutido._hasFreteEmbutidoListener = true;
+      inputFreteEmbutido.addEventListener('input', recalcularDescontoTotalGeral);
+      inputFreteEmbutido.addEventListener('change', recalcularDescontoTotalGeral);
+    }
+
     // Submissão de Atividade / Follow-up
     const formAtividade = document.getElementById('formCrmAtividade');
     if (formAtividade && !formAtividade._hasListener) {
@@ -3784,6 +3850,8 @@
     markLost: openMarkLostModal,
     isDealFormValid,
     updateDealSaveButtonState,
+    recalcularTotalNfeOportunidade,
+    recalcularDescontoTotalGeral,
     getDeals: () => deals,
     getClientes: () => clientesList,
     isInitialized: () => isInitialized

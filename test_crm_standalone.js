@@ -254,6 +254,91 @@ async function runTests() {
   // 12.9 Proteção defensiva Math.max contra frete cobrado negativo
   assert(crmJs.includes('Math.max(0, parseFloat(document.getElementById(\'crmInputFreteCobrado\')?.value) || 0)'), 'recalcularTotalNfeOportunidade() protege contra valores negativos no frete');
 
+  // Teste 13: Desconto Total Geral (%) e Redução de Largura do Valor Total NFe pela Metade
+  // 13.1 Campo crmInputValor com largura de 70px (metade de 140px)
+  assert(crmHtml.includes('id="crmInputValor"') && crmHtml.includes('width: 70px;'), 'public/crm.html reduziu a largura de crmInputValor pela metade (width: 70px)');
+  assert(indexHtml.includes('id="crmInputValor"') && indexHtml.includes('width: 70px;'), 'public/index.html reduziu a largura de crmInputValor pela metade (width: 70px)');
+
+  // 13.2 Rótulo Desconto Total Geral (%): em crm.html e index.html
+  assert(crmHtml.includes('Desconto Total Geral (%):'), 'public/crm.html exibe o rótulo Desconto Total Geral (%):');
+  assert(indexHtml.includes('Desconto Total Geral (%):'), 'public/index.html exibe o rótulo Desconto Total Geral (%):');
+
+  // 13.3 Campo crmInputDescontoTotalGeral inalterável
+  assert(crmHtml.includes('id="crmInputDescontoTotalGeral"') && crmHtml.includes('readonly disabled tabindex="-1"'), 'public/crm.html possui crmInputDescontoTotalGeral inalterável');
+  assert(indexHtml.includes('id="crmInputDescontoTotalGeral"') && indexHtml.includes('readonly disabled tabindex="-1"'), 'public/index.html possui crmInputDescontoTotalGeral inalterável');
+  assert(crmHtml.includes('id="crmInputDescontoTotalGeral"') && crmHtml.includes('cursor: not-allowed'), 'public/crm.html possui cursor not-allowed no crmInputDescontoTotalGeral');
+  assert(indexHtml.includes('id="crmInputDescontoTotalGeral"') && indexHtml.includes('cursor: not-allowed'), 'public/index.html possui cursor not-allowed no crmInputDescontoTotalGeral');
+
+  // 13.4 Função recalcularDescontoTotalGeral implementada em crm.js
+  assert(crmJs.includes('function recalcularDescontoTotalGeral()'), 'public/js/crm.js implementa a função recalcularDescontoTotalGeral()');
+
+  // 13.5 Teste unitário isolado da regra canônica de desconto idêntica a Autorizações de Desconto
+  function simularRecalcularDescontoGeral(itens, freteEmbutido) {
+    let somaTabela = 0;
+    let somaNegociado = 0;
+    if (Array.isArray(itens)) {
+      itens.forEach(it => {
+        const q = parseFloat(it.quantidade) || 0;
+        const pt = parseFloat(it.precoTabela) || 0;
+        const pn = parseFloat(it.precoNegociado) || 0;
+        somaTabela += q * pt;
+        somaNegociado += q * pn;
+      });
+    }
+    const fEmbutido = Math.max(0, parseFloat(freteEmbutido) || 0);
+    const valorLiquido = somaNegociado - fEmbutido;
+    const descontoReais = somaTabela - valorLiquido;
+    const descontoPct = somaTabela > 0 ? (descontoReais / somaTabela) * 100 : 0.0;
+    return {
+      somaTabela,
+      somaNegociado,
+      freteEmbutido: fEmbutido,
+      valorLiquido,
+      descontoReais,
+      descontoPct: Number(descontoPct.toFixed(2))
+    };
+  }
+
+  // Caso A: Tabela 1000, Negociado 900, Frete Embutido 0 -> Desconto 10.00%
+  const casoA = simularRecalcularDescontoGeral([{ quantidade: 1, precoTabela: 1000, precoNegociado: 900 }], 0);
+  assert(casoA.descontoPct === 10.00, 'Caso A: Desconto de R$ 1000 para R$ 900 sem frete é exatamente 10.00%');
+
+  // Caso B: Tabela 1000, Negociado 1000, Frete Embutido 100 -> Líquido 900 -> Desconto 10.00%
+  const casoB = simularRecalcularDescontoGeral([{ quantidade: 1, precoTabela: 1000, precoNegociado: 1000 }], 100);
+  assert(casoB.valorLiquido === 900.00, 'Caso B: Valor líquido é 1000 - 100 = 900');
+  assert(casoB.descontoPct === 10.00, 'Caso B: Desconto com frete embutido de R$ 100 é 10.00%');
+
+  // Caso C: Deal 26569 de produção (Tabela 6600, Negociado 6804, Frete Embutido 600) -> 6.00%
+  const casoC = simularRecalcularDescontoGeral([{ quantidade: 1, precoTabela: 6600, precoNegociado: 6804 }], 600);
+  assert(casoC.valorLiquido === 6204.00, 'Caso C: Valor líquido é 6804 - 600 = 6204');
+  assert(casoC.descontoReais === 396.00, 'Caso C: Desconto em R$ é 6600 - 6204 = 396');
+  assert(casoC.descontoPct === 6.00, 'Caso C: Desconto % é exatamente 6.00%');
+
+  // 13.6 Faixas de coloração dinâmica (>10 vermelho, >6 amarelo, <=6 verde)
+  function determinarCorDesconto(pct) {
+    if (pct > 10) return '#ef4444'; // Vermelho
+    if (pct > 6) return '#f59e0b';  // Amarelo
+    return '#10b981';              // Verde
+  }
+  assert(determinarCorDesconto(15.0) === '#ef4444', 'Desconto > 10% (ex: 15%) aplica cor vermelha #ef4444');
+  assert(determinarCorDesconto(10.01) === '#ef4444', 'Desconto > 10% (ex: 10.01%) aplica cor vermelha #ef4444');
+  assert(determinarCorDesconto(10.0) === '#f59e0b', 'Desconto de 10% aplica cor amarela #f59e0b');
+  assert(determinarCorDesconto(7.5) === '#f59e0b', 'Desconto > 6% e <= 10% (ex: 7.5%) aplica cor amarela #f59e0b');
+  assert(determinarCorDesconto(6.01) === '#f59e0b', 'Desconto > 6% (ex: 6.01%) aplica cor amarela #f59e0b');
+  assert(determinarCorDesconto(6.0) === '#10b981', 'Desconto de 6% aplica cor verde #10b981');
+  assert(determinarCorDesconto(3.5) === '#10b981', 'Desconto <= 6% (ex: 3.5%) aplica cor verde #10b981');
+  assert(determinarCorDesconto(0.0) === '#10b981', 'Desconto zerado aplica cor verde #10b981');
+
+  // 13.7 Listeners reativos em crmInputFreteEmbutido
+  assert(crmJs.includes('inputFreteEmbutido.addEventListener(\'input\', recalcularDescontoTotalGeral)'), 'crm.js recalcula desconto reativamente no evento input de Frete Embutido');
+  assert(crmJs.includes('inputFreteEmbutido.addEventListener(\'change\', recalcularDescontoTotalGeral)'), 'crm.js recalcula desconto reativamente no evento change de Frete Embutido');
+
+  // 13.8 Chamada de recalcularDescontoTotalGeral dentro de recalcularTotalNfeOportunidade
+  assert(crmJs.includes('recalcularDescontoTotalGeral();'), 'recalcularTotalNfeOportunidade() acopla recalcularDescontoTotalGeral()');
+
+  // 13.9 Exportação pública em CRMModule
+  assert(crmJs.includes('recalcularDescontoTotalGeral,'), 'window.CRMModule exporta publicamente recalcularDescontoTotalGeral');
+
   console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
   if (passedTests === totalTests) {
     console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.273 (Homologada em 25/09/2026 12:51)  
+> **Versão da Documentação:** v8.274 (Homologada em 25/09/2026 14:03)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 25/09/2026 12:51 (v8.273 - Eliminação do Fechamento Prematuro ao Rolar Dropdown de Produtos do CRM)  
+> **Data da Última Auditoria:** 25/09/2026 14:03 (v8.274 - Desconto Total Geral (%) e Redução de Largura do Valor Total NFe pela Metade no CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.274 (25/09/2026):** Redução da largura de Valor Total NFe pela metade (`70px`) e inclusão do campo inalterável `Desconto Total Geral (%):` no modal de oportunidades do CRM (`public/crm.html`, `public/index.html`, `public/js/crm.js`): cálculo determinístico oficial do BI de Autorizações (`bi_autorizacoes_engine.js`) deduzindo frete embutido do valor negociado, divisão defensiva e coloração dinâmica por faixa de margem (>10% vermelho, >6% a 10% amarelo, <=6% verde) com reatividade total em tempo real (134 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.273 (25/09/2026):** Eliminação do fechamento prematuro do dropdown flutuante de produtos do CRM (`#crmProductSuggestionsDropdown`) ao rolar a lista ou usar a barra de rolagem: remoção do listener global de captura `window.addEventListener('scroll', ..., true)` em `public/js/crm.js`, preservando a rolagem fluida e mantendo fechamento seguro exclusivamente por clique fora, seleção de item, tecla Esc ou fechamento de modal (7 baterias aprovadas em `test_crm_produtos.js`, 8 em `test_crm_id_sequencial.js` e 8 em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.272 (25/09/2026):** Reconfiguração do Piso Sequencial de Oportunidades do CRM para `29000` (vinte e nove mil) para evitar colisão com o CRM legado/Pipedrive em ~26700: sequência PostgreSQL ajustada (`crm_deals_seq START WITH 29000` e `setval(..., 29000, false)`), fallback em cache local atômico (`cache.next_deal_seq >= 29000`), piso em `obterProximoIdDeal()` e fallback offline no frontend em `public/js/crm.js` com base `28999` (8 testes aprovados em `test_crm_id_sequencial.js`, 107 em `test_crm_standalone.js` e 8 em `test_crm_listagem.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.270 (25/09/2026):** Migração Estrita dos IDs de Oportunidades Legadas para seus 4 Dígitos Finais (ex: `CRM-...-9273` ➔ `9273`, `CRM-...-2715` ➔ `2715`): extração de sufixo numérico `-([0-9]+)$` no PostgreSQL e cache, reconfiguração da FK `crm_atividades_deal_id_fkey` para `ON UPDATE CASCADE`, endpoint `POST /api/bi/crm/deals/migrate-ids` e busca defensiva retrocompatível em `obterDealPorId` (8 testes aprovados em `test_crm_id_sequencial.js` e 107 em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
