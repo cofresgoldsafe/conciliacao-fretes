@@ -5469,4 +5469,165 @@ body.theme-light .crm-bloco-titulo-cinza {
   }
 }
 
+/* ==========================================================================
+   CRM COMERCIAL: OPÇÃO B - MODAL AMPLO MAXIMIZÁVEL & STANDALONE PAGE
+   ========================================================================== */
+
+/* Animação Shake para clique no backdrop estático */
+@keyframes crmModalShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.crm-modal-shake {
+  animation: crmModalShake 0.35s ease-in-out !important;
+}
+
+/* Modal Amplo de Oportunidades (Opção B - HubSpot) */
+#modalCrmOportunidade .modal-large,
+#modalCrmDetalhes .modal-large {
+  width: 96vw !important;
+  max-width: 1440px !important;
+  max-height: 94vh !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Evita scrollbars duplas no backdrop durante a maximização */
+.modal:has(.modal-maximized) {
+  padding: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Estado Maximizado / Tela Cheia (100% Viewport sem vazamento de padding) */
+.modal-content.modal-maximized {
+  width: calc(100vw - 16px) !important;
+  max-width: calc(100vw - 16px) !important;
+  height: calc(100vh - 16px) !important;
+  max-height: calc(100vh - 16px) !important;
+  border-radius: 8px !important;
+}
+
+/* Expande a área útil dos itens cotados na tela cheia */
+.modal-maximized .crm-itens-table-container {
+  max-height: 48vh !important;
+}
+
+/* Ajustes de contraste para Modo Claro */
+.theme-light #modalCrmOportunidade strong,
+.theme-light .crm-resumo-kpis-bar strong {
+  color: #0369a1 !important;
+}
+
+/* Botão de Maximizar / Restaurar no Header do Modal */
+.btn-toggle-maximize {
+  background: transparent;
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.15));
+  border-radius: 6px;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-toggle-maximize:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  color: var(--text-main, #f8fafc);
+  border-color: var(--accent-primary, #38bdf8);
+}
+
+/* Tabela de Produtos Cotados: Espaçosa e 100% da Largura */
+.crm-itens-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.5);
+  margin-top: 8px;
+}
+
+.crm-itens-cotados-table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+}
+
+.crm-itens-cotados-table th {
+  background: var(--bg-card, #1e293b);
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted, #94a3b8);
+  border-bottom: 1px solid var(--panel-border, rgba(255, 255, 255, 0.1));
+}
+
+.crm-itens-cotados-table td {
+  padding: 8px 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.crm-itens-cotados-table .col-codigo { width: 140px; }
+.crm-itens-cotados-table .col-desc { min-width: 340px; }
+.crm-itens-cotados-table .col-qtd { width: 85px; }
+.crm-itens-cotados-table .col-ptabela { width: 120px; }
+.crm-itens-cotados-table .col-pnegociado { width: 130px; }
+.crm-itens-cotados-table .col-total { width: 130px; }
+.crm-itens-cotados-table .col-acao { width: 45px; text-align: center; }
+
+/* Barra de Resumo KPI de Produtos */
+.crm-resumo-kpis-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+}
+
+/* Header e Layout da Página Dedicada /crm */
+.crm-standalone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background: var(--header-bg, #0f172a);
+  border-bottom: 1px solid var(--panel-border, #334155);
+}
+
+.crm-standalone-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.crm-standalone-brand h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-main, #f8fafc);
+}
+
+.crm-standalone-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.crm-standalone-main {
+  padding: 18px 24px;
+  max-width: 100%;
+}
+
 

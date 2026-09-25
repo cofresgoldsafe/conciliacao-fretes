@@ -477,6 +477,11 @@ app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: 0
 }));
 
+// Rota Canônica da Página Dedicada do CRM Comercial Nativo (/crm)
+app.get('/crm', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'crm.html'));
+});
+
 // Configure uploads and data directories
 const uploadsDir = path.join(__dirname, 'uploads');
 const dataDir = path.join(__dirname, 'data');

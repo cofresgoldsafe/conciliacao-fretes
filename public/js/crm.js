@@ -1764,7 +1764,7 @@
       }
 
       saveDealsLocal(deals);
-      closeModal(document.getElementById('modalCrmOportunidade'));
+      closeModal(document.getElementById('modalCrmOportunidade'), true);
       renderDealsViews();
       updateTopKpis();
       mostrarNotificacao(`Oportunidade "${titulo}" salva com sucesso!`, 'success');
@@ -3417,16 +3417,44 @@
       }
     });
 
-    // Fechamento de modais ao clicar no backdrop (overlay)
-    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmMarcarPerdido'].forEach(id => {
+    // Proteção de Modais contra fechamento acidental no backdrop (overlay)
+    // Em vez de fechar, aplica micro-animação crm-modal-shake no card para feedback visual
+    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmPerdido', 'modalCrmMarcarPerdido'].forEach(id => {
       const m = document.getElementById(id);
       if (m && !m._hasBackdropListener) {
         m._hasBackdropListener = true;
         m.addEventListener('click', (e) => {
-          if (e.target === m) closeModal(m);
+          if (e.target === m) {
+            const content = m.querySelector('.modal-content');
+            if (content) {
+              content.classList.remove('crm-modal-shake');
+              void content.offsetWidth; // Força reflow para reiniciar CSS keyframe
+              content.classList.add('crm-modal-shake');
+              setTimeout(() => {
+                if (content) content.classList.remove('crm-modal-shake');
+              }, 450);
+            }
+          }
         });
       }
     });
+
+    // Alternador Maximizar / Restaurar tamanho do Modal de Oportunidade (Opção B - Estilo HubSpot)
+    const btnToggleMaximize = document.getElementById('btnCrmToggleMaximizeDealModal');
+    if (btnToggleMaximize && !btnToggleMaximize._hasMaximizeListener) {
+      btnToggleMaximize._hasMaximizeListener = true;
+      btnToggleMaximize.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const modal = document.getElementById('modalCrmOportunidade');
+        const content = modal ? modal.querySelector('.modal-content') : null;
+        if (!content) return;
+        const isMaximized = content.classList.toggle('modal-maximized');
+        btnToggleMaximize.innerHTML = isMaximized ? '🗗' : '⛶';
+        btnToggleMaximize.title = isMaximized ? 'Restaurar tamanho padrão' : 'Maximizar / Tela cheia';
+        btnToggleMaximize.setAttribute('aria-label', isMaximized ? 'Restaurar tamanho padrão' : 'Maximizar modal');
+      });
+    }
 
     // Fechamento com tecla Escape
     if (!document._hasCrmEscapeListener) {
@@ -3452,7 +3480,7 @@
             closeModal(modalCliente);
             return;
           }
-          const modalPerda = document.getElementById('modalCrmMarcarPerdido');
+          const modalPerda = document.getElementById('modalCrmPerdido') || document.getElementById('modalCrmMarcarPerdido');
           if (modalPerda && modalPerda.style.display !== 'none' && !modalPerda.classList.contains('hidden')) {
             closeModal(modalPerda);
             return;
@@ -3478,6 +3506,34 @@
   }
 
   /**
+   * Utilitário para verificar se há alterações pendentes no formulário de oportunidade (Dirty Check)
+   */
+  function isDealFormDirty() {
+    const titulo = document.getElementById('crmInputTitulo')?.value?.trim() || '';
+    const cliente = document.getElementById('crmInputCliente')?.value?.trim() || '';
+    const obsNfe = document.getElementById('crmInputObsNfe')?.value?.trim() || document.getElementById('crmTextareaObs')?.value?.trim() || '';
+    const pedidoCompra = document.getElementById('crmInputPedidoCompraCliente')?.value?.trim() || '';
+    const transp = document.getElementById('crmInputTransportadora')?.value?.trim() || '';
+    const condPgto = document.getElementById('crmInputCondPgto')?.value?.trim() || '';
+    const prazoEntrega = document.getElementById('crmInputPrazoEntrega')?.value?.trim() || '';
+    const hasItems = Array.isArray(currentItems) && currentItems.length > 0;
+
+    if (currentDeal) {
+      if (titulo !== (currentDeal.titulo || '')) return true;
+      if (cliente !== (currentDeal.clienteNome || '')) return true;
+      if (obsNfe !== (currentDeal.observacoesNfe || currentDeal.observacoes || '')) return true;
+      if (pedidoCompra !== (currentDeal.pedidoCompraCliente || '')) return true;
+      if (transp !== (currentDeal.transportadora || '')) return true;
+      if (condPgto !== (currentDeal.condPgto || '')) return true;
+      if (prazoEntrega !== (currentDeal.prazoEntrega || '')) return true;
+      if (JSON.stringify(currentItems) !== JSON.stringify(currentDeal.itens || [])) return true;
+      return false;
+    }
+
+    return Boolean(titulo || cliente || obsNfe || pedidoCompra || transp || hasItems);
+  }
+
+  /**
    * Utilitário para abrir modal
    */
   function openModal(modal) {
@@ -3487,10 +3543,18 @@
   }
 
   /**
-   * Utilitário para fechar modal
+   * Utilitário para fechar modal com dirty check opcional
    */
-  function closeModal(modal) {
+  function closeModal(modal, force = false) {
     if (!modal) return;
+
+    if (modal.id === 'modalCrmOportunidade' && !force) {
+      if (isDealFormDirty()) {
+        const confirmar = window.confirm('Existem dados preenchidos ou alterações nesta oportunidade que não foram salvas. Deseja realmente fechar e descartar as alterações?');
+        if (!confirmar) return;
+      }
+    }
+
     modal.classList.add('hidden');
     modal.style.display = 'none';
     if (modal.id === 'modalCrmCliente') {

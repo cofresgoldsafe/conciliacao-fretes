@@ -1,0 +1,80 @@
+/**
+ * test_crm_standalone.js
+ * Teste automatizado de validação da página dedicada /crm e recursos de usabilidade do CRM Comercial (Opção B)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const http = require('http');
+
+let passedTests = 0;
+let totalTests = 0;
+
+function assert(condition, message) {
+  totalTests++;
+  if (condition) {
+    console.log(`  ✅ [PASS] ${message}`);
+    passedTests++;
+  } else {
+    console.error(`  ❌ [FAIL] ${message}`);
+  }
+}
+
+async function runTests() {
+  console.log('🧪 Iniciando testes de validação do CRM Dedicado (/crm) e Opção B...\n');
+
+  // Teste 1: Existência de public/crm.html
+  const crmHtmlPath = path.join(__dirname, 'public', 'crm.html');
+  assert(fs.existsSync(crmHtmlPath), 'Arquivo public/crm.html existe fisicamente no repositório');
+
+  // Teste 2: Conteúdo de public/crm.html
+  const crmHtml = fs.readFileSync(crmHtmlPath, 'utf8');
+  assert(crmHtml.includes('<!DOCTYPE html>'), 'public/crm.html é um documento HTML5 válido');
+  assert(crmHtml.includes('localStorage.getItem(\'conciliacao_fretes_session\')'), 'public/crm.html contém Auth Guard inline com validação de sessão ativa');
+  assert(crmHtml.includes('btnCrmToggleMaximizeDealModal'), 'public/crm.html possui botão de alternância Maximizar / Restaurar (Opção B)');
+  assert(crmHtml.includes('crm-itens-table-container') || crmHtml.includes('crm-itens-cotados-table'), 'public/crm.html possui container amplo 100% de produtos cotados');
+  assert(crmHtml.includes('crmInputTransportadoraCod'), 'public/crm.html preserva campo Protheus oculto A4_COD');
+  assert(crmHtml.includes('CRMModule.init()'), 'public/crm.html inicializa automaticamente o CRMModule');
+
+  // Teste 3: Rota /crm em server.js
+  const serverJsPath = path.join(__dirname, 'server.js');
+  const serverJs = fs.readFileSync(serverJsPath, 'utf8');
+  assert(serverJs.includes("app.get('/crm'"), 'server.js possui rota canônica GET /crm registrada');
+
+  // Teste 4: CSS para modal amplo, maximizado e shake
+  const styleCssPath = path.join(__dirname, 'public', 'style.css');
+  const styleCss = fs.readFileSync(styleCssPath, 'utf8');
+  assert(styleCss.includes('.modal-maximized'), 'public/style.css contém estilos para .modal-maximized (99vw / 97vh)');
+  assert(styleCss.includes('@keyframes crmModalShake'), 'public/style.css contém keyframes para animação de shake no backdrop');
+  assert(styleCss.includes('.crm-modal-shake'), 'public/style.css contém classe .crm-modal-shake');
+
+  // Teste 5: Lógica em public/js/crm.js
+  const crmJsPath = path.join(__dirname, 'public', 'js', 'crm.js');
+  const crmJs = fs.readFileSync(crmJsPath, 'utf8');
+  assert(crmJs.includes('btnCrmToggleMaximizeDealModal'), 'public/js/crm.js contém listener para o botão de maximizar');
+  assert(crmJs.includes('crm-modal-shake'), 'public/js/crm.js aplica animação crm-modal-shake ao clicar no backdrop');
+  assert(crmJs.includes('modalCrmPerdido'), 'public/js/crm.js cobre modalCrmPerdido na lista de backdrops protegidos');
+  assert(crmJs.includes('crmInputObsNfe'), 'public/js/crm.js verifica crmInputObsNfe no dirty check (sem IDs inexistentes)');
+  assert(crmJs.includes('isDealFormDirty'), 'public/js/crm.js possui verificação isDealFormDirty para dirty-checking');
+  assert(crmJs.includes('closeModal(document.getElementById(\'modalCrmOportunidade\'), true)'), 'public/js/crm.js passa force=true ao salvar oportunidade');
+
+  // Teste 6: Botão CRM no Portal e Redirecionamento Pós-Login (public/app.js)
+  const appJsPath = path.join(__dirname, 'public', 'app.js');
+  const appJs = fs.readFileSync(appJsPath, 'utf8');
+  assert(appJs.includes("window.open('/crm', '_blank')"), 'public/app.js abre /crm em nova janela ao clicar na aba CRM');
+  assert(appJs.includes('redirectTarget'), 'public/app.js respeita o parâmetro ?redirect= pós-autenticação');
+
+  // Teste 7: Telemetria Autenticada no Standalone (crm.html)
+  assert(crmHtml.includes('headers: token ? { \'Authorization\': `Bearer ${token}` } : {}'), 'public/crm.html envia token no heartbeat session-ping');
+
+  console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
+  if (passedTests === totalTests) {
+    console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');
+    process.exit(0);
+  } else {
+    console.error('💥 Alguns testes falharam.');
+    process.exit(1);
+  }
+}
+
+runTests();

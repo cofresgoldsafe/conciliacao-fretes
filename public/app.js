@@ -213,6 +213,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dispara Heartbeat para manter último acesso ativo no painel de auditoria
     startSessionHeartbeat();
 
+    // Redirecionamento seguro pós-login se solicitado na URL (ex: ?redirect=/crm)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTarget = urlParams.get('redirect');
+      if (redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//') && !redirectTarget.includes('\\')) {
+        window.location.replace(redirectTarget);
+        return;
+      }
+    } catch (e) {
+      console.warn('Aviso ao processar redirecionamento pós-login:', e);
+    }
+
     // Apply Tab Permissions safely
     try {
       applyUserPermissions(user);
@@ -906,7 +918,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listener explícito para o botão do CRM Comercial
   const btnTabBiCrmEl = document.getElementById('btnTabBiCrm');
   if (btnTabBiCrmEl) {
-    btnTabBiCrmEl.addEventListener('click', () => {
+    btnTabBiCrmEl.addEventListener('click', (e) => {
+      // Abre a página dedicada em uma nova janela / aba conforme solicitação do usuário
+      window.open('/crm', '_blank');
+
       tabPanes.forEach(pane => pane.classList.add('hidden'));
       const targetPane = document.getElementById('tab-bi-crm');
       if (targetPane) targetPane.classList.remove('hidden');

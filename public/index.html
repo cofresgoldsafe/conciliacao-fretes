@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.260">
+  <link rel="stylesheet" href="style.css?v=8.261">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 24/09/2026 20:38 (Espelhamento de transportadoras Protheus no Super Banco e campo Transportadora Indicada com autocomplete estrito no CRM)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 25/09/2026 00:29 (Página Dedicada /crm, Modal Amplo Opção B Maximizável, Backdrop Anti-Fechamento e Dirty Check)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -6741,6 +6741,9 @@
               <button id="btnCrmRefresh" type="button" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 38px;" title="Atualizar dados do pipeline">
                 <span>🔄 Atualizar</span>
               </button>
+              <a href="/crm" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 38px; text-decoration: none; font-weight: 600;" title="Abrir CRM Comercial em uma janela exclusiva">
+                <span>↗ Abrir em Nova Janela</span>
+              </a>
             </div>
           </div>
         </div>
@@ -6937,27 +6940,32 @@
     </div>
   </main>
 
-  <!-- MODAL CRM: NOVA / EDITAR OPORTUNIDADE COM CAMPOS COMERCIAIS E ITENS COTADOS -->
-  <div id="modalCrmOportunidade" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmOportunidadeTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;">
-    <div class="modal-content modal-large" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 980px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
-      <!-- Header do Modal -->
-      <div class="modal-header" style="padding: 16px 22px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+  <!-- MODAL CRM: NOVA / EDITAR OPORTUNIDADE (OPÇÃO B: AMPLO MAXIMIZÁVEL & PRODUTOS 100% LARGURA) -->
+  <div id="modalCrmOportunidade" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmOportunidadeTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; justify-content: center; align-items: center; overflow-y: auto; padding: 16px;">
+    <div class="modal-content modal-large" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 96vw; max-width: 1440px; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <!-- Header do Modal com Botão Maximizar/Restaurar -->
+      <div class="modal-header" style="padding: 14px 22px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
         <h3 id="modalCrmOportunidadeTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
           ➕ Nova Oportunidade Comercial
         </h3>
-        <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal" style="background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="btnCrmToggleMaximizeDealModal" class="btn-toggle-maximize" title="Alternar Tela Cheia (Maximizar / Restaurar)" aria-label="Maximizar ou Restaurar Modal">
+            <span id="iconMaximizeDealModal">⛶</span>
+          </button>
+          <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal" style="background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
+        </div>
       </div>
 
-      <!-- Corpo com Formulário -->
-      <form id="formCrmOportunidade" style="flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 1.25rem;">
+      <!-- Corpo com Formulário em Seções Horizontais e Grade de Produtos 100% -->
+      <form id="formCrmOportunidade" style="flex: 1; overflow-y: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 1.1rem;">
         <input type="hidden" id="crmDealId">
         <input type="hidden" id="crmInputClienteCod">
         <input type="hidden" id="crmInputClienteLoja">
         <input type="hidden" id="crmInputClienteCnpj">
 
-        <!-- BLOCO 1: DADOS PRINCIPAIS DO NEGÓCIO -->
+        <!-- BLOCO 1: DADOS PRINCIPAIS DO NEGÓCIO & CLIENTE -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 12px;">
+          <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 10px;">
             📌 1. Identificação da Oportunidade
           </strong>
           <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -6985,27 +6993,26 @@
 
           <!-- Cliente com Autocomplete e Seletor Faturado Por -->
           <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: start;">
-            <!-- Cliente com Autocomplete e Atalho Novo Cliente -->
+            <!-- Cliente com Autocomplete e Atalhos -->
             <div style="position: relative;">
               <div class="form-group" style="margin: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <label style="font-size: 0.8rem; font-weight: 600; margin: 0;">Cliente (Razão Social / Nome Fantasia / CNPJ): *</label>
+                  <label style="font-size: 0.8rem; font-weight: 600; margin: 0;">Cliente: *</label>
                   <div style="display: flex; gap: 6px; align-items: center;">
                     <button type="button" id="btnCrmEditarClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); display: flex; align-items: center; gap: 4px;" title="Editar cadastro do cliente selecionado">
                       <span>✏️ Editar</span>
                     </button>
-                    <button type="button" id="btnCrmNovoClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 4px;" title="Cadastrar novo cliente rapidamente sem sair da oportunidade">
+                    <button type="button" id="btnCrmNovoClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 4px;" title="Cadastrar novo cliente">
                       <span>➕ Add Cliente</span>
                     </button>
                   </div>
                 </div>
-                <input type="text" id="crmInputCliente" class="form-control" placeholder="Digite 2 ou mais letras para buscar cliente do Protheus ou CRM..." required autocomplete="off" style="width: 100%;">
+                <input type="text" id="crmInputCliente" class="form-control" placeholder="Buscar por Razão Social, Fantasia ou CNPJ..." required autocomplete="off" style="width: 100%;">
               </div>
-              <!-- Dropdown Autocomplete -->
               <div id="crmClienteSuggestions" class="crm-autocomplete-dropdown hidden" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg, #1e293b); border: 1px solid var(--panel-border, #334155); border-radius: 6px; max-height: 220px; overflow-y: auto; z-index: 10000; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
             </div>
 
-            <!-- Seletor Faturado Por (3 Empresas) -->
+            <!-- Faturado Por -->
             <div class="form-group" style="margin: 0;">
               <label for="crmSelectFaturadoPor" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px; height: 24px; line-height: 24px;">Faturado Por:</label>
               <select id="crmSelectFaturadoPor" class="form-control" style="width: 100%;">
@@ -7018,9 +7025,9 @@
           </div>
         </div>
 
-        <!-- BLOCO 2: CAMPOS COMERCIAIS -->
+        <!-- BLOCO 2: CONDIÇÕES COMERCIAIS & FATURAMENTO -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong style="font-size: 0.88rem; color: #10b981; display: block; margin-bottom: 12px;">
+          <strong style="font-size: 0.88rem; color: #10b981; display: block; margin-bottom: 10px;">
             💼 2. Condições Comerciais & Faturamento
           </strong>
           <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -7040,8 +7047,8 @@
             <div class="form-group" style="margin: 0;">
               <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Frete:</label>
               <select id="crmSelectTipoFrete" class="form-control" style="width: 100%;">
-                <option value="CIF">CIF (Por conta do emitente)</option>
-                <option value="FOB">FOB (Por conta do destinatário)</option>
+                <option value="CIF">CIF (Emitente)</option>
+                <option value="FOB">FOB (Destinatário)</option>
               </select>
             </div>
             <div class="form-group" style="margin: 0;">
@@ -7082,14 +7089,14 @@
           </div>
         </div>
 
-        <!-- BLOCO 3: ITENS COTADOS -->
+        <!-- BLOCO 3: ITENS COTADOS (100% DA LARGURA) -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
             <strong style="font-size: 0.88rem; color: #fbbf24; display: block;">
               📦 3. Tabela de Itens Cotados (Catálogo Protheus)
             </strong>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" id="btnCrmSyncProdutos" class="btn btn-outline btn-sm" style="font-size: 0.76rem; padding: 3px 8px; color: #94a3b8; display: flex; align-items: center; gap: 4px;" title="Sincronizar produtos com ERP Protheus (SB1090/SB1160)">
+              <button type="button" id="btnCrmSyncProdutos" class="btn btn-outline btn-sm" style="font-size: 0.76rem; padding: 3px 8px; color: #94a3b8; display: flex; align-items: center; gap: 4px;" title="Sincronizar produtos com ERP Protheus">
                 🔄 Sync Produtos
               </button>
               <button type="button" id="btnCrmAddItemCotado" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
@@ -7098,17 +7105,17 @@
             </div>
           </div>
 
-          <div class="table-responsive" style="max-height: 260px; overflow-y: auto; overflow-x: visible;">
-            <table class="data-table" style="font-size: 0.82rem; width: 100%;">
+          <div class="crm-itens-table-container table-responsive" style="max-height: 380px; overflow-y: auto; overflow-x: auto;">
+            <table class="crm-itens-cotados-table data-table" style="font-size: 0.82rem; width: 100%;">
               <thead>
                 <tr>
-                  <th style="width: 140px;">Código</th>
-                  <th>Descrição do Produto</th>
-                  <th style="width: 70px; text-align: right;">Qtd</th>
-                  <th style="width: 110px; text-align: right;">P. Tabela</th>
-                  <th style="width: 115px; text-align: right;">P. Negociado</th>
-                  <th style="width: 110px; text-align: right;">Total</th>
-                  <th style="width: 40px; text-align: center;">Ação</th>
+                  <th class="col-codigo" style="width: 140px;">Código</th>
+                  <th class="col-desc">Descrição do Produto</th>
+                  <th class="col-qtd" style="width: 85px; text-align: right;">Qtd</th>
+                  <th class="col-ptabela" style="width: 120px; text-align: right;">P. Tabela</th>
+                  <th class="col-pnegociado" style="width: 130px; text-align: right;">P. Negociado</th>
+                  <th class="col-total" style="width: 130px; text-align: right;">Total</th>
+                  <th class="col-acao" style="width: 45px; text-align: center;">Ação</th>
                 </tr>
               </thead>
               <tbody id="crmTbodyItensCotados">
@@ -7117,9 +7124,9 @@
             </table>
           </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--panel-border); flex-wrap: wrap; gap: 10px;">
+          <div class="crm-resumo-kpis-bar">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Total Oportunidade:</span>
+              <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Oportunidade:</span>
               <input type="number" min="0" step="0.01" id="crmInputValor" class="form-control" style="width: 140px; font-weight: 700; color: #38bdf8; text-align: right;" value="0">
             </div>
             <div style="display: flex; align-items: center; gap: 16px;">
@@ -9676,24 +9683,24 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.260"></script>
-  <script src="js/bi.js?v=8.260"></script>
-  <script src="js/bi_indices.js?v=8.260"></script>
-  <script src="js/bi_autorizacoes.js?v=8.260"></script>
-  <script src="js/bi_despesas.js?v=8.260"></script>
-  <script src="js/gordura_frete.js?v=8.260"></script>
-  <script src="js/fechamento_vendedores.js?v=8.260"></script>
-  <script type="module" src="js/tarefas.js?v=8.260"></script>
-  <script src="js/holerites.js?v=8.260"></script>
-  <script src="js/funcionarios_dp.js?v=8.260"></script>
-  <script src="js/crm.js?v=8.260"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.260"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.260"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.260"></script>
-  <script src="js/nfse_pendentes.js?v=8.260"></script>
-  <script src="js/fechamento_fiscal.js?v=8.260"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.260"></script>
-  <script src="js/contas_pagar.js?v=8.260"></script>
-  <script src="app.js?v=8.260"></script>
+  <script src="js/chart.umd.min.js?v=8.261"></script>
+  <script src="js/bi.js?v=8.261"></script>
+  <script src="js/bi_indices.js?v=8.261"></script>
+  <script src="js/bi_autorizacoes.js?v=8.261"></script>
+  <script src="js/bi_despesas.js?v=8.261"></script>
+  <script src="js/gordura_frete.js?v=8.261"></script>
+  <script src="js/fechamento_vendedores.js?v=8.261"></script>
+  <script type="module" src="js/tarefas.js?v=8.261"></script>
+  <script src="js/holerites.js?v=8.261"></script>
+  <script src="js/funcionarios_dp.js?v=8.261"></script>
+  <script src="js/crm.js?v=8.261"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.261"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.261"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.261"></script>
+  <script src="js/nfse_pendentes.js?v=8.261"></script>
+  <script src="js/fechamento_fiscal.js?v=8.261"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.261"></script>
+  <script src="js/contas_pagar.js?v=8.261"></script>
+  <script src="app.js?v=8.261"></script>
 </body>
 </html>
