@@ -57,3 +57,14 @@ html = html.replace(/js\/auditoria_protheus_sefaz\.js\?v=[0-9.]+/g, `js/auditori
 
 fs.writeFileSync(indexPath, html, 'utf-8');
 console.log(`✅ Versão atualizada no index.html: ${dataHoraStr} (${description}) | Cache: ?v=${novaVersaoNum}`);
+
+const crmPath = path.join(__dirname, 'public', 'crm.html');
+if (fs.existsSync(crmPath)) {
+  let crmHtml = fs.readFileSync(crmPath, 'utf-8');
+  crmHtml = crmHtml.replace(/style\.css\?v=[0-9.]+/g, `style.css?v=${novaVersaoNum}`);
+  crmHtml = crmHtml.replace(/js\/chart\.umd\.min\.js\?v=[0-9.]+/g, `js/chart.umd.min.js?v=${novaVersaoNum}`);
+  crmHtml = crmHtml.replace(/js\/crm\.js\?v=[0-9.]+/g, `js/crm.js?v=${novaVersaoNum}`);
+  fs.writeFileSync(crmPath, crmHtml, 'utf-8');
+  console.log(`✅ Versão atualizada no crm.html | Cache: ?v=${novaVersaoNum}`);
+}
+

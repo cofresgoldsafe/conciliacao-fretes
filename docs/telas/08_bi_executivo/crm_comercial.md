@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 24/09/2026 (v8.259 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.262 - Homologado)  
 
 ---
 
@@ -126,6 +126,13 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.262 (25/09/2026):** Unificação do Cabeçalho do CRM Comercial (`public/crm.html`), Eliminação da 2ª Faixa Informativa (Navalha de Texto / YAGNI) e Padronização dos Botões na Topbar com Destaque Exclusivo:
+  - **Navalha de Texto no Título:** Redução do título para `Plataforma GSI — CRM Comercial`, eliminando o badge `Página Dedicada` e o subtítulo `Pipeline de Vendas, Cotações e Clientes B2B`.
+  - **Eliminação da 2ª Faixa:** Remoção completa do container intermediário (`Pipeline Comercial Nativo — Gestão de oportunidades de vendas, cotações, carteira de clientes e follow-up`), reduzindo altura morta e trazendo o conteúdo analítico/pipeline imediatamente abaixo da barra superior.
+  - **Elevação dos Controles Operacionais:** Os botões `#btnCrmViewKanban` (📊 Funil de Oportunidades), `#btnCrmViewClientes` (👥 Clientes Cadastrados), `#btnCrmNovaOportunidade` (➕ Nova Oportunidade) e `#btnCrmRefresh` (🔄 Atualizar) foram unificados na Topbar superior (`.crm-standalone-header`).
+  - **Padronização Visual em 34px:** Todos os botões da barra superior foram padronizados com altura de `34px`, tipografia `0.8rem` e espaçamento equilibrado, idênticos a `☀️ Modo Claro` e `🏠 Voltar ao Portal`.
+  - **Destaque Cromático Exclusivo:** O botão `➕ Nova Oportunidade` é o **único elemento com preenchimento azul claro (`var(--accent-blue, #38bdf8)`)**, texto de alto contraste `#0f172a` e sombra suave, direcionando o foco do operador para a ação mais frequente sem concorrência visual dos alternadores de visão ativos (que utilizam destaque neutro translúcido/branco).
+  - **Suíte de Testes:** 33 testes aprovados em `test_crm_standalone.js`.
 - **v8.261 (25/09/2026):** Implementação da **Página Dedicada Exclusiva (`/crm` / `public/crm.html`)** e do layout **Opção B (Modal Amplo com Seções Horizontais e Botão Maximizar / Tela Cheia estilo HubSpot)**:
   - **Página Standalone (`/crm`):** Rota Express canônica com `res.sendFile`, Auth Guard síncrono no `<head>` com redirecionamento inteligente pós-login (`?redirect=/crm`), heartbeat autenticado a cada 5 minutos, alternador nativo de Tema Claro/Escuro (`#btnToggleThemeCrmPage`), botão de retorno `🏠 Voltar ao Portal` e avatar do usuário logado. O botão `#btnTabBiCrm` no Portal GSI agora abre `/crm` em nova aba via `window.open('/crm', '_blank')` com fallback no DOM.
   - **Opção B (Modal Amplo Maximizável):** Modal `#modalCrmOportunidade` reestruturado em 3 blocos horizontais compactos (1. Identificação, 2. Condições Comerciais & Faturamento, 3. Tabela de Itens Cotados Protheus 100% da largura). Botão Maximizar `#btnCrmToggleMaximizeDealModal` comutando `.modal-maximized` (`calc(100vw - 16px)` × `calc(100vh - 16px)`) com expansão vertical da tabela para `48vh`.

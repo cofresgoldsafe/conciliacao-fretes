@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.260">
+  <link rel="stylesheet" href="style.css?v=8.262">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,22 +33,43 @@
   <!-- Topbar Dedicada da Página CRM -->
   <header class="crm-standalone-header">
     <div class="crm-standalone-brand">
-      <div class="brand-logo" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: rgba(56, 189, 248, 0.15); border-radius: 8px; color: #38bdf8;">
+      <div class="brand-logo" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: rgba(56, 189, 248, 0.15); border-radius: 8px; color: #38bdf8; flex-shrink: 0;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
         </svg>
       </div>
       <div>
-        <h1 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-          <span>Plataforma GSI — CRM Comercial</span>
-          <span style="font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 600;">Página Dedicada</span>
+        <h1 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main); white-space: nowrap;">
+          Plataforma GSI — CRM Comercial
         </h1>
-        <span style="font-size: 0.75rem; color: var(--text-muted);">Pipeline de Vendas, Cotações e Clientes B2B</span>
       </div>
     </div>
 
     <div class="crm-standalone-actions">
+      <!-- Segmented Control / Toggle de Visões (Padronizado 34px) -->
+      <div class="crm-view-toggles" role="tablist" aria-label="Visões do CRM">
+        <button id="btnCrmViewKanban" type="button" class="btn btn-primary btn-sm" role="tab" aria-selected="true" aria-pressed="true" title="Exibir funil visual de oportunidades">
+          <span>📊 Funil de Oportunidades</span>
+        </button>
+        <button id="btnCrmViewClientes" type="button" class="btn btn-outline btn-sm" role="tab" aria-selected="false" aria-pressed="false" title="Exibir tabela de clientes cadastrados">
+          <span>👥 Clientes Cadastrados</span>
+        </button>
+      </div>
+
+      <!-- Ação Principal: Único com fundo azul claro (#38bdf8) -->
+      <button id="btnCrmNovaOportunidade" type="button" class="btn btn-primary btn-sm" title="Criar nova oportunidade comercial">
+        <span>➕ Nova Oportunidade</span>
+      </button>
+
+      <!-- Botão Atualizar (Padronizado 34px) -->
+      <button id="btnCrmRefresh" type="button" class="btn btn-outline btn-sm" title="Atualizar dados do pipeline">
+        <span>🔄 Atualizar</span>
+      </button>
+
+      <!-- Divisor Vertical Sutil -->
+      <div style="width: 1px; height: 24px; background: var(--panel-border); margin: 0 2px;"></div>
+
       <!-- Alternador de Tema Claro / Escuro -->
       <button id="btnToggleThemeCrmPage" class="btn btn-outline btn-sm" style="display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; font-size: 0.8rem;" title="Alternar entre Tema Claro e Escuro">
         <span id="crmThemeIcon">☀️</span>
@@ -77,31 +98,6 @@
   <main class="crm-standalone-main">
     <div id="tab-bi-crm" class="tab-pane active" style="display: block;">
       <div class="bi-wrapper crm-wrapper">
-        <!-- Header Card: Título, Toggle de Visões e Ações Globais -->
-        <div class="card" style="margin-bottom: 1.25rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <span style="font-size: 1.8rem;">💼</span>
-              <div>
-                <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text-main);">Pipeline Comercial Nativo</h2>
-                <p class="desc" style="margin: 0; font-size: 0.85rem;">Gestão de oportunidades de vendas, cotações, carteira de clientes e follow-up</p>
-              </div>
-            </div>
-            <!-- Segmented Control / Toggle de Visões -->
-            <div class="crm-view-toggles" role="tablist" aria-label="Visões do CRM">
-              <button id="btnCrmViewKanban" type="button" class="btn btn-primary btn-sm" role="tab" aria-selected="true" aria-pressed="true" style="font-weight: 600;">📊 Funil de Oportunidades</button>
-              <button id="btnCrmViewClientes" type="button" class="btn btn-outline btn-sm" role="tab" aria-selected="false" aria-pressed="false" style="font-weight: 600;">👥 Clientes Cadastrados</button>
-            </div>
-            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-              <button id="btnCrmNovaOportunidade" type="button" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; font-weight: 600; height: 38px;">
-                <span>➕ Nova Oportunidade</span>
-              </button>
-              <button id="btnCrmRefresh" type="button" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; height: 38px;" title="Atualizar dados do pipeline">
-                <span>🔄 Atualizar</span>
-              </button>
-            </div>
-          </div>
-        </div>
 
         <!-- VISÃO 1: KANBAN / FUNIL DE OPORTUNIDADES -->
         <div id="crmViewKanbanContainer">
@@ -871,11 +867,11 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.260"></script>
-  <script src="js/crm.js?v=8.260"></script>
+  <script src="js/chart.umd.min.js?v=8.262"></script>
+  <script src="js/crm.js?v=8.262"></script>
 
   <script>
-    // Inicialização da Página Dedicada /crm
+    // Inicialização do CRM Comercial (/crm)
     document.addEventListener('DOMContentLoaded', () => {
       // 1. Carrega dados do usuário autenticado no cabeçalho
       try {

@@ -5601,15 +5601,18 @@ body.theme-light .crm-bloco-titulo-cinza {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
+  padding: 10px 20px;
   background: var(--header-bg, #0f172a);
   border-bottom: 1px solid var(--panel-border, #334155);
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .crm-standalone-brand {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .crm-standalone-brand h1 {
@@ -5617,17 +5620,118 @@ body.theme-light .crm-bloco-titulo-cinza {
   font-weight: 700;
   margin: 0;
   color: var(--text-main, #f8fafc);
+  white-space: nowrap;
 }
 
 .crm-standalone-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Padronização de botões da barra superior (altura 34px, tipografia 0.8rem) */
+.crm-standalone-header .btn {
+  height: 34px !important;
+  font-size: 0.8rem !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-radius: 6px !important;
+  padding: 0 12px !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.crm-standalone-header .crm-view-toggles {
+  display: inline-flex;
+  gap: 4px;
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+/* Toggles ativos no header: destaque neutro para NÃO competir com Nova Oportunidade */
+.crm-standalone-header .crm-view-toggles .btn.btn-primary,
+.crm-standalone-header .crm-view-toggles .btn[aria-pressed="true"] {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  font-weight: 600 !important;
+}
+
+.crm-standalone-header .crm-view-toggles .btn.btn-outline,
+.crm-standalone-header .crm-view-toggles .btn[aria-pressed="false"] {
+  background-color: transparent !important;
+  color: var(--text-muted, #94a3b8) !important;
+  border-color: var(--panel-border, #334155) !important;
+  font-weight: 500 !important;
+}
+
+body.theme-light .crm-standalone-header .crm-view-toggles .btn.btn-primary,
+body.theme-light .crm-standalone-header .crm-view-toggles .btn[aria-pressed="true"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  font-weight: 600 !important;
+}
+
+body.theme-light .crm-standalone-header .crm-view-toggles .btn.btn-outline,
+body.theme-light .crm-standalone-header .crm-view-toggles .btn[aria-pressed="false"] {
+  background-color: transparent !important;
+  color: #64748b !important;
+  border-color: #cbd5e1 !important;
+  font-weight: 500 !important;
+}
+
+/* Botão Nova Oportunidade: ÚNICO com fundo azul claro (#38bdf8) */
+.crm-standalone-header #btnCrmNovaOportunidade {
+  background-color: var(--accent-blue, #38bdf8) !important;
+  color: #0f172a !important;
+  border: 1px solid var(--accent-blue, #38bdf8) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35) !important;
+  padding: 0 14px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.crm-standalone-header #btnCrmNovaOportunidade:hover {
+  background-color: var(--accent-blue-hover, #0284c7) !important;
+  border-color: var(--accent-blue-hover, #0284c7) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.crm-standalone-header #btnCrmRefresh {
+  background-color: transparent !important;
+  color: var(--text-muted, #94a3b8) !important;
+  border: 1px solid var(--panel-border, #334155) !important;
+}
+
+.crm-standalone-header #btnCrmRefresh:hover {
+  color: var(--text-main, #f8fafc) !important;
+  border-color: var(--text-muted, #94a3b8) !important;
+}
+
+body.theme-light .crm-standalone-header #btnCrmRefresh {
+  background-color: transparent !important;
+  color: #64748b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
 }
 
 .crm-standalone-main {
   padding: 18px 24px;
   max-width: 100%;
 }
+
 
 

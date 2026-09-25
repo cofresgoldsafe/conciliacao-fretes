@@ -67,6 +67,27 @@ async function runTests() {
   // Teste 7: Telemetria Autenticada no Standalone (crm.html)
   assert(crmHtml.includes('headers: token ? { \'Authorization\': `Bearer ${token}` } : {}'), 'public/crm.html envia token no heartbeat session-ping');
 
+  // Teste 8: Unificação do Cabeçalho e Padronização dos Botões no CRM
+  assert(crmHtml.includes('Plataforma GSI — CRM Comercial'), 'public/crm.html exibe o título limpo Plataforma GSI — CRM Comercial');
+  assert(!crmHtml.includes('Página Dedicada'), 'public/crm.html eliminou o badge textual Página Dedicada (Navalha de Texto)');
+  assert(!crmHtml.includes('Pipeline de Vendas, Cotações e Clientes B2B'), 'public/crm.html eliminou o subtítulo descritivo longo do cabeçalho');
+  assert(!crmHtml.includes('Pipeline Comercial Nativo'), 'public/crm.html eliminou a 2ª faixa com texto Pipeline Comercial Nativo');
+  assert(!crmHtml.includes('Gestão de oportunidades de vendas, cotações, carteira de clientes e follow-up'), 'public/crm.html eliminou a descrição prolixa da 2ª faixa');
+
+  // Validação dos botões na topbar
+  const headerContentMatch = crmHtml.match(/<header class="crm-standalone-header">([\s\S]*?)<\/header>/);
+  const headerContent = headerContentMatch ? headerContentMatch[1] : '';
+  assert(headerContent.includes('id="btnCrmViewKanban"'), 'Header superior contém o botão Funil de Oportunidades');
+  assert(headerContent.includes('id="btnCrmViewClientes"'), 'Header superior contém o botão Clientes Cadastrados');
+  assert(headerContent.includes('id="btnCrmNovaOportunidade"'), 'Header superior contém o botão Nova Oportunidade');
+  assert(headerContent.includes('id="btnCrmRefresh"'), 'Header superior contém o botão Atualizar');
+  assert(headerContent.includes('id="btnToggleThemeCrmPage"'), 'Header superior contém o botão de Tema');
+  assert(headerContent.includes('Voltar ao Portal'), 'Header superior contém o botão Voltar ao Portal');
+
+  // Validação de CSS de padronização e destaque exclusivo
+  assert(styleCss.includes('.crm-standalone-header .btn') && styleCss.includes('height: 34px !important'), 'public/style.css padroniza todos os botões do header em 34px');
+  assert(styleCss.includes('.crm-standalone-header #btnCrmNovaOportunidade') && styleCss.includes('var(--accent-blue'), 'public/style.css aplica fundo azul claro exclusivamente para Nova Oportunidade');
+
   console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
   if (passedTests === totalTests) {
     console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');
