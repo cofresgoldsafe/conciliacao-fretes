@@ -84,6 +84,11 @@ async function runTests() {
   assert(headerContent.includes('id="btnToggleThemeCrmPage"'), 'Header superior contém o botão de Tema');
   assert(headerContent.includes('Voltar ao Portal'), 'Header superior contém o botão Voltar ao Portal');
 
+  // Validação da ordem solicitada pelo usuário (Nova Oportunidade antes de Funil de Oportunidades)
+  const posNova = headerContent.indexOf('id="btnCrmNovaOportunidade"');
+  const posKanban = headerContent.indexOf('id="btnCrmViewKanban"');
+  assert(posNova !== -1 && posKanban !== -1 && posNova < posKanban, 'Botão Nova Oportunidade está posicionado antes de Funil de Oportunidades');
+
   // Validação de CSS de padronização e destaque exclusivo
   assert(styleCss.includes('.crm-standalone-header .btn') && styleCss.includes('height: 34px !important'), 'public/style.css padroniza todos os botões do header em 34px');
   assert(styleCss.includes('.crm-standalone-header #btnCrmNovaOportunidade') && styleCss.includes('var(--accent-blue'), 'public/style.css aplica fundo azul claro exclusivamente para Nova Oportunidade');

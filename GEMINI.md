@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.262 (Homologada em 25/09/2026 09:00)  
+> **Versão da Documentação:** v8.263 (Homologada em 25/09/2026 09:05)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 25/09/2026 09:00 (v8.262 - Unificação do Cabeçalho CRM, Eliminação da 2ª Faixa e Padronização dos Botões na Topbar com Destaque em Nova Oportunidade)  
+> **Data da Última Auditoria:** 25/09/2026 09:05 (v8.263 - Botão Nova Oportunidade com Destaque Azul Claro Posicionado Antes do Funil no CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.263 (25/09/2026):** Reposicionamento ergonômico no cabeçalho do CRM Comercial (`/crm` / `public/crm.html`), colocando o botão principal com fundo azul claro `➕ Nova Oportunidade` imediatamente antes do alternador `📊 Funil de Oportunidades` e `👥 Clientes Cadastrados` (34 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.262 (25/09/2026):** Unificação do cabeçalho do CRM Comercial (`/crm`), eliminação da 2ª faixa informativa (Navalha de Texto / YAGNI), elevação dos botões operacionais (Funil, Clientes, Nova Oportunidade, Atualizar) para a topbar com altura padronizada de 34px e destaque visual exclusivo com fundo azul claro (`#38bdf8`) para o botão `➕ Nova Oportunidade` (33 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.261 (25/09/2026):** Página Dedicada Standalone para o CRM Comercial (`/crm` / `public/crm.html`) com rota Express canônica, Auth Guard síncrono e abertura em nova aba a partir do Portal GSI; reformulação do modal de oportunidade no padrão Opção B (estilo HubSpot) com 3 blocos horizontais, tabela de itens cotados 100% da largura, botão de maximização de tela cheia (`calc(100vw - 16px)` × `calc(100vh - 16px)`), proteção anti-queda acidental no backdrop com micro-animação `.crm-modal-shake` e dirty-check com confirmação de descarte de dados (20 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.260 (24/09/2026):** Espelhamento e sincronização de transportadoras homologadas do Protheus (`SA4010`/`SA4160`, 1.151 registros) para o Super Banco de Dados (`crm_transportadoras` / Supabase Postgres + cache local atômico `crm_transportadoras_cache.json`). O campo "Transportadora Indicada" no CRM ganhou autocomplete estrito (< 10ms) e botão `🔄 Atualizar`, persistindo o código Protheus `A4_COD` em campo oculto `#crmInputTransportadoraCod` para preparo direto da migração para `SC5.C5_TRANSP`, com suporte a `000009 - CLIENTE RETIRA` e validação estrita (10 testes aprovados em `test_crm_transportadoras.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

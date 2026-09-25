@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.262 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.263 - Homologado)  
 
 ---
 
@@ -126,6 +126,7 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.263 (25/09/2026):** Reposicionamento ergonômico no cabeçalho do CRM Comercial (`/crm` / `public/crm.html`), colocando o botão principal com fundo azul claro `➕ Nova Oportunidade` imediatamente antes do alternador de abas `📊 Funil de Oportunidades` e `👥 Clientes Cadastrados`, alinhando a ordem de leitura ocidental (Ação Principal ➔ Modos de Visualização ➔ Atualizar ➔ Utilidades) (34 testes aprovados em `test_crm_standalone.js`).
 - **v8.262 (25/09/2026):** Unificação do Cabeçalho do CRM Comercial (`public/crm.html`), Eliminação da 2ª Faixa Informativa (Navalha de Texto / YAGNI) e Padronização dos Botões na Topbar com Destaque Exclusivo:
   - **Navalha de Texto no Título:** Redução do título para `Plataforma GSI — CRM Comercial`, eliminando o badge `Página Dedicada` e o subtítulo `Pipeline de Vendas, Cotações e Clientes B2B`.
   - **Eliminação da 2ª Faixa:** Remoção completa do container intermediário (`Pipeline Comercial Nativo — Gestão de oportunidades de vendas, cotações, carteira de clientes e follow-up`), reduzindo altura morta e trazendo o conteúdo analítico/pipeline imediatamente abaixo da barra superior.
