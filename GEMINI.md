@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.267 (Homologada em 25/09/2026 10:48)  
+> **Versão da Documentação:** v8.268 (Homologada em 25/09/2026 11:18)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 25/09/2026 10:48 (v8.267 - Campo Valor Total NFe Inalterável e Cálculo Automático no CRM)  
+> **Data da Última Auditoria:** 25/09/2026 11:18 (v8.268 - Ajuste de Cor do Preço Negociado para Preto no CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.268 (25/09/2026):** Ajuste de contraste e legibilidade nos Itens Cotados do CRM: cor do valor digitado pelo vendedor na coluna `P. Negociado` alterada de azul claro (`#38bdf8`) para preto sólido (`#000000`) em `public/js/crm.js` e `public/style.css` (107 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.267 (25/09/2026):** Campo `Valor Total NFe` inalterável no CRM: rótulo atualizado de `Valor Oportunidade:` para `Valor Total NFe:`, campo não-editável (`readonly disabled tabindex="-1"` com cursor `not-allowed`), cálculo dinâmico reativo $\text{Soma Itens} + \text{Frete Cobrado}$ (excluindo Frete Embutido), defesas Red Team (proteção contra frete negativo e dirty check) e formatação pt-BR (104 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.266 (25/09/2026):** Inclusão da coluna `Desc(%)` na tabela de Itens Cotados da oportunidade no CRM: cálculo automático $((P_{tab} - P_{neg}) / P_{tab}) \times 100$ no formato brasileiro `99,99`, campo inalterável readonly com recálculo em tempo real e redução de 75px na largura mínima da descrição (86 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.265 (25/09/2026):** Otimização ergonômica da tabela de Itens Cotados no CRM: remoção de NCM/Peso na descrição da edição (preservados no modelo), redução compacta das colunas Qtd (55px), P. Tabela (95px), P. Negociado (105px) e Total (110px), campo P. Tabela inalterável (cinza, readonly e disabled) e formatação numérica brasileira pt-BR com 2 casas decimais (67 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

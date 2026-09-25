@@ -1595,7 +1595,7 @@
             <input type="text" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${formatNumberPtBr(item.precoTabela)}" readonly disabled tabindex="-1" style="text-align: right; width: 95px; background: rgba(148, 163, 184, 0.12) !important; color: #94a3b8 !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500;" title="Preço oficial de tabela SB1 (fixo/bloqueado)">
           </td>
           <td style="width: 105px;">
-            <input type="text" inputmode="decimal" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${formatNumberPtBr(item.precoNegociado)}" style="text-align: right; width: 105px; font-weight: 600; color: #38bdf8;" title="Preço negociado com o cliente">
+            <input type="text" inputmode="decimal" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${formatNumberPtBr(item.precoNegociado)}" style="text-align: right; width: 105px; font-weight: 600; color: #000000;" title="Preço negociado com o cliente">
           </td>
           <td style="width: 75px;">
             <input type="text" class="form-control form-control-sm crm-item-descpct" data-index="${index}" value="${formatNumberPtBr(descPct)}" readonly disabled tabindex="-1" style="text-align: right; width: 75px; background: rgba(148, 163, 184, 0.12) !important; color: #94a3b8 !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500; font-family: var(--font-mono);" title="Desconto percentual calculado sobre o preço de tabela">

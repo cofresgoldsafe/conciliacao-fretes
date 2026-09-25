@@ -149,6 +149,11 @@ async function runTests() {
   assert(renderItensContent.includes('formatNumberPtBr(item.precoNegociado)'), 'P. Negociado é exibido formatado no padrão brasileiro');
   assert(renderItensContent.includes('parseNumberPtBr(e.target.value)'), 'Edição de P. Negociado realiza parse flexível pt-BR em tempo real');
 
+  // 10.5 Cor do valor digitado na coluna P. Negociado (Preto #000000)
+  assert(renderItensContent.includes('crm-item-pnegociado') && renderItensContent.includes('color: #000000;'), 'Valor na coluna P. Negociado utiliza cor preta (#000000)');
+  assert(!renderItensContent.includes('color: #38bdf8;" title="Preço negociado com o cliente"'), 'Valor na coluna P. Negociado não utiliza mais azul claro (#38bdf8)');
+  assert(styleCss.includes('.crm-itens-cotados-table .crm-item-pnegociado { color: #000000; }'), 'public/style.css define cor preta (#000000) para .crm-item-pnegociado');
+
   // Teste 11: Nova Coluna Desc(%) na Edição de Oportunidades
   // 11.1 Cabeçalho Desc(%) no thead de crm.html e index.html
   assert(crmHtml.includes('class="col-descpct" style="width: 75px; text-align: right;">Desc(%)</th>'), 'public/crm.html possui cabeçalho Desc(%) com 75px alinhado à direita');

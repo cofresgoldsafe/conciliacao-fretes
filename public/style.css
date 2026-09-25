@@ -5582,6 +5582,7 @@ body.theme-light .crm-bloco-titulo-cinza {
 .crm-itens-cotados-table .col-descpct { width: 75px; }
 .crm-itens-cotados-table .col-total { width: 110px; }
 .crm-itens-cotados-table .col-acao { width: 45px; text-align: center; }
+.crm-itens-cotados-table .crm-item-pnegociado { color: #000000; }
 
 /* Barra de Resumo KPI de Produtos */
 .crm-resumo-kpis-bar {

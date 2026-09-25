@@ -129,6 +129,10 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.268 (25/09/2026):** Ajuste cromático e ergonômico no Preço Negociado nos Itens Cotados do CRM:
+  - **Contraste & Legibilidade:** Substituição da cor do texto no campo de entrada da coluna Preço Negociado (`.crm-item-pnegociado`), alterando de azul claro (`#38bdf8`) para preto sólido (`#000000`).
+  - **Especificidade em Camadas:** Aplicação inline no gerador de linhas de `renderItensCotadosTable()` em `public/js/crm.js` e reforço na folha de estilos `public/style.css` (`.crm-itens-cotados-table .crm-item-pnegociado`), garantindo leitura nítida e contraste padrão para o vendedor durante a cotação.
+  - **Suíte de Testes:** 107 testes aprovados em `test_crm_standalone.js` (com asserções dedicadas para `#000000` e rejeição de `#38bdf8`).
 - **v8.267 (25/09/2026):** Campo `Valor Total NFe` inalterável e cálculo automático no modal de Oportunidades do CRM:
   - **Navalha de Texto / Rótulo:** Substituição de `Valor Oportunidade:` por `Valor Total NFe:` em `public/crm.html` e `public/index.html`.
   - **Inalterabilidade Defensiva:** Campo `#crmInputValor` transformado em input inalterável (`readonly disabled tabindex="-1"` com `cursor: not-allowed` e estilo cinza translúcido idêntico a P. Tabela e Desc(%)), prevenindo divergências de digitação manual de valores com a NFe.
