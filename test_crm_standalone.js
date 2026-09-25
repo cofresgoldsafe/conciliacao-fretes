@@ -93,6 +93,32 @@ async function runTests() {
   assert(styleCss.includes('.crm-standalone-header .btn') && styleCss.includes('height: 34px !important'), 'public/style.css padroniza todos os botões do header em 34px');
   assert(styleCss.includes('.crm-standalone-header #btnCrmNovaOportunidade') && styleCss.includes('var(--accent-blue'), 'public/style.css aplica fundo azul claro exclusivamente para Nova Oportunidade');
 
+  // Teste 9: Validação dos 4 Campos Obrigatórios e Desativação do Botão Salvar
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  const indexHtml = fs.readFileSync(indexPath, 'utf8');
+
+  // 9.1 Rótulo com asterisco em Faturado Por: *
+  assert(crmHtml.includes('Faturado Por: *'), 'public/crm.html possui asterisco obrigatório em Faturado Por: *');
+  assert(indexHtml.includes('Faturado Por: *'), 'public/index.html possui asterisco obrigatório em Faturado Por: *');
+
+  // 9.2 Seletor crmSelectFaturadoPor com required e placeholder inválido desabilitado
+  assert(crmHtml.includes('id="crmSelectFaturadoPor" class="form-control" required'), 'public/crm.html possui select crmSelectFaturadoPor marcado como required');
+  assert(indexHtml.includes('id="crmSelectFaturadoPor" class="form-control" required'), 'public/index.html possui select crmSelectFaturadoPor marcado como required');
+  assert(crmHtml.includes('<option value="" disabled selected>Selecione a empresa...</option>'), 'public/crm.html define opção Selecione a empresa como disabled selected (inválida para submissão)');
+  assert(indexHtml.includes('<option value="" disabled selected>Selecione a empresa...</option>'), 'public/index.html define opção Selecione a empresa como disabled selected (inválida para submissão)');
+
+  // 9.3 Botão Salvar inicialmente desabilitado com tooltip nos dois HTMLs
+  assert(crmHtml.includes('id="btnSalvarCrmOportunidade"') && crmHtml.includes('disabled title="Preencha os campos obrigatórios (*)'), 'public/crm.html possui btnSalvarCrmOportunidade inicialmente inativo (disabled)');
+  assert(indexHtml.includes('id="btnSalvarCrmOportunidade"') && indexHtml.includes('disabled title="Preencha os campos obrigatórios (*)'), 'public/index.html possui btnSalvarCrmOportunidade inicialmente inativo (disabled)');
+
+  // 9.4 Lógica de validação em public/js/crm.js
+  assert(crmJs.includes('function isDealFormValid()'), 'public/js/crm.js implementa a função isDealFormValid()');
+  assert(crmJs.includes('function updateDealSaveButtonState()'), 'public/js/crm.js implementa a função updateDealSaveButtonState()');
+  assert(crmJs.includes('!vendedor.toLowerCase().includes(\'selecione\')'), 'public/js/crm.js rejeita opção placeholder de Vendedor');
+  assert(crmJs.includes('!faturadoPor.toLowerCase().includes(\'selecione\')'), 'public/js/crm.js rejeita opção placeholder de Faturado Por');
+  assert(crmJs.includes('btnSalvar.disabled = !valid'), 'public/js/crm.js controla dinamicamente disabled do botão Salvar');
+  assert(crmJs.includes('[\'crmInputTitulo\', \'crmSelectVendedor\', \'crmInputCliente\', \'crmSelectFaturadoPor\']'), 'public/js/crm.js escuta eventos nos 4 campos obrigatórios');
+
   console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
   if (passedTests === totalTests) {
     console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');

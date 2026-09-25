@@ -1159,10 +1159,51 @@
   function normalizeFaturadoPor(val) {
     if (!val) return '';
     const s = String(val).toUpperCase().trim();
+    if (s.includes('SELECIONE')) return '';
     if (s.startsWith('14') || s.includes('METAL')) return '14 - METAL PLENO';
     if (s.startsWith('15') || s.includes('GSI')) return '15 - GSI COFRES';
     if (s.startsWith('16') || s.includes('OACO') || s.includes('OAÇO') || s.includes('AÇO')) return '16 - OACO';
     return val;
+  }
+
+  /**
+   * Valida se os 4 campos obrigatórios do Deal estão preenchidos validamente:
+   * 1. Título da Oportunidade
+   * 2. Vendedor Responsável
+   * 3. Cliente
+   * 4. Faturado Por (não pode ser vazio ou 'Selecione a empresa')
+   */
+  function isDealFormValid() {
+    const titulo = (document.getElementById('crmInputTitulo')?.value || '').trim();
+    const vendedor = (document.getElementById('crmSelectVendedor')?.value || '').trim();
+    const cliente = (document.getElementById('crmInputCliente')?.value || '').trim();
+    const faturadoPor = (document.getElementById('crmSelectFaturadoPor')?.value || '').trim();
+
+    const hasTitulo = titulo.length > 0;
+    const hasVendedor = vendedor.length > 0 && !vendedor.toLowerCase().includes('selecione');
+    const hasCliente = cliente.length > 0;
+    const hasFaturado = faturadoPor.length > 0 && !faturadoPor.toLowerCase().includes('selecione');
+
+    return Boolean(hasTitulo && hasVendedor && hasCliente && hasFaturado);
+  }
+
+  /**
+   * Atualiza dinamicamente o estado do botão Salvar Oportunidade (inativo se faltar algum obrigatório)
+   */
+  function updateDealSaveButtonState() {
+    const btnSalvar = document.getElementById('btnSalvarCrmOportunidade');
+    if (!btnSalvar) return;
+
+    // Se estiver salvando em andamento, preserva o estado de processamento
+    if (btnSalvar.textContent.includes('Salvando')) return;
+
+    const valid = isDealFormValid();
+    btnSalvar.disabled = !valid;
+    if (!valid) {
+      btnSalvar.title = 'Preencha os campos obrigatórios (*) para habilitar: Título, Vendedor, Cliente e Faturado Por';
+    } else {
+      btnSalvar.removeAttribute('title');
+    }
   }
 
   /**
@@ -1205,6 +1246,7 @@
     }
 
     renderItensCotadosTable();
+    updateDealSaveButtonState();
     openModal(modal);
   }
 
@@ -1256,6 +1298,7 @@
     document.getElementById('crmInputObsNfe').value = deal.observacoesNfe || '';
 
     renderItensCotadosTable();
+    updateDealSaveButtonState();
     openModal(modal);
   }
 
@@ -1639,14 +1682,21 @@
       document.getElementById('crmInputCliente')?.focus();
       return;
     }
-    if (!vendedor) {
+    if (!vendedor || vendedor.toLowerCase().includes('selecione')) {
       alert('Por favor, selecione o vendedor responsável.');
       document.getElementById('crmSelectVendedor')?.focus();
       return;
     }
 
+    const rawFaturado = (document.getElementById('crmSelectFaturadoPor')?.value || existingDeal?.faturadoPor || '').trim();
+    if (!rawFaturado || rawFaturado.toLowerCase().includes('selecione')) {
+      alert('Por favor, selecione a empresa em "Faturado Por: *".\n\nEssa seleção é obrigatória para definir qual empresa faturará a oportunidade.');
+      document.getElementById('crmSelectFaturadoPor')?.focus();
+      return;
+    }
+    const faturadoPor = normalizeFaturadoPor(rawFaturado) || rawFaturado;
+
     const contatoNome = existingDeal?.contatoNome || '';
-    const faturadoPor = document.getElementById('crmSelectFaturadoPor')?.value || existingDeal?.faturadoPor || '';
 
     const payload = {
       titulo,
@@ -1773,8 +1823,8 @@
       alert('Erro ao salvar oportunidade: ' + err.message);
     } finally {
       if (btnSalvar) {
-        btnSalvar.disabled = false;
         btnSalvar.textContent = '💾 Salvar Oportunidade';
+        updateDealSaveButtonState();
       }
     }
   }
@@ -2155,6 +2205,7 @@
                 document.getElementById('crmInputClienteCnpj').value = itemEl.getAttribute('data-cnpj') || '';
                 dropdown.classList.add('hidden');
                 dropdown.style.display = 'none';
+                updateDealSaveButtonState();
               });
             });
           } else {
@@ -2819,6 +2870,7 @@
     if (selectVend && cliente.vendedor_responsavel) {
       selectVend.value = cliente.vendedor_responsavel;
     }
+    updateDealSaveButtonState();
   }
 
   /**
@@ -3036,6 +3088,7 @@
         if (selectVend && !selectVend.value && clienteSalvo.vendedor_responsavel) {
           selectVend.value = clienteSalvo.vendedor_responsavel;
         }
+        updateDealSaveButtonState();
 
         // Se o modal de detalhes do negócio estiver aberto, sincroniza imediatamente
         const elDetalhesCliente = document.getElementById('crmDetalhesCliente');
@@ -3346,6 +3399,17 @@
       formOportunidade.addEventListener('submit', handleSaveOpportunity);
     }
 
+    // Validação reativa em tempo real dos 4 campos obrigatórios do Deal (Título, Vendedor, Cliente, Faturado Por)
+    ['crmInputTitulo', 'crmSelectVendedor', 'crmInputCliente', 'crmSelectFaturadoPor'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el._hasDealValidationListener) {
+        el._hasDealValidationListener = true;
+        el.addEventListener('input', updateDealSaveButtonState);
+        el.addEventListener('change', updateDealSaveButtonState);
+        el.addEventListener('blur', updateDealSaveButtonState);
+      }
+    });
+
     // Submissão de Atividade / Follow-up
     const formAtividade = document.getElementById('formCrmAtividade');
     if (formAtividade && !formAtividade._hasListener) {
@@ -3601,6 +3665,8 @@
     openDealDetails: openDealDetailsModal,
     moveDealStage,
     markLost: openMarkLostModal,
+    isDealFormValid,
+    updateDealSaveButtonState,
     getDeals: () => deals,
     getClientes: () => clientesList,
     isInitialized: () => isInitialized
