@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.265 (Homologada em 25/09/2026 09:47)  
+> **Versão da Documentação:** v8.266 (Homologada em 25/09/2026 10:03)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 25/09/2026 09:47 (v8.265 - Otimização de Colunas, Formato pt-BR e Inativação de P. Tabela no CRM)  
+> **Data da Última Auditoria:** 25/09/2026 10:03 (v8.266 - Inclusão da Coluna Desc(%) na Edição de Itens Cotados do CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.266 (25/09/2026):** Inclusão da coluna `Desc(%)` na tabela de Itens Cotados da oportunidade no CRM: cálculo automático $((P_{tab} - P_{neg}) / P_{tab}) \times 100$ no formato brasileiro `99,99`, campo inalterável readonly com recálculo em tempo real e redução de 75px na largura mínima da descrição (86 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.265 (25/09/2026):** Otimização ergonômica da tabela de Itens Cotados no CRM: remoção de NCM/Peso na descrição da edição (preservados no modelo), redução compacta das colunas Qtd (55px), P. Tabela (95px), P. Negociado (105px) e Total (110px), campo P. Tabela inalterável (cinza, readonly e disabled) e formatação numérica brasileira pt-BR com 2 casas decimais (67 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.264 (25/09/2026):** Validação compulsória dos 4 campos obrigatórios no CRM Comercial (`Título da Oportunidade: *`, `Vendedor Responsável: *`, `Cliente: *`, `Faturado Por: *`), botão `Salvar Oportunidade` dinamicamente inativo (`disabled`) enquanto houver pendência e rejeição estrita do placeholder `"Selecione a empresa..."` (48 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.263 (25/09/2026):** Reposicionamento ergonômico no cabeçalho do CRM Comercial (`/crm` / `public/crm.html`), colocando o botão principal com fundo azul claro `➕ Nova Oportunidade` imediatamente antes do alternador `📊 Funil de Oportunidades` e `👥 Clientes Cadastrados` (34 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

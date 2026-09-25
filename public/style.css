@@ -5575,11 +5575,12 @@ body.theme-light .crm-bloco-titulo-cinza {
 }
 
 .crm-itens-cotados-table .col-codigo { width: 140px; }
-.crm-itens-cotados-table .col-desc { min-width: 340px; }
-.crm-itens-cotados-table .col-qtd { width: 85px; }
-.crm-itens-cotados-table .col-ptabela { width: 120px; }
-.crm-itens-cotados-table .col-pnegociado { width: 130px; }
-.crm-itens-cotados-table .col-total { width: 130px; }
+.crm-itens-cotados-table .col-desc { min-width: 265px; }
+.crm-itens-cotados-table .col-qtd { width: 55px; }
+.crm-itens-cotados-table .col-ptabela { width: 95px; }
+.crm-itens-cotados-table .col-pnegociado { width: 105px; }
+.crm-itens-cotados-table .col-descpct { width: 75px; }
+.crm-itens-cotados-table .col-total { width: 110px; }
 .crm-itens-cotados-table .col-acao { width: 45px; text-align: center; }
 
 /* Barra de Resumo KPI de Produtos */

@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.265 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.266 - Homologado)  
 
 ---
 
@@ -127,6 +127,13 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.266 (25/09/2026):** Inclusão da coluna `Desc(%)` na tabela de Itens Cotados na edição de oportunidades (`#modalCrmOportunidade`):
+  - **Cálculo Automático de Desconto:** Implementação de `calcularDescontoPercent(pTab, pNeg)`, computando o percentual de desconto sobre o Preço de Tabela quando o Preço Negociado for menor que a tabela ($((P_{tab} - P_{neg}) / P_{tab}) \times 100$), exibindo `0,00` quando não houver desconto ou se o preço negociado for maior/igual à tabela.
+  - **Formato Brasileiro Padronizado:** Exibição com 2 casas decimais no formato `99,99` via `formatNumberPtBr()` (ex: `15,00`, `22,50`, `0,00`).
+  - **Reatividade em Tempo Real:** Recálculo instantâneo do desconto e do subtotal no evento `input` de digitação do Preço Negociado, sem perda de foco.
+  - **Design Consistente & Inalterável:** Campo com largura compacta de `75px`, `readonly disabled tabindex="-1"`, alinhamento à direita e estilo idêntico a P. Tabela.
+  - **Ajuste Ergonômico de Largura:** Redução da largura mínima do campo de descrição do produto de `340px` para `265px` no CSS (`public/style.css`), acomodando perfeitamente a nova coluna de `75px` sem gerar overflow horizontal no modal.
+  - **Suíte de Testes:** 86 testes aprovados em `test_crm_standalone.js`.
 - **v8.265 (25/09/2026):** Otimização ergonômica da tabela de Itens Cotados na edição de oportunidades (`#modalCrmOportunidade`), formatação brasileira com 2 casas decimais e inativação de preço de tabela:
   - **Navalha de Texto / Limpeza Visual:** Remoção da informação visual de NCM e Peso abaixo da descrição do produto na tabela de edição de itens (`renderItensCotadosTable()`), preservando integralmente os metadados fiscais e logísticos no modelo de dados do item (`item.ncm`, `item.pesoLiquido`) para relatórios, fichas e integração futura.
   - **Diminuição Compacta de Colunas:** Coluna Qtd reduzida para `55px` (adequada para 1 a 3 dígitos), P. Tabela reduzida para `95px` (adequada para até R$ 99.999,00), P. Negociado reduzida para `105px` (adequada para totais até R$ 999.000,00) e Total reduzida para `110px`, liberando folga horizontal planejada na tabela para a futura adição de nova coluna solicitada pelo usuário.

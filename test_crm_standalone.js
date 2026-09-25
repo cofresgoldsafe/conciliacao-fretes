@@ -149,6 +149,47 @@ async function runTests() {
   assert(renderItensContent.includes('formatNumberPtBr(item.precoNegociado)'), 'P. Negociado é exibido formatado no padrão brasileiro');
   assert(renderItensContent.includes('parseNumberPtBr(e.target.value)'), 'Edição de P. Negociado realiza parse flexível pt-BR em tempo real');
 
+  // Teste 11: Nova Coluna Desc(%) na Edição de Oportunidades
+  // 11.1 Cabeçalho Desc(%) no thead de crm.html e index.html
+  assert(crmHtml.includes('class="col-descpct" style="width: 75px; text-align: right;">Desc(%)</th>'), 'public/crm.html possui cabeçalho Desc(%) com 75px alinhado à direita');
+  assert(indexHtml.includes('class="col-descpct" style="width: 75px; text-align: right;">Desc(%)</th>'), 'public/index.html possui cabeçalho Desc(%) com 75px alinhado à direita');
+
+  // 11.2 Definições de largura em public/style.css e compensação na descrição
+  assert(styleCss.includes('.crm-itens-cotados-table .col-descpct { width: 75px; }'), 'public/style.css define largura de 75px para .col-descpct');
+  assert(styleCss.includes('.crm-itens-cotados-table .col-desc { min-width: 265px; }'), 'public/style.css reduziu min-width de col-desc para 265px compensando a nova coluna');
+
+  // 11.3 Tabela vazia com colspan=8
+  assert(renderItensContent.includes('<td colspan="8"'), 'renderItensCotadosTable() define colspan="8" para acomodar a nova coluna');
+
+  // 11.4 Função calcularDescontoPercent e lógica matemática
+  assert(crmJs.includes('function calcularDescontoPercent(precoTabela, precoNegociado)'), 'public/js/crm.js implementa calcularDescontoPercent()');
+
+  // Extrai e testa a função matematicamente
+  const calcDescMatch = crmJs.match(/function calcularDescontoPercent\([\s\S]*?\n  \}/);
+  assert(calcDescMatch !== null, 'Função calcularDescontoPercent isolada com sucesso para teste unitário');
+  if (calcDescMatch) {
+    const fnCalcDesc = new Function(calcDescMatch[0] + '\nreturn calcularDescontoPercent;');
+    const calcular = fnCalcDesc();
+    assert(Math.abs(calcular(100, 85) - 15.00) < 0.001, 'Desconto de R$ 100 para R$ 85 é exatamente 15,00%');
+    assert(Math.abs(calcular(100, 100) - 0.00) < 0.001, 'Sem desconto (100 para 100) retorna 0,00%');
+    assert(Math.abs(calcular(100, 110) - 0.00) < 0.001, 'Preço negociado acima da tabela retorna 0,00%');
+    assert(Math.abs(calcular(0, 50) - 0.00) < 0.001, 'Tabela zerada retorna 0,00%');
+    assert(Math.abs(calcular(1250, 1000) - 20.00) < 0.001, 'Desconto de R$ 1.250 para R$ 1.000 é exatamente 20,00%');
+  }
+
+  // 11.5 Campo crm-item-descpct renderizado na tabela
+  assert(renderItensContent.includes('crm-item-descpct'), 'renderItensCotadosTable() renderiza input com classe crm-item-descpct');
+  assert(renderItensContent.includes('width: 75px') && renderItensContent.includes('crm-item-descpct'), 'Campo crm-item-descpct possui largura alinhada de 75px');
+  assert(renderItensContent.includes('readonly disabled tabindex="-1"'), 'Campo crm-item-descpct é inalterável (readonly disabled)');
+
+  // 11.6 Recálculo em tempo real no listener de digitação
+  assert(renderItensContent.includes('row.querySelector(\'.crm-item-descpct\')'), 'Evento de input localiza crm-item-descpct da linha em edição');
+  assert(renderItensContent.includes('descInp.value = formatNumberPtBr(rowDescPct)'), 'Evento de input atualiza descInp.value em tempo real no padrão brasileiro');
+
+  // 11.7 Persistência de descontoPercent no item cotado
+  assert(crmJs.includes('descontoPercent: 0'), 'addItemCotado() inicializa descontoPercent: 0');
+  assert(renderItensContent.includes('item.descontoPercent = descPct'), 'renderItensCotadosTable() preserva descontoPercent no modelo de dados do item');
+
   console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados.`);
   if (passedTests === totalTests) {
     console.log('🎉 Todos os testes de layout e rota standalone do CRM foram aprovados com sucesso!');

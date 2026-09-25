@@ -136,6 +136,17 @@
   }
 
   /**
+   * Calcula a porcentagem de desconto entre preço de tabela e preço negociado
+   * Retorna valor numérico >= 0 (ex: 15.00 para 15% de desconto)
+   */
+  function calcularDescontoPercent(precoTabela, precoNegociado) {
+    const pTab = parseFloat(precoTabela) || 0;
+    const pNeg = parseFloat(precoNegociado) || 0;
+    if (pTab <= 0 || pNeg >= pTab) return 0;
+    return ((pTab - pNeg) / pTab) * 100;
+  }
+
+  /**
    * Formatação de data (DD/MM/AAAA)
    */
   function formatDate(isoStr) {
@@ -1510,7 +1521,7 @@
     if (currentItems.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.2rem;">
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 1.2rem;">
             Nenhum produto adicionado. Clique em "+ Adicionar Item" para incluir produtos cotados.
           </td>
         </tr>
@@ -1526,10 +1537,13 @@
 
     currentItems.forEach((item, index) => {
       const qtd = parseFloat(item.quantidade) || 0;
+      const pTab = parseFloat(item.precoTabela) || 0;
       const pNeg = parseFloat(item.precoNegociado) || 0;
       const pesoLiq = parseFloat(item.pesoLiquido) || parseFloat(item.pesoBruto) || 0;
       const subtotal = qtd * pNeg;
       const pesoTotalItem = qtd * pesoLiq;
+      const descPct = calcularDescontoPercent(pTab, pNeg);
+      item.descontoPercent = descPct;
 
       sumTotal += subtotal;
       sumPeso += pesoTotalItem;
@@ -1550,6 +1564,9 @@
           </td>
           <td style="width: 105px;">
             <input type="text" inputmode="decimal" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${formatNumberPtBr(item.precoNegociado)}" style="text-align: right; width: 105px; font-weight: 600; color: #38bdf8;" title="Preço negociado com o cliente">
+          </td>
+          <td style="width: 75px;">
+            <input type="text" class="form-control form-control-sm crm-item-descpct" data-index="${index}" value="${formatNumberPtBr(descPct)}" readonly disabled tabindex="-1" style="text-align: right; width: 75px; background: rgba(148, 163, 184, 0.12) !important; color: #94a3b8 !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500; font-family: var(--font-mono);" title="Desconto percentual calculado sobre o preço de tabela">
           </td>
           <td style="text-align: right; font-weight: 700; white-space: nowrap; width: 110px;">
             ${formatCurrency(subtotal)}
@@ -1621,9 +1638,17 @@
         if (pesoDisplay) pesoDisplay.textContent = `${newPeso.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} kg`;
         if (inputValor && newSum > 0) inputValor.value = newSum.toFixed(2);
 
-        // Atualiza a célula de subtotal desta linha em tempo real
+        // Atualiza a célula de desconto e subtotal desta linha em tempo real
         const row = e.target.closest('tr');
         if (row) {
+          const descInp = row.querySelector('.crm-item-descpct');
+          if (descInp) {
+            const rowPTab = parseFloat(currentItems[idx].precoTabela) || 0;
+            const rowPNeg = parseFloat(currentItems[idx].precoNegociado) || 0;
+            const rowDescPct = calcularDescontoPercent(rowPTab, rowPNeg);
+            currentItems[idx].descontoPercent = rowDescPct;
+            descInp.value = formatNumberPtBr(rowDescPct);
+          }
           const totalCell = row.querySelector('td:nth-last-child(2)');
           if (totalCell) {
             const rowQtd = parseFloat(currentItems[idx].quantidade) || 0;
@@ -1656,6 +1681,7 @@
       quantidade: 1,
       precoTabela: 0,
       precoNegociado: 0,
+      descontoPercent: 0,
       total: 0,
       ncm: '',
       pesoLiquido: 0,
