@@ -129,6 +129,11 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.273 (25/09/2026):** Eliminação do fechamento prematuro do Dropdown de Produtos do CRM ao rolar a lista ou usar a barra de rolagem:
+  - **Causa Raiz & Remoção de Listener Invasivo:** Remoção do listener global de captura `window.addEventListener('scroll', ..., true)` em `public/js/crm.js`. Anteriormente, qualquer rolagem disparada pela caixa interna do dropdown (`#crmProductSuggestionsDropdown`) era interceptada na janela global e fechava o dropdown no milissegundo em que o operador tentava rolar para ver os últimos itens.
+  - **Rolagem Livre e Fluida:** A listagem de produtos agora suporta rolagem completa com a rodinha do mouse (*wheel*) e arrasto da barra de rolagem sem fechamento indevido.
+  - **Fechamento Seguro por Ação Exclusiva:** O dropdown agora só se fecha quando o usuário clicar fora dele e dos campos de itens (`crm-item-code` / `crm-item-desc`), selecionar um produto da lista, pressionar `Esc` ou fechar o modal.
+  - **Suíte de Testes:** 7 baterias completas aprovadas em `test_crm_produtos.js`, 8 em `test_crm_id_sequencial.js` e 8 em `test_crm_listagem.js`.
 - **v8.272 (25/09/2026):** Reconfiguração do Piso Sequencial de Oportunidades do CRM para `29000` (vinte e nove mil):
   - **Margem de Segurança Anti-Colisão:** Piso inicial de novas oportunidades configurado para `29000` (`crm_deals_seq START WITH 29000`, `cache.next_deal_seq = 29000`), garantindo margem segura em relação à base do CRM anterior/Pipedrive (que atingiu ~26.700 negócios), prevenindo duplicidade de numeração na futura migração/importação.
   - **Sincronização em Camadas:** PostgreSQL `setval('crm_deals_seq', 29000, false)` / `max_num >= 29000`, contingência atômica no cache local (`cache.next_deal_seq >= 29000`), piso em `obterProximoIdDeal()` e fallback offline no frontend (`crm.js` com base `28999` gerando `maxLocalId + 1 = 29000`).

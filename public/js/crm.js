@@ -1400,9 +1400,6 @@
           dropdown.style.display = 'none';
         }
       });
-
-      // Fecha ao rolar
-      window.addEventListener('scroll', () => { dropdown.style.display = 'none'; }, true);
     }
     return dropdown;
   }
