@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.267 - Homologado)  
+> **Última Atualização:** 25/09/2026 (v8.269 - Homologado)  
 
 ---
 
@@ -129,6 +129,11 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.269 (25/09/2026):** Adoção de ID Sequencial Limpo de 4 Dígitos para Oportunidades no CRM (`#1001`, `#1002`...) e Migração Automática de Oportunidades Gravadas:
+  - **Fim dos IDs Longos Aleatórios:** Substituição da fórmula anterior (`CRM-` + `Date.now()` + 4 dígitos) por sequência atômica profissional iniciando em `1001`, utilizando `CREATE SEQUENCE IF NOT EXISTS crm_deals_seq START WITH 1001` no PostgreSQL e fallback resiliente com persistência atômica no cache local (`cache.next_deal_seq`).
+  - **Migração Automática das Oportunidades Gravadas:** Migração idempotente das oportunidades legadas para IDs sequenciais de 4 dígitos (ordenadas cronologicamente por `created_at ASC`), com atualização automática e atômica das atividades de follow-up vinculadas (`crm_atividades.deal_id`).
+  - **Exibição Visual Limpa e Ergonômica:** Exibição do ID sequencial no título dos cards do Kanban (`#1001`), ajuste perfeito na coluna ID da Listagem (largura de `80px` sem overflow ou quebra), no título da modal de edição (`✏️ Editar Oportunidade #1001`) e no modal de detalhes (`#1001 — Título`).
+  - **Suíte de Testes:** 7 testes aprovados na nova bateria `test_crm_id_sequencial.js` e 107 testes mantidos com 100% de aprovação em `test_crm_standalone.js`.
 - **v8.268 (25/09/2026):** Ajuste cromático e ergonômico no Preço Negociado nos Itens Cotados do CRM:
   - **Contraste & Legibilidade:** Substituição da cor do texto no campo de entrada da coluna Preço Negociado (`.crm-item-pnegociado`), alterando de azul claro (`#38bdf8`) para preto sólido (`#000000`).
   - **Especificidade em Camadas:** Aplicação inline no gerador de linhas de `renderItensCotadosTable()` em `public/js/crm.js` e reforço na folha de estilos `public/style.css` (`.crm-itens-cotados-table .crm-item-pnegociado`), garantindo leitura nítida e contraste padrão para o vendedor durante a cotação.

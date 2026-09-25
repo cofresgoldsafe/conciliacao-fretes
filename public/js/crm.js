@@ -1016,7 +1016,7 @@
 
     card.innerHTML = `
       <div class="crm-card-header">
-        <span class="crm-card-title" title="${escapeHtml(deal.titulo)}">${escapeHtml(deal.titulo)}</span>
+        <span class="crm-card-title" title="${escapeHtml(deal.titulo)}"><strong style="color: var(--accent-blue, #38bdf8); font-family: var(--font-mono, monospace); margin-right: 5px;">#${escapeHtml(deal.id)}</strong>${escapeHtml(deal.titulo)}</span>
         <div class="crm-card-badge-wrap">${alertBadge}</div>
       </div>
       
@@ -1898,8 +1898,12 @@
             savedDeal = deals[idx];
           }
         } else {
+          const maxLocalId = deals.reduce((max, d) => {
+            const n = parseInt(d.id, 10);
+            return (!isNaN(n) && n > max) ? n : max;
+          }, 1000);
           savedDeal = {
-            id: 'crm-' + Date.now(),
+            id: String(maxLocalId + 1),
             ...payload,
             createdAt: new Date().toISOString()
           };
@@ -1940,7 +1944,8 @@
     currentDeal = deal;
     const modal = document.getElementById('modalCrmDetalhes');
 
-    document.getElementById('crmDetalhesTitulo').textContent = deal.titulo || 'Detalhes da Oportunidade';
+    const dealIdPrefix = deal.id ? `#${deal.id} — ` : '';
+    document.getElementById('crmDetalhesTitulo').textContent = dealIdPrefix + (deal.titulo || 'Detalhes da Oportunidade');
     document.getElementById('crmDetalhesCliente').textContent = deal.clienteNome || '-';
     document.getElementById('crmDetalhesValor').textContent = formatCurrency(deal.valor);
     document.getElementById('crmDetalhesVendedor').textContent = deal.vendedor || '-';

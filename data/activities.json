@@ -1,5 +1,427 @@
 [
   {
+    "id": "ACT-1790348196769",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #1018 (\"Oportunidade Proposta Sequencial 4 Dígitos\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "1018",
+      "titulo": "Oportunidade Proposta Sequencial 4 Dígitos"
+    },
+    "createdAt": "2026-09-25T14:56:36.769Z"
+  },
+  {
+    "id": "ACT-1790348196722",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (LIGACAO: \"Follow-up da cotação sequencial\") no negócio #1018",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "1018",
+      "tipo": "ligacao",
+      "assunto": "Follow-up da cotação sequencial"
+    },
+    "createdAt": "2026-09-25T14:56:36.722Z"
+  },
+  {
+    "id": "ACT-1790348196687",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #1018 (\"Oportunidade Proposta Sequencial 4 Dígitos\") para Metalúrgica Teste Sequencial Ltda",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "1018",
+      "cliente": "Metalúrgica Teste Sequencial Ltda",
+      "valorTotal": 12500.5,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:56:36.687Z"
+  },
+  {
+    "id": "ACT-1790347480687",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #1015 (\"Oportunidade Proposta Sequencial 4 Dígitos\")",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "1015",
+      "titulo": "Oportunidade Proposta Sequencial 4 Dígitos"
+    },
+    "createdAt": "2026-09-25T14:44:40.687Z"
+  },
+  {
+    "id": "ACT-1790347480671",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (LIGACAO: \"Follow-up da cotação sequencial\") no negócio #1015",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "1015",
+      "tipo": "ligacao",
+      "assunto": "Follow-up da cotação sequencial"
+    },
+    "createdAt": "2026-09-25T14:44:40.671Z"
+  },
+  {
+    "id": "ACT-1790347480644",
+    "username": "alexandre",
+    "userName": "Alexandre Master",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #1015 (\"Oportunidade Proposta Sequencial 4 Dígitos\") para Metalúrgica Teste Sequencial Ltda",
+    "ip": "127.0.0.1",
+    "metadata": {
+      "dealId": "1015",
+      "cliente": "Metalúrgica Teste Sequencial Ltda",
+      "valorTotal": 12500.5,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:44:40.644Z"
+  },
+  {
+    "id": "ACT-1790347466446",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #1011 (\"Oportunidade Teste Sequencial\")",
+    "ip": "",
+    "metadata": {
+      "dealId": "1011",
+      "titulo": "Oportunidade Teste Sequencial"
+    },
+    "createdAt": "2026-09-25T14:44:26.446Z"
+  },
+  {
+    "id": "ACT-1790347466418",
+    "username": "alexandre",
+    "userName": "Alexandre",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #1011 (\"Oportunidade Teste Sequencial\") para Cliente Alpha 1011",
+    "ip": "",
+    "metadata": {
+      "dealId": "1011",
+      "cliente": "Cliente Alpha 1011",
+      "valorTotal": 5000,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:44:26.418Z"
+  },
+  {
+    "id": "ACT-1790346975344",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "SYNC_TRANSPORTADORAS_CRM",
+    "description": "Cadastro de transportadoras Protheus sincronizado: 1151 itens (1149 ativas).",
+    "ip": "",
+    "metadata": {
+      "total": 1151,
+      "ativas": 1149,
+      "duracao_ms": 1710
+    },
+    "createdAt": "2026-09-25T14:36:15.344Z"
+  },
+  {
+    "id": "ACT-1790346973531",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_ATUALIZAR_DEAL",
+    "description": "Atualizou os dados do negócio #CRM-1790346973500-5411 (\"Proposta para Retirada FOB\")",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346973500-5411",
+      "estagio": "lead",
+      "valorTotal": 8000
+    },
+    "createdAt": "2026-09-25T14:36:13.531Z"
+  },
+  {
+    "id": "ACT-1790346973508",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #CRM-1790346973500-5411 (\"Proposta para Retirada FOB\") para Cliente Retirada SP",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346973500-5411",
+      "cliente": "Cliente Retirada SP",
+      "valorTotal": 8000,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:36:13.508Z"
+  },
+  {
+    "id": "ACT-1790346973491",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #CRM-1790346973476-7661 (\"Proposta com Braspress e FOB\") para Empresa Teste Logística S/A",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346973476-7661",
+      "cliente": "Empresa Teste Logística S/A",
+      "valorTotal": 15400,
+      "estagio": "lead",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:36:13.491Z"
+  },
+  {
+    "id": "ACT-1790346973375",
+    "username": "unit_test",
+    "userName": "UNIT_TEST",
+    "actionType": "SYNC_TRANSPORTADORAS_CRM",
+    "description": "Cadastro de transportadoras Protheus sincronizado: 1151 itens (1149 ativas).",
+    "ip": "",
+    "metadata": {
+      "total": 1151,
+      "ativas": 1149,
+      "duracao_ms": 3493
+    },
+    "createdAt": "2026-09-25T14:36:13.375Z"
+  },
+  {
+    "id": "ACT-1790346969381",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "SYNC_PRODUTOS_CRM",
+    "description": "Catálogo de produtos Protheus sincronizado: 1883 itens (1360 ativos).",
+    "ip": "",
+    "metadata": {
+      "total": 1883,
+      "ativos": 1360,
+      "duracao_ms": 1951
+    },
+    "createdAt": "2026-09-25T14:36:09.381Z"
+  },
+  {
+    "id": "ACT-1790346967232",
+    "username": "test_suite",
+    "userName": "TEST_SUITE",
+    "actionType": "SYNC_PRODUTOS_CRM",
+    "description": "Catálogo de produtos Protheus sincronizado: 1883 itens (1360 ativos).",
+    "ip": "",
+    "metadata": {
+      "total": 1883,
+      "ativos": 1360,
+      "duracao_ms": 2617
+    },
+    "createdAt": "2026-09-25T14:36:07.232Z"
+  },
+  {
+    "id": "ACT-1790346964221",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #CRM-1790346964208-4076 (\"Teste Frete Embutido\") para Cliente Frete",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346964208-4076",
+      "cliente": "Cliente Frete",
+      "valorTotal": 1050,
+      "estagio": "proposta",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:36:04.221Z"
+  },
+  {
+    "id": "ACT-1790346964186",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_RESTAURAR_DEAL",
+    "description": "Restaurou o negócio #CRM-1790346962014-2348 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\")",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348"
+    },
+    "createdAt": "2026-09-25T14:36:04.186Z"
+  },
+  {
+    "id": "ACT-1790346964151",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_EXCLUIR_DEAL",
+    "description": "Excluiu (soft delete) a oportunidade #CRM-1790346962014-2348 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\")",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "titulo": "Cotação Painéis Solares e Inversores - Cliente Teste S/A"
+    },
+    "createdAt": "2026-09-25T14:36:04.151Z"
+  },
+  {
+    "id": "ACT-1790346964126",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_MUDAR_ESTAGIO",
+    "description": "Moveu o negócio #CRM-1790346962014-2348 de \"negociacao\" para \"ganho\"",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "estagioAnterior": "negociacao",
+      "estagioNovo": "ganho",
+      "justificativa": "Pedido aprovado pelo cliente!",
+      "motivoPerda": ""
+    },
+    "createdAt": "2026-09-25T14:36:04.126Z"
+  },
+  {
+    "id": "ACT-1790346962143",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (LIGACAO: \"Última anotação criada\") no negócio #CRM-1790346962014-2348",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "tipo": "ligacao",
+      "assunto": "Última anotação criada"
+    },
+    "createdAt": "2026-09-25T14:36:02.143Z"
+  },
+  {
+    "id": "ACT-1790346962096",
+    "username": "juliana",
+    "userName": "juliana",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (WHATSAPP: \"Proposta enviada via WhatsApp\") no negócio #CRM-1790346962014-2348",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "tipo": "whatsapp",
+      "assunto": "Proposta enviada via WhatsApp"
+    },
+    "createdAt": "2026-09-25T14:36:02.096Z"
+  },
+  {
+    "id": "ACT-1790346962059",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_REGISTRAR_ATIVIDADE",
+    "description": "Registrou atividade (NOTA: \"Primeira nota antiga\") no negócio #CRM-1790346962014-2348",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "tipo": "nota",
+      "assunto": "Primeira nota antiga"
+    },
+    "createdAt": "2026-09-25T14:36:02.059Z"
+  },
+  {
+    "id": "ACT-1790346962041",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_MUDAR_ESTAGIO",
+    "description": "Moveu o negócio #CRM-1790346962014-2348 de \"proposta\" para \"negociacao\"",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "estagioAnterior": "proposta",
+      "estagioNovo": "negociacao",
+      "justificativa": "Negociação avançada com diretoria",
+      "motivoPerda": ""
+    },
+    "createdAt": "2026-09-25T14:36:02.041Z"
+  },
+  {
+    "id": "ACT-1790346962025",
+    "username": "alexandre",
+    "userName": "alexandre",
+    "actionType": "CRM_CRIAR_DEAL",
+    "description": "Criou a oportunidade #CRM-1790346962014-2348 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\") para CLIENTE TESTE COMERCIO LTDA",
+    "ip": "",
+    "metadata": {
+      "dealId": "CRM-1790346962014-2348",
+      "cliente": "CLIENTE TESTE COMERCIO LTDA",
+      "valorTotal": 45000.5,
+      "estagio": "proposta",
+      "codVendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:36:02.025Z"
+  },
+  {
+    "id": "ACT-1790346961458",
+    "username": "sistema",
+    "userName": "Sincronizador Protheus",
+    "actionType": "CADASTRO_CRM_CLIENTE",
+    "description": "Cadastrou o novo cliente comercial #CLI-PROTHEUS-008877-01 (\"CLIENTE SA1010 ESPELHADO AUTOMATICO LTDA\")",
+    "ip": "",
+    "metadata": {
+      "clienteId": "CLI-PROTHEUS-008877-01",
+      "nomeRazao": "CLIENTE SA1010 ESPELHADO AUTOMATICO LTDA",
+      "cnpjCpf": "12345678000199",
+      "vendedor": "Juliana"
+    },
+    "createdAt": "2026-09-25T14:36:01.458Z"
+  },
+  {
+    "id": "ACT-1790346961342",
+    "username": "alexandre",
+    "userName": "Alexandre GSI",
+    "actionType": "CADASTRO_CRM_CLIENTE",
+    "description": "Cadastrou o novo cliente comercial #CLI-muh2csl0-qz (\"DISTRIBUIDORA PROTHEUS SA\")",
+    "ip": "",
+    "metadata": {
+      "clienteId": "CLI-muh2csl0-qz",
+      "nomeRazao": "DISTRIBUIDORA PROTHEUS SA",
+      "cnpjCpf": "98765432000110",
+      "vendedor": "000001"
+    },
+    "createdAt": "2026-09-25T14:36:01.342Z"
+  },
+  {
+    "id": "ACT-1790346960170",
+    "username": "alexandre",
+    "userName": "Alexandre GSI",
+    "actionType": "EXCLUSAO_CRM_CLIENTE",
+    "description": "Excluiu o cliente comercial #CLI-muh2cq12-qp (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
+    "ip": "",
+    "metadata": {
+      "clienteId": "CLI-muh2cq12-qp",
+      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
+      "cnpjCpf": ""
+    },
+    "createdAt": "2026-09-25T14:36:00.170Z"
+  },
+  {
+    "id": "ACT-1790346958106",
+    "username": "alexandre",
+    "userName": "Alexandre GSI",
+    "actionType": "EDICAO_CRM_CLIENTE",
+    "description": "Atualizou o cadastro do cliente comercial #CLI-muh2cq12-qp (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
+    "ip": "",
+    "metadata": {
+      "clienteId": "CLI-muh2cq12-qp",
+      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
+      "cnpjCpf": "",
+      "vendedor": "000074"
+    },
+    "createdAt": "2026-09-25T14:35:58.106Z"
+  },
+  {
+    "id": "ACT-1790346958031",
+    "username": "alexandre",
+    "userName": "Alexandre GSI",
+    "actionType": "CADASTRO_CRM_CLIENTE",
+    "description": "Cadastrou o novo cliente comercial #CLI-muh2cq12-qp (\"EMPRESA TESTE SEGURANCA LTDA\")",
+    "ip": "",
+    "metadata": {
+      "clienteId": "CLI-muh2cq12-qp",
+      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA",
+      "cnpjCpf": "12345678000199",
+      "vendedor": "000004"
+    },
+    "createdAt": "2026-09-25T14:35:58.031Z"
+  },
+  {
     "id": "ACT-1790306908479",
     "username": "alexandre",
     "userName": "alexandre",
@@ -2435,358 +2857,5 @@
       "motivoPerda": ""
     },
     "createdAt": "2026-09-10T14:08:23.234Z"
-  },
-  {
-    "id": "ACT-1789049303221",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "CRM_CRIAR_DEAL",
-    "description": "Criou a oportunidade #CRM-1789049303212-9091 (\"Cotação Painéis Solares e Inversores - Cliente Teste S/A\") para CLIENTE TESTE COMERCIO LTDA",
-    "ip": "",
-    "metadata": {
-      "dealId": "CRM-1789049303212-9091",
-      "cliente": "CLIENTE TESTE COMERCIO LTDA",
-      "valorTotal": 45000.5,
-      "estagio": "proposta",
-      "codVendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:08:23.221Z"
-  },
-  {
-    "id": "ACT-1789049298822",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "EXCLUSAO_CRM_CLIENTE",
-    "description": "Excluiu o cliente comercial #CLI-1789049296031-6676 (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-1789049296031-6676",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
-      "cnpjCpf": ""
-    },
-    "createdAt": "2026-09-10T14:08:18.822Z"
-  },
-  {
-    "id": "ACT-1789049296071",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "EDICAO_CRM_CLIENTE",
-    "description": "Atualizou o cadastro do cliente comercial #CLI-1789049296031-6676 (\"EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-1789049296031-6676",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA - ATUALIZADA",
-      "cnpjCpf": "",
-      "vendedor": "000074"
-    },
-    "createdAt": "2026-09-10T14:08:16.071Z"
-  },
-  {
-    "id": "ACT-1789049296040",
-    "username": "alexandre",
-    "userName": "Alexandre GSI",
-    "actionType": "CADASTRO_CRM_CLIENTE",
-    "description": "Cadastrou o novo cliente comercial #CLI-1789049296031-6676 (\"EMPRESA TESTE SEGURANCA LTDA\")",
-    "ip": "",
-    "metadata": {
-      "clienteId": "CLI-1789049296031-6676",
-      "nomeRazao": "EMPRESA TESTE SEGURANCA LTDA",
-      "cnpjCpf": "12345678000199",
-      "vendedor": "000004"
-    },
-    "createdAt": "2026-09-10T14:08:16.040Z"
-  },
-  {
-    "id": "ACT-1788404497146",
-    "username": "alexandre",
-    "userName": "alexandre",
-    "actionType": "GESTÃO_USUARIO",
-    "description": "Salvou configurações do usuário \"marcos_logistica\" (marcos@oaco.com.br)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:37.146Z"
-  },
-  {
-    "id": "ACT-1788404496945",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "REENVIO_2FA",
-    "description": "Novo código 2FA reenviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:36.945Z"
-  },
-  {
-    "id": "ACT-1788404496605",
-    "username": "usuario_2fa_teste",
-    "userName": "Usuário de Teste 2FA",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para us*********@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:36.605Z"
-  },
-  {
-    "id": "ACT-1788404493158",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:33.158Z"
-  },
-  {
-    "id": "ACT-1788404492860",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:32.860Z"
-  },
-  {
-    "id": "ACT-1788404492142",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:32.142Z"
-  },
-  {
-    "id": "ACT-1788404491609",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T03:01:31.609Z"
-  },
-  {
-    "id": "ACT-1788404487259",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "MP",
-      "count": 5
-    },
-    "createdAt": "2026-09-03T03:01:27.259Z"
-  },
-  {
-    "id": "ACT-1788404486651",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Todas as Empresas | Sem filtro de busca (14 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 14
-    },
-    "createdAt": "2026-09-03T03:01:26.651Z"
-  },
-  {
-    "id": "ACT-1788404481042",
-    "username": "andrea",
-    "userName": "Andrea",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Vendedor: 000004 (2 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "codVend": "000004",
-      "count": 2
-    },
-    "createdAt": "2026-09-03T03:01:21.042Z"
-  },
-  {
-    "id": "ACT-1788404478116",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 34
-    },
-    "createdAt": "2026-09-03T03:01:18.116Z"
-  },
-  {
-    "id": "ACT-1788404476284",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 34
-    },
-    "createdAt": "2026-09-03T03:01:16.284Z"
-  },
-  {
-    "id": "ACT-1788404467455",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_COMISSOES",
-    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "dataIni": "2026-08-01",
-      "dataFim": "2026-08-25",
-      "codVend": "000004",
-      "totalRegistros": 15
-    },
-    "createdAt": "2026-09-03T03:01:07.455Z"
-  },
-  {
-    "id": "ACT-1788404464350",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 34
-    },
-    "createdAt": "2026-09-03T03:01:04.350Z"
-  },
-  {
-    "id": "ACT-1788403682906",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_COMISSOES",
-    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "dataIni": "2026-08-01",
-      "dataFim": "2026-08-25",
-      "codVend": "000004",
-      "totalRegistros": 15
-    },
-    "createdAt": "2026-09-03T02:48:02.906Z"
-  },
-  {
-    "id": "ACT-1788403679825",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 34
-    },
-    "createdAt": "2026-09-03T02:47:59.825Z"
-  },
-  {
-    "id": "ACT-1788403343015",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_COMISSOES",
-    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "dataIni": "2026-08-01",
-      "dataFim": "2026-08-25",
-      "codVend": "000004",
-      "totalRegistros": 15
-    },
-    "createdAt": "2026-09-03T02:42:23.015Z"
-  },
-  {
-    "id": "ACT-1788403339814",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 34
-    },
-    "createdAt": "2026-09-03T02:42:19.814Z"
-  },
-  {
-    "id": "ACT-1788403240525",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_COMISSOES",
-    "description": "Consultou comissões (2026-08-01 a 2026-08-25) - Vendedor 000004 (15 lançamentos)",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "dataIni": "2026-08-01",
-      "dataFim": "2026-08-25",
-      "codVend": "000004",
-      "totalRegistros": 15
-    },
-    "createdAt": "2026-09-03T02:40:40.525Z"
-  },
-  {
-    "id": "ACT-1788403237324",
-    "username": "juliana",
-    "userName": "Juliana",
-    "actionType": "CONSULTA_PEDIDOS_ABERTOS",
-    "description": "Consultou pedidos abertos: Todas as Empresas | Todos os Vendedores (34 pedido(s))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "count": 34
-    },
-    "createdAt": "2026-09-03T02:40:37.324Z"
-  },
-  {
-    "id": "ACT-1788403198368",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T02:39:58.368Z"
-  },
-  {
-    "id": "ACT-1788403198066",
-    "username": "erica",
-    "userName": "Érica",
-    "actionType": "TROCA_SENHA",
-    "description": "Alterou a própria senha com sucesso",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T02:39:58.066Z"
-  },
-  {
-    "id": "ACT-1788403197504",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T02:39:57.504Z"
-  },
-  {
-    "id": "ACT-1788403197042",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "SOLICITACAO_2FA",
-    "description": "Código 2FA de 4 dígitos gerado e enviado para al*******@oaco.com.br",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {},
-    "createdAt": "2026-09-03T02:39:57.042Z"
-  },
-  {
-    "id": "ACT-1788403193733",
-    "username": "alexandre",
-    "userName": "Alexandre",
-    "actionType": "CONSULTA_PEDIDOS_COMPRAS",
-    "description": "Consultou pedidos de compras: Empresa: MP | Sem filtro de busca (5 item(ns))",
-    "ip": "::ffff:127.0.0.1",
-    "metadata": {
-      "empresa": "MP",
-      "count": 5
-    },
-    "createdAt": "2026-09-03T02:39:53.733Z"
   }
 ]
