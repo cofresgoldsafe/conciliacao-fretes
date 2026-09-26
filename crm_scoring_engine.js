@@ -22,23 +22,37 @@ function sigmoid(z) {
  * @returns {Object} Score, probabilidade, classificação e fatores explicáveis
  */
 function calcularScoreDeal(deal) {
-  const val = Number(deal.valor_total || deal.value) || 0;
-  const notesCount = parseInt(deal.notes_count, 10) || 0;
-  const doneActivities = parseInt(deal.done_activities_count || deal.done_activities, 10) || 0;
+  const val = Number(deal.valor_total || deal.valor || deal.value) || 0;
+  const notesCount = parseInt(deal.notes_count || deal.notesCount, 10) || 0;
+  const doneActivities = parseInt(deal.done_activities_count || deal.done_activities || deal.doneActivitiesCount, 10) || 0;
   
   // Dias no funil / estagnação
   let daysInFunnel = 0;
-  if (deal.created_at || deal.add_time) {
-    const start = new Date(deal.created_at || deal.add_time).getTime();
-    daysInFunnel = Math.max(0, Math.round((Date.now() - start) / (1000 * 60 * 60 * 24)));
+  if (deal.created_at || deal.add_time || deal.createdAt || deal.dataCriacao) {
+    const start = new Date(deal.created_at || deal.add_time || deal.createdAt || deal.dataCriacao).getTime();
+    if (!isNaN(start)) {
+      daysInFunnel = Math.max(0, Math.round((Date.now() - start) / (1000 * 60 * 60 * 24)));
+    }
   }
 
-  // Recorrência
-  const isRecurrent = Boolean(deal.is_recurrent || (deal.org_won_count >= 1) || (deal.cliente_recorrente));
-  const hasWonPrior = Boolean(deal.has_won_prior || (deal.org_won_count >= 1));
+  // Recorrência & Fidelidade por Raiz de CNPJ (7 Empresas do Grupo GSI)
+  const fidelidade = deal.fidelidade_compras || null;
+  const totalComprasRaiz = fidelidade ? (parseInt(fidelidade.total_compras, 10) || 0) : (parseInt(deal.total_compras_raiz, 10) || 0);
+  const isVip = totalComprasRaiz >= 6 || Boolean(deal.is_vip);
+  const isRecurrent = Boolean(
+    deal.is_recurrent || 
+    (deal.org_won_count >= 1) || 
+    (deal.cliente_recorrente) ||
+    (totalComprasRaiz >= 1)
+  );
+  const hasWonPrior = Boolean(
+    deal.has_won_prior || 
+    (deal.org_won_count >= 1) ||
+    (totalComprasRaiz >= 1)
+  );
 
   // Vendedor
-  const owner = String(deal.nome_vendedor || deal.owner_name || '').toLowerCase();
+  const owner = String(deal.nome_vendedor || deal.vendedor || deal.owner_name || '').toLowerCase();
   const isAndrea = owner.includes('andrea') ? 1 : 0;
   const isJuliana = owner.includes('juliana') ? 1 : 0;
   const isLuiz = owner.includes('luiz') || owner.includes('figueiredo') ? 1 : 0;
@@ -66,6 +80,9 @@ function calcularScoreDeal(deal) {
   for (let j = 0; j < MODEL_WEIGHTS.length; j++) {
     z += MODEL_WEIGHTS[j] * x[j];
   }
+  if (isVip) {
+    z += 0.45; // Calibração empírica para clientes Diamante VIP (6+ compras no Grupo GSI)
+  }
 
   const prob = sigmoid(z);
   const score = Math.round(prob * 100);
@@ -85,8 +102,16 @@ function calcularScoreDeal(deal) {
   const fatoresPositivos = [];
   const fatoresNegativos = [];
 
-  if (hasWonPrior || isRecurrent) {
-    fatoresPositivos.push({ fator: 'Cliente Recorrente / Histórico de Compras', impacto: '+35%' });
+  if (isVip) {
+    fatoresPositivos.push({
+      fator: `Cliente Diamante VIP na Raiz do CNPJ (${totalComprasRaiz} compras no Grupo GSI)`,
+      impacto: '+40%'
+    });
+  } else if (hasWonPrior || isRecurrent) {
+    const textoFator = totalComprasRaiz >= 1
+      ? `Cliente Fidelidade na Raiz do CNPJ (${totalComprasRaiz} ${totalComprasRaiz === 1 ? 'compra faturada' : 'compras faturadas'} no Grupo GSI)`
+      : 'Cliente Recorrente / Histórico de Compras';
+    fatoresPositivos.push({ fator: textoFator, impacto: '+35%' });
   }
 
   if (notesCount >= 3) {

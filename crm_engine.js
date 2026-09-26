@@ -16,6 +16,7 @@ const { safeQuery, logUserActivity, isPostgresConnected } = require('./postgres_
 const protheusDb = require('./protheus_db');
 const { sanitizeSqlParam, getNomeVendedor } = protheusDb;
 const { safeReadJson, safeReadJsonSync, safeWriteJson } = require('./safe_json_storage');
+const { calcularScoreDeal } = require('./crm_scoring_engine');
 
 const dataDir = path.join(__dirname, 'data');
 const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
@@ -1073,12 +1074,48 @@ async function listarDeals(filtros = {}) {
     deals.sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
   }
 
-  // Enriquece deals com a fidelidade da raiz de CNPJ
+  // Pré-computa estatísticas de atividades (anotações e concluídas) para o motor preditivo
+  const activityStats = {};
+  if (fromDb && isPostgresConnected()) {
+    try {
+      const statsRes = await safeQuery(`
+        SELECT deal_id,
+               COUNT(*) FILTER (WHERE tipo = 'anotacao' OR tipo = 'NOTA') AS notes_count,
+               COUNT(*) FILTER (WHERE status = 'concluida') AS done_activities_count
+        FROM crm_atividades
+        GROUP BY deal_id;
+      `);
+      if (statsRes && Array.isArray(statsRes.rows)) {
+        for (const row of statsRes.rows) {
+          activityStats[String(row.deal_id)] = {
+            notes_count: parseInt(row.notes_count, 10) || 0,
+            done_activities_count: parseInt(row.done_activities_count, 10) || 0
+          };
+        }
+      }
+    } catch (_) {}
+  } else {
+    try {
+      const cache = await readCache();
+      for (const a of (cache.atividades || [])) {
+        const dId = String(a.deal_id);
+        if (!activityStats[dId]) activityStats[dId] = { notes_count: 0, done_activities_count: 0 };
+        if (a.tipo === 'anotacao' || a.tipo === 'NOTA') activityStats[dId].notes_count++;
+        if (a.status === 'concluida') activityStats[dId].done_activities_count++;
+      }
+    } catch (_) {}
+  }
+
+  // Enriquece deals com a fidelidade da raiz de CNPJ e Score Preditivo
   await obterCacheRaizes();
   for (const d of deals) {
     if (!d.fidelidade_compras) {
       d.fidelidade_compras = obterFidelidadeRaizSync(d.cliente_cnpj || d.clienteCnpj || '');
     }
+    const st = activityStats[String(d.id)] || { notes_count: 0, done_activities_count: 0 };
+    d.notes_count = st.notes_count;
+    d.done_activities_count = st.done_activities_count;
+    d.score_preditivo = calcularScoreDeal(d);
   }
 
   return {
@@ -1095,18 +1132,17 @@ async function obterDealPorId(id) {
   if (!id) return null;
   const cleanId = String(id).trim();
   const sufixo = cleanId.match(/-(\d+)$/)?.[1];
+  let deal = null;
 
   // 1. Tenta Postgres
   try {
     const res = await safeQuery('SELECT * FROM crm_deals WHERE id = $1 AND ativo = TRUE;', [cleanId]);
     if (res && res.rows && res.rows.length > 0) {
-      return mapDealRow(res.rows[0]);
-    }
-
-    if (sufixo && sufixo !== cleanId) {
+      deal = mapDealRow(res.rows[0]);
+    } else if (sufixo && sufixo !== cleanId) {
       const resSuff = await safeQuery('SELECT * FROM crm_deals WHERE id = $1 AND ativo = TRUE;', [sufixo]);
       if (resSuff && resSuff.rows && resSuff.rows.length > 0) {
-        return mapDealRow(resSuff.rows[0]);
+        deal = mapDealRow(resSuff.rows[0]);
       }
     }
   } catch (err) {
@@ -1114,13 +1150,29 @@ async function obterDealPorId(id) {
   }
 
   // 2. Fallback Cache Local
-  const cache = await readCache();
-  const deal = (cache.deals || []).find(d => 
-    (String(d.id) === cleanId || (sufixo && String(d.id) === sufixo)) && d.ativo !== false
-  );
-  if (deal && !deal.fidelidade_compras) {
-    deal.fidelidade_compras = obterFidelidadeRaizSync(deal.cliente_cnpj || deal.clienteCnpj || '');
+  if (!deal) {
+    const cache = await readCache();
+    deal = (cache.deals || []).find(d => 
+      (String(d.id) === cleanId || (sufixo && String(d.id) === sufixo)) && d.ativo !== false
+    );
   }
+
+  if (deal) {
+    if (!deal.fidelidade_compras) {
+      deal.fidelidade_compras = obterFidelidadeRaizSync(deal.cliente_cnpj || deal.clienteCnpj || '');
+    }
+    // Enriquece com notas, atividades e Score Preditivo
+    try {
+      const atividades = await listarAtividades(deal.id);
+      deal.notes_count = atividades.filter(a => a.tipo === 'anotacao' || a.tipo === 'NOTA').length;
+      deal.done_activities_count = atividades.filter(a => a.status === 'concluida').length;
+    } catch (_) {
+      deal.notes_count = deal.notes_count || 0;
+      deal.done_activities_count = deal.done_activities_count || 0;
+    }
+    deal.score_preditivo = calcularScoreDeal(deal);
+  }
+
   return deal || null;
 }
 
@@ -3483,5 +3535,6 @@ module.exports = {
   obterFidelidadeRaiz,
   obterFidelidadeRaizSync,
   formatarObjetoFidelidade,
-  obterCacheRaizes
+  obterCacheRaizes,
+  calcularScoreDeal
 };

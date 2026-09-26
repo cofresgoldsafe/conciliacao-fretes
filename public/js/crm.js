@@ -310,6 +310,7 @@
       observacoesPerda: d.observacoes_perda || d.observacoesPerda || '',
       dataFechamentoReal: d.data_fechamento_real || d.dataFechamentoReal || null,
       fidelidade_compras: d.fidelidade_compras || null,
+      score_preditivo: d.score_preditivo || null,
       createdAt: d.created_at || d.createdAt || new Date().toISOString(),
       updatedAt: d.updated_at || d.updatedAt || new Date().toISOString()
     };
@@ -335,6 +336,26 @@
   }
 
   /**
+   * Renderiza badge compacto de probabilidade preditiva (Score 0-100)
+   */
+  function renderScoreBadge(scoreObj, options = {}) {
+    if (!scoreObj || typeof scoreObj.score !== 'number') return '';
+    const score = Math.round(scoreObj.score);
+    const color = scoreObj.badgeColor || (score >= 70 ? '#10b981' : (score < 40 ? '#ef4444' : '#f59e0b'));
+    const bg = score >= 70 
+      ? 'rgba(16, 185, 129, 0.14)' 
+      : (score < 40 ? 'rgba(239, 68, 68, 0.14)' : 'rgba(245, 158, 11, 0.14)');
+    const border = score >= 70 
+      ? 'rgba(16, 185, 129, 0.35)' 
+      : (score < 40 ? 'rgba(239, 68, 68, 0.35)' : 'rgba(245, 158, 11, 0.35)');
+    const icone = score >= 70 ? '🎯' : (score < 40 ? '⚠️' : '📊');
+    const styleExtra = options.style || '';
+    const tooltip = escapeHtml(`Probabilidade Preditiva de Fechamento: ${score}%\nClassificação: ${scoreObj.classificacao || 'MÉDIA'}\n${scoreObj.recomendacao || ''}`);
+
+    return `<span class="badge-score-preditivo" style="display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; font-family: var(--font-mono, monospace); background: ${bg}; border: 1px solid ${border}; color: ${color}; line-height: 1; cursor: help; user-select: none; ${styleExtra}" title="${tooltip}"><span>${icone}</span><span>${score}%</span></span>`;
+  }
+
+  /**
    * Retorna tag de alerta inteligente para o card
    */
   function getDealAlertBadge(deal) {
@@ -343,6 +364,9 @@
     }
     if (deal.fase === 'GANHO') {
       return `<span class="crm-badge crm-badge-success">🏆 Venda Efetuada</span>`;
+    }
+    if (deal.score_preditivo && deal.score_preditivo.alertaEsfriamento && deal.fase !== 'GANHO' && deal.fase !== 'PERDIDO') {
+      return `<span class="crm-badge crm-badge-danger" style="background: rgba(239, 68, 68, 0.16); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.45);" title="Alerta de Esfriamento: Mais de 12 dias sem contato. Risco de perda por abandono!">🚨 Esfriando</span>`;
     }
     if (deal.fase === 'NEGOCIACAO') {
       return `<span class="crm-badge crm-badge-hot">🔥 Quente</span>`;
@@ -950,9 +974,12 @@
             ${escapeHtml(d.clienteNome || '-')}
           </td>
           <td style="padding: 10px 12px; white-space: nowrap;">
-            <span style="color: ${statusColor}; font-weight: ${isGanho ? '600' : 'normal'};">
-              ${escapeHtml(statusLabel)}
-            </span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="color: ${statusColor}; font-weight: ${isGanho ? '600' : 'normal'};">
+                ${escapeHtml(statusLabel)}
+              </span>
+              ${renderScoreBadge(d.score_preditivo)}
+            </div>
           </td>
           <td style="padding: 10px 12px; white-space: nowrap; color: var(--text-muted);">
             ${escapeHtml(d.faturadoPor || '-')}
@@ -1111,9 +1138,12 @@
         <div class="crm-card-value">
           ${formatCurrency(deal.valor)}
         </div>
-        <div class="crm-card-vendor" title="Vendedor: ${escapeHtml(deal.vendedor)}">
-          <span class="crm-vendor-avatar">${escapeHtml((deal.vendedor || 'U').charAt(0).toUpperCase())}</span>
-          <span>${escapeHtml(deal.vendedor || '-')}</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          ${renderScoreBadge(deal.score_preditivo)}
+          <div class="crm-card-vendor" title="Vendedor: ${escapeHtml(deal.vendedor)}">
+            <span class="crm-vendor-avatar">${escapeHtml((deal.vendedor || 'U').charAt(0).toUpperCase())}</span>
+            <span>${escapeHtml(deal.vendedor || '-')}</span>
+          </div>
         </div>
       </div>
 
@@ -2083,6 +2113,62 @@
             <td style="text-align: right; font-weight: 700;">${formatCurrency((parseFloat(item.quantidade) || 1) * (parseFloat(item.precoNegociado) || 0))}</td>
           </tr>
         `).join('');
+      }
+    }
+
+    // Renderiza o Card de Diagnóstico Preditivo da IA
+    const scoreCard = document.getElementById('crmDetalhesScoreCard');
+    if (scoreCard) {
+      const sp = deal.score_preditivo;
+      if (sp && typeof sp.score === 'number') {
+        scoreCard.style.display = 'block';
+        const numEl = document.getElementById('crmDetalhesScoreNumero');
+        const classEl = document.getElementById('crmDetalhesScoreClassificacao');
+        const barEl = document.getElementById('crmDetalhesScoreBar');
+        const pillsEl = document.getElementById('crmDetalhesScorePills');
+        const fatoresEl = document.getElementById('crmDetalhesFatoresContainer');
+        const recEl = document.getElementById('crmDetalhesRecomendacaoTexto');
+
+        const score = Math.round(sp.score);
+        const color = sp.badgeColor || (score >= 70 ? '#10b981' : (score < 40 ? '#ef4444' : '#f59e0b'));
+
+        if (numEl) {
+          numEl.textContent = `${score}%`;
+          numEl.style.color = color;
+        }
+        if (classEl) {
+          classEl.textContent = `Probabilidade ${sp.classificacao || 'MÉDIA'}`;
+          classEl.style.color = color;
+        }
+        if (barEl) {
+          barEl.style.width = `${score}%`;
+          barEl.style.background = color;
+        }
+        if (pillsEl) {
+          let pillsHtml = renderScoreBadge(sp);
+          if (sp.alertaEsfriamento) {
+            pillsHtml += `<span class="badge-esfriamento" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.45); font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Risco de perda por abandono (>12 dias sem anotações)">🚨 Esfriando</span>`;
+          }
+          pillsEl.innerHTML = pillsHtml;
+        }
+        if (fatoresEl) {
+          const pos = (sp.fatoresPositivos || []).map(f => `
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 2px 7px;">
+              <span>✅</span> <strong>${escapeHtml(f.impacto || '+')}</strong> <span>${escapeHtml(f.fator)}</span>
+            </span>
+          `).join('');
+          const neg = (sp.fatoresNegativos || []).map(f => `
+            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; padding: 2px 7px;">
+              <span>⚠️</span> <strong>${escapeHtml(f.impacto || '-')}</strong> <span>${escapeHtml(f.fator)}</span>
+            </span>
+          `).join('');
+          fatoresEl.innerHTML = (pos + neg) || '<span style="font-size: 0.75rem; color: var(--text-muted);">Cadência e parâmetros dentro da média histórica.</span>';
+        }
+        if (recEl) {
+          recEl.textContent = sp.recomendacao || 'Manter cadência de atendimento padrão.';
+        }
+      } else {
+        scoreCard.style.display = 'none';
       }
     }
 

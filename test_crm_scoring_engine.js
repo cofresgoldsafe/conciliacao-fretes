@@ -106,4 +106,63 @@ test('3.3 Venda Rápida de Cofre (Juliana Lopes, 1 dia) pontua ALTA', () => {
   assert(res.score >= 80, 'Score de Juliana deve ser >= 80');
 });
 
+// 4. Integração com Fidelidade por Raiz de CNPJ
+test('4.1 Oportunidade com Raiz de CNPJ (1-5 compras ⭐) ativa bônus de recorrência automaticamente', () => {
+  const dealSemFidelidade = {
+    valor_total: 4500,
+    created_at: new Date(Date.now() - 4*24*60*60*1000).toISOString(),
+    nome_vendedor: 'Andrea Ferreira',
+    fidelidade_compras: null
+  };
+
+  const dealComRaiz = {
+    valor_total: 4500,
+    created_at: new Date(Date.now() - 4*24*60*60*1000).toISOString(),
+    nome_vendedor: 'Andrea Ferreira',
+    fidelidade_compras: {
+      raiz_cnpj: '07265905',
+      total_compras: 3,
+      tipo: 'estrela'
+    }
+  };
+
+  const resSem = calcularScoreDeal(dealSemFidelidade);
+  const resCom = calcularScoreDeal(dealComRaiz);
+
+  assert(resCom.score > resSem.score, 'Cliente com histórico na Raiz de CNPJ deve pontuar mais');
+  assert(resCom.fatoresPositivos.some(f => f.fator.includes('Cliente Fidelidade na Raiz do CNPJ (3 compras')), 'Deve indicar fidelidade da raiz nos fatores positivos');
+});
+
+test('4.2 Oportunidade com Cliente Diamante VIP (6+ compras 💎) recebe bônus VIP máximo', () => {
+  const dealEstrela = {
+    valor_total: 10000,
+    created_at: new Date(Date.now() - 4*24*60*60*1000).toISOString(),
+    nome_vendedor: 'Andrea Ferreira',
+    fidelidade_compras: {
+      raiz_cnpj: '07265905',
+      total_compras: 2,
+      tipo: 'estrela'
+    }
+  };
+
+  const dealVip = {
+    valor_total: 10000,
+    created_at: new Date(Date.now() - 4*24*60*60*1000).toISOString(),
+    nome_vendedor: 'Andrea Ferreira',
+    fidelidade_compras: {
+      raiz_cnpj: '07265905',
+      total_compras: 12,
+      tipo: 'diamante'
+    }
+  };
+
+  const resEstrela = calcularScoreDeal(dealEstrela);
+  const resVip = calcularScoreDeal(dealVip);
+
+  assert(resVip.score >= resEstrela.score, 'Cliente Diamante VIP deve ter score superior ou igual');
+  assert(resVip.fatoresPositivos.some(f => f.fator.includes('Cliente Diamante VIP na Raiz do CNPJ (12 compras')), 'Deve indicar Diamante VIP nos fatores');
+  assert.strictEqual(resVip.classificacao, 'ALTA', 'Cliente VIP com 12 compras deve ser classificado como ALTA');
+});
+
 console.log(`\n🎉 TODOS OS ${passedTests} TESTES DO MOTOR PREDITIVO PASSARAM COM SUCESSO!\n`);
+

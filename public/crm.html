@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.276">
+  <link rel="stylesheet" href="style.css?v=8.277">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -533,8 +533,40 @@
         <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal" style="background: transparent; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer;">&times;</button>
       </div>
 
-      <!-- Corpo com 2 Seções: Ficha Comercial + Linha do Tempo -->
+      <!-- Corpo com 3 Seções: Diagnóstico IA + Ficha Comercial + Linha do Tempo -->
       <div style="flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- Bloco de Diagnóstico Preditivo (IA de Vendas & Raiz do CNPJ) -->
+        <div id="crmDetalhesScoreCard" style="display: none; background: rgba(30, 41, 59, 0.45); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">🧠</span>
+              <strong style="font-size: 0.88rem; color: #38bdf8;">Diagnóstico Preditivo da Oportunidade (IA de Vendas)</strong>
+            </div>
+            <div id="crmDetalhesScorePills" style="display: flex; align-items: center; gap: 8px;"></div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: center;">
+            <!-- Coluna 1: Termômetro do Score -->
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px; text-align: center;">
+              <div style="font-size: 0.70rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Probabilidade de Fechamento</div>
+              <div id="crmDetalhesScoreNumero" style="font-size: 2rem; font-weight: 800; font-family: var(--font-mono, monospace); line-height: 1.1; margin: 4px 0;">--</div>
+              <div id="crmDetalhesScoreClassificacao" style="font-size: 0.78rem; font-weight: 700;">-</div>
+              <!-- Barra de Progresso -->
+              <div style="background: rgba(255, 255, 255, 0.08); height: 6px; border-radius: 3px; overflow: hidden; margin-top: 8px;">
+                <div id="crmDetalhesScoreBar" style="height: 100%; width: 0%; transition: width 0.4s ease;"></div>
+              </div>
+            </div>
+
+            <!-- Coluna 2: Fatores Determinantes & Recomendação -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div id="crmDetalhesFatoresContainer" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+              <div id="crmDetalhesRecomendacaoBox" style="font-size: 0.82rem; padding: 8px 12px; border-radius: 6px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.22); color: #e2e8f0; line-height: 1.4;">
+                <strong style="color: #38bdf8;">Orientação Comercial:</strong> <span id="crmDetalhesRecomendacaoTexto">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Seção Comercial & Itens -->
         <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
           <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 10px;">
@@ -874,8 +906,8 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.276"></script>
-  <script src="js/crm.js?v=8.276"></script>
+  <script src="js/chart.umd.min.js?v=8.277"></script>
+  <script src="js/crm.js?v=8.277"></script>
 
   <script>
     // Inicialização do CRM Comercial (/crm)
