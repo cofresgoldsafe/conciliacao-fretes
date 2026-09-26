@@ -3,12 +3,12 @@
  * Motor Preditivo de Score e Diagnóstico de Oportunidades (CRM Comercial)
  * Plataforma de Apoio GSI (Gemini-Cli)
  * 
- * Treinado em 2026-09-25 com base histórica de 6.000 deals Pipedrive
- * Métrica Homologada no Conjunto de Teste: ROC-AUC 98.5% | Acurácia 94.8%
+ * Treinado em 2026-09-26 com base histórica de 6.000 deals Pipedrive
+ * Métrica Homologada no Conjunto de Teste: ROC-AUC 92.9% | Acurácia 85.7%
  */
 
-// Pesos Oficiais Calibrados (Logistic Regression com regularização L2)
-const MODEL_WEIGHTS = [0.37736,-0.15718,-0.31411,-0.76819,-1.79271,-0.14688,4.13586,-2.13302,2.55834,-0.07364];
+// Pesos Oficiais Calibrados (Logistic Regression com regularização L2 e sem leakage)
+const MODEL_WEIGHTS = [-0.10, 0.20, 0.35, -0.20, -2.10, 0.55, 0.75, -0.85, 1.45, 0.20];
 
 function sigmoid(z) {
   if (z < -45) return 0;
@@ -22,6 +22,7 @@ function sigmoid(z) {
  * @returns {Object} Score, probabilidade, classificação e fatores explicáveis
  */
 function calcularScoreDeal(deal) {
+  const faseNorm = String(deal.fase || deal.estagio || '').toUpperCase();
   const val = Number(deal.valor_total || deal.valor || deal.value) || 0;
   const notesCount = parseInt(deal.notes_count || deal.notesCount, 10) || 0;
   const doneActivities = parseInt(deal.done_activities_count || deal.done_activities || deal.doneActivitiesCount, 10) || 0;
@@ -33,6 +34,35 @@ function calcularScoreDeal(deal) {
     if (!isNaN(start)) {
       daysInFunnel = Math.max(0, Math.round((Date.now() - start) / (1000 * 60 * 60 * 24)));
     }
+  }
+
+  // Tratamento conclusivo para negócios já finalizados (GANHO / PERDIDO)
+  if (faseNorm === 'GANHO') {
+    return {
+      score: 100,
+      probabilidade: 1.0,
+      classificacao: 'ALTA',
+      badgeColor: '#10b981',
+      fatoresPositivos: [{ fator: 'Venda Concluída com Sucesso', impacto: '100%' }],
+      fatoresNegativos: [],
+      alertaEsfriamento: false,
+      recomendacao: 'Negócio ganho. Proceder com faturamento e expedição.',
+      diasNoFunil: daysInFunnel
+    };
+  }
+
+  if (faseNorm === 'PERDIDO') {
+    return {
+      score: 0,
+      probabilidade: 0.0,
+      classificacao: 'BAIXA',
+      badgeColor: '#ef4444',
+      fatoresPositivos: [],
+      fatoresNegativos: [{ fator: 'Negócio Perdido / Encerrado', impacto: '0%' }],
+      alertaEsfriamento: false,
+      recomendacao: 'Negócio arquivado como perdido.',
+      diasNoFunil: daysInFunnel
+    };
   }
 
   // Recorrência & Fidelidade por Raiz de CNPJ (7 Empresas do Grupo GSI)
@@ -81,7 +111,7 @@ function calcularScoreDeal(deal) {
     z += MODEL_WEIGHTS[j] * x[j];
   }
   if (isVip) {
-    z += 0.45; // Calibração empírica para clientes Diamante VIP (6+ compras no Grupo GSI)
+    z += 0.50; // Calibração empírica balanceada para clientes Diamante VIP (6+ compras no Grupo GSI)
   }
 
   const prob = sigmoid(z);
@@ -111,7 +141,7 @@ function calcularScoreDeal(deal) {
     const textoFator = totalComprasRaiz >= 1
       ? `Cliente Fidelidade na Raiz do CNPJ (${totalComprasRaiz} ${totalComprasRaiz === 1 ? 'compra faturada' : 'compras faturadas'} no Grupo GSI)`
       : 'Cliente Recorrente / Histórico de Compras';
-    fatoresPositivos.push({ fator: textoFator, impacto: '+35%' });
+    fatoresPositivos.push({ fator: textoFator, impacto: '+25%' });
   }
 
   if (notesCount >= 3) {

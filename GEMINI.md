@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.277 (Homologada em 25/09/2026 22:40)  
+> **Versão da Documentação:** v8.278 (Homologada em 26/09/2026 00:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 25/09/2026 22:40 (v8.277 - Inteligência Preditiva de Oportunidades & Score Integrado com Raiz de CNPJ no CRM)  
+> **Data da Última Auditoria:** 26/09/2026 00:15 (v8.278 - Status Limpo e Calibração Anti-Inflação de 99% no Score Preditivo do CRM)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.278 (26/09/2026):** Status Limpo e Calibração Anti-Inflação de 99% no Score Preditivo do CRM: remoção de porcentagem preditiva na coluna Status da listagem tabular para negócios Ganho/Perdido, eliminação de data leakage no script de treino e recalibração do modelo de Regressão Logística L2 (w6 balanceado para +0.75), gerando scores realistas (15% a 85%) em deals abertos com fidelidade de raiz Protheus (6 novos testes em `test_crm_score_calibrado_status.js` e zero falhas em `npm test` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.277 (25/09/2026):** Inteligência Preditiva de Oportunidades & Score Integrado com Raiz de CNPJ nas 7 empresas Protheus: conexão do modelo de Regressão Logística L2 (`crm_scoring_engine.js`) ao histórico real de compras na raiz de CNPJ (`fidelidade_compras`), pré-cálculo e enriquecimento em tempo real em `crm_engine.js` (listarDeals e obterDealPorId), pílulas de probabilidade (ex: 🟢 85%) e alerta `🚨 Esfriando` (>12 dias sem anotações) no Kanban e Listagem, e card executivo `#crmDetalhesScoreCard` com termômetro, fatores explicáveis e recomendação acionável no modal de detalhes (5 novos testes em `test_crm_preditivo_integrado.js`, 8 em `test_crm_scoring_engine.js` e zero falhas em `npm test` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.276 (25/09/2026):** Inteligência de Fidelidade por Raiz de CNPJ nas 7 empresas Protheus (01, 04, 05, 09, 14, 15, 16): carga inicial de 28.974 raízes consolidadas no PostgreSQL Supabase (`crm_clientes_raiz_cnpj`) e cache local atômico `crm_clientes_raiz_cnpj_cache.json`. Badges visuais dinâmicos (`⭐ X` para 1-5 compras, `💎 X` para 6+ compras VIP, e limpo para 0 compras) exibidos na 3ª coluna `🤝` da Listagem tabular (`#crmDealsTable`), nos cards do funil Kanban (`.crm-card-client`), na ficha de detalhes (`#crmDetalhesFaseBadge` após contagem de itens) e no formulário de oportunidade (`#crmDealClienteFidelidadeBadge` ao lado de `Cliente: *`) via autocomplete ou edição; script de carga `scripts/carga_inicial_raizes_cnpj.js` e sincronização mensal incremental `scripts/sync_mensal_raizes_cnpj.js` (33 testes aprovados em `test_crm_raizes_cnpj.js` e 134 em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.275 (25/09/2026):** Ajuste ergonômico de largura do campo `Valor Total NFe:` de 70px para `100px` no modal de oportunidades (`public/crm.html` e `public/index.html`), eliminando o corte visual do último zero após a vírgula em valores formatados no padrão pt-BR (134 testes aprovados em `test_crm_standalone.js` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).

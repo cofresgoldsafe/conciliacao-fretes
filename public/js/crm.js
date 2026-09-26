@@ -978,7 +978,7 @@
               <span style="color: ${statusColor}; font-weight: ${isGanho ? '600' : 'normal'};">
                 ${escapeHtml(statusLabel)}
               </span>
-              ${renderScoreBadge(d.score_preditivo)}
+              ${(!isGanho && !isPerdido) ? renderScoreBadge(d.score_preditivo) : ''}
             </div>
           </td>
           <td style="padding: 10px 12px; white-space: nowrap; color: var(--text-muted);">
@@ -1139,7 +1139,7 @@
           ${formatCurrency(deal.valor)}
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
-          ${renderScoreBadge(deal.score_preditivo)}
+          ${(!['GANHO', 'PERDIDO'].includes(deal.fase)) ? renderScoreBadge(deal.score_preditivo) : ''}
           <div class="crm-card-vendor" title="Vendedor: ${escapeHtml(deal.vendedor)}">
             <span class="crm-vendor-avatar">${escapeHtml((deal.vendedor || 'U').charAt(0).toUpperCase())}</span>
             <span>${escapeHtml(deal.vendedor || '-')}</span>

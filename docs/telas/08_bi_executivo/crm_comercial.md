@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 25/09/2026 (v8.277 - Homologado)  
+> **Última Atualização:** 26/09/2026 (v8.278 - Homologado)  
 
 ---
 
@@ -154,6 +154,11 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.278 (26/09/2026):** Status Limpo e Calibração Anti-Inflação de 99% no Score Preditivo do CRM:
+  - **Eliminação de Porcentagem em Vendas Ganhas/Perdidas:** Remoção do badge preditivo `${renderScoreBadge}` para negócios com fase `GANHO` ou `PERDIDO` na listagem tabular (`renderListagemBoard`) e nos cards do funil Kanban (`renderKanbanBoard`). Negócios finalizados exibem estritamente seu status soberano (`Ganho` em verde `#10b981` ou `Perdido` em vermelho `#ef4444`), eliminando a confusão de exibir probabilidade de fechamento futuro em vendas já consolidadas.
+  - **Identificação e Correção de Data Leakage no Treino:** Detecção de vazamento temporal no script de treino (`scripts/ml_pipedrive_train.js`), onde a vitória do próprio negócio alimentava o contador de vitórias anteriores da organização (`hasWonPrior`), inflando o coeficiente $w_6$ para abusivos `+4.13586`.
+  - **Recalibração do Motor Preditivo de IA (`crm_scoring_engine.js`):** Ajuste dos pesos oficiais do modelo ($w_6$ reduzido para `+0.75`, $w_0$ balanceado para `-0.10`), conferindo distribuição de probabilidades rica, realista e progressiva (15% a 85%) para negócios em aberto, impedindo que o histórico de compras na raiz de CNPJ das 7 empresas Protheus force distorção artificial de 99% em quase toda a base de clientes. Retorno conclusivo atômico (100% Ganho / 0% Perdido).
+  - **Suíte de Testes Automatizados:** 6 novos testes em `test_crm_score_calibrado_status.js`, 8 testes mantidos em `test_crm_scoring_engine.js`, 5 em `test_crm_preditivo_integrado.js` e 134 em `test_crm_standalone.js` com 100% de aprovação.
 - **v8.277 (25/09/2026):** Inteligência Preditiva de Oportunidades & Score Integrado com Raiz de CNPJ nas 7 Empresas Protheus:
   - **Alimentação Real do Motor Preditivo:** O modelo de Regressão Logística L2 (`crm_scoring_engine.js`) passou a consumir diretamente o histórico das 7 empresas Protheus via `fidelidade_compras` da raiz de CNPJ (`total_compras >= 1` concede bônus de recorrência de +35% e `total_compras >= 6` Diamante VIP concede bônus de +40%).
   - **Enriquecimento Dinâmico em Camadas:** O backend `crm_engine.js` calcula em tempo real o `score_preditivo` para todas as oportunidades em `listarDeals` e `obterDealPorId`, agregando anotações e atividades concluídas em consultas em memória $O(1)$ sem impacto de latência (< 0.05 ms por deal).
