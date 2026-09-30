@@ -23,6 +23,7 @@
 - [x] [SRE-06] Implementar política de retries com backoff exponencial, jitter e Circuit Breaker com 3 estados nas chamadas do Banco Inter (`circuit_breaker.js` e `inter_api.js`).
 - [x] [SRE-07] Eliminar concorrência e corrupção em arquivos JSON (`data/*.json`) via serialização assíncrona FIFO e atomicRename (`safe_json_storage.js`).
 - [x] [SRE-08] Prevenir vazamento de memória e acumuladores de eventos no frontend através de Event Delegation nos containers `tbody` (`public/app.js`).
+- [x] [SRE-09] Resiliência de Sessão & Sliding Session no Heartbeat: Auto-renovação de JWT (7 dias) com verificação no banco de dados e rate limiting em `POST /api/auth/session-ping`, interceptação robusta de HTTP 401 *same-origin* no `window.fetch`, suporte a instâncias `Request` e purga atômica de credenciais obsoletas sem conflito de digitação (v8.280).
 
 ## 💼 Funcionalidades & Módulos de Negócio
 - [x] [LOG-01] Módulo de Salvamento de XMLs de Faturamento no Google Drive e Job das 18h: Eliminação do processo manual de recortar e colar de Downloads/xml. Nova sub-aba em Logística (#tab-log-xml-faturamento) com seleção de período (atalhos Hoje, Ontem, Semana, Mês no fuso de Brasília), memorização de pasta via File System Access API no IndexedDB com alteração a qualquer momento, roteamento automático de subpastas [ANO]/[EMPRESA]/[MM.ANO], fatiamento em chunks anti-timeout de 15 notas, gravação direta de arquivos soltos sem ZIP, contingência de download ZIP multi-empresa, governança estrita de canceladas (bloqueio de protocolo falso 100), job agendado diário às 18:00 (segunda a sexta-feira) gravando direto na unidade G:\ e suíte com 12 testes automatizados 100% aprovados (v8.248).
@@ -119,6 +120,7 @@
 - [x] [QA-27] Suíte de testes automatizados para Visualizador de DANFE NF-e e Sincronização On-Demand SEFAZ (`test_danfe_popup.js` - 15 asserções 100% aprovadas).
 - [x] [QA-28] Suíte de testes automatizados para Consulta de Contas a Pagar SE2/SE5 e Classificação de Baixas Financeiras vs Compensação (`test_contas_pagar.js` - 13 asserções 100% aprovadas).
 - [x] [QA-29] Suíte de testes automatizados para Transportadoras Protheus no CRM e Cache Atômico (`test_crm_transportadoras.js` - 10 baterias 100% aprovadas).
+- [x] [QA-30] Suíte de testes automatizados para Resiliência de Sessão, Sliding Session e Interceptação 401 (`test_session_resilience.js` - 10 asserções 100% aprovadas, v8.280).
 
 ## 💼 Central de Tarefas & Delegação
 - [x] [TASK-01] Central de Delegação e Checagem "Minhas Tarefas": Criação e delegação de demandas operacionais, listagem de colaboradores ativos via `GET /api/auth/users`, unificação de prioridades (`Normal` default, `Alta`, `Urgente`), governança de status, comentários atômicos em JSONB e painel de KPIs em linha única compacta.

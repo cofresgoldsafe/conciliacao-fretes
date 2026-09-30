@@ -45,7 +45,7 @@ async function runPlaywrightE2ETests() {
 
   const testToken = jwt.sign(
     { id: '1', username: 'alexandre', role: 'admin', name: 'Alexandre Admin' },
-    process.env.JWT_SECRET || 'gsi-fretes-secret-key-prod-2026',
+    process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a',
     { expiresIn: '1h' }
   );
 
@@ -62,6 +62,16 @@ async function runPlaywrightE2ETests() {
     await context.addInitScript((tok) => {
       localStorage.setItem('auth_token', tok);
       localStorage.setItem('auth_user', JSON.stringify({ username: 'alexandre', role: 'admin', name: 'Alexandre Admin' }));
+      localStorage.setItem('conciliacao_fretes_session', JSON.stringify({
+        token: tok,
+        user: { 
+          username: 'alexandre', 
+          role: 'admin', 
+          name: 'Alexandre Admin', 
+          permissions: ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'analista-fin', 'configuracoes'] 
+        },
+        expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+      }));
     }, testToken);
 
     page = await context.newPage();

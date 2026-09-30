@@ -71,15 +71,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Intercepta requisições fetch da mesma origem para anexar token JWT e dados do usuário logado
+  // Intercepta requisições fetch da mesma origem para anexar token JWT e tratar sessão expirada (401)
   const originalFetch = window.fetch;
-  window.fetch = function(url, options = {}) {
+  window.fetch = async function(url, options = {}) {
     options = options || {};
+    const isRequestInstance = (typeof Request !== 'undefined' && url instanceof Request);
+    const reqUrl = isRequestInstance ? url.url : url;
+    const isSame = isSameOriginUrl(reqUrl);
     
     // Só anexa credenciais/tokens sensíveis se a requisição for para a mesma origem (prevenção de vazamento P0)
-    if (isSameOriginUrl(url)) {
-      options.headers = options.headers || {};
-
+    if (isSame) {
       let token = currentToken;
       if (!token) {
         try {
@@ -92,16 +93,57 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (token) {
-        if (options.headers instanceof Headers) {
-          options.headers.set('Authorization', `Bearer ${token}`);
-        } else if (Array.isArray(options.headers)) {
-          options.headers.push(['Authorization', `Bearer ${token}`]);
-        } else {
-          options.headers['Authorization'] = `Bearer ${token}`;
+        if (isRequestInstance && url.headers && typeof url.headers.set === 'function') {
+          if (!url.headers.has('Authorization')) {
+            url.headers.set('Authorization', `Bearer ${token}`);
+          }
+        }
+        if (options) {
+          options.headers = options.headers || {};
+          if (options.headers instanceof Headers) {
+            if (!options.headers.has('Authorization')) {
+              options.headers.set('Authorization', `Bearer ${token}`);
+            }
+          } else if (Array.isArray(options.headers)) {
+            const hasAuth = options.headers.some(h => Array.isArray(h) && String(h[0]).toLowerCase() === 'authorization');
+            if (!hasAuth) {
+              options.headers.push(['Authorization', `Bearer ${token}`]);
+            }
+          } else {
+            if (!options.headers['Authorization'] && !options.headers['authorization']) {
+              options.headers['Authorization'] = `Bearer ${token}`;
+            }
+          }
         }
       }
     }
-    return originalFetch.call(this, url, options);
+    const response = await originalFetch.call(this, url, options);
+
+    // Se receber 401 Unauthorized em endpoint same-origin (fora do fluxo de autenticação inicial), limpa credenciais obsoletas
+    if (isSame && response.status === 401) {
+      const urlStr = isRequestInstance ? url.url : String(url);
+      if (!urlStr.includes('/api/auth/login') && !urlStr.includes('/api/auth/verify-2fa')) {
+        localStorage.removeItem('conciliacao_fretes_session');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem('gsi_auth_token');
+        localStorage.removeItem('token');
+        if (sessionHeartbeatTimer) {
+          clearInterval(sessionHeartbeatTimer);
+          sessionHeartbeatTimer = null;
+        }
+        currentUser = null;
+        currentToken = null;
+
+        // Evitar race condition de 401 múltiplos resetando o que o usuário digita:
+        // Só invocar showLoginOverlay(true) se o overlay estiver fechado
+        if (!loginOverlay || loginOverlay.classList.contains('hidden')) {
+          showLoginOverlay(true);
+        }
+      }
+    }
+
+    return response;
   };
 
   // DOM Elements - Tab 1 (Upload)
@@ -193,12 +235,44 @@ document.addEventListener('DOMContentLoaded', () => {
   let sessionHeartbeatTimer = null;
   function startSessionHeartbeat() {
     if (sessionHeartbeatTimer) clearInterval(sessionHeartbeatTimer);
-    fetch('/api/auth/session-ping', { method: 'POST' }).catch(() => {});
-    sessionHeartbeatTimer = setInterval(() => {
+    const pingSession = () => {
       if (currentUser && currentToken) {
-        fetch('/api/auth/session-ping', { method: 'POST' }).catch(() => {});
+        fetch('/api/auth/session-ping', { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.success && data.active && data.token) {
+              currentToken = data.token;
+              try {
+                const raw = localStorage.getItem('conciliacao_fretes_session');
+                if (raw) {
+                  const sess = JSON.parse(raw);
+                  sess.token = data.token;
+                  if (data.expiresAt) sess.expiresAt = data.expiresAt;
+                  localStorage.setItem('conciliacao_fretes_session', JSON.stringify(sess));
+                }
+              } catch {}
+            } else if (data && data.active === false) {
+              if (currentUser || currentToken) {
+                localStorage.removeItem('conciliacao_fretes_session');
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('auth_user');
+                localStorage.removeItem('gsi_auth_token');
+                localStorage.removeItem('token');
+                currentUser = null;
+                currentToken = null;
+                if (sessionHeartbeatTimer) {
+                  clearInterval(sessionHeartbeatTimer);
+                  sessionHeartbeatTimer = null;
+                }
+                showLoginOverlay(true);
+              }
+            }
+          })
+          .catch(() => {});
       }
-    }, 5 * 60 * 1000);
+    };
+    pingSession();
+    sessionHeartbeatTimer = setInterval(pingSession, 5 * 60 * 1000);
   }
 
   function showAuthenticatedUser(user, token) {
@@ -2666,12 +2740,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (data.success && data.data) {
         renderModalDetalhesContent(data.data);
+      } else if (response.status === 401 || (data.message && data.message.includes('Sessão expirada'))) {
+        pedidoDetalhesBody.innerHTML = `
+          <div class="empty-results-box">
+            <div class="empty-icon">🔐</div>
+            <h4>Sua sessão expirou</h4>
+            <p>Faça login novamente para visualizar os detalhes deste pedido.</p>
+            <button type="button" id="btnReloginPedidoModal" class="btn btn-primary btn-sm" style="margin-top: 0.75rem;">Entrar Novamente</button>
+          </div>
+        `;
+        const btnRelogin = document.getElementById('btnReloginPedidoModal');
+        if (btnRelogin) {
+          btnRelogin.addEventListener('click', () => {
+            pedidoDetalhesModal.classList.add('hidden');
+            showLoginOverlay(true);
+          });
+        }
       } else {
         pedidoDetalhesBody.innerHTML = `
           <div class="empty-results-box">
             <div class="empty-icon">⚠️</div>
             <h4>Não foi possível obter os detalhes do pedido</h4>
-            <p>${data.message || 'Verifique se o pedido ainda existe no Protheus.'}</p>
+            <p>${escapeHtml(data.message) || 'Verifique se o pedido ainda existe no Protheus.'}</p>
           </div>
         `;
       }
@@ -2680,7 +2770,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="empty-results-box">
           <div class="empty-icon">❌</div>
           <h4>Erro de comunicação</h4>
-          <p>${err.message}</p>
+          <p>${escapeHtml(err.message)}</p>
         </div>
       `;
     }

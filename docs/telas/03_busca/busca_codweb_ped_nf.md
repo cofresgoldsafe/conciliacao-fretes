@@ -27,7 +27,7 @@
 
 ## 4. Regras de Negócio & Cálculos Chave
 - Detecção inteligente do tipo de chave inserida. Enriquecimento temporal: Data de Ganho Comercial, Data de Migração Protheus e Data de Emissão Fiscal.
-- **Link Direto do Pedido de Venda:** A coluna "Ped Venda" é interativa (`.link-pedido`), permitindo ao operador clicar sobre o número do pedido para visualizar em popup os dados completos (itens SC6, faturas SE1, endereço de entrega e transportadora), exatamente como na tela de Vendedores.
+- **Link Direto do Pedido de Venda & Resiliência de Sessão:** A coluna "Ped Venda" é interativa (`.link-pedido`), permitindo ao operador clicar sobre o número do pedido para visualizar em popup os dados completos (itens SC6, faturas SE1, endereço de entrega e transportadora). Ao ocorrer expiração de sessão ou retorno HTTP 401, o modal `#pedidoDetalhesModal` intercepta a resposta e exibe tela amigável ("Sua sessão expirou") com botão de ação direta [Entrar Novamente], purgando tokens obsoletos sem travar o operador em estado zumbi.
 - **Enriquecimento Relacional no Modal:** O modal de detalhes (`#pedidoDetalhesModal`) apresenta descrições amigáveis e oficiais de `Transportadora:` (via `SA4010`) e `Condição Pagto:` (via `SE4010`) no formato `Código - Descrição`.
 - **Visualizador de DANFE NF-e em Popup:** A coluna "Nota Fiscal" é clicável (`.link-nfe`). Ao ser acionada, busca o XML na Super Tabela `nfe_central_documentos` (ou Protheus SF2). Se o XML existir, exibe o DANFE oficial diagramado em folha A4 com `@media print`, permitindo impressão ou geração de PDF nativo com 1 clique, além de download do arquivo `.xml` e cópia da chave de acesso de 44 dígitos. Se ainda não sincronizado no Supabase, inicia consulta sob demanda na SEFAZ via mTLS com tela de espera ativa ("⏳ Buscando online na SEFAZ, aguarde...") e informa a próxima sincronização automática periódica (12:30h ou 18:30h).
 
@@ -36,21 +36,24 @@
 ## 5. Endpoints REST da API
 - `GET /api/protheus/consulta-avancada?tipo=:tipo&termo=:termo`
 - `GET /api/vendedores/pedidos/detalhes?empresaKey=:empresaKey&numPedido=:numPedido`
+- `POST /api/auth/session-ping` (Sliding session & auto-renovação de 7 dias)
 - `GET /api/nfe/danfe-dados?chave=:chave&empresa=:empresa&doc=:doc&onDemand=1`
 - `GET /api/nfe/xml-download/:chave`
 
 ---
 
 ## 6. Testes Automatizados Vinculados
-- Execução de testes de regressão e DANFE:
+- Execução de testes de regressão, DANFE e resiliência de sessão:
 ```bash
 node test_busca_codweb_ped_nf.js
 node test_danfe_popup.js
+node test_session_resilience.js
 ```
 
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.280 (29/09/2026):** Resiliência de Sessão e Interceptação 401 no Modal de Detalhes do Pedido: eliminação do erro "Sessão expirada ou token inválido" ao clicar em pedidos na Busca Multi-Empresa. Implementação de Sliding Session contínua no `POST /api/auth/session-ping` com validação de status no banco de dados e rate limiting (`sessionPingLimiter`), interceptação robusta de HTTP 401 em chamadas *same-origin* com purga de credenciais obsoletas, suporte nativo a instâncias `Request` no `window.fetch` e botão contextual "Entrar Novamente" no modal `#pedidoDetalhesModal` com suporte a tema Claro/Escuro (10 novos testes em `test_session_resilience.js`).
 - **v8.236 (17/09/2026):** Implementação de Fallback Resiliente no TOTVS Protheus ERP (`danfe_protheus.js`) e sintetizador canônico de XML oficial para contornar a regra restritiva da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração automática de SF2/SD2/SB1/SA1/SA4/SE1, renderização instantânea do DANFE em tela e persistência contínua na Super Tabela.
 - **v8.235 (17/09/2026):** Adição de suporte a senha de certificado digital A1 no popup DANFE (#inputDanfeSenhaCert), diagnóstico transparente de erros SEFAZ e compartilhamento de sessão mútua com Fechamento Fiscal (`sessionStorage`).
 - **v8.234 (17/09/2026):** Implementação de links interativos na coluna Nota Fiscal (`.link-nfe`) para abertura de popup de visualização de DANFE em padrão gráfico oficial A4 (`@media print`), gerado a partir do XML da Super Tabela `nfe_central_documentos` com busca on-demand mTLS na SEFAZ, barra de progresso animada e aviso de próxima sincronização (12:30h / 18:30h).

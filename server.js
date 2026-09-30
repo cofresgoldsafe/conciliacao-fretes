@@ -257,6 +257,20 @@ const resend2FALimiter = rateLimit({
   }
 });
 
+// Rate Limiter para Heartbeat de Sessão (anti-DDoS de renovação de tokens JWT)
+const sessionPingLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutos
+  max: 60, // máximo 60 requisições por IP em 5 minutos
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: 'Muitas requisições de verificação de sessão a partir deste IP. Por favor, aguarde alguns instantes.'
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
 
@@ -946,15 +960,37 @@ app.post('/api/auth/resend-2fa', resend2FALimiter, async (req, res) => {
   }
 });
 
-// API: Heartbeat de Sessão / Touch de Atividade do Usuário
-app.post('/api/auth/session-ping', async (req, res) => {
+// API: Heartbeat de Sessão / Touch de Atividade do Usuário (Sliding Session)
+app.post('/api/auth/session-ping', sessionPingLimiter, async (req, res) => {
   try {
     const authUser = getUserFromReq(req);
     if (authUser && authUser.username && authUser.username !== 'sistema') {
-      await touchUserActivity(authUser.username);
-      return res.json({ success: true, active: true, user: authUser.username });
+      const allUsers = await getUsersDB();
+      const cleanUser = String(authUser.username).trim().toLowerCase();
+      const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser);
+
+      if (userFound && userFound.active !== false) {
+        await touchUserActivity(userFound.username);
+        const tokenPayload = {
+          username: userFound.username,
+          name: userFound.name || authUser.name || userFound.username,
+          role: userFound.role || authUser.role || 'user',
+          vendorCode: userFound.vendorCode || authUser.vendorCode || null,
+          permissions: Array.isArray(userFound.permissions) ? userFound.permissions : (authUser.permissions || [])
+        };
+        const renewedToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '7d' });
+        const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        return res.json({ 
+          success: true, 
+          active: true, 
+          user: userFound.username, 
+          token: renewedToken, 
+          expiresAt 
+        });
+      }
+      return res.json({ success: true, active: false, reason: 'user_inactive_or_not_found' });
     }
-    return res.json({ success: true, active: false });
+    return res.json({ success: true, active: false, reason: 'user_inactive_or_not_found' });
   } catch (err) {
     return res.json({ success: false });
   }

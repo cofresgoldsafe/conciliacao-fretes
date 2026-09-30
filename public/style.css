@@ -2489,6 +2489,18 @@ body {
   background-color: #f8fafc !important;
 }
 
+#pedidoDetalhesModal.modal-theme-light .empty-results-box {
+  background: #f8fafc !important;
+  border: 1px dashed #cbd5e1 !important;
+  color: #475569 !important;
+}
+#pedidoDetalhesModal.modal-theme-light .empty-results-box h4 {
+  color: #0f172a !important;
+}
+#pedidoDetalhesModal.modal-theme-light .empty-results-box p {
+  color: #64748b !important;
+}
+
 /* ==========================================================================
    PAINEL DE FARÓIS DE CONECTIVIDADE EXTERNA (SRE / TELEMETRIA)
    ========================================================================== */

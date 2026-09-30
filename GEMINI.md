@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.279 (Homologada em 28/09/2026 15:15)  
+> **Versão da Documentação:** v8.280 (Homologada em 29/09/2026 16:45)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 28/09/2026 15:15 (v8.279 - Resiliência e Estabilidade do Job Semanal de NFS-e)  
+> **Data da Última Auditoria:** 29/09/2026 16:45 (v8.280 - Resiliência de Sessão e Interceptação 401 no Modal de Detalhes do Pedido)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.280 (29/09/2026):** Resiliência de Sessão e Interceptação 401 no Modal de Detalhes do Pedido: eliminação do erro "Sessão expirada ou token inválido" ao clicar em pedidos na Busca Multi-Empresa. Implementação de Sliding Session contínua no `POST /api/auth/session-ping` com validação de status no banco de dados e rate limiting (`sessionPingLimiter`), interceptação robusta de HTTP 401 em chamadas *same-origin* com purga de credenciais obsoletas, suporte nativo a instâncias `Request` no `window.fetch` e botão contextual "Entrar Novamente" no modal `#pedidoDetalhesModal` com suporte a tema Claro/Escuro (10 novos testes em `test_session_resilience.js` e zero falhas em `npm test` — detalhado em [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md)).
 - **v8.279 (28/09/2026):** Homologação de resiliência e estabilidade do job externo de captura ADN (claude-job-nfse v2.2.0): ampliação de socket timeout para 60s progressivo (45s..60s), backoff de 5s a 25s e humanização de erros de timeout governamental, eliminando travamentos intermitentes no workflow do GitHub Actions (detalhado em [nfse_pendentes.md](docs/telas/07_analista_fin/nfse_pendentes.md)).
 - **v8.278 (26/09/2026):** Status Limpo e Calibração Anti-Inflação de 99% no Score Preditivo do CRM: remoção de porcentagem preditiva na coluna Status da listagem tabular para negócios Ganho/Perdido, eliminação de data leakage no script de treino e recalibração do modelo de Regressão Logística L2 (w6 balanceado para +0.75), gerando scores realistas (15% a 85%) em deals abertos com fidelidade de raiz Protheus (6 novos testes em `test_crm_score_calibrado_status.js` e zero falhas em `npm test` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
 - **v8.277 (25/09/2026):** Inteligência Preditiva de Oportunidades & Score Integrado com Raiz de CNPJ nas 7 empresas Protheus: conexão do modelo de Regressão Logística L2 (`crm_scoring_engine.js`) ao histórico real de compras na raiz de CNPJ (`fidelidade_compras`), pré-cálculo e enriquecimento em tempo real em `crm_engine.js` (listarDeals e obterDealPorId), pílulas de probabilidade (ex: 🟢 85%) e alerta `🚨 Esfriando` (>12 dias sem anotações) no Kanban e Listagem, e card executivo `#crmDetalhesScoreCard` com termômetro, fatores explicáveis e recomendação acionável no modal de detalhes (5 novos testes em `test_crm_preditivo_integrado.js`, 8 em `test_crm_scoring_engine.js` e zero falhas em `npm test` — detalhado em [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md)).
