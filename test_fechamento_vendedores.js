@@ -285,6 +285,29 @@ runTest('4.2 - Juliana (000074): Frete Embutido deve ser exatamente R$ 2.776,00 
   assert.strictEqual(resultado.totalGeralReceber, 2600.17);
 });
 
+runTest('4.3 - Andrea (000064): Inadimplências não são deduzidas de SE1; comissão líquida de Andrea não é zerada', () => {
+  const resultado = calcularComissoesEPremiosVendedor({
+    vendasBaseBruta: 159079.30,
+    fretesEmbutidos: 4566.65,
+    inadimplentesTotal: 0.00, // SE3 é a fonte única oficial; não deduz duplicata de SE1
+    gorduraFreteTotal: 4059.61, // Nível 5 (>= R$ 3.000) = R$ 600,00
+    metasConfig: DEFAULT_METAS_VENDAS
+  });
+
+  // Venda Líquida = 159.079,30 - 4.566,65 = 154.512,65 (128.76% da Meta de R$ 120k)
+  assert.strictEqual(resultado.vendasBaseLiquida, 154512.65);
+  // Comissão Bruta (1,3%) = 154.512,65 * 0.013 = 2.008,66
+  assert.strictEqual(resultado.comissaoBruta, 2008.66);
+  // Comissão Líquida = 2.008,66 (não zera)
+  assert.strictEqual(resultado.comissaoLiquida, 2008.66);
+  // Prêmio Meta Vendas (>= 100%) = R$ 400,00
+  assert.strictEqual(resultado.premioMetaVendas, 400.00);
+  // Prêmio Frete (>= R$ 3.000) = R$ 600,00
+  assert.strictEqual(resultado.premioGorduraFrete, 600.00);
+  // Total a Receber = 2.008,66 + 400 + 600 = 3.008,66
+  assert.strictEqual(resultado.totalGeralReceber, 3008.66);
+});
+
 // ─── TESTE 5: Inadimplência superior à Comissão não gera comissão negativa ────
 
 runTest('5.1 - Comissão líquida é truncada em zero se a inadimplência for superior (Vendas >= 85% com prêmio de frete)', () => {

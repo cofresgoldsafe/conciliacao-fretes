@@ -853,9 +853,11 @@
 
     // Card 2: Comissões R$ (1,3%)
     const elComisLiq = document.getElementById('cardFechamentoComissaoLiquida');
-    const elComisSub = document.getElementById('cardFechamentoComissaoSub');
     if (elComisLiq) elComisLiq.textContent = formatCurrency(comLiquida);
-    if (elComisSub) elComisSub.innerHTML = `Bruta (1,3%): ${formatCurrency(comBruta)} | <span style="color: #ef4444;">(-) Inadimpl: ${formatCurrency(inadimplentes)}</span>`;
+    if (elComisSub) {
+      const corInadimpl = inadimplentes > 0 ? '#ef4444' : 'var(--text-muted)';
+      elComisSub.innerHTML = `Bruta (1,3%): ${formatCurrency(comBruta)} | <span style="color: ${corInadimpl};">(-) Inadimpl: ${formatCurrency(inadimplentes)}</span>`;
+    }
 
     // Card 3: Gordura de Frete
     const elGorduraVal = document.getElementById('cardFechamentoGorduraVal');
@@ -949,8 +951,8 @@
       { item: '2. (-) Dedução de Fretes Embutidos (SC5)', regra: 'Soma de C5_VLR_FRT faturados no período', valor: `- ${formatCurrency(freteEmb)}`, tipo: 'neg' },
       { item: '3. (=) Base Líquida de Vendas', regra: 'Item 1 - Item 2 (Base de Metas e Comissões)', valor: formatCurrency(vLiquida), tipo: 'destaque' },
       { item: '4. Comissão Comercial Bruta (1,3%)', regra: 'Item 3 x 0,013 (1,3%)', valor: formatCurrency(comBruta), tipo: 'pos' },
-      { item: '5. (-) Dedução de Inadimplentes (SE1)', regra: 'Títulos em aberto vencidos até o fechamento', valor: `- ${formatCurrency(inadimplentes)}`, tipo: 'neg' },
-      { item: '6. (=) Comissão Comercial Líquida', regra: 'max(0, Item 4 - Item 5)', valor: formatCurrency(comLiquida), tipo: 'destaque' },
+      { item: '5. (-) Dedução de Inadimplentes (SE3)', regra: 'Estornos/comissões negativas lançados na SE3', valor: `- ${formatCurrency(inadimplentes)}`, tipo: inadimplentes > 0 ? 'neg' : 'neutro' },
+      { item: '6. (=) Comissão Comercial Líquida', regra: 'Comissão Bruta (Item 4) (-) Deduções SE3', valor: formatCurrency(comLiquida), tipo: 'destaque' },
       { item: '7. (+) Premiação de Meta de Vendas', regra: f.faixa_meta_vendas || f.faixaMetaVendas || 'Meta Vendas', valor: `+ ${formatCurrency(premioVendas)}`, tipo: premioVendas > 0 ? 'bonus' : 'neutro' },
       { item: '8. (+) Premiação de Gordura de Frete', regra: `Gordura Líquida: ${formatCurrency(gorduraTotal)} (${f.faixa_gordura_frete || f.faixaGorduraFrete || 'Frete'})`, valor: `+ ${formatCurrency(premioFrete)}`, tipo: premioFrete > 0 ? 'bonus' : 'neutro' },
       { item: '⭐ TOTAL GERAL A RECEBER NO FECHAMENTO', regra: 'Comissão Líquida (Item 6) + Prêmios (Itens 7 e 8)', valor: formatCurrency(totalGeral), tipo: 'total' }

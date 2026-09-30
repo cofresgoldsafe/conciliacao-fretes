@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.281 (Homologada em 30/09/2026 11:36)  
+> **Versão da Documentação:** v8.282 (Homologada em 30/09/2026 14:50)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 30/09/2026 11:36 (v8.281 - Botão Recalcular Fechamento direto na tela de Vendedores)  
+> **Data da Última Auditoria:** 30/09/2026 14:50 (v8.282 - SE3 como Fonte Única de Comissões e Fechamento Andrea)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.282 (30/09/2026):** Apuração de comissões com SE3 como fonte única oficial: eliminação da dedução indevida de duplicatas em aberto do Contas a Receber (SE1) no Fechamento Comercial, restaurando a comissão líquida de R$ 2.008,66 e Total a Receber de R$ 3.008,66 para Andrea (000064). Inadimplências confirmadas passam a ser deduzidas organicamente quando lançadas como comissão negativa na SE3 pelo financeiro (24 testes aprovados em `test_fechamento_vendedores.js` — detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.281 (30/09/2026):** Botão Recalcular Fechamento direto na tela Vendedores > Fechamento: disponibilização do botão oficial sob demanda (`#btnRecalcularFechamentoVend`) diretamente na barra superior da tela de Fechamento de Vendedores, permitindo a qualquer operador ou gestor sincronizar e reprocessar as vendas SE3, fretes SC5 e inadimplências SE1 do Protheus instantaneamente sem sair da tela (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.280 (29/09/2026):** Resiliência de Sessão e Interceptação 401 no Modal de Detalhes do Pedido: eliminação do erro "Sessão expirada ou token inválido" ao clicar em pedidos na Busca Multi-Empresa. Implementação de Sliding Session contínua no `POST /api/auth/session-ping` com validação de status no banco de dados e rate limiting (`sessionPingLimiter`), interceptação robusta de HTTP 401 em chamadas *same-origin* com purga de credenciais obsoletas, suporte nativo a instâncias `Request` no `window.fetch` e botão contextual "Entrar Novamente" no modal `#pedidoDetalhesModal` com suporte a tema Claro/Escuro (10 novos testes em `test_session_resilience.js` e zero falhas em `npm test` — detalhado em [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md)).
 - **v8.279 (28/09/2026):** Homologação de resiliência e estabilidade do job externo de captura ADN (claude-job-nfse v2.2.0): ampliação de socket timeout para 60s progressivo (45s..60s), backoff de 5s a 25s e humanização de erros de timeout governamental, eliminando travamentos intermitentes no workflow do GitHub Actions (detalhado em [nfse_pendentes.md](docs/telas/07_analista_fin/nfse_pendentes.md)).

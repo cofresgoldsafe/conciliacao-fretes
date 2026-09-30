@@ -1881,8 +1881,8 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
       }
     }
 
-    // 2. Se não houver dados gravados ainda, se forçado, ou se o registro gravado estiver com comissão zerada por inadimplência desatualizada
-    const precisaRecalcular = !fechamentoDoBanco || forceRecalc || (fechamentoDoBanco && parseFloat(fechamentoDoBanco.inadimplentes_total) > 0 && parseFloat(fechamentoDoBanco.comissao_liquida) === 0);
+    // 2. Se não houver dados gravados ainda ou se forçado o recálculo sob demanda
+    const precisaRecalcular = !fechamentoDoBanco || forceRecalc;
 
     if (precisaRecalcular) {
       const consolidado = await consolidarFechamentoMensal({

@@ -334,5 +334,173 @@
     },
     "tipo_geracao": "MANUAL_CLI",
     "gerado_em": "2026-09-03T03:09:44.938Z"
+  },
+  {
+    "ciclo_id": "2026-08-26_2026-09-25",
+    "periodo_label": "26/08/2026 a 25/09/2026",
+    "data_ini": "2026-08-26",
+    "data_fim": "2026-09-25",
+    "cod_vendedor": "000004",
+    "nome_vendedor": "Figueiredo",
+    "vendas_base_bruta": 121076.98,
+    "fretes_embutidos": 800,
+    "vendas_base_liquida": 120276.98,
+    "meta_vendas_valor": 120000,
+    "pct_meta_vendas": 100.23,
+    "premio_meta_vendas": 400,
+    "faixa_meta_vendas": ">= 100% da Meta",
+    "gordura_frete_total": 1489.86,
+    "premio_gordura_frete": 300,
+    "faixa_gordura_frete": ">= R$ 1.100,00",
+    "comissao_taxa": 0.013,
+    "comissao_bruta": 1563.6,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 1563.6,
+    "total_premios": 700,
+    "total_geral_receber": 2263.6,
+    "faturamento_empresas_json": {
+      "GSI": 8365,
+      "OACO": 157133.47,
+      "METAL_PLENO": 241961.83,
+      "TOTAL": 407460.3
+    },
+    "benchmarking_json": {
+      "mediaVendasEquipe": 133783.22,
+      "diffVendasPct": -10.1,
+      "statusVendasBench": "ABAIXO_MEDIA",
+      "mediaGorduraEquipe": 2611.38,
+      "diffGorduraPct": -42.95,
+      "statusGorduraBench": "ABAIXO_MEDIA"
+    },
+    "metas_snapshot_json": {
+      "metaBaseVendas": 120000,
+      "premioMeta100": 400,
+      "premioMeta150": 600,
+      "premioMeta200": 1000,
+      "premioGordura700": 200,
+      "premioGordura1100": 300,
+      "premioGordura1500": 400,
+      "premioGordura2100": 500,
+      "premioGordura3000": 600
+    },
+    "detalhes_json": {
+      "totalLancamentosComissao": 19,
+      "totalPedidosComFreteEmbutido": 3,
+      "totalTitulosInadimplentes": 0
+    },
+    "tipo_geracao": "RECALC_MANUAL",
+    "gerado_em": "2026-09-30T17:48:52.538Z"
+  },
+  {
+    "ciclo_id": "2026-08-26_2026-09-25",
+    "periodo_label": "26/08/2026 a 25/09/2026",
+    "data_ini": "2026-08-26",
+    "data_fim": "2026-09-25",
+    "cod_vendedor": "000064",
+    "nome_vendedor": "Andrea",
+    "vendas_base_bruta": 159079.3,
+    "fretes_embutidos": 4566.65,
+    "vendas_base_liquida": 154512.65,
+    "meta_vendas_valor": 120000,
+    "pct_meta_vendas": 128.76,
+    "premio_meta_vendas": 400,
+    "faixa_meta_vendas": ">= 100% da Meta",
+    "gordura_frete_total": 4059.61,
+    "premio_gordura_frete": 600,
+    "faixa_gordura_frete": ">= R$ 3.000,00",
+    "comissao_taxa": 0.013,
+    "comissao_bruta": 2008.66,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 2008.66,
+    "total_premios": 1000,
+    "total_geral_receber": 3008.66,
+    "faturamento_empresas_json": {
+      "GSI": 8365,
+      "OACO": 157133.47,
+      "METAL_PLENO": 241961.83,
+      "TOTAL": 407460.3
+    },
+    "benchmarking_json": {
+      "mediaVendasEquipe": 133783.22,
+      "diffVendasPct": 15.49,
+      "statusVendasBench": "ACIMA_MEDIA",
+      "mediaGorduraEquipe": 2611.38,
+      "diffGorduraPct": 55.46,
+      "statusGorduraBench": "ACIMA_MEDIA"
+    },
+    "metas_snapshot_json": {
+      "metaBaseVendas": 120000,
+      "premioMeta100": 400,
+      "premioMeta150": 600,
+      "premioMeta200": 1000,
+      "premioGordura700": 200,
+      "premioGordura1100": 300,
+      "premioGordura1500": 400,
+      "premioGordura2100": 500,
+      "premioGordura3000": 600
+    },
+    "detalhes_json": {
+      "totalLancamentosComissao": 49,
+      "totalPedidosComFreteEmbutido": 8,
+      "totalTitulosInadimplentes": 0
+    },
+    "tipo_geracao": "RECALC_MANUAL",
+    "gerado_em": "2026-09-30T17:48:52.549Z"
+  },
+  {
+    "ciclo_id": "2026-08-26_2026-09-25",
+    "periodo_label": "26/08/2026 a 25/09/2026",
+    "data_ini": "2026-08-26",
+    "data_fim": "2026-09-25",
+    "cod_vendedor": "000074",
+    "nome_vendedor": "Juliana",
+    "vendas_base_bruta": 127304.02,
+    "fretes_embutidos": 744,
+    "vendas_base_liquida": 126560.02,
+    "meta_vendas_valor": 120000,
+    "pct_meta_vendas": 105.47,
+    "premio_meta_vendas": 400,
+    "faixa_meta_vendas": ">= 100% da Meta",
+    "gordura_frete_total": 2284.68,
+    "premio_gordura_frete": 500,
+    "faixa_gordura_frete": ">= R$ 2.100,00",
+    "comissao_taxa": 0.013,
+    "comissao_bruta": 1645.28,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 1645.28,
+    "total_premios": 900,
+    "total_geral_receber": 2545.28,
+    "faturamento_empresas_json": {
+      "GSI": 8365,
+      "OACO": 157133.47,
+      "METAL_PLENO": 241961.83,
+      "TOTAL": 407460.3
+    },
+    "benchmarking_json": {
+      "mediaVendasEquipe": 133783.22,
+      "diffVendasPct": -5.4,
+      "statusVendasBench": "ABAIXO_MEDIA",
+      "mediaGorduraEquipe": 2611.38,
+      "diffGorduraPct": -12.51,
+      "statusGorduraBench": "ABAIXO_MEDIA"
+    },
+    "metas_snapshot_json": {
+      "metaBaseVendas": 120000,
+      "premioMeta100": 400,
+      "premioMeta150": 600,
+      "premioMeta200": 1000,
+      "premioGordura700": 200,
+      "premioGordura1100": 300,
+      "premioGordura1500": 400,
+      "premioGordura2100": 500,
+      "premioGordura3000": 600
+    },
+    "detalhes_json": {
+      "totalLancamentosComissao": 59,
+      "totalPedidosComFreteEmbutido": 6,
+      "totalTitulosInadimplentes": 0
+    },
+    "tipo_geracao": "RECALC_MANUAL",
+    "gerado_em": "2026-09-30T17:48:52.555Z"
   }
 ]

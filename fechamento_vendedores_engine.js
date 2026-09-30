@@ -9,7 +9,7 @@
  * 2. Venda Base Bruta: Soma de E3_BASE das comissões faturadas no período (SE3).
  * 3. Fretes Embutidos: Soma de SC5.C5_VLR_FRT dos pedidos faturados do vendedor no período (deduzido com deduplicação OUTER APPLY).
  * 4. Venda Base Líquida: Venda Base Bruta - Fretes Embutidos.
- * 5. Inadimplentes: Soma de títulos SE1 em aberto (E1_SALDO > 0.01) vencidos até a data de fechamento.
+ * 5. Inadimplentes e Estornos: A relação de comissões (SE3) é a única fonte oficial. Inadimplências confirmadas são abatidas via lançamentos negativos na SE3.
  * 6. R$ Comissões (1,3%): max(0, (Venda Base Líquida * 0.013) - Inadimplentes).
  * 7. Prêmio Metas Vendas (Base R$ 120k):
  *    - >= 100% (R$ 120.000): R$ 400,00
@@ -395,84 +395,15 @@ async function buscarFretesEmbutidosPeriodo({ dataIni, dataFim, codVend } = {}) 
 }
 
 /**
- * Consulta Títulos Inadimplentes Vencidos do Vendedor no Período (SE1)
- * Regra: Títulos com E1_SALDO > 0.01, E1_BAIXA vazio e vencimento dentro do período do fechamento (dataIni a dataFim)
+ * Consulta Títulos Inadimplentes do Vendedor (SE3 como Fonte Única)
+ * Diretriz Oficial: A relação de comissões (SE3) é a única fonte oficial para apuração de comissões.
+ * Inadimplências confirmadas são abatidas via comissão negativa lançada diretamente na SE3 pelo financeiro.
+ * Não deduz duplicatas do contas a receber (SE1) da comissão do vendedor.
  */
 async function buscarInadimplentesPeriodo({ dataIni, dataFim, codVend } = {}) {
-  const cleanDataIni = String(dataIni || '').replace(/\D/g, '');
-  const cleanDataFim = String(dataFim || '').replace(/\D/g, '');
-  const cleanVend = sanitizeSqlParam(codVend || '');
-  const paddedVend6 = cleanVend ? cleanVend.padStart(6, '0') : '';
-
-  let totalInadimplente = 0;
-  const titulosInadimplentes = [];
-
-  for (const emp of EMPRESAS_FECHAMENTO) {
-    try {
-      let vendFilter = '';
-      if (cleanVend) {
-        vendFilter = `AND (RTRIM(E1.E1_VEND1) = '${cleanVend}' OR RTRIM(E1.E1_VEND1) = '${paddedVend6}')`;
-      }
-
-      let dateFilter = '';
-      if (cleanDataIni && cleanDataFim) {
-        dateFilter = `AND ((E1.E1_VENCREA >= '${cleanDataIni}' AND E1.E1_VENCREA <= '${cleanDataFim}') OR (E1.E1_VENCREA = '' AND E1.E1_VENCTO >= '${cleanDataIni}' AND E1.E1_VENCTO <= '${cleanDataFim}'))`;
-      } else if (cleanDataFim) {
-        dateFilter = `AND (E1.E1_VENCREA <= '${cleanDataFim}' OR E1.E1_VENCTO <= '${cleanDataFim}')`;
-      }
-
-      const sql = `
-        SELECT 
-          RTRIM(E1.E1_PREFIXO) AS PREFIXO,
-          RTRIM(E1.E1_NUM) AS NUM,
-          RTRIM(E1.E1_PARCELA) AS PARCELA,
-          RTRIM(E1.E1_TIPO) AS TIPO,
-          ISNULL(E1.E1_VALOR, 0) AS VALOR,
-          ISNULL(E1.E1_SALDO, 0) AS SALDO,
-          RTRIM(E1.E1_CLIENTE) AS COD_CLIENTE,
-          RTRIM(ISNULL(E1.E1_NOMCLI, '')) AS NOME_CLIENTE,
-          RTRIM(E1.E1_EMISSAO) AS EMISSAO,
-          RTRIM(E1.E1_VENCTO) AS VENCTO,
-          RTRIM(E1.E1_VENCREA) AS VENCREA
-        FROM ${emp.se1} E1
-        WHERE (E1.E1_BAIXA = '' OR E1.E1_BAIXA IS NULL)
-          AND E1.E1_SALDO > 0.01
-          ${dateFilter}
-          ${vendFilter}
-          AND E1.D_E_L_E_T_ = ' '
-        ORDER BY E1.E1_VENCREA ASC;
-      `;
-
-      const dbRes = await executeRailwayQuery(sql);
-      const rows = dbRes && dbRes.rows ? dbRes.rows : [];
-
-      for (const r of rows) {
-        const saldo = roundVal(r.SALDO || 0);
-        totalInadimplente = roundVal(totalInadimplente + saldo);
-        titulosInadimplentes.push({
-          empresa: emp.nome,
-          empresaSigla: emp.sigla,
-          prefixo: r.PREFIXO,
-          num: r.NUM,
-          parcela: r.PARCELA,
-          tipo: r.TIPO,
-          valor: roundVal(r.VALOR || 0),
-          saldo: saldo,
-          codCliente: r.COD_CLIENTE,
-          nomeCliente: r.NOME_CLIENTE,
-          emissao: r.EMISSAO,
-          vencto: r.VENCTO,
-          vencrea: r.VENCREA
-        });
-      }
-    } catch (err) {
-      console.warn(`⚠️ [Fechamento] Erro ao buscar inadimplentes em ${emp.nome}:`, err.message);
-    }
-  }
-
   return {
-    totalInadimplente: roundVal(totalInadimplente),
-    titulosInadimplentes
+    totalInadimplente: 0,
+    titulosInadimplentes: []
   };
 }
 
@@ -645,9 +576,11 @@ async function consolidarFechamentoMensal({ dataIni, dataFim, codVend, triggered
       console.warn(`⚠️ [Fechamento] Erro ao consultar gordura de frete para ${v.nome}:`, errGf.message);
     }
 
-    // 2.4 Inadimplentes do Período
-    const inadRes = await buscarInadimplentesPeriodo({ dataIni: periodo.dtIni, dataFim: periodo.dtFim, codVend: v.cod });
-    const inadimplentesTotal = inadRes.totalInadimplente;
+    // 2.4 Inadimplentes e Estornos:
+    // A relação de comissões (SE3) é a única fonte oficial para o cálculo de comissões.
+    // Inadimplências confirmadas são tratadas comercialmente e abatidas via lançamento de comissão negativa
+    // na SE3 pelo financeiro. Não deduz duplicatas do Contas a Receber (SE1) da comissão do vendedor.
+    const inadimplentesTotal = 0;
 
     // 2.5 R$ Comissões (1,3%)
     const comissaoTaxa = 0.0130;
@@ -695,7 +628,7 @@ async function consolidarFechamentoMensal({ dataIni, dataFim, codVend, triggered
       detalhes: {
         totalLancamentosComissao: vendasRes.itens.length,
         totalPedidosComFreteEmbutido: fretesEmbRes.pedidosComFrete.length,
-        totalTitulosInadimplentes: inadRes.titulosInadimplentes.length
+        totalTitulosInadimplentes: 0
       },
       tipoGeracao: triggeredBy
     });

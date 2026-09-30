@@ -26,7 +26,8 @@
 ---
 
 ## 4. Regras de Negócio & Cálculos Chave
-- Dropdown de 12 ciclos predefinidos (dia 26 a dia 25). Cards gamificados com faixas de metas. Elegibilidade de bônus de frete atrelada a atingimento de >=85% da meta de vendas. Dedução de fretes embutidos (SC5) e títulos inadimplentes (SE1).
+- Dropdown de 12 ciclos predefinidos (dia 26 a dia 25). Cards gamificados com faixas de metas. Elegibilidade de bônus de frete atrelada a atingimento de >=85% da meta de vendas. Dedução de fretes embutidos (SC5).
+- **Relação de Comissões (SE3) como Fonte Única:** A apuração das comissões tem a `SE3` como fonte única e exclusiva de verdade. Títulos em aberto de contas a receber (`SE1`) não são deduzidos diretamente da comissão do vendedor; caso uma inadimplência se confirme ou vá para cartório/perda, o financeiro lança uma comissão negativa na `SE3` que abate organicamente a base e o fechamento do vendedor.
 - **Recálculo Sob Demanda:** Botão `🔄 Recalcular Fechamento` disponível diretamente na barra de ferramentas da tela para sincronização instantânea em caso de alterações de comissões ou baixas de títulos no Protheus.
 
 ---
@@ -45,5 +46,6 @@ node test_fechamento_vendedores.js && node test_fechamento_cards_gamificados.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.282 (30/09/2026):** Alinhamento da apuração de comissões com a `SE3` como fonte única e exclusiva de comissões. Eliminação da dedução arbitrária de títulos em aberto de contas a receber (`SE1`) que zeravam indevidamente a comissão líquida de vendedores (caso Andrea - NF 250). Inadimplências confirmadas passam a ser abatidas organicamente via lançamentos de comissão negativa na `SE3`.
 - **v8.281 (30/09/2026):** Inclusão do botão de ação direta `🔄 Recalcular Fechamento` (`#btnRecalcularFechamentoVend`) na barra superior da tela de Fechamento de Vendedores, permitindo a qualquer operador/gestor sincronizar e reprocessar os dados do Protheus instantaneamente sem necessidade de intervenção técnica ou navegação até a aba de configurações.
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.
