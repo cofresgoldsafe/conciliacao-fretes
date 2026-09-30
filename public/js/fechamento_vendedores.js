@@ -278,11 +278,14 @@
 
   async function forcarRecalculoFechamento() {
     if (isLoading) return;
-    const btn = document.getElementById('btnRecalcularFechamento');
-    if (btn) {
+    const btns = [
+      document.getElementById('btnRecalcularFechamento'),
+      document.getElementById('btnRecalcularFechamentoVend')
+    ].filter(Boolean);
+    btns.forEach(btn => {
       btn.disabled = true;
       btn.innerHTML = '⏳ Recalculando...';
-    }
+    });
     isLoading = true;
     mostrarLoading(true);
 
@@ -319,10 +322,10 @@
     } finally {
       isLoading = false;
       mostrarLoading(false);
-      if (btn) {
+      btns.forEach(btn => {
         btn.disabled = false;
         btn.innerHTML = '🔄 Recalcular Fechamento';
-      }
+      });
     }
   }
 
@@ -1444,6 +1447,10 @@
     const btnRecalc = document.getElementById('btnRecalcularFechamento');
     if (btnRecalc) {
       btnRecalc.addEventListener('click', forcarRecalculoFechamento);
+    }
+    const btnRecalcVend = document.getElementById('btnRecalcularFechamentoVend');
+    if (btnRecalcVend) {
+      btnRecalcVend.addEventListener('click', forcarRecalculoFechamento);
     }
 
     // 4. Botão Imprimir / Exportar Ficha
