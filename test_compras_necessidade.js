@@ -175,12 +175,43 @@ async function runTests() {
     assert(res.total >= 0);
   });
 
-  await itAsync('Empresa 14 (Metal Pleno) - Consulta deve executar com integridade', async () => {
-    const res = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'novas' });
-    assert.strictEqual(res.success, true);
-    assert.strictEqual(res.empresa, '14');
-    assert(Array.isArray(res.itens));
-    assert(res.total >= 0);
+  await itAsync('Empresa 14 (Metal Pleno) - NUNCA deve trazer cofres (grupo 001), apenas produtos operados (018/017)', async () => {
+    const resNovas = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'novas' });
+    assert.strictEqual(resNovas.success, true);
+    assert.strictEqual(resNovas.empresa, '14');
+    assert(Array.isArray(resNovas.itens));
+    // Validação estrita: Nenhum cofre (001) pode aparecer na Metal Pleno
+    const cofresNovas = resNovas.itens.filter(i => i.produto.startsWith('001') || i.grupo === '001');
+    assert.strictEqual(cofresNovas.length, 0, 'Empresa 14 não opera cofres e não pode listar itens do grupo 001 em novas');
+
+    const resTodas = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'todas' });
+    const cofresTodas = resTodas.itens.filter(i => i.produto.startsWith('001') || i.grupo === '001');
+    assert.strictEqual(cofresTodas.length, 0, 'Empresa 14 não pode listar cofres mesmo no modo "todas"');
+    
+    // Todos os produtos listados devem pertencer às linhas de Armários (018) ou Racks (017)
+    for (const item of resTodas.itens) {
+      assert(['018', '017'].includes(item.grupo) || item.produto.startsWith('018') || item.produto.startsWith('017'), 
+        `Item ${item.produto} na Empresa 14 possui linha inesperada: ${item.grupo}`);
+    }
+  });
+
+  // 6. Teste do Filtro de Linha / Grupo
+  await itAsync('Empresa 16 (OAÇO) - Filtro por grupo "001" (Cofres) deve retornar exclusivamente cofres', async () => {
+    const resCofres = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'todas', grupo: '001' });
+    assert.strictEqual(resCofres.success, true);
+    assert(resCofres.itens.length > 0, 'OAÇO deve possuir cofres com necessidade');
+    for (const item of resCofres.itens) {
+      assert(item.produto.startsWith('001') || item.grupo === '001', `Item ${item.produto} não pertence ao grupo 001`);
+    }
+  });
+
+  await itAsync('Empresa 16 (OAÇO) - Filtro por grupo "018" (Armários) deve retornar exclusivamente armários', async () => {
+    const resArmarios = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'novas', grupo: '018' });
+    assert.strictEqual(resArmarios.success, true);
+    assert(resArmarios.itens.length > 0, 'OAÇO deve possuir armários');
+    for (const item of resArmarios.itens) {
+      assert(item.produto.startsWith('018') || item.grupo === '018', `Item ${item.produto} não pertence ao grupo 018`);
+    }
   });
 
   // 6. Teste de Rota e Injeção de Dependências

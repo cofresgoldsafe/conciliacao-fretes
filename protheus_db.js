@@ -5702,14 +5702,15 @@ async function consultarMovimentacoesTituloSe5(empresaCod, filial, prefixo, numT
  * @param {Object} params
  * @param {string} params.empresa - '14' (Metal Pleno), '15' (GSI) ou '16' (OAÇO)
  * @param {string} [params.modo='novas'] - 'novas' (Somente Novas) ou 'todas' (Novas e Pendentes)
+ * @param {string} [params.grupo='todos'] - 'todos', '018' (Armários), '001' (Cofres), '017' (Racks) ou código do grupo
  * @returns {Promise<Object>} Resultado consolidado com listagem e totais
  */
-async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas' } = {}) {
+async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas', grupo = 'todos' } = {}) {
   const empCod = String(empresa || '').trim();
   const CONFIG_EMPRESAS_NECESSIDADE = {
-    '14': { sigla: 'MP', codigo: '14', nome: 'Metal Pleno (14)', sb1: 'SB1090', sb2: 'SB2140', sc6: 'SC6140', sc7: 'SC7140', sa2: 'SA2010' },
-    '15': { sigla: 'GSI', codigo: '15', nome: 'GSI (15)', sb1: 'SB1090', sb2: 'SB2150', sc6: 'SC6150', sc7: 'SC7150', sa2: 'SA2010' },
-    '16': { sigla: 'OACO', codigo: '16', nome: 'OAÇO (16)', sb1: 'SB1090', sb2: 'SB2160', sc6: 'SC6160', sc7: 'SC7160', sa2: 'SA2010' }
+    '14': { sigla: 'MP', codigo: '14', nome: 'Metal Pleno (14)', sb1: 'SB1090', sb2: 'SB2140', sc6: 'SC6140', sc7: 'SC7140', sa2: 'SA2010', sd3: 'SD3140', sd2: 'SD2140' },
+    '15': { sigla: 'GSI', codigo: '15', nome: 'GSI (15)', sb1: 'SB1090', sb2: 'SB2150', sc6: 'SC6150', sc7: 'SC7150', sa2: 'SA2010', sd3: 'SD3150', sd2: 'SD2150' },
+    '16': { sigla: 'OACO', codigo: '16', nome: 'OAÇO (16)', sb1: 'SB1090', sb2: 'SB2160', sc6: 'SC6160', sc7: 'SC7160', sa2: 'SA2010', sd3: 'SD3160', sd2: 'SD2160' }
   };
 
   const cfg = CONFIG_EMPRESAS_NECESSIDADE[empCod];
@@ -5718,12 +5719,25 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas' } =
   }
 
   const modoNorm = String(modo || 'novas').toLowerCase().trim();
+  const grupoNorm = String(grupo || 'todos').trim();
+
+  // Filtro de Grupo opcional
+  let filtroGrupoSql = '';
+  if (grupoNorm && grupoNorm.toLowerCase() !== 'todos') {
+    const grupoSanitizado = grupoNorm.replace(/[^a-zA-Z0-9]/g, '');
+    if (grupoSanitizado) {
+      filtroGrupoSql = `AND RTRIM(B1.B1_GRUPO) = '${grupoSanitizado}'`;
+    }
+  }
 
   // 1. Catálogo de Produtos PA com Ponto de Pedido (B1_EMIN > 0) e Fornecedor Padrão (B1_PROC + SA2010)
+  // Vínculo operacional obrigatório: apenas produtos que possuam movimentação de estoque (SD3),
+  // vendas (SD2), compras (SC7) ou saldo físico ativo (SB2) na empresa selecionada.
   const sqlProds = `
     SELECT 
       RTRIM(B1.B1_COD) AS PRODUTO,
       RTRIM(B1.B1_DESC) AS DESCRICAO,
+      RTRIM(ISNULL(B1.B1_GRUPO, '')) AS GRUPO,
       ISNULL(B1.B1_EMIN, 0) AS PONTO_PEDIDO,
       RTRIM(ISNULL(B1.B1_PROC, '')) AS COD_FORNEC,
       RTRIM(ISNULL(A2.A2_NOME, '')) AS NOME_FORNEC
@@ -5735,6 +5749,13 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas' } =
       AND B1.B1_EMIN > 0
       AND (B1.B1_MSBLQL IS NULL OR (RTRIM(B1.B1_MSBLQL) <> '1' AND RTRIM(B1.B1_MSBLQL) <> 'S' AND RTRIM(B1.B1_MSBLQL) <> 's'))
       AND RTRIM(B1.B1_TIPO) = 'PA'
+      ${filtroGrupoSql}
+      AND (
+        EXISTS (SELECT 1 FROM ${cfg.sd3} WHERE D3_COD = B1.B1_COD AND D_E_L_E_T_ = ' ')
+        OR EXISTS (SELECT 1 FROM ${cfg.sd2} WHERE D2_COD = B1.B1_COD AND D_E_L_E_T_ = ' ')
+        OR EXISTS (SELECT 1 FROM ${cfg.sc7} WHERE C7_PRODUTO = B1.B1_COD AND D_E_L_E_T_ = ' ')
+        OR EXISTS (SELECT 1 FROM ${cfg.sb2} WHERE B2_COD = B1.B1_COD AND B2_QATU <> 0 AND D_E_L_E_T_ = ' ')
+      )
     ORDER BY B1.B1_COD ASC;
   `;
   const resProds = await executeRailwayQuery(sqlProds);
@@ -5822,6 +5843,7 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas' } =
       itens.push({
         produto: cod,
         descricao: p.DESCRICAO,
+        grupo: p.GRUPO || '',
         pedVendas,
         pedCompras,
         saldoEstoque,
@@ -5843,6 +5865,7 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas' } =
     empresa: empCod,
     empresaNome: cfg.nome,
     modo: modoNorm,
+    grupo: grupoNorm,
     total: itens.length,
     itens
   };

@@ -4,20 +4,20 @@
 > **Identificador DOM:** `#tab-compras-necessidade` | **Botão:** `#btnTabComprasNecessidade`  
 > **Permissão RBAC:** admin, user (Compras)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 01/10/2026 (v8.286 - Homologado)  
+> **Última Atualização:** 01/10/2026 (v8.287 - Homologado)  
 
 ---
 
 ## 1. Propósito da Tela & Personas
-- **Objetivo:** Apuração analítica e ágil das necessidades de ressuprimento de produtos acabados por empresa (`14 - Metal Pleno`, `15 - GSI` e `16 - OAÇO`), com batimento fiel ao módulo de compras do TOTVS Protheus (`necessidade-empresa-16.png`), controle de novas necessidades vs pendentes e exportação Excel.
+- **Objetivo:** Apuração analítica e ágil das necessidades de ressuprimento de produtos acabados por empresa (`14 - Metal Pleno`, `15 - GSI` e `16 - OAÇO`), com batimento fiel ao módulo de compras do TOTVS Protheus (`necessidade-empresa-16.png`), controle de novas necessidades vs pendentes, isolamento operacional estrito por empresa e exportação Excel.
 - **Personas Atendidas:** Analistas de Compras, Gestores de Suprimentos, Controladoria e Diretoria Operacional.
 
 ---
 
 ## 2. Arquitetura de Código & Componentes
 - **Frontend:**
-  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro e centralização compulsória de números)
-  - Estrutura HTML: `public/index.html` (aba `#btnTabComprasNecessidade` e painel `#tab-compras-necessidade`)
+  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro, seletor de linha de produtos e centralização compulsória de números)
+  - Estrutura HTML: `public/index.html` (aba `#btnTabComprasNecessidade`, seletor `#selGrupoNecessidade` e painel `#tab-compras-necessidade`)
   - Estilização Protheus Style: `public/style.css` (classes `.table-protheus-necessidade`, `.row-selected` e suporte dinâmico a tema Claro/Escuro sem sobrescrita inline)
   - Orquestração de abas: `public/app.js` (`VENDEDORES_SUB_TABS` e inicialização) e `public/js/vendedores.js` (`aplicarTemaVendedores`)
 - **Backend / Rotas:**
@@ -28,7 +28,8 @@
 ---
 
 ## 3. Banco de Dados & Modelagem
-- **Catálogo de Produtos:** `SB1090` (e `SB1160`), filtrando produtos acabados (`B1_TIPO = 'PA'`), ativos (`B1_MSBLQL <> '1'`) com Ponto de Pedido configurado (`B1_EMIN > 0`).
+- **Catálogo de Produtos:** `SB1090` (compartilhado), filtrando produtos acabados (`B1_TIPO = 'PA'`), ativos (`B1_MSBLQL <> '1'`) com Ponto de Pedido configurado (`B1_EMIN > 0`).
+- **Vínculo Operacional Estrito:** Cláusula `EXISTS` no SQL que restringe aos produtos que possuam atividade comprovada na filial (`SD3` movimentações internas, `SD2` vendas, `SC7` ordens de compra ou `SB2` com saldo ativo `B2_QATU <> 0`). Garante que a Empresa 14 (Metal Pleno) nunca liste cofres, e que cada empresa opere exclusivamente suas linhas de negócio.
 - **Saldos Físicos (SB2):** `SB2140` (MP), `SB2150` (GSI), `SB2160` (OAÇO) via `SUM(B2_QATU)`.
 - **Vendas em Aberto (SC6):** `SC6140`, `SC6150`, `SC6160` via `SUM(C6_QTDVEN)` para pedidos não faturados e sem resíduo.
 - **Compras em Aberto (SC7):** `SC7140`, `SC7150`, `SC7160` via `SUM(C7_QUANT - C7_QUJE)` com saldo pendente e sem cancelamento.
@@ -42,9 +43,12 @@
 $$\text{Necessidade Líquida} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - (\text{Saldo Estoque} + \text{Ped Compras})$$
 $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \text{Saldo Estoque}$$
 
-### 4.2 Modos de Visualização
-- **Somente Novas Necessidades (`novas`):** Exibe apenas produtos onde $\text{Necessidade Líquida} > 0$ (ou seja, compras já efetuadas ainda não cobrem a carência do ponto de pedido).
-- **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todos os produtos com carência de estoque ($\text{Necessidade Bruta} > 0$), incluindo itens com ordens de compra em trânsito.
+### 4.2 Seletores de Parâmetros
+- **Empresa:** 14 - Metal Pleno, 15 - GSI, 16 - OAÇO.
+- **Linha de Produtos:** Todas as Linhas Operadas (`todos`), Armários Corta Fogo (`018`), Cofres (`001`), Racks & Gabinetes (`017`).
+- **Visualização das Necessidades:**
+  - **Somente Novas Necessidades (`novas`):** Exibe apenas produtos onde $\text{Necessidade Líquida} > 0$ (ou seja, compras já efetuadas ainda não cobrem a carência do ponto de pedido).
+  - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todos os produtos com carência de estoque ($\text{Necessidade Bruta} > 0$), incluindo itens com ordens de compra em trânsito.
 
 ### 4.3 Colunas da Listagem & Alinhamento
 1. `[ ]` (Checkbox centralizado individual e master no cabeçalho)
@@ -61,7 +65,7 @@ $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \tex
 ### 4.4 Barra de Ações
 - **Gerar Pedido:** Desabilitado (`disabled="disabled"`) com tooltip indicando módulo futuro de gravação no ERP.
 - **Atualizar:** Reexecuta a consulta mantendo os filtros selecionados para refletir pedidos recém-entrados.
-- **Exporta p/ Excel:** Gera download instantâneo de arquivo CSV (delimitador `;` e BOM UTF-8) com o nome padronizado `necessidade_compras_empresa_{cod}_{modo}_{data}.csv`.
+- **Exporta p/ Excel:** Gera download instantâneo de arquivo CSV (delimitador `;` e BOM UTF-8) com o nome padronizado `necessidade_compras_empresa_{cod}_grupo_{grupo}_{modo}_{data}.csv`.
 - **Sair:** Limpa a listagem e os seletores, retornando a tela ao estado inicial vazio.
 
 ---
@@ -71,6 +75,7 @@ $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \tex
   - Query Params:
     - `empresa`: `'14'` | `'15'` | `'16'` (Obrigatório)
     - `modo`: `'novas'` | `'todas'` (Opcional, default: `'novas'`)
+    - `grupo`: `'todos'` | `'018'` | `'001'` | `'017'` (Opcional, default: `'todos'`)
   - Payload de Resposta:
     ```json
     {
@@ -78,11 +83,13 @@ $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \tex
       "empresa": "16",
       "empresaNome": "OAÇO (16)",
       "modo": "novas",
+      "grupo": "todos",
       "total": 9,
       "itens": [
         {
           "produto": "01801080801B001",
           "descricao": "ARMARIO CORTA FOGO GSI 80X40X35 CM - VERMELHO PAREDE",
+          "grupo": "018",
           "pedVendas": 0,
           "pedCompras": 0,
           "saldoEstoque": 0,
@@ -98,6 +105,11 @@ $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \tex
     ```
 
 ---
+
+## 6. Histórico de Versões da Tela
+- **v8.285 (30/09/2026):** Criação inicial da tela Necessidade de Compras Protheus.
+- **v8.286 (30/09/2026):** Ajuste de contraste Dark Mode, centralização e compactação de cabeçalhos.
+- **v8.287 (01/10/2026):** Vínculo operacional obrigatório por filial (eliminação de cofres na Metal Pleno 14) e inclusão do seletor Linha de Produtos (Cofres 001, Armários 018, Racks 017 e Todos).
 
 ## 6. Testes Automatizados Vinculados
 Execução da suite de regressão com 7 asserções automatizadas:

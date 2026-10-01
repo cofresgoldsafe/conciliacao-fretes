@@ -19,6 +19,7 @@
   let itensCarregados = [];
   let empresaAtual = '';
   let modoAtual = 'novas';
+  let grupoAtual = 'todos';
   let isAnalyzing = false;
 
   function escapeHtml(str) {
@@ -85,6 +86,8 @@
       const btnSair = document.getElementById('btnSairNecessidade');
       const chkAll = document.getElementById('chkAllNecessidade');
       const selEmpresa = document.getElementById('selEmpresaNecessidade');
+      const selGrupo = document.getElementById('selGrupoNecessidade');
+      const selModo = document.getElementById('selModoNecessidade');
 
       if (btnAnalisar) {
         btnAnalisar.addEventListener('click', () => this.executarAnalise());
@@ -118,21 +121,24 @@
         });
       }
 
-      // Enter no select para disparar análise rápida
-      if (selEmpresa) {
-        selEmpresa.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            this.executarAnalise();
-          }
-        });
-      }
+      // Enter nos selects para disparar análise rápida
+      const dispararEnter = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.executarAnalise();
+        }
+      };
+
+      if (selEmpresa) selEmpresa.addEventListener('keydown', dispararEnter);
+      if (selGrupo) selGrupo.addEventListener('keydown', dispararEnter);
+      if (selModo) selModo.addEventListener('keydown', dispararEnter);
     },
 
     executarAnalise: async function (isRefresh = false) {
       if (isAnalyzing) return;
 
       const selEmpresa = document.getElementById('selEmpresaNecessidade');
+      const selGrupo = document.getElementById('selGrupoNecessidade');
       const selModo = document.getElementById('selModoNecessidade');
       const emptyState = document.getElementById('emptyStateNecessidade');
       const loading = document.getElementById('loadingNecessidade');
@@ -142,6 +148,7 @@
       const btnAnalisar = document.getElementById('btnAnalisarNecessidade');
 
       const empresa = selEmpresa ? selEmpresa.value : '';
+      const grupo = selGrupo ? selGrupo.value : 'todos';
       const modo = selModo ? selModo.value : 'novas';
 
       if (!empresa) {
@@ -152,6 +159,7 @@
 
       empresaAtual = empresa;
       modoAtual = modo;
+      grupoAtual = grupo;
       isAnalyzing = true;
 
       // Atualiza interface para estado de loading
@@ -169,7 +177,8 @@
         }
         const params = new URLSearchParams({
           empresa: empresa,
-          modo: modo
+          modo: modo,
+          grupo: grupo
         });
 
         const res = await fetch(`/api/compras/necessidade?${params.toString()}`, {
@@ -293,6 +302,7 @@
       const headers = [
         'Produto',
         'Descricao',
+        'Linha / Grupo',
         'Ped Vendas',
         'Ped Compras',
         'Saldo Estoque',
@@ -311,6 +321,7 @@
       const rows = itensCarregados.map(item => [
         escapeCsv(item.produto),
         escapeCsv(item.descricao),
+        escapeCsv(item.grupo || ''),
         item.pedVendas,
         item.pedCompras,
         item.saldoEstoque,
@@ -331,7 +342,7 @@
       const a = document.createElement('a');
       const hoje = new Date().toISOString().slice(0, 10);
       a.href = url;
-      a.download = `necessidade_compras_empresa_${empresaAtual || 'GSI'}_${modoAtual}_${hoje}.csv`;
+      a.download = `necessidade_compras_empresa_${empresaAtual || 'GSI'}_grupo_${grupoAtual}_${modoAtual}_${hoje}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -340,6 +351,7 @@
 
     sair: function () {
       const selEmpresa = document.getElementById('selEmpresaNecessidade');
+      const selGrupo = document.getElementById('selGrupoNecessidade');
       const selModo = document.getElementById('selModoNecessidade');
       const emptyState = document.getElementById('emptyStateNecessidade');
       const wrapperTabela = document.getElementById('wrapperTabelaNecessidade');
@@ -347,6 +359,7 @@
       const chkAll = document.getElementById('chkAllNecessidade');
 
       if (selEmpresa) selEmpresa.value = '';
+      if (selGrupo) selGrupo.value = 'todos';
       if (selModo) selModo.value = 'novas';
       if (chkAll) chkAll.checked = false;
       if (tbody) tbody.innerHTML = '';
@@ -356,6 +369,7 @@
       itensCarregados = [];
       empresaAtual = '';
       modoAtual = 'novas';
+      grupoAtual = 'todos';
     }
   };
 

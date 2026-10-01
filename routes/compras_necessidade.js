@@ -16,12 +16,14 @@ function createComprasNecessidadeRouter({ requireAuth, handleServerError, logUse
    * Query params:
    *  - empresa: '14' | '15' | '16'
    *  - modo: 'novas' (padrão) | 'todas'
+   *  - grupo: 'todos' (padrão) | '018' | '001' | '017' | string
    */
   router.get('/', requireAuth, async (req, res) => {
     try {
-      const { empresa, modo } = req.query || {};
+      const { empresa, modo, grupo } = req.query || {};
       const emp = String(empresa || '').trim();
       const modoNorm = String(modo || 'novas').toLowerCase().trim();
+      const grupoNorm = String(grupo || 'todos').trim();
 
       if (!['14', '15', '16'].includes(emp)) {
         return res.status(400).json({
@@ -39,7 +41,8 @@ function createComprasNecessidadeRouter({ requireAuth, handleServerError, logUse
 
       const resultado = await consultarNecessidadeComprasProtheus({
         empresa: emp,
-        modo: modoNorm
+        modo: modoNorm,
+        grupo: grupoNorm
       });
 
       if (typeof logUserActivity === 'function' && typeof getUserFromReq === 'function') {
@@ -48,9 +51,9 @@ function createComprasNecessidadeRouter({ requireAuth, handleServerError, logUse
           username: user.username,
           userName: user.name,
           actionType: 'CONSULTA_NECESSIDADE_COMPRAS',
-          description: `Consultou Necessidade de Compras da empresa ${emp} (Modo: ${modoNorm}) - ${resultado.total} produtos`,
+          description: `Consultou Necessidade de Compras da empresa ${emp} (Modo: ${modoNorm}, Grupo: ${grupoNorm}) - ${resultado.total} produtos`,
           ip: req.ip,
-          metadata: { empresa: emp, modo: modoNorm, total: resultado.total }
+          metadata: { empresa: emp, modo: modoNorm, grupo: grupoNorm, total: resultado.total }
         }).catch(() => {});
       }
 
