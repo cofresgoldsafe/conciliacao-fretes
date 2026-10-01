@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-compras-necessidade` | **Botão:** `#btnTabComprasNecessidade`  
 > **Permissão RBAC:** admin, user (Compras)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 01/10/2026 (v8.288 - Homologado)  
+> **Última Atualização:** 01/10/2026 (v8.289 - Homologado)  
 
 ---
 
@@ -16,7 +16,7 @@
 
 ## 2. Arquitetura de Código & Componentes
 - **Frontend:**
-  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro, seletor de linha de produtos, centralização compulsória de números e coloração de déficit/sobra)
+  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro, seletor de linha de produtos, centralização compulsória de números, coloração de déficit/sobra e omissão de itens com 0 em vendas e compras)
   - Estrutura HTML: `public/index.html` (aba `#btnTabComprasNecessidade`, seletor `#selGrupoNecessidade` e painel `#tab-compras-necessidade`)
   - Estilização Protheus Style: `public/style.css` (classes `.table-protheus-necessidade`, `.necessidade-val-falta`, `.necessidade-val-destaque`, `.necessidade-val-zero`, `.row-selected` e suporte dinâmico a tema Claro/Escuro sem sobrescrita inline)
   - Orquestração de abas: `public/app.js` (`VENDEDORES_SUB_TABS` e inicialização) e `public/js/vendedores.js` (`aplicarTemaVendedores`)
@@ -30,6 +30,7 @@
 ## 3. Banco de Dados & Modelagem
 - **Catálogo de Produtos:** `SB1090` (compartilhado), filtrando produtos acabados (`B1_TIPO = 'PA'`), ativos (`B1_MSBLQL <> '1'`) com Ponto de Pedido configurado (`B1_EMIN > 0`).
 - **Vínculo Operacional Estrito:** Cláusula `EXISTS` no SQL que restringe aos produtos que possuam atividade comprovada na filial (`SD3` movimentações internas, `SD2` vendas, `SC7` ordens de compra ou `SB2` com saldo ativo `B2_QATU <> 0`). Garante que a Empresa 14 (Metal Pleno) nunca liste cofres, e que cada empresa opere exclusivamente suas linhas de negócio.
+- **Filtro de Atividade Comercial e Suprimentos:** Omissão compulsória de produtos que tenham `Ped Vendas === 0` e `Ped Compras === 0` (`pedVendas <= 0 && pedCompras <= 0`). Apenas itens que possuam pedidos de venda abertos ou ordens de compra em andamento (`> 0`) são exibidos na grade.
 - **Saldos Físicos (SB2):** `SB2140` (MP), `SB2150` (GSI), `SB2160` (OAÇO) via `SUM(B2_QATU)`.
 - **Vendas em Aberto (SC6):** `SC6140`, `SC6150`, `SC6160` via `SUM(C6_QTDVEN)` para pedidos não faturados e sem resíduo.
 - **Compras em Aberto (SC7):** `SC7140`, `SC7150`, `SC7160` via `SUM(C7_QUANT - C7_QUJE)` com saldo pendente e sem cancelamento.
@@ -46,12 +47,16 @@ $$\text{Necessidade} = (-\text{Ped Vendas}) + \text{Ped Compras} + \text{Saldo E
 - **Valor Zero (`0`):** Indica equilíbrio exato com o ponto de pedido, em cor neutra (`.necessidade-val-zero`).
 - **Valores Positivos (ex: `1`):** Indicam sobra / estoque coberto pelas compras em relação ao ponto de pedido, em destaque azul celeste (`.necessidade-val-destaque`).
 
-### 4.2 Seletores de Parâmetros
+### 4.2 Regra de Omissão de Itens Zerados (0 e 0)
+- **Critério Mandatório:** Se $\text{Ped Vendas} = 0$ **E** $\text{Ped Compras} = 0$, o produto é compulsoriamente omitido da listagem.
+- **Objetivo Operacional:** Focar a visão da equipe de compras exclusivamente em produtos com demanda de clientes represada ($\text{Ped Vendas} > 0$) ou com ressuprimento já contratado com fornecedores ($\text{Ped Compras} > 0$), eliminando ruídos visuais de itens estagnados.
+
+### 4.3 Seletores de Parâmetros
 - **Empresa:** 14 - Metal Pleno, 15 - GSI, 16 - OAÇO.
 - **Linha de Produtos:** Todas as Linhas Operadas (`todos`), Armários Corta Fogo (`018`), Cofres (`001`), Racks & Gabinetes (`017`).
 - **Visualização das Necessidades:**
   - **Somente Novas Necessidades (`novas`):** Exibe exclusivamente produtos com carência real não suprida pelas ordens de compra em trânsito ($\text{Necessidade} < 0$).
-  - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todas as necessidades ativas (déficits $\text{Necessidade} < 0$, produtos com carência bruta sem compras ou com pedidos abertos).
+  - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todas as necessidades ativas que tenham vendas > 0 ou compras > 0.
 
 ### 4.3 Colunas da Listagem & Alinhamento
 1. `[ ]` (Checkbox centralizado individual e master no cabeçalho)

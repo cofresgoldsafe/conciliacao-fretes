@@ -63,92 +63,34 @@ async function runTests() {
     }
   });
 
-  // 2. Batimento Fiel com o Print Protheus (necessidade-empresa-16.png)
-  await itAsync('Empresa 16 (OAÇO) - Modo "novas" deve conter os 7 produtos do print Protheus', async () => {
-    const res = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'novas' });
-    assert.strictEqual(res.success, true);
-    assert.strictEqual(res.empresa, '16');
-    assert.strictEqual(res.modo, 'novas');
-    assert(Array.isArray(res.itens));
-    assert(res.itens.length >= 7, `Deveria ter pelo menos 7 itens, encontrou ${res.itens.length}`);
+  // 2. Validação da Regra Mandatória: Omitir produtos com Ped Vendas = 0 E Ped Compras = 0
+  await itAsync('Todas as empresas: somente produtos com Ped Vendas > 0 ou Ped Compras > 0 devem ser listados (0 e 0 omitidos)', async () => {
+    for (const emp of ['14', '15', '16']) {
+      const resTodas = await consultarNecessidadeComprasProtheus({ empresa: emp, modo: 'todas' });
+      assert.strictEqual(resTodas.success, true);
+      assert(Array.isArray(resTodas.itens));
 
-    const mapaProds = new Map(res.itens.map(i => [i.produto, i]));
+      for (const item of resTodas.itens) {
+        const temVendas = Number(item.pedVendas) > 0;
+        const temCompras = Number(item.pedCompras) > 0;
+        assert(temVendas || temCompras, 
+          `Produto ${item.produto} na Empresa ${emp} possui Vendas 0 e Compras 0, deveria ter sido omitido!`);
+      }
 
-    // 1. 01801080801B001
-    const p1 = mapaProds.get('01801080801B001');
-    assert(p1, 'Produto 01801080801B001 deve estar presente');
-    assert.strictEqual(p1.pedVendas, 0);
-    assert.strictEqual(p1.pedCompras, 0);
-    assert.strictEqual(p1.saldoEstoque, 0);
-    assert.strictEqual(p1.pontoPed, 5);
-    assert.strictEqual(p1.necessidade, -5, 'Necessidade: (-0) + 0 + 0 - 5 = -5');
-    assert.strictEqual(p1.codFornec, '120415');
-    assert.strictEqual(p1.nomeFornec, 'GSI COMERCIO DE');
-
-    // 2. 01801080802B001
-    const p2 = mapaProds.get('01801080802B001');
-    assert(p2, 'Produto 01801080802B001 deve estar presente');
-    assert.strictEqual(p2.pedVendas, 0);
-    assert.strictEqual(p2.pedCompras, 0);
-    assert.strictEqual(p2.saldoEstoque, 0);
-    assert.strictEqual(p2.pontoPed, 11);
-    assert.strictEqual(p2.necessidade, -11, 'Necessidade: (-0) + 0 + 0 - 11 = -11');
-    assert.strictEqual(p2.codFornec, '120415');
-
-    // 3. 01801080802B003 (Saldo negativo: -1, PP: 25 -> Necessidade: -26)
-    const p3 = mapaProds.get('01801080802B003');
-    assert(p3, 'Produto 01801080802B003 deve estar presente');
-    assert.strictEqual(p3.pedVendas, 0);
-    assert.strictEqual(p3.pedCompras, 0);
-    assert.strictEqual(p3.saldoEstoque, -1);
-    assert.strictEqual(p3.pontoPed, 25);
-    assert.strictEqual(p3.necessidade, -26, 'Necessidade: (-0) + 0 + (-1) - 25 = -26');
-    assert.strictEqual(p3.codFornec, '120415');
-
-    // 4. 01801080802B005
-    const p4 = mapaProds.get('01801080802B005');
-    assert(p4, 'Produto 01801080802B005 deve estar presente');
-    assert.strictEqual(p4.pedVendas, 0);
-    assert.strictEqual(p4.pedCompras, 0);
-    assert.strictEqual(p4.saldoEstoque, 0);
-    assert.strictEqual(p4.pontoPed, 1);
-    assert.strictEqual(p4.necessidade, -1, 'Necessidade: (-0) + 0 + 0 - 1 = -1');
-    assert.strictEqual(p4.codFornec, '120415');
-
-    // 5. 01801080802B007
-    const p5 = mapaProds.get('01801080802B007');
-    assert(p5, 'Produto 01801080802B007 deve estar presente');
-    assert.strictEqual(p5.pedVendas, 0);
-    assert.strictEqual(p5.pedCompras, 0);
-    assert.strictEqual(p5.saldoEstoque, 0);
-    assert.strictEqual(p5.pontoPed, 4);
-    assert.strictEqual(p5.necessidade, -4, 'Necessidade: (-0) + 0 + 0 - 4 = -4');
-    assert.strictEqual(p5.codFornec, '120415');
-
-    // 6. 01801084402B001
-    const p6 = mapaProds.get('01801084402B001');
-    assert(p6, 'Produto 01801084402B001 deve estar presente');
-    assert.strictEqual(p6.pedVendas, 0);
-    assert.strictEqual(p6.pedCompras, 0);
-    assert.strictEqual(p6.saldoEstoque, 0);
-    assert.strictEqual(p6.pontoPed, 1);
-    assert.strictEqual(p6.necessidade, -1, 'Necessidade: (-0) + 0 + 0 - 1 = -1');
-    assert.strictEqual(p6.codFornec, '120415');
-
-    // 7. 01801990000B001
-    const p7 = mapaProds.get('01801990000B001');
-    assert(p7, 'Produto 01801990000B001 deve estar presente');
-    assert.strictEqual(p7.pedVendas, 0);
-    assert.strictEqual(p7.pedCompras, 0);
-    assert.strictEqual(p7.saldoEstoque, 0);
-    assert.strictEqual(p7.pontoPed, 12);
-    assert.strictEqual(p7.necessidade, -12, 'Necessidade: (-0) + 0 + 0 - 12 = -12');
-    assert.strictEqual(p7.codFornec, '120415');
+      const resNovas = await consultarNecessidadeComprasProtheus({ empresa: emp, modo: 'novas' });
+      for (const item of resNovas.itens) {
+        const temVendas = Number(item.pedVendas) > 0;
+        const temCompras = Number(item.pedCompras) > 0;
+        assert(temVendas || temCompras, 
+          `Produto ${item.produto} (modo novas) na Empresa ${emp} possui Vendas 0 e Compras 0, deveria ter sido omitido!`);
+      }
+    }
   });
 
   // 3. Validação da Nova Coluna 'Nome Fornec' (15 caracteres)
   await itAsync('Coluna "Nome Fornec" deve respeitar o limite estrito de 15 caracteres', async () => {
-    const res = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'novas' });
+    const res = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'todas' });
+    assert(res.itens.length > 0, 'Deve conter itens para validação do fornecedor');
     for (const item of res.itens) {
       assert(item.nomeFornec.length <= 15, `Nome fornec ultrapassou 15 chars: "${item.nomeFornec}" (${item.nomeFornec.length})`);
     }
@@ -156,8 +98,8 @@ async function runTests() {
 
   // 4. Validação da Diferenciação entre 'novas' e 'todas'
   await itAsync('Modo "todas" deve trazer necessidades pendentes e novas (total maior ou igual a "novas")', async () => {
-    const resNovas = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'novas' });
-    const resTodas = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'todas' });
+    const resNovas = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'novas' });
+    const resTodas = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'todas' });
 
     assert(resTodas.total >= resNovas.total, `Total de 'todas' (${resTodas.total}) deve ser >= 'novas' (${resNovas.total})`);
 
@@ -233,10 +175,10 @@ async function runTests() {
     }
   });
 
-  await itAsync('Empresa 16 (OAÇO) - Filtro por grupo "018" (Armários) deve retornar exclusivamente armários', async () => {
-    const resArmarios = await consultarNecessidadeComprasProtheus({ empresa: '16', modo: 'novas', grupo: '018' });
+  await itAsync('Empresa 14 (Metal Pleno) - Filtro por grupo "018" (Armários) deve retornar exclusivamente armários', async () => {
+    const resArmarios = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'todas', grupo: '018' });
     assert.strictEqual(resArmarios.success, true);
-    assert(resArmarios.itens.length > 0, 'OAÇO deve possuir armários');
+    assert(resArmarios.itens.length > 0, 'Metal Pleno deve possuir armários com compras ou vendas ativas');
     for (const item of resArmarios.itens) {
       assert(item.produto.startsWith('018') || item.grupo === '018', `Item ${item.produto} não pertence ao grupo 018`);
     }

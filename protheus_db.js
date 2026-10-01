@@ -5815,15 +5815,17 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas', gr
     const pedVendas = mapSC6.get(cod) || 0;
     const pedCompras = mapSC7.get(cod) || 0;
 
+    // Regra mandatória: omitir produtos que tiverem 0 em Ped Vendas E 0 em Ped Compras (somente >0 em vendas ou compras)
+    if (pedVendas <= 0 && pedCompras <= 0) {
+      continue;
+    }
+
     // Fórmula oficial do usuário: (-Vendas) + Compras + Saldo - Ponto de Pedido
     const necessidadeCalculada = (-pedVendas) + pedCompras + saldoEstoque - pontoPed;
 
-    // Carência bruta sem considerar compras: (-Vendas) + Saldo - Ponto de Pedido
-    const carenciaSemCompras = (-pedVendas) + saldoEstoque - pontoPed;
-
     // Filtro por modo:
     // 'novas': Somente se houver déficit real não coberto por compras (necessidadeCalculada < 0)
-    // 'todas': Mostra todas as necessidades ativas (déficit atual, carência bruta ou movimentações)
+    // 'todas': Mostra todas as necessidades ativas que tenham vendas > 0 ou compras > 0
     let incluir = false;
 
     if (modoNorm === 'novas') {
@@ -5831,10 +5833,8 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas', gr
         incluir = true;
       }
     } else {
-      // 'todas' (Novas e Pendentes)
-      if (necessidadeCalculada < 0 || carenciaSemCompras < 0 || pedCompras > 0 || pedVendas > 0) {
-        incluir = true;
-      }
+      // 'todas' (Novas e Pendentes com compras ou vendas ativas)
+      incluir = true;
     }
 
     if (incluir) {

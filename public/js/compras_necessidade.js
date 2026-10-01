@@ -216,11 +216,14 @@
       tbody.innerHTML = '';
       if (chkAll) chkAll.checked = false;
 
-      if (!itens || itens.length === 0) {
+      // Regra mandatória: somente produtos com Ped Vendas > 0 ou Ped Compras > 0 (omitir 0 e 0)
+      const listaExibicao = (itens || []).filter(item => (Number(item.pedVendas) > 0 || Number(item.pedCompras) > 0));
+
+      if (!listaExibicao || listaExibicao.length === 0) {
         tbody.innerHTML = `
           <tr>
             <td colspan="10" style="padding: 2.5rem 1rem; text-align: center; color: var(--text-muted, #94a3b8); font-size: 0.95rem;">
-              ✅ <b>Nenhuma necessidade de compra encontrada</b> para os parâmetros selecionados nesta empresa.
+              ✅ <b>Nenhuma necessidade de compra encontrada</b> para os parâmetros selecionados nesta empresa (produtos com Ped Vendas ou Ped Compras &gt; 0).
             </td>
           </tr>
         `;
@@ -229,7 +232,7 @@
         return;
       }
 
-      const rowsHtml = itens.map((item, index) => {
+      const rowsHtml = listaExibicao.map((item, index) => {
         const saldoStyle = item.saldoEstoque < 0 
           ? 'color: #ef4444; font-weight: 700;' 
           : (item.saldoEstoque === 0 ? 'color: var(--text-muted, #94a3b8);' : 'font-weight: 600;');
@@ -297,8 +300,9 @@
     },
 
     exportarExcel: function () {
-      if (!itensCarregados || itensCarregados.length === 0) {
-        alert('Não há dados carregados para exportar. Selecione uma empresa e clique em Analisar primeiro.');
+      const itensValidos = (itensCarregados || []).filter(item => (Number(item.pedVendas) > 0 || Number(item.pedCompras) > 0));
+      if (!itensValidos || itensValidos.length === 0) {
+        alert('Não há dados com Ped Vendas ou Ped Compras > 0 para exportar. Selecione uma empresa e clique em Analisar primeiro.');
         return;
       }
 
@@ -321,7 +325,7 @@
         return `"${s}"`;
       };
 
-      const rows = itensCarregados.map(item => [
+      const rows = itensValidos.map(item => [
         escapeCsv(item.produto),
         escapeCsv(item.descricao),
         escapeCsv(item.grupo || ''),

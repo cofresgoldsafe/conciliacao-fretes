@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.288 (Homologada em 01/10/2026 00:35)  
+> **Versão da Documentação:** v8.289 (Homologada em 01/10/2026 07:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 01/10/2026 00:35 (v8.288 - Fórmula Oficial de Necessidade de Compras: -Vendas + Compras + Saldo - Ponto de Pedido)  
+> **Data da Última Auditoria:** 01/10/2026 07:15 (v8.289 - Omissão Compulsória de Produtos com Vendas e Compras Zeradas na Necessidade de Compras)  
 
 ---
 
@@ -177,6 +177,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.289 (01/10/2026):** Omissão compulsória de produtos com Ped Vendas e Ped Compras zerados (0 e 0) na tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): filtragem estrita no backend (`protheus_db.js`), frontend (`compras_necessidade.js`) e exportação Excel (`exportarExcel`), garantindo que apenas itens com demanda comercial em aberto (`Ped Vendas > 0`) ou ressuprimento contratado (`Ped Compras > 0`) sejam listados. Produtos sem movimentações ativas (0 vendas e 0 compras) são omitidos, eliminando ruídos visuais de itens estagnados (10 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.288 (01/10/2026):** Fórmula oficial de cálculo de Necessidade de Compras implementada conforme especificação do usuário: `(- Ped Vendas) + (Ped Compras) + (Saldo em Estoque) - (Ponto de Pedido)` em `protheus_db.js`. Eliminação do desvio anterior que ignorava ordens de compra em trânsito no modo geral exibindo necessidade bruta inflada (ex: 10 e 2). Agora, produtos com compras suficientes exibem seu saldo coberto/excedente (ex: armário `01801080801B001` com Vendas 5, Compras 11, Saldo 0 e PP 5 exibe `1`, e `01801080802B007` com Vendas 2, Compras 2, Saldo 4 e PP 4 exibe `0`), e déficits reais de compra são exibidos com sinal negativo em destaque vermelho (ex: `01801080802B003` com Vendas 17, Compras 30, Saldo 9 e PP 25 exibe `-3` alertando que faltam 3 a comprar) (10 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.287 (01/10/2026):** Vínculo operacional obrigatório por empresa e seletor Linha de Produtos na tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): cláusula SQL de vínculo (`EXISTS` em `SD3` movimentações, `SD2` vendas, `SC7` compras e `SB2` saldo ativo), eliminando a falsa exibição de cofres na Metal Pleno 14 (que opera apenas armários e racks). Adição do dropdown `#selGrupoNecessidade` (Armários Corta Fogo 018, Cofres 001, Racks 017 e Todas as Linhas) com reflexo na consulta Protheus e exportação Excel (9 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.286 (30/09/2026):** Ajuste de contraste e layout na tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): correção do fundo no Modo Escuro (remoção de inline styles com fallbacks brancos, uso de `--panel-bg` e `--text-main`), compactação extrema das colunas numéricas com quebra em duas linhas (`Ped<br>Vendas`, `Ped<br>Compras`, `Saldo<br>Estoque`, `Ponto<br>de Ped`), renomeação oficial da coluna para `Necessid.`, centralização compulsória de títulos e valores numéricos, remoção do limite de 320px na descrição para expandir horizontalmente (eliminando quebras em 6 linhas) e sincronização ativa de tema claro/escuro via `vendedores.js` e `compras_necessidade.js`.
