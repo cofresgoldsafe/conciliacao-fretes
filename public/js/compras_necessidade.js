@@ -234,9 +234,12 @@
           ? 'color: #ef4444; font-weight: 700;' 
           : (item.saldoEstoque === 0 ? 'color: var(--text-muted, #94a3b8);' : 'font-weight: 600;');
 
-        const necClass = item.necessidade > 0 
-          ? 'necessidade-val-destaque' 
-          : 'necessidade-val-zero';
+        let necClass = 'necessidade-val-zero';
+        if (item.necessidade < 0) {
+          necClass = 'necessidade-val-falta';
+        } else if (item.necessidade > 0) {
+          necClass = 'necessidade-val-destaque';
+        }
 
         return `
           <tr data-index="${index}" class="tr-necessidade-item">

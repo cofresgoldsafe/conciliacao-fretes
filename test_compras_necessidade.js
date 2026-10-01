@@ -81,7 +81,7 @@ async function runTests() {
     assert.strictEqual(p1.pedCompras, 0);
     assert.strictEqual(p1.saldoEstoque, 0);
     assert.strictEqual(p1.pontoPed, 5);
-    assert.strictEqual(p1.necessidade, 5);
+    assert.strictEqual(p1.necessidade, -5, 'Necessidade: (-0) + 0 + 0 - 5 = -5');
     assert.strictEqual(p1.codFornec, '120415');
     assert.strictEqual(p1.nomeFornec, 'GSI COMERCIO DE');
 
@@ -92,17 +92,17 @@ async function runTests() {
     assert.strictEqual(p2.pedCompras, 0);
     assert.strictEqual(p2.saldoEstoque, 0);
     assert.strictEqual(p2.pontoPed, 11);
-    assert.strictEqual(p2.necessidade, 11);
+    assert.strictEqual(p2.necessidade, -11, 'Necessidade: (-0) + 0 + 0 - 11 = -11');
     assert.strictEqual(p2.codFornec, '120415');
 
-    // 3. 01801080802B003 (Saldo negativo: -1, PP: 25 -> Necessidade: 26)
+    // 3. 01801080802B003 (Saldo negativo: -1, PP: 25 -> Necessidade: -26)
     const p3 = mapaProds.get('01801080802B003');
     assert(p3, 'Produto 01801080802B003 deve estar presente');
     assert.strictEqual(p3.pedVendas, 0);
     assert.strictEqual(p3.pedCompras, 0);
     assert.strictEqual(p3.saldoEstoque, -1);
     assert.strictEqual(p3.pontoPed, 25);
-    assert.strictEqual(p3.necessidade, 26, 'Necessidade de 25 - (-1) deve ser exatamente 26');
+    assert.strictEqual(p3.necessidade, -26, 'Necessidade: (-0) + 0 + (-1) - 25 = -26');
     assert.strictEqual(p3.codFornec, '120415');
 
     // 4. 01801080802B005
@@ -112,7 +112,7 @@ async function runTests() {
     assert.strictEqual(p4.pedCompras, 0);
     assert.strictEqual(p4.saldoEstoque, 0);
     assert.strictEqual(p4.pontoPed, 1);
-    assert.strictEqual(p4.necessidade, 1);
+    assert.strictEqual(p4.necessidade, -1, 'Necessidade: (-0) + 0 + 0 - 1 = -1');
     assert.strictEqual(p4.codFornec, '120415');
 
     // 5. 01801080802B007
@@ -122,7 +122,7 @@ async function runTests() {
     assert.strictEqual(p5.pedCompras, 0);
     assert.strictEqual(p5.saldoEstoque, 0);
     assert.strictEqual(p5.pontoPed, 4);
-    assert.strictEqual(p5.necessidade, 4);
+    assert.strictEqual(p5.necessidade, -4, 'Necessidade: (-0) + 0 + 0 - 4 = -4');
     assert.strictEqual(p5.codFornec, '120415');
 
     // 6. 01801084402B001
@@ -132,7 +132,7 @@ async function runTests() {
     assert.strictEqual(p6.pedCompras, 0);
     assert.strictEqual(p6.saldoEstoque, 0);
     assert.strictEqual(p6.pontoPed, 1);
-    assert.strictEqual(p6.necessidade, 1);
+    assert.strictEqual(p6.necessidade, -1, 'Necessidade: (-0) + 0 + 0 - 1 = -1');
     assert.strictEqual(p6.codFornec, '120415');
 
     // 7. 01801990000B001
@@ -142,7 +142,7 @@ async function runTests() {
     assert.strictEqual(p7.pedCompras, 0);
     assert.strictEqual(p7.saldoEstoque, 0);
     assert.strictEqual(p7.pontoPed, 12);
-    assert.strictEqual(p7.necessidade, 12);
+    assert.strictEqual(p7.necessidade, -12, 'Necessidade: (-0) + 0 + 0 - 12 = -12');
     assert.strictEqual(p7.codFornec, '120415');
   });
 
@@ -193,6 +193,34 @@ async function runTests() {
       assert(['018', '017'].includes(item.grupo) || item.produto.startsWith('018') || item.produto.startsWith('017'), 
         `Item ${item.produto} na Empresa 14 possui linha inesperada: ${item.grupo}`);
     }
+  });
+
+  await itAsync('Empresa 14 (Metal Pleno) - Fórmula Oficial: validação dos exemplos do usuário', async () => {
+    const resTodas = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'todas' });
+    const mapa = new Map(resTodas.itens.map(i => [i.produto, i]));
+
+    // Exemplo 1 do usuário: 01801080801B001 -> (-5) + 11 + 0 - 5 = 1
+    const p1 = mapa.get('01801080801B001');
+    assert(p1, 'Produto 01801080801B001 deve estar presente no modo todas');
+    assert.strictEqual(p1.pedVendas, 5);
+    assert.strictEqual(p1.pedCompras, 11);
+    assert.strictEqual(p1.saldoEstoque, 0);
+    assert.strictEqual(p1.pontoPed, 5);
+    assert.strictEqual(p1.necessidade, 1, 'Necessidade deve ser exatamente 1: (-5) + 11 + 0 - 5 = 1');
+
+    // Exemplo 2 do usuário: 01801080802B007 -> (-2) + 2 + 4 - 4 = 0
+    const p2 = mapa.get('01801080802B007');
+    assert(p2, 'Produto 01801080802B007 deve estar presente no modo todas');
+    assert.strictEqual(p2.pedVendas, 2);
+    assert.strictEqual(p2.pedCompras, 2);
+    assert.strictEqual(p2.saldoEstoque, 4);
+    assert.strictEqual(p2.pontoPed, 4);
+    assert.strictEqual(p2.necessidade, 0, 'Necessidade deve ser exatamente 0: (-2) + 2 + 4 - 4 = 0');
+
+    // Exemplo 3 (Carência real): 01801080802B003 -> (-17) + 30 + 9 - 25 = -3 (déficit de 3)
+    const p3 = mapa.get('01801080802B003');
+    assert(p3, 'Produto 01801080802B003 deve estar presente');
+    assert.strictEqual(p3.necessidade, -3, 'Necessidade deve ser -3: (-17) + 30 + 9 - 25 = -3');
   });
 
   // 6. Teste do Filtro de Linha / Grupo

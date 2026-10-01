@@ -5802,6 +5802,11 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas', gr
   const mapSC7 = new Map((resSC7?.rows || []).map(r => [r.C7_PRODUTO.trim(), Number(r.COMPRAS) || 0]));
 
   // 5. Consolidação e Cálculo Matemático da Necessidade
+  // Fórmula oficial confirmada pelo usuário:
+  // (- Ped Vendas) + (Ped Compras) + (Saldo em Estoque) - (Ponto de Pedido)
+  // Valores negativos (ex: -3) indicam que falta comprar (déficit de estoque).
+  // Valores positivos (ex: +1) indicam saldo excedente / coberto em relação ao ponto de pedido.
+  // Valor zero (0) indica equilíbrio exato com o ponto de pedido.
   const itens = [];
   for (const p of prods) {
     const cod = p.PRODUTO;
@@ -5810,28 +5815,25 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas', gr
     const pedVendas = mapSC6.get(cod) || 0;
     const pedCompras = mapSC7.get(cod) || 0;
 
-    // Necessidade Bruta = (Ponto de Ped + Ped Vendas) - Saldo Estoque
-    const necessidadeBruta = Math.max(0, (pontoPed + pedVendas) - saldoEstoque);
+    // Fórmula oficial do usuário: (-Vendas) + Compras + Saldo - Ponto de Pedido
+    const necessidadeCalculada = (-pedVendas) + pedCompras + saldoEstoque - pontoPed;
 
-    // Necessidade Líquida = (Ponto de Ped + Ped Vendas) - (Saldo Estoque + Ped Compras)
-    const necessidadeLiquida = Math.max(0, (pontoPed + pedVendas) - (saldoEstoque + pedCompras));
+    // Carência bruta sem considerar compras: (-Vendas) + Saldo - Ponto de Pedido
+    const carenciaSemCompras = (-pedVendas) + saldoEstoque - pontoPed;
 
     // Filtro por modo:
-    // 'novas': Somente se houver necessidade não atendida por compras já efetuadas
-    // 'todas': Mostra todas as necessidades ativas (bruta > 0), inclusive as com pedidos já em trânsito
+    // 'novas': Somente se houver déficit real não coberto por compras (necessidadeCalculada < 0)
+    // 'todas': Mostra todas as necessidades ativas (déficit atual, carência bruta ou movimentações)
     let incluir = false;
-    let necessidadeExibida = 0;
 
     if (modoNorm === 'novas') {
-      if (necessidadeLiquida > 0) {
+      if (necessidadeCalculada < 0) {
         incluir = true;
-        necessidadeExibida = necessidadeLiquida;
       }
     } else {
       // 'todas' (Novas e Pendentes)
-      if (necessidadeBruta > 0 || necessidadeLiquida > 0) {
+      if (necessidadeCalculada < 0 || carenciaSemCompras < 0 || pedCompras > 0 || pedVendas > 0) {
         incluir = true;
-        necessidadeExibida = necessidadeLiquida > 0 ? necessidadeLiquida : necessidadeBruta;
       }
     }
 
@@ -5848,7 +5850,7 @@ async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas', gr
         pedCompras,
         saldoEstoque,
         pontoPed,
-        necessidade: necessidadeExibida,
+        necessidade: necessidadeCalculada,
         codFornec: p.COD_FORNEC || '',
         nomeFornec: nomeFornec15,
         razaoSocialCompleta: razaoSocial,

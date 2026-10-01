@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-compras-necessidade` | **Botão:** `#btnTabComprasNecessidade`  
 > **Permissão RBAC:** admin, user (Compras)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 01/10/2026 (v8.287 - Homologado)  
+> **Última Atualização:** 01/10/2026 (v8.288 - Homologado)  
 
 ---
 
@@ -16,9 +16,9 @@
 
 ## 2. Arquitetura de Código & Componentes
 - **Frontend:**
-  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro, seletor de linha de produtos e centralização compulsória de números)
+  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro, seletor de linha de produtos, centralização compulsória de números e coloração de déficit/sobra)
   - Estrutura HTML: `public/index.html` (aba `#btnTabComprasNecessidade`, seletor `#selGrupoNecessidade` e painel `#tab-compras-necessidade`)
-  - Estilização Protheus Style: `public/style.css` (classes `.table-protheus-necessidade`, `.row-selected` e suporte dinâmico a tema Claro/Escuro sem sobrescrita inline)
+  - Estilização Protheus Style: `public/style.css` (classes `.table-protheus-necessidade`, `.necessidade-val-falta`, `.necessidade-val-destaque`, `.necessidade-val-zero`, `.row-selected` e suporte dinâmico a tema Claro/Escuro sem sobrescrita inline)
   - Orquestração de abas: `public/app.js` (`VENDEDORES_SUB_TABS` e inicialização) e `public/js/vendedores.js` (`aplicarTemaVendedores`)
 - **Backend / Rotas:**
   - Controlador REST: `routes/compras_necessidade.js` (`GET /api/compras/necessidade`)
@@ -39,16 +39,19 @@
 
 ## 4. Regras de Negócio & Cálculos Chave
 
-### 4.1 Fórmula Oficial Protheus
-$$\text{Necessidade Líquida} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - (\text{Saldo Estoque} + \text{Ped Compras})$$
-$$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \text{Saldo Estoque}$$
+### 4.1 Fórmula Oficial
+$$\text{Necessidade} = (-\text{Ped Vendas}) + \text{Ped Compras} + \text{Saldo Estoque} - \text{Ponto de Pedido}$$
+
+- **Valores Negativos (ex: `-3`):** Indicam déficit de estoque / necessidade real de compra, destacados em vermelho (`.necessidade-val-falta`).
+- **Valor Zero (`0`):** Indica equilíbrio exato com o ponto de pedido, em cor neutra (`.necessidade-val-zero`).
+- **Valores Positivos (ex: `1`):** Indicam sobra / estoque coberto pelas compras em relação ao ponto de pedido, em destaque azul celeste (`.necessidade-val-destaque`).
 
 ### 4.2 Seletores de Parâmetros
 - **Empresa:** 14 - Metal Pleno, 15 - GSI, 16 - OAÇO.
 - **Linha de Produtos:** Todas as Linhas Operadas (`todos`), Armários Corta Fogo (`018`), Cofres (`001`), Racks & Gabinetes (`017`).
 - **Visualização das Necessidades:**
-  - **Somente Novas Necessidades (`novas`):** Exibe apenas produtos onde $\text{Necessidade Líquida} > 0$ (ou seja, compras já efetuadas ainda não cobrem a carência do ponto de pedido).
-  - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todos os produtos com carência de estoque ($\text{Necessidade Bruta} > 0$), incluindo itens com ordens de compra em trânsito.
+  - **Somente Novas Necessidades (`novas`):** Exibe exclusivamente produtos com carência real não suprida pelas ordens de compra em trânsito ($\text{Necessidade} < 0$).
+  - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todas as necessidades ativas (déficits $\text{Necessidade} < 0$, produtos com carência bruta sem compras ou com pedidos abertos).
 
 ### 4.3 Colunas da Listagem & Alinhamento
 1. `[ ]` (Checkbox centralizado individual e master no cabeçalho)
@@ -58,7 +61,7 @@ $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \tex
 5. `Ped<br>Compras` (Total em ordens de compra pendentes, centralizado)
 6. `Saldo<br>Estoque` (Saldo físico em estoque, centralizado, destacando negativos em vermelho)
 7. `Ponto<br>de Ped` (Estoque mínimo / Ponto de pedido, centralizado)
-8. `Necessid.` (Quantidade calculada a comprar em destaque azul celeste, centralizada)
+8. `Necessid.` (Quantidade calculada conforme a fórmula oficial com coloração contextual, centralizada)
 9. `Cod<br>Fornec` (Código do fornecedor principal `B1_PROC`, centralizado)
 10. `Nome Fornec` (Primeiros 15 caracteres do nome do fornecedor em `SA2010`, alinhado à esquerda)
 

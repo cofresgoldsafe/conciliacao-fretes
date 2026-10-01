@@ -5799,6 +5799,11 @@ body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
   color: #ffffff !important;
 }
 
+.table-protheus-necessidade .necessidade-val-falta {
+  color: #ef4444 !important;
+  font-weight: 700;
+}
+
 .table-protheus-necessidade .necessidade-val-destaque {
   color: #38bdf8 !important;
   font-weight: 700;
@@ -5864,6 +5869,12 @@ body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
 .tab-theme-light #tab-compras-necessidade .table-protheus-necessidade tbody tr.row-selected td,
 #tab-compras-necessidade.tab-theme-light .table-protheus-necessidade tbody tr.row-selected td {
   color: #ffffff !important;
+}
+
+.tab-theme-light #tab-compras-necessidade .table-protheus-necessidade .necessidade-val-falta,
+#tab-compras-necessidade.tab-theme-light .table-protheus-necessidade .necessidade-val-falta {
+  color: #dc2626 !important;
+  font-weight: 700;
 }
 
 .tab-theme-light #tab-compras-necessidade .table-protheus-necessidade .necessidade-val-destaque,
