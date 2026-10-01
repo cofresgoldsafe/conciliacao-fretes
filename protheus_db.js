@@ -5691,6 +5691,163 @@ async function consultarMovimentacoesTituloSe5(empresaCod, filial, prefixo, numT
   }
 }
 
+/**
+ * Consulta Necessidade de Compras Protheus (Módulo Compras)
+ * Apura os produtos PA com Ponto de Pedido (B1_EMIN > 0), confrontando Saldo Físico (SB2),
+ * Pedidos de Venda Abertos (SC6) e Ordens de Compra Abertas (SC7).
+ * 
+ * Fórmula Oficial Protheus:
+ * Necessidade = (Ponto de Ped + Ped Vendas) - (Saldo Estoque + Ped Compras)
+ * 
+ * @param {Object} params
+ * @param {string} params.empresa - '14' (Metal Pleno), '15' (GSI) ou '16' (OAÇO)
+ * @param {string} [params.modo='novas'] - 'novas' (Somente Novas) ou 'todas' (Novas e Pendentes)
+ * @returns {Promise<Object>} Resultado consolidado com listagem e totais
+ */
+async function consultarNecessidadeComprasProtheus({ empresa, modo = 'novas' } = {}) {
+  const empCod = String(empresa || '').trim();
+  const CONFIG_EMPRESAS_NECESSIDADE = {
+    '14': { sigla: 'MP', codigo: '14', nome: 'Metal Pleno (14)', sb1: 'SB1090', sb2: 'SB2140', sc6: 'SC6140', sc7: 'SC7140', sa2: 'SA2010' },
+    '15': { sigla: 'GSI', codigo: '15', nome: 'GSI (15)', sb1: 'SB1090', sb2: 'SB2150', sc6: 'SC6150', sc7: 'SC7150', sa2: 'SA2010' },
+    '16': { sigla: 'OACO', codigo: '16', nome: 'OAÇO (16)', sb1: 'SB1090', sb2: 'SB2160', sc6: 'SC6160', sc7: 'SC7160', sa2: 'SA2010' }
+  };
+
+  const cfg = CONFIG_EMPRESAS_NECESSIDADE[empCod];
+  if (!cfg) {
+    throw new Error(`Empresa inválida para apuração de necessidade de compras: '${empresa}'. Selecione 14, 15 ou 16.`);
+  }
+
+  const modoNorm = String(modo || 'novas').toLowerCase().trim();
+
+  // 1. Catálogo de Produtos PA com Ponto de Pedido (B1_EMIN > 0) e Fornecedor Padrão (B1_PROC + SA2010)
+  const sqlProds = `
+    SELECT 
+      RTRIM(B1.B1_COD) AS PRODUTO,
+      RTRIM(B1.B1_DESC) AS DESCRICAO,
+      ISNULL(B1.B1_EMIN, 0) AS PONTO_PEDIDO,
+      RTRIM(ISNULL(B1.B1_PROC, '')) AS COD_FORNEC,
+      RTRIM(ISNULL(A2.A2_NOME, '')) AS NOME_FORNEC
+    FROM ${cfg.sb1} B1
+    LEFT JOIN SA2010 A2 
+      ON A2.A2_COD = B1.B1_PROC 
+     AND A2.D_E_L_E_T_ = ' '
+    WHERE B1.D_E_L_E_T_ = ' '
+      AND B1.B1_EMIN > 0
+      AND (B1.B1_MSBLQL IS NULL OR (RTRIM(B1.B1_MSBLQL) <> '1' AND RTRIM(B1.B1_MSBLQL) <> 'S' AND RTRIM(B1.B1_MSBLQL) <> 's'))
+      AND RTRIM(B1.B1_TIPO) = 'PA'
+    ORDER BY B1.B1_COD ASC;
+  `;
+  const resProds = await executeRailwayQuery(sqlProds);
+  const prods = (resProds && resProds.rows) ? resProds.rows : [];
+
+  // 2. Saldos Físicos em Estoque na Empresa (SB2)
+  const sqlSB2 = `
+    SELECT 
+      RTRIM(B2_COD) AS B2_COD, 
+      ISNULL(SUM(B2_QATU), 0) AS SALDO
+    FROM ${cfg.sb2}
+    WHERE D_E_L_E_T_ = ' '
+    GROUP BY B2_COD;
+  `;
+  const resSB2 = await executeRailwayQuery(sqlSB2);
+  const mapSB2 = new Map((resSB2?.rows || []).map(r => [r.B2_COD.trim(), Number(r.SALDO) || 0]));
+
+  // 3. Pedidos de Venda Abertos na Empresa (SC6 + SC5 não faturados e não cancelados)
+  const sqlSC6 = `
+    SELECT 
+      RTRIM(C6.C6_PRODUTO) AS C6_PRODUTO, 
+      ISNULL(SUM(C6.C6_QTDVEN), 0) AS VENDAS
+    FROM ${cfg.sc6} C6
+    WHERE C6.D_E_L_E_T_ = ' '
+      AND (C6.C6_BLQ IS NULL OR RTRIM(C6.C6_BLQ) <> 'R')
+      AND (C6.C6_NOTA IS NULL OR RTRIM(C6.C6_NOTA) = '' OR RTRIM(C6.C6_NOTA) = '0')
+    GROUP BY C6.C6_PRODUTO;
+  `;
+  const resSC6 = await executeRailwayQuery(sqlSC6);
+  const mapSC6 = new Map((resSC6?.rows || []).map(r => [r.C6_PRODUTO.trim(), Number(r.VENDAS) || 0]));
+
+  // 4. Ordens de Compra Abertas na Empresa (SC7 com saldo pendente de entrega)
+  const sqlSC7 = `
+    SELECT 
+      RTRIM(C7_PRODUTO) AS C7_PRODUTO, 
+      ISNULL(SUM(C7_QUANT - C7_QUJE), 0) AS COMPRAS
+    FROM ${cfg.sc7}
+    WHERE D_E_L_E_T_ = ' '
+      AND (C7_RESIDUO IS NULL OR RTRIM(C7_RESIDUO) <> 'S')
+      AND (C7_QUANT - C7_QUJE) > 0
+    GROUP BY C7_PRODUTO;
+  `;
+  const resSC7 = await executeRailwayQuery(sqlSC7);
+  const mapSC7 = new Map((resSC7?.rows || []).map(r => [r.C7_PRODUTO.trim(), Number(r.COMPRAS) || 0]));
+
+  // 5. Consolidação e Cálculo Matemático da Necessidade
+  const itens = [];
+  for (const p of prods) {
+    const cod = p.PRODUTO;
+    const pontoPed = Number(p.PONTO_PEDIDO) || 0;
+    const saldoEstoque = mapSB2.get(cod) || 0;
+    const pedVendas = mapSC6.get(cod) || 0;
+    const pedCompras = mapSC7.get(cod) || 0;
+
+    // Necessidade Bruta = (Ponto de Ped + Ped Vendas) - Saldo Estoque
+    const necessidadeBruta = Math.max(0, (pontoPed + pedVendas) - saldoEstoque);
+
+    // Necessidade Líquida = (Ponto de Ped + Ped Vendas) - (Saldo Estoque + Ped Compras)
+    const necessidadeLiquida = Math.max(0, (pontoPed + pedVendas) - (saldoEstoque + pedCompras));
+
+    // Filtro por modo:
+    // 'novas': Somente se houver necessidade não atendida por compras já efetuadas
+    // 'todas': Mostra todas as necessidades ativas (bruta > 0), inclusive as com pedidos já em trânsito
+    let incluir = false;
+    let necessidadeExibida = 0;
+
+    if (modoNorm === 'novas') {
+      if (necessidadeLiquida > 0) {
+        incluir = true;
+        necessidadeExibida = necessidadeLiquida;
+      }
+    } else {
+      // 'todas' (Novas e Pendentes)
+      if (necessidadeBruta > 0 || necessidadeLiquida > 0) {
+        incluir = true;
+        necessidadeExibida = necessidadeLiquida > 0 ? necessidadeLiquida : necessidadeBruta;
+      }
+    }
+
+    if (incluir) {
+      // Regra de negócio: primeiros 15 dígitos do nome do fornecedor
+      const razaoSocial = String(p.NOME_FORNEC || '').trim();
+      const nomeFornec15 = razaoSocial.substring(0, 15);
+
+      itens.push({
+        produto: cod,
+        descricao: p.DESCRICAO,
+        pedVendas,
+        pedCompras,
+        saldoEstoque,
+        pontoPed,
+        necessidade: necessidadeExibida,
+        codFornec: p.COD_FORNEC || '',
+        nomeFornec: nomeFornec15,
+        razaoSocialCompleta: razaoSocial,
+        possuiComprasAbertas: pedCompras > 0
+      });
+    }
+  }
+
+  // Ordenação padrão: Código do Produto ASC
+  itens.sort((a, b) => a.produto.localeCompare(b.produto));
+
+  return {
+    success: true,
+    empresa: empCod,
+    empresaNome: cfg.nome,
+    modo: modoNorm,
+    total: itens.length,
+    itens
+  };
+}
+
 module.exports = {
   extrairNotasFaturadasParaCentral,
   consultarProtheusNF,
@@ -5740,5 +5897,7 @@ module.exports = {
   MOTIVOS_BAIXA_MAP,
   classificarSituacaoTitulo,
   consultarContasPagarSe2,
-  consultarMovimentacoesTituloSe5
+  consultarMovimentacoesTituloSe5,
+  // Exportação do Módulo Necessidade de Compras
+  consultarNecessidadeComprasProtheus
 };

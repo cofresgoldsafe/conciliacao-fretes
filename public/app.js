@@ -921,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 
           targetTab === 'tab-compras-pedidos-abertos' || 
+          targetTab === 'tab-compras-necessidade' || 
           targetTab === 'tab-compras-ponto-pedido' || 
           targetTab === 'tab-compras-consulta-ped-nf' || 
           targetTab === 'tab-vend-pedidos-compras' || 
@@ -935,6 +936,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (targetTab === 'tab-compras-pedidos-abertos') {
         carregarPedidosComprasAbertos();
+      }
+      if (targetTab === 'tab-compras-necessidade') {
+        if (window.ComprasNecessidadeModule && typeof window.ComprasNecessidadeModule.init === 'function') {
+          window.ComprasNecessidadeModule.init();
+        }
       }
       if (targetTab === 'tab-compras-ponto-pedido') {
         if (window.ComprasPontoPedidoModule && typeof window.ComprasPontoPedidoModule.init === 'function') {
@@ -4843,6 +4849,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'tab-vend-pedidos',
     'tab-vend-pedidos-abertos',
     'tab-compras-pedidos-abertos',
+    'tab-compras-necessidade',
     'tab-compras-ponto-pedido',
     'tab-compras-consulta-ped-nf',
     'tab-compras-movimentacoes-estoque',

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.283">
+  <link rel="stylesheet" href="style.css?v=8.284">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 30/09/2026 22:28 (v8.283 - Inclusão do Total dos produtos com desconto na frase oficial de autorização)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 30/09/2026 23:24 (Nova tela de Necessidade de Compras Protheus em Compras com batimento fiel ao print, filtros e exportacao Excel)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -188,6 +188,10 @@
           <button class="nav-tab-btn" data-tab="tab-vend-pedidos-compras" id="btnTabComprasPedidosCompras">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
             <span>Prod x Ped Compras</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-compras-necessidade" id="btnTabComprasNecessidade">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="2"></rect><path d="M9 14l2 2 4-4"></path></svg>
+            <span>Necessidade de Compras</span>
           </button>
           <button class="nav-tab-btn" data-tab="tab-compras-ponto-pedido" id="btnTabComprasPontoPedido">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
@@ -1827,6 +1831,118 @@
           <div class="empty-icon">🎉</div>
           <h4>Nenhum pedido de compra em aberto</h4>
           <p>Não há pedidos pendentes de entrega para os filtros selecionados.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- SUB-ABA: NECESSIDADE DE COMPRAS (COMPRAS) -->
+    <div id="tab-compras-necessidade" class="tab-pane hidden">
+      <section class="card">
+        <div class="section-title-row" style="margin-bottom: 1.25rem;">
+          <div>
+            <h2 style="display: flex; align-items: center; gap: 8px;">
+              <span>📦 Necessidade de Compras</span>
+            </h2>
+            <p class="desc">Apuração analítica de reposição e necessidades de suprimentos multi-empresa integrada ao TOTVS Protheus.</p>
+          </div>
+        </div>
+
+        <!-- Barra Superior de Parâmetros -->
+        <div class="compras-filter-bar" style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; background: rgba(15, 23, 42, 0.4); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); margin-bottom: 1.5rem;">
+          <div style="min-width: 220px; flex: 1;">
+            <label for="selEmpresaNecessidade" style="display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 6px;">Empresa</label>
+            <select id="selEmpresaNecessidade" class="input-text" style="width: 100%; height: 42px;">
+              <option value="" selected>Escolher Empresa...</option>
+              <option value="14">14 - Metal Pleno</option>
+              <option value="15">15 - GSI</option>
+              <option value="16">16 - OAÇO</option>
+            </select>
+          </div>
+
+          <div style="min-width: 280px; flex: 1;">
+            <label for="selModoNecessidade" style="display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 6px;">Visualização das Necessidades</label>
+            <select id="selModoNecessidade" class="input-text" style="width: 100%; height: 42px;">
+              <option value="novas" selected>Somente Novas Necessidades</option>
+              <option value="todas">Mostra Necessidades Novas e Pendentes</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button id="btnAnalisarNecessidade" class="btn btn-primary" style="height: 42px; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 0 1.5rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>Analisar</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Área de Resultados / Tabela Protheus Style -->
+        <div id="containerTabelaNecessidade" style="border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; background: var(--bg-card, #ffffff);">
+          <!-- Header Banner estilo Protheus -->
+          <div style="background: #2563eb; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 1.05rem; text-align: center; letter-spacing: 0.5px; border-bottom: 2px solid #1d4ed8;">
+            Necessidade de compras
+          </div>
+
+          <!-- Estado Inicial Vazio -->
+          <div id="emptyStateNecessidade" style="padding: 3.5rem 1.5rem; text-align: center; color: var(--text-muted);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📋</div>
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem; color: var(--text-main);">Nenhum resultado carregado</h3>
+            <p style="font-size: 0.9rem; max-width: 500px; margin: 0 auto;">Escolha a empresa e a opção de necessidades acima, depois clique em <b>Analisar</b> para apurar os produtos que necessitam de reposição.</p>
+          </div>
+
+          <!-- Estado Loading -->
+          <div id="loadingNecessidade" style="display: none; padding: 3.5rem 1.5rem; text-align: center;">
+            <div class="spinner" style="margin: 0 auto 1rem; width: 36px; height: 36px; border: 3px solid rgba(37,99,235,0.2); border-top-color: #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <p style="font-size: 0.95rem; font-weight: 500; color: var(--text-main);">Consultando Protheus (Saldos SB2, Vendas SC6, Compras SC7 e Fornecedores)...</p>
+          </div>
+
+          <!-- Tabela de Dados -->
+          <div id="wrapperTabelaNecessidade" style="display: none; overflow-x: auto;">
+            <table class="table-protheus-necessidade" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+              <thead>
+                <tr style="background: var(--bg-th, #f1f5f9); color: var(--text-th, #334155); border-bottom: 2px solid var(--border-table, #cbd5e1); font-weight: 700; white-space: nowrap;">
+                  <th style="padding: 10px 8px; text-align: center; width: 38px;">
+                    <input type="checkbox" id="chkAllNecessidade" title="Marcar/Desmarcar Todos" style="cursor: pointer;" />
+                  </th>
+                  <th style="padding: 10px 12px; text-align: left;">Produto</th>
+                  <th style="padding: 10px 12px; text-align: left;">Descricao</th>
+                  <th style="padding: 10px 12px; text-align: right;">Ped Vendas</th>
+                  <th style="padding: 10px 12px; text-align: right;">Ped Compras</th>
+                  <th style="padding: 10px 12px; text-align: right;">Saldo Estoque</th>
+                  <th style="padding: 10px 12px; text-align: right;">Ponto de Ped</th>
+                  <th style="padding: 10px 12px; text-align: right;">Necessidade de Compras</th>
+                  <th style="padding: 10px 12px; text-align: center;">Cod Fornec</th>
+                  <th style="padding: 10px 12px; text-align: left;">Nome Fornec</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyNecessidadeCompras">
+                <!-- Linhas inseridas dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Barra Inferior de Ações -->
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--panel-border);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="btnGerarPedidoNecessidade" class="btn" disabled="disabled" style="opacity: 0.55; cursor: not-allowed; background: #2563eb; color: #fff; font-weight: 600; padding: 0 1.25rem; height: 38px;" title="Geração de pedidos de compra via integração ERP em desenvolvimento">
+              Gerar Pedido
+            </button>
+            <button id="btnAtualizarNecessidade" class="btn btn-outline" style="height: 38px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <span>Atualizar</span>
+            </button>
+            <button id="btnExportarExcelNecessidade" class="btn btn-outline" style="height: 38px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Exporta p/ Excel</span>
+            </button>
+          </div>
+
+          <div>
+            <button id="btnSairNecessidade" class="btn btn-outline" style="height: 38px; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: #ef4444; border-color: rgba(239,68,68,0.3);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              <span>Sair</span>
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -9742,24 +9858,25 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.283"></script>
-  <script src="js/bi.js?v=8.283"></script>
-  <script src="js/bi_indices.js?v=8.283"></script>
-  <script src="js/bi_autorizacoes.js?v=8.283"></script>
-  <script src="js/bi_despesas.js?v=8.283"></script>
-  <script src="js/gordura_frete.js?v=8.283"></script>
-  <script src="js/fechamento_vendedores.js?v=8.283"></script>
-  <script type="module" src="js/tarefas.js?v=8.283"></script>
-  <script src="js/holerites.js?v=8.283"></script>
-  <script src="js/funcionarios_dp.js?v=8.283"></script>
-  <script src="js/crm.js?v=8.283"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.283"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.283"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.283"></script>
-  <script src="js/nfse_pendentes.js?v=8.283"></script>
-  <script src="js/fechamento_fiscal.js?v=8.283"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.283"></script>
-  <script src="js/contas_pagar.js?v=8.283"></script>
-  <script src="app.js?v=8.283"></script>
+  <script src="js/chart.umd.min.js?v=8.284"></script>
+  <script src="js/bi.js?v=8.284"></script>
+  <script src="js/bi_indices.js?v=8.284"></script>
+  <script src="js/bi_autorizacoes.js?v=8.284"></script>
+  <script src="js/bi_despesas.js?v=8.284"></script>
+  <script src="js/gordura_frete.js?v=8.284"></script>
+  <script src="js/fechamento_vendedores.js?v=8.284"></script>
+  <script type="module" src="js/tarefas.js?v=8.284"></script>
+  <script src="js/holerites.js?v=8.284"></script>
+  <script src="js/funcionarios_dp.js?v=8.284"></script>
+  <script src="js/crm.js?v=8.284"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.284"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.284"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.284"></script>
+  <script src="js/compras_necessidade.js?v=8.284"></script>
+  <script src="js/nfse_pendentes.js?v=8.284"></script>
+  <script src="js/fechamento_fiscal.js?v=8.284"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.284"></script>
+  <script src="js/contas_pagar.js?v=8.284"></script>
+  <script src="app.js?v=8.284"></script>
 </body>
 </html>

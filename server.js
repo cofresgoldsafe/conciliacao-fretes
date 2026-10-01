@@ -1482,6 +1482,15 @@ app.get('/api/compras/nfe-entrada-detalhes', requireAuth, async (req, res) => {
   }
 });
 
+// API: Compras - Necessidade de Compras Protheus (Módulo Modular)
+const createComprasNecessidadeRouter = require('./routes/compras_necessidade');
+app.use('/api/compras/necessidade', createComprasNecessidadeRouter({
+  requireAuth,
+  handleServerError,
+  logUserActivity,
+  getUserFromReq
+}));
+
 // API: Compras - Busca / Autocomplete de Produtos para Ponto de Pedido
 app.get('/api/compras/ponto-pedido/produtos', requireAuth, async (req, res) => {
   try {

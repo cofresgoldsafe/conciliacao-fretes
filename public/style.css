@@ -5747,5 +5747,90 @@ body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
   max-width: 100%;
 }
 
+/* ==========================================================================
+   SUB-ABA: NECESSIDADE DE COMPRAS (COMPRAS) - PROTHEUS STYLE
+   ========================================================================== */
+.table-protheus-necessidade {
+  width: 100%;
+  border-collapse: collapse;
+}
 
+.table-protheus-necessidade th {
+  background: var(--bg-th, #1e293b);
+  color: var(--text-th, #94a3b8);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid var(--border-table, #334155);
+}
 
+.table-protheus-necessidade td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-table, rgba(255, 255, 255, 0.06));
+  color: var(--text-main, #f1f5f9);
+}
+
+.table-protheus-necessidade tbody tr {
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.table-protheus-necessidade tbody tr:hover {
+  background: rgba(56, 159, 214, 0.12) !important;
+}
+
+.table-protheus-necessidade tbody tr.row-selected {
+  background: #389fd6 !important;
+  color: #ffffff !important;
+}
+
+.table-protheus-necessidade tbody tr.row-selected td {
+  color: #ffffff !important;
+}
+
+/* Light Theme para Necessidade de Compras */
+.tab-theme-light #tab-compras-necessidade,
+#tab-compras-necessidade.tab-theme-light {
+  color: #0f172a;
+}
+
+.tab-theme-light #tab-compras-necessidade .card,
+#tab-compras-necessidade.tab-theme-light .card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+.tab-theme-light #tab-compras-necessidade #containerTabelaNecessidade,
+#tab-compras-necessidade.tab-theme-light #containerTabelaNecessidade {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.tab-theme-light #tab-compras-necessidade .table-protheus-necessidade th,
+#tab-compras-necessidade.tab-theme-light .table-protheus-necessidade th {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.tab-theme-light #tab-compras-necessidade .table-protheus-necessidade td,
+#tab-compras-necessidade.tab-theme-light .table-protheus-necessidade td {
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+.tab-theme-light #tab-compras-necessidade .table-protheus-necessidade tbody tr:hover,
+#tab-compras-necessidade.tab-theme-light .table-protheus-necessidade tbody tr:hover {
+  background: rgba(56, 159, 214, 0.15) !important;
+}
+
+.tab-theme-light #tab-compras-necessidade .table-protheus-necessidade tbody tr.row-selected,
+#tab-compras-necessidade.tab-theme-light .table-protheus-necessidade tbody tr.row-selected {
+  background: #389fd6 !important;
+  color: #ffffff !important;
+}
+
+.tab-theme-light #tab-compras-necessidade .table-protheus-necessidade tbody tr.row-selected td,
+#tab-compras-necessidade.tab-theme-light .table-protheus-necessidade tbody tr.row-selected td {
+  color: #ffffff !important;
+}
