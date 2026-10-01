@@ -14,6 +14,7 @@ const {
   extrairCodigoProtheus,
   calcularMargemEDesconto,
   formatarNotaPipedrive,
+  normalizarValorNumerico,
   COND_PGTO_KEY,
   FRETE_EMBUTIDO_KEY
 } = require('./bi_autorizacoes_engine');
@@ -160,17 +161,18 @@ async function runAsyncTest(name, fn) {
   });
 
   // 4. Testes de Formatação da Nota Pipedrive (Seção 9)
-  runTest('4.1 formatarNotaPipedrive - AUTORIZADO', () => {
+  runTest('4.1 formatarNotaPipedrive - AUTORIZADO com Total dos produtos com desconto', () => {
     const nota = formatarNotaPipedrive({
       dealId: 25238,
       descontoPct: 6.00,
       condPgtoLabel: '074-1X DEPTEDDOC 10D',
       freteEmbutido: 0.00,
+      valorTotal: 5000.00,
       autorizado: true
     });
     assert.strictEqual(
       nota,
-      'Deal 25238 | Desconto Medio Ponderado do Pedido: 6,00% | Forma de Pagamento: 074-1X DEPTEDDOC 10D | Frete Embutido: R$ 0,00 | (ok autorizado)'
+      'Deal 25238 | Desconto Medio Ponderado do Pedido: 6,00% | Forma de Pagamento: 074-1X DEPTEDDOC 10D | Frete Embutido: R$ 0,00 | Total dos produtos com desconto 5.000,00 - ok autorizado'
     );
   });
 
@@ -180,11 +182,12 @@ async function runAsyncTest(name, fn) {
       descontoPct: 15.50,
       condPgtoLabel: '015-APPMAX',
       freteEmbutido: 120.00,
+      valorTotal: 12500.00,
       autorizado: false
     });
     assert.strictEqual(
       nota,
-      'Deal 25238 | Desconto Medio Ponderado do Pedido: 15,50% | Forma de Pagamento: 015-APPMAX | Frete Embutido: R$ 120,00 | (NAO AUTORIZADO)'
+      'Deal 25238 | Desconto Medio Ponderado do Pedido: 15,50% | Forma de Pagamento: 015-APPMAX | Frete Embutido: R$ 120,00 | Total dos produtos com desconto 12.500,00 - NAO AUTORIZADO'
     );
   });
 
@@ -194,12 +197,37 @@ async function runAsyncTest(name, fn) {
       descontoPct: 6.00,
       condPgtoLabel: '028-1X BOL 28 D',
       freteEmbutido: 600.00,
+      valorTotal: 6804.00,
       autorizado: true
     });
     assert.strictEqual(
       nota,
-      'Deal 26569 | Desconto Medio Ponderado do Pedido: 6,00% | Forma de Pagamento: 028-1X BOL 28 D | Frete Embutido: R$ 600,00 | (ok autorizado)'
+      'Deal 26569 | Desconto Medio Ponderado do Pedido: 6,00% | Forma de Pagamento: 028-1X BOL 28 D | Frete Embutido: R$ 600,00 | Total dos produtos com desconto 6.804,00 - ok autorizado'
     );
+  });
+
+  runTest('4.4 formatarNotaPipedrive - Caso Homologado Deal 26782 (Preço Proposto ou Total Cadastrado R$ 5.400,00)', () => {
+    const nota = formatarNotaPipedrive({
+      dealId: 26782,
+      descontoPct: 18.18,
+      condPgtoLabel: '053-1X PIX',
+      freteEmbutido: 0.00,
+      valorTotal: 5400.00,
+      autorizado: true
+    });
+    assert.strictEqual(
+      nota,
+      'Deal 26782 | Desconto Medio Ponderado do Pedido: 18,18% | Forma de Pagamento: 053-1X PIX | Frete Embutido: R$ 0,00 | Total dos produtos com desconto 5.400,00 - ok autorizado'
+    );
+  });
+
+  runTest('4.5 normalizarValorNumerico - Formatos monetários BR e EN', () => {
+    assert.strictEqual(normalizarValorNumerico('5.400,00'), 5400);
+    assert.strictEqual(normalizarValorNumerico('5400,00'), 5400);
+    assert.strictEqual(normalizarValorNumerico('5400.00'), 5400);
+    assert.strictEqual(normalizarValorNumerico(5400), 5400);
+    assert.strictEqual(normalizarValorNumerico(''), null);
+    assert.strictEqual(normalizarValorNumerico(null), null);
   });
 
   // 5. Testes de Hashes Oficiais Pipedrive

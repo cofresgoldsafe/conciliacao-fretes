@@ -454,8 +454,9 @@ async function analisarDealCompleto(dealInput, options = {}) {
   // PASSO 5: Trata valor proposto (se informado pelo gestor/vendedor)
   let valorVendaFinal = somaVendaDealTotal;
   let isValorPropostoCustom = false;
-  if (options.proposta && !isNaN(parseFloat(options.proposta)) && parseFloat(options.proposta) > 0) {
-    valorVendaFinal = parseFloat(options.proposta);
+  const numProposta = normalizarValorNumerico(options.proposta);
+  if (numProposta !== null && numProposta > 0) {
+    valorVendaFinal = numProposta;
     isValorPropostoCustom = true;
   }
 
@@ -473,6 +474,24 @@ async function analisarDealCompleto(dealInput, options = {}) {
   const precoUnitarioAutorizadoMedio = totalQuantidade > 0 ? Number((valorVendaFinal / totalQuantidade).toFixed(2)) : valorVendaFinal;
   const hasItensSemCusto = itensDetalhados.some(it => !it.encontradoProtheus || it.custoUnitario <= 0);
   const isAlertaDesconto = (calculos.descontoPct > 11 && !isRevenda) || hasItensSemCusto;
+
+  const fraseAutorizacao = formatarNotaPipedrive({
+    dealId,
+    descontoPct: calculos.descontoPct,
+    condPgtoLabel,
+    freteEmbutido,
+    valorTotal: calculos.valorVenda,
+    autorizado: true
+  });
+
+  const fraseNaoAutorizado = formatarNotaPipedrive({
+    dealId,
+    descontoPct: calculos.descontoPct,
+    condPgtoLabel,
+    freteEmbutido,
+    valorTotal: calculos.valorVenda,
+    autorizado: false
+  });
 
   return {
     dealId,
@@ -500,20 +519,54 @@ async function analisarDealCompleto(dealInput, options = {}) {
     lucroBruto: calculos.lucroBruto,
     margemPct: calculos.margemPct,
     itens: itensDetalhados,
-    observacoesInput: options.observacoes || ''
+    observacoesInput: options.observacoes || '',
+    fraseAutorizacao,
+    fraseNaoAutorizado
   };
 }
 
 /**
- * Formata o conteúdo exato da nota para gravação no Pipedrive
- * Regras estritas conforme Seções 9.2 e 9.3 do manual técnico
+ * Normaliza input monetário permitindo notação brasileira ou internacional
  */
-function formatarNotaPipedrive({ dealId, descontoPct, condPgtoLabel, freteEmbutido = 0, autorizado = true }) {
+function normalizarValorNumerico(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  const str = String(val).trim();
+  if (str.includes(',') && str.includes('.')) {
+    const num = parseFloat(str.replace(/\./g, '').replace(',', '.'));
+    return isNaN(num) ? null : num;
+  }
+  if (str.includes(',')) {
+    const num = parseFloat(str.replace(',', '.'));
+    return isNaN(num) ? null : num;
+  }
+  const num = parseFloat(str);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Formata o conteúdo exato da nota para gravação no Pipedrive
+ * Regras estritas: inclui o valor total dos produtos com desconto (proposto ou cadastrado)
+ */
+function formatarNotaPipedrive({
+  dealId,
+  descontoPct,
+  condPgtoLabel,
+  freteEmbutido = 0,
+  valorTotal = 0,
+  valorVendaFinal = 0,
+  valorVenda = 0,
+  autorizado = true
+}) {
   const pctStr = (parseFloat(descontoPct) || 0).toFixed(2).replace('.', ',');
   const freteStr = (parseFloat(freteEmbutido) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const sufixo = autorizado ? '(ok autorizado)' : '(NAO AUTORIZADO)';
+  const condLabel = (condPgtoLabel || 'Não informada').trim();
+  const numTotal = parseFloat(valorTotal || valorVendaFinal || valorVenda) || 0;
+  const totalStr = numTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const isAut = (autorizado === true || String(autorizado).toUpperCase() === 'AUTORIZADO');
+  const sufixo = isAut ? 'ok autorizado' : 'NAO AUTORIZADO';
 
-  return `Deal ${dealId} | Desconto Medio Ponderado do Pedido: ${pctStr}% | Forma de Pagamento: ${condPgtoLabel} | Frete Embutido: R$ ${freteStr} | ${sufixo}`;
+  return `Deal ${dealId} | Desconto Medio Ponderado do Pedido: ${pctStr}% | Forma de Pagamento: ${condLabel} | Frete Embutido: R$ ${freteStr} | Total dos produtos com desconto ${totalStr} - ${sufixo}`;
 }
 
 /**
@@ -567,6 +620,7 @@ module.exports = {
   analisarDealCompleto,
   formatarNotaPipedrive,
   gravarNotaPipedrive,
+  normalizarValorNumerico,
   COND_PGTO_KEY,
   FRETE_EMBUTIDO_KEY
 };

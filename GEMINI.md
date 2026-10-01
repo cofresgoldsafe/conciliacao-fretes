@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.282 (Homologada em 30/09/2026 14:50)  
+> **Versão da Documentação:** v8.283 (Homologada em 30/09/2026 22:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 30/09/2026 14:50 (v8.282 - SE3 como Fonte Única de Comissões e Fechamento Andrea)  
+> **Data da Última Auditoria:** 30/09/2026 22:30 (v8.283 - Total dos produtos com desconto na frase de autorização Pipedrive)  
 
 ---
 
@@ -176,6 +176,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.283 (30/09/2026):** Inclusão do "Total dos produtos com desconto {valor}" na frase oficial de autorização fixada no Deal do Pipedrive (com base no Preço Proposto `#inputBiValorProposto` ou valor cadastrado total dos produtos no Deal), sanitização defensiva de números pt-BR/EN e prévia com botão Copiar no modal `#modalBiAutorizacaoDetalhes` (21 testes aprovados em `test_bi_autorizacoes.js` — detalhado em [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md)).
 - **v8.282 (30/09/2026):** Apuração de comissões com SE3 como fonte única oficial: eliminação da dedução indevida de duplicatas em aberto do Contas a Receber (SE1) no Fechamento Comercial, restaurando a comissão líquida de R$ 2.008,66 e Total a Receber de R$ 3.008,66 para Andrea (000064). Inadimplências confirmadas passam a ser deduzidas organicamente quando lançadas como comissão negativa na SE3 pelo financeiro (24 testes aprovados em `test_fechamento_vendedores.js` — detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.281 (30/09/2026):** Botão Recalcular Fechamento direto na tela Vendedores > Fechamento: disponibilização do botão oficial sob demanda (`#btnRecalcularFechamentoVend`) diretamente na barra superior da tela de Fechamento de Vendedores, permitindo a qualquer operador ou gestor sincronizar e reprocessar as vendas SE3, fretes SC5 e inadimplências SE1 do Protheus instantaneamente sem sair da tela (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.280 (29/09/2026):** Resiliência de Sessão e Interceptação 401 no Modal de Detalhes do Pedido: eliminação do erro "Sessão expirada ou token inválido" ao clicar em pedidos na Busca Multi-Empresa. Implementação de Sliding Session contínua no `POST /api/auth/session-ping` com validação de status no banco de dados e rate limiting (`sessionPingLimiter`), interceptação robusta de HTTP 401 em chamadas *same-origin* com purga de credenciais obsoletas, suporte nativo a instâncias `Request` no `window.fetch` e botão contextual "Entrar Novamente" no modal `#pedidoDetalhesModal` com suporte a tema Claro/Escuro (10 novos testes em `test_session_resilience.js` e zero falhas em `npm test` — detalhado em [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md)).

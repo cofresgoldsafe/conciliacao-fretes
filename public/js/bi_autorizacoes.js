@@ -331,6 +331,12 @@
       modalObs.value = deal.observacoesInput || '';
     }
 
+    // Frase Oficial de Autorização
+    const elFrase = document.getElementById('modalBiFraseAutorizacao');
+    if (elFrase) {
+      elFrase.innerText = deal.fraseAutorizacao || '-';
+    }
+
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
     console.log('✅ [BI Autorizações] Modal aberto com sucesso.');
@@ -375,7 +381,8 @@
         dealId: currentDealAnalise.dealId,
         decisao: decisao,
         observacoes: observacoesDecisao,
-        proposta: currentDealAnalise.isValorPropostoCustom ? currentDealAnalise.valorVendaFinal : null
+        proposta: currentDealAnalise.isValorPropostoCustom ? currentDealAnalise.valorVendaFinal : null,
+        valorTotal: currentDealAnalise.valorVendaFinal
       };
 
       console.log('📡 [BI Autorizações] Enviando decisão:', payload);
@@ -540,6 +547,7 @@
         <td style="padding: 10px 12px; font-size: 0.82rem; color: var(--text-muted);">
           <div>${escapeHtml(item.usuario_decisor_nome || item.usuario_decisor || '-')}</div>
           ${item.observacoes ? `<div style="font-size: 0.74rem; font-style: italic; color: var(--text-color);" title="${escapeHtml(item.observacoes)}">"${escapeHtml(item.observacoes.substring(0, 30))}${item.observacoes.length > 30 ? '...' : ''}"</div>` : ''}
+          ${item.nota_pipedrive ? `<div style="font-size: 0.70rem; color: var(--primary-color); margin-top: 3px;" title="${escapeHtml(item.nota_pipedrive)}">📝 ${escapeHtml(item.nota_pipedrive.substring(0, 32))}...</div>` : ''}
         </td>
       `;
       tbody.appendChild(tr);

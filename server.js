@@ -176,7 +176,8 @@ const {
 const {
   analisarDealCompleto,
   formatarNotaPipedrive,
-  gravarNotaPipedrive
+  gravarNotaPipedrive,
+  normalizarValorNumerico
 } = require('./bi_autorizacoes_engine');
 
 const {
@@ -6604,7 +6605,7 @@ app.get('/api/bi/autorizacoes/analisar', requireAuth, requireRole('admin'), asyn
       });
     }
 
-    const proposta = req.query.proposta ? parseFloat(req.query.proposta) : null;
+    const proposta = normalizarValorNumerico(req.query.proposta);
     const observacoes = (req.query.observacoes || req.query.obs || '').trim();
 
     const analise = await analisarDealCompleto(dealInput, { proposta, observacoes });
@@ -6646,7 +6647,7 @@ app.post('/api/bi/autorizacoes/decidir', requireAuth, requireRole('admin'), asyn
     }
 
     // 1. Executa ou revalida a análise financeira completa
-    const valorProposto = proposta || precoProposto;
+    const valorProposto = normalizarValorNumerico(proposta || precoProposto);
     const analise = await analisarDealCompleto(dealId, {
       proposta: valorProposto,
       observacoes
@@ -6660,6 +6661,7 @@ app.post('/api/bi/autorizacoes/decidir', requireAuth, requireRole('admin'), asyn
       descontoPct: analise.descontoPct,
       condPgtoLabel: analise.condPgtoLabel,
       freteEmbutido: analise.freteEmbutido,
+      valorTotal: analise.valorVendaFinal,
       autorizado: isAutorizado
     });
 
