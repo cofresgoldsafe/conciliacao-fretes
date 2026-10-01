@@ -129,3 +129,5 @@ node test_compras_necessidade.js
 - **v8.287 (01/10/2026):** Vínculo operacional obrigatório por filial (eliminação de cofres na Metal Pleno 14) e inclusão do seletor Linha de Produtos (Cofres 001, Armários 018, Racks 017 e Todos).
 - **v8.288 (01/10/2026):** Adoção da fórmula oficial `(- Ped Vendas) + (Ped Compras) + (Saldo Estoque) - (Ponto de Pedido)` com cores semânticas (vermelho para déficit, azul para excedente e neutro para equilíbrio).
 - **v8.289 (01/10/2026):** Omissão compulsória de produtos com Ped Vendas e Ped Compras zerados (0 e 0) no backend (`protheus_db.js`), frontend (`compras_necessidade.js`) e exportação Excel, eliminando itens estagnados.
+- **v8.290 (01/10/2026):** Rótulos amigáveis no filtro de visualização das necessidades (`#selModoNecessidade`): alterado de "Somente Novas Necessidades" para "Necessidades Não Atendidas" (padrão selecionado) e de "Mostra Necessidades Novas e Pendentes" para "Todas as Necessidades", preservando os valores internos (`novas` e `todas`), a fórmula e a exportação CSV.
+
