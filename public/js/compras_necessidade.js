@@ -36,6 +36,25 @@
     return n.toLocaleString('pt-BR');
   }
 
+  function getToken() {
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) return sess.token;
+      }
+      return localStorage.getItem('gsi_auth_token') ||
+             localStorage.getItem('auth_token') ||
+             localStorage.getItem('token') ||
+             sessionStorage.getItem('auth_token') ||
+             sessionStorage.getItem('token') ||
+             (window.currentUser && window.currentUser.token) ||
+             null;
+    } catch {
+      return localStorage.getItem('auth_token') || localStorage.getItem('token') || null;
+    }
+  }
+
   const ComprasNecessidadeModule = {
     init: function () {
       if (!_initialized) {
@@ -128,16 +147,18 @@
       if (chkAll) chkAll.checked = false;
 
       try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
+        const headers = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         const params = new URLSearchParams({
           empresa: empresa,
           modo: modo
         });
 
         const res = await fetch(`/api/compras/necessidade?${params.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers
         });
 
         const data = await res.json();

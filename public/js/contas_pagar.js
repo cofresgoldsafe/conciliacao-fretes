@@ -43,6 +43,25 @@
     return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  function getToken() {
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) return sess.token;
+      }
+      return localStorage.getItem('gsi_auth_token') ||
+             localStorage.getItem('auth_token') ||
+             localStorage.getItem('token') ||
+             sessionStorage.getItem('auth_token') ||
+             sessionStorage.getItem('token') ||
+             (window.currentUser && window.currentUser.token) ||
+             null;
+    } catch {
+      return localStorage.getItem('auth_token') || localStorage.getItem('token') || null;
+    }
+  }
+
   const ContasPagarModule = {
     init: function () {
       if (!_initialized) {
@@ -214,11 +233,11 @@
       });
 
       try {
-        const token = localStorage.getItem('token') || '';
+        const token = getToken();
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const res = await fetch(`/api/analista-fin/contas-pagar?${params.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers
         });
 
         if (!res.ok) {
@@ -500,7 +519,9 @@
 
       // Busca movimentações na SE5
       try {
-        const token = localStorage.getItem('token') || '';
+        const token = getToken();
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const params = new URLSearchParams({
           empresa: item.empresaCod,
           filial: item.filial || '',
@@ -512,7 +533,7 @@
         });
 
         const res = await fetch(`/api/analista-fin/contas-pagar/movimentacoes?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers
         });
 
         if (!res.ok) throw new Error('Erro ao buscar movimentações na SE5');

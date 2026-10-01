@@ -44,6 +44,25 @@
     return cnpj || '-';
   }
 
+  function getToken() {
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) return sess.token;
+      }
+      return localStorage.getItem('gsi_auth_token') ||
+             localStorage.getItem('auth_token') ||
+             localStorage.getItem('token') ||
+             sessionStorage.getItem('auth_token') ||
+             sessionStorage.getItem('token') ||
+             (window.currentUser && window.currentUser.token) ||
+             null;
+    } catch {
+      return localStorage.getItem('auth_token') || localStorage.getItem('token') || null;
+    }
+  }
+
   const ComprasConsultaPedNfModule = {
     init: function () {
       if (!_initialized) {
@@ -303,7 +322,11 @@
       isSearching = true;
 
       try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
+        const headers = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
         const params = new URLSearchParams({
           tipo: tipo,
           termo: termo,
@@ -313,9 +336,7 @@
         });
 
         const res = await fetch(`/api/compras/consulta-ped-nf?${params.toString()}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers
         });
 
         const data = await res.json();
@@ -523,10 +544,12 @@
       modal.classList.remove('hidden');
 
       try {
-        const token = localStorage.getItem('token');
+        const token = getToken();
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const params = new URLSearchParams({ empresaKey, doc, serie, fornece, loja });
         const res = await fetch(`/api/compras/nfe-entrada-detalhes?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers
         });
 
         const data = await res.json();
