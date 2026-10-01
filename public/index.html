@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.285">
+  <link rel="stylesheet" href="style.css?v=8.286">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 30/09/2026 23:36 (Correcao de resolucao de token de sessao multi-chave e header de autorizacao)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 30/09/2026 23:48 (Ajuste visual Necessidade de Compras: contraste dark mode, colunas compactas centralizadas e renomeacao Necessid.)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -1876,9 +1876,9 @@
         </div>
 
         <!-- Área de Resultados / Tabela Protheus Style -->
-        <div id="containerTabelaNecessidade" style="border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; background: var(--bg-card, #ffffff);">
+        <div id="containerTabelaNecessidade" style="border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; background: var(--panel-bg);">
           <!-- Header Banner estilo Protheus -->
-          <div style="background: #2563eb; color: #ffffff; padding: 10px 16px; font-weight: 700; font-size: 1.05rem; text-align: center; letter-spacing: 0.5px; border-bottom: 2px solid #1d4ed8;">
+          <div style="background: #2563eb; color: #ffffff; padding: 9px 16px; font-weight: 700; font-size: 1rem; text-align: center; letter-spacing: 0.5px; border-bottom: 2px solid #1d4ed8;">
             Necessidade de compras
           </div>
 
@@ -1897,21 +1897,21 @@
 
           <!-- Tabela de Dados -->
           <div id="wrapperTabelaNecessidade" style="display: none; overflow-x: auto;">
-            <table class="table-protheus-necessidade" style="width: 100%; border-collapse: collapse; font-size: 0.86rem;">
+            <table class="table-protheus-necessidade" style="width: 100%; border-collapse: collapse; font-size: 0.84rem;">
               <thead>
-                <tr style="background: var(--bg-th, #f1f5f9); color: var(--text-th, #334155); border-bottom: 2px solid var(--border-table, #cbd5e1); font-weight: 700; white-space: nowrap;">
-                  <th style="padding: 10px 8px; text-align: center; width: 38px;">
+                <tr>
+                  <th style="padding: 6px 4px; text-align: center; width: 34px;">
                     <input type="checkbox" id="chkAllNecessidade" title="Marcar/Desmarcar Todos" style="cursor: pointer;" />
                   </th>
-                  <th style="padding: 10px 12px; text-align: left;">Produto</th>
-                  <th style="padding: 10px 12px; text-align: left;">Descricao</th>
-                  <th style="padding: 10px 12px; text-align: right;">Ped Vendas</th>
-                  <th style="padding: 10px 12px; text-align: right;">Ped Compras</th>
-                  <th style="padding: 10px 12px; text-align: right;">Saldo Estoque</th>
-                  <th style="padding: 10px 12px; text-align: right;">Ponto de Ped</th>
-                  <th style="padding: 10px 12px; text-align: right;">Necessidade de Compras</th>
-                  <th style="padding: 10px 12px; text-align: center;">Cod Fornec</th>
-                  <th style="padding: 10px 12px; text-align: left;">Nome Fornec</th>
+                  <th style="padding: 6px 8px; text-align: left; width: 105px; white-space: nowrap;">Produto</th>
+                  <th style="padding: 6px 8px; text-align: left;">Descricao</th>
+                  <th style="padding: 5px 4px; text-align: center; width: 56px; line-height: 1.15; font-size: 0.80rem;">Ped<br>Vendas</th>
+                  <th style="padding: 5px 4px; text-align: center; width: 58px; line-height: 1.15; font-size: 0.80rem;">Ped<br>Compras</th>
+                  <th style="padding: 5px 4px; text-align: center; width: 58px; line-height: 1.15; font-size: 0.80rem;">Saldo<br>Estoque</th>
+                  <th style="padding: 5px 4px; text-align: center; width: 56px; line-height: 1.15; font-size: 0.80rem;">Ponto<br>de Ped</th>
+                  <th style="padding: 5px 4px; text-align: center; width: 64px; line-height: 1.15; font-size: 0.80rem;">Necessid.</th>
+                  <th style="padding: 5px 4px; text-align: center; width: 56px; line-height: 1.15; font-size: 0.80rem;">Cod<br>Fornec</th>
+                  <th style="padding: 6px 8px; text-align: left; width: 125px; white-space: nowrap; font-size: 0.80rem;">Nome Fornec</th>
                 </tr>
               </thead>
               <tbody id="tbodyNecessidadeCompras">
@@ -9858,25 +9858,25 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.285"></script>
-  <script src="js/bi.js?v=8.285"></script>
-  <script src="js/bi_indices.js?v=8.285"></script>
-  <script src="js/bi_autorizacoes.js?v=8.285"></script>
-  <script src="js/bi_despesas.js?v=8.285"></script>
-  <script src="js/gordura_frete.js?v=8.285"></script>
-  <script src="js/fechamento_vendedores.js?v=8.285"></script>
-  <script type="module" src="js/tarefas.js?v=8.285"></script>
-  <script src="js/holerites.js?v=8.285"></script>
-  <script src="js/funcionarios_dp.js?v=8.285"></script>
-  <script src="js/crm.js?v=8.285"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.285"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.285"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.285"></script>
+  <script src="js/chart.umd.min.js?v=8.286"></script>
+  <script src="js/bi.js?v=8.286"></script>
+  <script src="js/bi_indices.js?v=8.286"></script>
+  <script src="js/bi_autorizacoes.js?v=8.286"></script>
+  <script src="js/bi_despesas.js?v=8.286"></script>
+  <script src="js/gordura_frete.js?v=8.286"></script>
+  <script src="js/fechamento_vendedores.js?v=8.286"></script>
+  <script type="module" src="js/tarefas.js?v=8.286"></script>
+  <script src="js/holerites.js?v=8.286"></script>
+  <script src="js/funcionarios_dp.js?v=8.286"></script>
+  <script src="js/crm.js?v=8.286"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.286"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.286"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.286"></script>
   <script src="js/compras_necessidade.js?v=8.284"></script>
-  <script src="js/nfse_pendentes.js?v=8.285"></script>
-  <script src="js/fechamento_fiscal.js?v=8.285"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.285"></script>
-  <script src="js/contas_pagar.js?v=8.285"></script>
-  <script src="app.js?v=8.285"></script>
+  <script src="js/nfse_pendentes.js?v=8.286"></script>
+  <script src="js/fechamento_fiscal.js?v=8.286"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.286"></script>
+  <script src="js/contas_pagar.js?v=8.286"></script>
+  <script src="app.js?v=8.286"></script>
 </body>
 </html>

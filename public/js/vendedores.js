@@ -23,7 +23,11 @@ export function aplicarTemaVendedores(modo) {
     document.getElementById('tab-vend-comissoes'),
     document.getElementById('tab-vend-gordura-frete'),
     document.getElementById('tab-vend-fechamento'),
-    document.getElementById('tab-compras-consulta-ped-nf')
+    document.getElementById('tab-compras-consulta-ped-nf'),
+    document.getElementById('tab-compras-pedidos-abertos'),
+    document.getElementById('tab-compras-necessidade'),
+    document.getElementById('tab-compras-ponto-pedido'),
+    document.getElementById('tab-compras-movimentacoes-estoque')
   ];
 
   subAbasVendedores.forEach(el => {

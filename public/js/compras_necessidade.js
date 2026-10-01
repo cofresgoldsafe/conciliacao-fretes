@@ -57,9 +57,24 @@
 
   const ComprasNecessidadeModule = {
     init: function () {
+      this.sincronizarTema();
       if (!_initialized) {
         this.bindEvents();
         _initialized = true;
+      }
+    },
+
+    sincronizarTema: function () {
+      const painel = document.getElementById('tab-compras-necessidade');
+      if (!painel) return;
+      const isLight = document.body.classList.contains('theme-light') || 
+                      localStorage.getItem('theme_compras') === 'light' || 
+                      localStorage.getItem('theme_vendedores') === 'light' ||
+                      localStorage.getItem('theme_saldos_estoque') === 'light';
+      if (isLight) {
+        painel.classList.add('tab-theme-light');
+      } else {
+        painel.classList.remove('tab-theme-light');
       }
     },
 
@@ -210,40 +225,40 @@
           ? 'color: #ef4444; font-weight: 700;' 
           : (item.saldoEstoque === 0 ? 'color: var(--text-muted, #94a3b8);' : 'font-weight: 600;');
 
-        const necDestaque = item.necessidade > 0 
-          ? 'font-weight: 700; color: #2563eb;' 
-          : 'color: var(--text-muted, #94a3b8);';
+        const necClass = item.necessidade > 0 
+          ? 'necessidade-val-destaque' 
+          : 'necessidade-val-zero';
 
         return `
           <tr data-index="${index}" class="tr-necessidade-item">
-            <td style="text-align: center; padding: 8px;">
+            <td style="text-align: center; padding: 6px 4px; width: 34px;">
               <input type="checkbox" class="chk-item-necessidade" data-index="${index}" data-produto="${escapeHtml(item.produto)}" style="cursor: pointer;" />
             </td>
-            <td style="font-family: monospace, ui-monospace; font-size: 0.9rem; font-weight: 600; white-space: nowrap;">
+            <td style="font-family: monospace, ui-monospace; font-size: 0.86rem; font-weight: 600; white-space: nowrap; padding: 6px 8px; text-align: left;">
               ${escapeHtml(item.produto)}
             </td>
-            <td style="white-space: normal; max-width: 320px; line-height: 1.35;">
+            <td style="white-space: normal; line-height: 1.25; padding: 6px 8px; font-size: 0.84rem; text-align: left;">
               ${escapeHtml(item.descricao)}
             </td>
-            <td style="text-align: right; font-family: monospace, ui-monospace; font-size: 0.9rem;">
+            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.86rem; padding: 5px 4px; white-space: nowrap;">
               ${formatarNumero(item.pedVendas)}
             </td>
-            <td style="text-align: right; font-family: monospace, ui-monospace; font-size: 0.9rem;">
+            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.86rem; padding: 5px 4px; white-space: nowrap;">
               ${formatarNumero(item.pedCompras)}
             </td>
-            <td style="text-align: right; font-family: monospace, ui-monospace; font-size: 0.9rem; ${saldoStyle}">
+            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.86rem; padding: 5px 4px; white-space: nowrap; ${saldoStyle}">
               ${formatarNumero(item.saldoEstoque)}
             </td>
-            <td style="text-align: right; font-family: monospace, ui-monospace; font-size: 0.9rem; font-weight: 600;">
+            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.86rem; font-weight: 600; padding: 5px 4px; white-space: nowrap;">
               ${formatarNumero(item.pontoPed)}
             </td>
-            <td style="text-align: right; font-family: monospace, ui-monospace; font-size: 0.95rem; ${necDestaque}">
+            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.88rem; padding: 5px 4px; white-space: nowrap;" class="${necClass}">
               ${formatarNumero(item.necessidade)}
             </td>
-            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.88rem;">
+            <td style="text-align: center; font-family: monospace, ui-monospace; font-size: 0.84rem; padding: 5px 4px; white-space: nowrap;">
               ${escapeHtml(item.codFornec || '-')}
             </td>
-            <td style="white-space: nowrap; font-size: 0.85rem;" title="${escapeHtml(item.razaoSocialCompleta || '')}">
+            <td style="white-space: nowrap; font-size: 0.82rem; padding: 6px 8px; text-align: left;" title="${escapeHtml(item.razaoSocialCompleta || '')}">
               ${escapeHtml(item.nomeFornec || '-')}
             </td>
           </tr>

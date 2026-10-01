@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-compras-necessidade` | **Botão:** `#btnTabComprasNecessidade`  
 > **Permissão RBAC:** admin, user (Compras)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 30/09/2026 (v8.284 - Homologado)  
+> **Última Atualização:** 01/10/2026 (v8.286 - Homologado)  
 
 ---
 
@@ -16,10 +16,10 @@
 
 ## 2. Arquitetura de Código & Componentes
 - **Frontend:**
-  - Script isolado: `public/js/compras_necessidade.js`
+  - Script isolado: `public/js/compras_necessidade.js` (com sincronização de tema claro/escuro e centralização compulsória de números)
   - Estrutura HTML: `public/index.html` (aba `#btnTabComprasNecessidade` e painel `#tab-compras-necessidade`)
-  - Estilização Protheus Style: `public/style.css` (classes `.table-protheus-necessidade`, `.row-selected` e suporte a tema Claro/Escuro)
-  - Orquestração de abas: `public/app.js` (`VENDEDORES_SUB_TABS` e inicialização)
+  - Estilização Protheus Style: `public/style.css` (classes `.table-protheus-necessidade`, `.row-selected` e suporte dinâmico a tema Claro/Escuro sem sobrescrita inline)
+  - Orquestração de abas: `public/app.js` (`VENDEDORES_SUB_TABS` e inicialização) e `public/js/vendedores.js` (`aplicarTemaVendedores`)
 - **Backend / Rotas:**
   - Controlador REST: `routes/compras_necessidade.js` (`GET /api/compras/necessidade`)
   - Bootstrap: `server.js`
@@ -46,17 +46,17 @@ $$\text{Necessidade Bruta} = (\text{Ponto de Pedido} + \text{Ped Vendas}) - \tex
 - **Somente Novas Necessidades (`novas`):** Exibe apenas produtos onde $\text{Necessidade Líquida} > 0$ (ou seja, compras já efetuadas ainda não cobrem a carência do ponto de pedido).
 - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todos os produtos com carência de estoque ($\text{Necessidade Bruta} > 0$), incluindo itens com ordens de compra em trânsito.
 
-### 4.3 Colunas da Listagem
-1. `[ ]` (Checkbox de seleção individual e master checkbox no cabeçalho)
-2. `Produto` (Código Protheus, ex: `01801080801B001`)
-3. `Descricao` (Descrição completa do cadastro)
-4. `Ped Vendas` (Total em pedidos de venda)
-5. `Ped Compras` (Total em ordens de compra pendentes)
-6. `Saldo Estoque` (Saldo físico em estoque, destacando negativos em vermelho)
-7. `Ponto de Ped` (Estoque mínimo / Ponto de pedido)
-8. `Necessidade de Compras` (Quantidade calculada a comprar em destaque azul)
-9. `Cod Fornec` (Código do fornecedor principal `B1_PROC`)
-10. `Nome Fornec` (Primeiros 15 caracteres do nome do fornecedor em `SA2010`)
+### 4.3 Colunas da Listagem & Alinhamento
+1. `[ ]` (Checkbox centralizado individual e master no cabeçalho)
+2. `Produto` (Código Protheus alinhado à esquerda, ex: `01801080801B001`)
+3. `Descricao` (Descrição expandida responsiva alinhada à esquerda sem limite rígido de largura para evitar quebras excessivas de linha)
+4. `Ped<br>Vendas` (Total em pedidos de venda, centralizado)
+5. `Ped<br>Compras` (Total em ordens de compra pendentes, centralizado)
+6. `Saldo<br>Estoque` (Saldo físico em estoque, centralizado, destacando negativos em vermelho)
+7. `Ponto<br>de Ped` (Estoque mínimo / Ponto de pedido, centralizado)
+8. `Necessid.` (Quantidade calculada a comprar em destaque azul celeste, centralizada)
+9. `Cod<br>Fornec` (Código do fornecedor principal `B1_PROC`, centralizado)
+10. `Nome Fornec` (Primeiros 15 caracteres do nome do fornecedor em `SA2010`, alinhado à esquerda)
 
 ### 4.4 Barra de Ações
 - **Gerar Pedido:** Desabilitado (`disabled="disabled"`) com tooltip indicando módulo futuro de gravação no ERP.

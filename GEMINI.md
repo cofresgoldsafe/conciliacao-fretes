@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.283 (Homologada em 30/09/2026 22:30)  
+> **Versão da Documentação:** v8.286 (Homologada em 30/09/2026 23:50)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 30/09/2026 22:30 (v8.283 - Total dos produtos com desconto na frase de autorização Pipedrive)  
+> **Data da Última Auditoria:** 30/09/2026 23:50 (v8.286 - Contraste Dark Mode, Cabeçalhos Compactos e Centralização em Necessidade de Compras)  
 
 ---
 
@@ -177,6 +177,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.286 (30/09/2026):** Ajuste de contraste e layout na tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): correção do fundo no Modo Escuro (remoção de inline styles com fallbacks brancos, uso de `--panel-bg` e `--text-main`), compactação extrema das colunas numéricas com quebra em duas linhas (`Ped<br>Vendas`, `Ped<br>Compras`, `Saldo<br>Estoque`, `Ponto<br>de Ped`), renomeação oficial da coluna para `Necessid.`, centralização compulsória de títulos e valores numéricos, remoção do limite de 320px na descrição para expandir horizontalmente (eliminando quebras em 6 linhas) e sincronização ativa de tema claro/escuro via `vendedores.js` e `compras_necessidade.js`.
 - **v8.285 (30/09/2026):** Resolução multi-chave de token de autenticação (`getToken()`) em `compras_necessidade.js`, `compras_consulta_ped_nf.js` e `contas_pagar.js`, priorizando `conciliacao_fretes_session` e evitando o envio de `Bearer null` que provocava erro 401 e logout involuntário.
 - **v8.284 (30/09/2026):** Nova tela de Necessidade de Compras Protheus em Compras (`#tab-compras-necessidade`): batimento 100% fiel contra rotina do ERP (`necessidade-empresa-16.png`), suporte multi-empresa (14, 15, 16), modos Novas vs Pendentes, nova coluna Nome Fornec (15 chars) e exportação Excel (7 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.283 (30/09/2026):** Inclusão do "Total dos produtos com desconto {valor}" na frase oficial de autorização fixada no Deal do Pipedrive (com base no Preço Proposto `#inputBiValorProposto` ou valor cadastrado total dos produtos no Deal), sanitização defensiva de números pt-BR/EN e prévia com botão Copiar no modal `#modalBiAutorizacaoDetalhes` (21 testes aprovados em `test_bi_autorizacoes.js` — detalhado em [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md)).
