@@ -55,8 +55,8 @@ $$\text{Necessidade} = (-\text{Ped Vendas}) + \text{Ped Compras} + \text{Saldo E
 - **Empresa:** 14 - Metal Pleno, 15 - GSI, 16 - OAÇO.
 - **Linha de Produtos:** Todas as Linhas Operadas (`todos`), Armários Corta Fogo (`018`), Cofres (`001`), Racks & Gabinetes (`017`).
 - **Visualização das Necessidades:**
-  - **Somente Novas Necessidades (`novas`):** Exibe exclusivamente produtos com carência real não suprida pelas ordens de compra em trânsito ($\text{Necessidade} < 0$).
-  - **Mostra Necessidades Novas e Pendentes (`todas`):** Exibe todas as necessidades ativas que tenham vendas > 0 ou compras > 0.
+  - **Necessidades Não Atendidas (`novas` - Padrão do Sistema):** Exibe exclusivamente produtos com carência real não suprida pelas ordens de compra em trânsito ($\text{Necessidade} < 0$).
+  - **Todas as Necessidades (`todas`):** Exibe todas as necessidades ativas que tenham vendas > 0 ou compras > 0.
 
 ### 4.3 Colunas da Listagem & Alinhamento
 1. `[ ]` (Checkbox centralizado individual e master no cabeçalho)

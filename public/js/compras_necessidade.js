@@ -4,7 +4,7 @@
  * Módulo Frontend Isolado: Necessidade de Compras Protheus (Módulo Compras)
  * 
  * Responsável por:
- * 1. Seleção de empresa (14 - Metal Pleno, 15 - GSI, 16 - OAÇO) e modo (Novas vs Novas e Pendentes)
+ * 1. Seleção de empresa (14 - Metal Pleno, 15 - GSI, 16 - OAÇO) e modo (Necessidades Não Atendidas vs Todas as Necessidades)
  * 2. Visualização Protheus Style da necessidade de compras apurada no ERP
  * 3. Renderização das colunas: Checkbox, Produto, Descricao, Ped Vendas, Ped Compras,
  *    Saldo Estoque, Ponto de Ped, Necessidade de Compras, Cod Fornec, Nome Fornec (15 chars)
