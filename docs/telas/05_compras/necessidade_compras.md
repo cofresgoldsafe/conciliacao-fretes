@@ -114,13 +114,8 @@ $$\text{Necessidade} = (-\text{Ped Vendas}) + \text{Ped Compras} + \text{Saldo E
 
 ---
 
-## 6. Histórico de Versões da Tela
-- **v8.285 (30/09/2026):** Criação inicial da tela Necessidade de Compras Protheus.
-- **v8.286 (30/09/2026):** Ajuste de contraste Dark Mode, centralização e compactação de cabeçalhos.
-- **v8.287 (01/10/2026):** Vínculo operacional obrigatório por filial (eliminação de cofres na Metal Pleno 14) e inclusão do seletor Linha de Produtos (Cofres 001, Armários 018, Racks 017 e Todos).
-
 ## 6. Testes Automatizados Vinculados
-Execução da suite de regressão com 7 asserções automatizadas:
+Execução da suite de regressão com 10 asserções automatizadas cobrindo todas as empresas e regras:
 ```bash
 node test_compras_necessidade.js
 ```
@@ -129,3 +124,8 @@ node test_compras_necessidade.js
 
 ## 7. Histórico & Evolução da Tela
 - **v8.284 (30/09/2026):** Criação da tela de Necessidade de Compras Protheus no Portal GSI com batimento exato contra a rotina do ERP Protheus (`necessidade-empresa-16.png`), suporte multi-empresa (14, 15, 16), coluna estendida de Fornecedor (15 dígitos), modos de filtro (Novas vs Novas e Pendentes) e exportação para Excel.
+- **v8.285 (30/09/2026):** Homologação inicial e correções de sessão de usuário na aba.
+- **v8.286 (30/09/2026):** Ajuste de contraste Dark Mode, centralização e compactação de cabeçalhos das colunas numéricas.
+- **v8.287 (01/10/2026):** Vínculo operacional obrigatório por filial (eliminação de cofres na Metal Pleno 14) e inclusão do seletor Linha de Produtos (Cofres 001, Armários 018, Racks 017 e Todos).
+- **v8.288 (01/10/2026):** Adoção da fórmula oficial `(- Ped Vendas) + (Ped Compras) + (Saldo Estoque) - (Ponto de Pedido)` com cores semânticas (vermelho para déficit, azul para excedente e neutro para equilíbrio).
+- **v8.289 (01/10/2026):** Omissão compulsória de produtos com Ped Vendas e Ped Compras zerados (0 e 0) no backend (`protheus_db.js`), frontend (`compras_necessidade.js`) e exportação Excel, eliminando itens estagnados.
