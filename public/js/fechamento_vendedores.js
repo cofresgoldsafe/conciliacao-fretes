@@ -853,6 +853,7 @@
 
     // Card 2: Comissões R$ (1,3%)
     const elComisLiq = document.getElementById('cardFechamentoComissaoLiquida');
+    const elComisSub = document.getElementById('cardFechamentoComissaoSub');
     if (elComisLiq) elComisLiq.textContent = formatCurrency(comLiquida);
     if (elComisSub) {
       const corInadimpl = inadimplentes > 0 ? '#ef4444' : 'var(--text-muted)';
@@ -887,22 +888,69 @@
 
   function renderizarFaturamentoEmpresas() {
     const f = currentFechamento;
-    const fat = f?.faturamento_empresas_json || f?.faturamentoEmpresas || {};
+    let fat = f?.faturamento_empresas_json || f?.faturamentoEmpresas || {};
+    if (typeof fat === 'string') {
+      try { fat = JSON.parse(fat); } catch {}
+    }
+
+    // Fallback: se fat estiver zerado, tenta obter de outro vendedor do ciclo
+    if ((!fat || (!fat.TOTAL && !fat.GSI && !fat.OACO && !fat.METAL_PLENO)) && Array.isArray(todosVendedoresCiclo)) {
+      for (const v of todosVendedoresCiclo) {
+        let vFat = v?.faturamento_empresas_json || v?.faturamentoEmpresas;
+        if (typeof vFat === 'string') {
+          try { vFat = JSON.parse(vFat); } catch {}
+        }
+        if (vFat && (vFat.TOTAL > 0 || vFat.GSI > 0 || vFat.OACO > 0 || vFat.METAL_PLENO > 0)) {
+          fat = vFat;
+          break;
+        }
+      }
+    }
 
     const elGsi = document.getElementById('fatEmpresaGsi');
     const elOaco = document.getElementById('fatEmpresaOaco');
     const elMp = document.getElementById('fatEmpresaMp');
     const elTotal = document.getElementById('fatEmpresaTotal');
 
-    if (elGsi) elGsi.textContent = formatCurrency(fat.GSI || 0);
-    if (elOaco) elOaco.textContent = formatCurrency(fat.OACO || 0);
-    if (elMp) elMp.textContent = formatCurrency(fat.METAL_PLENO || 0);
-    if (elTotal) elTotal.textContent = formatCurrency(fat.TOTAL || 0);
+    if (elGsi) elGsi.textContent = formatCurrency(fat?.GSI ?? fat?.gsi ?? 0);
+    if (elOaco) elOaco.textContent = formatCurrency(fat?.OACO ?? fat?.oaco ?? 0);
+    if (elMp) elMp.textContent = formatCurrency(fat?.METAL_PLENO ?? fat?.metal_pleno ?? fat?.MP ?? fat?.mp ?? 0);
+    if (elTotal) elTotal.textContent = formatCurrency(fat?.TOTAL ?? fat?.total ?? 0);
   }
 
   function renderizarBenchmarking() {
     const f = currentFechamento;
-    const bench = f?.benchmarking_json || f?.benchmarking || {};
+    let bench = f?.benchmarking_json || f?.benchmarking || {};
+    if (typeof bench === 'string') {
+      try { bench = JSON.parse(bench); } catch {}
+    }
+
+    const lista = (todosVendedoresCiclo && todosVendedoresCiclo.length > 0) ? todosVendedoresCiclo : (f ? [f] : []);
+    let mediaVendas = parseFloat(bench?.mediaVendasEquipe ?? bench?.media_vendas_equipe ?? 0);
+    let mediaGordura = parseFloat(bench?.mediaGorduraEquipe ?? bench?.media_gordura_equipe ?? 0);
+
+    // Se as médias não vieram calculadas no JSON persistido, calcula dinamicamente pela lista de vendedores
+    if (!mediaVendas && lista.length > 0) {
+      const sumV = lista.reduce((acc, x) => acc + parseFloat(x.vendas_base_liquida ?? x.vendasBaseLiquida ?? 0), 0);
+      mediaVendas = sumV / lista.length;
+    }
+    if (!mediaGordura && lista.length > 0) {
+      const sumG = lista.reduce((acc, x) => acc + parseFloat(x.gordura_frete_total ?? x.gorduraFreteTotal ?? 0), 0);
+      mediaGordura = sumG / lista.length;
+    }
+
+    const vBaseLiq = parseFloat(f?.vendas_base_liquida ?? f?.vendasBaseLiquida ?? 0);
+    const gFrete = parseFloat(f?.gordura_frete_total ?? f?.gorduraFreteTotal ?? 0);
+
+    let diffVendas = parseFloat(bench?.diffVendasPct ?? bench?.diff_vendas_pct ?? 0);
+    if (!diffVendas && mediaVendas > 0) {
+      diffVendas = ((vBaseLiq - mediaVendas) / mediaVendas) * 100;
+    }
+
+    let diffGordura = parseFloat(bench?.diffGorduraPct ?? bench?.diff_gordura_pct ?? 0);
+    if (!diffGordura && mediaGordura !== 0) {
+      diffGordura = ((gFrete - mediaGordura) / Math.abs(mediaGordura)) * 100;
+    }
 
     const elBenchVendas = document.getElementById('benchVendasDiff');
     const elBenchVendasMedia = document.getElementById('benchVendasMedia');
@@ -910,21 +958,19 @@
     const elBenchFreteMedia = document.getElementById('benchFreteMedia');
 
     if (elBenchVendas) {
-      const diff = parseFloat(bench.diffVendasPct || 0);
-      const isPos = diff >= 0;
-      elBenchVendas.innerHTML = `<span class="${isPos ? 'bench-badge-pos' : 'bench-badge-neg'}">${isPos ? '▲ +' : '▼ '}${formatPct(diff)}</span>`;
+      const isPos = diffVendas >= 0;
+      elBenchVendas.innerHTML = `<span class="${isPos ? 'bench-badge-pos' : 'bench-badge-neg'}">${isPos ? '▲ +' : '▼ '}${formatPct(diffVendas)}</span>`;
     }
     if (elBenchVendasMedia) {
-      elBenchVendasMedia.textContent = `Média da Equipe: ${formatCurrency(bench.mediaVendasEquipe || 0)}`;
+      elBenchVendasMedia.textContent = `Média da Equipe: ${formatCurrency(mediaVendas)}`;
     }
 
     if (elBenchFrete) {
-      const diffF = parseFloat(bench.diffGorduraPct || 0);
-      const isPosF = diffF >= 0;
-      elBenchFrete.innerHTML = `<span class="${isPosF ? 'bench-badge-pos' : 'bench-badge-neg'}">${isPosF ? '▲ +' : '▼ '}${formatPct(diffF)}</span>`;
+      const isPosF = diffGordura >= 0;
+      elBenchFrete.innerHTML = `<span class="${isPosF ? 'bench-badge-pos' : 'bench-badge-neg'}">${isPosF ? '▲ +' : '▼ '}${formatPct(diffGordura)}</span>`;
     }
     if (elBenchFreteMedia) {
-      elBenchFreteMedia.textContent = `Média da Equipe: ${formatCurrency(bench.mediaGorduraEquipe || 0)}`;
+      elBenchFreteMedia.textContent = `Média da Equipe: ${formatCurrency(mediaGordura)}`;
     }
   }
 

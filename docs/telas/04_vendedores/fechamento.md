@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-vend-fechamento` | **Botão:** `#btnTabVendFechamento`  
 > **Permissão RBAC:** admin, vendedor, user  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 30/09/2026 (v8.281 - Botão Recalcular Fechamento direto na tela de Vendedores)  
+> **Última Atualização:** 05/10/2026 (v8.292 - Resolução de Renderização dos Cards de Fechamento: Gordura, Premiações, Empresas e Benchmarking)  
 
 ---
 
@@ -46,6 +46,7 @@ node test_fechamento_vendedores.js && node test_fechamento_cards_gamificados.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.292 (05/10/2026):** Resolução do erro de referência no frontend (`ReferenceError: elComisSub is not defined`) que abortava a execução de `renderizarStatCards()` e bloqueava a renderização dos cards subsequentes de Gordura de Frete Líquida, Total de Premiações, Faturamento por Empresa e Benchmarking da Equipe. Adição de resiliência de parsing JSON e cálculo fallback dinâmico de médias da equipe via `todosVendedoresCiclo`.
 - **v8.282 (30/09/2026):** Alinhamento da apuração de comissões com a `SE3` como fonte única e exclusiva de comissões. Eliminação da dedução arbitrária de títulos em aberto de contas a receber (`SE1`) que zeravam indevidamente a comissão líquida de vendedores (caso Andrea - NF 250). Inadimplências confirmadas passam a ser abatidas organicamente via lançamentos de comissão negativa na `SE3`.
 - **v8.281 (30/09/2026):** Inclusão do botão de ação direta `🔄 Recalcular Fechamento` (`#btnRecalcularFechamentoVend`) na barra superior da tela de Fechamento de Vendedores, permitindo a qualquer operador/gestor sincronizar e reprocessar os dados do Protheus instantaneamente sem necessidade de intervenção técnica ou navegação até a aba de configurações.
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.

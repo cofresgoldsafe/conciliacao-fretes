@@ -262,9 +262,96 @@ runTest('6.1 - public/js/fechamento_vendedores.js deve compilar perfeitamente se
   new vm.Script(code, { filename: 'fechamento_vendedores.js' });
 });
 
+// ─── TESTE 7: Execução Completa da Renderização no DOM (Prevenção de ReferenceError) ───
+
+runTest('7.1 - Renderização completa dos Stat Cards, Faturamento por Empresa e Benchmarking sem erros', () => {
+  const code = fs.readFileSync(path.join(__dirname, 'public', 'js', 'fechamento_vendedores.js'), 'utf-8');
+  const cachePath = path.join(__dirname, 'data', 'fechamentos_vendedores_cache.json');
+  const cacheData = fs.existsSync(cachePath) ? JSON.parse(fs.readFileSync(cachePath, 'utf-8')) : [];
+  const julianaMock = cacheData.find(x => x.cod_vendedor === '000074') || {
+    cod_vendedor: '000074',
+    nome_vendedor: 'Juliana',
+    vendas_base_bruta: 172020.14,
+    fretes_embutidos: 2776,
+    vendas_base_liquida: 169244.14,
+    meta_vendas_valor: 120000,
+    pct_meta_vendas: 141.04,
+    premio_meta_vendas: 400,
+    gordura_frete_total: 154.42,
+    premio_gordura_frete: 0,
+    comissao_bruta: 2200.17,
+    comissao_liquida: 2200.17,
+    total_premios: 400,
+    total_geral_receber: 2600.17,
+    faturamento_empresas_json: { GSI: 3445.72, OACO: 184497.62, METAL_PLENO: 288973.9, TOTAL: 476917.24 },
+    benchmarking_json: { mediaVendasEquipe: 155669.08, diffVendasPct: 8.72, mediaGorduraEquipe: 1067.67, diffGorduraPct: -85.54 }
+  };
+
+  const elements = {};
+  const getEl = (id) => {
+    if (!elements[id]) {
+      elements[id] = {
+        id,
+        classList: { remove: () => {}, add: () => {}, toggle: () => {} },
+        style: {},
+        innerHTML: '',
+        textContent: '',
+        appendChild: () => {},
+        addEventListener: () => {},
+        getContext: () => ({ clearRect: () => {}, save: () => {}, translate: () => {}, rotate: () => {}, fillRect: () => {}, restore: () => {} }),
+        getBoundingClientRect: () => ({ width: 800, height: 260 })
+      };
+    }
+    return elements[id];
+  };
+
+  const sandbox = {
+    window: { currentUser: null },
+    document: {
+      getElementById: (id) => getEl(id),
+      createElement: (tag) => getEl(tag),
+      addEventListener: () => {}
+    },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    sessionStorage: { getItem: () => null, setItem: () => {} },
+    alert: () => {},
+    fetch: async () => ({ status: 200, json: async () => ({ success: true }) }),
+    requestAnimationFrame: () => 1,
+    cancelAnimationFrame: () => {},
+    performance: { now: () => 100 },
+    setTimeout: (fn) => fn(),
+    clearTimeout: () => {},
+    console
+  };
+  sandbox.globalThis = sandbox;
+
+  // Modifica para injetar fechamento de teste e expor renderizarTelaCompleta
+  const testCode = code.replace(
+    'let currentFechamento = null;',
+    `let currentFechamento = ${JSON.stringify(julianaMock)}; globalThis.__testRenderCompleto = renderizarTelaCompleta;`
+  );
+
+  vm.createContext(sandbox);
+  vm.runInContext(testCode, sandbox);
+
+  assert.strictEqual(typeof sandbox.globalThis.__testRenderCompleto, 'function', 'renderizarTelaCompleta deve ser acessível');
+  sandbox.globalThis.__testRenderCompleto();
+
+  // 1. Verifica Card 3 (Gordura)
+  assert(elements['cardFechamentoGorduraVal'].textContent.includes('154,42'), 'Card Gordura deve renderizar o valor correto');
+  // 2. Verifica Card 4 (Total Premiações)
+  assert(elements['cardFechamentoTotalPremios'].textContent.includes('400,00'), 'Card Premiações deve renderizar o valor correto');
+  // 3. Verifica Faturamento por Empresa
+  assert(elements['fatEmpresaTotal'].textContent.includes('476.917,24'), 'Faturamento Total por Empresa deve ser exibido');
+  // 4. Verifica Benchmarking
+  assert(elements['benchVendasDiff'].innerHTML.includes('+8,72%'), 'Performance de vendas deve ser calculada e exibida');
+  assert(elements['benchFreteDiff'].innerHTML.includes('-85,54%'), 'Performance de frete deve ser calculada e exibida');
+});
+
 console.log(`\n📊 Resultado dos Testes: ${passedTests}/${totalTests} aprovados (${Math.round((passedTests / totalTests) * 100)}%)`);
 if (passedTests === totalTests) {
   console.log('🎉 TODOS OS TESTES DOS CARDS GAMIFICADOS FORAM APROVADOS COM SUCESSO!\n');
 } else {
   process.exit(1);
 }
+

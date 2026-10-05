@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.291 (Homologada em 05/10/2026 16:30)  
+> **Versão da Documentação:** v8.292 (Homologada em 05/10/2026 17:48)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 05/10/2026 16:30 (v8.291 - Resolução de Sessão na Busca de Produtos e Filtro em Memória na Necessidade de Compras)  
+> **Data da Última Auditoria:** 05/10/2026 17:48 (v8.292 - Resolução de Renderização dos Cards de Fechamento de Vendedores)  
 
 ---
 
@@ -177,6 +177,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.292 (05/10/2026):** Resolução do erro de referência no frontend (`ReferenceError: elComisSub is not defined`) que interrompia a execução de `renderizarStatCards()` e bloqueava a renderização dos cards de Gordura de Frete Líquida, Total de Premiações, Faturamento por Empresa e Benchmarking da Equipe. Adição de resiliência de parsing JSON e cálculo fallback dinâmico de médias da equipe via `todosVendedoresCiclo` (18 testes aprovados em `test_fechamento_cards_gamificados.js` — detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.291 (05/10/2026):** Resolução estrutural de sessão e deslogamento involuntário ao buscar produtos no módulo de Compras (`#tab-compras-necessidade`, `#tab-compras-ponto-pedido`, `#tab-compras-movimentacoes-estoque`): implementação de auto-cura no interceptor global de `window.fetch` (`public/app.js`), corrigindo automaticamente qualquer tentativa de envio de `Bearer null` para o JWT ativo da sessão, resolução multi-chave defensiva em `compras_ponto_pedido.js` e `compras_movimentacoes_estoque.js`, adição do campo de busca instantânea em memória (`#inputBuscaNecessidadeProduto`) na grade de Necessidade de Compras e resiliência na suíte de testes (25 testes aprovados em `test_compras_tab.js`, `test_compras_ponto_pedido.js` e `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.290 (01/10/2026):** Rótulos amigáveis no filtro de visualização da tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): alterado "Somente Novas Necessidades" para "Necessidades Não Atendidas" (padrão selecionado) e "Mostra Necessidades Novas e Pendentes" para "Todas as Necessidades", preservando integralmente os parâmetros (`novas` e `todas`) e a fórmula de cálculo sem impacto no backend ou na exportação Excel (10 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.289 (01/10/2026):** Omissão compulsória de produtos com Ped Vendas e Ped Compras zerados (0 e 0) na tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): filtragem estrita no backend (`protheus_db.js`), frontend (`compras_necessidade.js`) e exportação Excel (`exportarExcel`), garantindo que apenas itens com demanda comercial em aberto (`Ped Vendas > 0`) ou ressuprimento contratado (`Ped Compras > 0`) sejam listados. Produtos sem movimentações ativas (0 vendas e 0 compras) são omitidos, eliminando ruídos visuais de itens estagnados (10 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
