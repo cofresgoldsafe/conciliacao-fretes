@@ -132,6 +132,19 @@
       if (selEmpresa) selEmpresa.addEventListener('keydown', dispararEnter);
       if (selGrupo) selGrupo.addEventListener('keydown', dispararEnter);
       if (selModo) selModo.addEventListener('keydown', dispararEnter);
+
+      const inputBusca = document.getElementById('inputBuscaNecessidadeProduto');
+      if (inputBusca) {
+        inputBusca.addEventListener('input', () => {
+          this.renderTabela(itensCarregados);
+        });
+        inputBusca.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            inputBusca.value = '';
+            this.renderTabela(itensCarregados);
+          }
+        });
+      }
     },
 
     executarAnalise: async function (isRefresh = false) {
@@ -210,6 +223,8 @@
       const tbody = document.getElementById('tbodyNecessidadeCompras');
       const emptyState = document.getElementById('emptyStateNecessidade');
       const chkAll = document.getElementById('chkAllNecessidade');
+      const inputBusca = document.getElementById('inputBuscaNecessidadeProduto');
+      const termoBusca = (inputBusca ? inputBusca.value : '').toLowerCase().trim();
 
       if (!tbody || !wrapperTabela) return;
 
@@ -217,13 +232,26 @@
       if (chkAll) chkAll.checked = false;
 
       // Regra mandatória: somente produtos com Ped Vendas > 0 ou Ped Compras > 0 (omitir 0 e 0)
-      const listaExibicao = (itens || []).filter(item => (Number(item.pedVendas) > 0 || Number(item.pedCompras) > 0));
+      let listaExibicao = (itens || []).filter(item => (Number(item.pedVendas) > 0 || Number(item.pedCompras) > 0));
+
+      if (termoBusca) {
+        listaExibicao = listaExibicao.filter(item => {
+          const prod = String(item.produto || '').toLowerCase();
+          const desc = String(item.descricao || '').toLowerCase();
+          const forn = String(item.nomeFornec || '').toLowerCase();
+          const codForn = String(item.codFornec || '').toLowerCase();
+          return prod.includes(termoBusca) || desc.includes(termoBusca) || forn.includes(termoBusca) || codForn.includes(termoBusca);
+        });
+      }
 
       if (!listaExibicao || listaExibicao.length === 0) {
+        const msg = termoBusca
+          ? `🔍 Nenhum produto correspondente a "<b>${escapeHtml(termoBusca)}</b>" nesta consulta.`
+          : `✅ <b>Nenhuma necessidade de compra encontrada</b> para os parâmetros selecionados nesta empresa (produtos com Ped Vendas ou Ped Compras &gt; 0).`;
         tbody.innerHTML = `
           <tr>
             <td colspan="10" style="padding: 2.5rem 1rem; text-align: center; color: var(--text-muted, #94a3b8); font-size: 0.95rem;">
-              ✅ <b>Nenhuma necessidade de compra encontrada</b> para os parâmetros selecionados nesta empresa (produtos com Ped Vendas ou Ped Compras &gt; 0).
+              ${msg}
             </td>
           </tr>
         `;
@@ -300,7 +328,20 @@
     },
 
     exportarExcel: function () {
-      const itensValidos = (itensCarregados || []).filter(item => (Number(item.pedVendas) > 0 || Number(item.pedCompras) > 0));
+      const inputBusca = document.getElementById('inputBuscaNecessidadeProduto');
+      const termoBusca = (inputBusca ? inputBusca.value : '').toLowerCase().trim();
+      let itensValidos = (itensCarregados || []).filter(item => (Number(item.pedVendas) > 0 || Number(item.pedCompras) > 0));
+
+      if (termoBusca) {
+        itensValidos = itensValidos.filter(item => {
+          const prod = String(item.produto || '').toLowerCase();
+          const desc = String(item.descricao || '').toLowerCase();
+          const forn = String(item.nomeFornec || '').toLowerCase();
+          const codForn = String(item.codFornec || '').toLowerCase();
+          return prod.includes(termoBusca) || desc.includes(termoBusca) || forn.includes(termoBusca) || codForn.includes(termoBusca);
+        });
+      }
+
       if (!itensValidos || itensValidos.length === 0) {
         alert('Não há dados com Ped Vendas ou Ped Compras > 0 para exportar. Selecione uma empresa e clique em Analisar primeiro.');
         return;
@@ -360,6 +401,7 @@
       const selEmpresa = document.getElementById('selEmpresaNecessidade');
       const selGrupo = document.getElementById('selGrupoNecessidade');
       const selModo = document.getElementById('selModoNecessidade');
+      const inputBusca = document.getElementById('inputBuscaNecessidadeProduto');
       const emptyState = document.getElementById('emptyStateNecessidade');
       const wrapperTabela = document.getElementById('wrapperTabelaNecessidade');
       const tbody = document.getElementById('tbodyNecessidadeCompras');
@@ -368,6 +410,7 @@
       if (selEmpresa) selEmpresa.value = '';
       if (selGrupo) selGrupo.value = 'todos';
       if (selModo) selModo.value = 'novas';
+      if (inputBusca) inputBusca.value = '';
       if (chkAll) chkAll.checked = false;
       if (tbody) tbody.innerHTML = '';
       if (wrapperTabela) wrapperTabela.style.display = 'none';

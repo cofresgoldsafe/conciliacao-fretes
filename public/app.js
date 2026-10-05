@@ -93,25 +93,35 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (token) {
+        const isInvalidBearer = (val) => !val || /^Bearer\s*(null|undefined|)?$/i.test(String(val).trim());
+
         if (isRequestInstance && url.headers && typeof url.headers.set === 'function') {
-          if (!url.headers.has('Authorization')) {
+          const authVal = (typeof url.headers.get === 'function') 
+            ? (url.headers.get('Authorization') || url.headers.get('authorization'))
+            : null;
+          if (isInvalidBearer(authVal)) {
             url.headers.set('Authorization', `Bearer ${token}`);
           }
         }
         if (options) {
           options.headers = options.headers || {};
           if (options.headers instanceof Headers) {
-            if (!options.headers.has('Authorization')) {
+            const authVal = options.headers.get('Authorization') || options.headers.get('authorization');
+            if (isInvalidBearer(authVal)) {
               options.headers.set('Authorization', `Bearer ${token}`);
             }
           } else if (Array.isArray(options.headers)) {
-            const hasAuth = options.headers.some(h => Array.isArray(h) && String(h[0]).toLowerCase() === 'authorization');
-            if (!hasAuth) {
+            const authIdx = options.headers.findIndex(h => Array.isArray(h) && String(h[0]).toLowerCase() === 'authorization');
+            if (authIdx === -1) {
               options.headers.push(['Authorization', `Bearer ${token}`]);
+            } else if (isInvalidBearer(options.headers[authIdx][1])) {
+              options.headers[authIdx] = ['Authorization', `Bearer ${token}`];
             }
           } else {
-            if (!options.headers['Authorization'] && !options.headers['authorization']) {
+            const currentAuth = options.headers['Authorization'] || options.headers['authorization'];
+            if (isInvalidBearer(currentAuth)) {
               options.headers['Authorization'] = `Bearer ${token}`;
+              delete options.headers['authorization'];
             }
           }
         }
@@ -277,7 +287,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showAuthenticatedUser(user, token) {
     currentUser = user;
-    if (token) currentToken = token;
+    if (token) {
+      currentToken = token;
+      try {
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('gsi_auth_token', token);
+        localStorage.setItem('token', token);
+        if (user) {
+          localStorage.setItem('auth_user', typeof user === 'string' ? user : JSON.stringify(user));
+        }
+      } catch {}
+    }
     if (loginOverlay) {
       loginOverlay.classList.add('hidden');
       loginOverlay.style.display = 'none';

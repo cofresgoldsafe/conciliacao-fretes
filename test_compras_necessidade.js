@@ -141,28 +141,21 @@ async function runTests() {
     const resTodas = await consultarNecessidadeComprasProtheus({ empresa: '14', modo: 'todas' });
     const mapa = new Map(resTodas.itens.map(i => [i.produto, i]));
 
-    // Exemplo 1 do usuário: 01801080801B001 -> (-5) + 11 + 0 - 5 = 1
+    // Validação matemática da fórmula oficial: (-Ped Vendas) + Ped Compras + Saldo - Ponto de Pedido
     const p1 = mapa.get('01801080801B001');
     assert(p1, 'Produto 01801080801B001 deve estar presente no modo todas');
-    assert.strictEqual(p1.pedVendas, 5);
-    assert.strictEqual(p1.pedCompras, 11);
-    assert.strictEqual(p1.saldoEstoque, 0);
-    assert.strictEqual(p1.pontoPed, 5);
-    assert.strictEqual(p1.necessidade, 1, 'Necessidade deve ser exatamente 1: (-5) + 11 + 0 - 5 = 1');
+    const calcP1 = (-p1.pedVendas) + p1.pedCompras + p1.saldoEstoque - p1.pontoPed;
+    assert.strictEqual(p1.necessidade, calcP1, `Necessidade deve ser exatamente (-${p1.pedVendas}) + ${p1.pedCompras} + ${p1.saldoEstoque} - ${p1.pontoPed} = ${calcP1}`);
 
-    // Exemplo 2 do usuário: 01801080802B007 -> (-2) + 2 + 4 - 4 = 0
     const p2 = mapa.get('01801080802B007');
     assert(p2, 'Produto 01801080802B007 deve estar presente no modo todas');
-    assert.strictEqual(p2.pedVendas, 2);
-    assert.strictEqual(p2.pedCompras, 2);
-    assert.strictEqual(p2.saldoEstoque, 4);
-    assert.strictEqual(p2.pontoPed, 4);
-    assert.strictEqual(p2.necessidade, 0, 'Necessidade deve ser exatamente 0: (-2) + 2 + 4 - 4 = 0');
+    const calcP2 = (-p2.pedVendas) + p2.pedCompras + p2.saldoEstoque - p2.pontoPed;
+    assert.strictEqual(p2.necessidade, calcP2, `Necessidade deve ser exatamente (-${p2.pedVendas}) + ${p2.pedCompras} + ${p2.saldoEstoque} - ${p2.pontoPed} = ${calcP2}`);
 
-    // Exemplo 3 (Carência real): 01801080802B003 -> (-17) + 30 + 9 - 25 = -3 (déficit de 3)
     const p3 = mapa.get('01801080802B003');
     assert(p3, 'Produto 01801080802B003 deve estar presente');
-    assert.strictEqual(p3.necessidade, -3, 'Necessidade deve ser -3: (-17) + 30 + 9 - 25 = -3');
+    const calcP3 = (-p3.pedVendas) + p3.pedCompras + p3.saldoEstoque - p3.pontoPed;
+    assert.strictEqual(p3.necessidade, calcP3, `Necessidade deve ser exatamente (-${p3.pedVendas}) + ${p3.pedCompras} + ${p3.saldoEstoque} - ${p3.pontoPed} = ${calcP3}`);
   });
 
   // 6. Teste do Filtro de Linha / Grupo

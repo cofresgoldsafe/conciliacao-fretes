@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-compras-necessidade` | **Botão:** `#btnTabComprasNecessidade`  
 > **Permissão RBAC:** admin, user (Compras)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 01/10/2026 (v8.289 - Homologado)  
+> **Última Atualização:** 05/10/2026 (v8.291 - Homologado)  
 
 ---
 
@@ -130,4 +130,5 @@ node test_compras_necessidade.js
 - **v8.288 (01/10/2026):** Adoção da fórmula oficial `(- Ped Vendas) + (Ped Compras) + (Saldo Estoque) - (Ponto de Pedido)` com cores semânticas (vermelho para déficit, azul para excedente e neutro para equilíbrio).
 - **v8.289 (01/10/2026):** Omissão compulsória de produtos com Ped Vendas e Ped Compras zerados (0 e 0) no backend (`protheus_db.js`), frontend (`compras_necessidade.js`) e exportação Excel, eliminando itens estagnados.
 - **v8.290 (01/10/2026):** Rótulos amigáveis no filtro de visualização das necessidades (`#selModoNecessidade`): alterado de "Somente Novas Necessidades" para "Necessidades Não Atendidas" (padrão selecionado) e de "Mostra Necessidades Novas e Pendentes" para "Todas as Necessidades", preservando os valores internos (`novas` e `todas`), a fórmula e a exportação CSV.
+- **v8.291 (05/10/2026):** Resolução estrutural do deslogamento ao buscar produtos em Compras: auto-cura de tokens no interceptor global de requisições de `app.js` (substituição automática de `Bearer null` pelo JWT ativo), resolução segura em `compras_ponto_pedido.js` e `compras_movimentacoes_estoque.js`, e adição do campo de busca instantânea em memória (`#inputBuscaNecessidadeProduto`) na grade de Necessidade de Compras.
 

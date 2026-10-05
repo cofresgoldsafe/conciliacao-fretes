@@ -22,6 +22,23 @@
   let debounceTimer = null;
   let isSearching = false;
 
+  function getToken() {
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) return sess.token;
+      }
+    } catch {}
+    return localStorage.getItem('auth_token') ||
+           localStorage.getItem('gsi_auth_token') ||
+           localStorage.getItem('token') ||
+           sessionStorage.getItem('auth_token') ||
+           sessionStorage.getItem('token') ||
+           (window.currentUser && window.currentUser.token) ||
+           null;
+  }
+
   const ComprasPontoPedidoModule = {
     _initialized: false,
 
@@ -124,9 +141,11 @@
 
       debounceTimer = setTimeout(async () => {
         try {
-          const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+          const token = getToken();
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
           const res = await fetch(`/api/compras/ponto-pedido/produtos?q=${encodeURIComponent(termo)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers
           });
           const json = await res.json();
 
@@ -206,13 +225,14 @@
       this.abrirModalLoading(identificador);
 
       try {
-        const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        const token = getToken();
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const res = await fetch('/api/compras/ponto-pedido/calcular', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
+          headers,
           body: JSON.stringify({ identificador, leadTimeCustom: leadTimeCustom ? Number(leadTimeCustom) : undefined })
         });
 

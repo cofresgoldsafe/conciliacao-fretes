@@ -48,7 +48,19 @@
   }
 
   function getAuthToken() {
-    return localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token') || '';
+    try {
+      const rawSession = localStorage.getItem('conciliacao_fretes_session');
+      if (rawSession) {
+        const sess = JSON.parse(rawSession);
+        if (sess && sess.token) return sess.token;
+      }
+    } catch {}
+    return localStorage.getItem('auth_token') || 
+           localStorage.getItem('gsi_auth_token') || 
+           localStorage.getItem('token') || 
+           sessionStorage.getItem('auth_token') || 
+           sessionStorage.getItem('token') || 
+           '';
   }
 
   const ComprasMovimentacoesEstoqueModule = {
@@ -157,8 +169,10 @@
       debounceTimer = setTimeout(async () => {
         try {
           const token = getAuthToken();
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
           const res = await fetch(`/api/compras/ponto-pedido/produtos?q=${encodeURIComponent(clean)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers
           });
           const json = await res.json();
 
@@ -286,8 +300,10 @@
           tipoMov: 'TODOS'
         });
 
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const res = await fetch(`/api/compras/movimentacoes-estoque?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers
         });
 
         const data = await res.json();
