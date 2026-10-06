@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.292 (Homologada em 05/10/2026 17:48)  
+> **Versão da Documentação:** v8.293 (Homologada em 06/10/2026 14:10)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 05/10/2026 17:48 (v8.292 - Resolução de Renderização dos Cards de Fechamento de Vendedores)  
+> **Data da Última Auditoria:** 06/10/2026 14:10 (v8.293 - Sub-aba Pgtos Desconhecidos na Assist. Financ. com busca federada na Assistência, Protheus e Pipedrive)  
 
 ---
 
@@ -36,7 +36,7 @@ O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, 
 
 ## 3. Matriz Geral de Navegação do Portal GSI
 
-A matriz abaixo consolida as 9 macro-areas e as 38 sub-abas ativas no DOM do Portal GSI:
+A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Portal GSI:
 
 | Macro-Área | Sub-Aba / Tela | Identificador DOM | Perfil RBAC | Descrição Funcional | Documentação Detalhada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -67,6 +67,7 @@ A matriz abaixo consolida as 9 macro-areas e as 38 sub-abas ativas no DOM do Por
 | **5. Compras** | Consulta Ped/NF Compras | `#tab-compras-consulta-ped-nf` | `admin`, `user` (Compras) | Busca multi-empresa por Pedido, NF de Entrada, Fornecedor e Razao Social. | [consulta_ped_nf_compras.md](docs/telas/05_compras/consulta_ped_nf_compras.md) |
 | **5. Compras** | Movimentações do Estoque | `#tab-compras-movimentacoes-estoque` | `admin`, `user` (Compras) | Extrato historico de entradas, saidas, requisicoes e transferencias SD3. | [movimentacoes_estoque.md](docs/telas/05_compras/movimentacoes_estoque.md) |
 | **6. Assist. Financ.** | Conciliação Bancária | `#tab-conciliacao-bancaria` | `admin`, `user` (Financeiro) | Conciliacao automatica N:1 e 1:1 entre extratos e titulos Protheus (`SE5`/`SE8`). | [conciliacao_bancaria.md](docs/telas/06_assist_financeiro/conciliacao_bancaria.md) |
+| **6. Assist. Financ.** | Pgtos Desconhecidos | `#tab-pgtos-desconhecidos` | `admin`, `user` (Financeiro) | Localização federada de depósitos desconhecidos na Assistência, Protheus e Pipedrive. | [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md) |
 | **6. Assist. Financ.** | Extrato API Inter | `#tab-inter-extrato` | `admin`, `user` (Financeiro) | Conexao ao vivo mTLS de saldos, extratos e batimento financeiro Banco Inter. | [extrato_api_inter.md](docs/telas/06_assist_financeiro/extrato_api_inter.md) |
 | **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas com chave de deduplicacao idempotente. | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
 | **6. Assist. Financ.** | Análise de Crédito | `#tab-analise-credito` | `admin`, `user` (Financeiro) | Motor de score com Protheus, Receita, RDAP, Wayback, Serasa e InfoSimples. | [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md) |
@@ -177,6 +178,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.293 (06/10/2026):** Sub-aba 'Pgtos Desconhecidos' na Macro-Área Assist. Financ. (`#tab-pgtos-desconhecidos`) com motor federado paralelo (`Promise.allSettled`) conectando Portal da Assistência Técnica (cálculo reverso 5% Pix e match PF x PJ), TOTVS Protheus ERP (SE1 títulos/adiantamentos RA, SC5/SC6 pedidos não faturados e SA3 vendedores) e Pipedrive CRM. Heurísticas por empresa (GSI com foco em Assistência; Metal Pleno e OAÇO com descarte da Assistência e foco exclusivo em Protheus/Vendedores comerciais), atalho direto na conciliação bancária de créditos órfãos, blindagem Zero-Trust RBAC (403 para vendedores), proteção contra SQL injection e sanitização XSS (30 testes aprovados em `test_pgtos_desconhecidos.js` — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.292 (05/10/2026):** Resolução do erro de referência no frontend (`ReferenceError: elComisSub is not defined`) que interrompia a execução de `renderizarStatCards()` e bloqueava a renderização dos cards de Gordura de Frete Líquida, Total de Premiações, Faturamento por Empresa e Benchmarking da Equipe. Adição de resiliência de parsing JSON e cálculo fallback dinâmico de médias da equipe via `todosVendedoresCiclo` (18 testes aprovados em `test_fechamento_cards_gamificados.js` — detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.291 (05/10/2026):** Resolução estrutural de sessão e deslogamento involuntário ao buscar produtos no módulo de Compras (`#tab-compras-necessidade`, `#tab-compras-ponto-pedido`, `#tab-compras-movimentacoes-estoque`): implementação de auto-cura no interceptor global de `window.fetch` (`public/app.js`), corrigindo automaticamente qualquer tentativa de envio de `Bearer null` para o JWT ativo da sessão, resolução multi-chave defensiva em `compras_ponto_pedido.js` e `compras_movimentacoes_estoque.js`, adição do campo de busca instantânea em memória (`#inputBuscaNecessidadeProduto`) na grade de Necessidade de Compras e resiliência na suíte de testes (25 testes aprovados em `test_compras_tab.js`, `test_compras_ponto_pedido.js` e `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).
 - **v8.290 (01/10/2026):** Rótulos amigáveis no filtro de visualização da tela Necessidade de Compras Protheus (`#tab-compras-necessidade`): alterado "Somente Novas Necessidades" para "Necessidades Não Atendidas" (padrão selecionado) e "Mostra Necessidades Novas e Pendentes" para "Todas as Necessidades", preservando integralmente os parâmetros (`novas` e `todas`) e a fórmula de cálculo sem impacto no backend ou na exportação Excel (10 testes aprovados em `test_compras_necessidade.js` — detalhado em [necessidade_compras.md](docs/telas/05_compras/necessidade_compras.md)).

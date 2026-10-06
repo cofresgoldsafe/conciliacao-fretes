@@ -6152,6 +6152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <th>Transação / Título</th>
                 <th>Cliente Provável (Extrato)</th>
                 <th style="text-align: right;">Valor (R$)</th>
+                <th style="text-align: center; width: 110px;">Ação</th>
               </tr>
             </thead>
             <tbody>
@@ -6166,11 +6167,29 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><strong>${escapeHtml(b.titulo || 'Transação')}</strong></td>
             <td><span style="color: var(--text-primary); font-weight: 600;">${escapeHtml(clienteProvavel)}</span></td>
             <td style="text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: ${isCredito ? '#10b981' : '#f87171'};">${formatCurrency(b.valor)}</td>
+            <td style="text-align: center;">
+              ${isCredito ? `<button type="button" class="btn btn-primary btn-xs btn-localizar-origem" data-valor="${b.valor}" data-desc="${escapeHtml(clienteProvavel)}" title="Localizar no Portal da Assistência, Protheus e Pipedrive">🔍 Localizar</button>` : `<span style="color: var(--text-muted); font-size: 0.75rem;">-</span>`}
+            </td>
           </tr>
         `;
       });
       html += `</tbody></table></div>`;
       diagContentView.innerHTML = html;
+
+      // Event listener para atalho One-Click de localização de depósitos desconhecidos
+      diagContentView.querySelectorAll('.btn-localizar-origem').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const v = parseFloat(btn.getAttribute('data-valor')) || null;
+          const t = btn.getAttribute('data-desc') || '';
+          if (typeof window.abrirLocalizadorPgtosDesconhecidos === 'function') {
+            window.abrirLocalizadorPgtosDesconhecidos({
+              empresa: currentDiagnosticoData ? currentDiagnosticoData.empresaCodigo : 'ALL',
+              valor: v,
+              termo: t
+            });
+          }
+        });
+      });
 
     } else if (tipo === 'conciliados11') {
       const conc11 = (currentDiagnosticoData.gruposConciliados || []).filter(g => g.tipo === '1:1');

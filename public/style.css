@@ -5887,3 +5887,93 @@ body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
 #tab-compras-necessidade.tab-theme-light .table-protheus-necessidade .necessidade-val-zero {
   color: #94a3b8 !important;
 }
+
+/* =========================================================================
+   ESTILOS: PGTOS DESCONHECIDOS (#tab-pgtos-desconhecidos)
+   ========================================================================= */
+
+.btn-xs {
+  padding: 3px 8px !important;
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+  border-radius: 4px !important;
+}
+
+.badge-confianca {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.badge-conf-alta {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.badge-conf-media {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.badge-conf-baixa {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.badge-origem-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.tag-assistencia {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.tag-protheus {
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+}
+
+.tag-pipedrive {
+  background: rgba(249, 115, 22, 0.12);
+  color: #fb923c;
+  border: 1px solid rgba(249, 115, 22, 0.25);
+}
+
+.badge-empresa-pill {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.6);
+  color: #cbd5e1;
+  border: 1px solid var(--panel-border);
+}
+
+.badge-origem-item {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--text-muted);
+}
+

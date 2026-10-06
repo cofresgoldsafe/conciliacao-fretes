@@ -212,6 +212,7 @@ const {
 
 const crmRoutes = require('./crm_routes');
 const crmEngine = require('./crm_engine');
+const pgtosDesconhecidosRoutes = require('./routes/pgtos_desconhecidos');
 
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
@@ -347,6 +348,33 @@ function requireRole(...allowedRoles) {
     }
     next();
   };
+}
+
+function requireFinanceiroAccess(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Autenticação necessária.' });
+  }
+  const role = req.user.role;
+  const perms = Array.isArray(req.user.permissions) ? req.user.permissions : [];
+
+  // Vendedor é terminantemente proibido de consultar rol de devedores, depósitos não identificados ou dados fiscais/financeiros
+  if (role === 'vendedor') {
+    return res.status(403).json({ success: false, message: 'Acesso negado. Perfil vendedor não possui permissão para acessar localização de pagamentos.' });
+  }
+
+  // Admin e diretoria têm acesso irrestrito
+  if (role === 'admin' || role === 'diretoria') {
+    return next();
+  }
+
+  // Usuários com papel financeiro ou permissões financeiro / analista-fin
+  if (role === 'financeiro' || role === 'user') {
+    if (perms.length === 0 || perms.includes('financeiro') || perms.includes('analista-fin')) {
+      return next();
+    }
+  }
+
+  return res.status(403).json({ success: false, message: 'Acesso negado. Privilégios insuficientes para área financeira.' });
 }
 
 // Constante com o segredo canônico do Cron compartilhado com GitHub Actions
@@ -2496,6 +2524,9 @@ app.post('/api/protheus/launch', async (req, res) => {
  * ROTAS DA API: ASSISTENTE FINANCEIRO — CONCILIAÇÃO BANCÁRIA
  * =========================================================================
  */
+
+// --- ROTAS DO MÓDULO ASSISTENTE FINANCEIRO: PGTOS DESCONHECIDOS (BUSCA FEDERADA) ---
+app.use('/api/financeiro/pgtos-desconhecidos', requireAuth, requireFinanceiroAccess, pgtosDesconhecidosRoutes);
 
 // API: Status de Configuração das Credenciais do Banco Inter
 app.get('/api/financeiro/inter-config', (req, res) => {

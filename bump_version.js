@@ -55,6 +55,7 @@ html = html.replace(/js\/fechamento_fiscal\.js\?v=[0-9.]+/g, `js/fechamento_fisc
 html = html.replace(/js\/compras_movimentacoes_estoque\.js\?v=[0-9.]+/g, `js/compras_movimentacoes_estoque.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/compras_necessidade\.js\?v=[0-9.]+/g, `js/compras_necessidade.js?v=${novaVersaoNum}`);
 html = html.replace(/js\/auditoria_protheus_sefaz\.js\?v=[0-9.]+/g, `js/auditoria_protheus_sefaz.js?v=${novaVersaoNum}`);
+html = html.replace(/js\/pgtos_desconhecidos\.js\?v=[0-9.]+/g, `js/pgtos_desconhecidos.js?v=${novaVersaoNum}`);
 
 fs.writeFileSync(indexPath, html, 'utf-8');
 console.log(`✅ Versão atualizada no index.html: ${dataHoraStr} (${description}) | Cache: ?v=${novaVersaoNum}`);
