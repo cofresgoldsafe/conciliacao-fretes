@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.293">
+  <link rel="stylesheet" href="style.css?v=8.297">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 06/10/2026 14:08 (Sub-aba Pgtos Desconhecidos na Assist. Financ. com busca federada na Assistência, Protheus e Pipedrive)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 07/10/2026 10:50 (Pgtos Desconhecidos: Valor obrigatorio e exclusao de titulos baixados (apenas em aberto))</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -3954,9 +3954,9 @@
 
           <div class="form-group" style="min-width: 170px; flex: 0.8;">
             <label for="pgtosValorInput" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">
-              💵 Valor do Depósito (R$):
+              💵 Valor do Depósito (R$): <span style="color: #ef4444;" title="Campo obrigatório">*</span>
             </label>
-            <input type="text" id="pgtosValorInput" class="form-input" placeholder="Ex: 361,00" style="width: 100%; height: 42px; font-weight: 700; font-family: 'JetBrains Mono', monospace;" />
+            <input type="text" id="pgtosValorInput" class="form-input" placeholder="Ex: 361,00" required aria-required="true" style="width: 100%; height: 42px; font-weight: 700; font-family: 'JetBrains Mono', monospace;" />
           </div>
 
           <div class="form-group" style="min-width: 280px; flex: 2;">
@@ -3981,7 +3981,7 @@
           <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔍</div>
           <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text-primary);">Pronto para Localizar Pagamentos</h3>
           <p style="color: var(--text-muted); max-width: 580px; margin: 0 auto; font-size: 0.9rem; line-height: 1.5;">
-            Informe o valor ou a descrição do extrato bancário para cruzar os dados simultaneamente com a <strong>Assistência Técnica</strong>, <strong>Protheus ERP</strong> e <strong>Pipedrive CRM</strong>.
+            Informe o <strong>valor do depósito</strong> (obrigatório) e opcionalmente o termo do extrato bancário para cruzar os dados simultaneamente com a <strong>Assistência Técnica</strong>, <strong>Protheus ERP</strong> e <strong>Pipedrive CRM</strong>.
           </p>
         </div>
 
@@ -3996,7 +3996,7 @@
           <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🤷</div>
           <h3 style="margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text-primary);">Nenhum candidato localizado</h3>
           <p style="color: var(--text-muted); max-width: 550px; margin: 0 auto; font-size: 0.9rem;">
-            Nenhuma OS, título a receber ou pedido coincidente com os critérios informados. Tente buscar apenas pelo valor ou por parte do nome do cliente.
+            Nenhuma OS, título a receber ou pedido coincidente com os critérios informados. Verifique se o valor confere ou ajuste o termo de busca.
           </p>
         </div>
 
@@ -10015,26 +10015,26 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.293"></script>
-  <script src="js/bi.js?v=8.293"></script>
-  <script src="js/bi_indices.js?v=8.293"></script>
-  <script src="js/bi_autorizacoes.js?v=8.293"></script>
-  <script src="js/bi_despesas.js?v=8.293"></script>
-  <script src="js/gordura_frete.js?v=8.293"></script>
-  <script src="js/fechamento_vendedores.js?v=8.293"></script>
-  <script type="module" src="js/tarefas.js?v=8.293"></script>
-  <script src="js/holerites.js?v=8.293"></script>
-  <script src="js/funcionarios_dp.js?v=8.293"></script>
-  <script src="js/crm.js?v=8.293"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.293"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.293"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.293"></script>
-  <script src="js/compras_necessidade.js?v=8.293"></script>
-  <script src="js/nfse_pendentes.js?v=8.293"></script>
-  <script src="js/fechamento_fiscal.js?v=8.293"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.293"></script>
-  <script src="js/contas_pagar.js?v=8.293"></script>
-  <script src="js/pgtos_desconhecidos.js?v=8.293"></script>
-  <script src="app.js?v=8.293"></script>
+  <script src="js/chart.umd.min.js?v=8.297"></script>
+  <script src="js/bi.js?v=8.297"></script>
+  <script src="js/bi_indices.js?v=8.297"></script>
+  <script src="js/bi_autorizacoes.js?v=8.297"></script>
+  <script src="js/bi_despesas.js?v=8.297"></script>
+  <script src="js/gordura_frete.js?v=8.297"></script>
+  <script src="js/fechamento_vendedores.js?v=8.297"></script>
+  <script type="module" src="js/tarefas.js?v=8.297"></script>
+  <script src="js/holerites.js?v=8.297"></script>
+  <script src="js/funcionarios_dp.js?v=8.297"></script>
+  <script src="js/crm.js?v=8.297"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.297"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.297"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.297"></script>
+  <script src="js/compras_necessidade.js?v=8.297"></script>
+  <script src="js/nfse_pendentes.js?v=8.297"></script>
+  <script src="js/fechamento_fiscal.js?v=8.297"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.297"></script>
+  <script src="js/contas_pagar.js?v=8.297"></script>
+  <script src="js/pgtos_desconhecidos.js?v=8.297"></script>
+  <script src="app.js?v=8.297"></script>
 </body>
 </html>

@@ -104,15 +104,20 @@ function limparTermoBancario(raw) {
 function normalizarValorNumerico(raw) {
   if (raw === null || raw === undefined) return null;
   if (typeof raw === 'number') return isNaN(raw) ? null : raw;
-  const s = String(raw).replace(/[^\d,\.]/g, '').trim();
+  const rawStr = String(raw).trim();
+  const isNeg = rawStr.startsWith('-') || /-\s*\d/.test(rawStr);
+  const s = rawStr.replace(/[^\d,\.]/g, '').trim();
   if (!s) return null;
+  let val = null;
   if (s.includes(',') && s.includes('.')) {
-    return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+    val = parseFloat(s.replace(/\./g, '').replace(',', '.'));
   } else if (s.includes(',')) {
-    return parseFloat(s.replace(',', '.'));
+    val = parseFloat(s.replace(',', '.'));
+  } else {
+    val = parseFloat(s);
   }
-  const val = parseFloat(s);
-  return isNaN(val) ? null : val;
+  if (isNaN(val)) return null;
+  return isNeg ? -Math.abs(val) : val;
 }
 
 /**
@@ -128,14 +133,85 @@ function formatarDataProtheus(raw) {
 }
 
 /**
+ * Analisa e converte strings de datas em formatos comuns (DD/MM/AAAA, YYYY-MM-DD, YYYYMMDD, ISO) para objeto Date
+ */
+function parseDataGenerica(val) {
+  if (!val) return null;
+  const s = String(val).trim();
+  // Formato brasileiro DD/MM/AAAA
+  const mBr = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mBr) {
+    const d = new Date(parseInt(mBr[3], 10), parseInt(mBr[2], 10) - 1, parseInt(mBr[1], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Se contiver separador de horário (T ou :), usa parser nativo completo com fuso
+  if (s.includes('T') || s.includes(':')) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Formato ISO / SQL YYYY-MM-DD
+  const mIso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (mIso) {
+    const d = new Date(parseInt(mIso[1], 10), parseInt(mIso[2], 10) - 1, parseInt(mIso[3], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Formato Protheus YYYYMMDD
+  const mPro = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (mPro) {
+    const d = new Date(parseInt(mPro[1], 10), parseInt(mPro[2], 10) - 1, parseInt(mPro[3], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Formata qualquer data para DD/MM/AAAA
+ */
+function formatarDataBr(val) {
+  const d = parseDataGenerica(val);
+  if (!d) return '-';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+/**
+ * Verifica se uma data está dentro da janela dos últimos X dias (padrão: 90 dias)
+ */
+function isWithinLastDays(dateVal, dias = 90) {
+  const d = parseDataGenerica(dateVal);
+  if (!d) return false;
+  const agora = new Date();
+  const limite = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - dias, 0, 0, 0, 0);
+  return d.getTime() >= limite.getTime();
+}
+
+/**
+ * Retorna a data de corte retroativa em formato Protheus YYYYMMDD
+ */
+function obterDataCorteProtheus(dias = 90) {
+  const agora = new Date();
+  const d = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - dias, 0, 0, 0, 0);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
+}
+
+/**
  * Módulo 1: Consulta à API da Assistência Técnica
+ * Aplica filtro dos últimos 90 dias com base no campo 'Entrada em:' (data_abertura / entrada_em)
  */
 async function buscarAssistencia({ valor, termo, limite = 25 }) {
   try {
     const parsedUrl = new URL(ASSISTENCIA_API_URL);
     if (valor !== null && valor !== undefined) parsedUrl.searchParams.set('valor', String(valor));
     if (termo) parsedUrl.searchParams.set('termo', String(termo));
-    if (limite) parsedUrl.searchParams.set('limite', String(limite));
+    // Busca um buffer maior na API externa (mínimo 50) para que o filtro local de 90 dias não esvazie a página prematuramente
+    const limiteBuscaExterna = Math.max(limite * 2, 50);
+    parsedUrl.searchParams.set('limite', String(limiteBuscaExterna));
 
     const res = await fetchHttpJson(parsedUrl.toString(), {
       headers: {
@@ -148,36 +224,45 @@ async function buscarAssistencia({ valor, termo, limite = 25 }) {
       return [];
     }
 
-    return res.resultados.map(os => {
-      const cli = os.cliente || {};
-      const equip = os.equipamento || {};
-      return {
-        origem: 'ASSISTENCIA',
-        origemLabel: 'Assistência Técnica',
-        empresa: '15',
-        empresaNome: 'GSI Cofres (15)',
-        id: os.id_os || `onlineos-${os.numero_os}`,
-        documento: `OS ${os.numero_os}`,
-        numeroOS: os.numero_os,
-        cliente: cli.nome_razao_social || 'Cliente não identificado',
-        cpfCnpj: cli.cpf_cnpj || '',
-        email: cli.email || '',
-        celular: cli.celular || '',
-        cidadeUf: cli.cidade_uf || '',
-        vendedor: 'Suporte Técnico GSI',
-        defeito: equip.defeito || '',
-        status: os.status_pagamento ? `${os.status_pagamento} (${os.status_os})` : os.status_os,
-        statusPagamento: os.status_pagamento || 'Pendente',
-        data: os.data_abertura || '',
-        valorOriginal: parseFloat(os.valor_os) || 0,
-        valorCom5pctPix: parseFloat(os.valor_com_5pct_pix) || 0,
-        valorMatch: parseFloat(os.valor_com_5pct_pix || os.valor_os) || 0,
-        tipoMatch: os.tipo_match || 'Correspondência Assistência Técnica',
-        confianca: os.confianca || 'Alta',
-        scoreBase: parseInt(os.score, 10) || 160,
-        link: os.link_os || `https://portal.gsicofres.com.br/assistencia/os/onlineos-${os.numero_os}`
-      };
-    });
+    return res.resultados
+      .filter(os => {
+        // Validação da regra de 90 dias pelo campo 'Entrada em:' (data_abertura)
+        const dtEntrada = os.data_abertura || os.entrada_em || os.data_entrada || '';
+        return isWithinLastDays(dtEntrada, 90);
+      })
+      .map(os => {
+        const cli = os.cliente || {};
+        const equip = os.equipamento || {};
+        const dtEntrada = os.data_abertura || os.entrada_em || os.data_entrada || '';
+        const dtFormatada = dtEntrada ? (dtEntrada.includes('/') ? dtEntrada : formatarDataBr(dtEntrada)) : '-';
+        return {
+          origem: 'ASSISTENCIA',
+          origemLabel: 'Assistência Técnica',
+          empresa: '15',
+          empresaNome: 'GSI Cofres (15)',
+          id: os.id_os || `onlineos-${os.numero_os}`,
+          documento: `OS ${os.numero_os}`,
+          numeroOS: os.numero_os,
+          cliente: cli.nome_razao_social || 'Cliente não identificado',
+          cpfCnpj: cli.cpf_cnpj || '',
+          email: cli.email || '',
+          celular: cli.celular || '',
+          cidadeUf: cli.cidade_uf || '',
+          vendedor: 'Suporte Técnico GSI',
+          defeito: equip.defeito || '',
+          status: os.status_pagamento ? `${os.status_pagamento} (${os.status_os})` : os.status_os,
+          statusPagamento: os.status_pagamento || 'Pendente',
+          data: dtFormatada !== '-' ? `Entrada: ${dtFormatada}` : '-',
+          dataEntrada: dtFormatada,
+          valorOriginal: parseFloat(os.valor_os) || 0,
+          valorCom5pctPix: parseFloat(os.valor_com_5pct_pix) || 0,
+          valorMatch: parseFloat(os.valor_com_5pct_pix || os.valor_os) || 0,
+          tipoMatch: os.tipo_match || 'Correspondência Assistência Técnica',
+          confianca: os.confianca || 'Alta',
+          scoreBase: parseInt(os.score, 10) || 160,
+          link: os.link_os || `https://portal.gsicofres.com.br/assistencia/os/onlineos-${os.numero_os}`
+        };
+      });
   } catch (err) {
     console.warn(`⚠️ [Pgtos Desconhecidos] Falha na consulta da Assistência Técnica: ${err.message}`);
     return [];
@@ -204,7 +289,14 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
 
     // 2.1 Consulta Títulos em Aberto ou Adiantamentos em SE1
     try {
-      let whereClauses = ["E1.D_E_L_E_T_ = ' '", "RTRIM(E1.E1_TIPO) NOT IN ('TX', 'INS', 'ISS', 'PIS', 'COF', 'CSL', 'NCC')"];
+      const dataCorteProtheus = obterDataCorteProtheus(90);
+      let whereClauses = [
+        "E1.D_E_L_E_T_ = ' '",
+        "RTRIM(E1.E1_TIPO) NOT IN ('TX', 'INS', 'ISS', 'PIS', 'COF', 'CSL', 'NCC')",
+        "E1.E1_SALDO > 0",
+        "RTRIM(ISNULL(E1.E1_BAIXA, '')) = ''",
+        `E1.E1_EMISSAO >= '${dataCorteProtheus}'`
+      ];
 
       if (hasValor) {
         const vMin = (valor - 0.05).toFixed(2);
@@ -277,11 +369,16 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
         for (const row of resSE1.rows) {
           const saldo = parseFloat(row.SALDO) || 0;
           const valorTit = parseFloat(row.VALOR) || 0;
-          const isBaixado = row.BAIXA && row.BAIXA.trim() !== '' && saldo <= 0;
+          const isBaixado = (row.BAIXA && row.BAIXA.trim() !== '') || saldo <= 0;
           const isRA = (row.TIPO || '').trim() === 'RA';
 
+          // Apenas recebimentos em aberto: descarta títulos já baixados ou sem saldo pendente
+          if (isBaixado || saldo <= 0) {
+            continue;
+          }
+
           let tipoDesc = isRA ? 'Adiantamento de Pedido (RA)' : 'Título / Duplicata';
-          let statusTit = isBaixado ? 'Baixado no Protheus' : (saldo > 0 ? 'Em Aberto (Pendente)' : 'Quitado');
+          let statusTit = saldo < valorTit ? 'Em Aberto (Saldo Parcial)' : 'Em Aberto (Pendente)';
 
           itensEmpresa.push({
             origem: 'PROTHEUS',
@@ -314,7 +411,12 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
     // 2.2 Consulta Pedidos de Venda em Aberto (SC5) com filtro em SQL
     if (itensEmpresa.length < safeLimit) {
       try {
-        let whereC5 = ["C5.D_E_L_E_T_ = ' '", "(C5.C5_NOTA = '' OR C5.C5_NOTA IS NULL)"];
+        const dataCorteProtheus = obterDataCorteProtheus(90);
+        let whereC5 = [
+          "C5.D_E_L_E_T_ = ' '",
+          "(C5.C5_NOTA = '' OR C5.C5_NOTA IS NULL)",
+          `C5.C5_EMISSAO >= '${dataCorteProtheus}'`
+        ];
 
         if (cleanTermo) {
           whereC5.push(`(C5.C5_NOMECLI LIKE '%${cleanTermo}%' OR C5.C5_NUM LIKE '%${cleanTermo}%')`);
@@ -414,12 +516,33 @@ async function buscarPipedrive({ valor, termo, limite = 15 }) {
       const res = await fetchHttpJson(url, { timeout: 12000 });
 
       if (res && res.data && res.data.items && Array.isArray(res.data.items)) {
-        for (const it of res.data.items) {
+        const dealItems = res.data.items.slice(0, Math.min(safeLimit, 10));
+        // Consulta detalhes dos deals candidatos para obter o update_time real
+        const promessasDetalhes = dealItems.map(it => {
+          const dealId = it.item && it.item.id;
+          if (!dealId) return Promise.resolve(null);
+          return fetchHttpJson(`${PIPEDRIVE_BASE_URL}/deals/${dealId}?api_token=${PIPEDRIVE_API_TOKEN}`, { timeout: 6000 })
+            .catch(() => null);
+        });
+
+        const respostasDetalhes = await Promise.all(promessasDetalhes);
+
+        for (let i = 0; i < dealItems.length; i++) {
+          const it = dealItems[i];
           const d = it.item || {};
+          const dealDetalhado = (respostasDetalhes[i] && respostasDetalhes[i].data) ? respostasDetalhes[i].data : null;
+          const updateTime = (dealDetalhado && dealDetalhado.update_time) || d.update_time || null;
+
+          // Regra dos últimos 90 dias com base no campo update_time (Atualizado em)
+          if (!isWithinLastDays(updateTime, 90)) {
+            continue;
+          }
+
           const v = parseFloat(d.value) || 0;
           const org = d.organization ? d.organization.name : '';
           const person = d.person ? d.person.name : '';
           const stage = d.stage ? d.stage.name : 'Funil Comercial';
+          const dtFormatada = formatarDataBr(updateTime);
 
           resultados.push({
             origem: 'PIPEDRIVE',
@@ -430,9 +553,9 @@ async function buscarPipedrive({ valor, termo, limite = 15 }) {
             documento: `Deal #${d.id}`,
             cliente: org || person || d.title || 'Lead Pipedrive',
             cpfCnpj: '',
-            vendedor: (d.owner && d.owner.name) || 'Vendedor Pipedrive',
+            vendedor: (d.owner && d.owner.name) || (dealDetalhado && dealDetalhado.user_id && dealDetalhado.user_id.name) || 'Vendedor Pipedrive',
             status: `${d.status || 'open'} (${stage})`,
-            data: '-',
+            data: dtFormatada,
             valorOriginal: v,
             valorMatch: v,
             tipoMatch: `Oportunidade CRM • ${d.title}`,
@@ -451,11 +574,20 @@ async function buscarPipedrive({ valor, termo, limite = 15 }) {
 
       if (resDeals && resDeals.data && Array.isArray(resDeals.data)) {
         for (const deal of resDeals.data) {
+          const updateTime = deal.update_time || null;
+
+          // Regra dos últimos 90 dias com base no campo update_time (Atualizado em)
+          if (!isWithinLastDays(updateTime, 90)) {
+            continue;
+          }
+
           const v = parseFloat(deal.value) || 0;
           if (Math.abs(v - valor) <= 0.10) {
             if (!resultados.some(r => r.id === `pipedrive-deal-${deal.id}`)) {
               const org = deal.org_name || '';
               const person = deal.person_name || '';
+              const dtFormatada = formatarDataBr(updateTime);
+
               resultados.push({
                 origem: 'PIPEDRIVE',
                 origemLabel: 'Pipedrive CRM',
@@ -467,7 +599,7 @@ async function buscarPipedrive({ valor, termo, limite = 15 }) {
                 cpfCnpj: '',
                 vendedor: (deal.user_id && deal.user_id.name) || deal.owner_name || 'Vendedor Pipedrive',
                 status: `Aberto (${deal.stage_id || 'Proposta'})`,
-                data: deal.add_time ? deal.add_time.slice(0, 10) : '-',
+                data: dtFormatada,
                 valorOriginal: v,
                 valorMatch: v,
                 tipoMatch: `Valor idêntico da proposta comercial (${deal.title})`,
@@ -553,10 +685,10 @@ router.get('/buscar', async (req, res) => {
     const termoLimpo = limparTermoBancario(termo);
     const limiteNum = Math.max(1, Math.min(parseInt(limite, 10) || 30, 100));
 
-    if (!valorNum && !termoLimpo) {
+    if (!valorNum || valorNum <= 0) {
       return res.status(400).json({
         success: false,
-        error: 'Informe ao menos o valor do pagamento ou um termo de busca (razão social, CNPJ ou descrição).'
+        error: 'O valor do depósito é obrigatório para pesquisar pagamentos desconhecidos.'
       });
     }
 
@@ -636,3 +768,8 @@ module.exports = router;
 module.exports.limparTermoBancario = limparTermoBancario;
 module.exports.normalizarValorNumerico = normalizarValorNumerico;
 module.exports.calcularScoreEConfianca = calcularScoreEConfianca;
+module.exports.parseDataGenerica = parseDataGenerica;
+module.exports.formatarDataBr = formatarDataBr;
+module.exports.isWithinLastDays = isWithinLastDays;
+module.exports.obterDataCorteProtheus = obterDataCorteProtheus;
+

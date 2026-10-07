@@ -19,7 +19,11 @@ const path = require('path');
 const {
   limparTermoBancario,
   normalizarValorNumerico,
-  calcularScoreEConfianca
+  calcularScoreEConfianca,
+  parseDataGenerica,
+  formatarDataBr,
+  isWithinLastDays,
+  obterDataCorteProtheus
 } = require('./routes/pgtos_desconhecidos');
 
 console.log('🧪 [TESTES] Iniciando Suíte de Testes: Pgtos Desconhecidos...\n');
@@ -121,6 +125,12 @@ async function runAsyncTest(name, fn) {
     assert.strictEqual(normalizarValorNumerico('abc'), null);
   });
 
+  runTest('2.6 Preserva sinal negativo para rejeição de valores não positivos', () => {
+    assert.strictEqual(normalizarValorNumerico(-150), -150);
+    assert.strictEqual(normalizarValorNumerico('-150'), -150);
+    assert.strictEqual(normalizarValorNumerico('-R$ 150,00'), -150);
+  });
+
   // =========================================================================
   // BLOCO 3: HEURÍSTICA E RANQUEAMENTO POR EMPRESA
   // =========================================================================
@@ -195,6 +205,7 @@ async function runAsyncTest(name, fn) {
     assert(html.includes('id="tab-pgtos-desconhecidos"'), 'Container da tela não encontrado no HTML');
     assert(html.includes('id="pgtosEmpresaSelect"'), 'Seletor de empresa não encontrado');
     assert(html.includes('id="pgtosValorInput"'), 'Campo de valor não encontrado');
+    assert(html.includes('id="pgtosValorInput" class="form-input" placeholder="Ex: 361,00" required aria-required="true"'), 'Campo pgtosValorInput deve ser obrigatório');
     assert(html.includes('id="pgtosTermoInput"'), 'Campo de termo não encontrado');
     assert(html.includes('id="btnBuscarPgtosDesconhecidos"'), 'Botão de busca não encontrado');
     assert(html.includes('id="pgtosTableBody"'), 'Tbody da tabela não encontrado');
@@ -234,6 +245,12 @@ async function runAsyncTest(name, fn) {
     assert(js.includes("btn.setAttribute('aria-pressed', isAtivo ? 'true' : 'false')"), 'aria-pressed nos chips não encontrado');
   });
 
+  runTest('4.9 public/js/pgtos_desconhecidos.js valida campo de valor como obrigatório com alerta amigável', () => {
+    const js = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(js.includes('O valor do depósito é obrigatório para pesquisar pagamentos desconhecidos.'), 'Mensagem de obrigatoriedade de valor deve constar no JS');
+    assert(js.includes('elValor.focus()'), 'Foco no campo elValor deve existir quando valor não for preenchido');
+  });
+
   // =========================================================================
   // BLOCO 5: INTEGRAÇÃO REAL DA ROTA DE BUSCA
   // =========================================================================
@@ -260,7 +277,7 @@ async function runAsyncTest(name, fn) {
     server.close();
     assert.strictEqual(res.status, 400);
     assert.strictEqual(res.body.success, false);
-    assert(res.body.error.includes('Informe ao menos o valor'), 'Mensagem de erro amigável esperada');
+    assert(res.body.error.includes('O valor do depósito é obrigatório'), 'Mensagem de erro de valor obrigatório esperada');
   });
 
   await runAsyncTest('5.2 Rota busca e ranqueia dados da Assistência Técnica para Empresa 15 (GSI)', async () => {
@@ -326,6 +343,63 @@ async function runAsyncTest(name, fn) {
     assert.strictEqual(resNeg.body.criterios.limite, 1, 'Limite negativo deve sofrer clamp para 1');
     assert.strictEqual(resOver.status, 200);
     assert.strictEqual(resOver.body.criterios.limite, 100, 'Limite excessivo deve sofrer clamp para 100');
+  });
+
+  await runAsyncTest('5.4 Rota rejeita busca contendo apenas termo e sem valor com HTTP 400', async () => {
+    const express = require('express');
+    const requestApp = express();
+    requestApp.use('/api', require('./routes/pgtos_desconhecidos'));
+
+    const http = require('http');
+    const server = http.createServer(requestApp);
+    await new Promise(r => server.listen(0, r));
+    const port = server.address().port;
+
+    const res = await new Promise((resolve) => {
+      http.get(`http://127.0.0.1:${port}/api/buscar?termo=silicone`, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    server.close();
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.success, false);
+    assert(res.body.error.includes('O valor do depósito é obrigatório'), 'Deve informar que o valor é obrigatório');
+  });
+
+  await runAsyncTest('5.5 Rota rejeita valor zero ou negativo com HTTP 400', async () => {
+    const express = require('express');
+    const requestApp = express();
+    requestApp.use('/api', require('./routes/pgtos_desconhecidos'));
+
+    const http = require('http');
+    const server = http.createServer(requestApp);
+    await new Promise(r => server.listen(0, r));
+    const port = server.address().port;
+
+    const resZero = await new Promise((resolve) => {
+      http.get(`http://127.0.0.1:${port}/api/buscar?valor=0`, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    const resNeg = await new Promise((resolve) => {
+      http.get(`http://127.0.0.1:${port}/api/buscar?valor=-150`, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    server.close();
+    assert.strictEqual(resZero.status, 400);
+    assert(resZero.body.error.includes('O valor do depósito é obrigatório'));
+    assert.strictEqual(resNeg.status, 400);
+    assert(resNeg.body.error.includes('O valor do depósito é obrigatório'));
   });
 
   // =========================================================================
@@ -460,6 +534,106 @@ async function runAsyncTest(name, fn) {
     const routeCode = fs.readFileSync(path.join(__dirname, 'routes', 'pgtos_desconhecidos.js'), 'utf8');
     assert(routeCode.includes('digits.length >= 3'), 'Proteção de no mínimo 3 dígitos no CGC deve existir');
     assert(routeCode.includes("SA1.A1_CGC LIKE '%${digits}%'"), 'Cláusula CGC parametrizada deve existir');
+  });
+
+  // =========================================================================
+  // BLOCO 7: REGRAS E FILTROS DE 90 DIAS (PIPEDRIVE, PROTHEUS, ASSISTÊNCIA)
+  // =========================================================================
+  console.log('\n--- Bloco 7: Filtros de 90 Dias (Pipedrive update_time, Protheus E1_EMISSAO, Assistência Entrada em) ---');
+
+  runTest('7.1 parseDataGenerica converte confiavelmente formatos BRL, ISO e Protheus', () => {
+    const dBrl = parseDataGenerica('18/09/2026');
+    assert(dBrl instanceof Date && !isNaN(dBrl.getTime()), 'Data BRL deve ser convertida');
+    assert.strictEqual(dBrl.getDate(), 18);
+    assert.strictEqual(dBrl.getMonth(), 8); // Setembro = 8
+    assert.strictEqual(dBrl.getFullYear(), 2026);
+
+    const dIso = parseDataGenerica('2026-10-07 12:30:00');
+    assert(dIso instanceof Date && !isNaN(dIso.getTime()), 'Data ISO com hora deve ser convertida');
+    assert.strictEqual(dIso.getFullYear(), 2026);
+
+    const dPro = parseDataGenerica('20260915');
+    assert(dPro instanceof Date && !isNaN(dPro.getTime()), 'Data Protheus YYYYMMDD deve ser convertida');
+    assert.strictEqual(dPro.getDate(), 15);
+    assert.strictEqual(dPro.getMonth(), 8);
+    assert.strictEqual(dPro.getFullYear(), 2026);
+  });
+
+  runTest('7.2 formatarDataBr formata qualquer data para DD/MM/AAAA', () => {
+    assert.strictEqual(formatarDataBr('2026-10-07 12:00:00'), '07/10/2026');
+    assert.strictEqual(formatarDataBr('20260901'), '01/09/2026');
+    assert.strictEqual(formatarDataBr('18/09/2026'), '18/09/2026');
+    assert.strictEqual(formatarDataBr(null), '-');
+  });
+
+  runTest('7.3 isWithinLastDays aprova datas recentes e rejeita datas com mais de 90 dias', () => {
+    const hoje = new Date();
+    
+    // Data de 10 dias atrás (deve aprovar)
+    const dRecente = new Date(hoje.getTime() - 10 * 86400000);
+    const ddRec = String(dRecente.getDate()).padStart(2, '0');
+    const mmRec = String(dRecente.getMonth() + 1).padStart(2, '0');
+    const strRecenteBrl = `${ddRec}/${mmRec}/${dRecente.getFullYear()}`;
+    assert.strictEqual(isWithinLastDays(strRecenteBrl, 90), true, 'Data de 10 dias atrás deve ser aceita');
+
+    // Data de 120 dias atrás (deve rejeitar)
+    const dAntiga = new Date(hoje.getTime() - 120 * 86400000);
+    const ddAnt = String(dAntiga.getDate()).padStart(2, '0');
+    const mmAnt = String(dAntiga.getMonth() + 1).padStart(2, '0');
+    const strAntigaBrl = `${ddAnt}/${mmAnt}/${dAntiga.getFullYear()}`;
+    assert.strictEqual(isWithinLastDays(strAntigaBrl, 90), false, 'Data de 120 dias atrás deve ser rejeitada');
+  });
+
+  runTest('7.4 isWithinLastDays trata com segurança valores nulos, indefinidos e inválidos', () => {
+    assert.strictEqual(isWithinLastDays(null, 90), false);
+    assert.strictEqual(isWithinLastDays(undefined, 90), false);
+    assert.strictEqual(isWithinLastDays('', 90), false);
+    assert.strictEqual(isWithinLastDays('data-invalida-xyz', 90), false);
+  });
+
+  runTest('7.5 obterDataCorteProtheus retorna string de 8 dígitos no formato YYYYMMDD', () => {
+    const corte = obterDataCorteProtheus(90);
+    assert.strictEqual(typeof corte, 'string');
+    assert.strictEqual(corte.length, 8);
+    assert(/^\d{8}$/.test(corte), 'Deve conter exatamente 8 dígitos numéricos');
+  });
+
+  runTest('7.6 routes/pgtos_desconhecidos.js aplica cláusula de corte E1_EMISSAO e C5_EMISSAO nas queries Protheus', () => {
+    const routeCode = fs.readFileSync(path.join(__dirname, 'routes', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(routeCode.includes("E1.E1_EMISSAO >= '${dataCorteProtheus}'"), 'Cláusula E1_EMISSAO >= dataCorte deve constar em SE1');
+    assert(routeCode.includes("C5.C5_EMISSAO >= '${dataCorteProtheus}'"), 'Cláusula C5_EMISSAO >= dataCorte deve constar em SC5');
+    assert(routeCode.includes('obterDataCorteProtheus(90)'), 'Chamada para obterDataCorteProtheus(90) deve existir');
+  });
+
+  runTest('7.7 routes/pgtos_desconhecidos.js valida campo de entrada da Assistência Técnica e update_time do Pipedrive', () => {
+    const routeCode = fs.readFileSync(path.join(__dirname, 'routes', 'pgtos_desconhecidos.js'), 'utf8');
+    // Assistência: Entrada em (data_abertura)
+    assert(routeCode.includes('isWithinLastDays(dtEntrada, 90)'), 'Filtro de 90 dias na data de entrada da Assistência Técnica deve constar');
+    // Pipedrive: update_time
+    assert(routeCode.includes('isWithinLastDays(updateTime, 90)'), 'Filtro de 90 dias em update_time do Pipedrive deve constar');
+  });
+
+  runTest('7.8 public/js/pgtos_desconhecidos.js inclui a data formatada no texto copiado pelo botão Copiar', () => {
+    const jsCode = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(jsCode.includes("item.data && item.data !== '-' ? `• Data: ${item.data}` : ''"), 'Inclusão da data no texto de cópia deve constar');
+  });
+
+  console.log('\n--- Bloco 8: Exclusão Estrita de Títulos Baixados / Somente Recebimentos em Aberto Protheus ---');
+  runTest('8.1 routes/pgtos_desconhecidos.js aplica cláusulas E1_SALDO > 0 e E1_BAIXA vazia na query SE1', () => {
+    const routeCode = fs.readFileSync(path.join(__dirname, 'routes', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(routeCode.includes('"E1.E1_SALDO > 0"'), 'Cláusula E1.E1_SALDO > 0 deve constar nas whereClauses de SE1');
+    assert(routeCode.includes('"RTRIM(ISNULL(E1.E1_BAIXA, \'\')) = \'\'"'), 'Cláusula de baixa vazia deve constar nas whereClauses de SE1');
+  });
+
+  runTest('8.2 routes/pgtos_desconhecidos.js descarta títulos com baixa ou saldo <= 0 e nunca gera status Baixado no Protheus', () => {
+    const routeCode = fs.readFileSync(path.join(__dirname, 'routes', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(routeCode.includes('if (isBaixado || saldo <= 0)'), 'Loop de SE1 deve ignorar registros baixados ou sem saldo ativo');
+    assert(!routeCode.includes("'Baixado no Protheus'"), "Código não deve mais atribuir status 'Baixado no Protheus'");
+  });
+
+  runTest('8.3 public/js/pgtos_desconhecidos.js possui filtro de proteção defensivo contra títulos baixados na renderização', () => {
+    const jsCode = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(jsCode.includes("item.status && item.status.includes('Baixado')"), 'Filtro defensivo contra status Baixado deve existir em renderizarTabela');
   });
 
   console.log(`\n=======================================================`);

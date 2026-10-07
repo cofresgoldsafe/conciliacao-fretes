@@ -111,8 +111,25 @@
     const valor = elValor ? elValor.value.trim() : '';
     const termo = elTermo ? elTermo.value.trim() : '';
 
-    if (!valor && !termo) {
-      alert('⚠️ Digite o valor do depósito ou ao menos um termo de busca (razão social, CNPJ ou descrição do extrato).');
+    // Validação estrita: O valor do depósito é obrigatório
+    const numLimpo = valor.replace(/[^\d,\.]/g, '').trim();
+    let valorValido = false;
+    if (numLimpo) {
+      let numFloat = 0;
+      if (numLimpo.includes(',') && numLimpo.includes('.')) {
+        numFloat = parseFloat(numLimpo.replace(/\./g, '').replace(',', '.'));
+      } else if (numLimpo.includes(',')) {
+        numFloat = parseFloat(numLimpo.replace(',', '.'));
+      } else {
+        numFloat = parseFloat(numLimpo);
+      }
+      if (!isNaN(numFloat) && numFloat > 0) {
+        valorValido = true;
+      }
+    }
+
+    if (!valor || !valorValido) {
+      alert('⚠️ O valor do depósito é obrigatório para pesquisar pagamentos desconhecidos.');
       if (elValor) elValor.focus();
       return;
     }
@@ -188,6 +205,8 @@
 
     // Aplica filtros ativos em memória
     let filtrados = estado.resultados.filter(item => {
+      // Proteção defensiva: nunca exibir títulos baixados no Protheus (apenas recebimentos em aberto)
+      if (item.status && item.status.includes('Baixado')) return false;
       if (estado.filtroOrigemAtivo !== 'TODAS') {
         if (item.origem !== estado.filtroOrigemAtivo) return false;
       }
@@ -317,6 +336,7 @@
       `• Vendedor/Responsável: ${item.vendedor || 'Vendedor Comercial'}`,
       `• Valor: ${formatCurrency(item.valorMatch)}`,
       `• Status: ${item.status}`,
+      item.data && item.data !== '-' ? `• Data: ${item.data}` : '',
       item.link ? `• Link: ${item.link}` : ''
     ].filter(Boolean).join('\n');
 

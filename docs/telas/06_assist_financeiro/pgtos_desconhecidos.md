@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-pgtos-desconhecidos` | **Botão:** `#btnTabPgtosDesconhecidos`  
 > **Permissão RBAC:** `financeiro`, `analista-fin`, `admin`, `diretoria` (Perfil `vendedor` bloqueado via HTTP 403)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 06/10/2026 (v8.293 - Homologado)  
+> **Última Atualização:** 07/10/2026 (v8.295 - Homologado)  
 
 ---
 
@@ -92,6 +92,18 @@ Remove automaticamente termos comuns de extratos que atrapalham as buscas:
 - **Confiança Baixa (⚪):** Score $< 90$ pontos.
 - **Score 0 (Descarte):** Itens da Assistência Técnica para as Empresas 14 (Metal Pleno) e 16 (OAÇO) são descartados automaticamente da listagem.
 
+### 4.3 Filtro Temporal Obrigatório dos Últimos 90 Dias (Mitigação de Poluição Histórica)
+Para assegurar que a busca não traga informações antigas e irrelevantes do passado:
+1. **Pipedrive CRM:** Utiliza o campo `update_time` ("Atualizado em"), limitando os resultados aos últimos 90 dias. Negociações com atualização anterior a 90 dias são sumariamente descartadas (tanto na busca por valor quanto na busca textual via `itemSearch`).
+2. **TOTVS Protheus ERP:** Utiliza a Data de Emissão do título (`E1_EMISSAO`), calculando data de corte em formato `YYYYMMDD` (`E1.E1_EMISSAO >= '<dataCorte>'`). Aplica também a proteção aos pedidos de venda em aberto (`C5.C5_EMISSAO >= '<dataCorte>'`).
+3. **Portal da Assistência Técnica:** Utiliza a data do campo "Entrada em:" (campo `data_abertura` / `entrada_em` da API externa), filtrando em memória com a função `isWithinLastDays(dtEntrada, 90)`.
+
+### 4.4 Exclusão Estrita de Títulos Baixados (Apenas Recebimentos em Aberto)
+Para evitar falsos positivos e poluição visual com títulos que já foram pagos/liquidados:
+1. **Filtro em SQL Server (`SE1`):** A cláusula `WHERE` impõe compulsoriamente `E1.E1_SALDO > 0` e `RTRIM(ISNULL(E1.E1_BAIXA, '')) = ''`, garantindo que apenas títulos com saldo devedor ativo e sem baixa sejam extraídos do Protheus.
+2. **Defesa em Profundidade no Backend:** O loop de processamento verifica `isBaixado = (row.BAIXA && row.BAIXA.trim() !== '') || saldo <= 0` e descarta (`continue`) qualquer registro sem saldo ou baixado, impedindo a geração do status `Baixado no Protheus`. Títulos com saldo parcial recebem `Em Aberto (Saldo Parcial)`.
+3. **Filtro Preventivo no Frontend:** O método `renderizarTabela` em `public/js/pgtos_desconhecidos.js` descarta preventivamente em memória qualquer item cujo status contenha `'Baixado'`.
+
 ---
 
 ## 5. Endpoints REST da API
@@ -99,9 +111,9 @@ Remove automaticamente termos comuns de extratos que atrapalham as buscas:
 ### `GET /api/financeiro/pgtos-desconhecidos/buscar`
 - **Headers:** `Authorization: Bearer <JWT>`
 - **Query Params:**
+  - `valor`: **Obrigatório.** Valor do depósito em formato livre (ex: `'361'`, `'361.00'`, `'R$ 361,00'`). Se ausente, não numérico ou $\le 0$, retorna `HTTP 400 Bad Request`.
   - `empresa`: `'14'`, `'15'`, `'16'` ou `'ALL'` (default: `'ALL'`).
-  - `valor`: Valor em formato livre (ex: `'361'`, `'361.00'`, `'R$ 361,00'`).
-  - `termo`: Termo de busca (Razão social, nome de contato, CNPJ/CPF ou texto de extrato).
+  - `termo`: Termo opcional de refinamento de busca (Razão social, nome de contato, CNPJ/CPF ou texto de extrato).
   - `limite`: Número máximo de candidatos retornados (default: 30, clamp 1 a 100).
 
 ---
@@ -112,16 +124,21 @@ A suíte cobre 100% dos requisitos de negócio, heurística e segurança:
 ```bash
 node test_pgtos_desconhecidos.js
 ```
-Total de testes: **30 testes aprovados (0 falhas)**:
+Total de testes: **45 testes aprovados (0 falhas)**:
 - Bloco 1: Limpeza de Prefixos e Termos de Extrato (7 testes)
-- Bloco 2: Normalização de Valores Monetários (5 testes)
-- Bloco 3: Motor de Score e Confiança por Empresa (4 testes)
-- Bloco 4: Integridade de Frontend e Marcação HTML (8 testes)
-- Bloco 5: Teste Funcional da Rota Backend Express & Clamping (3 testes)
+- Bloco 2: Normalização de Valores Monetários com preservação de sinal (6 testes)
+- Bloco 3: Motor de Score e Confiança por Empresa (5 testes)
+- Bloco 4: Integridade de Frontend, Marcação HTML e Validação Obrigatória (9 testes)
+- Bloco 5: Teste Funcional da Rota Backend Express, Rejeição sem Valor e Clamping (5 testes)
 - Bloco 6: Validação de Segurança RBAC e Sanitização SQL (3 testes)
+- Bloco 7: Filtros de 90 Dias (Pipedrive update_time, Protheus E1_EMISSAO, Assistência Entrada em) (8 testes)
+- Bloco 8: Exclusão Estrita de Títulos Baixados / Somente Recebimentos em Aberto Protheus (3 testes)
 
 ---
 
 ## 7. Histórico & Evolução da Tela
 
+- **v8.296 (07/10/2026):** Exclusão estrita de títulos com status 'Baixado no Protheus' na listagem de pagamentos desconhecidos. Apenas recebimentos em aberto (`E1_SALDO > 0` e `E1_BAIXA` vazia) são consultados e exibidos, tanto no SQL de SE1 quanto na defesa em profundidade do backend e frontend. Suíte ampliada para 45 testes aprovados.
+- **v8.295 (07/10/2026):** Campo 'Valor do Depósito (R$)' tornado estritamente obrigatório tanto no frontend (marcação `*`, `required`, foco automático e alertas amigáveis) quanto na API backend (`HTTP 400` se ausente ou $\le 0$). Expansão da suíte para 42 testes aprovados.
+- **v8.294 (07/10/2026):** Implementação dos filtros temporais de 90 dias para conter registros do passado: Pipedrive CRM (`update_time`), Protheus ERP (`E1_EMISSAO` e `C5_EMISSAO`) e Assistência Técnica ("Entrada em:"), formatação limpa de datas e expansão da suíte para 38 testes.
 - **v8.293 (06/10/2026):** Implantação completa da sub-aba Pgtos Desconhecidos na macro-área Assist. Financ., busca federada na Assistência Técnica, Protheus ERP e Pipedrive CRM, heurísticas por empresa, atalho na conciliação de órfãos do banco e proteção RBAC Zero-Trust.
