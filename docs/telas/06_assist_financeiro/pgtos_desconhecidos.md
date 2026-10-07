@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-pgtos-desconhecidos` | **Botão:** `#btnTabPgtosDesconhecidos`  
 > **Permissão RBAC:** `financeiro`, `analista-fin`, `admin`, `diretoria` (Perfil `vendedor` bloqueado via HTTP 403)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 07/10/2026 (v8.300 - Homologado)  
+> **Última Atualização:** 07/10/2026 (v8.301 - Homologado)  
 
 ---
 
@@ -169,11 +169,11 @@ A suíte cobre 100% dos requisitos de negócio, heurística e segurança:
 ```bash
 node test_pgtos_desconhecidos.js
 ```
-Total de testes: **63 testes aprovados (0 falhas)**:
+Total de testes: **65 testes aprovados (0 falhas)**:
 - Bloco 1: Limpeza de Prefixos e Termos de Extrato (10 testes)
 - Bloco 2: Normalização de Valores Monetários com preservação de sinal (6 testes)
 - Bloco 3: Motor de Score e Confiança por Empresa (5 testes)
-- Bloco 4: Integridade de Frontend, Marcação HTML e Validação Obrigatória (9 testes)
+- Bloco 4: Integridade de Frontend, Marcação HTML, Compilação Sintática e Hook no Ciclo de Vida (11 testes)
 - Bloco 5: Teste Funcional da Rota Backend Express, Rejeição sem Valor e Clamping (5 testes)
 - Bloco 6: Validação de Segurança RBAC e Sanitização SQL (3 testes)
 - Bloco 7: Filtros de 90 Dias (Pipedrive update_time, Protheus E1_EMISSAO, Assistência Entrada em) (8 testes)
@@ -185,6 +185,7 @@ Total de testes: **63 testes aprovados (0 falhas)**:
 
 ## 7. Histórico & Evolução da Tela
 
+- **v8.301 (07/10/2026):** Correção do fechamento da função `atualizarVisualChips()` no frontend `public/js/pgtos_desconhecidos.js` (que causava SyntaxError impedindo a ligação de eventos do botão '⚡ Localizar Origem'), adição de feedback visual de carregamento (`btnBuscar.disabled`), exportação e integração de `initPgtosDesconhecidos` no ciclo de vida de abas do `public/app.js` e ampliação da suíte para 65 testes automatizados aprovados (0 falhas).
 - **v8.300 (07/10/2026):** Parser de extrato bancário e Smart Paste na tela Pgtos Desconhecidos: decomposição automática de linhas brutas coladas em valor e razão social limpa no frontend ('paste') e backend (query param), saneamento de roteamentos bancários (`341...`, `001...`, `Cp :...`), suporte a tokens sem pontuação no SQL Protheus e 63 testes aprovados (0 falhas).
 - **v8.299 (07/10/2026):** Aplicação da régua de tolerância estrita de até 6% em títulos SE1 e pedidos SC5 (idêntico = Alta 🟢, até 6% = Baixa ⚪, acima de 6% = descarte imediato), cálculo de valor da 1ª parcela em pedidos não faturados SC5 com divisor linear (`1x`, `2x`, `3x`, `4x`), erradicação de pedidos com valores discrepantes (eliminação da cláusula residual em SC5 SQL), correção do parser de ruído bancário (`DEPOSITO`, `DEP.`, `DEPOSITO EM CONTA`) e busca textual tokenizada multi-palavras para Protheus (`JESMOND COMERCIO VAR`). Chip "⚪ Baixa" adicionado na interface. Suíte expandida para 54 testes aprovados (0 falhas).
 - **v8.298 (07/10/2026):** Conciliação e sincronização em lote de OSs Protheus x Portal da Assistência: 573 OSs quitadas atualizadas para status 'Confirmado', 472 OSs com valor zerado equalizadas com o Protheus (`E1_VALOR`) e 1.168 OSs recompostas com descrições, quantidades e valores de peças/serviços da base OnlineOS legada, com exclusão auditada de títulos não quitados e parciais (OS 1297).

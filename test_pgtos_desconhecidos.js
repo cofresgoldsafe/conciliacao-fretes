@@ -268,6 +268,20 @@ async function runAsyncTest(name, fn) {
     assert(js.includes('elValor.focus()'), 'Foco no campo elValor deve existir quando valor não for preenchido');
   });
 
+  runTest('4.10 public/js/pgtos_desconhecidos.js possui sintaxe JS 100% válida e compila com sucesso', () => {
+    const js = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+    const vm = require('vm');
+    assert.doesNotThrow(() => {
+      new vm.Script(js);
+    }, 'Sintaxe JS inválida em public/js/pgtos_desconhecidos.js');
+  });
+
+  runTest('4.11 public/app.js invoca initPgtosDesconhecidos ao selecionar a aba correspondente', () => {
+    const appJs = fs.readFileSync(path.join(__dirname, 'public', 'app.js'), 'utf8');
+    assert(appJs.includes("targetTab === 'tab-pgtos-desconhecidos'"), 'Verificação de tab-pgtos-desconhecidos não encontrada em app.js');
+    assert(appJs.includes('initPgtosDesconhecidos'), 'Invocação de initPgtosDesconhecidos não encontrada em app.js');
+  });
+
   // =========================================================================
   // BLOCO 5: INTEGRAÇÃO REAL DA ROTA DE BUSCA
   // =========================================================================

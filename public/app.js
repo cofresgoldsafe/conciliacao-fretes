@@ -937,6 +937,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.ContasPagarModule.init();
         }
       }
+      if (targetTab === 'tab-pgtos-desconhecidos') {
+        if (typeof window.initPgtosDesconhecidos === 'function') {
+          window.initPgtosDesconhecidos();
+        }
+      }
       if (targetTab === 'tab-vend-saldos-estoque' || 
           targetTab === 'tab-vend-pedidos' || 
           targetTab === 'tab-vend-pedidos-abertos' || 

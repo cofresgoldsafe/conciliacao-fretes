@@ -134,11 +134,18 @@
       return;
     }
 
+    if (estado.carregando) return;
+
     // Atualiza visibilidade dos estados
     if (elIdleState) elIdleState.classList.add('hidden');
     if (elEmptyState) elEmptyState.classList.add('hidden');
     if (elResultsSection) elResultsSection.classList.add('hidden');
     if (elLoadingState) elLoadingState.classList.remove('hidden');
+
+    if (btnBuscar) {
+      btnBuscar.disabled = true;
+      btnBuscar.style.opacity = '0.7';
+    }
 
     estado.carregando = true;
 
@@ -172,6 +179,10 @@
     } finally {
       estado.carregando = false;
       if (elLoadingState) elLoadingState.classList.add('hidden');
+      if (btnBuscar) {
+        btnBuscar.disabled = false;
+        btnBuscar.style.opacity = '1';
+      }
     }
   }
 
@@ -389,6 +400,8 @@
         btn.setAttribute('aria-pressed', isAtivo ? 'true' : 'false');
       });
     }
+  }
+
   /**
    * Analisa texto colado que corresponda a uma linha de extrato bancário
    */
@@ -467,11 +480,14 @@
     }
   }
 
+  let moduleInitialized = false;
+
   /**
    * Inicializa os event listeners do módulo
    */
   function initModule() {
     obterElementos();
+    if (moduleInitialized) return;
 
     if (btnBuscar) {
       btnBuscar.addEventListener('click', executarBusca);
@@ -518,7 +534,11 @@
 
     // Inicializa estado visual e acessibilidade aria-pressed dos chips
     atualizarVisualChips();
+    moduleInitialized = true;
   }
+
+  // Exportação para o ciclo de vida global de abas
+  window.initPgtosDesconhecidos = initModule;
 
   /**
    * API PÚBLICA GLOBAL:
