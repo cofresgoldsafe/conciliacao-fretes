@@ -389,6 +389,82 @@
         btn.setAttribute('aria-pressed', isAtivo ? 'true' : 'false');
       });
     }
+  /**
+   * Analisa texto colado que corresponda a uma linha de extrato bancário
+   */
+  function parsearLinhaExtratoFront(raw) {
+    if (!raw) return { valorStr: '', pagador: '' };
+    let s = String(raw).trim();
+
+    // 1. Extração de valor monetário
+    let valorStr = '';
+    const regexValorFim = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*$/i;
+    const matchValorFim = s.match(regexValorFim);
+    if (matchValorFim) {
+      valorStr = matchValorFim[1];
+      s = s.slice(0, matchValorFim.index).trim();
+    } else {
+      const matchValorRs = s.match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}|\d+\.\d{2})/i);
+      if (matchValorRs) {
+        valorStr = matchValorRs[1];
+        s = s.replace(matchValorRs[0], ' ').trim();
+      }
+    }
+
+    // 2. Remove datas em qualquer posição
+    s = s.replace(/\b\d{2}\/\d{2}\/\d{2,4}\b/g, ' ');
+
+    // 3. Remove termos operacionais bancários
+    const termosOperacionais = [
+      /\b(CR[EÉ]DITO|D[EÉ]BITO)(\s+EM\s+CONTA(\s+CORRENTE)?)?\b/gi,
+      /\b(PIX\s*(RECEBIDO|TRANSF(ERENCIA)?|ENVIADO)?|PAGTO\s+PIX|RECEBIMENTO\s+PIX)\b/gi,
+      /\b(TED(\s+REMET(ENTE)?)?|DOC)\b/gi,
+      /\b(TRANSF(ER[EÊ]NCIA)?(\s+ELET\s+DISP)?|TRANSF\.)(\s+(RECEBID[AO]|ENVIAD[AO]))?\b/gi,
+      /\b(TRANSFER[EÊ]NCIA\s+(RECEBIDA|ENVIADA)|TRANSF\s+(RECEBIDA|ENVIADA))\b/gi,
+      /\b(BOLETO(\s+DE\s+COBRAN[CÇ]A)?|BOL\.?)(\s+(RECEBIDO|EMITIDO|PAGO))?\b/gi,
+      /\b(PAGTO|PAGAMENTO|LIQUIDA[CÇ][AÃ]O)(\s+(EFETUADO|RECEBIDO))?\b/gi,
+      /\b(DEPOSITO|DEPÓSITO|DEP)\b\.?(\s+(EM\s+CONTA|DINHEIRO|EM\s+DINHEIRO|IDENTIFICADO|ONLINE))?\b/gi,
+      /\b(RECEBID[AO]|ENVIAD[AO]|EFETUAD[AO]|EMITID[AO])\b/gi
+    ];
+    for (const regex of termosOperacionais) {
+      s = s.replace(regex, ' ');
+    }
+
+    // 4. Remove códigos de roteamento bancário, agência e conta
+    s = s.replace(/\b\d{3}\s+\d{1,5}\s+\d{4,12}\b/g, ' ');
+    s = s.replace(/\b\d{5}\s+\d{6,12}\b/g, ' ');
+    s = s.replace(/Cp\s*:\s*\d+[-:]\s*/gi, ' ');
+    s = s.replace(/\b\d{3}\/\d{10,15}\b/g, ' ');
+
+    // 5. Remove pontuações e caracteres residuais
+    s = s.replace(/["'“”«»]/g, ' ');
+    s = s.replace(/[:;]/g, ' ');
+    s = s.replace(/(?:^|\s+)-\s*/g, ' ');
+    s = s.replace(/\s+/g, ' ').trim();
+    s = s.replace(/^[^\wÀ-ÿ/]+|[^\wÀ-ÿ/]+$/g, '').trim();
+
+    return { valorStr, pagador: s };
+  }
+
+  function tratarPasteExtrato(e) {
+    const clipboardText = (e.clipboardData || window.clipboardData)?.getData('text');
+    if (!clipboardText) return;
+
+    const raw = clipboardText.trim();
+    const temMultiplosEspacos = /[\t\r\n]|\s{2,}/.test(raw);
+    const temData = /\b\d{2}\/\d{2}\/\d{2,4}\b/.test(raw);
+    const temValor = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/i.test(raw);
+
+    if ((temMultiplosEspacos || temData) && temValor) {
+      e.preventDefault();
+      const parsed = parsearLinhaExtratoFront(raw);
+      if (elValor && parsed.valorStr) {
+        elValor.value = parsed.valorStr;
+      }
+      if (elTermo && parsed.pagador) {
+        elTermo.value = parsed.pagador;
+      }
+    }
   }
 
   /**
@@ -414,6 +490,7 @@
             executarBusca();
           }
         });
+        input.addEventListener('paste', tratarPasteExtrato);
       }
     });
 

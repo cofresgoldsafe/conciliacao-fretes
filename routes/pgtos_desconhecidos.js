@@ -89,26 +89,48 @@ function fetchHttpJson(url, options = {}) {
 
 /**
  * Sanitiza e extrai o termo útil de descrições de extrato bancário
- * Remove ruídos comuns: DEPOSITO, DEP, PIX RECEBIDO, TED, DOC, TRANSF, etc.
+ * Remove ruídos comuns: DEPOSITO, DEP, PIX RECEBIDO, TED, DOC, TRANSF, dados bancários e datas
  */
 function limparTermoBancario(raw) {
   if (!raw) return '';
   let s = String(raw).trim();
-  const prefixos = [
-    /^(DEPOSITO|DEPÓSITO|DEP\.?)\s+(EM\s+CONTA|DINHEIRO|EM\s+DINHEIRO|IDENTIFICADO|ONLINE)?\s*[-:]?\s*/i,
-    /^(PIX\s*(RECEBIDO|TRANSF(ERENCIA)?|ENVIADO)?|PAGTO\s+PIX|RECEBIMENTO\s+PIX)\s*[-:]?\s*/i,
-    /^(TED(\s+REMET(ENTE)?)?|DOC)\s*[-:]?\s*/i,
-    /^(TRANSF(ERENCIA)?(\s+ELET\s+DISP)?|TRANSF\.)\s*[-:]?\s*/i,
-    /^(CREDITO|CRÉDITO)(\s+EM\s+CONTA(\s+CORRENTE)?)?\s*[-:]?\s*/i,
-    /^(PAGTO|PAGAMENTO|LIQUIDACAO|LIQUIDAÇÃO)\s*[-:]?\s*/i,
-    /^(BOLETO|BOL\.?)\s*[-:]?\s*/i
-  ];
 
-  for (const regex of prefixos) {
-    s = s.replace(regex, '').trim();
+  // 1. Remove datas em qualquer posição (DD/MM/AAAA ou DD/MM/YY)
+  s = s.replace(/\b\d{2}\/\d{2}\/\d{2,4}\b/g, ' ');
+
+  // 2. Remove valores monetários com R$ ou valor decimal ao final da linha
+  s = s.replace(/R\$\s*[\d.,]+/gi, ' ');
+  s = s.replace(/\s+[\d.,]+$/g, ' ');
+
+  // 3. Remove categorias e termos operacionais bancários
+  const termosOperacionais = [
+    /\b(CR[EÉ]DITO|D[EÉ]BITO)(\s+EM\s+CONTA(\s+CORRENTE)?)?\b/gi,
+    /\b(PIX\s*(RECEBIDO|TRANSF(ERENCIA)?|ENVIADO)?|PAGTO\s+PIX|RECEBIMENTO\s+PIX)\b/gi,
+    /\b(TED(\s+REMET(ENTE)?)?|DOC)\b/gi,
+    /\b(TRANSF(ER[EÊ]NCIA)?(\s+ELET\s+DISP)?|TRANSF\.)(\s+(RECEBID[AO]|ENVIAD[AO]))?\b/gi,
+    /\b(TRANSFER[EÊ]NCIA\s+(RECEBIDA|ENVIADA)|TRANSF\s+(RECEBIDA|ENVIADA))\b/gi,
+    /\b(BOLETO(\s+DE\s+COBRAN[CÇ]A)?|BOL\.?)(\s+(RECEBIDO|EMITIDO|PAGO))?\b/gi,
+    /\b(PAGTO|PAGAMENTO|LIQUIDA[CÇ][AÃ]O)(\s+(EFETUADO|RECEBIDO))?\b/gi,
+    /\b(DEPOSITO|DEPÓSITO|DEP)\b\.?(\s+(EM\s+CONTA|DINHEIRO|EM\s+DINHEIRO|IDENTIFICADO|ONLINE))?\b/gi,
+    /\b(RECEBID[AO]|ENVIAD[AO]|EFETUAD[AO]|EMITID[AO])\b/gi
+  ];
+  for (const regex of termosOperacionais) {
+    s = s.replace(regex, ' ');
   }
-  // Remove termos bancários isolados residuais no início
-  s = s.replace(/^(DEPOSITO|DEPÓSITO|DEP|PIX|TED|DOC|TRANSF|CREDITO|CRÉDITO)\s*[-:]?\s*/i, '').trim();
+
+  // 4. Remove códigos de roteamento bancário, agência e conta
+  s = s.replace(/\b\d{3}\s+\d{1,5}\s+\d{4,12}\b/g, ' ');
+  s = s.replace(/\b\d{5}\s+\d{6,12}\b/g, ' ');
+  s = s.replace(/Cp\s*:\s*\d+[-:]\s*/gi, ' ');
+  s = s.replace(/\b\d{3}\/\d{10,15}\b/g, ' ');
+
+  // 5. Remove pontuações e caracteres residuais de extrato preservando pontuação de CNPJ/CPF
+  s = s.replace(/["'“”«»]/g, ' ');
+  s = s.replace(/[:;]/g, ' ');
+  s = s.replace(/(?:^|\s+)-\s*/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  s = s.replace(/^[^\wÀ-ÿ/]+|[^\wÀ-ÿ/]+$/g, '').trim();
+
   return s;
 }
 
@@ -145,6 +167,47 @@ function normalizarValorNumerico(raw) {
   }
   if (isNaN(val)) return null;
   return isNeg ? -Math.abs(val) : val;
+}
+
+/**
+ * Analisa uma linha bruta colada de extrato bancário ou planilha e extrai:
+ * - data (ex: '07/10/2026')
+ * - valor numérico (ex: 1220.00)
+ * - termo / pagador limpo (ex: 'MADERO INDUSTRIA E COM')
+ */
+function parsearLinhaExtrato(raw) {
+  if (!raw) return { data: null, valor: null, pagador: '' };
+  let s = String(raw).trim();
+
+  // 1. Extração de data (DD/MM/AAAA ou DD/MM/YY)
+  let dataEncontrada = null;
+  const matchData = s.match(/\b(\d{2}\/\d{2}\/\d{2,4})\b/);
+  if (matchData) {
+    dataEncontrada = matchData[1];
+    s = s.replace(matchData[0], ' ').trim();
+  }
+
+  // 2. Extração de valor monetário (ao final da linha, ou com R$, ou formato monetário BRL)
+  let valorEncontrado = null;
+  const regexValorFim = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\s*$/i;
+  const matchValorFim = s.match(regexValorFim);
+  if (matchValorFim) {
+    valorEncontrado = normalizarValorNumerico(matchValorFim[1]);
+    s = s.slice(0, matchValorFim.index).trim();
+  } else {
+    const matchValorRs = s.match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}|\d+\.\d{2})/i);
+    if (matchValorRs) {
+      valorEncontrado = normalizarValorNumerico(matchValorRs[1]);
+      s = s.replace(matchValorRs[0], ' ').trim();
+    }
+  }
+
+  const pagadorLimpo = limparTermoBancario(s);
+  return {
+    data: dataEncontrada,
+    valor: valorEncontrado,
+    pagador: pagadorLimpo
+  };
 }
 
 /**
@@ -360,13 +423,22 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
         }
 
         // Suporte a múltiplos tokens (ex: "JESMOND VAR" encontra "JESMOND COMERCIO VAR")
-        const stopWords = new Set(['LTDA', 'EIRELI', 'ME', 'EPP', 'S/A', 'SA', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'EM', 'COM', 'E', 'PARA']);
-        const tokens = cleanTermo.split(/\s+/).filter(t => t.length >= 3 && !stopWords.has(t.toUpperCase()));
+        const stopWords = new Set([
+          'LTDA', 'EIRELI', 'ME', 'EPP', 'S/A', 'SA', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'EM', 'COM', 'E', 'PARA',
+          'PIX', 'TED', 'DOC', 'TRANSF', 'TRANSFERENCIA', 'TRANSFERÊNCIA', 'RECEBIDO', 'RECEBIDA',
+          'CREDITO', 'CRÉDITO', 'DEBITO', 'DÉBITO', 'BOLETO', 'PAGTO', 'PAGAMENTO', 'BANCO', 'CONTA'
+        ]);
+        const tokens = cleanTermo.split(/\s+/)
+          .map(t => t.replace(/^[^\wÀ-ÿ]+|[^\wÀ-ÿ]+$/g, '').trim())
+          .filter(t => t.length >= 3 && !stopWords.has(t.toUpperCase()));
         if (tokens.length >= 2) {
           const tokenNomCli = tokens.map(t => `E1.E1_NOMCLI LIKE '%${t}%'`).join(' AND ');
           const tokenSa1 = tokens.map(t => `SA1.A1_NOME LIKE '%${t}%'`).join(' AND ');
           condicoesTermo.push(`(${tokenNomCli})`);
           condicoesTermo.push(`(${tokenSa1})`);
+        } else if (tokens.length === 1) {
+          condicoesTermo.push(`E1.E1_NOMCLI LIKE '%${tokens[0]}%'`);
+          condicoesTermo.push(`SA1.A1_NOME LIKE '%${tokens[0]}%'`);
         }
 
         whereClauses.push(`(${condicoesTermo.join(' OR ')})`);
@@ -486,14 +558,22 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
         ];
 
         if (cleanTermo) {
-          const stopWords = new Set(['LTDA', 'EIRELI', 'ME', 'EPP', 'S/A', 'SA', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'EM', 'COM', 'E', 'PARA']);
-          const tokens = cleanTermo.split(/\s+/).filter(t => t.length >= 3 && !stopWords.has(t.toUpperCase()));
+          const stopWords = new Set([
+            'LTDA', 'EIRELI', 'ME', 'EPP', 'S/A', 'SA', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'EM', 'COM', 'E', 'PARA',
+            'PIX', 'TED', 'DOC', 'TRANSF', 'TRANSFERENCIA', 'TRANSFERÊNCIA', 'RECEBIDO', 'RECEBIDA',
+            'CREDITO', 'CRÉDITO', 'DEBITO', 'DÉBITO', 'BOLETO', 'PAGTO', 'PAGAMENTO', 'BANCO', 'CONTA'
+          ]);
+          const tokens = cleanTermo.split(/\s+/)
+            .map(t => t.replace(/^[^\wÀ-ÿ]+|[^\wÀ-ÿ]+$/g, '').trim())
+            .filter(t => t.length >= 3 && !stopWords.has(t.toUpperCase()));
           const condicoesTermoC5 = [
             `C5.C5_NOMECLI LIKE '%${cleanTermo}%'`,
             `C5.C5_NUM LIKE '%${cleanTermo}%'`
           ];
           if (tokens.length >= 2) {
             condicoesTermoC5.push(`(${tokens.map(t => `C5.C5_NOMECLI LIKE '%${t}%'`).join(' AND ')})`);
+          } else if (tokens.length === 1) {
+            condicoesTermoC5.push(`C5.C5_NOMECLI LIKE '%${tokens[0]}%'`);
           }
           whereC5.push(`(${condicoesTermoC5.join(' OR ')})`);
         }
@@ -807,8 +887,18 @@ router.get('/buscar', async (req, res) => {
     const { empresa, valor, termo, limite } = req.query;
 
     const empresaAlvo = String(empresa || 'ALL').trim().toUpperCase();
-    const valorNum = normalizarValorNumerico(valor);
-    const termoLimpo = limparTermoBancario(termo);
+    let valorNum = normalizarValorNumerico(valor);
+    let parsedExtrato = null;
+
+    // Se o valor estiver ausente ou inválido, mas o termo possui linha de extrato completa com valor embutido
+    if ((!valorNum || valorNum <= 0) && termo) {
+      parsedExtrato = parsearLinhaExtrato(termo);
+      if (parsedExtrato.valor && parsedExtrato.valor > 0) {
+        valorNum = parsedExtrato.valor;
+      }
+    }
+
+    const termoLimpo = parsedExtrato ? parsedExtrato.pagador : limparTermoBancario(termo);
     const limiteNum = Math.max(1, Math.min(parseInt(limite, 10) || 30, 100));
 
     if (!valorNum || valorNum <= 0) {
@@ -899,4 +989,5 @@ module.exports.formatarDataBr = formatarDataBr;
 module.exports.isWithinLastDays = isWithinLastDays;
 module.exports.obterDataCorteProtheus = obterDataCorteProtheus;
 module.exports.extrairDivisorCondicao = extrairDivisorCondicao;
+module.exports.parsearLinhaExtrato = parsearLinhaExtrato;
 

@@ -24,7 +24,8 @@ const {
   formatarDataBr,
   isWithinLastDays,
   obterDataCorteProtheus,
-  extrairDivisorCondicao
+  extrairDivisorCondicao,
+  parsearLinhaExtrato
 } = require('./routes/pgtos_desconhecidos');
 
 console.log('🧪 [TESTES] Iniciando Suíte de Testes: Pgtos Desconhecidos...\n');
@@ -766,6 +767,118 @@ async function runAsyncTest(name, fn) {
     const titJesmond = res.body.resultados.find(r => r.cliente && r.cliente.includes('JESMOND'));
     assert(titJesmond, 'Título de JESMOND deve ser localizado na busca com termo " DEPOSITO JESMOND "');
     assert.strictEqual(titJesmond.confianca, 'Alta');
+  });
+
+  // =========================================================================
+  // BLOCO 10: PARSER ROBUSTO DE LINHAS DE EXTRATO BANCÁRIO & SMART PASTE
+  // =========================================================================
+  console.log('\n--- Bloco 10: Parser Robusto de Linhas de Extrato Bancário & Smart Paste ---');
+
+  runTest('10.1 parsearLinhaExtrato extrai data, valor e razão social da linha MADERO', () => {
+    const raw = '07/10/2026    CRÉDITO    Pix recebido    PIX RECEBIDO -MADERO INDUSTRIA E COM    R$ 1.220,00';
+    const res = parsearLinhaExtrato(raw);
+    assert.strictEqual(res.data, '07/10/2026', 'Data deve ser 07/10/2026');
+    assert.strictEqual(res.valor, 1220.00, 'Valor deve ser 1220.00');
+    assert.strictEqual(res.pagador, 'MADERO INDUSTRIA E COM', 'Pagador deve ser MADERO INDUSTRIA E COM');
+  });
+
+  runTest('10.2 parsearLinhaExtrato extrai data, valor e remove roteamento bancário da linha BOMBRIL', () => {
+    const raw = '13/07/2026    Transferencia recebida: "341 263 993933 BOMBRIL S A   EM RECUPERACAO J"    26.504,00';
+    const res = parsearLinhaExtrato(raw);
+    assert.strictEqual(res.data, '13/07/2026', 'Data deve ser 13/07/2026');
+    assert.strictEqual(res.valor, 26504.00, 'Valor deve ser 26504.00');
+    assert.strictEqual(res.pagador, 'BOMBRIL S A EM RECUPERACAO J', 'Pagador deve ser limpo');
+  });
+
+  runTest('10.3 parsearLinhaExtrato extrai dados e remove prefixo Pix Cp: da linha VIEIRA', () => {
+    const raw = '13/07/2026    Pix recebido: "Cp :18236120-A M G VIEIRA COMERCIO DE PECAS E ACESSORIOS LTDA"    24.000,00';
+    const res = parsearLinhaExtrato(raw);
+    assert.strictEqual(res.data, '13/07/2026', 'Data deve ser 13/07/2026');
+    assert.strictEqual(res.valor, 24000.00, 'Valor deve ser 24000.00');
+    assert.strictEqual(res.pagador, 'A M G VIEIRA COMERCIO DE PECAS E ACESSORIOS LTDA');
+  });
+
+  runTest('10.4 parsearLinhaExtrato extrai valor e limpa dados da FUNDACAO ARTHUR BERNARDES', () => {
+    const raw = 'Transferencia recebida: "001 4478 73881 FUNDACAO ARTHUR BERNARDES"    9.292,00';
+    const res = parsearLinhaExtrato(raw);
+    assert.strictEqual(res.valor, 9292.00, 'Valor deve ser 9292.00');
+    assert.strictEqual(res.pagador, 'FUNDACAO ARTHUR BERNARDES');
+  });
+
+  runTest('10.5 parsearLinhaExtrato extrai valor e limpa dados da ARAUCO CELULOSE', () => {
+    const raw = 'Transferencia recebida: "341 7285 277674 ARAUCO CELULOSE DO BRASIL S A"    19.662,00';
+    const res = parsearLinhaExtrato(raw);
+    assert.strictEqual(res.valor, 19662.00, 'Valor deve ser 19662.00');
+    assert.strictEqual(res.pagador, 'ARAUCO CELULOSE DO BRASIL S A');
+  });
+
+  runTest('10.6 limparTermoBancario preserva CNPJ e CPF sem distorção', () => {
+    assert.strictEqual(limparTermoBancario('12.345.678/0001-90'), '12.345.678/0001-90');
+    assert.strictEqual(limparTermoBancario('123.456.789-00'), '123.456.789-00');
+  });
+
+  runTest('10.7 public/js/pgtos_desconhecidos.js possui listeners de paste para smart paste', () => {
+    const frontCode = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(frontCode.includes('tratarPasteExtrato'), 'Função tratarPasteExtrato deve existir no frontend');
+    assert(frontCode.includes("input.addEventListener('paste', tratarPasteExtrato)"), 'Listener de paste deve estar registrado');
+  });
+
+  await runAsyncTest('10.8 Rota Express com valor 1220 e linha bruta do extrato no termo localiza título da MADERO (Alta)', async () => {
+    const express = require('express');
+    const requestApp = express();
+    requestApp.use('/api', require('./routes/pgtos_desconhecidos'));
+
+    const http = require('http');
+    const server = http.createServer(requestApp);
+    await new Promise(r => server.listen(0, r));
+    const port = server.address().port;
+
+    const rawLinha = '07/10/2026    CRÉDITO    Pix recebido    PIX RECEBIDO -MADERO INDUSTRIA E COM    R$ 1.220,00';
+    const url = `http://127.0.0.1:${port}/api/buscar?empresa=ALL&valor=1220&termo=${encodeURIComponent(rawLinha)}`;
+
+    const res = await new Promise((resolve) => {
+      http.get(url, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    server.close();
+    assert.strictEqual(res.status, 200);
+    assert(Array.isArray(res.body.resultados), 'Resultados deve ser array');
+    const titMadero = res.body.resultados.find(r => r.cliente && r.cliente.includes('MADERO'));
+    assert(titMadero, 'Título da MADERO deve ser encontrado mesmo com linha bruta de extrato colada');
+    assert.strictEqual(titMadero.confianca, 'Alta', 'Confiança deve ser Alta para valor idêntico');
+  });
+
+  await runAsyncTest('10.9 Rota Express aproveita valor embutido na linha de extrato quando campo valor vem vazio', async () => {
+    const express = require('express');
+    const requestApp = express();
+    requestApp.use('/api', require('./routes/pgtos_desconhecidos'));
+
+    const http = require('http');
+    const server = http.createServer(requestApp);
+    await new Promise(r => server.listen(0, r));
+    const port = server.address().port;
+
+    const rawLinha = '07/10/2026    CRÉDITO    Pix recebido    PIX RECEBIDO -MADERO INDUSTRIA E COM    R$ 1.220,00';
+    const url = `http://127.0.0.1:${port}/api/buscar?empresa=ALL&termo=${encodeURIComponent(rawLinha)}`;
+
+    const res = await new Promise((resolve) => {
+      http.get(url, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    server.close();
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.criterios.valor, 1220, 'Valor 1220 deve ser extraído automaticamente');
+    const titMadero = res.body.resultados.find(r => r.cliente && r.cliente.includes('MADERO'));
+    assert(titMadero, 'Título da MADERO deve ser encontrado');
+    assert.strictEqual(titMadero.confianca, 'Alta');
   });
 
   console.log(`\n=======================================================`);

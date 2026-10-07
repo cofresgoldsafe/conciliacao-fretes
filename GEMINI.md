@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.299 (Homologada em 07/10/2026 16:17)  
+> **Versão da Documentação:** v8.300 (Homologada em 07/10/2026 17:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 07/10/2026 16:17 (v8.299 - Regras de Tolerância de 6%, Parcelamento SC5 e Busca Textual em Pgtos Desconhecidos)  
+> **Data da Última Auditoria:** 07/10/2026 17:15 (v8.300 - Parser de Extrato Bancário e Smart Paste em Pgtos Desconhecidos)  
 
 ---
 
@@ -178,6 +178,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.300 (07/10/2026):** Parser de extrato bancário e Smart Paste na tela Pgtos Desconhecidos: decomposição automática de linhas brutas coladas em valor e razão social limpa no frontend ('paste') e backend (query param), saneamento de roteamentos bancários e 63 testes aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.299 (07/10/2026):** Tolerância estrita de até 6% em Pgtos Desconhecidos (idêntico = Alta 🟢, até 6% = Baixa ⚪, > 6% = descarte), cálculo de 1ª parcela de pedidos SC5 por divisor linear (`1x`, `2x`, `3x`, `4x`), erradicação de pedidos com valores discrepantes, correção no parser de ruído bancário (`DEPOSITO`, `DEP.`) e busca tokenizada Protheus (54 testes aprovados — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.298 (07/10/2026):** Conciliação e sincronização em lote de OSs Protheus x Portal da Assistência: 573 OSs quitadas atualizadas para status 'Confirmado', 472 OSs com valor zerado equalizadas com o Protheus (`E1_VALOR`) e 1.168 OSs recompostas com descrições, quantidades e valores de peças/serviços da base OnlineOS legada, com exclusão auditada de títulos não quitados e parciais (OS 1297) (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.297 (07/10/2026):** Publicação oficial de melhorias na tela Pgtos Desconhecidos (`#tab-pgtos-desconhecidos`): exclusão estrita de títulos com status 'Baixado no Protheus' (query SE1 com `E1_SALDO > 0` e `E1_BAIXA = ''`, descarte em loop e proteção na renderização), validação obrigatória do campo de valor no frontend (`*`, `required`) e backend (`HTTP 400`) (45 testes aprovados em `test_pgtos_desconhecidos.js` — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).

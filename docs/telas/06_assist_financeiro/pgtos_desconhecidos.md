@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-pgtos-desconhecidos` | **Botão:** `#btnTabPgtosDesconhecidos`  
 > **Permissão RBAC:** `financeiro`, `analista-fin`, `admin`, `diretoria` (Perfil `vendedor` bloqueado via HTTP 403)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 07/10/2026 (v8.299 - Homologado)  
+> **Última Atualização:** 07/10/2026 (v8.300 - Homologado)  
 
 ---
 
@@ -132,6 +132,23 @@ Além das consultas em tempo real, o ecossistema possui scripts de conciliação
 3. **Busca Textual Multi-Palavra / Tokens no Protheus:**
    - Além do termo contínuo, termos com múltiplas palavras úteis (ex: `"JESMOND VAR"`) são tokenizados para cruzar via `AND` no SQL (`E1_NOMCLI LIKE '%JESMOND%' AND E1_NOMCLI LIKE '%VAR%'`), localizando nomes compostos como `JESMOND COMERCIO VAR`.
 
+### 4.7 Parser Robusto de Linhas de Extrato Bancário & Smart Paste (v8.300)
+Para sanar a fricção de operadores que colam linhas brutas inteiras copiadas do extrato bancário ou planilhas (ex: `07/10/2026    CRÉDITO    Pix recebido    PIX RECEBIDO -MADERO INDUSTRIA E COM    R$ 1.220,00`):
+1. **Frontend Smart Paste (`tratarPasteExtrato` / `parsearLinhaExtratoFront`):**
+   - Interceptação nativa do evento `paste` nos campos `#pgtosValorInput` e `#pgtosTermoInput`.
+   - Se a string colada contiver dados múltiplos de extrato (tabs/espaços múltiplos ou datas combinados com valores monetários), o sistema auto-decompõe silenciosamente a linha:
+     - Formata e insere o valor monetário (`1.220,00`) no campo `#pgtosValorInput`.
+     - Isola a razão social do sacado/pagador limpo (`MADERO INDUSTRIA E COM`) no campo `#pgtosTermoInput`.
+2. **Backend Resiliente (`limparTermoBancario` / `parsearLinhaExtrato`):**
+   - Remoção de datas em qualquer posição (`DD/MM/AAAA` ou `DD/MM/YY`).
+   - Remoção de valores monetários com prefixo `R$` ou posicionados ao final da linha.
+   - Remoção de categorias operacionais (`CRÉDITO`, `DÉBITO`, `PIX RECEBIDO`, `TRANSFERÊNCIA RECEBIDA/ENVIADA`, `BOLETO RECEBIDO`, etc.).
+   - Remoção de códigos de roteamento bancário, agência e conta (ex: `341 263 993933`, `001 4478 73881`, `Cp :18236120-`, `00019 441662781`).
+   - Preservação estrita de identificadores societários sem ruído bancário (CNPJ e CPF íntegros).
+   - Tolerância na rota `GET /buscar`: se o parâmetro `valor` for omitido mas o parâmetro `termo` contiver uma linha completa de extrato, o valor é extraído automaticamente sem retornar `HTTP 400`.
+3. **Saneamento de Stop Words Bancárias no SQL Protheus:**
+   - Termos bancários residuais (`PIX`, `TED`, `DOC`, `TRANSF`, `RECEBIDO`, `CREDITO`, `DEBITO`, etc.) são expurgados do array de tokens, e pontuações periféricas são limpas (`-MADERO` vira `MADERO`), garantindo match imediato em `E1_NOMCLI` e `SA1.A1_NOME`.
+
 ---
 
 ## 5. Endpoints REST da API
@@ -139,9 +156,9 @@ Além das consultas em tempo real, o ecossistema possui scripts de conciliação
 ### `GET /api/financeiro/pgtos-desconhecidos/buscar`
 - **Headers:** `Authorization: Bearer <JWT>`
 - **Query Params:**
-  - `valor`: **Obrigatório.** Valor do depósito em formato livre (ex: `'361'`, `'361.00'`, `'R$ 361,00'`). Se ausente, não numérico ou $\le 0$, retorna `HTTP 400 Bad Request`.
+  - `valor`: **Obrigatório** (ou embutido na linha bruta de extrato em `termo`). Valor do depósito em formato livre (ex: `'361'`, `'361.00'`, `'R$ 361,00'`). Se ausente e não detectável no termo, retorna `HTTP 400 Bad Request`.
   - `empresa`: `'14'`, `'15'`, `'16'` ou `'ALL'` (default: `'ALL'`).
-  - `termo`: Termo opcional de refinamento de busca (Razão social, nome de contato, CNPJ/CPF ou texto de extrato).
+  - `termo`: Termo opcional de refinamento de busca (Razão social, nome de contato, CNPJ/CPF ou linha bruta de extrato).
   - `limite`: Número máximo de candidatos retornados (default: 30, clamp 1 a 100).
 
 ---
@@ -152,7 +169,7 @@ A suíte cobre 100% dos requisitos de negócio, heurística e segurança:
 ```bash
 node test_pgtos_desconhecidos.js
 ```
-Total de testes: **54 testes aprovados (0 falhas)**:
+Total de testes: **63 testes aprovados (0 falhas)**:
 - Bloco 1: Limpeza de Prefixos e Termos de Extrato (10 testes)
 - Bloco 2: Normalização de Valores Monetários com preservação de sinal (6 testes)
 - Bloco 3: Motor de Score e Confiança por Empresa (5 testes)
@@ -162,11 +179,13 @@ Total de testes: **54 testes aprovados (0 falhas)**:
 - Bloco 7: Filtros de 90 Dias (Pipedrive update_time, Protheus E1_EMISSAO, Assistência Entrada em) (8 testes)
 - Bloco 8: Exclusão Estrita de Títulos Baixados / Somente Recebimentos em Aberto Protheus (3 testes)
 - Bloco 9: Parcelamento SC5, Tolerância de 6% e Busca Textual Protheus (5 testes)
+- Bloco 10: Parser Robusto de Linhas de Extrato Bancário & Smart Paste (9 testes)
 
 ---
 
 ## 7. Histórico & Evolução da Tela
 
+- **v8.300 (07/10/2026):** Parser de extrato bancário e Smart Paste na tela Pgtos Desconhecidos: decomposição automática de linhas brutas coladas em valor e razão social limpa no frontend ('paste') e backend (query param), saneamento de roteamentos bancários (`341...`, `001...`, `Cp :...`), suporte a tokens sem pontuação no SQL Protheus e 63 testes aprovados (0 falhas).
 - **v8.299 (07/10/2026):** Aplicação da régua de tolerância estrita de até 6% em títulos SE1 e pedidos SC5 (idêntico = Alta 🟢, até 6% = Baixa ⚪, acima de 6% = descarte imediato), cálculo de valor da 1ª parcela em pedidos não faturados SC5 com divisor linear (`1x`, `2x`, `3x`, `4x`), erradicação de pedidos com valores discrepantes (eliminação da cláusula residual em SC5 SQL), correção do parser de ruído bancário (`DEPOSITO`, `DEP.`, `DEPOSITO EM CONTA`) e busca textual tokenizada multi-palavras para Protheus (`JESMOND COMERCIO VAR`). Chip "⚪ Baixa" adicionado na interface. Suíte expandida para 54 testes aprovados (0 falhas).
 - **v8.298 (07/10/2026):** Conciliação e sincronização em lote de OSs Protheus x Portal da Assistência: 573 OSs quitadas atualizadas para status 'Confirmado', 472 OSs com valor zerado equalizadas com o Protheus (`E1_VALOR`) e 1.168 OSs recompostas com descrições, quantidades e valores de peças/serviços da base OnlineOS legada, com exclusão auditada de títulos não quitados e parciais (OS 1297).
 - **v8.297 (07/10/2026):** Exclusão estrita de títulos com status 'Baixado no Protheus' e campo de valor obrigatório na listagem de pagamentos desconhecidos. Apenas recebimentos em aberto (`E1_SALDO > 0` e `E1_BAIXA` vazia) são consultados e exibidos, tanto no SQL de SE1 quanto na defesa em profundidade do backend e frontend. Suíte ampliada para 45 testes aprovados.
