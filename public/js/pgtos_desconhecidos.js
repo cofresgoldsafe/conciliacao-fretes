@@ -438,6 +438,9 @@
         });
       });
     }
+
+    // Inicializa estado visual e acessibilidade aria-pressed dos chips
+    atualizarVisualChips();
   }
 
   /**

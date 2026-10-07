@@ -23,7 +23,8 @@ const {
   parseDataGenerica,
   formatarDataBr,
   isWithinLastDays,
-  obterDataCorteProtheus
+  obterDataCorteProtheus,
+  extrairDivisorCondicao
 } = require('./routes/pgtos_desconhecidos');
 
 console.log('🧪 [TESTES] Iniciando Suíte de Testes: Pgtos Desconhecidos...\n');
@@ -93,6 +94,21 @@ async function runAsyncTest(name, fn) {
     assert.strictEqual(limparTermoBancario(''), '');
     assert.strictEqual(limparTermoBancario(null), '');
     assert.strictEqual(limparTermoBancario(undefined), '');
+  });
+
+  runTest('1.8 Remove prefixo DEPOSITO isolado e com espaços (ex: DEPOSITO JESMOND)', () => {
+    const res = limparTermoBancario(' DEPOSITO JESMOND ');
+    assert.strictEqual(res, 'JESMOND');
+  });
+
+  runTest('1.9 Remove prefixo DEP. abreviado (ex: DEP. JESMOND)', () => {
+    const res = limparTermoBancario('DEP. JESMOND');
+    assert.strictEqual(res, 'JESMOND');
+  });
+
+  runTest('1.10 Remove prefixo DEPOSITO EM CONTA com hífen', () => {
+    const res = limparTermoBancario('DEPOSITO EM CONTA - JESMOND COMERCIO');
+    assert.strictEqual(res, 'JESMOND COMERCIO');
   });
 
   // =========================================================================
@@ -634,6 +650,122 @@ async function runAsyncTest(name, fn) {
   runTest('8.3 public/js/pgtos_desconhecidos.js possui filtro de proteção defensivo contra títulos baixados na renderização', () => {
     const jsCode = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
     assert(jsCode.includes("item.status && item.status.includes('Baixado')"), 'Filtro defensivo contra status Baixado deve existir em renderizarTabela');
+  });
+
+  // =========================================================================
+  // BLOCO 9: PARCELAMENTO SC5, TOLERÂNCIA DE 6% E BUSCA TEXTUAL PROTHEUS
+  // =========================================================================
+  console.log('\n--- Bloco 9: Parcelamento SC5, Tolerância de 6% e Busca Textual Protheus ---');
+
+  runTest('9.1 extrairDivisorCondicao extrai corretamente divisores de parcelamento (1x a 4x e padrão)', () => {
+    assert.strictEqual(extrairDivisorCondicao('1X BOL 28 D'), 1);
+    assert.strictEqual(extrairDivisorCondicao('2X DEP + BOL 28D'), 2);
+    assert.strictEqual(extrairDivisorCondicao('3X BOL 15/30/60'), 3);
+    assert.strictEqual(extrairDivisorCondicao('4X CC VISA'), 4);
+    assert.strictEqual(extrairDivisorCondicao('10X CC MASTER'), 10);
+    assert.strictEqual(extrairDivisorCondicao('REMESSA SEM COBRANCA'), 1);
+    assert.strictEqual(extrairDivisorCondicao(''), 1);
+    assert.strictEqual(extrairDivisorCondicao(null), 1);
+  });
+
+  runTest('9.2 calcularScoreEConfianca: Match idêntico gera Confiança Alta (🟢)', () => {
+    const itemExato = {
+      origem: 'PROTHEUS',
+      empresa: '16',
+      cliente: 'JESMOND COMERCIO VAR',
+      valorMatch: 3957.00,
+      scoreBase: 160
+    };
+    const res = calcularScoreEConfianca(itemExato, '16', 3957.00, '');
+    assert.strictEqual(res.confianca, 'Alta');
+    assert(res.score >= 150, `Score esperado >= 150, recebido ${res.score}`);
+  });
+
+  runTest('9.3 calcularScoreEConfianca: Diferença de até 6% gera Confiança Baixa (⚪)', () => {
+    // 3800 vs 3957 = diff de 3.96% (dentro dos 6%)
+    const itemComDiferenca = {
+      origem: 'PROTHEUS',
+      empresa: '16',
+      cliente: 'JESMOND COMERCIO VAR',
+      valorMatch: 3800.00,
+      scoreBase: 160
+    };
+    const res = calcularScoreEConfianca(itemComDiferenca, '16', 3957.00, '');
+    assert.strictEqual(res.confianca, 'Baixa');
+    assert(res.score < 90, `Score esperado < 90, recebido ${res.score}`);
+  });
+
+  runTest('9.4 calcularScoreEConfianca: Diferença superior a 6% é zerada para descarte imediato', () => {
+    // 947.40 vs 3957 = diff de 76% (> 6%)
+    const itemDiscrepante = {
+      origem: 'PROTHEUS',
+      empresa: '16',
+      cliente: 'Henrique Mezzomo',
+      valorMatch: 947.40,
+      scoreBase: 155
+    };
+    const res = calcularScoreEConfianca(itemDiscrepante, '16', 3957.00, '');
+    assert.strictEqual(res.score, 0, 'Itens com diferença > 6% devem ter score 0');
+  });
+
+  await runAsyncTest('9.5 Rota Protheus com valor 3957 retorna título 000725 e elimina pedidos estranhos (947.40, 1033.54, 1019.58)', async () => {
+    const express = require('express');
+    const requestApp = express();
+    requestApp.use('/api', require('./routes/pgtos_desconhecidos'));
+
+    const http = require('http');
+    const server = http.createServer(requestApp);
+    await new Promise(r => server.listen(0, r));
+    const port = server.address().port;
+
+    const res = await new Promise((resolve) => {
+      http.get(`http://127.0.0.1:${port}/api/buscar?empresa=ALL&valor=3957`, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    server.close();
+    assert.strictEqual(res.status, 200);
+    assert(Array.isArray(res.body.resultados), 'Resultados deve ser array');
+    
+    // Título 000725 de 3957,00 deve constar com Confiança Alta
+    const tit000725 = res.body.resultados.find(r => r.cliente && r.cliente.includes('JESMOND'));
+    assert(tit000725, 'Título 000725 de JESMOND deve ser retornado');
+    assert.strictEqual(tit000725.confianca, 'Alta');
+    assert.strictEqual(tit000725.valorMatch, 3957);
+
+    // Nenhum resultado deve possuir valores fora da margem de 6% (como 947.40, 1033.54, 1019.58)
+    const estranhos = res.body.resultados.filter(r => [947.4, 1033.54, 1019.58].includes(r.valorMatch));
+    assert.strictEqual(estranhos.length, 0, `Nenhum pedido estranho deve aparecer. Encontrados: ${estranhos.length}`);
+  });
+
+  await runAsyncTest('9.6 Rota Protheus com termo " DEPOSITO JESMOND " localiza o título da JESMOND com sucesso', async () => {
+    const express = require('express');
+    const requestApp = express();
+    requestApp.use('/api', require('./routes/pgtos_desconhecidos'));
+
+    const http = require('http');
+    const server = http.createServer(requestApp);
+    await new Promise(r => server.listen(0, r));
+    const port = server.address().port;
+
+    const res = await new Promise((resolve) => {
+      http.get(`http://127.0.0.1:${port}/api/buscar?empresa=ALL&valor=3957&termo=%20DEPOSITO%20JESMOND%20`, (res) => {
+        let d = '';
+        res.on('data', chunk => d += chunk);
+        res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(d) }));
+      });
+    });
+
+    server.close();
+    assert.strictEqual(res.status, 200);
+    assert(Array.isArray(res.body.resultados), 'Resultados deve ser array');
+    
+    const titJesmond = res.body.resultados.find(r => r.cliente && r.cliente.includes('JESMOND'));
+    assert(titJesmond, 'Título de JESMOND deve ser localizado na busca com termo " DEPOSITO JESMOND "');
+    assert.strictEqual(titJesmond.confianca, 'Alta');
   });
 
   console.log(`\n=======================================================`);

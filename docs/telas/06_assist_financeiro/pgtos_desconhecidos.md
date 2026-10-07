@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-pgtos-desconhecidos` | **Botão:** `#btnTabPgtosDesconhecidos`  
 > **Permissão RBAC:** `financeiro`, `analista-fin`, `admin`, `diretoria` (Perfil `vendedor` bloqueado via HTTP 403)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 07/10/2026 (v8.297 - Homologado)  
+> **Última Atualização:** 07/10/2026 (v8.299 - Homologado)  
 
 ---
 
@@ -79,18 +79,19 @@ flowchart TD
 ## 4. Regras de Negócio & Algoritmo de Ranqueamento
 
 ### 4.1 Limpeza de Ruído Bancário (`limparTermoBancario`)
-Remove automaticamente termos comuns de extratos que atrapalham as buscas:
-- `PIX RECEBIDO -` / `PIX RECEBIDO`
-- `TED REMETENTE`
-- `TRANSF ELET DISP`
-- `PAGTO PIX`
-- `DEP EM DINHEIRO`
+Remove automaticamente termos comuns de extratos que atrapalham as buscas com limites de palavra (`\b`):
+- `DEPOSITO` / `DEPÓSITO` / `DEP.` / `DEP`
+- `DEPOSITO EM CONTA` / `DEPOSITO DINHEIRO` / `DEPOSITO IDENTIFICADO`
+- `PIX RECEBIDO -` / `PIX RECEBIDO` / `PIX TRANSF` / `PAGTO PIX` / `RECEBIMENTO PIX`
+- `TED REMETENTE` / `TED` / `DOC`
+- `TRANSF ELET DISP` / `TRANSFERENCIA` / `TRANSF.` / `TRANSF`
+- `CREDITO EM CONTA` / `CREDITO` / `CRÉDITO`
+- `BOLETO` / `BOL`
 
 ### 4.2 Classificação de Score e Confiança (`calcularScoreEConfianca`)
-- **Confiança Alta (🟢):** Score $\ge 150$ pontos (ex: OS identificada com desconto de 5% Pix ou Título Protheus com match exato de valor e cliente).
-- **Confiança Média (🟡):** Score entre $90$ e $149$ pontos (ex: Oportunidade no CRM ou Pedido em Aberto sem adiantamento confirmado).
-- **Confiança Baixa (⚪):** Score $< 90$ pontos.
-- **Score 0 (Descarte):** Itens da Assistência Técnica para as Empresas 14 (Metal Pleno) e 16 (OAÇO) são descartados automaticamente da listagem.
+- **Confiança Alta (🟢):** Score $\ge 150$ pontos e diferença de centavos ($\le \text{R\$} 0,05$) em relação ao valor depositado (ex: Título Protheus ou 1ª parcela de Pedido SC5 com valor exato, ou OS com 5% Pix).
+- **Confiança Baixa (⚪):** Divergência de valor de até $6,00\%$ em relação ao depósito ($\text{diffPct} \le 6,0\%$). Score delimitado a $< 90$ pontos.
+- **Score 0 (Descarte Imediato):** Divergência de valor superior a $6,00\%$ ($\text{diffPct} > 6,0\%$) ou itens da Assistência Técnica para as Empresas 14 (Metal Pleno) e 16 (OAÇO). O registro não figura na listagem retornada.
 
 ### 4.3 Filtro Temporal Obrigatório dos Últimos 90 Dias (Mitigação de Poluição Histórica)
 Para assegurar que a busca não traga informações antigas e irrelevantes do passado:
@@ -103,6 +104,33 @@ Para evitar falsos positivos e poluição visual com títulos que já foram pago
 1. **Filtro em SQL Server (`SE1`):** A cláusula `WHERE` impõe compulsoriamente `E1.E1_SALDO > 0` e `RTRIM(ISNULL(E1.E1_BAIXA, '')) = ''`, garantindo que apenas títulos com saldo devedor ativo e sem baixa sejam extraídos do Protheus.
 2. **Defesa em Profundidade no Backend:** O loop de processamento verifica `isBaixado = (row.BAIXA && row.BAIXA.trim() !== '') || saldo <= 0` e descarta (`continue`) qualquer registro sem saldo ou baixado, impedindo a geração do status `Baixado no Protheus`. Títulos com saldo parcial recebem `Em Aberto (Saldo Parcial)`.
 3. **Filtro Preventivo no Frontend:** O método `renderizarTabela` em `public/js/pgtos_desconhecidos.js` descarta preventivamente em memória qualquer item cujo status contenha `'Baixado'`.
+
+### 4.5 Conciliação, Equalização e Importação em Lote de OSs (Protheus ERP x Portal da Assistência)
+Além das consultas em tempo real, o ecossistema possui scripts de conciliação em lote e migração para manter a paridade estrita entre o Protheus (`SE1150`) e o Portal da Assistência Técnica (`assistencia.gsicofres.com.br`):
+1. **Extração e Identificação de OSs Quitadas no Protheus (`scripts/localizar_os_quitadas.js`):** Varredura em `SE1150` onde `E1_NUM LIKE '%OS%'` e `E1_BAIXA != ''` com saldo devedor quitado integralmente (`E1_SALDO <= 0`). 656 OSs quitadas integrais identificadas.
+2. **Atualização em Lote de Status no Portal (`scripts/atualizar_status_portal_lote.js`):** Transição em lote via `PUT /api/os` com pool de concorrência controlada. 573 OSs atualizadas de status `Pendente` para `Confirmado`.
+3. **Equalização Exata de Valores (`scripts/equalizar_valores_portal.js`):** Saneamento de 472 OSs que constavam com valor zerado (`R$ 0,00`) ou divergente no portal, igualando ao `E1_VALOR` do Protheus.
+4. **Migração e Preenchimento de Peças e Serviços (`scripts/preencher_itens_portal_lote.js`):** Recomposição de 1.168 OSs desprovidas de detalhamento com base nos dados históricos da base OnlineOS.
+
+### 4.6 Regras de Tolerância de 6%, Parcelamento SC5 e Busca Multi-Token
+1. **Títulos em Aberto Protheus (`SE1`):**
+   - Comparação contra `E1_SALDO` e `E1_VALOR`.
+   - Idêntico ($\le \text{R\$} 0,05$): Confiança **Alta (🟢)**.
+   - Diferença $\le 6,00\%$: Confiança **Baixa (⚪)**.
+   - Diferença $> 6,00\%$: **Descarte sumário**.
+2. **Pedidos de Venda Não Faturados (`SC5`):**
+   - Divisão automática do total do pedido pelo número de parcelas indicado no início da condição de pagamento (`E4_DESCRI` / `CONDPAG_DESC`):
+     - `1x` (ou padrão) $\rightarrow$ divide por 1.
+     - `2x` $\rightarrow$ divide por 2.
+     - `3x` $\rightarrow$ divide por 3.
+     - `4x` $\rightarrow$ divide por 4 (e `Nx` $\rightarrow$ divide por N).
+   - O valor da 1ª parcela resultante é comparado ao valor depositado:
+     - Exato ($\le \text{R\$} 0,05$): Confiança **Alta (🟢)**.
+     - Até $6,00\%$: Confiança **Baixa (⚪)**.
+     - Mais de $6,00\%$: **Descarte sumário**.
+   - Cláusula permissiva residual (`C5_CONDPAG IN ('001','053') AND C5_FRETE > 0`) eliminada, erradicando pedidos com valores desconexos (ex: R$ 947,40, R$ 1.033,54, R$ 1.019,58).
+3. **Busca Textual Multi-Palavra / Tokens no Protheus:**
+   - Além do termo contínuo, termos com múltiplas palavras úteis (ex: `"JESMOND VAR"`) são tokenizados para cruzar via `AND` no SQL (`E1_NOMCLI LIKE '%JESMOND%' AND E1_NOMCLI LIKE '%VAR%'`), localizando nomes compostos como `JESMOND COMERCIO VAR`.
 
 ---
 
@@ -124,8 +152,8 @@ A suíte cobre 100% dos requisitos de negócio, heurística e segurança:
 ```bash
 node test_pgtos_desconhecidos.js
 ```
-Total de testes: **45 testes aprovados (0 falhas)**:
-- Bloco 1: Limpeza de Prefixos e Termos de Extrato (7 testes)
+Total de testes: **54 testes aprovados (0 falhas)**:
+- Bloco 1: Limpeza de Prefixos e Termos de Extrato (10 testes)
 - Bloco 2: Normalização de Valores Monetários com preservação de sinal (6 testes)
 - Bloco 3: Motor de Score e Confiança por Empresa (5 testes)
 - Bloco 4: Integridade de Frontend, Marcação HTML e Validação Obrigatória (9 testes)
@@ -133,11 +161,14 @@ Total de testes: **45 testes aprovados (0 falhas)**:
 - Bloco 6: Validação de Segurança RBAC e Sanitização SQL (3 testes)
 - Bloco 7: Filtros de 90 Dias (Pipedrive update_time, Protheus E1_EMISSAO, Assistência Entrada em) (8 testes)
 - Bloco 8: Exclusão Estrita de Títulos Baixados / Somente Recebimentos em Aberto Protheus (3 testes)
+- Bloco 9: Parcelamento SC5, Tolerância de 6% e Busca Textual Protheus (5 testes)
 
 ---
 
 ## 7. Histórico & Evolução da Tela
 
+- **v8.299 (07/10/2026):** Aplicação da régua de tolerância estrita de até 6% em títulos SE1 e pedidos SC5 (idêntico = Alta 🟢, até 6% = Baixa ⚪, acima de 6% = descarte imediato), cálculo de valor da 1ª parcela em pedidos não faturados SC5 com divisor linear (`1x`, `2x`, `3x`, `4x`), erradicação de pedidos com valores discrepantes (eliminação da cláusula residual em SC5 SQL), correção do parser de ruído bancário (`DEPOSITO`, `DEP.`, `DEPOSITO EM CONTA`) e busca textual tokenizada multi-palavras para Protheus (`JESMOND COMERCIO VAR`). Chip "⚪ Baixa" adicionado na interface. Suíte expandida para 54 testes aprovados (0 falhas).
+- **v8.298 (07/10/2026):** Conciliação e sincronização em lote de OSs Protheus x Portal da Assistência: 573 OSs quitadas atualizadas para status 'Confirmado', 472 OSs com valor zerado equalizadas com o Protheus (`E1_VALOR`) e 1.168 OSs recompostas com descrições, quantidades e valores de peças/serviços da base OnlineOS legada, com exclusão auditada de títulos não quitados e parciais (OS 1297).
 - **v8.297 (07/10/2026):** Exclusão estrita de títulos com status 'Baixado no Protheus' e campo de valor obrigatório na listagem de pagamentos desconhecidos. Apenas recebimentos em aberto (`E1_SALDO > 0` e `E1_BAIXA` vazia) são consultados e exibidos, tanto no SQL de SE1 quanto na defesa em profundidade do backend e frontend. Suíte ampliada para 45 testes aprovados.
 - **v8.295 (07/10/2026):** Campo 'Valor do Depósito (R$)' tornado estritamente obrigatório tanto no frontend (marcação `*`, `required`, foco automático e alertas amigáveis) quanto na API backend (`HTTP 400` se ausente ou $\le 0$). Expansão da suíte para 42 testes aprovados.
 - **v8.294 (07/10/2026):** Implementação dos filtros temporais de 90 dias para conter registros do passado: Pipedrive CRM (`update_time`), Protheus ERP (`E1_EMISSAO` e `C5_EMISSAO`) e Assistência Técnica ("Entrada em:"), formatação limpa de datas e expansão da suíte para 38 testes.

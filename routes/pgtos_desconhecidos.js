@@ -89,13 +89,40 @@ function fetchHttpJson(url, options = {}) {
 
 /**
  * Sanitiza e extrai o termo útil de descrições de extrato bancário
- * Remove ruídos comuns: PIX RECEBIDO, TED, DOC, TRANSF, etc.
+ * Remove ruídos comuns: DEPOSITO, DEP, PIX RECEBIDO, TED, DOC, TRANSF, etc.
  */
 function limparTermoBancario(raw) {
   if (!raw) return '';
   let s = String(raw).trim();
-  s = s.replace(/^(PIX\s*(RECEBIDO|TRANSF(ERENCIA)?)?|TED(\s+REMET(ENTE)?)?|DOC|TRANSF(\s+ELET\s+DISP)?|CREDITO|DEP(\s+EM\s+DINHEIRO)?|PAGTO\s+PIX)\s*[-:]?\s*/i, '');
-  return s.trim();
+  const prefixos = [
+    /^(DEPOSITO|DEPÓSITO|DEP\.?)\s+(EM\s+CONTA|DINHEIRO|EM\s+DINHEIRO|IDENTIFICADO|ONLINE)?\s*[-:]?\s*/i,
+    /^(PIX\s*(RECEBIDO|TRANSF(ERENCIA)?|ENVIADO)?|PAGTO\s+PIX|RECEBIMENTO\s+PIX)\s*[-:]?\s*/i,
+    /^(TED(\s+REMET(ENTE)?)?|DOC)\s*[-:]?\s*/i,
+    /^(TRANSF(ERENCIA)?(\s+ELET\s+DISP)?|TRANSF\.)\s*[-:]?\s*/i,
+    /^(CREDITO|CRÉDITO)(\s+EM\s+CONTA(\s+CORRENTE)?)?\s*[-:]?\s*/i,
+    /^(PAGTO|PAGAMENTO|LIQUIDACAO|LIQUIDAÇÃO)\s*[-:]?\s*/i,
+    /^(BOLETO|BOL\.?)\s*[-:]?\s*/i
+  ];
+
+  for (const regex of prefixos) {
+    s = s.replace(regex, '').trim();
+  }
+  // Remove termos bancários isolados residuais no início
+  s = s.replace(/^(DEPOSITO|DEPÓSITO|DEP|PIX|TED|DOC|TRANSF|CREDITO|CRÉDITO)\s*[-:]?\s*/i, '').trim();
+  return s;
+}
+
+/**
+ * Extrai o divisor de parcelamento a partir do início da condição de pagamento (ex: '1X BOL 28 D' -> 1, '2X DEP + BOL' -> 2)
+ */
+function extrairDivisorCondicao(condDesc) {
+  if (!condDesc) return 1;
+  const m = String(condDesc).trim().match(/^(\d+)\s*[xX]/i);
+  if (m) {
+    const n = parseInt(m[1], 10);
+    return (n > 0 && n <= 48) ? n : 1;
+  }
+  return 1;
 }
 
 /**
@@ -235,6 +262,14 @@ async function buscarAssistencia({ valor, termo, limite = 25 }) {
         const equip = os.equipamento || {};
         const dtEntrada = os.data_abertura || os.entrada_em || os.data_entrada || '';
         const dtFormatada = dtEntrada ? (dtEntrada.includes('/') ? dtEntrada : formatarDataBr(dtEntrada)) : '-';
+        const vOrig = parseFloat(os.valor_os) || 0;
+        const vPix = parseFloat(os.valor_com_5pct_pix) || 0;
+        let vMatch = vPix || vOrig;
+        if (valor !== null && valor !== undefined && valor > 0) {
+          const diffOrig = Math.abs(vOrig - valor);
+          const diffPix = vPix > 0 ? Math.abs(vPix - valor) : Infinity;
+          vMatch = diffOrig <= diffPix ? vOrig : vPix;
+        }
         return {
           origem: 'ASSISTENCIA',
           origemLabel: 'Assistência Técnica',
@@ -254,9 +289,9 @@ async function buscarAssistencia({ valor, termo, limite = 25 }) {
           statusPagamento: os.status_pagamento || 'Pendente',
           data: dtFormatada !== '-' ? `Entrada: ${dtFormatada}` : '-',
           dataEntrada: dtFormatada,
-          valorOriginal: parseFloat(os.valor_os) || 0,
-          valorCom5pctPix: parseFloat(os.valor_com_5pct_pix) || 0,
-          valorMatch: parseFloat(os.valor_com_5pct_pix || os.valor_os) || 0,
+          valorOriginal: vOrig,
+          valorCom5pctPix: vPix,
+          valorMatch: vMatch,
           tipoMatch: os.tipo_match || 'Correspondência Assistência Técnica',
           confianca: os.confianca || 'Alta',
           scoreBase: parseInt(os.score, 10) || 160,
@@ -299,10 +334,11 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
       ];
 
       if (hasValor) {
-        const vMin = (valor - 0.05).toFixed(2);
-        const vMax = (valor + 0.05).toFixed(2);
-        const vPixCheioMin = ((valor / 0.95) - 0.05).toFixed(2);
-        const vPixCheioMax = ((valor / 0.95) + 0.05).toFixed(2);
+        // Tolerância de 6% no SQL (teto de busca)
+        const vMin = (valor * 0.94 - 0.05).toFixed(2);
+        const vMax = (valor * 1.06 + 0.05).toFixed(2);
+        const vPixCheioMin = (((valor / 0.95) * 0.94) - 0.05).toFixed(2);
+        const vPixCheioMax = (((valor / 0.95) * 1.06) + 0.05).toFixed(2);
 
         whereClauses.push(`(
           (E1.E1_VALOR BETWEEN ${vMin} AND ${vMax}) OR
@@ -322,6 +358,17 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
         if (digits.length >= 3) {
           condicoesTermo.push(`SA1.A1_CGC LIKE '%${digits}%'`);
         }
+
+        // Suporte a múltiplos tokens (ex: "JESMOND VAR" encontra "JESMOND COMERCIO VAR")
+        const stopWords = new Set(['LTDA', 'EIRELI', 'ME', 'EPP', 'S/A', 'SA', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'EM', 'COM', 'E', 'PARA']);
+        const tokens = cleanTermo.split(/\s+/).filter(t => t.length >= 3 && !stopWords.has(t.toUpperCase()));
+        if (tokens.length >= 2) {
+          const tokenNomCli = tokens.map(t => `E1.E1_NOMCLI LIKE '%${t}%'`).join(' AND ');
+          const tokenSa1 = tokens.map(t => `SA1.A1_NOME LIKE '%${t}%'`).join(' AND ');
+          condicoesTermo.push(`(${tokenNomCli})`);
+          condicoesTermo.push(`(${tokenSa1})`);
+        }
+
         whereClauses.push(`(${condicoesTermo.join(' OR ')})`);
       }
 
@@ -377,8 +424,28 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
             continue;
           }
 
+          // Escolhe o valor mais representativo (saldo pendente ou valor do título)
+          const diffSaldo = hasValor ? Math.abs(saldo - valor) : 0;
+          const diffValor = hasValor ? Math.abs(valorTit - valor) : 0;
+          const valorMaisProximo = diffSaldo <= diffValor ? saldo : valorTit;
+          const delta = hasValor ? Math.abs(valorMaisProximo - valor) : 0;
+          const diffPct = hasValor ? (delta / valor) * 100 : 0;
+
+          // Se a diferença for superior a 6%, nem deve constar na lista
+          if (hasValor && delta > 0.05 && diffPct > 6.0) {
+            continue;
+          }
+
+          const isExato = !hasValor || delta <= 0.05;
+          const confiancaItem = isExato ? 'Alta' : 'Baixa';
+          const scoreBase = isExato ? (isRA ? 180 : 160) : 75;
+
           let tipoDesc = isRA ? 'Adiantamento de Pedido (RA)' : 'Título / Duplicata';
           let statusTit = saldo < valorTit ? 'Em Aberto (Saldo Parcial)' : 'Em Aberto (Pendente)';
+          let detalheMatch = `${tipoDesc} • Parcela ${row.PARCELA || 'Única'}`;
+          if (hasValor) {
+            detalheMatch += isExato ? ' (Valor Exato)' : ` (Divergência de ${diffPct.toFixed(1)}%)`;
+          }
 
           itensEmpresa.push({
             origem: 'PROTHEUS',
@@ -396,10 +463,10 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
             dataVencimento: formatarDataProtheus(row.VENCTO),
             valorOriginal: valorTit,
             valorSaldo: saldo,
-            valorMatch: valorTit,
-            tipoMatch: `${tipoDesc} • Parcela ${row.PARCELA || 'Única'}`,
-            confianca: emp.cod === '15' ? 'Média' : 'Alta',
-            scoreBase: isRA ? 175 : 145,
+            valorMatch: valorMaisProximo,
+            tipoMatch: detalheMatch,
+            confianca: confiancaItem,
+            scoreBase: scoreBase,
             link: null
           });
         }
@@ -419,17 +486,22 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
         ];
 
         if (cleanTermo) {
-          whereC5.push(`(C5.C5_NOMECLI LIKE '%${cleanTermo}%' OR C5.C5_NUM LIKE '%${cleanTermo}%')`);
+          const stopWords = new Set(['LTDA', 'EIRELI', 'ME', 'EPP', 'S/A', 'SA', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'EM', 'COM', 'E', 'PARA']);
+          const tokens = cleanTermo.split(/\s+/).filter(t => t.length >= 3 && !stopWords.has(t.toUpperCase()));
+          const condicoesTermoC5 = [
+            `C5.C5_NOMECLI LIKE '%${cleanTermo}%'`,
+            `C5.C5_NUM LIKE '%${cleanTermo}%'`
+          ];
+          if (tokens.length >= 2) {
+            condicoesTermoC5.push(`(${tokens.map(t => `C5.C5_NOMECLI LIKE '%${t}%'`).join(' AND ')})`);
+          }
+          whereC5.push(`(${condicoesTermoC5.join(' OR ')})`);
         }
 
-        // Filtro em SQL quando há valor buscado
+        // Filtro em SQL quando há valor buscado (o valor total do pedido não pode ser menor que o depósito com margem de 6%)
         if (hasValor) {
-          const vMin = (valor - 1.00).toFixed(2);
-          const vMax = (valor + 1.00).toFixed(2);
-          whereC5.push(`(
-            ((C5.C5_FRETE + (SELECT ISNULL(SUM(C6.C6_VALOR), 0) FROM ${emp.sc6} C6 WHERE C6.C6_NUM = C5.C5_NUM AND C6.D_E_L_E_T_ = ' ') - C5.C5_DESCONT) BETWEEN ${vMin} AND ${vMax})
-            OR (C5.C5_CONDPAG IN ('001', '053') AND C5.C5_FRETE > 0)
-          )`);
+          const vMinSql = (valor * 0.94 - 1.00).toFixed(2);
+          whereC5.push(`((C5.C5_FRETE + (SELECT ISNULL(SUM(C6.C6_VALOR), 0) FROM ${emp.sc6} C6 WHERE C6.C6_NUM = C5.C5_NUM AND C6.D_E_L_E_T_ = ' ') - C5.C5_DESCONT) >= ${vMinSql})`);
         }
 
         const sqlSC5 = `
@@ -464,7 +536,28 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
             const desc = parseFloat(row.DESCONTO) || 0;
             const totalPedido = totProd + frete - desc;
 
-            let detalheValor = `Total do Pedido R$ ${totalPedido.toFixed(2)}`;
+            // Extrai divisor de parcelamento pela condição (1x = total, 2x = total/2, 3x = total/3, 4x = total/4)
+            const divisor = extrairDivisorCondicao(row.CONDPAG_DESC);
+            const valorParcela = totalPedido / divisor;
+
+            const delta = hasValor ? Math.abs(valorParcela - valor) : 0;
+            const diffPct = hasValor ? (delta / valor) * 100 : 0;
+
+            // Se for mais de 6 por cento nem deve constar na lista
+            if (hasValor && delta > 0.05 && diffPct > 6.0) {
+              continue;
+            }
+
+            const isExato = !hasValor || delta <= 0.05;
+            const confiancaItem = isExato ? 'Alta' : 'Baixa';
+            const scoreBase = isExato ? 165 : 70;
+
+            let detalheValor = '';
+            if (divisor > 1) {
+              detalheValor = `Total R$ ${totalPedido.toFixed(2)} em ${divisor}x (1ª Parcela R$ ${valorParcela.toFixed(2)}${delta > 0.05 ? ' - Diff ' + diffPct.toFixed(1) + '%' : ''})`;
+            } else {
+              detalheValor = `Total R$ ${totalPedido.toFixed(2)}${delta > 0.05 ? ' (Diff ' + diffPct.toFixed(1) + '%)' : ''}`;
+            }
 
             itensEmpresa.push({
               origem: 'PROTHEUS',
@@ -480,10 +573,10 @@ async function buscarProtheus({ empresas, valor, termo, limite = 25 }) {
               status: 'Pedido Aberto (Não Faturado)',
               data: formatarDataProtheus(row.EMISSAO),
               valorOriginal: totalPedido,
-              valorMatch: totalPedido,
+              valorMatch: valorParcela,
               tipoMatch: `Pedido SC5 • ${detalheValor}`,
-              confianca: emp.cod === '15' ? 'Média' : 'Alta',
-              scoreBase: 155,
+              confianca: confiancaItem,
+              scoreBase: scoreBase,
               link: null
             });
           }
@@ -650,17 +743,50 @@ function calcularScoreEConfianca(item, empresaAlvo, valorBuscado, termoBuscado) 
     }
   }
 
-  // Bônus se houver match exato do termo no nome do cliente
-  if (termoBuscado && item.cliente && item.cliente.toLowerCase().includes(termoBuscado.toLowerCase())) {
-    score += 35;
+  // Bônus se houver match exato do termo no nome do cliente ou equipamento/defeito
+  if (termoBuscado) {
+    const termoLower = termoBuscado.toLowerCase();
+    if ((item.cliente && item.cliente.toLowerCase().includes(termoLower)) ||
+        (item.defeito && item.defeito.toLowerCase().includes(termoLower))) {
+      score += 35;
+    }
   }
 
-  // Bônus se o valor for idêntico
-  if (valorBuscado !== null && Math.abs(item.valorMatch - valorBuscado) < 0.01) {
-    score += 25;
+  // Verificação da tolerância de valor quando há valor buscado
+  if (valorBuscado !== null && valorBuscado > 0) {
+    const delta = Math.abs(item.valorMatch - valorBuscado);
+    const diffPct = (delta / valorBuscado) * 100;
+
+    // Se mais de 6% de diferença, descarte sumário
+    if (delta > 0.05 && diffPct > 6.0) {
+      return {
+        ...item,
+        score: 0,
+        confianca: 'Baixa'
+      };
+    }
+
+    // Se idêntico / centavos, confere bônus de match exato e garante Confiança Alta
+    if (delta <= 0.05) {
+      score += 25;
+      return {
+        ...item,
+        score,
+        confianca: 'Alta'
+      };
+    }
+
+    // Se diferença entre centavos e 6%, a confiança deve ser estritamente Baixa
+    if (diffPct <= 6.0) {
+      return {
+        ...item,
+        score: Math.min(score, 85),
+        confianca: 'Baixa'
+      };
+    }
   }
 
-  // Classificação de Confiança
+  // Classificação de Confiança padrão quando sem valor
   let confianca = 'Baixa';
   if (score >= 150) confianca = 'Alta';
   else if (score >= 90) confianca = 'Média';
@@ -772,4 +898,5 @@ module.exports.parseDataGenerica = parseDataGenerica;
 module.exports.formatarDataBr = formatarDataBr;
 module.exports.isWithinLastDays = isWithinLastDays;
 module.exports.obterDataCorteProtheus = obterDataCorteProtheus;
+module.exports.extrairDivisorCondicao = extrairDivisorCondicao;
 
