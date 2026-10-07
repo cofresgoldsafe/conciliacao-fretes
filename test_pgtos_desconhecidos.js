@@ -222,7 +222,7 @@ async function runAsyncTest(name, fn) {
     assert(html.includes('id="tab-pgtos-desconhecidos"'), 'Container da tela não encontrado no HTML');
     assert(html.includes('id="pgtosEmpresaSelect"'), 'Seletor de empresa não encontrado');
     assert(html.includes('id="pgtosValorInput"'), 'Campo de valor não encontrado');
-    assert(html.includes('id="pgtosValorInput" class="form-input" placeholder="Ex: 361,00" required aria-required="true"'), 'Campo pgtosValorInput deve ser obrigatório');
+    assert(html.includes('id="pgtosValorInput" class="form-input" placeholder="Ex: 1.222,33" required aria-required="true" inputmode="decimal" autocomplete="off"'), 'Campo pgtosValorInput deve ser obrigatório e possuir atributos numéricos');
     assert(html.includes('id="pgtosTermoInput"'), 'Campo de termo não encontrado');
     assert(html.includes('id="btnBuscarPgtosDesconhecidos"'), 'Botão de busca não encontrado');
     assert(html.includes('id="pgtosTableBody"'), 'Tbody da tabela não encontrado');
@@ -893,6 +893,133 @@ async function runAsyncTest(name, fn) {
     const titMadero = res.body.resultados.find(r => r.cliente && r.cliente.includes('MADERO'));
     assert(titMadero, 'Título da MADERO deve ser encontrado');
     assert.strictEqual(titMadero.confianca, 'Alta');
+  });
+
+  // =========================================================================
+  // BLOCO 11: MÁSCARA, FORMATAÇÃO BRL E VALIDAÇÃO NUMÉRICA DO VALOR DO DEPÓSITO
+  // =========================================================================
+  console.log('\n--- Bloco 11: Máscara, Formatação BRL e Validação Numérica Estrita do Depósito ---');
+
+  const vm = require('vm');
+  const jsContent = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+
+  // Cria sandbox com mocks mínimos de DOM e window
+  const sandbox = {
+    document: {
+      getElementById: () => null,
+      querySelectorAll: () => [],
+      addEventListener: () => {},
+      readyState: 'complete'
+    },
+    localStorage: { getItem: () => null },
+    sessionStorage: { getItem: () => null },
+    window: {},
+    navigator: { clipboard: {} },
+    parseFloat,
+    parseInt,
+    isNaN,
+    console
+  };
+  sandbox.window = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(jsContent, sandbox);
+
+  const {
+    formatarNumeroBRLPgtos,
+    sanitizarInputValorPgtos,
+    impedirTeclasInvalidasValorPgtos
+  } = sandbox;
+
+  runTest('11.1 formatarNumeroBRL preserva formato com milhar e decimal (1.222,33)', () => {
+    assert.strictEqual(formatarNumeroBRLPgtos('1.222,33'), '1.222,33');
+    assert.strictEqual(formatarNumeroBRLPgtos('12.345,67'), '12.345,67');
+  });
+
+  runTest('11.2 formatarNumeroBRL converte formato sem milhar (1222,33) para (1.222,33)', () => {
+    assert.strictEqual(formatarNumeroBRLPgtos('1222,33'), '1.222,33');
+    assert.strictEqual(formatarNumeroBRLPgtos('361,00'), '361,00');
+  });
+
+  runTest('11.3 formatarNumeroBRL converte ponto decimal (1222.33) para (1.222,33)', () => {
+    assert.strictEqual(formatarNumeroBRLPgtos('1222.33'), '1.222,33');
+  });
+
+  runTest('11.4 formatarNumeroBRL formata números inteiros com casas decimais zeradas', () => {
+    assert.strictEqual(formatarNumeroBRLPgtos('1222'), '1.222,00');
+    assert.strictEqual(formatarNumeroBRLPgtos('361'), '361,00');
+    assert.strictEqual(formatarNumeroBRLPgtos(3957), '3.957,00');
+  });
+
+  runTest('11.5 formatarNumeroBRL retorna vazio para strings sem números ou inválidas', () => {
+    assert.strictEqual(formatarNumeroBRLPgtos('abc'), '');
+    assert.strictEqual(formatarNumeroBRLPgtos('!@#$%'), '');
+    assert.strictEqual(formatarNumeroBRLPgtos(''), '');
+    assert.strictEqual(formatarNumeroBRLPgtos(null), '');
+  });
+
+  runTest('11.6 sanitizarInputValor remove letras e caracteres especiais mantendo dígitos e pontuação', () => {
+    const inputMock = { value: 'abc1.222,33xyz@#' };
+    sanitizarInputValorPgtos(inputMock);
+    assert.strictEqual(inputMock.value, '1.222,33');
+  });
+
+  runTest('11.7 sanitizarInputValor limpa string contendo apenas texto ou símbolos para vazio', () => {
+    const inputMock = { value: 'qualquer texto especial !@#' };
+    sanitizarInputValorPgtos(inputMock);
+    assert.strictEqual(inputMock.value, '');
+  });
+
+  runTest('11.8 sanitizarInputValor impede múltiplas vírgulas decimais e pontos após vírgula', () => {
+    const inputMock1 = { value: '12,22,33' };
+    sanitizarInputValorPgtos(inputMock1);
+    assert.strictEqual(inputMock1.value, '12,2233');
+
+    const inputMock2 = { value: '1222,3.3' };
+    sanitizarInputValorPgtos(inputMock2);
+    assert.strictEqual(inputMock2.value, '1222,33');
+  });
+
+  runTest('11.9 impedirTeclasInvalidasValor bloqueia letras e símbolos e permite dígitos, vírgula e controles', () => {
+    let bloqueado = false;
+    const prevent = () => { bloqueado = true; };
+
+    // Letra deve ser bloqueada
+    bloqueado = false;
+    impedirTeclasInvalidasValorPgtos({ key: 'a', target: { value: '' }, preventDefault: prevent });
+    assert.strictEqual(bloqueado, true, 'Letra "a" deve ser bloqueada');
+
+    // Símbolo especial deve ser bloqueado
+    bloqueado = false;
+    impedirTeclasInvalidasValorPgtos({ key: '@', target: { value: '' }, preventDefault: prevent });
+    assert.strictEqual(bloqueado, true, 'Caractere "@" deve ser bloqueado');
+
+    // Dígito 5 deve ser permitido
+    bloqueado = false;
+    impedirTeclasInvalidasValorPgtos({ key: '5', target: { value: '' }, preventDefault: prevent });
+    assert.strictEqual(bloqueado, false, 'Dígito deve ser permitido');
+
+    // Primeira vírgula deve ser permitida
+    bloqueado = false;
+    impedirTeclasInvalidasValorPgtos({ key: ',', target: { value: '1222', selectionStart: 4, selectionEnd: 4 }, preventDefault: prevent });
+    assert.strictEqual(bloqueado, false, 'Primeira vírgula deve ser permitida');
+
+    // Segunda vírgula deve ser bloqueada
+    bloqueado = false;
+    impedirTeclasInvalidasValorPgtos({ key: ',', target: { value: '1222,33', selectionStart: 7, selectionEnd: 7 }, preventDefault: prevent });
+    assert.strictEqual(bloqueado, true, 'Segunda vírgula deve ser bloqueada');
+
+    // Backspace deve ser permitido
+    bloqueado = false;
+    impedirTeclasInvalidasValorPgtos({ key: 'Backspace', target: { value: '1222' }, preventDefault: prevent });
+    assert.strictEqual(bloqueado, false, 'Backspace deve ser permitido');
+  });
+
+  runTest('11.10 public/js/pgtos_desconhecidos.js registra listeners de input, blur, keydown e paste no input de valor', () => {
+    const jsCode = fs.readFileSync(path.join(__dirname, 'public', 'js', 'pgtos_desconhecidos.js'), 'utf8');
+    assert(jsCode.includes("elValor.addEventListener('keydown', impedirTeclasInvalidasValor)"), 'Listener keydown deve estar registrado');
+    assert(jsCode.includes("elValor.addEventListener('input', () => sanitizarInputValor(elValor))"), 'Listener input deve estar registrado');
+    assert(jsCode.includes("elValor.addEventListener('paste', tratarPasteValor)"), 'Listener paste deve estar registrado');
+    assert(jsCode.includes("elValor.addEventListener('blur', formatarAoPerderFocoValor)"), 'Listener blur deve estar registrado');
   });
 
   console.log(`\n=======================================================`);

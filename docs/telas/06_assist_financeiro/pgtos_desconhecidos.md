@@ -169,7 +169,7 @@ A suíte cobre 100% dos requisitos de negócio, heurística e segurança:
 ```bash
 node test_pgtos_desconhecidos.js
 ```
-Total de testes: **65 testes aprovados (0 falhas)**:
+Total de testes: **75 testes aprovados (0 falhas)**:
 - Bloco 1: Limpeza de Prefixos e Termos de Extrato (10 testes)
 - Bloco 2: Normalização de Valores Monetários com preservação de sinal (6 testes)
 - Bloco 3: Motor de Score e Confiança por Empresa (5 testes)
@@ -180,11 +180,13 @@ Total de testes: **65 testes aprovados (0 falhas)**:
 - Bloco 8: Exclusão Estrita de Títulos Baixados / Somente Recebimentos em Aberto Protheus (3 testes)
 - Bloco 9: Parcelamento SC5, Tolerância de 6% e Busca Textual Protheus (5 testes)
 - Bloco 10: Parser Robusto de Linhas de Extrato Bancário & Smart Paste (9 testes)
+- Bloco 11: Máscara, Formatação BRL e Validação Numérica Estrita do Depósito (10 testes)
 
 ---
 
 ## 7. Histórico & Evolução da Tela
 
+- **v8.302 (07/10/2026):** Validação estrita e formatação numérica do campo '💵 Valor do Depósito (R$)': bloqueio em tempo real de letras e caracteres especiais no teclado (`keydown`), sanitização contínua (`input`), aceitação nativa de números no formato `1.222,33` e `1222,33`, formatação automática BRL ao perder foco (`blur`), extração limpa em colagens de valores com prefixo `R$`, e adição do Bloco 11 de testes automatizados (75 testes aprovados — 0 falhas).
 - **v8.301 (07/10/2026):** Correção do fechamento da função `atualizarVisualChips()` no frontend `public/js/pgtos_desconhecidos.js` (que causava SyntaxError impedindo a ligação de eventos do botão '⚡ Localizar Origem'), adição de feedback visual de carregamento (`btnBuscar.disabled`), exportação e integração de `initPgtosDesconhecidos` no ciclo de vida de abas do `public/app.js` e ampliação da suíte para 65 testes automatizados aprovados (0 falhas).
 - **v8.300 (07/10/2026):** Parser de extrato bancário e Smart Paste na tela Pgtos Desconhecidos: decomposição automática de linhas brutas coladas em valor e razão social limpa no frontend ('paste') e backend (query param), saneamento de roteamentos bancários (`341...`, `001...`, `Cp :...`), suporte a tokens sem pontuação no SQL Protheus e 63 testes aprovados (0 falhas).
 - **v8.299 (07/10/2026):** Aplicação da régua de tolerância estrita de até 6% em títulos SE1 e pedidos SC5 (idêntico = Alta 🟢, até 6% = Baixa ⚪, acima de 6% = descarte imediato), cálculo de valor da 1ª parcela em pedidos não faturados SC5 com divisor linear (`1x`, `2x`, `3x`, `4x`), erradicação de pedidos com valores discrepantes (eliminação da cláusula residual em SC5 SQL), correção do parser de ruído bancário (`DEPOSITO`, `DEP.`, `DEPOSITO EM CONTA`) e busca textual tokenizada multi-palavras para Protheus (`JESMOND COMERCIO VAR`). Chip "⚪ Baixa" adicionado na interface. Suíte expandida para 54 testes aprovados (0 falhas).

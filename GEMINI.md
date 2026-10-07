@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.301 (Homologada em 07/10/2026 17:28)  
+> **Versão da Documentação:** v8.302 (Homologada em 07/10/2026 18:14)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 07/10/2026 17:28 (v8.301 - Correção de Sintaxe JS e Hook de Inicialização em Pgtos Desconhecidos)  
+> **Data da Última Auditoria:** 07/10/2026 18:14 (v8.302 - Formatação e Validação Numérica BRL em Pgtos Desconhecidos)  
 
 ---
 
@@ -178,6 +178,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.302 (07/10/2026):** Validação estrita e formatação numérica do campo '💵 Valor do Depósito (R$)' em Pgtos Desconhecidos: bloqueio em tempo real de letras/caracteres especiais (`keydown`), sanitização contínua (`input`), aceitação nativa de números no formato `1.222,33` e `1222,33`, formatação automática BRL ao perder foco (`blur`), extração limpa de valores colados com `R$` e 75 testes automatizados aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.301 (07/10/2026):** Correção do fechamento da função `atualizarVisualChips()` em `public/js/pgtos_desconhecidos.js` (eliminando SyntaxError que bloqueava a ação do botão '⚡ Localizar Origem'), adição de feedback visual e exportação do hook `initPgtosDesconhecidos` em `public/app.js` (65 testes aprovados — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.300 (07/10/2026):** Parser de extrato bancário e Smart Paste na tela Pgtos Desconhecidos: decomposição automática de linhas brutas coladas em valor e razão social limpa no frontend ('paste') e backend (query param), saneamento de roteamentos bancários e 63 testes aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.299 (07/10/2026):** Tolerância estrita de até 6% em Pgtos Desconhecidos (idêntico = Alta 🟢, até 6% = Baixa ⚪, > 6% = descarte), cálculo de 1ª parcela de pedidos SC5 por divisor linear (`1x`, `2x`, `3x`, `4x`), erradicação de pedidos com valores discrepantes, correção no parser de ruído bancário (`DEPOSITO`, `DEP.`) e busca tokenizada Protheus (54 testes aprovados — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).

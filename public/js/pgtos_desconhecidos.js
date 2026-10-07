@@ -27,6 +27,40 @@
     return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
+  /**
+   * Formata valor numérico ou string para o formato brasileiro BRL (ex: 1.222,33)
+   * sem prefixo R$ para uso em campos de entrada (inputs)
+   */
+  function formatarNumeroBRL(val) {
+    if (val === null || val === undefined || String(val).trim() === '') return '';
+    const str = String(val).trim();
+    const numLimpo = str.replace(/[^\d,\.]/g, '');
+    if (!numLimpo) return '';
+
+    let numFloat = 0;
+    if (numLimpo.includes(',') && numLimpo.includes('.')) {
+      numFloat = parseFloat(numLimpo.replace(/\./g, '').replace(',', '.'));
+    } else if (numLimpo.includes(',')) {
+      numFloat = parseFloat(numLimpo.replace(',', '.'));
+    } else {
+      const partesPonto = numLimpo.split('.');
+      if (partesPonto.length > 2) {
+        numFloat = parseFloat(numLimpo.replace(/\./g, ''));
+      } else if (partesPonto.length === 2 && partesPonto[1].length === 3) {
+        numFloat = parseFloat(numLimpo.replace(/\./g, ''));
+      } else {
+        numFloat = parseFloat(numLimpo);
+      }
+    }
+
+    if (isNaN(numFloat) || numFloat < 0) return '';
+
+    return numFloat.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
   function getToken() {
     try {
       const rawSession = localStorage.getItem('conciliacao_fretes_session');
@@ -106,6 +140,13 @@
    */
   async function executarBusca() {
     obterElementos();
+
+    // Sanitiza e formata valor visualmente no padrão BRL se presente
+    if (elValor && elValor.value.trim()) {
+      sanitizarInputValor(elValor);
+      const fmt = formatarNumeroBRL(elValor.value);
+      if (fmt) elValor.value = fmt;
+    }
 
     const empresa = elEmpresa ? elEmpresa.value : 'ALL';
     const valor = elValor ? elValor.value.trim() : '';
@@ -472,11 +513,137 @@
       e.preventDefault();
       const parsed = parsearLinhaExtratoFront(raw);
       if (elValor && parsed.valorStr) {
-        elValor.value = parsed.valorStr;
+        const fmt = formatarNumeroBRL(parsed.valorStr);
+        elValor.value = fmt || parsed.valorStr;
       }
       if (elTermo && parsed.pagador) {
         elTermo.value = parsed.pagador;
       }
+    }
+  }
+
+  /**
+   * Sanitiza o campo de valor do depósito, aceitando apenas dígitos, ponto e vírgula
+   */
+  function sanitizarInputValor(input) {
+    if (!input) return;
+    const valor = input.value;
+    if (!valor) return;
+
+    // Remove qualquer caractere que não seja dígito, vírgula ou ponto
+    let limpo = valor.replace(/[^\d,\.]/g, '');
+
+    // Garante no máximo uma vírgula como separador decimal
+    const partesVirgula = limpo.split(',');
+    if (partesVirgula.length > 2) {
+      limpo = partesVirgula[0] + ',' + partesVirgula.slice(1).join('').replace(/,/g, '');
+    }
+
+    // Se houver vírgula, não permite pontos após a vírgula decimal
+    if (limpo.includes(',')) {
+      const idxVirgula = limpo.indexOf(',');
+      const antes = limpo.substring(0, idxVirgula);
+      const depois = limpo.substring(idxVirgula + 1).replace(/\./g, '');
+      limpo = antes + ',' + depois;
+    }
+
+    if (input.value !== limpo) {
+      input.value = limpo;
+    }
+  }
+
+  /**
+   * Bloqueia ativamente no evento keydown qualquer caractere que não seja reconhecido como número
+   * (letras, caracteres especiais @#$%, espaços), permitindo apenas teclas de controle e navegação
+   */
+  function impedirTeclasInvalidasValor(e) {
+    // Teclas de controle e navegação do teclado permitidas
+    const teclasPermitidas = [
+      'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+      'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+      'Home', 'End'
+    ];
+    if (teclasPermitidas.includes(e.key)) return;
+
+    // Atalhos do sistema (Ctrl/Cmd + C, V, A, Z, X, etc.)
+    if (e.ctrlKey || e.metaKey) return;
+
+    // Dígitos de 0 a 9 permitidos
+    if (/^\d$/.test(e.key)) return;
+
+    // Vírgula decimal permitida (somente uma vírgula no campo)
+    if (e.key === ',') {
+      const input = e.target;
+      const selStart = input.selectionStart || 0;
+      const selEnd = input.selectionEnd || 0;
+      const textoSelecionado = input.value.substring(selStart, selEnd);
+      // Se não tem vírgula ou se a vírgula existente está selecionada para substituição
+      if (!input.value.includes(',') || textoSelecionado.includes(',')) {
+        return;
+      }
+      e.preventDefault();
+      return;
+    }
+
+    // Ponto permitido (separador de milhar ou antes da vírgula)
+    if (e.key === '.') {
+      const input = e.target;
+      const selStart = input.selectionStart || 0;
+      const idxVirgula = input.value.indexOf(',');
+      // Não permite ponto após a vírgula decimal
+      if (idxVirgula !== -1 && selStart > idxVirgula) {
+        e.preventDefault();
+        return;
+      }
+      return;
+    }
+
+    // Bloqueia qualquer outra tecla (letras, caracteres especiais, espaço)
+    e.preventDefault();
+  }
+
+  /**
+   * Trata a colagem direta no campo de valor, filtrando letras e símbolos
+   * mas aceitando números com ou sem 'R$' e separadores (ex: 1.222,33 ou 1222,33)
+   */
+  function tratarPasteValor(e) {
+    const clipboardText = (e.clipboardData || window.clipboardData)?.getData('text');
+    if (!clipboardText) return;
+
+    const raw = clipboardText.trim();
+    const temMultiplosEspacos = /[\t\r\n]|\s{2,}/.test(raw);
+    const temData = /\b\d{2}\/\d{2}\/\d{2,4}\b/.test(raw);
+    const temValor = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/i.test(raw);
+
+    // Se for linha de extrato bancário com data ou múltiplos espaços, o tratarPasteExtrato vai gerenciar
+    if ((temMultiplosEspacos || temData) && temValor) {
+      return;
+    }
+
+    e.preventDefault();
+    // Extrai padrão numérico limpo da string colada
+    const match = raw.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2}|\d+\.\d{2}|\d+)/i);
+    if (match) {
+      e.target.value = match[1];
+    } else {
+      const limpo = raw.replace(/[^\d,\.]/g, '');
+      if (limpo) {
+        e.target.value = limpo;
+      }
+    }
+    sanitizarInputValor(e.target);
+  }
+
+  /**
+   * Formata automaticamente o valor para o padrão BRL (ex: 1.222,33) ao perder o foco (blur)
+   */
+  function formatarAoPerderFocoValor(e) {
+    const input = e.target;
+    if (!input || !input.value.trim()) return;
+    sanitizarInputValor(input);
+    const formatado = formatarNumeroBRL(input.value);
+    if (formatado) {
+      input.value = formatado;
     }
   }
 
@@ -510,6 +677,14 @@
       }
     });
 
+    // Validação estrita, bloqueio de teclas não numéricas e formatação do campo Valor do Depósito
+    if (elValor) {
+      elValor.addEventListener('keydown', impedirTeclasInvalidasValor);
+      elValor.addEventListener('input', () => sanitizarInputValor(elValor));
+      elValor.addEventListener('paste', tratarPasteValor);
+      elValor.addEventListener('blur', formatarAoPerderFocoValor);
+    }
+
     // Chips de Origem
     if (elChipsOrigem) {
       elChipsOrigem.forEach(btn => {
@@ -539,6 +714,9 @@
 
   // Exportação para o ciclo de vida global de abas
   window.initPgtosDesconhecidos = initModule;
+  window.formatarNumeroBRLPgtos = formatarNumeroBRL;
+  window.sanitizarInputValorPgtos = sanitizarInputValor;
+  window.impedirTeclasInvalidasValorPgtos = impedirTeclasInvalidasValor;
 
   /**
    * API PÚBLICA GLOBAL:
@@ -562,7 +740,9 @@
     // 2. Preenche os campos
     if (elEmpresa && empresa) elEmpresa.value = empresa;
     if (elValor && (valor !== null && valor !== undefined)) {
-      elValor.value = typeof valor === 'number' ? valor.toFixed(2) : String(valor);
+      const strVal = typeof valor === 'number' ? valor.toFixed(2) : String(valor);
+      const fmt = formatarNumeroBRL(strVal);
+      elValor.value = fmt || strVal;
     }
     if (elTermo && termo) elTermo.value = String(termo).trim();
 
