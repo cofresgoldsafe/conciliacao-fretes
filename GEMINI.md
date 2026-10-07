@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.296 (Homologada em 07/10/2026 10:44)  
+> **Versão da Documentação:** v8.297 (Homologada em 07/10/2026 10:50)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 07/10/2026 10:44 (v8.296 - Exclusão de títulos baixados em Pgtos Desconhecidos)  
+> **Data da Última Auditoria:** 07/10/2026 10:50 (v8.297 - Publicação Pgtos Desconhecidos: valor obrigatório e recebimentos em aberto)  
 
 ---
 
@@ -178,7 +178,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
-- **v8.296 (07/10/2026):** Exclusão estrita de títulos com status 'Baixado no Protheus' na tela Pgtos Desconhecidos (`#tab-pgtos-desconhecidos`): consulta SE1 filtrada compulsoriamente por `E1_SALDO > 0` e `E1_BAIXA = ''`, com descarte de títulos baixados no backend e proteção preventiva no frontend, exibindo exclusivamente recebimentos em aberto (45 testes aprovados em `test_pgtos_desconhecidos.js` — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
+- **v8.297 (07/10/2026):** Publicação oficial de melhorias na tela Pgtos Desconhecidos (`#tab-pgtos-desconhecidos`): exclusão estrita de títulos com status 'Baixado no Protheus' (query SE1 com `E1_SALDO > 0` e `E1_BAIXA = ''`, descarte em loop e proteção na renderização), validação obrigatória do campo de valor no frontend (`*`, `required`) e backend (`HTTP 400`) (45 testes aprovados em `test_pgtos_desconhecidos.js` — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.295 (07/10/2026):** Campo 'Valor do Depósito (R$)' tornado estritamente obrigatório em Pgtos Desconhecidos (`#tab-pgtos-desconhecidos`): validação semântica com marcação visual `*`, atributos `required`/`aria-required`, foco automático no campo, bloqueio com alerta amigável no frontend e retorno `HTTP 400 Bad Request` no backend para buscas sem valor ou com valor $\le 0$ (42 testes aprovados em `test_pgtos_desconhecidos.js` — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.294 (07/10/2026):** Filtros temporais dos últimos 90 dias em Pgtos Desconhecidos (`#tab-pgtos-desconhecidos`): Pipedrive CRM (`update_time`), Protheus ERP (`E1_EMISSAO` e `C5_EMISSAO` no formato `YYYYMMDD`) e Assistência Técnica ("Entrada em:" / `data_abertura`), com formatação amigável `DD/MM/AAAA` e suíte expandida para 38 testes aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.293 (06/10/2026):** Sub-aba 'Pgtos Desconhecidos' na Macro-Área Assist. Financ. (`#tab-pgtos-desconhecidos`) com motor federado paralelo (`Promise.allSettled`) conectando Portal da Assistência Técnica (cálculo reverso 5% Pix e match PF x PJ), TOTVS Protheus ERP (SE1 títulos/adiantamentos RA, SC5/SC6 pedidos não faturados e SA3 vendedores) e Pipedrive CRM. Heurísticas por empresa (GSI com foco em Assistência; Metal Pleno e OAÇO com descarte da Assistência e foco exclusivo em Protheus/Vendedores comerciais), atalho direto na conciliação bancária de créditos órfãos, blindagem Zero-Trust RBAC (403 para vendedores), proteção contra SQL injection e sanitização XSS (30 testes aprovados em `test_pgtos_desconhecidos.js` — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).

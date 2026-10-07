@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-pgtos-desconhecidos` | **Botão:** `#btnTabPgtosDesconhecidos`  
 > **Permissão RBAC:** `financeiro`, `analista-fin`, `admin`, `diretoria` (Perfil `vendedor` bloqueado via HTTP 403)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 07/10/2026 (v8.295 - Homologado)  
+> **Última Atualização:** 07/10/2026 (v8.297 - Homologado)  
 
 ---
 
@@ -138,7 +138,7 @@ Total de testes: **45 testes aprovados (0 falhas)**:
 
 ## 7. Histórico & Evolução da Tela
 
-- **v8.296 (07/10/2026):** Exclusão estrita de títulos com status 'Baixado no Protheus' na listagem de pagamentos desconhecidos. Apenas recebimentos em aberto (`E1_SALDO > 0` e `E1_BAIXA` vazia) são consultados e exibidos, tanto no SQL de SE1 quanto na defesa em profundidade do backend e frontend. Suíte ampliada para 45 testes aprovados.
+- **v8.297 (07/10/2026):** Exclusão estrita de títulos com status 'Baixado no Protheus' e campo de valor obrigatório na listagem de pagamentos desconhecidos. Apenas recebimentos em aberto (`E1_SALDO > 0` e `E1_BAIXA` vazia) são consultados e exibidos, tanto no SQL de SE1 quanto na defesa em profundidade do backend e frontend. Suíte ampliada para 45 testes aprovados.
 - **v8.295 (07/10/2026):** Campo 'Valor do Depósito (R$)' tornado estritamente obrigatório tanto no frontend (marcação `*`, `required`, foco automático e alertas amigáveis) quanto na API backend (`HTTP 400` se ausente ou $\le 0$). Expansão da suíte para 42 testes aprovados.
 - **v8.294 (07/10/2026):** Implementação dos filtros temporais de 90 dias para conter registros do passado: Pipedrive CRM (`update_time`), Protheus ERP (`E1_EMISSAO` e `C5_EMISSAO`) e Assistência Técnica ("Entrada em:"), formatação limpa de datas e expansão da suíte para 38 testes.
 - **v8.293 (06/10/2026):** Implantação completa da sub-aba Pgtos Desconhecidos na macro-área Assist. Financ., busca federada na Assistência Técnica, Protheus ERP e Pipedrive CRM, heurísticas por empresa, atalho na conciliação de órfãos do banco e proteção RBAC Zero-Trust.
