@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
-  <link rel="stylesheet" href="style.css?v=8.302">
+  <link rel="stylesheet" href="style.css?v=8.304">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 07/10/2026 18:14 (v8.302 - Formatação e Validação Numérica BRL em Pgtos Desconhecidos)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 08/10/2026 17:11 (Adicao do Ciclo Atual em andamento e ajuste do Ultimo Ciclo como padrao em Vendedores > Fechamento)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -224,9 +224,10 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
           <span>Extrato API Inter</span>
         </button>
-        <button class="nav-tab-btn" data-tab="tab-inter-webhooks" id="btnTabInterWebhooks">
+        <button class="nav-tab-btn" data-tab="tab-inter-webhooks" id="btnTabInterWebhooks" disabled title="Módulo em desenvolvimento (Inabilitado temporariamente)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
           <span>Webhooks Pix Inter</span>
+          <span style="font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; background: rgba(148, 163, 184, 0.2); color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Em breve</span>
         </button>
         <button class="nav-tab-btn" data-tab="tab-analise-credito" id="btnTabAnaliseCredito">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -2864,7 +2865,7 @@
             <div style="display: flex; align-items: center; gap: 6px;">
               <label for="fechamentoHistoricoSelect" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">📅 Histórico:</label>
               <select id="fechamentoHistoricoSelect" class="form-select" style="height: 34px; padding: 2px 8px; font-size: 0.82rem; min-width: 160px;">
-                <option value="">📌 Ciclo Atual (Ativo)</option>
+                <option value="">🔒 Último Ciclo (Padrão)</option>
               </select>
             </div>
 
@@ -3789,6 +3790,22 @@
             </div>
           </div>
         </form>
+      </section>
+    </div>
+
+    <!-- ABA 5: ASSIST. FINANC. -> Webhooks Pix Inter (Inabilitada Temporariamente) -->
+    <div id="tab-inter-webhooks" class="tab-pane hidden">
+      <section class="card" style="padding: 3rem 1.5rem; text-align: center; max-width: 650px; margin: 2rem auto;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(148, 163, 184, 0.1); margin-bottom: 1.25rem;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">Webhooks Pix Inter</h2>
+        <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.25); font-size: 0.75rem; padding: 4px 10px; border-radius: 9999px; font-weight: 600; text-transform: uppercase;">Módulo Visual Inabilitado Temporariamente</span>
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-top: 1rem;">
+          O painel visual de monitoramento de eventos de webhook está em desenvolvimento e temporariamente desabilitado.
+          <br>
+          <em>Nota: O serviço receptor de notificações Pix e validação de schemas Zod no backend permanece operacional e ativo em segundo plano.</em>
+        </p>
       </section>
     </div>
 
@@ -10016,26 +10033,26 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.302"></script>
-  <script src="js/bi.js?v=8.302"></script>
-  <script src="js/bi_indices.js?v=8.302"></script>
-  <script src="js/bi_autorizacoes.js?v=8.302"></script>
-  <script src="js/bi_despesas.js?v=8.302"></script>
-  <script src="js/gordura_frete.js?v=8.302"></script>
-  <script src="js/fechamento_vendedores.js?v=8.302"></script>
-  <script type="module" src="js/tarefas.js?v=8.302"></script>
-  <script src="js/holerites.js?v=8.302"></script>
-  <script src="js/funcionarios_dp.js?v=8.302"></script>
-  <script src="js/crm.js?v=8.302"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.302"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.302"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.302"></script>
-  <script src="js/compras_necessidade.js?v=8.302"></script>
-  <script src="js/nfse_pendentes.js?v=8.302"></script>
-  <script src="js/fechamento_fiscal.js?v=8.302"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.302"></script>
-  <script src="js/contas_pagar.js?v=8.302"></script>
-  <script src="js/pgtos_desconhecidos.js?v=8.302"></script>
-  <script src="app.js?v=8.302"></script>
+  <script src="js/chart.umd.min.js?v=8.304"></script>
+  <script src="js/bi.js?v=8.304"></script>
+  <script src="js/bi_indices.js?v=8.304"></script>
+  <script src="js/bi_autorizacoes.js?v=8.304"></script>
+  <script src="js/bi_despesas.js?v=8.304"></script>
+  <script src="js/gordura_frete.js?v=8.304"></script>
+  <script src="js/fechamento_vendedores.js?v=8.304"></script>
+  <script type="module" src="js/tarefas.js?v=8.304"></script>
+  <script src="js/holerites.js?v=8.304"></script>
+  <script src="js/funcionarios_dp.js?v=8.304"></script>
+  <script src="js/crm.js?v=8.304"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.304"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.304"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.304"></script>
+  <script src="js/compras_necessidade.js?v=8.304"></script>
+  <script src="js/nfse_pendentes.js?v=8.304"></script>
+  <script src="js/fechamento_fiscal.js?v=8.304"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.304"></script>
+  <script src="js/contas_pagar.js?v=8.304"></script>
+  <script src="js/pgtos_desconhecidos.js?v=8.304"></script>
+  <script src="app.js?v=8.304"></script>
 </body>
 </html>

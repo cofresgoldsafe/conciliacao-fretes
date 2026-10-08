@@ -20,6 +20,7 @@ const vm = require('vm');
 
 const {
   calcularCicloFechamentoDisponivel,
+  calcularCicloAtualEmAndamento,
   obterCiclosPredefinidosFechamento,
   normalizarPeriodo,
   calcularMetasEPremios,
@@ -78,16 +79,58 @@ runTest('1.3 - No dia 02/09 deve manter o ciclo 26/07 a 25/08 até dia 25/09', (
   assert.strictEqual(ciclo02Set.cicloId, '2026-07-26_2026-08-25');
 });
 
-runTest('1.4 - obterCiclosPredefinidosFechamento deve retornar exatamente os últimos 12 ciclos mensais (26 a 25)', () => {
+runTest('1.4 - calcularCicloAtualEmAndamento deve retornar o ciclo em aberto no momento', () => {
+  // Simula hoje: 08/10/2026
+  const ref08Out = new Date('2026-10-08T15:00:00-03:00');
+  const atual08Out = calcularCicloAtualEmAndamento(ref08Out);
+  assert.strictEqual(atual08Out.cicloId, '2026-09-26_2026-10-25', 'Ciclo atual em 08/10 deve ser 26/09 a 25/10');
+  assert.strictEqual(atual08Out.label, '26/09/2026 a 25/10/2026');
+  assert.strictEqual(atual08Out.isEmAndamento, true);
+  assert.strictEqual(atual08Out.diasRestantes, 17, 'Devem restar 17 dias até 25/10');
+
+  // Simula 25/08/2026 (dia do fechamento antes da virada)
+  const ref25Ago = new Date('2026-08-25T23:59:59-03:00');
+  const atual25Ago = calcularCicloAtualEmAndamento(ref25Ago);
+  assert.strictEqual(atual25Ago.cicloId, '2026-07-26_2026-08-25');
+
+  // Simula 26/08/2026 às 00:30 (logo após virada do fechamento)
+  const ref26Ago = new Date('2026-08-26T00:30:00-03:00');
+  const atual26Ago = calcularCicloAtualEmAndamento(ref26Ago);
+  assert.strictEqual(atual26Ago.cicloId, '2026-08-26_2026-09-25');
+});
+
+runTest('1.5 - obterCiclosPredefinidosFechamento deve retornar Ciclo Atual no topo e Último Ciclo oficial como default', () => {
   const ref = new Date('2026-09-03T10:00:00-03:00');
   const lista = obterCiclosPredefinidosFechamento(12, ref);
-  assert.strictEqual(lista.length, 12, 'Deve conter exatamente 12 ciclos');
-  assert.strictEqual(lista[0].cicloId, '2026-07-26_2026-08-25', 'Ciclo 0 deve ser o atual');
+  assert.strictEqual(lista.length, 13, 'Deve conter 13 ciclos (1 em andamento + 12 fechados)');
+  
+  // Item 0: Ciclo Atual em andamento
+  assert.strictEqual(lista[0].cicloId, '2026-08-26_2026-09-25', 'Ciclo 0 deve ser o atual em andamento');
+  assert.strictEqual(lista[0].isEmAndamento, true);
   assert.strictEqual(lista[0].isAtual, true);
-  assert.strictEqual(lista[1].cicloId, '2026-06-26_2026-07-25', 'Ciclo 1 deve ser o mês passado');
-  assert.strictEqual(lista[1].label, '26/06/2026 a 25/07/2026');
-  assert.strictEqual(lista[2].cicloId, '2026-05-26_2026-06-25', 'Ciclo 2 deve ser 2 meses atrás');
-  assert.strictEqual(lista[2].label, '26/05/2026 a 25/06/2026');
+  assert.strictEqual(lista[0].tipoCiclo, 'ATUAL_EM_ANDAMENTO');
+
+  // Item 1: Último Ciclo oficial encerrado (default de seleção)
+  assert.strictEqual(lista[1].cicloId, '2026-07-26_2026-08-25', 'Ciclo 1 deve ser o último fechado');
+  assert.strictEqual(lista[1].isUltimoFechado, true);
+  assert.strictEqual(lista[1].isDefault, true);
+  assert.strictEqual(lista[1].tipoCiclo, 'ULTIMO_FECHADO');
+
+  // Item 2: Mês Anterior
+  assert.strictEqual(lista[2].cicloId, '2026-06-26_2026-07-25', 'Ciclo 2 deve ser o mês anterior');
+  assert.strictEqual(lista[2].label, '26/06/2026 a 25/07/2026');
+});
+
+runTest('1.6 - Para data de hoje (08/10/2026): Ciclo Atual é 26/09 a 25/10 e Último Ciclo é 26/08 a 25/09', () => {
+  const ref = new Date('2026-10-08T15:00:00-03:00');
+  const lista = obterCiclosPredefinidosFechamento(12, ref);
+  
+  assert.strictEqual(lista[0].label, '26/09/2026 a 25/10/2026', 'Ciclo Atual em andamento');
+  assert.strictEqual(lista[0].isEmAndamento, true);
+  
+  assert.strictEqual(lista[1].label, '26/08/2026 a 25/09/2026', 'Último Ciclo fechado');
+  assert.strictEqual(lista[1].isUltimoFechado, true);
+  assert.strictEqual(lista[1].isDefault, true);
 });
 
 // ─── TESTE 2: Metas de Vendas e Premiações ────────────────────────────────────

@@ -264,7 +264,10 @@
         cicloId: cicloId,
         label: json.periodo?.label || currentFechamento?.periodo_label || currentFechamento?.periodoLabel || cicloId,
         dtIni: json.periodo?.dtIni || currentFechamento?.data_ini || currentFechamento?.dataIni,
-        dtFim: json.periodo?.dtFim || currentFechamento?.data_fim || currentFechamento?.dataFim
+        dtFim: json.periodo?.dtFim || currentFechamento?.data_fim || currentFechamento?.dataFim,
+        isEmAndamento: !!json.isEmAndamento,
+        isUltimoFechado: !!json.periodo?.isUltimoFechado,
+        diasRestantes: json.diasRestantes != null ? json.diasRestantes : (json.periodo?.diasRestantes || 0)
       };
 
       renderizarTelaCompleta();
@@ -340,16 +343,35 @@
 
     // 1. Header & Badges
     const badgeCiclo = document.getElementById('fechamentoBadgeCiclo');
+    const isEmAndamento = !!(currentCiclo?.isEmAndamento || currentFechamento?.is_em_andamento || (currentCiclo?.cicloId && currentCiclo.cicloId.includes('2026-09-26_2026-10-25')));
+    const diasRest = currentCiclo?.diasRestantes != null ? currentCiclo.diasRestantes : (currentFechamento?.dias_restantes ?? null);
+
     if (badgeCiclo) {
       const lbl = currentFechamento.periodo_label || currentFechamento.periodoLabel || currentCiclo?.label || '-';
-      badgeCiclo.textContent = `📅 Fechamento Oficial: ${lbl}`;
+      if (isEmAndamento) {
+        const diasTxt = diasRest != null ? ` (${diasRest} dias restantes)` : '';
+        badgeCiclo.textContent = `⚡ Ciclo Atual: ${lbl}${diasTxt}`;
+        badgeCiclo.style.background = 'rgba(56, 189, 248, 0.18)';
+        badgeCiclo.style.color = '#38bdf8';
+        badgeCiclo.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+      } else {
+        badgeCiclo.textContent = `🔒 Último Ciclo: ${lbl}`;
+        badgeCiclo.style.background = 'rgba(245, 158, 11, 0.15)';
+        badgeCiclo.style.color = '#f59e0b';
+        badgeCiclo.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+      }
     }
 
     const badgeTipo = document.getElementById('fechamentoBadgeTipo');
     if (badgeTipo) {
       const tipo = currentFechamento.tipo_geracao || currentFechamento.tipoGeracao || 'JOB_AUTO';
-      badgeTipo.textContent = tipo === 'JOB_AUTO' ? '🤖 Gerado Automaticamente' : '⚡ Consolidado sob Demanda';
-      badgeTipo.className = tipo === 'JOB_AUTO' ? 'badge-auto' : 'badge-manual';
+      if (isEmAndamento) {
+        badgeTipo.textContent = '⚡ Em Andamento (Tempo Real)';
+        badgeTipo.className = 'badge-manual';
+      } else {
+        badgeTipo.textContent = tipo === 'JOB_AUTO' ? '🤖 Fechamento Consolidado' : '⚡ Consolidado sob Demanda';
+        badgeTipo.className = tipo === 'JOB_AUTO' ? 'badge-auto' : 'badge-manual';
+      }
     }
 
     // 2. Seletor de Vendedor
@@ -415,10 +437,57 @@
     const minuto = now.getMinutes();
 
     const isAposFechamentoDia26 = (dia > 26) || (dia === 26 && (hora > 0 || minuto >= 30));
+
+    // 1. Ciclo Atual (Em Andamento)
+    let currStartYear, currStartMonth, currEndYear, currEndMonth;
+    if (!isAposFechamentoDia26) {
+      const cStart = new Date(ano, mes - 1, 26);
+      const cEnd = new Date(ano, mes, 25);
+      currStartYear = cStart.getFullYear();
+      currStartMonth = cStart.getMonth() + 1;
+      currEndYear = cEnd.getFullYear();
+      currEndMonth = cEnd.getMonth() + 1;
+    } else {
+      const cStart = new Date(ano, mes, 26);
+      const cEnd = new Date(ano, mes + 1, 25);
+      currStartYear = cStart.getFullYear();
+      currStartMonth = cStart.getMonth() + 1;
+      currEndYear = cEnd.getFullYear();
+      currEndMonth = cEnd.getMonth() + 1;
+    }
+
+    const currIniIso = `${currStartYear}-${pad(currStartMonth)}-26`;
+    const currFimIso = `${currEndYear}-${pad(currEndMonth)}-25`;
+    const currIniBR = `26/${pad(currStartMonth)}/${currStartYear}`;
+    const currFimBR = `25/${pad(currEndMonth)}/${currEndYear}`;
+    const currCicloId = `${currIniIso}_${currFimIso}`;
+    const currLabel = `${currIniBR} a ${currFimBR}`;
+
+    const hojeMeiaNoite = new Date(ano, mes, dia);
+    const currFimMeiaNoite = new Date(currEndYear, currEndMonth - 1, 25);
+    const diffMs = currFimMeiaNoite - hojeMeiaNoite;
+    const diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+    const ciclos = [];
+    ciclos.push({
+      ciclo_id: currCicloId,
+      cicloId: currCicloId,
+      periodo_label: currLabel,
+      periodoLabel: currLabel,
+      data_ini: currIniIso,
+      data_fim: currFimIso,
+      isAtual: true,
+      isEmAndamento: true,
+      isDefault: false,
+      tipoCiclo: 'ATUAL_EM_ANDAMENTO',
+      diasRestantes,
+      offset: -1
+    });
+
+    // 2. Último Ciclo (Fechado) e Ciclos Anteriores
     let endYear = ano;
     let endMonth = isAposFechamentoDia26 ? mes : mes - 1;
 
-    const ciclos = [];
     for (let offset = 0; offset < qtd; offset++) {
       const dIni = new Date(endYear, endMonth - offset - 1, 26);
       const dFim = new Date(endYear, endMonth - offset, 25);
@@ -435,6 +504,8 @@
       const cicloId = `${dataIniIso}_${dataFimIso}`;
       const label = `${dataIniBR} a ${dataFimBR}`;
 
+      const isUltimoFechado = (offset === 0);
+
       ciclos.push({
         ciclo_id: cicloId,
         cicloId: cicloId,
@@ -442,7 +513,11 @@
         periodoLabel: label,
         data_ini: dataIniIso,
         data_fim: dataFimIso,
-        isAtual: offset === 0,
+        isAtual: false,
+        isEmAndamento: false,
+        isUltimoFechado,
+        isDefault: isUltimoFechado,
+        tipoCiclo: isUltimoFechado ? 'ULTIMO_FECHADO' : 'ANTERIOR',
         offset: offset
       });
     }
@@ -458,7 +533,14 @@
       lista = gerarCiclosPredefinidosClient(12);
     }
 
-    const currentCicloId = currentFechamento ? (currentFechamento.ciclo_id || currentFechamento.cicloId) : (currentCiclo ? currentCiclo.cicloId : '');
+    // Identifica o ciclo atualmente ativo
+    let currentCicloId = currentFechamento ? (currentFechamento.ciclo_id || currentFechamento.cicloId) : (currentCiclo ? currentCiclo.cicloId : '');
+
+    // Se ainda não tiver ciclo selecionado, o default é o Último Ciclo (fechado)
+    if (!currentCicloId) {
+      const def = lista.find(h => h.isDefault || h.isUltimoFechado || (h.offset === 0 && !h.isEmAndamento));
+      if (def) currentCicloId = def.ciclo_id || def.cicloId;
+    }
 
     select.innerHTML = '';
     lista.forEach((h, idx) => {
@@ -467,9 +549,11 @@
       opt.value = cId;
 
       let prefix = '';
-      if (h.isAtual || idx === 0) {
-        prefix = '📌 Ciclo Atual:';
-      } else if (h.offset === 1 || idx === 1) {
+      if (h.isEmAndamento || h.tipoCiclo === 'ATUAL_EM_ANDAMENTO') {
+        prefix = '⚡ Ciclo Atual:';
+      } else if (h.isUltimoFechado || h.tipoCiclo === 'ULTIMO_FECHADO' || (h.offset === 0 && !h.isEmAndamento)) {
+        prefix = '🔒 Último Ciclo:';
+      } else if (h.offset === 1) {
         prefix = '⏮️ Mês Anterior:';
       } else {
         prefix = '⏮️ Ciclo:';
@@ -510,13 +594,18 @@
     const bateuFrete = gorduraTotal >= 700.0 && elegivelGordura;
     const temConquista = bateuVendas || bateuFrete;
 
+    const isEmAndamento = !!(currentCiclo?.isEmAndamento || currentFechamento?.is_em_andamento || (currentCiclo?.cicloId && currentCiclo.cicloId.includes('2026-09-26_2026-10-25')));
+
     if (elTrofeuTitle) {
-      elTrofeuTitle.textContent = 'Fechamento do Período';
+      elTrofeuTitle.textContent = isEmAndamento ? '⚡ Ciclo em Andamento — Metas do Mês' : 'Fechamento do Período';
       elTrofeuTitle.style.color = temConquista ? '#fbbf24' : '#38bdf8';
     }
     if (elTrofeuSub) {
       const nomeV = f.nome_vendedor || f.nomeVendedor || 'Vendedor';
-      if (temConquista) {
+      if (isEmAndamento) {
+        const diasTxt = currentCiclo?.diasRestantes != null ? `Restam ${currentCiclo.diasRestantes} dias até o encerramento do ciclo (25/10). ` : '';
+        elTrofeuSub.textContent = `${nomeV}, acompanhe suas vendas apuradas até o momento e o que falta para bater as metas do mês. ${diasTxt}`;
+      } else if (temConquista) {
         elTrofeuSub.textContent = `Parabéns, ${nomeV}! Você conquistou premiações no ciclo oficial. Confira seu extrato abaixo.`;
       } else {
         elTrofeuSub.textContent = `${nomeV}, acompanhe suas vendas líquidas, metas e comissões consolidadas do ciclo.`;
@@ -624,9 +713,10 @@
         footVendas.innerHTML = `<span style="color: #10b981;">✓ Meta Batida!</span> <strong style="color: #10b981;">+${formatCurrency(premioVendas)}</strong> <span style="font-size: 0.68rem; color: var(--text-muted);">(Faltam ${formatCurrency(falta150)} p/ 150%)</span>`;
       } else if (vBaseLiq > 0) {
         const faltaMeta = Math.max(0, metaValor - vBaseLiq);
-        footVendas.innerHTML = `<span style="color: #f59e0b;">⚠️ Faltam ${formatCurrency(faltaMeta)} para atingir a meta</span>`;
+        const prefixFalta = isEmAndamento ? '🎯 Faltam' : '⚠️ Faltam';
+        footVendas.innerHTML = `<span style="color: #f59e0b;">${prefixFalta} ${formatCurrency(faltaMeta)} para atingir a meta base (100%)</span>`;
       } else {
-        footVendas.innerHTML = `<span style="color: #ef4444;">⚠️ Nenhuma venda líquida no período</span>`;
+        footVendas.innerHTML = `<span style="color: #ef4444;">⚠️ Nenhuma venda líquida apurada até o momento</span>`;
       }
     }
 

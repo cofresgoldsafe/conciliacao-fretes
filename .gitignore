@@ -18,5 +18,7 @@ data/score_config.json
 google_service_account.json
 credentials/
 *service_account*.json
-api-ativa.png
-recalcular.png
+*.png
+*.pdf
+*.csv
+data/os_*

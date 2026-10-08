@@ -388,8 +388,8 @@
       "totalPedidosComFreteEmbutido": 3,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "RECALC_MANUAL",
-    "gerado_em": "2026-09-30T17:48:52.538Z"
+    "tipo_geracao": "GITHUB_ACTIONS",
+    "gerado_em": "2026-10-07T22:53:54.055Z"
   },
   {
     "ciclo_id": "2026-08-26_2026-09-25",
@@ -444,8 +444,8 @@
       "totalPedidosComFreteEmbutido": 8,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "RECALC_MANUAL",
-    "gerado_em": "2026-09-30T17:48:52.549Z"
+    "tipo_geracao": "GITHUB_ACTIONS",
+    "gerado_em": "2026-10-07T22:53:54.066Z"
   },
   {
     "ciclo_id": "2026-08-26_2026-09-25",
@@ -500,7 +500,175 @@
       "totalPedidosComFreteEmbutido": 6,
       "totalTitulosInadimplentes": 0
     },
-    "tipo_geracao": "RECALC_MANUAL",
-    "gerado_em": "2026-09-30T17:48:52.555Z"
+    "tipo_geracao": "GITHUB_ACTIONS",
+    "gerado_em": "2026-10-07T22:53:54.079Z"
+  },
+  {
+    "ciclo_id": "2026-09-26_2026-10-25",
+    "periodo_label": "26/09/2026 a 25/10/2026",
+    "data_ini": "2026-09-26",
+    "data_fim": "2026-10-25",
+    "cod_vendedor": "000004",
+    "nome_vendedor": "Figueiredo",
+    "vendas_base_bruta": 39321.39,
+    "fretes_embutidos": 503.8,
+    "vendas_base_liquida": 38817.59,
+    "meta_vendas_valor": 120000,
+    "pct_meta_vendas": 32.35,
+    "premio_meta_vendas": 0,
+    "faixa_meta_vendas": "Não Atingida (< 100%)",
+    "gordura_frete_total": -337.79,
+    "premio_gordura_frete": 0,
+    "faixa_gordura_frete": "Sem Premiação (< R$ 700)",
+    "comissao_taxa": 0.013,
+    "comissao_bruta": 504.63,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 504.63,
+    "total_premios": 0,
+    "total_geral_receber": 504.63,
+    "faturamento_empresas_json": {
+      "GSI": 453,
+      "OACO": 10319.5,
+      "METAL_PLENO": 119666.39,
+      "TOTAL": 130438.89
+    },
+    "benchmarking_json": {
+      "mediaVendasEquipe": 41292.7,
+      "diffVendasPct": -5.99,
+      "statusVendasBench": "ABAIXO_MEDIA",
+      "mediaGorduraEquipe": 133.69,
+      "diffGorduraPct": -352.67,
+      "statusGorduraBench": "ABAIXO_MEDIA"
+    },
+    "metas_snapshot_json": {
+      "metaBaseVendas": 120000,
+      "premioMeta100": 400,
+      "premioMeta150": 600,
+      "premioMeta200": 1000,
+      "premioGordura700": 200,
+      "premioGordura1100": 300,
+      "premioGordura1500": 400,
+      "premioGordura2100": 500,
+      "premioGordura3000": 600
+    },
+    "detalhes_json": {
+      "totalLancamentosComissao": 7,
+      "totalPedidosComFreteEmbutido": 2,
+      "totalTitulosInadimplentes": 0
+    },
+    "tipo_geracao": "JOB_STARTUP",
+    "gerado_em": "2026-10-08T20:02:27.988Z"
+  },
+  {
+    "ciclo_id": "2026-09-26_2026-10-25",
+    "periodo_label": "26/09/2026 a 25/10/2026",
+    "data_ini": "2026-09-26",
+    "data_fim": "2026-10-25",
+    "cod_vendedor": "000064",
+    "nome_vendedor": "Andrea",
+    "vendas_base_bruta": 74396,
+    "fretes_embutidos": 5841,
+    "vendas_base_liquida": 68555,
+    "meta_vendas_valor": 120000,
+    "pct_meta_vendas": 57.13,
+    "premio_meta_vendas": 0,
+    "faixa_meta_vendas": "Não Atingida (< 100%)",
+    "gordura_frete_total": 366.64,
+    "premio_gordura_frete": 0,
+    "faixa_gordura_frete": "Sem Premiação (< R$ 700)",
+    "comissao_taxa": 0.013,
+    "comissao_bruta": 891.21,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 891.21,
+    "total_premios": 0,
+    "total_geral_receber": 891.21,
+    "faturamento_empresas_json": {
+      "GSI": 453,
+      "OACO": 10319.5,
+      "METAL_PLENO": 119666.39,
+      "TOTAL": 130438.89
+    },
+    "benchmarking_json": {
+      "mediaVendasEquipe": 41292.7,
+      "diffVendasPct": 66.02,
+      "statusVendasBench": "ACIMA_MEDIA",
+      "mediaGorduraEquipe": 133.69,
+      "diffGorduraPct": 174.25,
+      "statusGorduraBench": "ACIMA_MEDIA"
+    },
+    "metas_snapshot_json": {
+      "metaBaseVendas": 120000,
+      "premioMeta100": 400,
+      "premioMeta150": 600,
+      "premioMeta200": 1000,
+      "premioGordura700": 200,
+      "premioGordura1100": 300,
+      "premioGordura1500": 400,
+      "premioGordura2100": 500,
+      "premioGordura3000": 600
+    },
+    "detalhes_json": {
+      "totalLancamentosComissao": 14,
+      "totalPedidosComFreteEmbutido": 5,
+      "totalTitulosInadimplentes": 0
+    },
+    "tipo_geracao": "JOB_STARTUP",
+    "gerado_em": "2026-10-08T20:02:28.002Z"
+  },
+  {
+    "ciclo_id": "2026-09-26_2026-10-25",
+    "periodo_label": "26/09/2026 a 25/10/2026",
+    "data_ini": "2026-09-26",
+    "data_fim": "2026-10-25",
+    "cod_vendedor": "000074",
+    "nome_vendedor": "Juliana",
+    "vendas_base_bruta": 16721.5,
+    "fretes_embutidos": 216,
+    "vendas_base_liquida": 16505.5,
+    "meta_vendas_valor": 120000,
+    "pct_meta_vendas": 13.75,
+    "premio_meta_vendas": 0,
+    "faixa_meta_vendas": "Não Atingida (< 100%)",
+    "gordura_frete_total": 372.22,
+    "premio_gordura_frete": 0,
+    "faixa_gordura_frete": "Sem Premiação (< R$ 700)",
+    "comissao_taxa": 0.013,
+    "comissao_bruta": 214.57,
+    "inadimplentes_total": 0,
+    "comissao_liquida": 214.57,
+    "total_premios": 0,
+    "total_geral_receber": 214.57,
+    "faturamento_empresas_json": {
+      "GSI": 453,
+      "OACO": 10319.5,
+      "METAL_PLENO": 119666.39,
+      "TOTAL": 130438.89
+    },
+    "benchmarking_json": {
+      "mediaVendasEquipe": 41292.7,
+      "diffVendasPct": -60.03,
+      "statusVendasBench": "ABAIXO_MEDIA",
+      "mediaGorduraEquipe": 133.69,
+      "diffGorduraPct": 178.42,
+      "statusGorduraBench": "ACIMA_MEDIA"
+    },
+    "metas_snapshot_json": {
+      "metaBaseVendas": 120000,
+      "premioMeta100": 400,
+      "premioMeta150": 600,
+      "premioMeta200": 1000,
+      "premioGordura700": 200,
+      "premioGordura1100": 300,
+      "premioGordura1500": 400,
+      "premioGordura2100": 500,
+      "premioGordura3000": 600
+    },
+    "detalhes_json": {
+      "totalLancamentosComissao": 10,
+      "totalPedidosComFreteEmbutido": 2,
+      "totalTitulosInadimplentes": 0
+    },
+    "tipo_geracao": "JOB_STARTUP",
+    "gerado_em": "2026-10-08T20:02:28.010Z"
   }
 ]

@@ -146,18 +146,132 @@ function calcularCicloFechamentoDisponivel(refDate) {
 }
 
 /**
- * Retorna os últimos N ciclos oficiais de fechamento (26 a 25)
- * @param {number} [qtd=12] Quantidade de ciclos a retornar
- * @param {Date|string} [refDate] Data de referência
+ * Determina o ciclo atualmente em andamento (aberto) em que os vendedores estão trabalhando
+ * Regra Temporal:
+ * - Até o dia 25 do mês corrente, o ciclo em andamento iniciou no dia 26 do mês anterior e vai até o dia 25 do mês corrente.
+ * - No dia 26 a partir das 00:30, o novo ciclo em andamento passa a ser dia 26 do mês corrente até dia 25 do mês seguinte.
+ * 
+ * @param {Date|string} [refDate] Data de referência (default: agora em fuso de Brasília)
  */
-function obterCiclosPredefinidosFechamento(qtd = 12, refDate) {
+function calcularCicloAtualEmAndamento(refDate) {
+  let d;
+  if (refDate) {
+    d = new Date(refDate);
+  } else {
+    const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
+    d = new Date(nowStr);
+  }
+
+  const ano = d.getFullYear();
+  const mes = d.getMonth(); // 0 = Jan, ..., 7 = Ago, 8 = Set, 9 = Out
+  const dia = d.getDate();
+  const hora = d.getHours();
+  const minuto = d.getMinutes();
+
+  let startYear, startMonth, endYear, endMonth;
+
+  // Se dia for < 26 OU (dia == 26 e hora == 0 e minuto < 30) -> Ciclo em andamento é do mês anterior até este mês
+  const isAposFechamentoDia26 = (dia > 26) || (dia === 26 && (hora > 0 || minuto >= 30));
+
+  if (!isAposFechamentoDia26) {
+    // Ex: Em 08/10, o ciclo em andamento é 26/09 a 25/10 (mes - 1 a mes)
+    const currStart = new Date(ano, mes - 1, 26);
+    const currEnd = new Date(ano, mes, 25);
+    startYear = currStart.getFullYear();
+    startMonth = currStart.getMonth();
+    endYear = currEnd.getFullYear();
+    endMonth = currEnd.getMonth();
+  } else {
+    // Ex: Em 27/10, o ciclo em andamento é 26/10 a 25/11 (mes a mes + 1)
+    const currStart = new Date(ano, mes, 26);
+    const currEnd = new Date(ano, mes + 1, 25);
+    startYear = currStart.getFullYear();
+    startMonth = currStart.getMonth();
+    endYear = currEnd.getFullYear();
+    endMonth = currEnd.getMonth();
+  }
+
+  const pad = (n) => String(n).padStart(2, '0');
+
+  const dtIni = `${startYear}${pad(startMonth + 1)}26`;
+  const dtFim = `${endYear}${pad(endMonth + 1)}25`;
+  const dataIniIso = `${startYear}-${pad(startMonth + 1)}-26`;
+  const dataFimIso = `${endYear}-${pad(endMonth + 1)}-25`;
+  const dataIniBR = `26/${pad(startMonth + 1)}/${startYear}`;
+  const dataFimBR = `25/${pad(endMonth + 1)}/${endYear}`;
+  const cicloId = `${dataIniIso}_${dataFimIso}`;
+  const label = `${dataIniBR} a ${dataFimBR}`;
+
+  // Calcula dias restantes no ciclo até as 23:59:59 do dia 25
+  const hojeMeiaNoite = new Date(ano, mes, dia);
+  const dataFimMeiaNoite = new Date(endYear, endMonth, 25);
+  const diffMs = dataFimMeiaNoite - hojeMeiaNoite;
+  const diasRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+  return {
+    cicloId,
+    dtIni,
+    dtFim,
+    dataIniIso,
+    dataFimIso,
+    dataIniBR,
+    dataFimBR,
+    label,
+    isAtual: true,
+    isEmAndamento: true,
+    diasRestantes,
+    mesCompetencia: `${pad(endMonth + 1)}/${endYear}`
+  };
+}
+
+/**
+ * Retorna os ciclos predefinidos de fechamento:
+ * - Ciclo Atual (Em Andamento): o período em aberto que os vendedores estão trabalhando para bater as metas
+ * - Último Ciclo: o último período já encerrado e oficial (default de exibição)
+ * - N ciclos anteriores históricos
+ * 
+ * @param {number} [qtd=12] Quantidade de ciclos anteriores a retornar
+ * @param {Date|string} [refDate] Data de referência
+ * @param {Object} [options] Opções adicionais
+ * @param {boolean} [options.incluirEmAndamento=true] Se deve incluir o ciclo atual em andamento no topo da lista
+ */
+function obterCiclosPredefinidosFechamento(qtd = 12, refDate, options = {}) {
+  const incluirEmAndamento = options.incluirEmAndamento !== false;
+  const ciclos = [];
+
+  // 1. Ciclo Atual (Em Andamento)
+  if (incluirEmAndamento) {
+    const cAtual = calcularCicloAtualEmAndamento(refDate);
+    ciclos.push({
+      cicloId: cAtual.cicloId,
+      ciclo_id: cAtual.cicloId,
+      label: cAtual.label,
+      periodoLabel: cAtual.label,
+      periodo_label: cAtual.label,
+      dataIniIso: cAtual.dataIniIso,
+      dataFimIso: cAtual.dataFimIso,
+      data_ini: cAtual.dataIniIso,
+      data_fim: cAtual.dataFimIso,
+      dtIni: cAtual.dtIni,
+      dtFim: cAtual.dtFim,
+      dataIniBR: cAtual.dataIniBR,
+      dataFimBR: cAtual.dataFimBR,
+      isAtual: true,
+      isEmAndamento: true,
+      isDefault: false,
+      tipoCiclo: 'ATUAL_EM_ANDAMENTO',
+      diasRestantes: cAtual.diasRestantes,
+      offset: -1
+    });
+  }
+
+  // 2. Último Ciclo Oficial (Fechado) e Ciclos Anteriores
   const c0 = calcularCicloFechamentoDisponivel(refDate);
   const parts = c0.dataFimIso.split('-');
   const endYear = parseInt(parts[0], 10);
   const endMonth = parseInt(parts[1], 10) - 1; // 0-based
 
   const pad = (n) => String(n).padStart(2, '0');
-  const ciclos = [];
 
   for (let offset = 0; offset < qtd; offset++) {
     const dIni = new Date(endYear, endMonth - offset - 1, 26);
@@ -177,6 +291,8 @@ function obterCiclosPredefinidosFechamento(qtd = 12, refDate) {
     const cicloId = `${dataIniIso}_${dataFimIso}`;
     const label = `${dataIniBR} a ${dataFimBR}`;
 
+    const isUltimoFechado = (offset === 0);
+
     ciclos.push({
       cicloId,
       ciclo_id: cicloId,
@@ -191,7 +307,11 @@ function obterCiclosPredefinidosFechamento(qtd = 12, refDate) {
       dtFim,
       dataIniBR,
       dataFimBR,
-      isAtual: offset === 0,
+      isAtual: false,
+      isEmAndamento: false,
+      isUltimoFechado,
+      isDefault: isUltimoFechado,
+      tipoCiclo: isUltimoFechado ? 'ULTIMO_FECHADO' : 'ANTERIOR',
       offset
     });
   }
@@ -723,6 +843,7 @@ async function executarJobFechamentoMensal({ force = false, triggeredBy = null, 
 
 module.exports = {
   calcularCicloFechamentoDisponivel,
+  calcularCicloAtualEmAndamento,
   obterCiclosPredefinidosFechamento,
   normalizarPeriodo,
   buscarVendasComissoesPeriodo,

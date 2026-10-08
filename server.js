@@ -197,6 +197,7 @@ const {
 
 const {
   calcularCicloFechamentoDisponivel,
+  calcularCicloAtualEmAndamento,
   obterCiclosPredefinidosFechamento,
   normalizarPeriodo,
   consolidarFechamentoMensal,
@@ -1889,7 +1890,7 @@ app.post('/api/config/metas-vendas', requireAuth, requireRole('admin', 'diretori
 // API: VENDEDORES - FECHAMENTO MENSAL (26 A 25)
 // ============================================================================
 
-// Retorna o fechamento ativo/disponível do ciclo corrente
+// Retorna o fechamento ativo/disponível do ciclo corrente (Último Ciclo Fechado por padrão oficial)
 app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
   try {
     const user = getUserFromReq(req);
@@ -1904,6 +1905,7 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
     }
 
     const cicloAtivo = calcularCicloFechamentoDisponivel();
+    const cicloEmAndamento = calcularCicloAtualEmAndamento();
     const forceRecalc = req.query.force === 'true' || req.query.recalc === 'true';
 
     // 1. Tenta carregar do banco / snapshot gravado primeiro se não forçado
@@ -1930,13 +1932,19 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
         triggeredBy: forceRecalc ? 'RECALC_MANUAL' : 'AUTO_CORRECTION',
         persist: true
       });
-      return res.json({ success: true, ciclo: cicloAtivo, ...consolidado });
+      return res.json({
+        success: true,
+        ciclo: { ...cicloAtivo, isUltimoFechado: true, isDefault: true },
+        cicloAtualEmAndamento: cicloEmAndamento,
+        ...consolidado
+      });
     }
 
     // Se achou no banco, retorna o fechamento e todos os vendedores do ciclo
     res.json({
       success: true,
-      ciclo: cicloAtivo,
+      ciclo: { ...cicloAtivo, isUltimoFechado: true, isDefault: true },
+      cicloAtualEmAndamento: cicloEmAndamento,
       fechamento: fechamentoDoBanco,
       todosVendedores: todosDoCiclo || [fechamentoDoBanco],
       faturamentoGlobalPorEmpresa: fechamentoDoBanco.faturamento_empresas_json || {},
@@ -1948,7 +1956,7 @@ app.get('/api/vendedores/fechamento/atual', requireAuth, async (req, res) => {
   }
 });
 
-// Retorna o histórico de ciclos de fechamento (12 últimos ciclos oficiais 26 a 25)
+// Retorna o histórico de ciclos de fechamento (Ciclo Atual em andamento + Último Ciclo oficial + ciclos anteriores)
 app.get('/api/vendedores/fechamento/historico', requireAuth, async (req, res) => {
   try {
     const user = getUserFromReq(req);
@@ -1956,7 +1964,7 @@ app.get('/api/vendedores/fechamento/historico', requireAuth, async (req, res) =>
     if (user.role === 'vendedor') {
       codVend = user.vendorCode;
     }
-    const historicoBanco = await obterUltimosFechamentosDB({ limite: 12, codVendedor: codVend });
+    const historicoBanco = await obterUltimosFechamentosDB({ limite: 15, codVendedor: codVend });
     const ciclosPredefinidos = obterCiclosPredefinidosFechamento(12);
 
     // Mapeia registros já gravados no banco/cache
@@ -1976,6 +1984,11 @@ app.get('/api/vendedores/fechamento/historico', requireAuth, async (req, res) =>
         data_ini: c.dataIniIso,
         data_fim: c.dataFimIso,
         isAtual: c.isAtual,
+        isEmAndamento: !!c.isEmAndamento,
+        isUltimoFechado: !!c.isUltimoFechado,
+        isDefault: !!c.isDefault,
+        tipoCiclo: c.tipoCiclo,
+        diasRestantes: c.diasRestantes || 0,
         offset: c.offset,
         persistido: !!dbItem,
         gerado_em: dbItem ? dbItem.gerado_em : null
@@ -2002,34 +2015,57 @@ app.get('/api/vendedores/fechamento/ciclo/:cicloId', requireAuth, async (req, re
       codVend = user.vendorCode;
     }
 
-    // 1. Tenta carregar do banco de dados
+    const forceRecalc = req.query.force === 'true' || req.query.recalc === 'true';
+    const cicloEmAndamento = calcularCicloAtualEmAndamento();
+    const isCicloAtualEmAndamento = (cicloId === cicloEmAndamento.cicloId);
+
+    // 1. Tenta carregar do banco de dados se não forçado
     let fechamento = null;
-    if (codVend) {
-      fechamento = await obterFechamentoPorCicloEVendedorDB(cicloId, codVend);
+    let todosDoCiclo = null;
+
+    if (!forceRecalc) {
+      todosDoCiclo = await obterFechamentosPorCicloDB(cicloId);
+      if (codVend) {
+        fechamento = await obterFechamentoPorCicloEVendedorDB(cicloId, codVend);
+      } else if (todosDoCiclo && todosDoCiclo.length > 0) {
+        fechamento = todosDoCiclo[0];
+      }
     }
-    let todosDoCiclo = await obterFechamentosPorCicloDB(cicloId);
 
     // 2. Se não existir no banco de dados, consolida e persiste automaticamente sob demanda
-    if (!todosDoCiclo || todosDoCiclo.length === 0 || (codVend && !fechamento)) {
+    if (!todosDoCiclo || todosDoCiclo.length === 0 || (codVend && !fechamento) || forceRecalc) {
       const parts = cicloId.split('_');
       if (parts.length === 2) {
         const resCalc = await consolidarFechamentoMensal({
           dataIni: parts[0],
           dataFim: parts[1],
           codVend,
-          triggeredBy: 'ON_DEMAND',
+          triggeredBy: forceRecalc ? 'RECALC_MANUAL' : (isCicloAtualEmAndamento ? 'ON_DEMAND_EM_ANDAMENTO' : 'ON_DEMAND'),
           persist: true
         });
-        return res.json({ success: true, ...resCalc });
+        return res.json({
+          success: true,
+          isEmAndamento: isCicloAtualEmAndamento,
+          diasRestantes: isCicloAtualEmAndamento ? cicloEmAndamento.diasRestantes : 0,
+          periodo: isCicloAtualEmAndamento ? cicloEmAndamento : null,
+          ...resCalc
+        });
       }
       return res.status(404).json({ success: false, message: 'Fechamento não encontrado para este ciclo.' });
     }
 
+    const baseRet = {
+      success: true,
+      isEmAndamento: isCicloAtualEmAndamento,
+      diasRestantes: isCicloAtualEmAndamento ? cicloEmAndamento.diasRestantes : 0,
+      periodo: isCicloAtualEmAndamento ? cicloEmAndamento : null,
+      todosVendedores: todosDoCiclo
+    };
+
     if (codVend) {
       return res.json({
-        success: true,
+        ...baseRet,
         fechamento,
-        todosVendedores: todosDoCiclo,
         faturamentoGlobalPorEmpresa: fechamento.faturamento_empresas_json || {},
         metasSnapshot: fechamento.metas_snapshot_json || {},
         benchmarking: fechamento.benchmarking_json || {}
@@ -2037,9 +2073,8 @@ app.get('/api/vendedores/fechamento/ciclo/:cicloId', requireAuth, async (req, re
     }
 
     res.json({
-      success: true,
+      ...baseRet,
       fechamento: todosDoCiclo[0] || null,
-      todosVendedores: todosDoCiclo,
       faturamentoGlobalPorEmpresa: todosDoCiclo[0]?.faturamento_empresas_json || {},
       metasSnapshot: todosDoCiclo[0]?.metas_snapshot_json || {},
       benchmarking: todosDoCiclo[0]?.benchmarking_json || {}
@@ -7454,14 +7489,23 @@ function startFechamentoVendedoresJob() {
   setTimeout(async () => {
     try {
       const cicloAtivo = calcularCicloFechamentoDisponivel();
+      const cicloEmAndamento = calcularCicloAtualEmAndamento();
       console.log(`🏆 [Job Fechamento] Sincronização de startup (${cicloAtivo.label}). Consolidando dados do Protheus...`);
       await consolidarFechamentoMensal({
         dataIni: cicloAtivo.dtIni,
         dataFim: cicloAtivo.dtFim,
-        triggeredBy: 'JOB_STARTUP',
+        triggeredBy: 'JOB_STARTUP_FECHADO',
         persist: true
       });
-      console.log(`✅ [Job Fechamento] Sincronização do ciclo ${cicloAtivo.label} gravada com sucesso!`);
+      console.log(`✅ [Job Fechamento] Sincronização do último ciclo ${cicloAtivo.label} gravada com sucesso!`);
+
+      await consolidarFechamentoMensal({
+        dataIni: cicloEmAndamento.dtIni,
+        dataFim: cicloEmAndamento.dtFim,
+        triggeredBy: 'JOB_STARTUP_ANDAMENTO',
+        persist: true
+      });
+      console.log(`✅ [Job Fechamento] Sincronização do ciclo em andamento ${cicloEmAndamento.label} gravada com sucesso!`);
     } catch (e) {
       console.warn('⚠️ [Job Fechamento] Falha na sincronização inicial do fechamento:', e.message);
     }

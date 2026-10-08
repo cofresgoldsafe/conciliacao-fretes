@@ -958,6 +958,14 @@ body {
   box-shadow: 0 2px 8px rgba(56, 189, 248, 0.15);
 }
 
+.nav-tab-btn:disabled,
+.nav-tab-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: grayscale(0.8);
+}
+
 /* Badges de Permissão */
 .perm-badge {
   display: inline-flex;

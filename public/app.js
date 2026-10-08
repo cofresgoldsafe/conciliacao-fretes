@@ -856,6 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const allNavSubBtns = document.querySelectorAll('.nav-tab-btn');
   allNavSubBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.disabled || btn.hasAttribute('disabled')) return;
       const targetTab = btn.getAttribute('data-tab');
       
       // Remove active from sibling sub-buttons

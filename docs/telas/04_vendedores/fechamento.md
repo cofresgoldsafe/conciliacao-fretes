@@ -4,36 +4,46 @@
 > **Identificador DOM:** `#tab-vend-fechamento` | **Botão:** `#btnTabVendFechamento`  
 > **Permissão RBAC:** admin, vendedor, user  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 05/10/2026 (v8.292 - Resolução de Renderização dos Cards de Fechamento: Gordura, Premiações, Empresas e Benchmarking)  
+> **Última Atualização:** 08/10/2026 (v8.304 - Ciclo Atual em Andamento em Tempo Real & Último Ciclo Oficial como Padrão)  
 
 ---
 
 ## 1. Propósito da Tela & Personas
-- **Objetivo:** Consolidação mensal de desempenho comercial por vendedor, apuração de metas atingidas, comissões gamificadas e ranking.
+- **Objetivo:** Consolidação mensal de desempenho comercial por vendedor, apuração de metas atingidas, comissões gamificadas, ranking e acompanhamento em tempo real do ciclo em andamento.
 - **Personas Atendidas:** admin, vendedor, user
 
 ---
 
 ## 2. Arquitetura de Código & Componentes
-- **Frontend:** `public/js/fechamento_vendedores.js, public/index.html` (botões `#btnRecalcularFechamentoVend`, `#btnImprimirFechamento`)
+- **Frontend:** `public/js/fechamento_vendedores.js, public/index.html` (botões `#btnRecalcularFechamentoVend`, `#btnImprimirFechamento`, select `#fechamentoHistoricoSelect`)
 - **Backend / Rotas:** `fechamento_vendedores_engine.js, server.js`
 
 ---
 
 ## 3. Banco de Dados & Modelagem
-- **Persistência / Tabelas:** PostgreSQL Supabase (`fechamento_vendedor`, `metas_vendedores`), Protheus (`SF2`, `SE3`, `SC5`, `SE1`)
+- **Persistência / Tabelas:** PostgreSQL Supabase (`fechamentos_vendedores`, `metas_vendedores`), Protheus (`SF2`, `SE3`, `SC5`, `SE1`)
 
 ---
 
 ## 4. Regras de Negócio & Cálculos Chave
-- Dropdown de 12 ciclos predefinidos (dia 26 a dia 25). Cards gamificados com faixas de metas. Elegibilidade de bônus de frete atrelada a atingimento de >=85% da meta de vendas. Dedução de fretes embutidos (SC5).
+- **Ciclo Atual em Andamento (Em Aberto):** O vendedor e a gestão podem acompanhar o ciclo ativo em que a equipe está trabalhando para bater as metas do mês (ex: 26/09/2026 a 25/10/2026). Exibe vendas líquidas até o momento, quanto falta para bater a meta (100%, 150%, 200%), fretes acumulados, dias restantes até o encerramento em dia 25 e ranking dinâmico.
+- **Último Ciclo Oficial (Fechado / Default):** Ao abrir a tela, o ciclo exibido por padrão é o último período homologado e fechado (ex: 26/08/2026 a 25/09/2026). O rótulo foi alterado de "Ciclo Atual" para "Último Ciclo" para evitar confusão entre período fechado e período em andamento.
+- **Dropdown de Ciclos:**
+  - `⚡ Ciclo Atual: 26/09/2026 a 25/10/2026` (Em Andamento)
+  - `🔒 Último Ciclo: 26/08/2026 a 25/09/2026` (Padrão)
+  - `⏮️ Mês Anterior: 26/07/2026 a 25/08/2026`
+  - `⏮️ Ciclo: ...` (Histórico de 12 meses)
+- **Cards Gamificados & Gatilhos:** Faixas de metas (100% R$ 400, 150% R$ 600, 200% R$ 1.000). Elegibilidade de bônus de frete atrelada a atingimento de >=85% da meta de vendas. Dedução de fretes embutidos (SC5).
 - **Relação de Comissões (SE3) como Fonte Única:** A apuração das comissões tem a `SE3` como fonte única e exclusiva de verdade. Títulos em aberto de contas a receber (`SE1`) não são deduzidos diretamente da comissão do vendedor; caso uma inadimplência se confirme ou vá para cartório/perda, o financeiro lança uma comissão negativa na `SE3` que abate organicamente a base e o fechamento do vendedor.
-- **Recálculo Sob Demanda:** Botão `🔄 Recalcular Fechamento` disponível diretamente na barra de ferramentas da tela para sincronização instantânea em caso de alterações de comissões ou baixas de títulos no Protheus.
+- **Recálculo Sob Demanda:** Botão `🔄 Recalcular Fechamento` disponível diretamente na barra de ferramentas da tela para sincronização instantânea em caso de novos faturamentos no Protheus.
 
 ---
 
 ## 5. Endpoints REST da API
-- `GET /api/vendedores/fechamento/atual, GET /api/vendedores/fechamento/historico, GET /api/vendedores/fechamento/ciclo/:cicloId, POST /api/vendedores/fechamento/gerar`
+- `GET /api/vendedores/fechamento/atual`: Retorna o Último Ciclo fechado por padrão com metadados do `cicloAtualEmAndamento`.
+- `GET /api/vendedores/fechamento/historico`: Retorna a lista de ciclos iniciando com o Ciclo Atual (em andamento), Último Ciclo e ciclos históricos anteriores.
+- `GET /api/vendedores/fechamento/ciclo/:cicloId`: Retorna fechamento por ciclo específico com flags `isEmAndamento` e `diasRestantes`.
+- `POST /api/vendedores/fechamento/gerar`: Força recálculo no Protheus sob demanda para o ciclo ativo.
 
 ---
 
@@ -46,6 +56,7 @@ node test_fechamento_vendedores.js && node test_fechamento_cards_gamificados.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.304 (08/10/2026):** Implementação da opção de visualização do Ciclo Atual em andamento (26/09 a 25/10) com metas em tempo real, cálculo de quanto falta para atingir a meta, dias restantes e fretes acumulados. Renomeação do ciclo fechado de "Ciclo Atual" para "Último Ciclo: 26/08/2026 a 25/09/2026" (mantido como seleção padrão ao carregar a tela).
 - **v8.292 (05/10/2026):** Resolução do erro de referência no frontend (`ReferenceError: elComisSub is not defined`) que abortava a execução de `renderizarStatCards()` e bloqueava a renderização dos cards subsequentes de Gordura de Frete Líquida, Total de Premiações, Faturamento por Empresa e Benchmarking da Equipe. Adição de resiliência de parsing JSON e cálculo fallback dinâmico de médias da equipe via `todosVendedoresCiclo`.
 - **v8.282 (30/09/2026):** Alinhamento da apuração de comissões com a `SE3` como fonte única e exclusiva de comissões. Eliminação da dedução arbitrária de títulos em aberto de contas a receber (`SE1`) que zeravam indevidamente a comissão líquida de vendedores (caso Andrea - NF 250). Inadimplências confirmadas passam a ser abatidas organicamente via lançamentos de comissão negativa na `SE3`.
 - **v8.281 (30/09/2026):** Inclusão do botão de ação direta `🔄 Recalcular Fechamento` (`#btnRecalcularFechamentoVend`) na barra superior da tela de Fechamento de Vendedores, permitindo a qualquer operador/gestor sincronizar e reprocessar os dados do Protheus instantaneamente sem necessidade de intervenção técnica ou navegação até a aba de configurações.

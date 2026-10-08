@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.302 (Homologada em 07/10/2026 18:14)  
+> **Versão da Documentação:** v8.304 (Homologada em 08/10/2026 17:12)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 07/10/2026 18:14 (v8.302 - Formatação e Validação Numérica BRL em Pgtos Desconhecidos)  
+> **Data da Última Auditoria:** 08/10/2026 17:12 (v8.304 - Ciclo Atual em andamento e Último Ciclo padrão em Vendedores > Fechamento)  
 
 ---
 
@@ -69,7 +69,7 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 | **6. Assist. Financ.** | Conciliação Bancária | `#tab-conciliacao-bancaria` | `admin`, `user` (Financeiro) | Conciliacao automatica N:1 e 1:1 entre extratos e titulos Protheus (`SE5`/`SE8`). | [conciliacao_bancaria.md](docs/telas/06_assist_financeiro/conciliacao_bancaria.md) |
 | **6. Assist. Financ.** | Pgtos Desconhecidos | `#tab-pgtos-desconhecidos` | `admin`, `user` (Financeiro) | Localização federada de depósitos desconhecidos na Assistência, Protheus e Pipedrive. | [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md) |
 | **6. Assist. Financ.** | Extrato API Inter | `#tab-inter-extrato` | `admin`, `user` (Financeiro) | Conexao ao vivo mTLS de saldos, extratos e batimento financeiro Banco Inter. | [extrato_api_inter.md](docs/telas/06_assist_financeiro/extrato_api_inter.md) |
-| **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas com chave de deduplicacao idempotente. | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
+| **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas (Backend ativo / UI inabilitada temporariamente). | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
 | **6. Assist. Financ.** | Análise de Crédito | `#tab-analise-credito` | `admin`, `user` (Financeiro) | Motor de score com Protheus, Receita, RDAP, Wayback, Serasa e InfoSimples. | [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md) |
 | **6. Assist. Financ.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Financeiro) | Consulta de Contas a Pagar SE2/SE5 multi-empresa com batimento de baixas (DRY). | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **7. Analista Fin.** | Holerites DP | `#tab-holerites` | `admin`, `user` (Analista Fin) | Emissao e distribuicao digital de holerites do Departamento Pessoal. | [holerites_dp.md](docs/telas/07_analista_fin/holerites_dp.md) |
@@ -178,6 +178,8 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.304 (08/10/2026):** Adição da opção de visualização do Ciclo Atual em andamento (26/09 a 25/10) em tempo real na tela Vendedores > Fechamento (`#tab-vend-fechamento`), permitindo aos vendedores acompanhar o progresso das metas do mês, vendas líquidas até o momento, dias restantes até o dia 25 e fretes acumulados. O período fechado foi renomeado de 'Ciclo Atual' para 'Último Ciclo: 26/08/2026 a 25/09/2026' e mantido como seleção padrão ao carregar a tela (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
+- **v8.303 (07/10/2026):** Inabilitação temporária da UI da aba Webhooks Pix Inter (`#tab-inter-webhooks`) na navegação de Assist. Financ. com atributo `disabled`, badge informativo "Em breve", container protetor de segurança e guarda de clique em `public/app.js`, preservando a ingestão de backend e validações Zod ativas (detalhado em [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md)).
 - **v8.302 (07/10/2026):** Validação estrita e formatação numérica do campo '💵 Valor do Depósito (R$)' em Pgtos Desconhecidos: bloqueio em tempo real de letras/caracteres especiais (`keydown`), sanitização contínua (`input`), aceitação nativa de números no formato `1.222,33` e `1222,33`, formatação automática BRL ao perder foco (`blur`), extração limpa de valores colados com `R$` e 75 testes automatizados aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.301 (07/10/2026):** Correção do fechamento da função `atualizarVisualChips()` em `public/js/pgtos_desconhecidos.js` (eliminando SyntaxError que bloqueava a ação do botão '⚡ Localizar Origem'), adição de feedback visual e exportação do hook `initPgtosDesconhecidos` em `public/app.js` (65 testes aprovados — detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
 - **v8.300 (07/10/2026):** Parser de extrato bancário e Smart Paste na tela Pgtos Desconhecidos: decomposição automática de linhas brutas coladas em valor e razão social limpa no frontend ('paste') e backend (query param), saneamento de roteamentos bancários e 63 testes aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).
