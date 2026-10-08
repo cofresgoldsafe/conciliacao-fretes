@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.304 (Homologada em 08/10/2026 17:12)  
+> **Versão da Documentação:** v8.305 (Homologada em 08/10/2026 17:45)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 08/10/2026 17:12 (v8.304 - Ciclo Atual em andamento e Último Ciclo padrão em Vendedores > Fechamento)  
+> **Data da Última Auditoria:** 08/10/2026 17:45 (v8.305 - Padronização de prefixos de ciclos e eliminação de Mês Anterior duplicado)  
 
 ---
 
@@ -178,6 +178,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.305 (08/10/2026):** Padronização rigorosa dos prefixos de ciclos no seletor de histórico da tela Vendedores > Fechamento: Ciclo Atual (`⚡ Ciclo Atual:` no item 0), Último Ciclo (`🔒 Último Ciclo:` no item 1 como padrão) e ciclos históricos (`⏮️ Ciclo:` nos itens 2 em diante), erradicando a duplicidade e ambiguidade do rótulo 'Mês Anterior' (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.304 (08/10/2026):** Adição da opção de visualização do Ciclo Atual em andamento (26/09 a 25/10) em tempo real na tela Vendedores > Fechamento (`#tab-vend-fechamento`), permitindo aos vendedores acompanhar o progresso das metas do mês, vendas líquidas até o momento, dias restantes até o dia 25 e fretes acumulados. O período fechado foi renomeado de 'Ciclo Atual' para 'Último Ciclo: 26/08/2026 a 25/09/2026' e mantido como seleção padrão ao carregar a tela (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.303 (07/10/2026):** Inabilitação temporária da UI da aba Webhooks Pix Inter (`#tab-inter-webhooks`) na navegação de Assist. Financ. com atributo `disabled`, badge informativo "Em breve", container protetor de segurança e guarda de clique em `public/app.js`, preservando a ingestão de backend e validações Zod ativas (detalhado em [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md)).
 - **v8.302 (07/10/2026):** Validação estrita e formatação numérica do campo '💵 Valor do Depósito (R$)' em Pgtos Desconhecidos: bloqueio em tempo real de letras/caracteres especiais (`keydown`), sanitização contínua (`input`), aceitação nativa de números no formato `1.222,33` e `1222,33`, formatação automática BRL ao perder foco (`blur`), extração limpa de valores colados com `R$` e 75 testes automatizados aprovados (detalhado em [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md)).

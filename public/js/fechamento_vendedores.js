@@ -549,12 +549,10 @@
       opt.value = cId;
 
       let prefix = '';
-      if (h.isEmAndamento || h.tipoCiclo === 'ATUAL_EM_ANDAMENTO') {
+      if (h.isEmAndamento || h.tipoCiclo === 'ATUAL_EM_ANDAMENTO' || idx === 0) {
         prefix = '⚡ Ciclo Atual:';
-      } else if (h.isUltimoFechado || h.tipoCiclo === 'ULTIMO_FECHADO' || (h.offset === 0 && !h.isEmAndamento)) {
+      } else if (h.isUltimoFechado || h.tipoCiclo === 'ULTIMO_FECHADO' || idx === 1 || (h.offset === 0 && !h.isEmAndamento)) {
         prefix = '🔒 Último Ciclo:';
-      } else if (h.offset === 1) {
-        prefix = '⏮️ Mês Anterior:';
       } else {
         prefix = '⏮️ Ciclo:';
       }
