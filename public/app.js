@@ -355,7 +355,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabBi) mainTabBi.style.display = isAdmin ? '' : 'none';
     const btnTabBiCrm = document.getElementById('btnTabBiCrm');
     if (btnTabBiCrm) btnTabBiCrm.style.display = isAdmin ? '' : 'none';
-    if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
+    const isVendedor = Boolean(user && user.role === 'vendedor');
+    if (mainTabConfig) mainTabConfig.style.display = (perms.includes('configuracoes') || isVendedor) ? '' : 'none';
+
+    // Se o usuário for vendedor (não-admin), exibe apenas a sub-aba de WhatsApp no grupo de Configurações
+    const subGroupConfig = document.getElementById('subGroupConfiguracoes');
+    if (subGroupConfig && isVendedor && !isAdmin) {
+      subGroupConfig.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        if (btn.id === 'btnTabConfigWhatsapp') {
+          btn.style.display = '';
+        } else {
+          btn.style.display = 'none';
+        }
+      });
+    }
 
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
     try {
@@ -1016,6 +1029,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetTab === 'tab-config-metas-vendas') {
         if (window.FechamentoVendedoresModule && typeof window.FechamentoVendedoresModule.carregarConfigMetasUI === 'function') {
           window.FechamentoVendedoresModule.carregarConfigMetasUI();
+        }
+      }
+      if (targetTab === 'tab-config-whatsapp') {
+        if (window.whatsappAtendimentoModule && typeof window.whatsappAtendimentoModule.init === 'function') {
+          window.whatsappAtendimentoModule.init();
         }
       }
     });
