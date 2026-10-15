@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.305 (Homologada em 08/10/2026 17:45)  
+> **Versão da Documentação:** v8.306 (Homologada em 15/10/2026 00:45)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 08/10/2026 17:45 (v8.305 - Padronização de prefixos de ciclos e eliminação de Mês Anterior duplicado)  
+> **Data da Última Auditoria:** 15/10/2026 00:45 (v8.306 - Painel de Atendimento WhatsApp Meta Cloud API e Supabase Realtime)  
 
 ---
 
@@ -87,6 +87,7 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 | **9. Configurações** | Atividades & Auditoria | `#tab-config-logs` | `admin` exclusivo | Trilha de auditoria em tempo real (`user_activities`), sessoes e heartbeats. | [atividades_auditoria.md](docs/telas/09_configuracoes/atividades_auditoria.md) |
 | **9. Configurações** | Configuração do Score | `#tab-config-score` | `admin` exclusivo | Calibracao dos pesos parametricos e limites do motor de Score em 6 blocos. | [config_score.md](docs/telas/09_configuracoes/config_score.md) |
 | **9. Configurações** | Metas de Vendas | `#tab-config-metas-vendas` | `admin` exclusivo | Parametrizacao de metas mensais por vendedor, piso/teto e comissoes. | [metas_vendas.md](docs/telas/09_configuracoes/metas_vendas.md) |
+| **9. Configurações** | 💬 WhatsApp Atendimento | `#tab-config-whatsapp` | Todos (`admin`, `vendedor`, `user`) | Painel de live-chat multiatendente conectado à Meta Cloud API e Supabase Realtime. | [whatsapp_atendimento.md](docs/telas/09_configuracoes/whatsapp_atendimento.md) |
 
 ---
 
@@ -178,6 +179,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.306 (15/10/2026):** Painel de Atendimento WhatsApp Oficial Meta Cloud API e Supabase Realtime integrado na sub-aba de Configurações (`#tab-config-whatsapp`): arquitetura modular 100% isolada (`whatsapp_atendimento.js` e `whatsapp_atendimento.css`), detecção automática de operador logado (Figueiredo, Andrea, Juliana, Alexandre), conexão com microserviço Fastify no Render (`gemini-whatsapp-multi360.onrender.com`), orquestração com bot Google Gemini para triagem inteligente e transbordo humano, preparando o descomissionamento da Multi360 (~R$ 600/mês) (detalhado em [whatsapp_atendimento.md](docs/telas/09_configuracoes/whatsapp_atendimento.md)).
 - **v8.305 (08/10/2026):** Padronização rigorosa dos prefixos de ciclos no seletor de histórico da tela Vendedores > Fechamento: Ciclo Atual (`⚡ Ciclo Atual:` no item 0), Último Ciclo (`🔒 Último Ciclo:` no item 1 como padrão) e ciclos históricos (`⏮️ Ciclo:` nos itens 2 em diante), erradicando a duplicidade e ambiguidade do rótulo 'Mês Anterior' (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.304 (08/10/2026):** Adição da opção de visualização do Ciclo Atual em andamento (26/09 a 25/10) em tempo real na tela Vendedores > Fechamento (`#tab-vend-fechamento`), permitindo aos vendedores acompanhar o progresso das metas do mês, vendas líquidas até o momento, dias restantes até o dia 25 e fretes acumulados. O período fechado foi renomeado de 'Ciclo Atual' para 'Último Ciclo: 26/08/2026 a 25/09/2026' e mantido como seleção padrão ao carregar a tela (detalhado em [fechamento.md](docs/telas/04_vendedores/fechamento.md)).
 - **v8.303 (07/10/2026):** Inabilitação temporária da UI da aba Webhooks Pix Inter (`#tab-inter-webhooks`) na navegação de Assist. Financ. com atributo `disabled`, badge informativo "Em breve", container protetor de segurança e guarda de clique em `public/app.js`, preservando a ingestão de backend e validações Zod ativas (detalhado em [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md)).
