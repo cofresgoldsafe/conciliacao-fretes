@@ -213,14 +213,36 @@ function roundVal(val) {
 const PIPEDRIVE_API_TOKEN_PROTHEUS = process.env.PIPEDRIVE_API_TOKEN || '27c8e6f7f9bccd60101889f25369f6075e30f615';
 const PIPEDRIVE_BASE_URL_PROTHEUS = 'https://api.pipedrive.com/v1';
 const pipedriveWonCache = new Map();
+const pipedriveDealSummaryCache = new Map();
+const PIPEDRIVE_CACHE_TTL_MS = 10 * 60 * 1000; // TTL: 10 minutos
+const PIPEDRIVE_MAX_CACHE_KEYS = 500;
+
+function setTimedCache(map, key, val) {
+  if (map.size >= PIPEDRIVE_MAX_CACHE_KEYS) {
+    const oldestKey = map.keys().next().value;
+    map.delete(oldestKey);
+  }
+  map.set(key, { data: val, expiresAt: Date.now() + PIPEDRIVE_CACHE_TTL_MS });
+}
+
+function getTimedCache(map, key) {
+  const item = map.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiresAt) {
+    map.delete(key);
+    return null;
+  }
+  return item.data;
+}
 
 /**
- * Consulta resiliente do won_time de um Deal no Pipedrive com cache em memória e timeout curto
+ * Consulta resiliente do won_time de um Deal no Pipedrive com cache em memória (TTL) e timeout curto
  */
 function fetchPipedriveWonTime(dealId) {
   const cleanId = String(dealId || '').replace(/\D/g, '');
   if (!cleanId) return Promise.resolve(null);
-  if (pipedriveWonCache.has(cleanId)) return Promise.resolve(pipedriveWonCache.get(cleanId));
+  const cached = getTimedCache(pipedriveWonCache, cleanId);
+  if (cached !== null && cached !== undefined) return Promise.resolve(cached);
 
   return new Promise((resolve) => {
     const url = `${PIPEDRIVE_BASE_URL_PROTHEUS}/deals/${cleanId}?api_token=${PIPEDRIVE_API_TOKEN_PROTHEUS}`;
@@ -229,24 +251,85 @@ function fetchPipedriveWonTime(dealId) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
-          const json = JSON.parse(data);
-          const wonTime = (json.data && json.data.won_time) ? json.data.won_time : null;
-          pipedriveWonCache.set(cleanId, wonTime);
-          resolve(wonTime);
+          if (res.statusCode === 200) {
+            const json = JSON.parse(data);
+            const wonTime = (json.data && json.data.won_time) ? json.data.won_time : null;
+            setTimedCache(pipedriveWonCache, cleanId, wonTime);
+            return resolve(wonTime);
+          } else if (res.statusCode === 404) {
+            setTimedCache(pipedriveWonCache, cleanId, null);
+            return resolve(null);
+          }
+          resolve(null);
         } catch (_) {
-          pipedriveWonCache.set(cleanId, null);
           resolve(null);
         }
       });
     });
     req.on('error', () => {
-      pipedriveWonCache.set(cleanId, null);
       resolve(null);
     });
     req.on('timeout', () => {
       req.destroy();
-      pipedriveWonCache.set(cleanId, null);
       resolve(null);
+    });
+  });
+}
+
+/**
+ * Consulta resiliente de resumo de um Deal no Pipedrive
+ * Utilizado para identificar quando um pedido existe no CRM Pipedrive mas ainda não foi cadastrado no Protheus ERP.
+ */
+function fetchPipedriveDealSummary(dealId) {
+  const cleanId = String(dealId || '').replace(/\D/g, '');
+  if (!cleanId) return Promise.resolve({ exists: false });
+  const cached = getTimedCache(pipedriveDealSummaryCache, cleanId);
+  if (cached) return Promise.resolve(cached);
+
+  return new Promise((resolve) => {
+    const url = `${PIPEDRIVE_BASE_URL_PROTHEUS}/deals/${cleanId}?api_token=${PIPEDRIVE_API_TOKEN_PROTHEUS}`;
+    const req = https.get(url, { timeout: 3500 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          if (res.statusCode === 200) {
+            const json = JSON.parse(data);
+            if (json && json.success && json.data && json.data.id) {
+              const d = json.data;
+              const summary = {
+                exists: true,
+                id: d.id,
+                title: d.title || '',
+                status: d.status || '',
+                wonTime: d.won_time || null,
+                value: typeof d.value === 'number' ? d.value : (parseFloat(d.value || 0) || 0),
+                vendedor: d.user_id ? (d.user_id.name || '') : '',
+                cliente: d.org_name || d.person_name || '',
+                url: `https://benetroncomercial.pipedrive.com/deal/${d.id}`
+              };
+              setTimedCache(pipedriveDealSummaryCache, cleanId, summary);
+              if (d.won_time) setTimedCache(pipedriveWonCache, cleanId, d.won_time);
+              return resolve(summary);
+            }
+          } else if (res.statusCode === 404) {
+            const notFound = { exists: false };
+            setTimedCache(pipedriveDealSummaryCache, cleanId, notFound);
+            return resolve(notFound);
+          }
+          // Para outros status (ex: 429, 500), não envenena o cache permanentemente
+          resolve({ exists: false, error: true });
+        } catch (_) {
+          resolve({ exists: false });
+        }
+      });
+    });
+    req.on('error', () => {
+      resolve({ exists: false });
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ exists: false });
     });
   });
 }
@@ -300,7 +383,7 @@ async function buscarProtheusMultiEmpresa(tipo, termo) {
             ON F2.F2_FILIAL = D2.D2_FILIAL 
            AND F2.F2_DOC = D2.D2_DOC 
            AND F2.D_E_L_E_T_ = ' '
-          WHERE (RTRIM(C5.C5_CODWEB) = '${cleanTerm}' OR C5.C5_CODWEB LIKE '%${cleanTerm}%')
+          WHERE (RTRIM(C5.C5_CODWEB) = '${cleanTerm}' OR C5.C5_CODWEB LIKE '%${cleanTerm}%' OR (LEN('${numOnly}') >= 4 AND (RTRIM(C5.C5_CODWEB) = '${numOnly}' OR C5.C5_CODWEB LIKE '%${numOnly}%')))
             AND C5.D_E_L_E_T_ = ' '
           ORDER BY C5.C5_EMISSAO DESC
         `;
@@ -5877,6 +5960,7 @@ module.exports = {
   extrairNotasFaturadasParaCentral,
   consultarProtheusNF,
   buscarProtheusMultiEmpresa,
+  fetchPipedriveDealSummary,
   buscarConsultaComprasProtheus,
   obterDetalhesNFeEntrada,
   consultarMovimentacoesEstoqueProtheus,

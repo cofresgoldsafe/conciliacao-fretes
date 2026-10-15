@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const { buscarProtheusMultiEmpresa } = require('./protheus_db');
+const { buscarProtheusMultiEmpresa, fetchPipedriveDealSummary } = require('./protheus_db');
 
 let totalTests = 0;
 let passedTests = 0;
@@ -48,10 +48,12 @@ async function main() {
   const htmlPath = path.join(__dirname, 'public', 'index.html');
   const appJsPath = path.join(__dirname, 'public', 'app.js');
   const protheusDbPath = path.join(__dirname, 'protheus_db.js');
+  const serverJsPath = path.join(__dirname, 'server.js');
 
   const htmlContent = fs.readFileSync(htmlPath, 'utf-8');
   const appJsContent = fs.readFileSync(appJsPath, 'utf-8');
   const protheusDbContent = fs.readFileSync(protheusDbPath, 'utf-8');
+  const serverJsContent = fs.readFileSync(serverJsPath, 'utf-8');
 
   // --- 1. VALIDAÇÃO DE UI & ESTRUTURA HTML ---
   console.log('--- 1. Validação de UI & Estrutura HTML ---');
@@ -171,6 +173,17 @@ async function main() {
     assert(appJsContent.includes("abrirDetalhesPedidoModal(emp, ped)"), 'Deve chamar abrirDetalhesPedidoModal com os parâmetros corretos');
   });
 
+  runTest('2.7 - renderConsultaEmptyResults trata cenário [EXISTE NO PIPE MAS NÃO EXISTE NO PROTHEUS]', () => {
+    assert(appJsContent.includes('Pedido existe no Pipe mas não existe no Protheus.'), 'Deve exibir mensagem solicitada');
+    assert(appJsContent.includes('pipeDeal && pipeDeal.exists'), 'Deve verificar se pipeDeal.exists é verdadeiro');
+    assert(appJsContent.includes('https://benetroncomercial.pipedrive.com/deal/'), 'Deve conter link direto para o Deal no Pipedrive');
+    assert(appJsContent.includes('role'), 'Deve configurar atributos de acessibilidade');
+  });
+
+  runTest('2.8 - renderConsultaEmptyResults trata cenário [NÃO EXISTE NO PIPE NEM NO PROTHEUS]', () => {
+    assert(appJsContent.includes('Nenhum registro encontrado.'), 'Deve exibir Nenhum registro encontrado.');
+  });
+
   // --- 3. VALIDAÇÃO DE BACKEND & CONSULTA PROTHEUS MULTI-EMPRESA ---
   console.log('\n--- 3. Validação de Backend & Consulta Protheus Multi-Empresa ---');
 
@@ -220,6 +233,41 @@ async function main() {
     assert.strictEqual(oaco.dtEmissao, '', 'dtEmissao deve ser vazia pois NF não foi emitida');
     assert(oaco.dtGanho.startsWith('2026-09-14'), 'dtGanho deve ser 2026-09-14');
     assert.strictEqual(oaco.dtMigracao, '20260914', 'dtMigracao deve ser 20260914');
+  });
+
+  await runTestAsync('3.6 - fetchPipedriveDealSummary identifica Deal 26869 existente no Pipedrive (Won, Andrea Ferreira)', async () => {
+    const deal = await fetchPipedriveDealSummary('26869');
+    assert.ok(deal, 'Deal deve ser retornado');
+    assert.strictEqual(deal.exists, true, 'exists deve ser true');
+    assert.strictEqual(deal.id, 26869, 'ID do deal deve ser 26869');
+    assert.strictEqual(deal.status, 'won', 'Status deve ser won');
+    assert.strictEqual(deal.vendedor, 'Andrea Ferreira', 'Vendedor deve ser Andrea Ferreira');
+    assert(deal.title.includes('WEB OFFICE'), 'Título deve conter WEB OFFICE');
+    assert.strictEqual(deal.url, 'https://benetroncomercial.pipedrive.com/deal/26869');
+  });
+
+  await runTestAsync('3.7 - fetchPipedriveDealSummary retorna exists: false para termo inexistente ou não-numérico', async () => {
+    const dealNotFound = await fetchPipedriveDealSummary('99999999');
+    assert.strictEqual(dealNotFound.exists, false, 'Deal inexistente deve ter exists: false');
+
+    const dealInvalid = await fetchPipedriveDealSummary('abc_xyz');
+    assert.strictEqual(dealInvalid.exists, false, 'Termo não-numérico deve ter exists: false');
+  });
+
+  runTest('3.8 - server.js rota /api/protheus/consulta-avancada integra fetchPipedriveDealSummary quando rows.length === 0', () => {
+    assert(serverJsContent.includes('fetchPipedriveDealSummary(termo)'), 'Deve invocar fetchPipedriveDealSummary no server.js');
+    assert(serverJsContent.includes("tipo === 'codWeb' && rows.length === 0"), 'Deve acionar busca Pipedrive quando codWeb não tem linhas no Protheus');
+    assert(serverJsContent.includes('pipeDeal });'), 'Envelope JSON deve conter pipeDeal');
+  });
+
+  runTest('3.9 - server.js rota /api/protheus/consulta-avancada é protegida com requireAuth', () => {
+    assert(serverJsContent.includes("app.get('/api/protheus/consulta-avancada', requireAuth"), 'Endpoint deve exigir requireAuth');
+  });
+
+  await runTestAsync('3.10 - buscarProtheusMultiEmpresa suporta busca de CodWeb com prefixo WEB- (ex: WEB-26443)', async () => {
+    const results = await buscarProtheusMultiEmpresa('codWeb', 'WEB-26443');
+    assert(Array.isArray(results) && results.length > 0, 'Deve encontrar pedido mesmo com prefixo WEB-');
+    assert.strictEqual(results[0].codWeb, '26443', 'CodWeb extraído 26443');
   });
 
   console.log('\n================================================================');

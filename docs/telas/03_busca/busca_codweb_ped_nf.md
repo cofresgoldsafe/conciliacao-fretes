@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-consulta` | **Botão:** `#btnTabConsulta`  
 > **Permissão RBAC:** admin, user (Consulta)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 17/09/2026 (v8.234 - Homologado)  
+> **Última Atualização:** 15/10/2026 (v8.307 - Homologado)  
 
 ---
 
@@ -27,6 +27,12 @@
 
 ## 4. Regras de Negócio & Cálculos Chave
 - Detecção inteligente do tipo de chave inserida. Enriquecimento temporal: Data de Ganho Comercial, Data de Migração Protheus e Data de Emissão Fiscal.
+- **Tratamento dos 3 Cenários na Busca por CodWeb (Pipedrive vs Protheus):**
+  1. `[EXISTE NO PIPE MAS NÃO EXISTE NO PROTHEUS]`: Quando o pedido foi fechado/ganho no CRM Pipedrive mas ainda não foi digitado ou integrado no ERP Protheus, a busca exibe o alerta claro `⚠️ Pedido existe no Pipe mas não existe no Protheus.` acompanhado de um card compacto com os metadados do Deal: link direto (`Deal <ID> ↗`), status ("Ganho"), cliente, vendedor responsável e valor total formatado em reais.
+  2. `[NÃO EXISTE NO PIPE NEM NO PROTHEUS]`: Exibe `⚠️ Nenhum registro encontrado.` de forma limpa e direta, sem poluição visual ou textos desnecessários (Navalha de Texto).
+  3. `[EXISTE NO PIPE E NO PROTHEUS]`: Listagem tabular completa com 9 colunas, dados de faturamento/estoque e links interativos para detalhes do Pedido e DANFE da NF-e.
+  - **Resiliência de Prefixo:** Suporte tanto a busca numérica pura (`26869`) quanto a formatos com prefixo digitados pelo usuário (ex: `WEB-26443`), extraindo os dígitos para matching no Protheus `C5_CODWEB`.
+  - **Cache e Fail-Neutrality:** A consulta do Deal no Pipedrive (`fetchPipedriveDealSummary`) utiliza cache LRU em memória com TTL de 10 minutos (limite de 500 chaves) e timeout de 3.500 ms, tratando erros HTTP ou quedas de rede de forma transparente sem quebrar a tela.
 - **Link Direto do Pedido de Venda & Resiliência de Sessão:** A coluna "Ped Venda" é interativa (`.link-pedido`), permitindo ao operador clicar sobre o número do pedido para visualizar em popup os dados completos (itens SC6, faturas SE1, endereço de entrega e transportadora). Ao ocorrer expiração de sessão ou retorno HTTP 401, o modal `#pedidoDetalhesModal` intercepta a resposta e exibe tela amigável ("Sua sessão expirou") com botão de ação direta [Entrar Novamente], purgando tokens obsoletos sem travar o operador em estado zumbi.
 - **Enriquecimento Relacional no Modal:** O modal de detalhes (`#pedidoDetalhesModal`) apresenta descrições amigáveis e oficiais de `Transportadora:` (via `SA4010`) e `Condição Pagto:` (via `SE4010`) no formato `Código - Descrição`.
 - **Visualizador de DANFE NF-e em Popup:** A coluna "Nota Fiscal" é clicável (`.link-nfe`). Ao ser acionada, busca o XML na Super Tabela `nfe_central_documentos` (ou Protheus SF2). Se o XML existir, exibe o DANFE oficial diagramado em folha A4 com `@media print`, permitindo impressão ou geração de PDF nativo com 1 clique, além de download do arquivo `.xml` e cópia da chave de acesso de 44 dígitos. Se ainda não sincronizado no Supabase, inicia consulta sob demanda na SEFAZ via mTLS com tela de espera ativa ("⏳ Buscando online na SEFAZ, aguarde...") e informa a próxima sincronização automática periódica (12:30h ou 18:30h).
@@ -53,6 +59,14 @@ node test_session_resilience.js
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.307 (15/10/2026):** Tratamento contextual dos 3 cenários de busca por Código Web Pipedrive vs TOTVS Protheus ERP:
+  1. *Existe no Pipe mas não no Protheus:* Exibe `⚠️ Pedido existe no Pipe mas não existe no Protheus.` com card compacto de metadados do CRM (link direto higienizado para o Deal, status Ganho, cliente, vendedor e valor R$).
+  2. *Não existe no Pipe nem no Protheus:* Exibe `⚠️ Nenhum registro encontrado.` conforme Navalha de Texto.
+  3. *Existe no Pipe e no Protheus:* Listagem tabular com 9 colunas e links para Pedido e DANFE.
+  - Implementação de `fetchPipedriveDealSummary` com timeout (3.5s) e cache LRU resiliente (10 min, max 500 itens).
+  - Suporte resiliente a termos com prefixo (ex: `WEB-26443`), extração numérica para matching em `C5_CODWEB`.
+  - Proteção `requireAuth` na rota `GET /api/protheus/consulta-avancada`.
+  - Suíte de testes expandida para 22/22 testes com 100% de aprovação (`test_busca_codweb_ped_nf.js`).
 - **v8.280 (29/09/2026):** Resiliência de Sessão e Interceptação 401 no Modal de Detalhes do Pedido: eliminação do erro "Sessão expirada ou token inválido" ao clicar em pedidos na Busca Multi-Empresa. Implementação de Sliding Session contínua no `POST /api/auth/session-ping` com validação de status no banco de dados e rate limiting (`sessionPingLimiter`), interceptação robusta de HTTP 401 em chamadas *same-origin* com purga de credenciais obsoletas, suporte nativo a instâncias `Request` no `window.fetch` e botão contextual "Entrar Novamente" no modal `#pedidoDetalhesModal` com suporte a tema Claro/Escuro (10 novos testes em `test_session_resilience.js`).
 - **v8.236 (17/09/2026):** Implementação de Fallback Resiliente no TOTVS Protheus ERP (`danfe_protheus.js`) e sintetizador canônico de XML oficial para contornar a regra restritiva da SEFAZ cStat 641 ("NF-e indisponível para o emitente no NFeDistribuicaoDFe"). Extração automática de SF2/SD2/SB1/SA1/SA4/SE1, renderização instantânea do DANFE em tela e persistência contínua na Super Tabela.
 - **v8.235 (17/09/2026):** Adição de suporte a senha de certificado digital A1 no popup DANFE (#inputDanfeSenhaCert), diagnóstico transparente de erros SEFAZ e compartilhamento de sessão mútua com Fechamento Fiscal (`sessionStorage`).

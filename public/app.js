@@ -1891,10 +1891,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const response = await fetch(`/api/protheus/consulta-avancada?tipo=${tipo}&termo=${encodeURIComponent(termo)}`);
         const data = await response.json();
 
-        if (data.success && data.rows && data.rows.length > 0) {
-          renderConsultaResults(data.rows, tipo, termo);
+        if (data.success) {
+          if (data.rows && data.rows.length > 0) {
+            renderConsultaResults(data.rows, tipo, termo);
+          } else {
+            renderConsultaEmptyResults(tipo, termo, data.pipeDeal);
+          }
         } else {
-          renderConsultaEmptyResults(tipo, termo);
+          alert('Erro ao consultar Protheus: ' + (data.message || 'Falha na comunicação.'));
         }
       } catch (err) {
         alert('Erro ao realizar consulta no Protheus: ' + err.message);
@@ -2016,16 +2020,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function renderConsultaEmptyResults(tipo, termo) {
+  function renderConsultaEmptyResults(tipo, termo, pipeDeal) {
     consultaTableBody.innerHTML = '';
     resultsCountBadge.textContent = '0 registros encontrados';
     searchParamInfo.innerHTML = `Busca por <strong>${getTipoDescricao(tipo)} (${escapeHtml(termo)})</strong>`;
     
-    consultaEmptyState.innerHTML = `
-      <div class="empty-icon">⚠️</div>
-      <h4>Nenhum registro encontrado</h4>
-      <p>Não foram encontrados dados no Protheus para o ${getTipoDescricao(tipo)} "<strong>${escapeHtml(termo)}</strong>". Tente outro termo de busca.</p>
-    `;
+    if (consultaEmptyState) {
+      consultaEmptyState.setAttribute('role', 'status');
+      consultaEmptyState.setAttribute('aria-live', 'polite');
+    }
+
+    if (tipo === 'codWeb' && pipeDeal && pipeDeal.exists) {
+      const dealUrl = pipeDeal.url || `https://benetroncomercial.pipedrive.com/deal/${encodeURIComponent(pipeDeal.id || termo)}`;
+      const statusBadge = pipeDeal.status === 'won' 
+        ? '<span class="status-badge sucesso" style="font-size: 11px; padding: 2px 8px; border-radius: 4px;">Ganho</span>' 
+        : (pipeDeal.status ? `<span class="status-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 4px;">${escapeHtml(pipeDeal.status)}</span>` : '');
+      const valorStr = (pipeDeal.value !== undefined && pipeDeal.value !== null) ? formatCurrency(pipeDeal.value) : '';
+
+      consultaEmptyState.innerHTML = `
+        <div class="empty-icon" aria-hidden="true" style="font-size: 38px; margin-bottom: 8px;">⚠️</div>
+        <h4 style="color: #f59e0b; margin-bottom: 6px;">Pedido existe no Pipe mas não existe no Protheus.</h4>
+        <p style="color: var(--text-muted); margin-bottom: 14px; font-size: 13px;">O pedido foi registrado no CRM Pipedrive, mas ainda não foi cadastrado/digitado no ERP Protheus.</p>
+        <div style="display: inline-flex; flex-direction: column; gap: 8px; background: var(--panel-bg, #1e293b); border: 1px solid var(--panel-border, #334155); border-radius: 8px; padding: 12px 16px; text-align: left; max-width: 520px; margin: 0 auto;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+            <a href="${escapeHtml(dealUrl)}" target="_blank" rel="noopener noreferrer" class="badge-tag" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 700; padding: 3px 8px; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Abrir Deal ${escapeHtml(String(pipeDeal.id || termo))} no Pipedrive" aria-label="Abrir Deal ${escapeHtml(String(pipeDeal.id || termo))} no Pipedrive em nova aba">
+              Deal ${escapeHtml(String(pipeDeal.id || termo))} ↗
+            </a>
+            ${statusBadge}
+          </div>
+          ${pipeDeal.title ? `<div style="font-weight: 600; color: var(--text-main, #f8fafc); font-size: 13px;">${escapeHtml(pipeDeal.title)}</div>` : ''}
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-muted, #94a3b8);">
+            ${pipeDeal.cliente ? `<span>🏢 Cliente: <strong>${escapeHtml(pipeDeal.cliente)}</strong></span>` : ''}
+            ${pipeDeal.vendedor ? `<span>👤 Vendedor: <strong>${escapeHtml(pipeDeal.vendedor)}</strong></span>` : ''}
+            ${valorStr ? `<span>💰 Valor: <strong>${valorStr}</strong></span>` : ''}
+          </div>
+        </div>
+      `;
+    } else {
+      consultaEmptyState.innerHTML = `
+        <div class="empty-icon" aria-hidden="true">⚠️</div>
+        <h4>Nenhum registro encontrado.</h4>
+        <p>Não foram encontrados dados no Protheus para o ${getTipoDescricao(tipo)} "<strong>${escapeHtml(termo)}</strong>". Tente outro termo de busca.</p>
+      `;
+    }
     consultaEmptyState.classList.remove('hidden');
     consultaResultsSection.classList.add('hidden');
   }

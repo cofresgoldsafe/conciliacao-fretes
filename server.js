@@ -13,6 +13,7 @@ const { validateWebhookPayload } = require('./webhook_validator');
 const { 
   consultarProtheusNF, 
   buscarProtheusMultiEmpresa,
+  fetchPipedriveDealSummary,
   buscarConsultaComprasProtheus,
   obterDetalhesNFeEntrada,
   buscarPedidosVendedores,
@@ -1249,7 +1250,7 @@ app.get('/api/protheus/consulta/:nf', async (req, res) => {
 });
 
 // API: Consulta Multi-Empresa Avançada por Código Web, Pedido de Venda ou NFe
-app.get('/api/protheus/consulta-avancada', async (req, res) => {
+app.get('/api/protheus/consulta-avancada', requireAuth, async (req, res) => {
   try {
     const tipo = req.query.tipo || 'pedVenda'; // 'codWeb', 'pedVenda' ou 'nfe'
     const termo = req.query.termo || '';
@@ -1259,6 +1260,10 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
     }
 
     const rows = await buscarProtheusMultiEmpresa(tipo, termo);
+    let pipeDeal = null;
+    if (tipo === 'codWeb' && rows.length === 0) {
+      pipeDeal = await fetchPipedriveDealSummary(termo);
+    }
 
     const tipoLabel = tipo === 'codWeb' ? 'Código Web' : (tipo === 'pedVenda' ? 'Pedido' : 'NFe');
     const user = getUserFromReq(req);
@@ -1266,12 +1271,12 @@ app.get('/api/protheus/consulta-avancada', async (req, res) => {
       username: user.username,
       userName: user.name,
       actionType: 'CONSULTA_PED_NF',
-      description: `Consultou ${tipoLabel}: "${termo}" (${rows.length} resultado(s))`,
+      description: `Consultou ${tipoLabel}: "${termo}" (${rows.length} resultado(s)${pipeDeal && pipeDeal.exists ? ' - Encontrado no Pipe' : ''})`,
       ip: req.ip,
-      metadata: { tipo, termo, count: rows.length }
+      metadata: { tipo, termo, count: rows.length, pipeDealExists: !!(pipeDeal && pipeDeal.exists) }
     }).catch(() => {});
 
-    res.json({ success: true, tipo, termo, count: rows.length, rows });
+    res.json({ success: true, tipo, termo, count: rows.length, rows, pipeDeal });
   } catch (err) {
     handleServerError(res, err, 'Erro na consulta multi-empresa.');
   }
