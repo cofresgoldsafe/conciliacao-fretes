@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.308 (Homologada em 16/10/2026 14:47)  
+> **Versão da Documentação:** v8.309 (Homologada em 16/10/2026 16:21)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 16/10/2026 14:47 (v8.308 - Ícone de Hub Operacional e Automação na Plataforma de Apoio GSI)  
+> **Data da Última Auditoria:** 16/10/2026 16:21 (v8.309 - Renomeia sub-abas do BI Executivo: Índices, Autoriza Desc e CRM)  
 
 ---
 
@@ -78,11 +78,11 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 | **7. Analista Fin.** | Fechamento Fiscal | `#tab-fechamento-fiscal` | `admin`, `user` (Analista Fin) | Fechamento fiscal periodico, livros de entrada/saida e validacoes de impostos. | [fechamento_fiscal.md](docs/telas/07_analista_fin/fechamento_fiscal.md) |
 | **7. Analista Fin.** | Auditoria Protheus x Sefaz | `#tab-auditoria-protheus-sefaz` | `admin`, `user` (Analista Fin) | Batimento fiscal com distincao estrita de CC-e (`tpEvento 110110`) e Inutilizacoes. | [auditoria_protheus_sefaz.md](docs/telas/07_analista_fin/auditoria_protheus_sefaz.md) |
 | **7. Analista Fin.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Analista Fin) | Consulta unificada de Contas a Pagar SE2/SE5 multi-empresa com batimento financeiro vs compensação. | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
-| **8. BI Executivo** | Índices Financeiros | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
+| **8. BI Executivo** | Índices | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
 | **8. BI Executivo** | Despesas Análise | `#tab-bi-despesas` | `admin`, `diretoria` (BI) | Espelho SE5 multi-empresa com classificação por natureza, estornos negativos e comparativo 2025x2026. | [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md) |
 | **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
-| **8. BI Executivo** | Autorizações de Desconto | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
-| **8. BI Executivo** | CRM Comercial | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial em Kanban ou Listagem tabular com 9 colunas, paginação e follow-up. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
+| **8. BI Executivo** | Autoriza Desc | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
+| **8. BI Executivo** | CRM | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial em Kanban ou Listagem tabular com 9 colunas, paginação e follow-up. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
 | **9. Configurações** | Usuários & Permissões | `#tab-configuracoes` | `admin` exclusivo | Gestao de contas, senhas bcrypt, permissoes RBAC, e-mails e 2FA. | [usuarios_permissoes.md](docs/telas/09_configuracoes/usuarios_permissoes.md) |
 | **9. Configurações** | Atividades & Auditoria | `#tab-config-logs` | `admin` exclusivo | Trilha de auditoria em tempo real (`user_activities`), sessoes e heartbeats. | [atividades_auditoria.md](docs/telas/09_configuracoes/atividades_auditoria.md) |
 | **9. Configurações** | Configuração do Score | `#tab-config-score` | `admin` exclusivo | Calibracao dos pesos parametricos e limites do motor de Score em 6 blocos. | [config_score.md](docs/telas/09_configuracoes/config_score.md) |
@@ -179,6 +179,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.309 (16/10/2026):** Compactação dos rótulos das sub-abas na macro-área BI Executivo (`#subGroupBi` em `public/index.html`): de `📊 Índices Financeiros` para `📊 Índices`, de `🎯 Autorizações de Desconto` para `🎯 Autoriza Desc` e de `💼 CRM Comercial` para `💼 CRM`.
 - **v8.308 (16/10/2026):** Substituição do ícone principal da Plataforma de Apoio GSI no cabeçalho superior (`.brand-logo`) e adição de favicon vetorial SVG em `public/index.html`, trocando a folha de papel (`file-text`) pelo símbolo de Engrenagem com Núcleo Conectado (Hub Operacional e Automação).
 - **v8.307 (15/10/2026):** Tratamento contextual dos 3 cenários de busca por Código Web Pipedrive vs TOTVS Protheus ERP (`#tab-consulta`): alerta e card com dados do CRM para pedidos existentes no Pipe mas pendentes no Protheus, mensagem limpa para não encontrados e listagem padrão para integrados (22 testes aprovados — detalhado em [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md)).
 - **v8.306 (15/10/2026):** Painel de Atendimento WhatsApp Oficial Meta Cloud API e Supabase Realtime integrado na sub-aba de Configurações (`#tab-config-whatsapp`): arquitetura modular 100% isolada (`whatsapp_atendimento.js` e `whatsapp_atendimento.css`), detecção automática de operador logado (Figueiredo, Andrea, Juliana, Alexandre), conexão com microserviço Fastify no Render (`gemini-whatsapp-multi360.onrender.com`), orquestração com bot Google Gemini para triagem inteligente e transbordo humano, preparando o descomissionamento da Multi360 (~R$ 600/mês) (detalhado em [whatsapp_atendimento.md](docs/telas/09_configuracoes/whatsapp_atendimento.md)).
