@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.309 (Homologada em 16/10/2026 16:21)  
+> **Versão da Documentação:** v8.310 (Homologada em 16/10/2026 22:40)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 16/10/2026 16:21 (v8.309 - Renomeia sub-abas do BI Executivo: Índices, Autoriza Desc e CRM)  
+> **Data da Última Auditoria:** 16/10/2026 22:40 (v8.310 - Nova sub-aba OS em BI Executivo: Faturamento 24m Protheus SE1150 e OS Criadas 20m Supabase Assistência)  
 
 ---
 
@@ -83,6 +83,7 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 | **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
 | **8. BI Executivo** | Autoriza Desc | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
 | **8. BI Executivo** | CRM | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial em Kanban ou Listagem tabular com 9 colunas, paginação e follow-up. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
+| **8. BI Executivo** | OS | `#tab-bi-os` | `admin`, `diretoria` (BI) | Recebimentos de OS quitados mês a mês (24m Protheus SE1150) e volume de OS criadas (20m Supabase Assistência: Padrão vs Garantia). | [os_assistencia.md](docs/telas/08_bi_executivo/os_assistencia.md) |
 | **9. Configurações** | Usuários & Permissões | `#tab-configuracoes` | `admin` exclusivo | Gestao de contas, senhas bcrypt, permissoes RBAC, e-mails e 2FA. | [usuarios_permissoes.md](docs/telas/09_configuracoes/usuarios_permissoes.md) |
 | **9. Configurações** | Atividades & Auditoria | `#tab-config-logs` | `admin` exclusivo | Trilha de auditoria em tempo real (`user_activities`), sessoes e heartbeats. | [atividades_auditoria.md](docs/telas/09_configuracoes/atividades_auditoria.md) |
 | **9. Configurações** | Configuração do Score | `#tab-config-score` | `admin` exclusivo | Calibracao dos pesos parametricos e limites do motor de Score em 6 blocos. | [config_score.md](docs/telas/09_configuracoes/config_score.md) |
@@ -179,6 +180,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.310 (16/10/2026):** Nova sub-aba `🛠️ OS` em `📊 BI EXECUTIVO` (`#tab-bi-os`): gráficos de barras de Recebimentos Quitados de OS nos últimos 24 meses (Protheus `SE1150` com drilldown paginado e CSV) e Quantidade de OS Criadas nos últimos 20 meses (Supabase Assistência `ordens_servico`, segregando OS Padrão vs Garantia com filtro rápido) (detalhado em [os_assistencia.md](docs/telas/08_bi_executivo/os_assistencia.md)).
 - **v8.309 (16/10/2026):** Compactação dos rótulos das sub-abas na macro-área BI Executivo (`#subGroupBi` em `public/index.html`): de `📊 Índices Financeiros` para `📊 Índices`, de `🎯 Autorizações de Desconto` para `🎯 Autoriza Desc` e de `💼 CRM Comercial` para `💼 CRM`.
 - **v8.308 (16/10/2026):** Substituição do ícone principal da Plataforma de Apoio GSI no cabeçalho superior (`.brand-logo`) e adição de favicon vetorial SVG em `public/index.html`, trocando a folha de papel (`file-text`) pelo símbolo de Engrenagem com Núcleo Conectado (Hub Operacional e Automação).
 - **v8.307 (15/10/2026):** Tratamento contextual dos 3 cenários de busca por Código Web Pipedrive vs TOTVS Protheus ERP (`#tab-consulta`): alerta e card com dados do CRM para pedidos existentes no Pipe mas pendentes no Protheus, mensagem limpa para não encontrados e listagem padrão para integrados (22 testes aprovados — detalhado em [busca_codweb_ped_nf.md](docs/telas/03_busca/busca_codweb_ped_nf.md)).

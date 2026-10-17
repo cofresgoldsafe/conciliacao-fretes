@@ -1,10 +1,10 @@
-# CRM Comercial B2B
+# CRM Comercial B2B (Sub-aba: `💼 CRM`)
 
 > **Macro-Área:** BI Executivo  
-> **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm`  
+> **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm` (`💼 CRM`)  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 26/09/2026 (v8.278 - Homologado)  
+> **Última Atualização:** 16/10/2026 (v8.309 - Homologado)  
 
 ---
 

@@ -914,6 +914,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.CRMModule.init();
         }
       }
+      if (targetTab === 'tab-bi-os') {
+        if (typeof window.initBiOsView === 'function') {
+          window.initBiOsView();
+        }
+      }
       if (targetTab === 'tab-config-logs') {
         loadAuditDashboard();
       }

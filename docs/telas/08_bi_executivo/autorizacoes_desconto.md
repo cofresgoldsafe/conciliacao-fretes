@@ -1,10 +1,10 @@
-# Autorizações de Desconto & Margem
+# Autorizações de Desconto & Margem (Sub-aba: `🎯 Autoriza Desc`)
 
 > **Macro-Área:** BI Executivo  
-> **Identificador DOM:** `#tab-bi-autorizacoes` | **Botão:** `#btnTabBiAutorizacoes`  
+> **Identificador DOM:** `#tab-bi-autorizacoes` | **Botão:** `#btnTabBiAutorizacoes` (`🎯 Autoriza Desc`)  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 30/09/2026 (v8.283 - Homologado)  
+> **Última Atualização:** 16/10/2026 (v8.309 - Homologado)  
 
 ---
 

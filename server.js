@@ -6969,6 +6969,74 @@ app.post('/api/bi/despesas/sync', requireAuth, requireRole('admin'), async (req,
 
 /**
  * ----------------------------------------------------------------------------
+ * ENDPOINTS REST: BI EXECUTIVO — ORDENS DE SERVIÇO (OS) (PROTHEUS SE1150 + SUPABASE ASSISTÊNCIA)
+ * ----------------------------------------------------------------------------
+ */
+const {
+  getDashboardData: getBiOsDashboardData,
+  getTitulosPaginados: getBiOsTitulosPaginados
+} = require('./bi_os_engine');
+
+// 1. Dashboard consolidado (KPIs + 24 meses Recebimentos Quitados SE1150 + 20 meses OS Criadas Supabase)
+app.get('/api/bi/os/dashboard', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const regime = req.query.regime === 'emissao' ? 'emissao' : 'baixa';
+    const forceSync = req.query.force === 'true' || req.query.force === '1';
+    const payload = await getBiOsDashboardData({ regime, forceSync });
+    return res.json(payload);
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao carregar dashboard de BI OS.');
+  }
+});
+
+// 2. Listagem analítica paginada de títulos de OS quitados no Protheus (Pilar 1)
+app.get('/api/bi/os/titulos', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const regime = req.query.regime === 'emissao' ? 'emissao' : 'baixa';
+    const mesAno = String(req.query.mesAno || '').trim();
+    const search = String(req.query.search || '').trim();
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 50;
+
+    const resultado = await getBiOsTitulosPaginados({
+      regime,
+      mesAno,
+      search,
+      page,
+      limit
+    });
+    return res.json(resultado);
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao listar títulos quitados de OS.');
+  }
+});
+
+// 3. Sincronização manual de dados (Protheus SE1150 + Supabase Assistência)
+app.post('/api/bi/os/sync', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const regime = (req.body && req.body.regime === 'emissao') ? 'emissao' : 'baixa';
+
+    logUserActivity({
+      userId: user.id || user.username,
+      username: user.username,
+      role: user.role,
+      action: 'BI_OS_SYNC',
+      details: { regime }
+    });
+
+    const payload = await getBiOsDashboardData({ regime, forceSync: true });
+    return res.json({
+      ...payload,
+      message: 'Dados de OS sincronizados com sucesso (Protheus SE1150 + Supabase Assistência).'
+    });
+  } catch (err) {
+    return handleServerError(res, err, err.message || 'Erro ao sincronizar dados de BI OS.');
+  }
+});
+
+/**
+ * ----------------------------------------------------------------------------
  * ENDPOINTS REST: MÓDULO "MINHAS TAREFAS" & GESTÃO DE DELEGAÇÃO / CHECK
  * ----------------------------------------------------------------------------
  */

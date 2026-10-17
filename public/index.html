@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%2338bdf8'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=8.309">
-  <link rel="stylesheet" href="css/whatsapp_atendimento.css?v=8.309">
+  <link rel="stylesheet" href="style.css?v=8.310">
+  <link rel="stylesheet" href="css/whatsapp_atendimento.css?v=8.310">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 16/10/2026 16:21 (Renomeia sub-abas do BI Executivo (Índices, Autoriza Desc e CRM))</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 16/10/2026 22:40 (Sub-aba OS em BI Executivo: Faturamento 24m Protheus SE1150 e OS Criadas 20m Supabase Assistência)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -319,6 +319,10 @@
           <button class="nav-tab-btn subtab-btn" id="btnTabBiCrm" data-tab="tab-bi-crm" data-target="tab-bi-crm" style="display: none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
             <span>💼 CRM</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-bi-os" id="btnTabBiOs">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            <span>🛠️ OS</span>
           </button>
         </div>
       </div>
@@ -7990,6 +7994,188 @@
     </div>
   </div>
 
+  <!-- ABA 6 BI: Assistência Técnica — Faturamento & Volume de OS -->
+  <div id="tab-bi-os" class="tab-pane hidden">
+    <div class="bi-wrapper" id="biOsWrapper">
+      <!-- 1. Header / Toolbar Card -->
+      <div class="bi-toolbar card" style="margin-bottom: 1.25rem; padding: 1.1rem 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="font-size: 1.2rem; font-weight: 700; margin: 0; color: var(--text-main);">🛠️ BI Assistência Técnica — Faturamento & Volume de OS</h2>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span id="biOsSyncStatusText" style="font-size: 0.8rem; color: var(--text-muted);">Atualizado: --</span>
+            <select id="biOsSelectRegime" class="form-control" style="width: auto; min-width: 245px; height: 36px; font-size: 0.85rem;">
+              <option value="baixa" selected>Regime de Caixa (Data da Baixa)</option>
+              <option value="emissao">Regime de Competência (Emissão)</option>
+            </select>
+            <button id="btnBiOsSync" type="button" class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; font-weight: 600; height: 36px;">
+              <span>🔄 Atualizar Dados</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 4 Executive KPI Cards Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.85rem; margin-bottom: 1.25rem;">
+        <!-- Card 1 (Green #10b981) -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #10b981;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">RECEBIMENTOS QUITADOS (24M)</span>
+              <h3 id="kpiBiOsReceita24m" style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0; color: #10b981;">R$ 0,00</h3>
+              <span id="kpiBiOsMediaReceita" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">Média: R$ 0,00/mês · 0 títulos</span>
+            </div>
+            <span style="font-size: 1.5rem; opacity: 0.85;">💰</span>
+          </div>
+        </div>
+
+        <!-- Card 2 (Cyan #38bdf8) -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #38bdf8;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">RECEBIDO NO MÊS ATUAL</span>
+              <h3 id="kpiBiOsReceitaMesAtual" style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0; color: #38bdf8;">R$ 0,00</h3>
+              <span id="kpiBiOsVariacaoMes" class="badge" style="font-size: 0.75rem; margin-top: 4px; display: inline-block;">0% vs mês anterior</span>
+            </div>
+            <span style="font-size: 1.5rem; opacity: 0.85;">📅</span>
+          </div>
+        </div>
+
+        <!-- Card 3 (Blue #3b82f6) -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #3b82f6;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">OS CRIADAS (20M)</span>
+              <h3 id="kpiBiOsTotalCriadas20m" style="font-size: 1.5rem; font-weight: 800; margin: 4px 0 0; color: #3b82f6;">0</h3>
+              <span id="kpiBiOsMediaCriadas" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">Média: 0 OS/mês</span>
+            </div>
+            <span style="font-size: 1.5rem; opacity: 0.85;">🛠️</span>
+          </div>
+        </div>
+
+        <!-- Card 4 (Amber #f59e0b) -->
+        <div class="card kpi-card" style="padding: 1.1rem; border-left: 4px solid #f59e0b;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="min-width: 0;">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">MIX PADRÃO X GARANTIA (20M)</span>
+              <h3 id="kpiBiOsMixResumo" style="font-size: 1.25rem; font-weight: 800; margin: 4px 0 0; color: #f59e0b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">0 Padrão · 0 Garantia</h3>
+              <span id="kpiBiOsTaxaGarantia" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">Taxa Garantia: 0,0%</span>
+            </div>
+            <span style="font-size: 1.5rem; opacity: 0.85;">🛡️</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Chart 1 Card — Faturamento / Recebimentos Mês a Mês (Últimos 24 Meses — Protheus SE1) -->
+      <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">
+            💰 Recebimentos Quitados de OS — Últimos 24 Meses (Protheus)
+          </h3>
+          <span id="biOsChartFatHint" class="badge" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; font-size: 0.75rem; font-weight: 600;">
+            Clique em uma barra para filtrar os títulos do mês
+          </span>
+        </div>
+        <div style="position: relative; height: 340px; width: 100%;">
+          <canvas id="chartBiOsFaturamento24m"></canvas>
+        </div>
+      </div>
+
+      <!-- 4. Chart 2 Card — Quantidade de OS Criadas Mês a Mês (Últimos 20 Meses — Supabase Assistência) -->
+      <div class="card" style="margin-bottom: 1.25rem; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">
+            🛠️ Quantidade de OS Criadas — Últimos 20 Meses (Assistência)
+          </h3>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button type="button" id="btnBiOsFiltroTodas" class="btn btn-primary btn-sm" data-tipo="todas" style="font-weight: 600;">Todas</button>
+            <button type="button" id="btnBiOsFiltroPadrao" class="btn btn-outline btn-sm" data-tipo="padrao" style="font-weight: 600;">🔵 Só OS Padrão</button>
+            <button type="button" id="btnBiOsFiltroGarantia" class="btn btn-outline btn-sm" data-tipo="garantia" style="font-weight: 600;">🟠 Só Garantia</button>
+          </div>
+        </div>
+        <div style="position: relative; height: 340px; width: 100%;">
+          <canvas id="chartBiOsCriadas20m"></canvas>
+        </div>
+      </div>
+
+      <!-- 5. Analytical Table Card — Títulos Quitados no Protheus (SE1150) com Paginação (Pilar 1) -->
+      <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">
+              📑 Títulos de OS Quitados (Protheus)
+            </h3>
+            <span id="biOsTabelaResumo" style="font-size: 0.8rem; color: var(--text-muted);">Carregando...</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <select id="biOsFiltroMesTabela" class="form-control form-control-sm" style="width: auto; min-width: 165px; height: 34px; font-size: 0.82rem;">
+              <option value="">Todos os 24 meses</option>
+            </select>
+            <button id="btnBiOsLimparMes" type="button" class="btn btn-outline btn-sm" style="display: none; height: 34px; padding: 0 10px; font-size: 0.78rem;" title="Limpar filtro de mês">
+              ✕ Limpar Mês
+            </button>
+            <input type="text" id="biOsInputBuscaTitulos" class="form-control form-control-sm" placeholder="Buscar nº OS, cliente, histórico..." style="width: 230px; height: 34px; font-size: 0.82rem;">
+            <button id="btnBiOsBuscarTitulos" type="button" class="btn btn-primary btn-sm" style="height: 34px; padding: 0 14px; font-weight: 600;">
+              🔍 Filtrar
+            </button>
+            <button id="btnBiOsExportCsv" type="button" class="btn btn-outline btn-sm" style="height: 34px; padding: 0 12px; font-weight: 600;" title="Exportar visualização atual para CSV">
+              📥 CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive" style="overflow-x: auto; max-height: 520px; border: 1px solid var(--panel-border); border-radius: 6px;">
+          <table class="table table-hover" id="biOsTabelaTitulos" style="width: 100%; margin: 0; font-size: 0.85rem;">
+            <thead style="position: sticky; top: 0; background: var(--panel-header-bg, #1e293b); z-index: 5;">
+              <tr>
+                <th style="padding: 10px; width: 100px;">Baixa</th>
+                <th style="padding: 10px; width: 100px;">Emissão</th>
+                <th style="padding: 10px; width: 80px;">Prefixo</th>
+                <th style="padding: 10px; width: 130px;">Nº Título (OS)</th>
+                <th style="padding: 10px; width: 65px; text-align: center;">Parc.</th>
+                <th style="padding: 10px; min-width: 220px;">Cliente</th>
+                <th style="padding: 10px; min-width: 200px;">Histórico</th>
+                <th style="padding: 10px; width: 140px; text-align: right;">Valor Quitado (R$)</th>
+              </tr>
+            </thead>
+            <tbody id="biOsTabelaTitulosBody">
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                  Carregando títulos quitados de OS...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination footer (Pilar 1) -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--panel-border);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Exibir:</span>
+            <select id="biOsPageLimit" class="form-control form-control-sm" style="width: 75px; height: 32px; font-size: 0.8rem;">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+            <span id="biOsPaginationInfo" style="font-size: 0.8rem; color: var(--text-muted);">
+              Página 1 de 1
+            </span>
+          </div>
+
+          <div style="display: flex; gap: 6px;">
+            <button id="btnBiOsPrevPage" type="button" class="btn btn-outline btn-sm" disabled style="height: 32px; padding: 0 12px;">
+              ◀ Anterior
+            </button>
+            <button id="btnBiOsNextPage" type="button" class="btn btn-outline btn-sm" disabled style="height: 32px; padding: 0 12px;">
+              Próxima ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL CRM: MARCAR COMO PERDIDO (MOTIVO OBRIGATÓRIO) -->
   <div id="modalCrmPerdido" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmPerdidoTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
     <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
@@ -10153,28 +10339,29 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.309"></script>
-  <script src="js/bi.js?v=8.309"></script>
-  <script src="js/bi_indices.js?v=8.309"></script>
-  <script src="js/bi_autorizacoes.js?v=8.309"></script>
-  <script src="js/bi_despesas.js?v=8.309"></script>
-  <script src="js/gordura_frete.js?v=8.309"></script>
-  <script src="js/fechamento_vendedores.js?v=8.309"></script>
-  <script type="module" src="js/tarefas.js?v=8.309"></script>
-  <script src="js/holerites.js?v=8.309"></script>
-  <script src="js/funcionarios_dp.js?v=8.309"></script>
-  <script src="js/crm.js?v=8.309"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.309"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.309"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.309"></script>
-  <script src="js/compras_necessidade.js?v=8.309"></script>
-  <script src="js/nfse_pendentes.js?v=8.309"></script>
-  <script src="js/fechamento_fiscal.js?v=8.309"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.309"></script>
-  <script src="js/contas_pagar.js?v=8.309"></script>
-  <script src="js/pgtos_desconhecidos.js?v=8.309"></script>
+  <script src="js/chart.umd.min.js?v=8.310"></script>
+  <script src="js/bi.js?v=8.310"></script>
+  <script src="js/bi_indices.js?v=8.310"></script>
+  <script src="js/bi_autorizacoes.js?v=8.310"></script>
+  <script src="js/bi_despesas.js?v=8.310"></script>
+  <script src="js/bi_os.js?v=8.310"></script>
+  <script src="js/gordura_frete.js?v=8.310"></script>
+  <script src="js/fechamento_vendedores.js?v=8.310"></script>
+  <script type="module" src="js/tarefas.js?v=8.310"></script>
+  <script src="js/holerites.js?v=8.310"></script>
+  <script src="js/funcionarios_dp.js?v=8.310"></script>
+  <script src="js/crm.js?v=8.310"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.310"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.310"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.310"></script>
+  <script src="js/compras_necessidade.js?v=8.310"></script>
+  <script src="js/nfse_pendentes.js?v=8.310"></script>
+  <script src="js/fechamento_fiscal.js?v=8.310"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.310"></script>
+  <script src="js/contas_pagar.js?v=8.310"></script>
+  <script src="js/pgtos_desconhecidos.js?v=8.310"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/whatsapp_atendimento.js?v=8.309"></script>
-  <script src="app.js?v=8.309"></script>
+  <script src="js/whatsapp_atendimento.js?v=8.310"></script>
+  <script src="app.js?v=8.310"></script>
 </body>
 </html>

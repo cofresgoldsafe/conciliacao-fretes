@@ -1,10 +1,10 @@
-# Índices Financeiros de Liquidez
+# Índices Financeiros de Liquidez (Sub-aba: `📊 Índices`)
 
 > **Macro-Área:** BI Executivo  
-> **Identificador DOM:** `#tab-bi-indices` | **Botão:** `#btnTabBiIndices`  
+> **Identificador DOM:** `#tab-bi-indices` | **Botão:** `#btnTabBiIndices` (`📊 Índices`)  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 15/09/2026 (v8.219 - Homologado)  
+> **Última Atualização:** 16/10/2026 (v8.309 - Homologado)  
 
 ---
 
