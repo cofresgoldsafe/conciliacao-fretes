@@ -144,6 +144,25 @@ async function runTests() {
   }
 
   // -------------------------------------------------------------
+  // Teste 6: Ausência de Supabase Service Role JWT ou API Keys hardcoded
+  // -------------------------------------------------------------
+  console.log('\n--- 6. Verificação contra Vazamento de JWT e API Keys Hardcoded ---');
+  try {
+    const biOsContent = fs.readFileSync(path.join(__dirname, 'bi_os_engine.js'), 'utf-8');
+    const pgtosContent = fs.readFileSync(path.join(__dirname, 'routes', 'pgtos_desconhecidos.js'), 'utf-8');
+    const scriptOsContent = fs.readFileSync(path.join(__dirname, 'scripts', 'localizar_os_quitadas.js'), 'utf-8');
+
+    assert.ok(!biOsContent.includes('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'), 'bi_os_engine.js NÃO deve conter JWT do Supabase hardcoded');
+    assert.ok(!pgtosContent.includes('gsi_conciliacao_portal_2026_sec'), 'routes/pgtos_desconhecidos.js NÃO deve conter API Key da Assistência hardcoded');
+    assert.ok(!pgtosContent.includes('27c8e6f7f9bccd60101889f25369f6075e30f615'), 'routes/pgtos_desconhecidos.js NÃO deve conter Token do Pipedrive hardcoded');
+    assert.ok(!scriptOsContent.includes('gsi_conciliacao_portal_2026_sec'), 'scripts/localizar_os_quitadas.js NÃO deve conter API Key hardcoded');
+
+    report('Nenhum JWT Service Role ou API Key sensível está hardcoded no código-fonte', true);
+  } catch (err) {
+    report('Nenhum JWT Service Role ou API Key sensível está hardcoded no código-fonte', false, err.message);
+  }
+
+  // -------------------------------------------------------------
   // Resumo Final
   // -------------------------------------------------------------
   console.log('\n=============================================================');

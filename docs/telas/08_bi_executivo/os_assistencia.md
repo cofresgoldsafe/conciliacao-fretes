@@ -55,4 +55,5 @@ node --test tests/bi_os_engine.test.js
 ---
 
 ## 6. Histórico & Evolução da Tela
+- **v8.311 (20/10/2026):** Remoção do fallback hardcoded da `service_role` do Supabase Assistência em `bi_os_engine.js` (isolado em `process.env.ASSISTENCIA_SUPABASE_KEY` / `.env` local) e adição de teste automatizado anti-regressão em `test_dom_xss_and_secrets.js`. **Pendência agendada fora do expediente (`[SEC-14]` em `TODO.md`):** migrar variáveis em produção para as novas chaves `sb_secret_...` / `sb_publishable_...` e clicar em `Disable JWT-based API keys` no Supabase (`huhwzrvxkzffzxfqtzob`).
 - **v8.310 (16/10/2026):** Criação e homologação da sub-aba `🛠️ OS` em `📊 BI EXECUTIVO` com gráficos de barras de Recebimentos Quitados Protheus (24 meses) e Quantidade de OS Criadas no Supabase Assistência (20 meses, Padrão vs Garantia com filtro), 4 KPIs executivos e drilldown analítico paginado com exportação CSV.

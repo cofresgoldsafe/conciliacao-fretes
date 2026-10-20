@@ -14,6 +14,7 @@
 
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 const { executeRailwayQuery } = require('./protheus_db');
 const { safeReadJson, safeWriteJson } = require('./safe_json_storage');
@@ -24,11 +25,34 @@ const writeJsonSafe = safeWriteJson;
 const CACHE_FILE = path.join(__dirname, 'data', 'bi_os_cache.json');
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutos
 
+// Carrega variáveis do .env local caso não estejam injetadas no processo
+function loadLocalEnv() {
+  try {
+    const envPath = path.join(__dirname, '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf-8');
+      for (const line of content.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const k = trimmed.slice(0, eqIdx).trim();
+          const v = trimmed.slice(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+          if (k && !process.env[k]) {
+            process.env[k] = v;
+          }
+        }
+      }
+    }
+  } catch (_) {
+    // Silencioso se .env não puder ser lido
+  }
+}
+loadLocalEnv();
+
 const ASSISTENCIA_SUPABASE_URL =
   process.env.ASSISTENCIA_SUPABASE_URL || 'https://huhwzrvxkzffzxfqtzob.supabase.co';
-const ASSISTENCIA_SUPABASE_KEY =
-  process.env.ASSISTENCIA_SUPABASE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1aHd6cnZ4a3pmZnp4ZnF0em9iIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzE1NDg0OSwiZXhwIjoyMTAyNzMwODQ5fQ.NsfkNdD_v_QxUFtpH-Cuzd9eg8aUV7Fx_da1gRoyH8I';
+const ASSISTENCIA_SUPABASE_KEY = (process.env.ASSISTENCIA_SUPABASE_KEY || '').trim();
 
 const MESES_ABREV = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -389,6 +413,9 @@ async function fetchProtheusSe1150Os() {
  * Consulta ao vivo o Supabase Assistência (ordens_servico) em ranges paralelos com timeout de 12s
  */
 async function fetchSupabaseAssistenciaOs() {
+  if (!ASSISTENCIA_SUPABASE_KEY) {
+    throw new Error('ASSISTENCIA_SUPABASE_KEY não configurada no ambiente (.env).');
+  }
   const endpoint = `${ASSISTENCIA_SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/ordens_servico?select=id,numero_os,tipo_os,status,status_pagamento,valor_total,data_entrada,created_at,updated_at&order=numero_os.desc`;
   const ranges = ['0-999', '1000-2499', '2500-3999'];
 

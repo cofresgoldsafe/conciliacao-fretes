@@ -13,6 +13,12 @@
 - [x] [SEC-10] Processamento efêmero de relatórios PDF Serasa Experian em memória sem gravação em disco e trava cruzada de CNPJs.
 - [x] [SEC-11] Mitigação de DOM-based XSS: Função global `escapeHtml()` no topo da SPA e sanitização de 100% dos dados dinâmicos em tabelas e modais.
 - [x] [SEC-12] Criptografia e Proteção de Segredos: Eliminação de caminhos fixos de drive em `inter_api.js`, remoção de senhas em texto puro e migração 100% para variáveis de ambiente seguras no Render.
+- [x] [SEC-13] Remoção de Segredos Hardcoded (Alerta GitGuardian): Extração do JWT `service_role` do Supabase Assistência (`bi_os_engine.js`) e das API Keys (`routes/pgtos_desconhecidos.js` e `scripts/localizar_os_quitadas.js`) para o `.env` local (ignorado no Git) e adição do Teste 6 anti-regressão em `test_dom_xss_and_secrets.js` (v8.311).
+- [ ] [SEC-14] **[PENDÊNCIA FORA DO EXPEDIENTE] Rotação Zero-Downtime das Chaves do Supabase Assistência (`huhwzrvxkzffzxfqtzob`) e Desativação das Legacy JWT Keys:**
+  1. No painel do Supabase (`https://supabase.com/dashboard/project/huhwzrvxkzffzxfqtzob/settings/api-keys`), na aba **`Publishable and secret API keys`**, copiar a chave **`sb_secret_...`** (em *Secret keys*) e a chave **`sb_publishable_...`** (em *Publishable key*).
+  2. No servidor de produção do **Portal GSI / Conciliação** (Render `Environment Variables`) e no arquivo `.env` local de `Gemini-Cli`, atualizar a variável `ASSISTENCIA_SUPABASE_KEY` com a nova `sb_secret_...`.
+  3. No servidor de produção do **Portal da Assistência** (`assistencia.gsicofres.com.br` — Render/Vercel `Environment Variables`) e no `.env.local` de `Gemini-Assistencia-Portal`, atualizar `SUPABASE_SERVICE_ROLE_KEY` para a nova `sb_secret_...` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` para a `sb_publishable_...`.
+  4. Após ambos os projetos estarem rodando com as chaves novas (`sb_secret_` / `sb_publishable_`), voltar no Supabase na aba **`Legacy anon, service_role API keys`** e clicar no botão **`Disable JWT-based API keys`** para invalidar definitivamente o JWT antigo (`eyJhbGci...`) que foi exposto no histórico do GitHub.
 
 ## 🟡 Resiliência & SRE
 - [x] [SRE-01] Adicionar tratamento de reconexão e timeouts no pool PostgreSQL (`postgres_db.js`).

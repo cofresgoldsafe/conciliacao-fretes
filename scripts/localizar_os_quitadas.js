@@ -3,8 +3,8 @@ const path = require('path');
 const https = require('https');
 const { executeRailwayQuery } = require('../protheus_db');
 
-const ASSISTENCIA_API_URL = 'https://assistencia.gsicofres.com.br/api/conciliacao/buscar';
-const ASSISTENCIA_API_KEY = 'gsi_conciliacao_portal_2026_sec';
+const ASSISTENCIA_API_URL = process.env.ASSISTENCIA_API_URL || 'https://assistencia.gsicofres.com.br/api/conciliacao/buscar';
+const ASSISTENCIA_API_KEY = process.env.ASSISTENCIA_API_KEY || '';
 
 function formatarDataBr(str) {
   if (!str || str.length !== 8) return str || '-';

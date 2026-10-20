@@ -18,15 +18,39 @@ const express = require('express');
 const router = express.Router();
 const https = require('https');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { executeRailwayQuery, sanitizeSqlParam } = require('../protheus_db');
+
+// Carrega variáveis do .env local caso não estejam injetadas no processo
+(function loadLocalEnv() {
+  try {
+    const envPath = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf-8');
+      for (const line of content.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const k = trimmed.slice(0, eqIdx).trim();
+          const v = trimmed.slice(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+          if (k && !process.env[k]) {
+            process.env[k] = v;
+          }
+        }
+      }
+    }
+  } catch (_) {}
+})();
 
 // Configurações da API de Assistência Técnica
 const ASSISTENCIA_API_URL = process.env.ASSISTENCIA_API_URL || 'https://assistencia.gsicofres.com.br/api/conciliacao/buscar';
-const ASSISTENCIA_API_KEY = process.env.ASSISTENCIA_API_KEY || (process.env.NODE_ENV === 'production' ? '' : 'gsi_conciliacao_portal_2026_sec');
+const ASSISTENCIA_API_KEY = (process.env.ASSISTENCIA_API_KEY || '').trim();
 
 // Configurações do Pipedrive CRM
 const PIPEDRIVE_BASE_URL = 'https://api.pipedrive.com/v1';
-const PIPEDRIVE_API_TOKEN = process.env.PIPEDRIVE_API_TOKEN || (process.env.NODE_ENV === 'production' ? '' : '27c8e6f7f9bccd60101889f25369f6075e30f615');
+const PIPEDRIVE_API_TOKEN = (process.env.PIPEDRIVE_API_TOKEN || '').trim();
 
 /**
  * Utilitário HTTP nativo para chamadas seguras (stdlib https) com timeout estrito

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.310 (Homologada em 16/10/2026 22:40)  
+> **Versão da Documentação:** v8.311 (Homologada em 20/10/2026 11:30)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 16/10/2026 22:40 (v8.310 - Nova sub-aba OS em BI Executivo: Faturamento 24m Protheus SE1150 e OS Criadas 20m Supabase Assistência)  
+> **Data da Última Auditoria:** 20/10/2026 11:30 (v8.311 - Remoção de segredos hardcoded para .env e roteiro SEC-14 de rotação Supabase Assistência fora do expediente)  
 
 ---
 
@@ -180,6 +180,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.311 (20/10/2026):** Remoção de segredos hardcoded (`ASSISTENCIA_SUPABASE_KEY`, `ASSISTENCIA_API_KEY` e `PIPEDRIVE_API_TOKEN`) em `bi_os_engine.js`, `routes/pgtos_desconhecidos.js` e `scripts/localizar_os_quitadas.js` para `.env` local (ignorado pelo Git), teste anti-regressão em `test_dom_xss_and_secrets.js` e registro da pendência `[SEC-14]` em `TODO.md` para rotação Zero-Downtime das chaves do Supabase Assistência fora do expediente.
 - **v8.310 (16/10/2026):** Nova sub-aba `🛠️ OS` em `📊 BI EXECUTIVO` (`#tab-bi-os`): gráficos de barras de Recebimentos Quitados de OS nos últimos 24 meses (Protheus `SE1150` com drilldown paginado e CSV) e Quantidade de OS Criadas nos últimos 20 meses (Supabase Assistência `ordens_servico`, segregando OS Padrão vs Garantia com filtro rápido) (detalhado em [os_assistencia.md](docs/telas/08_bi_executivo/os_assistencia.md)).
 - **v8.309 (16/10/2026):** Compactação dos rótulos das sub-abas na macro-área BI Executivo (`#subGroupBi` em `public/index.html`): de `📊 Índices Financeiros` para `📊 Índices`, de `🎯 Autorizações de Desconto` para `🎯 Autoriza Desc` e de `💼 CRM Comercial` para `💼 CRM`.
 - **v8.308 (16/10/2026):** Substituição do ícone principal da Plataforma de Apoio GSI no cabeçalho superior (`.brand-logo`) e adição de favicon vetorial SVG em `public/index.html`, trocando a folha de papel (`file-text`) pelo símbolo de Engrenagem com Núcleo Conectado (Hub Operacional e Automação).
