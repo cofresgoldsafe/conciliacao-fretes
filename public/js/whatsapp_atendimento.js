@@ -26,6 +26,12 @@
   let supabaseClient = null;
   let realtimeChannel = null;
   let pollingInterval = null;
+  let pendingFile = null; // arquivo anexado aguardando envio
+
+  const MAX_FILE_BYTES = 16 * 1024 * 1024;
+  const ALLOWED_EXT = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png'];
+  const MEDIA_PLACEHOLDERS = ['📷 Imagem', '📄 Documento', '🎤 Áudio', '🎬 Vídeo', '🙂 Figurinha'];
+  const DEFAULT_PLACEHOLDER = 'Digite sua mensagem ou arraste / cole um arquivo (Enter envia, Shift+Enter nova linha)...';
 
   // Detecção da URL base da API
   function getApiBaseUrl() {
@@ -176,7 +182,7 @@
     }
 
     try {
-      const res = await fetch(url, { ...options, headers });
+      const res = await fetch(url, { cache: 'no-store', ...options, headers });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP ${res.status}: ${res.statusText}`);
@@ -252,7 +258,7 @@
         try {
           const { data, error } = await supabaseClient
             .from('messages')
-            .select('id, conversation_id, sender_type, sender_id, text, created_at')
+            .select('*')
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: true });
 
@@ -366,6 +372,7 @@
   }
 
   function selectConversation(conversationId) {
+    if (conversationId !== activeConversationId) clearPendingFile();
     activeConversationId = conversationId;
 
     // Atualiza destaque na lista lateral
@@ -481,6 +488,294 @@
     }
   }
 
+  // ============================================================================
+  // ANEXOS (arrastar, colar, clipe)
+  // ============================================================================
+
+  function formatBytes(n) {
+    if (!n && n !== 0) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+  }
+
+  function fileIcon(name, mime) {
+    const ext = String(name || '').split('.').pop().toLowerCase();
+    const m = String(mime || '');
+    if (m.startsWith('image/')) return '🖼️';
+    if (ext === 'pdf' || m === 'application/pdf') return '📕';
+    if (['xls', 'xlsx'].includes(ext) || m.includes('sheet') || m.includes('excel')) return '📗';
+    if (['doc', 'docx'].includes(ext) || m.includes('word')) return '📘';
+    if (['ppt', 'pptx'].includes(ext) || m.includes('presentation') || m.includes('powerpoint')) return '📙';
+    if (m.startsWith('audio/')) return '🎤';
+    if (m.startsWith('video/')) return '🎬';
+    return '📄';
+  }
+
+  // Cria (uma vez) os elementos de anexo sem precisar alterar o index.html
+  function ensureAttachmentUi() {
+    const chat = document.getElementById('waActiveChat');
+    const form = document.getElementById('waChatForm');
+    const textarea = document.getElementById('waMessageInput');
+    if (!chat || !form || !textarea) return false;
+
+    if (!document.getElementById('waDropOverlay')) {
+      const overlay = document.createElement('div');
+      overlay.id = 'waDropOverlay';
+      overlay.className = 'wa-drop-overlay hidden';
+      overlay.setAttribute('aria-hidden', 'true');
+      overlay.innerHTML = '<span>📎 Solte o arquivo para anexar</span>';
+      chat.appendChild(overlay);
+    }
+    if (!document.getElementById('waAttachPreview')) {
+      const preview = document.createElement('div');
+      preview.id = 'waAttachPreview';
+      preview.className = 'wa-attach-preview hidden';
+      preview.setAttribute('aria-live', 'polite');
+      form.parentNode.insertBefore(preview, form);
+    }
+    if (!document.getElementById('waFileInput')) {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.id = 'waFileInput';
+      fileInput.hidden = true;
+      fileInput.accept = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png';
+      form.insertBefore(fileInput, form.firstChild);
+    }
+    if (!document.getElementById('waBtnAttach')) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'waBtnAttach';
+      btn.className = 'btn btn-outline wa-btn-attach';
+      btn.setAttribute('aria-label', 'Anexar arquivo');
+      btn.title = 'Anexar arquivo (ou arraste / cole com Ctrl+V)';
+      btn.textContent = '📎';
+      form.insertBefore(btn, textarea);
+    }
+    textarea.placeholder = DEFAULT_PLACEHOLDER;
+    return true;
+  }
+
+  function setPendingFile(file) {
+    if (!file) return;
+    if (!activeConversationId) {
+      alert('Selecione uma conversa antes de anexar um arquivo.');
+      return;
+    }
+    const ext = String(file.name || '').split('.').pop().toLowerCase();
+    const isPastedImage = !file.name && /^image\/(png|jpeg)$/.test(file.type);
+    if (!ALLOWED_EXT.includes(ext) && !isPastedImage) {
+      alert('Tipo de arquivo não aceito. Envie PDF, JPG, PNG, Word, Excel ou PowerPoint.');
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      alert(`Arquivo muito grande (${formatBytes(file.size)}). O limite é 16 MB.`);
+      return;
+    }
+    pendingFile = file;
+    renderAttachPreview();
+    const input = document.getElementById('waMessageInput');
+    if (input) {
+      input.placeholder = 'Legenda opcional (Enter para enviar o arquivo)...';
+      input.focus();
+    }
+  }
+
+  function clearPendingFile() {
+    pendingFile = null;
+    renderAttachPreview();
+    const fileInput = document.getElementById('waFileInput');
+    if (fileInput) fileInput.value = '';
+    const input = document.getElementById('waMessageInput');
+    if (input) input.placeholder = DEFAULT_PLACEHOLDER;
+  }
+
+  function renderAttachPreview() {
+    const box = document.getElementById('waAttachPreview');
+    if (!box) return;
+    if (!pendingFile) {
+      box.classList.add('hidden');
+      box.innerHTML = '';
+      return;
+    }
+    const name = pendingFile.name || 'imagem-colada.png';
+    const isImage = String(pendingFile.type).startsWith('image/');
+    const thumb = isImage
+      ? `<img src="${URL.createObjectURL(pendingFile)}" alt="">`
+      : `<span class="wa-media-doc-icon">${fileIcon(name, pendingFile.type)}</span>`;
+    box.innerHTML = `
+      <div class="wa-attach-chip">
+        ${thumb}
+        <span class="wa-attach-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+        <span class="wa-attach-size">${formatBytes(pendingFile.size)}</span>
+        <button type="button" class="wa-attach-remove" id="waAttachRemove" aria-label="Remover anexo" title="Remover anexo">✕</button>
+      </div>
+    `;
+    box.classList.remove('hidden');
+    const btn = document.getElementById('waAttachRemove');
+    if (btn) btn.addEventListener('click', clearPendingFile);
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function mediaUrl(msg, download) {
+    return `${getApiBaseUrl()}/api/chat/media/${encodeURIComponent(msg.id)}${download ? '?download=1' : ''}`;
+  }
+
+  function renderMediaBlock(msg) {
+    if (!msg.media_type) return '';
+    const name = msg.media_name || 'arquivo';
+    const icon = fileIcon(name, msg.media_mime);
+
+    if (msg._uploading) {
+      return `<div class="wa-media-doc"><span class="wa-media-doc-icon">${icon}</span>
+        <span class="wa-media-doc-info"><span class="wa-media-doc-name">${escapeHtml(name)}</span>
+        <span class="wa-media-doc-sub">Enviando...</span></span></div>`;
+    }
+    if (!msg.media_path) {
+      return `<div class="wa-media-doc"><span class="wa-media-doc-icon">${icon}</span>
+        <span class="wa-media-doc-info"><span class="wa-media-doc-name">${escapeHtml(name)}</span>
+        <span class="wa-media-doc-sub">Arquivo indisponível no histórico</span></span></div>`;
+    }
+
+    const url = escapeHtml(mediaUrl(msg));
+    if (msg.media_type === 'image' || msg.media_type === 'sticker') {
+      return `<a href="${url}" target="_blank" rel="noopener"><img class="wa-media-img" src="${url}" alt="${escapeHtml(name)}" loading="lazy"></a>`;
+    }
+    if (msg.media_type === 'audio') {
+      return `<audio class="wa-media-player" controls preload="none" src="${url}"></audio>`;
+    }
+    if (msg.media_type === 'video') {
+      return `<video class="wa-media-player" controls preload="metadata" src="${url}"></video>`;
+    }
+    return `<a class="wa-media-doc" href="${url}" target="_blank" rel="noopener" title="Abrir ${escapeHtml(name)}">
+        <span class="wa-media-doc-icon">${icon}</span>
+        <span class="wa-media-doc-info"><span class="wa-media-doc-name">${escapeHtml(name)}</span>
+        <span class="wa-media-doc-sub">${formatBytes(msg.media_size)} · Abrir</span></span></a>
+      <a class="wa-media-download" href="${escapeHtml(mediaUrl(msg, true))}">⬇ Baixar</a>`;
+  }
+
+  function messageTextHtml(msg) {
+    const text = msg.text || msg.content || '';
+    if (msg.media_type && (text === msg.media_name || MEDIA_PLACEHOLDERS.includes(text))) return '';
+    return escapeHtml(text);
+  }
+
+  async function sendFileMessage(file, caption) {
+    const convId = activeConversationId;
+    const conv = conversationsCache.find(c => c.id === convId);
+    const fileName = file.name || `imagem-colada-${Date.now()}.png`;
+    clearPendingFile();
+
+    const tempMsg = {
+      id: `temp_${Date.now()}`,
+      conversation_id: convId,
+      sender_type: 'OPERATOR',
+      sender_id: activeOperator,
+      text: caption || fileName,
+      media_type: String(file.type).startsWith('image/') ? 'image' : 'document',
+      media_name: fileName,
+      media_mime: file.type,
+      media_size: file.size,
+      _uploading: true,
+      created_at: new Date().toISOString()
+    };
+    if (!messagesCache[convId]) messagesCache[convId] = [];
+    messagesCache[convId].push(tempMsg);
+    renderMessages(messagesCache[convId]);
+
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const res = await apiRequest('/api/chat/send-media', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversationId: convId,
+          operatorId: activeOperator,
+          fileName,
+          mimeType: file.type,
+          caption,
+          dataBase64
+        })
+      });
+      const list = messagesCache[convId] || [];
+      const tIdx = list.findIndex(m => m.id === tempMsg.id);
+      if (tIdx >= 0) list.splice(tIdx, 1);
+      if (res && res.message && !list.some(m => m.id === res.message.id)) list.push(res.message);
+      if (activeConversationId === convId) renderMessages(list);
+
+      if (conv && (conv.status === 'WAITING_HUMAN' || conv.status === 'BOT_AI')) {
+        conv.status = 'IN_PROGRESS';
+        updateActionButtons(conv);
+        renderConversationList();
+        updateWaitingCounter();
+      }
+    } catch (err) {
+      console.error('[WA] Erro ao enviar arquivo:', err);
+      const list = messagesCache[convId] || [];
+      const tIdx = list.findIndex(m => m.id === tempMsg.id);
+      if (tIdx >= 0) list.splice(tIdx, 1);
+      if (activeConversationId === convId) renderMessages(list);
+      alert('Erro ao enviar arquivo: ' + err.message);
+    }
+  }
+
+  function bindAttachmentEvents() {
+    if (!ensureAttachmentUi()) return;
+    const chat = document.getElementById('waActiveChat');
+    const overlay = document.getElementById('waDropOverlay');
+    const input = document.getElementById('waMessageInput');
+    const fileInput = document.getElementById('waFileInput');
+    const btnAttach = document.getElementById('waBtnAttach');
+    const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+    let dragDepth = 0;
+
+    chat.addEventListener('dragenter', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragDepth++;
+      overlay.classList.remove('hidden');
+    });
+    chat.addEventListener('dragover', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    chat.addEventListener('dragleave', () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) overlay.classList.add('hidden');
+    });
+    chat.addEventListener('drop', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragDepth = 0;
+      overlay.classList.add('hidden');
+      const files = e.dataTransfer.files;
+      if (files && files.length > 1) alert('Envie um arquivo por vez. Anexei o primeiro.');
+      if (files && files[0]) setPendingFile(files[0]);
+    });
+
+    input.addEventListener('paste', (e) => {
+      const files = e.clipboardData && e.clipboardData.files;
+      if (files && files.length > 0) {
+        e.preventDefault();
+        setPendingFile(files[0]);
+      }
+    });
+
+    btnAttach.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files[0]) setPendingFile(fileInput.files[0]);
+    });
+  }
+
   function renderMessages(messages) {
     const container = document.getElementById('waMessagesContainer');
     if (!container) return;
@@ -517,7 +812,8 @@
           <div class="wa-msg-sender">
             <span>${escapeHtml(senderLabel)}</span>
           </div>
-          <div class="wa-msg-text">${escapeHtml(msg.text)}</div>
+          ${renderMediaBlock(msg)}
+          ${messageTextHtml(msg) ? `<div class="wa-msg-text">${messageTextHtml(msg)}</div>` : ''}
           <div class="wa-msg-footer">
             <span class="wa-msg-time">${escapeHtml(timeStr)}</span>
             ${isOperator ? '<span>✓</span>' : ''}
@@ -542,6 +838,10 @@
     if (!input) return;
 
     const text = input.value.trim();
+    if (pendingFile) {
+      input.value = '';
+      return sendFileMessage(pendingFile, text);
+    }
     if (!text) return;
 
     const conv = conversationsCache.find(c => c.id === activeConversationId);
@@ -572,7 +872,7 @@
 
     try {
       // 1. Envio para a API backend
-      await apiRequest('/api/chat/send', {
+      const res = await apiRequest('/api/chat/send', {
         method: 'POST',
         body: JSON.stringify({
           conversationId: activeConversationId,
@@ -580,6 +880,15 @@
           operatorId: activeOperator
         })
       });
+
+      // Troca a cópia provisória pela mensagem real devolvida pela API
+      const convMsgs = messagesCache[conv.id] || [];
+      const tIdx = convMsgs.findIndex(m => m.id === tempMsg.id);
+      if (tIdx >= 0) convMsgs.splice(tIdx, 1);
+      if (res && res.message && !convMsgs.some(m => m.id === res.message.id)) {
+        convMsgs.push(res.message);
+      }
+      if (activeConversationId === conv.id) renderMessages(convMsgs);
 
       // Se a conversa estava em WAITING ou BOT, atualiza para IN_PROGRESS
       if (conv.status === 'WAITING_HUMAN' || conv.status === 'BOT_AI') {
@@ -742,6 +1051,16 @@
     }
   }
 
+  // Remove a cópia provisória (id temp_*) quando a mensagem real chega do servidor
+  function removeOptimisticCopy(convId, realMsg) {
+    const list = messagesCache[convId];
+    if (!list || !realMsg) return;
+    const realText = realMsg.text || realMsg.content;
+    const idx = list.findIndex(m => String(m.id).startsWith('temp_') &&
+      m.sender_type === realMsg.sender_type && (m.text || m.content) === realText);
+    if (idx >= 0) list.splice(idx, 1);
+  }
+
   function handleRealtimeNewMessage(newMsg) {
     if (!newMsg || !newMsg.conversation_id) return;
 
@@ -751,7 +1070,8 @@
       messagesCache[convId] = [];
     }
 
-    // Evita duplicatas de mensagens otimistas
+    // Evita duplicatas: a mensagem real substitui a cópia otimista
+    removeOptimisticCopy(convId, newMsg);
     const exists = messagesCache[convId].some(m => m.id === newMsg.id);
     if (!exists) {
       messagesCache[convId].push(newMsg);
@@ -877,6 +1197,7 @@
 
       if (!_initialized) {
         bindEvents();
+        bindAttachmentEvents();
         initSupabaseRealtime();
         _initialized = true;
       }
