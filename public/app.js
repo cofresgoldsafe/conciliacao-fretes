@@ -349,6 +349,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabLogistica) mainTabLogistica.style.display = perms.includes('logistica') ? '' : 'none';
     if (mainTabConsulta) mainTabConsulta.style.display = perms.includes('consulta') ? '' : 'none';
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
+    const mainTabWhatsapp = document.getElementById('mainTabWhatsapp');
+    if (mainTabWhatsapp) mainTabWhatsapp.style.display = (isAdmin || perms.includes('whatsapp')) ? '' : 'none';
     if (mainTabCompras) mainTabCompras.style.display = perms.includes('compras') ? '' : 'none';
     if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
     if (mainTabAnalistaFin) mainTabAnalistaFin.style.display = (perms.includes('analista-fin') || perms.includes('financeiro')) ? '' : 'none';
@@ -356,19 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnTabBiCrm = document.getElementById('btnTabBiCrm');
     if (btnTabBiCrm) btnTabBiCrm.style.display = isAdmin ? '' : 'none';
     const isVendedor = Boolean(user && user.role === 'vendedor');
-    if (mainTabConfig) mainTabConfig.style.display = (perms.includes('configuracoes') || isVendedor) ? '' : 'none';
-
-    // Se o usuário for vendedor (não-admin), exibe apenas a sub-aba de WhatsApp no grupo de Configurações
-    const subGroupConfig = document.getElementById('subGroupConfiguracoes');
-    if (subGroupConfig && isVendedor && !isAdmin) {
-      subGroupConfig.querySelectorAll('.nav-tab-btn').forEach(btn => {
-        if (btn.id === 'btnTabConfigWhatsapp') {
-          btn.style.display = '';
-        } else {
-          btn.style.display = 'none';
-        }
-      });
-    }
+    // Vendedores viam Configurações só por causa da sub-aba WhatsApp, que virou aba superior
+    if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
     // Ajusta o escopo de vendedor logado (Juliana, Andrea, Figueiredo)
     try {
@@ -861,7 +852,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   mainTabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
+      // WHATSAPP abre o painel oficial em nova aba (login único via /whatsapp-sso.html)
+      if (btn.id === 'mainTabWhatsapp') {
+        window.open('/whatsapp-sso.html', '_blank', 'noopener');
+        return;
+      }
       const targetMain = btn.getAttribute('data-main-tab');
+      if (!targetMain) return;
       switchMainTab(targetMain);
     });
   });
