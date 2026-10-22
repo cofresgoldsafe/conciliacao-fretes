@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>WhatsApp Atendimento - Acesso</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: #0b1220; color: #e2e8f0; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; padding: 16px; box-sizing: border-box; }
+    .card { max-width: 420px; width: 100%; background: #111a2e; border: 1px solid #1e2a44; border-radius: 14px; padding: 28px 24px; text-align: center; }
+    h1 { font-size: 1.15rem; margin: 0 0 10px; }
+    p { margin: 0; color: #94a3b8; line-height: 1.5; font-size: 0.95rem; }
+    .spinner { width: 28px; height: 28px; border: 3px solid #1e2a44; border-top-color: #38bdf8; border-radius: 50%;
+      margin: 0 auto 16px; animation: spin 0.9s linear infinite; }
+    .erro .spinner { display: none; }
+    .erro p { color: #fca5a5; }
+    .acoes { margin-top: 18px; display: none; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .erro .acoes { display: flex; }
+    a.btn { display: inline-block; padding: 9px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem;
+      background: #38bdf8; color: #0b1220; }
+    a.btn.sec { background: transparent; color: #e2e8f0; border: 1px solid #334155; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card" id="ssoCard">
+    <div class="spinner"></div>
+    <h1>💬 WhatsApp Atendimento</h1>
+    <p id="ssoMsg">Conferindo seu acesso...</p>
+    <div class="acoes">
+      <a class="btn" href="/whatsapp-sso.html">Tentar de novo</a>
+      <a class="btn sec" href="/">Ir para o portal</a>
+    </div>
+  </div>
+  <script src="js/whatsapp_sso.js"></script>
+</body>
+</html>

@@ -1192,6 +1192,17 @@
 
   const whatsappAtendimentoModule = {
     init: function () {
+      // Desde 22/10/2026 o atendimento é feito só no painel oficial, com login único pelo portal.
+      const waPane = document.getElementById('tab-config-whatsapp');
+      if (waPane) {
+        waPane.innerHTML = '<section class="card" style="padding:2rem;text-align:center;">'
+          + '<h2 style="margin:0 0 .5rem;">💬 WhatsApp Atendimento</h2>'
+          + '<p style="color:var(--text-muted);margin:0 0 1.25rem;">O atendimento agora fica no painel oficial. O acesso usa o mesmo login do portal.</p>'
+          + '<a class="btn btn-primary" href="/whatsapp-sso.html" target="_blank" rel="noopener">Abrir o WhatsApp Atendimento</a>'
+          + '</section>';
+      }
+      return;
+
       // Detecta operador
       activeOperator = detectLoggedOperator();
 

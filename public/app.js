@@ -2165,6 +2165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'financeiro': { label: 'Assist. Financ.', icon: '💰', className: 'perm-badge-financeiro' },
     'analista-fin': { label: 'Analista Fin', icon: '📑', className: 'perm-badge-analista-fin' },
     'bi': { label: 'BI Executivo', icon: '📊', className: 'perm-badge-bi' },
+    'whatsapp': { label: 'WhatsApp', icon: '💬', className: 'perm-badge-whatsapp' },
     'configuracoes': { label: 'Configurações', icon: '⚙️', className: 'perm-badge-configuracoes' }
   };
 

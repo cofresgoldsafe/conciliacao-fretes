@@ -991,6 +991,95 @@ app.post('/api/auth/resend-2fa', resend2FALimiter, async (req, res) => {
   }
 });
 
+// ============================================================================
+// SSO do painel WhatsApp Atendimento (https://gemini-whatsapp-multi360.onrender.com)
+// O painel manda o usuário para /whatsapp-sso.html; com sessão válida, o portal emite
+// um passe de uso único (60 s). O servidor do WhatsApp troca o passe pelos dados do
+// usuário em /api/auth/whatsapp-ticket/redeem (chamada servidor a servidor).
+// Acesso: administrador ou permissão "whatsapp" em Abas Permitidas.
+// ============================================================================
+const WHATSAPP_PANEL_URL = String(process.env.WHATSAPP_PANEL_URL || 'https://gemini-whatsapp-multi360.onrender.com').trim().replace(/\/+$/, '');
+const whatsappSsoTickets = new Map(); // passe -> { username, expiresAt }
+const whatsappSsoLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({ success: false, message: 'Muitas tentativas. Aguarde alguns minutos.' })
+});
+
+function userHasWhatsappAccess(u) {
+  if (!u || u.active === false) return false;
+  if (String(u.username || '').trim().toLowerCase() === 'alexandre' || u.role === 'admin') return true;
+  return Array.isArray(u.permissions) && u.permissions.includes('whatsapp');
+}
+
+app.post('/api/auth/whatsapp-ticket', whatsappSsoLimiter, requireAuth, async (req, res) => {
+  try {
+    const cleanUser = String((req.user && req.user.username) || '').trim().toLowerCase();
+    const allUsers = await getUsersDB();
+    const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser);
+    if (!userHasWhatsappAccess(userFound)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Seu usuário não tem acesso ao WhatsApp Atendimento. Peça ao administrador para marcar a opção "WhatsApp" em Abas Permitidas.'
+      });
+    }
+
+    const now = Date.now();
+    for (const [key, val] of whatsappSsoTickets) {
+      if (val.expiresAt < now) whatsappSsoTickets.delete(key);
+    }
+    const ticket = crypto.randomBytes(32).toString('base64url');
+    whatsappSsoTickets.set(ticket, { username: cleanUser, expiresAt: now + 60 * 1000 });
+
+    logUserActivity({
+      username: cleanUser,
+      userName: userFound.name || cleanUser,
+      actionType: 'ACESSO_WHATSAPP',
+      description: 'Acesso ao painel WhatsApp Atendimento (login único)',
+      ip: req.ip
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      redirectUrl: `${WHATSAPP_PANEL_URL}/auth/callback?ticket=${encodeURIComponent(ticket)}`
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao gerar acesso ao WhatsApp Atendimento.');
+  }
+});
+
+app.post('/api/auth/whatsapp-ticket/redeem', whatsappSsoLimiter, async (req, res) => {
+  try {
+    const ticket = String((req.body && req.body.ticket) || '').trim();
+    const entry = ticket ? whatsappSsoTickets.get(ticket) : null;
+    if (entry) whatsappSsoTickets.delete(ticket); // uso único
+    if (!entry || entry.expiresAt < Date.now()) {
+      return res.status(401).json({ success: false, message: 'Passe inválido ou expirado.' });
+    }
+
+    const allUsers = await getUsersDB();
+    const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === entry.username);
+    if (!userHasWhatsappAccess(userFound)) {
+      return res.status(403).json({ success: false, message: 'Usuário sem acesso ao WhatsApp Atendimento.' });
+    }
+
+    const isAdmin = entry.username === 'alexandre' || userFound.role === 'admin';
+    return res.json({
+      success: true,
+      user: {
+        username: entry.username,
+        name: String(userFound.name || entry.username).trim(),
+        email: userFound.email || null,
+        role: isAdmin ? 'admin' : (userFound.role || 'user')
+      }
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao validar o passe do WhatsApp Atendimento.');
+  }
+});
+
 // API: Heartbeat de Sessão / Touch de Atividade do Usuário (Sliding Session)
 app.post('/api/auth/session-ping', sessionPingLimiter, async (req, res) => {
   try {
