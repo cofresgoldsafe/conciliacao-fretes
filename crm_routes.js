@@ -16,7 +16,8 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const crmEngine = require('./crm_engine');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
+// Lida na hora da validacao: o server.js define process.env.JWT_SECRET depois de carregar este modulo.
+const getJwtSecret = () => process.env.JWT_SECRET;
 
 /**
  * Envelope de Erro Padronizado RFC 7807 / RFC 9457
@@ -62,7 +63,7 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = decoded;
     return next();
   } catch (err) {

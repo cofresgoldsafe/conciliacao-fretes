@@ -276,7 +276,13 @@ const sessionPingLimiter = rateLimit({
 });
 
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
+// JWT_SECRET vem do Render. Sem ela, gera uma chave aleatoria a cada inicio (nunca uma chave conhecida):
+// o portal continua no ar, mas os logins caem a cada reinicio ate a variavel ser criada.
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = crypto.randomBytes(48).toString('base64');
+  console.error('[AUTH] JWT_SECRET ausente nas variaveis de ambiente. Usando chave temporaria aleatoria; os logins serao perdidos a cada reinicio.');
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const DEFAULT_VENDOR_CODES = {
   'juliana': '000074',
@@ -5604,7 +5610,7 @@ app.post('/api/analista-fin/nfse/ingest', async (req, res) => {
 
     if (!isKeyValid && token) {
       try {
-        jwt.verify(token, process.env.JWT_SECRET || 'goldsafe_secret_jwt_key_2026_super_secure');
+        jwt.verify(token, JWT_SECRET);
         isTokenValid = true;
       } catch (e) {}
     }
@@ -5735,7 +5741,7 @@ app.post('/api/analista-fin/nfse-emitidas/ingest', async (req, res) => {
 
     if (!isKeyValid && token) {
       try {
-        jwt.verify(token, process.env.JWT_SECRET || 'goldsafe_secret_jwt_key_2026_super_secure');
+        jwt.verify(token, JWT_SECRET);
         isTokenValid = true;
       } catch (e) {}
     }
