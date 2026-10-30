@@ -701,7 +701,7 @@ async function callGeminiModel(contents, systemPrompt) {
     throw new Error('GEMINI_API_KEY não configurada no ambiente.');
   }
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  const models = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.0-flash'];
   let lastError = null;
 
   for (const model of models) {
