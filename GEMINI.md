@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.311 (Homologada em 20/10/2026 11:30)  
+> **Versão da Documentação:** v8.313 (Homologada em 29/10/2026 22:16)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 20/10/2026 11:30 (v8.311 - Remoção de segredos hardcoded para .env e roteiro SEC-14 de rotação Supabase Assistência fora do expediente)  
+> **Data da Última Auditoria:** 29/10/2026 22:16 (v8.313 - Agente Mobile Multi-Projeto 24/7 no Telegram via routes/telegram_agent.js com seletor obrigatório dos 5 repositórios cofresgoldsafe)  
 
 ---
 
@@ -26,11 +26,16 @@ O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, 
 - **Frontend:** SPA modular em Vanilla JavaScript ES6+ (`public/js/*.js` e `public/app.js`), HTML5 responsivo (`index.html`) e CSS com suporte a temas Claro e Escuro.
 - **Backend & Integracao:** Node.js (Express) para orquestracao de APIs bancarias mTLS (`inter_api.js`), autenticacao JWT, rate limiting e endpoints REST seguros.
 - **Processamento de Dados:** Python 3 (`pypdf`, parsers de frete Correios/Rodonaves/ViPP e extrator de relatorios Serasa em memoria sem gravacao em disco).
-- **ERP Corporativo:** TOTVS Protheus AdvPL (`AMARFRET.PRW` / `REST_AMARFRET.PRW`) e consultas parametrizadas ao Protheus MSSQL (`protheus_db.js`).
+- **ERP Corporativo & Topologia de Rede (Oracle Cloud IP Fixo):** TOTVS Protheus AdvPL (`AMARFRET.PRW` / `REST_AMARFRET.PRW`) e consultas parametrizadas ao Protheus MSSQL (`protheus_db.js`). Como o firewall do TOTVS Protheus (T-Cloud) exige liberação por **IP Fixo (Whitelist)** e serviços PaaS como Render/Railway operam com IPs dinâmicos, a conexão passa pela API Gateway no Railway (`protheus-api-production.up.railway.app`) que utiliza a instância VM na **Oracle Cloud Infrastructure (OCI)** do cliente como **Bastion / Relay de IP Fixo** (criada originalmente para alimentar o Power BI e mantida ativa como ponte estável para o banco do Protheus). **Regra Crítica de Infraestrutura:** Nunca desligar, excluir ou alterar o IP público dessa instância na Oracle Cloud, sob pena de interromper a conectividade do Portal GSI com o ERP Protheus. Boletins trimestrais da Oracle (`CPU` de Oracle Database/Java/Fusion/EBS) não afetam esse túnel Linux; manutenções de SO na VM devem ocorrer apenas fora do expediente.
 - **Persistencia de Dados:**
   - *Relacional Transacional (ACID):* PostgreSQL hospedado no Supabase com Row-Level Security (RLS) habilitado e schemas segregados (`postgres_db.js`).
   - *Armazenamento de Apoio:* JSON locais serializados com fila assincrona FIFO e gravacao atomica (`safe_json_storage.js`).
-- **APIs Conectadas:** Banco Inter (mTLS Banking v2, Pix, Webhooks), Mercado Pago, Receita Federal (BrasilAPI/ReceitaWS), Registro.br (RDAP), Wayback Machine, InfoSimples (FGTS/PGFN), Mailjet HTTP API v3.1 / SMTP, Metabase Analytics e Pipedrive CRM.
+- **APIs Conectadas:** Banco Inter (mTLS Banking v2, Pix, Webhooks), Mercado Pago, Receita Federal (BrasilAPI/ReceitaWS), Registro.br (RDAP), Wayback Machine, InfoSimples (FGTS/PGFN), Mailjet HTTP API v3.1 / SMTP, WhatsApp Meta Cloud API e Pipedrive CRM.
+- **Infraestrutura Cloud & Governança de Custos no Render:**
+  - **`conciliacao-fretes` (Portal GSI Principal):** Hospedado no plano pago **Starter ($7/mês — 0.5 CPU / 512 MB RAM)** desde 21/10/2026. Roda 24/7 sem *cold start* para os colaboradores, garante a execução pontual de jobs em background (ex.: Job das 18h e heartbeats) e **não consome** da franquia compartilhada de 750 horas gratuitas do Workspace.
+  - **Serviços Satélites no Plano Free (Cota Compartilhada de 750h/mês):** Os serviços `gsi-assistencia-portal` (Portal da Assistência Técnica), `gemini-whatsapp-multi360` (Microserviço backend do WhatsApp Atendimento) e `gemini-leilao-imoveis` (Análise de investimentos pessoais) permanecem no plano *Free* com *auto-sleep* após 15 minutos de inatividade, consumindo juntos ~180h–200h/mês (dentro da folga de 750h gratuitas).
+  - **`bi-gsi` (Metabase Docker Legado):** Desativado/descontinuado após a migração integral da sub-aba `#tab-bi-metabase` para gráficos nativos em HTML5 Canvas (`Chart.js`).
+  - **Planejamento de Consolidação Futura:** Caso o `gemini-whatsapp-multi360` passe a exigir disponibilidade 24/7 sem *cold start* após a liberação definitiva da Meta Cloud API em produção, suas rotas de webhook e disparo poderão ser absorvidas diretamente pelo backend do `conciliacao-fretes`, mantendo o custo fixo em apenas 1 instância Starter ($7/mês).
 
 ---
 
@@ -80,7 +85,7 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 | **7. Analista Fin.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Analista Fin) | Consulta unificada de Contas a Pagar SE2/SE5 multi-empresa com batimento financeiro vs compensação. | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **8. BI Executivo** | Índices | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
 | **8. BI Executivo** | Despesas Análise | `#tab-bi-despesas` | `admin`, `diretoria` (BI) | Espelho SE5 multi-empresa com classificação por natureza, estornos negativos e comparativo 2025x2026. | [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md) |
-| **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards incorporados do Metabase Analytics sobre data warehouse Supabase. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
+| **8. BI Executivo** | Gráficos & Tendências | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards nativos em Chart.js (Liquidez, Faturamento e Ativo Circulante Seco) sobre Supabase/Protheus. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
 | **8. BI Executivo** | Autoriza Desc | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |
 | **8. BI Executivo** | CRM | `#tab-bi-crm` | `admin`, `diretoria` (BI) | Pipeline comercial em Kanban ou Listagem tabular com 9 colunas, paginação e follow-up. | [crm_comercial.md](docs/telas/08_bi_executivo/crm_comercial.md) |
 | **8. BI Executivo** | OS | `#tab-bi-os` | `admin`, `diretoria` (BI) | Recebimentos de OS quitados mês a mês (24m Protheus SE1150) e volume de OS criadas (20m Supabase Assistência: Padrão vs Garantia). | [os_assistencia.md](docs/telas/08_bi_executivo/os_assistencia.md) |
@@ -117,6 +122,7 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 1. **Índices Orientados a Padrões de Acesso:** Toda tabela relacional de producao deve possuir indices B-Tree cobrindo colunas em `WHERE`, `JOIN`, `ORDER BY` e chaves estrangeiras (`FK`).
 2. **Índices Compostos e Parciais:** Ordem de colunas orientada pela seletividade. No PostgreSQL Supabase, priorizar indices parciais (`WHERE status <> 'FINALIZADO'`) para economizar memoria RAM.
 3. **Harmonização com ERP Protheus:** Respeitar indices nativos do dicionario `SIX` e chaves de recno (`R_E_C_N_O_`), sem criar indices concorrentes que colidam com releases (`APSRDU`/`UPDISTR`).
+4. **Grants Explícitos no Supabase Data API (Vigente a partir de 30/10/2026):** O Supabase deixou de conceder `GRANT` automático na Data API (PostgREST / `supabase-js` / Realtime) para novas tabelas no schema `public`. No Portal GSI, o pool TCP direto (`postgres_db.js`) não é afetado e `anon`/`authenticated` permanecem revogados por segurança (`sql/fix_supabase_rls_security.sql`), mas qualquer **nova tabela** consumida via HTTP PostgREST ou `supabase-js` (ex.: WhatsApp Realtime ou Supabase Assistência) deve incluir na migration de criação: `GRANT SELECT, INSERT, UPDATE, DELETE ON public.<tabela> TO service_role;` (e `anon`/`authenticated` apenas quando estritamente necessário com RLS ativo).
 
 ### Pilar 3: Modularização e Separação de Código (>1 View / Telas Complexas)
 1. **Fim dos Monólitos:** Proibido acumular regras de multiplas telas em arquivos unicos. Toda divisao com mais de uma view deve ser decomposta em submodulos verticais.
@@ -146,7 +152,7 @@ Tratamento formal de contingencia e comportamento fail-neutral dos servicos exte
 | **FGTS Caixa** *(InfoSimples)* | 25.000 ms | Retorna `executado = false` com motivo descritivo retornado pelo gateway. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Badge descritivo amarelo (`Timeout Caixa`, etc.) sem descarte. |
 | **PGFN Dívida Ativa** *(InfoSimples)* | 25.000 ms | Retorna `executado = false` com detalhamento retornado pela consulta. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Badge descritivo amarelo/vermelho sem penalizar pontuacao. |
 | **Bolsa Família** *(InfoSimples)* | 25.000 ms | Captura timeouts ou quedas e seta `status = 'ERRO_TECNICO'`. | `0 pts` (Neutro) | 🟡 Alerta / 🔵 Info | Trata como neutro sem penalizar cliente por falhas técnicas de rede. |
-| **TOTVS Protheus** *(Railway Relay)* | 15.000 ms | Distingue `404` (inexistente) de instabilidade de infraestrutura `500/504`. | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Banner de erro de rede sem induzir operador a crer em erro de digitacao. |
+| **TOTVS Protheus** *(Railway Relay + Bastion IP Fixo Oracle Cloud OCI)* | 15.000 ms | Distingue `404` (inexistente) de instabilidade de infraestrutura `500/504` (queda do Railway ou do túnel IP fixo na VM Oracle Cloud). | N/A (Bloqueia consulta) | 🔴 Vermelho (`farol-error`) | Banner de erro de rede sem induzir operador a crer em erro de digitacao. Verificar se a VM Oracle Cloud (IP fixo na whitelist TOTVS) está ativa. |
 | **Parser Serasa PDF** *(Python)* | 15.000 ms | Mata subprocesso Python com `SIGKILL` apos 15s em travamentos. | N/A | N/A | Exibe mensagem orientando reenvio de PDF integro. |
 
 ---
@@ -180,6 +186,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.312 (21/10/2026):** Governança de Infraestrutura Cloud no Render: migração do serviço principal `conciliacao-fretes` para o plano pago **Starter ($7/mês — 0.5 CPU / 512 MB RAM)** com disponibilidade 24/7 sem *cold start*, liberação integral da franquia de 750h/mês gratuitas do Workspace para os serviços `gsi-assistencia-portal`, `gemini-whatsapp-multi360` e `gemini-leilao-imoveis`, desativação definitiva do container legado `bi-gsi` (substituído por gráficos nativos `Chart.js`) e plano de absorção futura do microserviço WhatsApp no backend principal.
 - **v8.311 (20/10/2026):** Remoção de segredos hardcoded (`ASSISTENCIA_SUPABASE_KEY`, `ASSISTENCIA_API_KEY` e `PIPEDRIVE_API_TOKEN`) em `bi_os_engine.js`, `routes/pgtos_desconhecidos.js` e `scripts/localizar_os_quitadas.js` para `.env` local (ignorado pelo Git), teste anti-regressão em `test_dom_xss_and_secrets.js` e registro da pendência `[SEC-14]` em `TODO.md` para rotação Zero-Downtime das chaves do Supabase Assistência fora do expediente.
 - **v8.310 (16/10/2026):** Nova sub-aba `🛠️ OS` em `📊 BI EXECUTIVO` (`#tab-bi-os`): gráficos de barras de Recebimentos Quitados de OS nos últimos 24 meses (Protheus `SE1150` com drilldown paginado e CSV) e Quantidade de OS Criadas nos últimos 20 meses (Supabase Assistência `ordens_servico`, segregando OS Padrão vs Garantia com filtro rápido) (detalhado em [os_assistencia.md](docs/telas/08_bi_executivo/os_assistencia.md)).
 - **v8.309 (16/10/2026):** Compactação dos rótulos das sub-abas na macro-área BI Executivo (`#subGroupBi` em `public/index.html`): de `📊 Índices Financeiros` para `📊 Índices`, de `🎯 Autorizações de Desconto` para `🎯 Autoriza Desc` e de `💼 CRM Comercial` para `💼 CRM`.

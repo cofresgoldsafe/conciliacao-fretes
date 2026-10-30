@@ -1,8 +1,8 @@
 # Arquitetura e Manual do Módulo de BI Executivo (Metabase + Supabase)
 
-> **Módulo:** BI Executivo & Análise Estratégica (Single Sign-On Metabase Embedding)  
-> **Data de Homologação em Produção:** 28/08/2026  
-> **Status:** 100% Operacional e Integrado ao Portal GSI  
+> **Módulo:** BI Executivo & Análise Estratégica (Single Sign-On Metabase Embedding — Legado)  
+> **Data de Homologação em Produção:** 28/08/2026 (Atualizado em 21/10/2026 — v8.312)  
+> **Status:** ⚠️ **Container `bi-gsi` Descontinuado no Render** — A aba `#tab-bi-metabase` opera 100% com gráficos nativos `Chart.js` (`public/js/bi.js`, documentado em [`docs/telas/08_bi_executivo/graficos_metabase.md`](../telas/08_bi_executivo/graficos_metabase.md)). O serviço `bi-gsi` no Render não é mais consumido pelo portal e deve permanecer suspenso/excluído.  
 > **Público-Alvo:** CEO, CFO e Administradores da Plataforma GSI  
 
 ---

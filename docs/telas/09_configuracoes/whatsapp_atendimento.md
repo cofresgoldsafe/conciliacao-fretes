@@ -22,7 +22,8 @@
   - `public/js/whatsapp_atendimento.js`: Controlador isolado desacoplado do `app.js`. Gerencia conexão com Supabase Realtime via CDN, alternância de conversas, envio de mensagens e assunção de chamados.
   - `public/index.html`: Container `#tab-config-whatsapp` inserido na área de abas de Configurações, com botão de sub-aba no `#subGroupConfiguracoes`.
 - **Backend do Microserviço (Gemini-Whatsapp-Multi360):**
-  - Hospedado no Render: `https://gemini-whatsapp-multi360.onrender.com`
+  - Hospedado no Render: `https://gemini-whatsapp-multi360.onrender.com` (Plano *Free* compartilhado com `gsi-assistencia-portal` e `gemini-leilao-imoveis`, já que o `conciliacao-fretes` foi migrado para o plano *Starter $7/mês* em 21/10/2026).
+  - **Planejamento de Consolidação:** Caso o volume de webhooks 24/7 após a aprovação da Meta exija *zero cold start*, as rotas de webhook e chat poderão ser embutidas diretamente no backend do `conciliacao-fretes` para manter apenas 1 plano Starter ($7/mês).
   - Código-fonte em TypeScript: `src/server.ts`, `src/meta.ts`, `src/bot.ts`, `src/config/env.ts`, `src/config/supabase.ts`.
 
 ---
@@ -68,4 +69,5 @@
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.312 (21/10/2026):** Documentação da governança de planos no Render: `conciliacao-fretes` migrado para plano pago *Starter ($7/mês)*, liberando a franquia de 750h/mês gratuitas para o `gemini-whatsapp-multi360`, e registro do plano de consolidação futura das rotas de webhook no backend principal caso necessário *zero cold start* 24/7.
 - **v8.306 (15/10/2026):** Criação e homologação do painel de atendimento WhatsApp na sub-aba de Configurações (`#tab-config-whatsapp`). Arquitetura modular 100% isolada (`whatsapp_atendimento.js`, `whatsapp_atendimento.css`), Supabase Realtime ativo e conexão com microserviço Fastify no Render.

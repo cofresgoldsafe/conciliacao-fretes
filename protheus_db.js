@@ -2,6 +2,10 @@ const http = require('http');
 const https = require('https');
 
 // Configuração da API do Protheus no Railway
+// ARQUITETURA DE REDE IMPORTANTE: O banco MSSQL do TOTVS Protheus exige IP Fixo (Whitelist).
+// Como Render/Railway possuem IPs dinâmicos, este gateway utiliza a instância VM na Oracle Cloud (OCI)
+// (criada originalmente para o Power BI) como Bastion/Túnel de IP Fixo para conectar ao Protheus.
+// NUNCA desligar ou remover a VM da Oracle Cloud, pois ela sustenta esta conexão.
 const RAILWAY_API_URL = 'https://protheus-api-production.up.railway.app/query';
 const RAILWAY_API_KEY = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || (process.env.NODE_ENV === 'production' ? '' : 'ProtheusClaude#2026');
 

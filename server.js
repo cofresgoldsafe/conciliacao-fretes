@@ -215,6 +215,7 @@ const {
 const crmRoutes = require('./crm_routes');
 const crmEngine = require('./crm_engine');
 const pgtosDesconhecidosRoutes = require('./routes/pgtos_desconhecidos');
+const telegramAgentRoutes = require('./routes/telegram_agent');
 
 const app = express();
 app.set('trust proxy', 1); // Suporte para proxy reverso no Render
@@ -6934,6 +6935,9 @@ app.get('/api/bi/autorizacoes/historico', requireAuth, requireRole('admin'), asy
 
 // --- ROTAS DO MÓDULO DE CRM COMERCIAL NATIVO (DEALS, ATIVIDADES E AUTOCOMPLETE) ---
 app.use('/api/bi/crm', crmRoutes);
+
+// --- ROTAS DO AGENTE MOBILE MULTI-PROJETO 24/7 (TELEGRAM BOT) ---
+app.use('/api/telegram', telegramAgentRoutes);
 
 // --- ROTAS DO SUB-MÓDULO BI: ANÁLISE DE DESPESAS BANCÁRIAS E NATUREZAS (SE5) ---
 
