@@ -15,6 +15,7 @@ const {
   calcularMargemEDesconto,
   formatarNotaPipedrive,
   normalizarValorNumerico,
+  extrairDadosMensagemVendedor,
   COND_PGTO_KEY,
   FRETE_EMBUTIDO_KEY
 } = require('./bi_autorizacoes_engine');
@@ -70,6 +71,28 @@ async function runAsyncTest(name, fn) {
     assert.strictEqual(extrairDealId('deal 19039'), 19039);
     assert.strictEqual(extrairDealId(''), null);
     assert.strictEqual(extrairDealId(null), null);
+  });
+
+  runTest('1.4 extrairDadosMensagemVendedor - parsing determinístico de mensagem do vendedor', () => {
+    const msg = [
+      'Condição: 1x Boleto para 28 dias',
+      'Produto: 05 armários (200x100x45) na cor AZUL',
+      'Preço original: R$ 7.969,00 cada',
+      'Preço com desconto: R$ 7.451,08 cada (frete CIF embutido)',
+      'Valor do frete: R$ 684,00 por unidade',
+      'Segue o link:',
+      'https://benetroncomercial.pipedrive.com/deal/26851'
+    ].join('\n');
+    const info = extrairDadosMensagemVendedor(msg);
+    assert.ok(info, 'Deve detectar mensagem de vendedor');
+    assert.strictEqual(info.dealId, 26851);
+    assert.strictEqual(info.quantidadeTexto, 5);
+    assert.strictEqual(info.precoOriginalUnitario, 7969.00);
+    assert.strictEqual(info.precoUnitarioComDesconto, 7451.08);
+    assert.strictEqual(info.freteValorTexto, 684.00);
+    assert.strictEqual(info.fretePorUnidade, true);
+    assert.strictEqual(info.condicaoTexto, '1x Boleto para 28 dias');
+    assert.strictEqual(extrairDadosMensagemVendedor('Qual o status atual do servidor?'), null);
   });
 
   // 2. Testes de Extração de Código Protheus

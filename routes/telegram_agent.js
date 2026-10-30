@@ -15,6 +15,14 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const {
+  analisarDealCompleto,
+  formatarNotaPipedrive,
+  gravarNotaPipedrive,
+  extrairDadosMensagemVendedor,
+  normalizarValorNumerico
+} = require('../bi_autorizacoes_engine');
+const { saveAutorizacaoDescontoDB } = require('../postgres_db');
 
 const PROMPT_FILE_PATH = path.join(__dirname, '..', 'prompts', 'telegram_devops_agent.v1.md');
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutos
@@ -64,12 +72,30 @@ const PROJECTS = {
 const sessions = new Map();
 
 /**
- * Implementação de fetch injetável para testes automatizados
+ * Implementação de fetch e dependências de autorização injetáveis para testes automatizados
  */
 let currentFetchImpl = global.fetch;
 
+const defaultAutorizacoesDeps = {
+  analisarDealCompleto,
+  gravarNotaPipedrive,
+  saveAutorizacaoDescontoDB
+};
+let autorizacoesDeps = { ...defaultAutorizacoesDeps };
+
 function setFetchImpl(fn) {
   currentFetchImpl = typeof fn === 'function' ? fn : global.fetch;
+}
+
+function setAutorizacoesDeps(customDeps) {
+  if (!customDeps) {
+    autorizacoesDeps = { ...defaultAutorizacoesDeps };
+    return;
+  }
+  autorizacoesDeps = {
+    ...defaultAutorizacoesDeps,
+    ...customDeps
+  };
 }
 
 function resetSessions() {
@@ -201,6 +227,7 @@ function getOrCreateSession(chatId) {
     activeProjectKey: null,
     pendingQuestion: null,
     pendingPatch: null,
+    pendingDealAuthorization: null,
     history: [],
     updatedAt: now
   };
@@ -246,7 +273,15 @@ function isAllowedTelegramChat(chatId, userId) {
 }
 
 /**
- * Envia mensagem para o Telegram via Bot API
+ * Escapa caracteres especiais do Markdown v1 do Telegram em textos dinâmicos externos
+ */
+function escapeTelegramMarkdown(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/([_*`\[])/g, '\\$1');
+}
+
+/**
+ * Envia mensagem para o Telegram via Bot API (com fallback sem parse_mode se o Markdown falhar)
  */
 async function sendTelegramMessage(chatId, text, replyMarkup = null) {
   const token = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
@@ -254,9 +289,10 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
     return { ok: false, skipped: true, reason: 'TELEGRAM_BOT_TOKEN not set' };
   }
 
+  const safeText = String(text || '').slice(0, 4000);
   const payload = {
     chat_id: chatId,
-    text: String(text || '').slice(0, 4000),
+    text: safeText,
     parse_mode: 'Markdown'
   };
 
@@ -266,11 +302,28 @@ async function sendTelegramMessage(chatId, text, replyMarkup = null) {
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
   try {
-    const res = await fetchWithTimeout(url, {
+    let res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
       body: JSON.stringify(payload)
     });
+
+    if (!res.ok) {
+      // Fallback resiliente: reenvia em texto puro (sem parse_mode) para jamais perder a mensagem
+      const fallbackPayload = {
+        chat_id: chatId,
+        text: safeText
+      };
+      if (replyMarkup) {
+        fallbackPayload.reply_markup = replyMarkup;
+      }
+      res = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(fallbackPayload)
+      });
+    }
+
     const data = await res.json().catch(() => ({}));
     return data;
   } catch (err) {
@@ -600,6 +653,339 @@ async function toolProposeFileEdit(chatId, session, args = {}) {
 }
 
 /**
+ * Helper de formatação monetária BRL (1.234,56)
+ */
+function formatBRL(val) {
+  return (parseFloat(val) || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Processa a análise de um Deal (Pipedrive + Protheus SB1090) e envia card interativo no Telegram
+ */
+async function handleDealAuthorizationMessage(chatId, session, text, parsedDealInfo, overrideWithTextValues = false) {
+  if (!session.activeProjectKey || !PROJECTS[session.activeProjectKey]) {
+    session.activeProjectKey = 'portal-gsi';
+  }
+  session.updatedAt = Date.now();
+
+  try {
+    const options = {};
+    if (!overrideWithTextValues) {
+      if (parsedDealInfo.propostaTotalExplicita !== null && parsedDealInfo.propostaTotalExplicita !== undefined) {
+        options.proposta = parsedDealInfo.propostaTotalExplicita;
+      }
+    } else {
+      const prevAnalise = session.pendingDealAuthorization && session.pendingDealAuthorization.dealId === parsedDealInfo.dealId
+        ? session.pendingDealAuthorization.analise
+        : null;
+      const qty = parsedDealInfo.quantidadeTexto || (prevAnalise && prevAnalise.totalQuantidade) || 1;
+
+      if (parsedDealInfo.propostaTotalExplicita !== null && parsedDealInfo.propostaTotalExplicita !== undefined) {
+        options.proposta = parsedDealInfo.propostaTotalExplicita;
+      } else if (parsedDealInfo.precoUnitarioComDesconto !== null && parsedDealInfo.precoUnitarioComDesconto !== undefined) {
+        options.proposta = Number((parsedDealInfo.precoUnitarioComDesconto * qty).toFixed(2));
+      }
+
+      if (parsedDealInfo.freteValorTexto !== null && parsedDealInfo.freteValorTexto !== undefined) {
+        options.freteEmbutidoOverride = parsedDealInfo.fretePorUnidade
+          ? Number((parsedDealInfo.freteValorTexto * qty).toFixed(2))
+          : Number(parsedDealInfo.freteValorTexto.toFixed(2));
+      }
+
+      if (parsedDealInfo.condicaoTexto && (!prevAnalise || prevAnalise.condPgtoLabel === 'Não informada')) {
+        options.condPgtoLabelOverride = parsedDealInfo.condicaoTexto;
+      }
+    }
+
+    const analise = await autorizacoesDeps.analisarDealCompleto(parsedDealInfo.dealId, options);
+
+    const qty = parsedDealInfo.quantidadeTexto || analise.totalQuantidade || 1;
+    const vendaTextoTotal = parsedDealInfo.propostaTotalExplicita !== null && parsedDealInfo.propostaTotalExplicita !== undefined
+      ? Number(parsedDealInfo.propostaTotalExplicita.toFixed(2))
+      : (parsedDealInfo.precoUnitarioComDesconto !== null && parsedDealInfo.precoUnitarioComDesconto !== undefined
+        ? Number((parsedDealInfo.precoUnitarioComDesconto * qty).toFixed(2))
+        : null);
+
+    const freteTextoTotal = parsedDealInfo.freteValorTexto !== null && parsedDealInfo.freteValorTexto !== undefined
+      ? Number(((parsedDealInfo.fretePorUnidade ? parsedDealInfo.freteValorTexto * qty : parsedDealInfo.freteValorTexto)).toFixed(2))
+      : null;
+
+    const hasVendaDivergence = vendaTextoTotal !== null && Math.abs(vendaTextoTotal - analise.valorVendaFinal) > 0.05;
+    const hasFreteDivergence = freteTextoTotal !== null && Math.abs(freteTextoTotal - analise.freteEmbutido) > 0.05;
+    const hasTextDivergence = hasVendaDivergence || hasFreteDivergence;
+
+    session.pendingDealAuthorization = {
+      dealId: analise.dealId,
+      analise,
+      parsedDealInfo,
+      rawText: text,
+      usedTextValues: Boolean(overrideWithTextValues),
+      createdAt: Date.now()
+    };
+
+    const revendaBadge = analise.isRevenda ? ' 🏢 *(REVENDA)*' : '';
+    const itensLines = (analise.itens || []).slice(0, 6).map(it => {
+      const statusCusto = it.encontradoProtheus && it.custoUnitario > 0 ? `R$ ${formatBRL(it.custoUnitario)}` : '⚠️ S/ Custo';
+      const safeDesc = escapeTelegramMarkdown(it.descricaoProtheus || it.nomePipedrive || '');
+      const safeCode = String(it.protheusCode || it.rawCode || '').replace(/`/g, "'");
+      return `• *${it.quantidade}x* ${safeDesc} (\`${safeCode}\`)\n  Deal: R$ ${formatBRL(it.precoUnitarioDeal)} | Tab: R$ ${formatBRL(it.precoUnitarioTabela)} | Custo: ${statusCusto}`;
+    });
+
+    const alertLines = [];
+    if (overrideWithTextValues) {
+      alertLines.push(`ℹ️ *Simulação ativa com os valores informados no texto do vendedor.*`);
+    } else if (hasTextDivergence) {
+      const divParts = [];
+      if (hasVendaDivergence) {
+        divParts.push(`Venda Texto: R$ ${formatBRL(vendaTextoTotal)} vs Pipedrive: R$ ${formatBRL(analise.valorVendaFinal)}`);
+      }
+      if (hasFreteDivergence) {
+        divParts.push(`Frete Texto: R$ ${formatBRL(freteTextoTotal)} vs Pipedrive: R$ ${formatBRL(analise.freteEmbutido)}`);
+      }
+      alertLines.push(`⚠️ *Divergência Texto x Pipedrive:* ${divParts.join(' | ')}`);
+    }
+    if (analise.hasItensSemCusto) {
+      alertLines.push(`⚠️ *Atenção:* Há item(ns) não localizado(s) ou com custo zero na SB1090.`);
+    }
+    if (analise.descontoPct > 11 && !analise.isRevenda) {
+      alertLines.push(`🔴 *Fora da Alçada Comercial:* Desconto acima de 11% (${analise.descontoPct.toFixed(2).replace('.', ',')}%).`);
+    }
+
+    const safeCliente = escapeTelegramMarkdown(analise.clienteNome);
+    const safeSolicitante = escapeTelegramMarkdown(analise.solicitanteNome);
+    const safeCondPgto = escapeTelegramMarkdown(analise.condPgtoLabel);
+    const safeFraseAutorizacao = String(analise.fraseAutorizacao || '').replace(/`/g, "'");
+
+    const msgLines = [
+      `🎯 *Análise de Desconto — Deal #${analise.dealId}*`,
+      `• *Cliente:* ${safeCliente}${revendaBadge}`,
+      `• *Vendedor:* ${safeSolicitante} | *Pagto:* ${safeCondPgto}`,
+      '',
+      `📦 *Itens (${analise.totalQuantidade} un):*`,
+      ...itensLines,
+      '',
+      `💰 *Resumo Financeiro:*`,
+      `• *Tabela Total:* R$ ${formatBRL(analise.precoTabelaTotal)}`,
+      `• *Venda Final:* R$ ${formatBRL(analise.valorVendaFinal)} (Unit. Médio: R$ ${formatBRL(analise.precoUnitarioAutorizadoMedio)})`,
+      `• *Frete (${analise.tipoFrete}):* R$ ${formatBRL(analise.freteEmbutido)}`,
+      `• *Valor Líquido:* R$ ${formatBRL(analise.valorLiquido)} | *Custo Total:* R$ ${formatBRL(analise.custoTotal)}`,
+      `• *Desconto Ponderado:* *${analise.descontoPct.toFixed(2).replace('.', ',')}%* (R$ ${formatBRL(analise.descontoReais)})`,
+      `• *Lucro Bruto:* *R$ ${formatBRL(analise.lucroBruto)}* | *Margem Bruta:* *${analise.margemPct.toFixed(2).replace('.', ',')}%*`
+    ];
+
+    if (alertLines.length > 0) {
+      msgLines.push('', ...alertLines);
+    }
+
+    msgLines.push(
+      '',
+      `📌 *Nota Oficial Pipedrive:*`,
+      `\`${safeFraseAutorizacao}\``
+    );
+
+    const inlineKeyboardRows = [
+      [
+        { text: '✅ Autorizar no Pipedrive', callback_data: 'decide_deal:AUTORIZADO' },
+        { text: '❌ Negar Desconto', callback_data: 'decide_deal:NAO_AUTORIZADO' }
+      ]
+    ];
+
+    if (hasTextDivergence && !overrideWithTextValues) {
+      inlineKeyboardRows.push([
+        { text: '🔄 Recalcular c/ Valores do Texto', callback_data: 'decide_deal:USE_TEXT_VALUES' }
+      ]);
+    }
+
+    inlineKeyboardRows.push([
+      { text: '🗑️ Cancelar', callback_data: 'decide_deal:CANCEL' }
+    ]);
+
+    const replyMarkup = { inline_keyboard: inlineKeyboardRows };
+    await sendTelegramMessage(chatId, msgLines.join('\n'), replyMarkup);
+
+    return {
+      ok: true,
+      action: 'deal_analyzed',
+      dealId: analise.dealId,
+      usedTextValues: Boolean(overrideWithTextValues),
+      hasTextDivergence,
+      analise
+    };
+  } catch (err) {
+    const safeErrMsg = String(err.message || 'Erro desconhecido').replace(/`/g, "'");
+    const errMsg = `⚠️ *Erro ao analisar Deal #${parsedDealInfo.dealId}:*\n\`${safeErrMsg}\``;
+    await sendTelegramMessage(chatId, errMsg);
+    return {
+      ok: false,
+      action: 'deal_analysis_error',
+      dealId: parsedDealInfo.dealId,
+      error: err.message
+    };
+  }
+}
+
+/**
+ * Registra a decisão executiva (AUTORIZADO ou NAO_AUTORIZADO) no Pipedrive e no PostgreSQL/Supabase
+ */
+async function confirmDealDecision(chatId, session, decisaoRaw) {
+  const pending = session.pendingDealAuthorization;
+  if (!pending || !pending.analise) {
+    const msg = 'ℹ️ Não há nenhuma análise de Deal pendente nesta sessão. Envie o link ou número do Deal primeiro.';
+    await sendTelegramMessage(chatId, msg);
+    return { ok: false, error: 'No pending deal authorization' };
+  }
+
+  // Limpa imediatamente para prevenir duplo clique / retry do webhook gerando nota duplicada
+  session.pendingDealAuthorization = null;
+
+  const decisaoLimpa = String(decisaoRaw || '').trim().toUpperCase() === 'AUTORIZADO' ? 'AUTORIZADO' : 'NAO_AUTORIZADO';
+  const isAutorizado = decisaoLimpa === 'AUTORIZADO';
+  const { analise } = pending;
+
+  const notaFormatada = formatarNotaPipedrive({
+    dealId: analise.dealId,
+    descontoPct: analise.descontoPct,
+    condPgtoLabel: analise.condPgtoLabel,
+    freteEmbutido: analise.freteEmbutido,
+    valorTotal: analise.valorVendaFinal,
+    autorizado: isAutorizado
+  });
+
+  let notaGravadaPipedrive = false;
+  let erroPipedrive = null;
+  try {
+    await autorizacoesDeps.gravarNotaPipedrive(analise.dealId, notaFormatada);
+    notaGravadaPipedrive = true;
+  } catch (errNota) {
+    erroPipedrive = errNota.message;
+    console.warn(`⚠️ [Telegram Autorizações] Falha ao fixar nota no Pipedrive (${errNota.message}), salvando no banco...`);
+  }
+
+  let record = null;
+  let savedInDb = false;
+  let erroDb = null;
+  try {
+    record = await autorizacoesDeps.saveAutorizacaoDescontoDB({
+      dealId: analise.dealId,
+      solicitanteNome: analise.solicitanteNome,
+      clienteNome: analise.clienteNome,
+      valorTotal: analise.valorVendaFinal,
+      precoUnitarioAutorizado: analise.precoUnitarioAutorizadoMedio,
+      margemPct: analise.margemPct,
+      lucroBruto: analise.lucroBruto,
+      descontoPct: analise.descontoPct,
+      descontoReais: analise.descontoReais,
+      condPgtoLabel: analise.condPgtoLabel,
+      tipoFrete: analise.tipoFrete,
+      freteCliente: 0.00,
+      freteEmbutido: analise.freteEmbutido,
+      status: decisaoLimpa,
+      usuarioDecisor: 'alexandre',
+      usuarioDecisorNome: 'Alexandre (Telegram)',
+      observacoes: pending.usedTextValues
+        ? 'Aprovado via Bot Telegram (com valores do texto do vendedor)'
+        : 'Decidido via Bot Telegram',
+      notaPipedrive: notaFormatada,
+      dadosCompletos: {
+        analise,
+        notaGravadaPipedrive,
+        canal: 'TELEGRAM_BOT',
+        decididoEm: new Date().toISOString()
+      }
+    });
+    savedInDb = true;
+  } catch (errDb) {
+    erroDb = errDb.message;
+    console.warn(`⚠️ [Telegram Autorizações] Falha ao salvar autorização no banco (${errDb.message}).`);
+  }
+
+  const statusEmoji = isAutorizado ? '✅ *DESCONTO AUTORIZADO*' : '❌ *DESCONTO NÃO AUTORIZADO*';
+  const safeErroPipedrive = String(erroPipedrive || '').replace(/`/g, "'");
+  const safeErroDb = String(erroDb || '').replace(/`/g, "'");
+
+  let pipedriveStatus = '📌 Nota oficial fixada no Deal do Pipedrive e gravada no Portal GSI.';
+  if (!notaGravadaPipedrive && savedInDb) {
+    pipedriveStatus = `⚠️ Gravado no Portal GSI (Aviso Pipedrive: \`${safeErroPipedrive}\`).`;
+  } else if (notaGravadaPipedrive && !savedInDb) {
+    pipedriveStatus = `📌 Nota fixada no Pipedrive (⚠️ Aviso Banco: \`${safeErroDb}\`).`;
+  } else if (!notaGravadaPipedrive && !savedInDb) {
+    pipedriveStatus = `⚠️ Falha ao persistir no Pipedrive (\`${safeErroPipedrive}\`) e Banco (\`${safeErroDb}\`).`;
+  }
+
+  const safeClienteConfirm = escapeTelegramMarkdown(analise.clienteNome);
+  const safeNotaBloco = String(notaFormatada || '').replace(/`/g, "'");
+
+  const confirmMsg = [
+    `${statusEmoji} — *Deal #${analise.dealId}*`,
+    `• *Cliente:* ${safeClienteConfirm}`,
+    `• *Desconto:* ${analise.descontoPct.toFixed(2).replace('.', ',')}% | *Margem:* ${analise.margemPct.toFixed(2).replace('.', ',')}% | *Lucro:* R$ ${formatBRL(analise.lucroBruto)}`,
+    pipedriveStatus,
+    '',
+    '```',
+    safeNotaBloco,
+    '```'
+  ].join('\n');
+
+  await sendTelegramMessage(chatId, confirmMsg);
+
+  return {
+    ok: true,
+    action: 'deal_decided',
+    dealId: analise.dealId,
+    decision: decisaoLimpa,
+    nota: notaFormatada,
+    notaPipedriveEnviada: notaGravadaPipedrive,
+    savedInDb,
+    autorizacao: record
+  };
+}
+
+/**
+ * Cancela a análise pendente de Deal
+ */
+async function cancelDealAuthorization(chatId, session) {
+  const hadPending = Boolean(session.pendingDealAuthorization);
+  const dealId = hadPending ? session.pendingDealAuthorization.dealId : null;
+  session.pendingDealAuthorization = null;
+
+  const msg = hadPending
+    ? `🗑️ *Análise do Deal #${dealId} descartada.* Nenhuma nota foi enviada ao Pipedrive.`
+    : 'ℹ️ Nenhuma análise de Deal pendente para cancelar.';
+
+  await sendTelegramMessage(chatId, msg);
+  return {
+    ok: true,
+    action: 'deal_cancelled',
+    dealId
+  };
+}
+
+/**
+ * Tool 5: analyze_deal_discount
+ */
+async function toolAnalyzeDealDiscount(chatId, session, args = {}) {
+  const dealId = parseInt(args.dealId, 10);
+  if (!dealId || isNaN(dealId)) {
+    return { ok: false, error: 'dealId numérico é obrigatório.' };
+  }
+  const parsedDealInfo = {
+    dealId,
+    quantidadeTexto: null,
+    precoUnitarioComDesconto: null,
+    precoOriginalUnitario: null,
+    freteValorTexto: args.freteEmbutido !== undefined ? normalizarValorNumerico(args.freteEmbutido) : null,
+    fretePorUnidade: false,
+    propostaTotalExplicita: args.propostaTotal !== undefined ? normalizarValorNumerico(args.propostaTotal) : null,
+    condicaoTexto: null
+  };
+  const override = parsedDealInfo.freteValorTexto !== null;
+  return await handleDealAuthorizationMessage(chatId, session, `Deal ${dealId}`, parsedDealInfo, override);
+}
+
+/**
  * Declaração das Tools para o Gemini Function Calling
  */
 const GEMINI_TOOLS_DECLARATION = [
@@ -669,6 +1055,28 @@ const GEMINI_TOOLS_DECLARATION = [
           },
           required: ['path', 'target', 'replacement', 'commitMessage']
         }
+      },
+      {
+        name: 'analyze_deal_discount',
+        description: 'Analisa um Deal do Pipedrive cruzando com o Protheus (SB1090/SA1010) para cálculo de desconto ponderado, lucro bruto e margem, enviando botões de Autorizar/Negar no Telegram.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            dealId: {
+              type: 'INTEGER',
+              description: 'ID numérico do Deal no Pipedrive (ex: 26851).'
+            },
+            propostaTotal: {
+              type: 'NUMBER',
+              description: 'Valor total proposto com desconto (opcional).'
+            },
+            freteEmbutido: {
+              type: 'NUMBER',
+              description: 'Valor total do frete CIF embutido pago pela empresa (opcional).'
+            }
+          },
+          required: ['dealId']
+        }
       }
     ]
   }
@@ -687,6 +1095,8 @@ async function executeAgentTool(name, args, session, chatId) {
       return await toolReadRepoFile(session, args);
     case 'propose_file_edit':
       return await toolProposeFileEdit(chatId, session, args);
+    case 'analyze_deal_discount':
+      return await toolAnalyzeDealDiscount(chatId, session, args);
     default:
       return { ok: false, error: `Tool desconhecida: ${name}` };
   }
@@ -1092,6 +1502,34 @@ router.post('/webhook', async (req, res) => {
       return res.json(cancelResult);
     }
 
+    if (data.startsWith('decide_deal:')) {
+      const subAction = data.slice('decide_deal:'.length).trim().toUpperCase();
+      if (subAction === 'USE_TEXT_VALUES') {
+        if (!session.pendingDealAuthorization || !session.pendingDealAuthorization.parsedDealInfo) {
+          await sendTelegramMessage(chatId, 'ℹ️ Nenhuma análise de Deal pendente para recalcular.');
+          return res.json({ ok: false, error: 'No pending deal authorization' });
+        }
+        const recalcRes = await handleDealAuthorizationMessage(
+          chatId,
+          session,
+          session.pendingDealAuthorization.rawText || '',
+          session.pendingDealAuthorization.parsedDealInfo,
+          true
+        );
+        return res.json(recalcRes);
+      }
+
+      if (subAction === 'CANCEL') {
+        const cancelDealRes = await cancelDealAuthorization(chatId, session);
+        return res.json(cancelDealRes);
+      }
+
+      if (subAction === 'AUTORIZADO' || subAction === 'NAO_AUTORIZADO') {
+        const decisionRes = await confirmDealDecision(chatId, session, subAction);
+        return res.json(decisionRes);
+      }
+    }
+
     return res.json({ ok: true, action: 'unknown_callback' });
   }
 
@@ -1122,8 +1560,19 @@ router.post('/webhook', async (req, res) => {
     }
 
     if (lower === '/cancelar' || lower === 'cancelar') {
+      if (session.pendingDealAuthorization) {
+        const cancelDealRes = await cancelDealAuthorization(chatId, session);
+        return res.json(cancelDealRes);
+      }
       const cancelResult = await cancelPendingPatch(chatId, session);
       return res.json(cancelResult);
+    }
+
+    // Atalho determinístico: Solicitação de Análise/Autorização de Desconto (Deal Pipedrive)
+    const parsedDealInfo = extrairDadosMensagemVendedor(text);
+    if (parsedDealInfo && parsedDealInfo.dealId) {
+      const dealResult = await handleDealAuthorizationMessage(chatId, session, text, parsedDealInfo, false);
+      return res.json(dealResult);
     }
 
     // Se ainda não há projeto selecionado na sessão, salva a pergunta e pergunta qual projeto
@@ -1154,7 +1603,9 @@ router.post('/webhook', async (req, res) => {
 // Anexa helpers exportados para testes unitários e de integração
 router.PROJECTS = PROJECTS;
 router.isSensitiveFilePath = isSensitiveFilePath;
+router.escapeTelegramMarkdown = escapeTelegramMarkdown;
 router.setFetchImpl = setFetchImpl;
+router.setAutorizacoesDeps = setAutorizacoesDeps;
 router.resetSessions = resetSessions;
 router.getSessions = getSessions;
 router.generateUnifiedDiffPreview = generateUnifiedDiffPreview;

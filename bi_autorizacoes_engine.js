@@ -362,9 +362,20 @@ async function analisarDealCompleto(dealInput, options = {}) {
 
   // PASSO 2: Obter campos customizados (Condição de Pagamento e Frete Embutido)
   const condPgtoOptionId = dealData[COND_PGTO_KEY];
-  const condPgtoLabel = await getCondicaoPagamentoLabel(condPgtoOptionId);
+  let condPgtoLabel = await getCondicaoPagamentoLabel(condPgtoOptionId);
+  if (options.condPgtoLabelOverride && String(options.condPgtoLabelOverride).trim()) {
+    condPgtoLabel = String(options.condPgtoLabelOverride).trim();
+  }
   const rawFreteEmbutido = dealData[FRETE_EMBUTIDO_KEY];
-  const freteEmbutido = parseFloat(rawFreteEmbutido) || 0.0;
+  let freteEmbutido = parseFloat(rawFreteEmbutido) || 0.0;
+  if (
+    options.freteEmbutidoOverride !== undefined &&
+    options.freteEmbutidoOverride !== null &&
+    options.freteEmbutidoOverride !== '' &&
+    !isNaN(Number(options.freteEmbutidoOverride))
+  ) {
+    freteEmbutido = Number(options.freteEmbutidoOverride);
+  }
   const tipoFrete = freteEmbutido > 0 ? 'CIF (Embutido)' : 'FOB (Cliente)';
 
   // PASSO 3: Obter produtos associados ao Deal
@@ -610,6 +621,103 @@ async function gravarNotaPipedrive(dealId, content) {
   return res;
 }
 
+/**
+ * Extrai de forma determinística os dados de uma mensagem encaminhada de vendedor
+ * ou comando rápido de análise de Deal no Telegram.
+ */
+function extrairDadosMensagemVendedor(texto) {
+  if (!texto || typeof texto !== 'string') return null;
+  const raw = texto.trim();
+  if (!raw) return null;
+
+  let dealId = null;
+
+  // 1. Contém URL /deal/(\d+)
+  const urlMatch = raw.match(/\/deal\/(\d+)/i);
+  if (urlMatch && urlMatch[1]) {
+    dealId = parseInt(urlMatch[1], 10);
+  }
+
+  // 2. Contém referência explícita como "deal 26851", "Deal #26851", "negócio 26851"
+  if (!dealId) {
+    const dealRefMatch = raw.match(/\b(?:deal|neg[oó]cio)\s*#?\s*(\d{3,8})\b/i);
+    if (dealRefMatch && dealRefMatch[1]) {
+      dealId = parseInt(dealRefMatch[1], 10);
+    }
+  }
+
+  // 3. Começa ou contém comando "autorizar 26851", "analisar deal 26851", "desconto #26851"
+  if (!dealId) {
+    const cmdMatch = raw.match(/(?:autorizar|analisar|desconto)\s+(?:deal\s*)?#?(\d{3,8})/i);
+    if (cmdMatch && cmdMatch[1]) {
+      dealId = parseInt(cmdMatch[1], 10);
+    }
+  }
+
+  if (!dealId || isNaN(dealId)) return null;
+
+  // Quantidade mencionada no texto (ex: "Produto: 05 armários" ou "05 armários")
+  let quantidadeTexto = null;
+  const prodQtyMatch =
+    raw.match(/Produto\s*:\s*0*(\d+)\b/i) ||
+    raw.match(/\b0*(\d+)\s+(?:arm[aá]rios?|cofres?|unidades?|pe[cç]as?|unid)\b/i);
+  if (prodQtyMatch && prodQtyMatch[1]) {
+    const q = parseInt(prodQtyMatch[1], 10);
+    if (!isNaN(q) && q > 0) quantidadeTexto = q;
+  }
+
+  // Preço unitário com desconto (ex: "Preço com desconto: R$ 7.451,08 cada")
+  let precoUnitarioComDesconto = null;
+  const descMatch = raw.match(/Pre[cç]o\s+com\s+desconto\s*:\s*R?\$?\s*([\d.,]+)/i);
+  if (descMatch && descMatch[1]) {
+    precoUnitarioComDesconto = normalizarValorNumerico(descMatch[1].replace(/[.,]+$/, ''));
+  }
+
+  // Preço original unitário (ex: "Preço original: R$ 7.969,00 cada")
+  let precoOriginalUnitario = null;
+  const origMatch = raw.match(/Pre[cç]o\s+original\s*:\s*R?\$?\s*([\d.,]+)/i);
+  if (origMatch && origMatch[1]) {
+    precoOriginalUnitario = normalizarValorNumerico(origMatch[1].replace(/[.,]+$/, ''));
+  }
+
+  // Valor do frete e se é por unidade (ex: "Valor do frete: R$ 684,00 por unidade")
+  let freteValorTexto = null;
+  let fretePorUnidade = false;
+  const freteLineMatch = raw.match(/(?:Valor\s+do\s+frete|Frete\s+embutido|Frete)\s*:\s*R?\$?\s*([\d.,]+)([^\r\n]*)/i);
+  if (freteLineMatch && freteLineMatch[1]) {
+    freteValorTexto = normalizarValorNumerico(freteLineMatch[1].replace(/[.,]+$/, ''));
+    const restoLinhaFrete = (freteLineMatch[2] || '').toLowerCase();
+    if (/(?:por\s+unidade|cada|\/un|unit[aá]rio)/i.test(restoLinhaFrete)) {
+      fretePorUnidade = true;
+    }
+  }
+
+  // Proposta total explícita (ex: "proposta 37255,40" ou "Total com desconto: R$ 37.255,40")
+  let propostaTotalExplicita = null;
+  const propMatch = raw.match(/(?:proposta|total\s+com\s+desconto|valor\s+proposto)\s*:?\s*R?\$?\s*([\d.,]+)/i);
+  if (propMatch && propMatch[1]) {
+    propostaTotalExplicita = normalizarValorNumerico(propMatch[1].replace(/[.,]+$/, ''));
+  }
+
+  // Condição de pagamento no texto (ex: "Condição: 1x Boleto para 28 dias")
+  let condicaoTexto = null;
+  const condMatch = raw.match(/Condi[cç][aã]o(?:\s+de\s+pagamento)?\s*:\s*([^\r\n|]+)/i);
+  if (condMatch && condMatch[1]) {
+    condicaoTexto = condMatch[1].trim();
+  }
+
+  return {
+    dealId,
+    quantidadeTexto,
+    precoUnitarioComDesconto,
+    precoOriginalUnitario,
+    freteValorTexto,
+    fretePorUnidade,
+    propostaTotalExplicita,
+    condicaoTexto
+  };
+}
+
 module.exports = {
   extrairDealId,
   extrairCodigoProtheus,
@@ -621,6 +729,7 @@ module.exports = {
   formatarNotaPipedrive,
   gravarNotaPipedrive,
   normalizarValorNumerico,
+  extrairDadosMensagemVendedor,
   COND_PGTO_KEY,
   FRETE_EMBUTIDO_KEY
 };

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.313 (Homologada em 29/10/2026 22:16)  
+> **Versão da Documentação:** v8.316 (Homologada em 30/10/2026 20:15)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 29/10/2026 22:16 (v8.313 - Agente Mobile Multi-Projeto 24/7 no Telegram via routes/telegram_agent.js com seletor obrigatório dos 5 repositórios cofresgoldsafe)  
+> **Data da Última Auditoria:** 30/10/2026 20:15 (v8.316 - Autorização de Desconto & Margem Pipedrive/Protheus direto pelo Telegram `@agente_alexandre_bot`)  
 
 ---
 
@@ -186,6 +186,8 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.316 (30/10/2026):** Autorização de Desconto & Margem (Pipedrive + Protheus `SB1090`) direto pelo Bot do Telegram (`@agente_alexandre_bot` via `routes/telegram_agent.js` e `bi_autorizacoes_engine.js`): detecção instantânea de links `/deal/{id}` sem exigir seleção prévia de projeto, extração de valores do texto encaminhado do vendedor (`extrairDadosMensagemVendedor`), alerta e recálculo de divergências (`decide_deal:USE_TEXT_VALUES`), sanitização Markdown e aprovação com 1 toque fixando a nota oficial no Pipedrive e gravando no Supabase (22/22 testes em `test_bi_autorizacoes.js` e 11/11 em `test_telegram_agent.js` — detalhado em [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) e [agente_mobile_telegram.md](docs/telas/09_configuracoes/agente_mobile_telegram.md)).
+- **v8.315 (29/10/2026):** Agente Mobile Multi-Projeto 24/7 no Telegram (`@agente_alexandre_bot` via `routes/telegram_agent.js` e `prompts/telegram_devops_agent.v1.md`) hospedado no Render Starter 24/7 sem custo extra, com seletor obrigatório dos 5 repositórios `cofresgoldsafe`, motor `gemini-3.5-flash` (1,7s), consultas em tempo real e edição de código com aprovação em 2 cliques via GitHub REST API (7 testes aprovados em `test_telegram_agent.js` — detalhado em [agente_mobile_telegram.md](docs/telas/09_configuracoes/agente_mobile_telegram.md)).
 - **v8.312 (21/10/2026):** Governança de Infraestrutura Cloud no Render: migração do serviço principal `conciliacao-fretes` para o plano pago **Starter ($7/mês — 0.5 CPU / 512 MB RAM)** com disponibilidade 24/7 sem *cold start*, liberação integral da franquia de 750h/mês gratuitas do Workspace para os serviços `gsi-assistencia-portal`, `gemini-whatsapp-multi360` e `gemini-leilao-imoveis`, desativação definitiva do container legado `bi-gsi` (substituído por gráficos nativos `Chart.js`) e plano de absorção futura do microserviço WhatsApp no backend principal.
 - **v8.311 (20/10/2026):** Remoção de segredos hardcoded (`ASSISTENCIA_SUPABASE_KEY`, `ASSISTENCIA_API_KEY` e `PIPEDRIVE_API_TOKEN`) em `bi_os_engine.js`, `routes/pgtos_desconhecidos.js` e `scripts/localizar_os_quitadas.js` para `.env` local (ignorado pelo Git), teste anti-regressão em `test_dom_xss_and_secrets.js` e registro da pendência `[SEC-14]` em `TODO.md` para rotação Zero-Downtime das chaves do Supabase Assistência fora do expediente.
 - **v8.310 (16/10/2026):** Nova sub-aba `🛠️ OS` em `📊 BI EXECUTIVO` (`#tab-bi-os`): gráficos de barras de Recebimentos Quitados de OS nos últimos 24 meses (Protheus `SE1150` com drilldown paginado e CSV) e Quantidade de OS Criadas nos últimos 20 meses (Supabase Assistência `ordens_servico`, segregando OS Padrão vs Garantia com filtro rápido) (detalhado em [os_assistencia.md](docs/telas/08_bi_executivo/os_assistencia.md)).

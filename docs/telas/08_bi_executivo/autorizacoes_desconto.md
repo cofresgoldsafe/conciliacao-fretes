@@ -3,20 +3,20 @@
 > **Macro-Área:** BI Executivo  
 > **Identificador DOM:** `#tab-bi-autorizacoes` | **Botão:** `#btnTabBiAutorizacoes` (`🎯 Autoriza Desc`)  
 > **Permissão RBAC:** admin, diretoria (BI)  
-> **Status:** Operacional em Produção  
-> **Última Atualização:** 16/10/2026 (v8.309 - Homologado)  
+> **Status:** Operacional em Produção (Web + Mobile Telegram `@agente_alexandre_bot`)  
+> **Última Atualização:** 30/10/2026 (v8.316 - Homologado)  
 
 ---
 
 ## 1. Propósito da Tela & Personas
-- **Objetivo:** Workflow de aprovação executiva de descontos comerciais, margem mínima e frete embutido em negociações integradas entre Pipedrive e Protheus.
+- **Objetivo:** Workflow de aprovação executiva de descontos comerciais, margem mínima e frete embutido em negociações integradas entre Pipedrive e Protheus, operando tanto na sub-aba Web (`🎯 Autoriza Desc`) quanto pelo celular via Bot do Telegram (`@agente_alexandre_bot`).
 - **Personas Atendidas:** admin, diretoria (BI).
 
 ---
 
 ## 2. Arquitetura de Código & Componentes
 - **Frontend:** `public/js/bi_autorizacoes.js`, `public/index.html` (modal `#modalBiAutorizacaoDetalhes` com prévia de frase e cópia rápida).
-- **Backend / Rotas:** `server.js` (endpoints `/api/bi/autorizacoes/*`) e motor de regras `bi_autorizacoes_engine.js`.
+- **Backend / Rotas:** `server.js` (endpoints `/api/bi/autorizacoes/*`), motor determinístico `bi_autorizacoes_engine.js` e integração mobile 24/7 em `routes/telegram_agent.js`.
 
 ---
 
@@ -44,23 +44,31 @@ A frase oficial fixada (`pinned_to_deal_flag="1"`) é gerada compulsoriamente pe
 - $\text{Lucro Bruto} = \text{Valor Vendido Final} - \text{Custo Total} - \text{Frete Embutido}$
 - $\text{Margem \%} = \frac{\text{Lucro Bruto}}{\text{Valor Vendido Final}} \times 100$
 
+### 4.3. Fluxo Mobile via Bot do Telegram (`@agente_alexandre_bot`)
+- **Detecção Instantânea (`extrairDadosMensagemVendedor`):** Ao encaminhar ou colar uma mensagem de vendedor contendo link do Pipedrive (`/deal/{id}`) ou comando (`autorizar deal {id}`, `deal {id}`), o bot seleciona automaticamente o projeto `portal-gsi` (sem exigir escolha manual no menu de 5 projetos) e executa `analisarDealCompleto`.
+- **Comparação Inteligente Texto vs Pipedrive:** Extrai do texto encaminhado a quantidade, o preço unitário com desconto (`Preço com desconto: R$ X`), o valor do frete (`Valor do frete: R$ Y por unidade`) e a condição de pagamento. Se os valores citados no texto divergirem do que está salvo no Deal do Pipedrive, exibe alerta de divergência e oferece o botão `🔄 Recalcular c/ Valores do Texto` (`decide_deal:USE_TEXT_VALUES`).
+- **Aprovação com 1 Toque (`confirmDealDecision`):** Botões inline `✅ Autorizar no Pipedrive` (`decide_deal:AUTORIZADO`) e `❌ Negar Desconto` (`decide_deal:NAO_AUTORIZADO`) gravam a nota fixada no Pipedrive (`gravarNotaPipedrive`), persistem no banco (`saveAutorizacaoDescontoDB` com proteção contra duplo clique e `try/catch` resiliente) e retornam a frase oficial pronta.
+
 ---
 
 ## 5. Endpoints REST da API
 - `GET /api/bi/autorizacoes/analisar?dealId={id}&proposta={valor}&observacoes={obs}`: Análise prévia em tempo real com Protheus SB1090 e dados do Pipedrive.
 - `POST /api/bi/autorizacoes/decidir`: Grava decisão (`AUTORIZADO` / `NAO_AUTORIZADO`), fixa a nota padronizada no Deal e persiste no banco.
 - `GET /api/bi/autorizacoes/historico?page={page}&limit=50&status={status}&q={busca}`: Histórico paginado com envelope REST padronizado.
+- `POST /api/telegram/webhook`: Recebe mensagens encaminhadas de Deal e cliques nos botões `decide_deal:*`.
 
 ---
 
 ## 6. Testes Automatizados Vinculados
-- Execução de testes de regressão (21 asserções):
+- Execução de testes de regressão (22 asserções em `test_bi_autorizacoes.js` + 11 suítes em `test_telegram_agent.js`):
 ```bash
 node test_bi_autorizacoes.js
+node test_telegram_agent.js
 ```
 
 ---
 
 ## 7. Histórico & Evolução da Tela
+- **v8.316 (30/10/2026):** Integração do fluxo de Autorização de Desconto & Margem diretamente no Bot do Telegram (`@agente_alexandre_bot` via `routes/telegram_agent.js` e `bi_autorizacoes_engine.js`), com detecção automática de link do Pipedrive, extração de valores do texto encaminhado do vendedor, alerta e recálculo de divergências (`decide_deal:USE_TEXT_VALUES`), sanitização Markdown e aprovação com 1 toque (22/22 testes em `test_bi_autorizacoes.js` e 11/11 em `test_telegram_agent.js`).
 - **v8.283 (30/09/2026):** Inclusão do "Total dos produtos com desconto {valor}" na frase oficial de autorização fixada no Pipedrive (com base no preço proposto informado ou valor cadastrado total dos produtos) e adição do card visual de prévia e botão de cópia no modal (21 testes aprovados).
 - **v8.219 (15/09/2026):** Homologação inicial do módulo de Autorizações de Desconto & Margem no BI Executivo.

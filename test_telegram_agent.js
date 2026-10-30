@@ -524,8 +524,385 @@ async function runTelegramAgentTests() {
     } catch (err) {
       report('Fluxo cancel_patch descarta pendingPatch sem chamar PUT no GitHub', false, err.message);
     }
+
+    // -------------------------------------------------------------
+    // Teste 8, 9 e 10: Autorização de Desconto & Margem via Bot Telegram (Deal #26851)
+    // -------------------------------------------------------------
+    console.log('--- 8. Encaminhamento de Mensagem de Vendedor (Deal #26851) Sem Projeto Selecionado ---');
+    try {
+      telegramSentMessages.length = 0;
+      telegramAgent.resetSessions();
+
+      const { calcularMargemEDesconto, formatarNotaPipedrive } = require('./bi_autorizacoes_engine');
+      let lastAnalisarCallOptions = null;
+      let gravarNotaCalls = [];
+      let saveDbCalls = [];
+
+      telegramAgent.setFetchImpl(async (url, opts = {}) => {
+        if (url.includes('api.telegram.org')) {
+          if (url.endsWith('/sendMessage')) {
+            telegramSentMessages.push(JSON.parse(opts.body));
+          }
+          return createJsonResponse(200, { ok: true });
+        }
+        throw new Error(`URL inesperada nos Testes 8-10: ${url}`);
+      });
+
+      telegramAgent.setAutorizacoesDeps({
+        analisarDealCompleto: async (dealIdInput, options = {}) => {
+          lastAnalisarCallOptions = options;
+          const precoTabelaTotal = 39845.00; // 5 x 7.969,00
+          const custoTotal = 18612.80;       // 5 x 3.722,56
+          const valorVendaOriginalPipedrive = 39845.00; // Vendedor ainda não alterou no Pipedrive
+          const valorVendaFinal = options.proposta || valorVendaOriginalPipedrive;
+          const freteEmbutido = options.freteEmbutidoOverride !== undefined ? options.freteEmbutidoOverride : 0.00;
+          const condPgtoLabel = options.condPgtoLabelOverride || '028-1X BOL 28 D';
+
+          const calc = calcularMargemEDesconto({
+            valorVendaTotal: valorVendaFinal,
+            precoTabelaTotal,
+            custoTotal,
+            freteEmbutido
+          });
+
+          return {
+            dealId: Number(dealIdInput),
+            dealTitle: 'Deal 26851 - 05 Armários Azul',
+            clienteNome: 'Indústria Metalúrgica ABC Ltda',
+            solicitanteNome: 'Carlos Vendedor',
+            dealStatus: 'open',
+            condPgtoOptionId: 28,
+            condPgtoLabel,
+            tipoFrete: freteEmbutido > 0 ? 'CIF (Embutido)' : 'FOB (Cliente)',
+            freteEmbutido: calc.freteEmbutido,
+            isRevenda: false,
+            hasItensSemCusto: false,
+            isAlertaDesconto: calc.descontoPct > 11,
+            isValorPropostoCustom: Boolean(options.proposta),
+            valorVendaOriginalPipedrive,
+            valorVendaFinal: calc.valorVenda,
+            precoUnitarioAutorizadoMedio: Number((calc.valorVenda / 5).toFixed(2)),
+            totalQuantidade: 5,
+            precoTabelaTotal: calc.precoTabelaTotal,
+            custoTotal: calc.custoTotal,
+            valorLiquido: calc.valorLiquido,
+            descontoReais: calc.descontoReais,
+            descontoPct: calc.descontoPct,
+            lucroBruto: calc.lucroBruto,
+            margemPct: calc.margemPct,
+            itens: [
+              {
+                productId: 777,
+                rawCode: '15-001020304',
+                protheusCode: '001020304',
+                nomePipedrive: 'Armário 200x100x45 Azul',
+                descricaoProtheus: 'ARMARIO DE ACO 200X100X45 AZUL',
+                quantidade: 5,
+                precoUnitarioDeal: 7969.00,
+                precoUnitarioTabela: 7969.00,
+                custoUnitario: 3722.56,
+                totalDeal: 39845.00,
+                totalTabela: 39845.00,
+                totalCusto: 18612.80,
+                encontradoProtheus: true
+              }
+            ],
+            fraseAutorizacao: formatarNotaPipedrive({
+              dealId: Number(dealIdInput),
+              descontoPct: calc.descontoPct,
+              condPgtoLabel,
+              freteEmbutido: calc.freteEmbutido,
+              valorTotal: calc.valorVenda,
+              autorizado: true
+            }),
+            fraseNaoAutorizado: formatarNotaPipedrive({
+              dealId: Number(dealIdInput),
+              descontoPct: calc.descontoPct,
+              condPgtoLabel,
+              freteEmbutido: calc.freteEmbutido,
+              valorTotal: calc.valorVenda,
+              autorizado: false
+            })
+          };
+        },
+        gravarNotaPipedrive: async (dealId, nota) => {
+          gravarNotaCalls.push({ dealId, nota });
+          return { success: true };
+        },
+        saveAutorizacaoDescontoDB: async (payload) => {
+          saveDbCalls.push(payload);
+          return { id: 501, deal_id: payload.dealId, status: payload.status };
+        }
+      });
+
+      const msgVendedor = [
+        'Condição: 1x Boleto para 28 dias',
+        'Produto: 05 armários (200x100x45) na cor AZUL',
+        'Preço original: R$ 7.969,00 cada',
+        'Preço com desconto: R$ 7.451,08 cada (frete CIF embutido)',
+        'Valor do frete: R$ 684,00 por unidade',
+        '',
+        'Segue o link:',
+        'https://benetroncomercial.pipedrive.com/deal/26851'
+      ].join('\n');
+
+      const resDeal = await request(
+        baseUrl,
+        'POST',
+        '/api/telegram/webhook',
+        { 'x-telegram-bot-api-secret-token': 'super_secret_webhook_token_2026' },
+        {
+          message: {
+            chat: { id: 999888777 },
+            from: { id: 999888777 },
+            text: msgVendedor
+          }
+        }
+      );
+
+      assert.strictEqual(resDeal.status, 200);
+      assert.strictEqual(resDeal.body.ok, true);
+      assert.strictEqual(resDeal.body.action, 'deal_analyzed');
+      assert.strictEqual(resDeal.body.dealId, 26851);
+      assert.strictEqual(resDeal.body.hasTextDivergence, true, 'Deve detectar que o texto do vendedor tem desconto/frete ainda não refletidos no Deal');
+
+      const sessionAfterDeal = telegramAgent.getSessions().get('999888777');
+      assert.strictEqual(sessionAfterDeal.activeProjectKey, 'portal-gsi', 'Deve selecionar portal-gsi automaticamente');
+      assert.ok(sessionAfterDeal.pendingDealAuthorization, 'Deve salvar pendingDealAuthorization na sessão');
+
+      assert.strictEqual(telegramSentMessages.length, 1);
+      const sentCard = telegramSentMessages[0];
+      assert.strictEqual(sentCard.text.includes('Deal #26851'), true);
+      const cardButtons = sentCard.reply_markup.inline_keyboard.flat();
+      assert.strictEqual(cardButtons.some(b => b.callback_data === 'decide_deal:AUTORIZADO'), true);
+      assert.strictEqual(cardButtons.some(b => b.callback_data === 'decide_deal:NAO_AUTORIZADO'), true);
+      assert.strictEqual(cardButtons.some(b => b.callback_data === 'decide_deal:USE_TEXT_VALUES'), true);
+
+      report('Mensagem de vendedor com link do Pipedrive analisa Deal #26851 direto sem pedir projeto', true);
+
+      // -------------------------------------------------------------
+      // Teste 9: Clique em decide_deal:USE_TEXT_VALUES recalcula com valores do texto (5 x 7.451,08 e 5 x 684,00)
+      // -------------------------------------------------------------
+      console.log('--- 9. Callback decide_deal:USE_TEXT_VALUES Recalcula c/ Valores do Texto ---');
+      telegramSentMessages.length = 0;
+
+      const resRecalc = await request(
+        baseUrl,
+        'POST',
+        '/api/telegram/webhook',
+        { 'x-telegram-bot-api-secret-token': 'super_secret_webhook_token_2026' },
+        {
+          callback_query: {
+            id: 'cbq_recalc_26851',
+            from: { id: 999888777 },
+            message: { chat: { id: 999888777 } },
+            data: 'decide_deal:USE_TEXT_VALUES'
+          }
+        }
+      );
+
+      assert.strictEqual(resRecalc.status, 200);
+      assert.strictEqual(resRecalc.body.ok, true);
+      assert.strictEqual(resRecalc.body.action, 'deal_analyzed');
+      assert.strictEqual(resRecalc.body.usedTextValues, true);
+      assert.strictEqual(lastAnalisarCallOptions.proposta, 37255.40, '5 x 7.451,08 = 37.255,40');
+      assert.strictEqual(lastAnalisarCallOptions.freteEmbutidoOverride, 3420.00, '5 x 684,00 = 3.420,00');
+      assert.strictEqual(resRecalc.body.analise.descontoPct, 15.08, 'Desconto ponderado deve ser 15,08%');
+      assert.strictEqual(resRecalc.body.analise.margemPct, 40.86, 'Margem bruta deve ser 40,86%');
+
+      report('decide_deal:USE_TEXT_VALUES recalcula com proposta R$ 37.255,40 e frete R$ 3.420,00 (Desc: 15,08%, Margem: 40,86%)', true);
+
+      // -------------------------------------------------------------
+      // Teste 10: Clique em decide_deal:AUTORIZADO fixa nota no Pipedrive e grava no banco
+      // -------------------------------------------------------------
+      console.log('--- 10. Callback decide_deal:AUTORIZADO Grava Nota no Pipedrive e Persiste no Banco ---');
+      telegramSentMessages.length = 0;
+
+      const resAuth = await request(
+        baseUrl,
+        'POST',
+        '/api/telegram/webhook',
+        { 'x-telegram-bot-api-secret-token': 'super_secret_webhook_token_2026' },
+        {
+          callback_query: {
+            id: 'cbq_auth_26851',
+            from: { id: 999888777 },
+            message: { chat: { id: 999888777 } },
+            data: 'decide_deal:AUTORIZADO'
+          }
+        }
+      );
+
+      assert.strictEqual(resAuth.status, 200);
+      assert.strictEqual(resAuth.body.ok, true);
+      assert.strictEqual(resAuth.body.action, 'deal_decided');
+      assert.strictEqual(resAuth.body.decision, 'AUTORIZADO');
+      assert.strictEqual(resAuth.body.notaPipedriveEnviada, true);
+      assert.strictEqual(
+        resAuth.body.nota,
+        'Deal 26851 | Desconto Medio Ponderado do Pedido: 15,08% | Forma de Pagamento: 028-1X BOL 28 D | Frete Embutido: R$ 3.420,00 | Total dos produtos com desconto 37.255,40 - ok autorizado'
+      );
+
+      assert.strictEqual(gravarNotaCalls.length, 1, 'Deve chamar gravarNotaPipedrive 1 vez');
+      assert.strictEqual(gravarNotaCalls[0].dealId, 26851);
+      assert.strictEqual(saveDbCalls.length, 1, 'Deve chamar saveAutorizacaoDescontoDB 1 vez');
+      assert.strictEqual(saveDbCalls[0].status, 'AUTORIZADO');
+      assert.strictEqual(saveDbCalls[0].valorTotal, 37255.40);
+      assert.strictEqual(saveDbCalls[0].freteEmbutido, 3420.00);
+      assert.strictEqual(sessionAfterDeal.pendingDealAuthorization, null, 'Deve limpar pendingDealAuthorization após decisão');
+
+      report('decide_deal:AUTORIZADO grava nota oficial no Pipedrive, salva no banco e confirma no Telegram', true);
+
+      // -------------------------------------------------------------
+      // Teste 11: Sanitização Markdown (* e _), Fallback HTTP 400 e Resiliência de Banco / Duplo Clique
+      // -------------------------------------------------------------
+      console.log('--- 11. Sanitização Markdown (* e _), Fallback HTTP 400 e Resiliência de Banco ---');
+      telegramSentMessages.length = 0;
+      gravarNotaCalls.length = 0;
+
+      assert.strictEqual(
+        telegramAgent.escapeTelegramMarkdown('ARMARIO_ACO 200*100*45 [AZUL]'),
+        'ARMARIO\\_ACO 200\\*100\\*45 \\[AZUL]'
+      );
+
+      let simulatedMarkdown400Once = false;
+      telegramAgent.setFetchImpl(async (url, opts = {}) => {
+        if (url.includes('api.telegram.org') && url.endsWith('/sendMessage')) {
+          const body = JSON.parse(opts.body);
+          if (body.parse_mode === 'Markdown' && !simulatedMarkdown400Once) {
+            simulatedMarkdown400Once = true;
+            return createJsonResponse(400, { ok: false, description: "Bad Request: can't parse entities" });
+          }
+          telegramSentMessages.push(body);
+          return createJsonResponse(200, { ok: true });
+        }
+        return createJsonResponse(200, { ok: true });
+      });
+
+      telegramAgent.setAutorizacoesDeps({
+        analisarDealCompleto: async (dealIdInput) => ({
+          dealId: Number(dealIdInput),
+          dealTitle: 'Deal 26900',
+          clienteNome: 'METAL_PLENO * MATRIZ',
+          solicitanteNome: 'Vendedor_1',
+          dealStatus: 'open',
+          condPgtoOptionId: 28,
+          condPgtoLabel: '028-1X_BOL*28D',
+          tipoFrete: 'FOB (Cliente)',
+          freteEmbutido: 0,
+          isRevenda: false,
+          hasItensSemCusto: false,
+          isAlertaDesconto: false,
+          isValorPropostoCustom: false,
+          valorVendaOriginalPipedrive: 5000,
+          valorVendaFinal: 5000,
+          precoUnitarioAutorizadoMedio: 5000,
+          totalQuantidade: 1,
+          precoTabelaTotal: 5000,
+          custoTotal: 2500,
+          valorLiquido: 5000,
+          descontoReais: 0,
+          descontoPct: 0,
+          lucroBruto: 2500,
+          margemPct: 50,
+          itens: [
+            {
+              productId: 1,
+              rawCode: '15-001',
+              protheusCode: '001',
+              nomePipedrive: 'ARMARIO_ACO 200*100*45',
+              descricaoProtheus: 'ARMARIO_ACO 200*100*45',
+              quantidade: 1,
+              precoUnitarioDeal: 5000,
+              precoUnitarioTabela: 5000,
+              custoUnitario: 2500,
+              totalDeal: 5000,
+              totalTabela: 5000,
+              totalCusto: 2500,
+              encontradoProtheus: true
+            }
+          ],
+          fraseAutorizacao: 'Deal 26900 | Desconto Medio Ponderado do Pedido: 0,00% - ok autorizado',
+          fraseNaoAutorizado: 'Deal 26900 | Desconto Medio Ponderado do Pedido: 0,00% - NAO AUTORIZADO'
+        }),
+        gravarNotaPipedrive: async (dealId, nota) => {
+          gravarNotaCalls.push({ dealId, nota });
+          return { success: true };
+        },
+        saveAutorizacaoDescontoDB: async () => {
+          throw new Error('Timeout simulado no banco PostgreSQL');
+        }
+      });
+
+      const resEdgeAnalyze = await request(
+        baseUrl,
+        'POST',
+        '/api/telegram/webhook',
+        { 'x-telegram-bot-api-secret-token': 'super_secret_webhook_token_2026' },
+        {
+          message: {
+            chat: { id: 999888777 },
+            from: { id: 999888777 },
+            text: 'https://benetroncomercial.pipedrive.com/deal/26900'
+          }
+        }
+      );
+
+      assert.strictEqual(resEdgeAnalyze.status, 200);
+      assert.strictEqual(simulatedMarkdown400Once, true, 'Deve ter acionado o fallback sem parse_mode após HTTP 400');
+      assert.strictEqual(telegramSentMessages.length, 1, 'Mensagem deve ser entregue via fallback sem perda');
+      assert.strictEqual(telegramSentMessages[0].parse_mode, undefined, 'Fallback envia sem parse_mode');
+      assert.strictEqual(telegramSentMessages[0].text.includes('ARMARIO\\_ACO 200\\*100\\*45'), true);
+
+      // Decisão mesmo com falha no banco não deve lançar erro nem duplicar nota no Pipedrive em duplo clique
+      const resEdgeDecide1 = await request(
+        baseUrl,
+        'POST',
+        '/api/telegram/webhook',
+        { 'x-telegram-bot-api-secret-token': 'super_secret_webhook_token_2026' },
+        {
+          callback_query: {
+            id: 'cbq_edge_1',
+            from: { id: 999888777 },
+            message: { chat: { id: 999888777 } },
+            data: 'decide_deal:AUTORIZADO'
+          }
+        }
+      );
+
+      assert.strictEqual(resEdgeDecide1.status, 200);
+      assert.strictEqual(resEdgeDecide1.body.ok, true);
+      assert.strictEqual(resEdgeDecide1.body.notaPipedriveEnviada, true);
+      assert.strictEqual(resEdgeDecide1.body.savedInDb, false);
+      assert.strictEqual(gravarNotaCalls.length, 1);
+
+      // Segundo clique consecutivo não deve gravar segunda nota no Pipedrive
+      const resEdgeDecide2 = await request(
+        baseUrl,
+        'POST',
+        '/api/telegram/webhook',
+        { 'x-telegram-bot-api-secret-token': 'super_secret_webhook_token_2026' },
+        {
+          callback_query: {
+            id: 'cbq_edge_2',
+            from: { id: 999888777 },
+            message: { chat: { id: 999888777 } },
+            data: 'decide_deal:AUTORIZADO'
+          }
+        }
+      );
+
+      assert.strictEqual(resEdgeDecide2.status, 200);
+      assert.strictEqual(resEdgeDecide2.body.ok, false);
+      assert.strictEqual(gravarNotaCalls.length, 1, 'Não pode duplicar nota no Pipedrive em duplo clique');
+
+      report('Sanitização Markdown, fallback HTTP 400, resiliência de falha DB e proteção contra duplo clique', true);
+    } catch (err) {
+      report('Fluxo de Autorização de Desconto via Telegram (Testes 8-11)', false, err.message);
+    }
   } finally {
     telegramAgent.setFetchImpl(null);
+    telegramAgent.setAutorizacoesDeps(null);
     await new Promise(resolve => server.close(resolve));
   }
 
