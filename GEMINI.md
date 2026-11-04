@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.316 (Homologada em 30/10/2026 20:15)  
+> **Versão da Documentação:** v8.317 (Homologada em 03/11/2026 21:16)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 30/10/2026 20:15 (v8.316 - Autorização de Desconto & Margem Pipedrive/Protheus direto pelo Telegram `@agente_alexandre_bot`)  
+> **Data da Última Auditoria:** 03/11/2026 21:16 (v8.317 - Remoção da sub-aba desabilitada Webhooks Pix Inter da barra de navegação)  
 
 ---
 
@@ -41,7 +41,7 @@ O **Gemini-Cli** (Portal GSI) e uma plataforma integrada de gestao operacional, 
 
 ## 3. Matriz Geral de Navegação do Portal GSI
 
-A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Portal GSI:
+A matriz abaixo consolida as 9 macro-areas e as 38 sub-abas ativas no DOM do Portal GSI:
 
 | Macro-Área | Sub-Aba / Tela | Identificador DOM | Perfil RBAC | Descrição Funcional | Documentação Detalhada |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -74,7 +74,7 @@ A matriz abaixo consolida as 9 macro-areas e as 39 sub-abas ativas no DOM do Por
 | **6. Assist. Financ.** | Conciliação Bancária | `#tab-conciliacao-bancaria` | `admin`, `user` (Financeiro) | Conciliacao automatica N:1 e 1:1 entre extratos e titulos Protheus (`SE5`/`SE8`). | [conciliacao_bancaria.md](docs/telas/06_assist_financeiro/conciliacao_bancaria.md) |
 | **6. Assist. Financ.** | Pgtos Desconhecidos | `#tab-pgtos-desconhecidos` | `admin`, `user` (Financeiro) | Localização federada de depósitos desconhecidos na Assistência, Protheus e Pipedrive. | [pgtos_desconhecidos.md](docs/telas/06_assist_financeiro/pgtos_desconhecidos.md) |
 | **6. Assist. Financ.** | Extrato API Inter | `#tab-inter-extrato` | `admin`, `user` (Financeiro) | Conexao ao vivo mTLS de saldos, extratos e batimento financeiro Banco Inter. | [extrato_api_inter.md](docs/telas/06_assist_financeiro/extrato_api_inter.md) |
-| **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas (Backend ativo / UI inabilitada temporariamente). | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
+| **6. Assist. Financ.** | Webhooks Pix Inter | `#tab-inter-webhooks` | `admin`, `user` (Financeiro) | Receptor de notificacoes Pix instantaneas (Backend ativo / UI removida da navegação). | [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md) |
 | **6. Assist. Financ.** | Análise de Crédito | `#tab-analise-credito` | `admin`, `user` (Financeiro) | Motor de score com Protheus, Receita, RDAP, Wayback, Serasa e InfoSimples. | [analise_credito.md](docs/telas/06_assist_financeiro/analise_credito.md) |
 | **6. Assist. Financ.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Financeiro) | Consulta de Contas a Pagar SE2/SE5 multi-empresa com batimento de baixas (DRY). | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **7. Analista Fin.** | Holerites DP | `#tab-holerites` | `admin`, `user` (Analista Fin) | Emissao e distribuicao digital de holerites do Departamento Pessoal. | [holerites_dp.md](docs/telas/07_analista_fin/holerites_dp.md) |
@@ -186,6 +186,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.317 (03/11/2026):** Remoção da sub-aba visual Webhooks Pix Inter (`#tab-inter-webhooks` e `#btnTabInterWebhooks`) da barra de navegação de Assist. Financ. em `public/index.html` para manter a interface limpa e eliminar opções desabilitadas com badge "Em breve", mantendo o backend receptor de webhooks e rotas REST 100% ativos em segundo plano (detalhado em [webhooks_pix_inter.md](docs/telas/06_assist_financeiro/webhooks_pix_inter.md)).
 - **v8.316 (30/10/2026):** Autorização de Desconto & Margem (Pipedrive + Protheus `SB1090`) direto pelo Bot do Telegram (`@agente_alexandre_bot` via `routes/telegram_agent.js` e `bi_autorizacoes_engine.js`): detecção instantânea de links `/deal/{id}` sem exigir seleção prévia de projeto, extração de valores do texto encaminhado do vendedor (`extrairDadosMensagemVendedor`), alerta e recálculo de divergências (`decide_deal:USE_TEXT_VALUES`), sanitização Markdown e aprovação com 1 toque fixando a nota oficial no Pipedrive e gravando no Supabase (22/22 testes em `test_bi_autorizacoes.js` e 11/11 em `test_telegram_agent.js` — detalhado em [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) e [agente_mobile_telegram.md](docs/telas/09_configuracoes/agente_mobile_telegram.md)).
 - **v8.315 (29/10/2026):** Agente Mobile Multi-Projeto 24/7 no Telegram (`@agente_alexandre_bot` via `routes/telegram_agent.js` e `prompts/telegram_devops_agent.v1.md`) hospedado no Render Starter 24/7 sem custo extra, com seletor obrigatório dos 5 repositórios `cofresgoldsafe`, motor `gemini-3.5-flash` (1,7s), consultas em tempo real e edição de código com aprovação em 2 cliques via GitHub REST API (7 testes aprovados em `test_telegram_agent.js` — detalhado em [agente_mobile_telegram.md](docs/telas/09_configuracoes/agente_mobile_telegram.md)).
 - **v8.312 (21/10/2026):** Governança de Infraestrutura Cloud no Render: migração do serviço principal `conciliacao-fretes` para o plano pago **Starter ($7/mês — 0.5 CPU / 512 MB RAM)** com disponibilidade 24/7 sem *cold start*, liberação integral da franquia de 750h/mês gratuitas do Workspace para os serviços `gsi-assistencia-portal`, `gemini-whatsapp-multi360` e `gemini-leilao-imoveis`, desativação definitiva do container legado `bi-gsi` (substituído por gráficos nativos `Chart.js`) e plano de absorção futura do microserviço WhatsApp no backend principal.

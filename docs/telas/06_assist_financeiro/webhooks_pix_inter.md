@@ -3,20 +3,20 @@
 > **Macro-Área:** Assist. Financ.  
 > **Identificador DOM:** `#tab-inter-webhooks` | **Botão:** `#btnTabInterWebhooks`  
 > **Permissão RBAC:** admin, user (Financeiro)  
-> **Status:** Backend Ativo / UI Inabilitada Temporariamente  
-> **Última Atualização:** 07/10/2026 (v8.303 - Homologado)  
+> **Status:** Backend Ativo / UI Oculta (Removida da Navegação)  
+> **Última Atualização:** 03/11/2026 (v8.317 - Homologado)  
 
 ---
 
 ## 1. Propósito da Tela & Personas
 - **Objetivo:** Monitoramento e visualização das notificações instantâneas de Pix e Cobranças recebidas via Webhooks do Banco Inter (contas 14 - Metal Pleno, 15 - GSI, 16 - OAÇO).
-- **Situação Atual:** O backend receptor de webhooks (`POST /api/webhooks/inter`), validação Zod e armazenamento idempotente estão plenamente operacionais. A camada de interface visual (`#tab-inter-webhooks`) está inabilitada temporariamente na navegação (`disabled` + badge "Em breve") até que a tela de dashboard seja implementada.
+- **Situação Atual:** O backend receptor de webhooks (`POST /api/webhooks/inter`), validação Zod e armazenamento idempotente estão plenamente operacionais. A sub-aba visual foi removida da navegação (`public/index.html`) para manter a interface limpa e sem botões desabilitados ("Em breve"). O backend receptor e a rota REST permanecem 100% ativos em segundo plano.
 - **Personas Atendidas:** admin, user (Financeiro)
 
 ---
 
 ## 2. Arquitetura de Código & Componentes
-- **Frontend:** `public/index.html` (aba com botão `#btnTabInterWebhooks` desabilitado e container de segurança), `public/style.css` (`.nav-tab-btn:disabled`), `public/app.js` (guarda anti-clique em botões inabilitados).
+- **Frontend:** Sub-aba e botão removidos do DOM de navegação para simplificação da interface. Estrutura pronta para reinserção quando o dashboard visual for construído.
 - **Backend / Rotas:** `server.js` (`POST /api/webhooks/inter`, `GET /api/financeiro/webhooks`), `webhook_validator.js`, `postgres_db.js`.
 
 ---
@@ -50,3 +50,4 @@ node test_webhook_schemas.js && node test_webhooks.js
 ## 7. Histórico & Evolução da Tela
 - **v8.219 (15/09/2026):** Documentação modular segregada sob arquitetura Hub-and-Spoke. Histórico consolidado e integrado ao Portal GSI.
 - **v8.303 (07/10/2026):** Inabilitação temporária da UI da aba na navegação (`disabled`, badge "Em breve" e container protetor informativo) mantendo a ingestão de backend ativa.
+- **v8.317 (03/11/2026):** Remoção da sub-aba visual `#tab-inter-webhooks` e botão `#btnTabInterWebhooks` da barra de navegação de Assist. Financ. para eliminar opções desabilitadas, mantendo a ingestão e testes de backend ativos.
