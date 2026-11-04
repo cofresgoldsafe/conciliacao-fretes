@@ -5991,3 +5991,161 @@ body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
   color: var(--text-muted);
 }
 
+
+
+/* ==========================================================================
+   OTIMIZAÇÃO RESPONSIVA CIRÚRGICA PARA DISPOSITIVOS MÓVEIS (SMARTPHONES)
+   Garante 100% de integridade e zero impacto no desktop (> 768px)
+   ========================================================================== */
+
+/* Botão hambúrguer mobile oculto por padrão em computadores e notebooks */
+.mobile-nav-toggle {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  /* Cabeçalho compacto para celular */
+  .app-header {
+    padding: 10px 12px;
+  }
+  .header-container {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .brand {
+    gap: 8px;
+  }
+  .brand-logo {
+    padding: 6px;
+    border-radius: 8px;
+  }
+  .brand-logo svg {
+    width: 20px;
+    height: 20px;
+  }
+  .brand-text h1 {
+    font-size: 1.05rem;
+    margin: 0;
+  }
+  /* Oculta subtítulo, release e textos secundários no celular */
+  .brand-text .subtext {
+    display: none !important;
+  }
+  .header-right-tools {
+    gap: 6px;
+    align-items: center;
+  }
+  .user-profile {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+  }
+  #btnChangeMyPass {
+    display: none !important; /* Limpa a barra no mobile */
+  }
+  #btnLogout {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+
+  /* Botão Hambúrguer ativo apenas no smartphone */
+  .mobile-nav-toggle {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .mobile-nav-toggle:hover, .mobile-nav-toggle:active {
+    background: rgba(56, 189, 248, 0.24);
+    color: #ffffff;
+    border-color: #38bdf8;
+  }
+  .mobile-nav-toggle svg {
+    stroke: currentColor;
+  }
+
+  /* 1ª Camada: Abas Principais em Gaveta Retrátil Deslizante */
+  .main-tabs-header {
+    display: none; /* Recolhido por padrão no celular */
+    flex-direction: column;
+    width: 100%;
+    padding: 10px;
+    gap: 6px;
+    background-color: #0b1120;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    animation: mobileMenuSlideDown 0.2s ease-out forwards;
+  }
+  .main-tabs-header.mobile-open {
+    display: flex !important;
+  }
+  @keyframes mobileMenuSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .main-tab-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    border-radius: 8px;
+  }
+
+  /* 2ª Camada: Sub-abas em Carrossel Horizontal Deslizável ao Toque */
+  .sub-tabs-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    margin-bottom: 10px;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.3) transparent;
+  }
+  .sub-tabs-container::-webkit-scrollbar {
+    height: 4px;
+  }
+  .sub-tabs-container::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.3);
+    border-radius: 4px;
+  }
+  .sub-tabs-group {
+    flex-wrap: nowrap !important;
+    white-space: nowrap;
+    gap: 6px;
+  }
+  .nav-tab-btn {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+
+  /* Container Principal com espaçamentos otimizados para smartphone */
+  .main-container {
+    padding: 0 10px;
+    margin: 10px auto;
+    gap: 12px;
+  }
+
+  /* Contenção de tabelas e formulários para evitar quebra de layout horizontal */
+  .table-responsive, .table-container, .results-container, .card, .panel, .dataTables_wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

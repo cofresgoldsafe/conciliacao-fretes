@@ -860,8 +860,35 @@ document.addEventListener('DOMContentLoaded', () => {
       const targetMain = btn.getAttribute('data-main-tab');
       if (!targetMain) return;
       switchMainTab(targetMain);
+      // Fecha o menu retrátil mobile automaticamente após seleção
+      if (window.innerWidth <= 768) {
+        const mainNav = document.querySelector('.main-tabs-header');
+        const toggleBtn = document.getElementById('btnMobileNavToggle');
+        if (mainNav) mainNav.classList.remove('mobile-open');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+      }
     });
   });
+
+  // Controle de alternância do menu mobile (3 tracinhos ☰)
+  const btnMobileNavToggle = document.getElementById('btnMobileNavToggle');
+  const mainTabsHeaderEl = document.querySelector('.main-tabs-header');
+  if (btnMobileNavToggle && mainTabsHeaderEl) {
+    btnMobileNavToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = mainTabsHeaderEl.classList.toggle('mobile-open');
+      btnMobileNavToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768 && mainTabsHeaderEl.classList.contains('mobile-open')) {
+        if (!mainTabsHeaderEl.contains(e.target) && !btnMobileNavToggle.contains(e.target)) {
+          mainTabsHeaderEl.classList.remove('mobile-open');
+          btnMobileNavToggle.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+  }
 
   const allNavSubBtns = document.querySelectorAll('.nav-tab-btn');
   allNavSubBtns.forEach(btn => {

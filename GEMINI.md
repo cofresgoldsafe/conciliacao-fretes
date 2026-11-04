@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.317 (Homologada em 03/11/2026 21:16)  
+> **Versão da Documentação:** v8.318 (Homologada em 03/11/2026 21:31)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 03/11/2026 21:16 (v8.317 - Remoção da sub-aba desabilitada Webhooks Pix Inter da barra de navegação)  
+> **Data da Última Auditoria:** 03/11/2026 21:31 (v8.318 - Otimização responsiva cirúrgica para dispositivos móveis com menu retrátil ☰ e cabeçalho compacto)
 
 ---
 
