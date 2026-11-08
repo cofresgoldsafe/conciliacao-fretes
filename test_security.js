@@ -351,6 +351,36 @@ async function runSecurityTests() {
       }
     });
 
+    // --- 6. TESTES DE CORS & PREVENÇÃO DE REFLEXÃO DE ORIGENS ---
+    console.log('🔹 6. Testes de Validação Estrita de CORS');
+    await testAsync('CORS: Permite origens confiáveis (localhost, produção Render e domínios do grupo)', async () => {
+      const originsOk = [
+        'http://localhost:3000',
+        'https://conciliacao-fretes.onrender.com',
+        'https://portal.gsicofres.com.br',
+        'https://sub.gsicofres.com.br',
+        'https://app.gsi.com.br',
+        'https://financeiro.oaco.com.br'
+      ];
+      for (const o of originsOk) {
+        const res = await request('GET', '/', { Origin: o });
+        assert.strictEqual(res.headers['access-control-allow-origin'], o, `Origem confiável ${o} deve ser autorizada`);
+      }
+    });
+
+    await testAsync('CORS: Bloqueia e omite header para origens arbitrárias e subdomínios não autorizados do Render', async () => {
+      const originsBlocked = [
+        'https://malicious.onrender.com',
+        'https://evil.com',
+        'http://attacker.com',
+        'https://attacker-gsicofres.com.br'
+      ];
+      for (const o of originsBlocked) {
+        const res = await request('GET', '/', { Origin: o });
+        assert.strictEqual(res.headers['access-control-allow-origin'], undefined, `Origem não autorizada ${o} deve ter CORS omitido`);
+      }
+    });
+
   } finally {
     server.close();
   }

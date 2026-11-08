@@ -487,20 +487,25 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     
+    let hostname = '';
+    try {
+      hostname = new URL(origin).hostname;
+    } catch (_) {
+      return callback(null, false);
+    }
+
     const isAllowed = 
       allowedOrigins.includes(origin) ||
-      origin.endsWith('.onrender.com') ||
-      origin.endsWith('.gsicofres.com.br') ||
-      origin.endsWith('.gsi.com.br') ||
-      origin.endsWith('.oaco.com.br') ||
-      (envCustomDomain && origin.includes(envCustomDomain.replace(/^https?:\/\//, '')));
+      hostname === 'gsicofres.com.br' || hostname.endsWith('.gsicofres.com.br') ||
+      hostname === 'gsi.com.br' || hostname.endsWith('.gsi.com.br') ||
+      hostname === 'oaco.com.br' || hostname.endsWith('.oaco.com.br');
 
     if (isAllowed) {
       return callback(null, true);
     }
     
     console.warn(`⚠️ [CORS] Origem não explicitamente autorizada: ${origin}`);
-    return callback(null, true); // Fallback permissivo com aviso em log
+    return callback(null, false);
   },
   credentials: true
 }));
