@@ -116,7 +116,7 @@
 ### 🔴 Pendência 04: Limpeza de Segredos e Chaves Hardcoded
 * **Arquivos:** [`protheus_db.js:L6`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/protheus_db.js#L6), [`query_protheus.js:L5`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/query_protheus.js#L5), [`inter_api.js:L54-L61`](file:///C:/Users/Alexandre/Documents/Gemini-Cli/inter_api.js#L54-L61)
 * **Problema:**
-  1. Em `protheus_db.js`: `process.env.PROTHEUS_API_KEY || 'ProtheusClaude#2026'`.
+  1. Em `protheus_db.js`: `process.env.PROTHEUS_API_KEY || '<PROTHEUS_API_KEY (ver .env / painel do Railway)>'`.
   2. Em `query_protheus.js`: `envPath = 'C:\\Users\\Alexandre\\Documents\\claude\\protheus-mcp\\.env'`.
   3. Em `inter_api.js`: Caminhos locais absolutos do drive `D:\`.
 * **Ação Necessária:**

@@ -251,7 +251,7 @@ async function asyncTest(name, fn) {
     const engineCode = fs.readFileSync(enginePath, 'utf8');
 
     // Garante que não há nenhuma senha ou token fixo no código
-    assert.ok(!engineCode.includes('ProtheusClaude#2026'), 'Não deve conter segredos hardcoded');
+    assert.ok(!/(?:API_KEY|TOKEN|SECRET)[^\n]*\|\|\s*['"][^'"\s]{12,}['"]/.test(engineCode), 'Não deve conter segredos hardcoded');
 
     const frontPath = path.join(__dirname, 'public', 'js', 'compras_ponto_pedido.js');
     const frontCode = fs.readFileSync(frontPath, 'utf8');
