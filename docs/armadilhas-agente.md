@@ -18,3 +18,6 @@ Uma linha por erro já cometido. Todo pedido ao agente cita as linhas que valem 
 - Validação de transição (`validarTransicao`) só roda quando o estágio muda; editar um deal sem mudar de estágio não pode exigir motivo de novo (CRM-23).
 - Ao copiar ou clonar um deal, levar `valor_total` do original: itens gravados pela tela usam `precoNegociado` e o `criarDeal` soma `preco_unitario`, então recalcular dá R$ 0 (CRM-23).
 - Os modais do CRM existem em DOIS arquivos: `public/crm.html` (/crm) e `public/index.html` (sub-aba #tab-bi-crm), com o mesmo `crm.js`. Toda mudança de HTML do CRM vai nos dois (CRM-23).
+- `crmEngine.listarDeals(filtros, scope)` devolve `{ source, total, deals }`, nao um array: iterar `.deals` (CRM-21a).
+- Tabela `users` (`postgres_db.js:218`) tem `pass`, nao `password_hash`; criar usuario de teste com `saveUser` ou so com as colunas reais (CRM-21a).
+- Para filtrar por escopo em lote, usar a lista de `listarDeals` com escopo; `obterDealPorId` em deal alheio grava `CRM_DEAL_ACESSO_NEGADO` e polui a auditoria (CRM-21a).
