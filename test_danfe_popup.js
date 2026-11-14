@@ -393,7 +393,7 @@ async function runAllTests() {
       },
       emitente: {
         cnpjCpf: '61237790000118',
-        xNome: 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA',
+        xNome: 'OACO PRODUTOS DE ACO LTDA',
         xFant: 'OAÇO PRODUTOS DE AÇO',
         ie: '535132321110',
         crt: '3',

@@ -301,13 +301,21 @@ CREATE TABLE IF NOT EXISTS crm_empresas_emitentes (
 );
 
 INSERT INTO crm_empresas_emitentes (codigo, razao_social, nome_fantasia, cnpj, ie, endereco, telefone, logo_path) VALUES
-  ('14', 'METAL PLENO COMERCIO DE FECHADURAS E FERRAGENS LTDA', 'Metal Pleno', '48758821000118', '145707309111',
+  ('14', 'METAL PLENO EQUIPAMENTOS DE ACO LTDA', 'Metal Pleno', '48758821000118', '145707309111',
          'Rua Maria José, 119 · Bela Vista · São Paulo/SP · 01324-010', '(11) 3141-9000', NULL),
-  ('15', 'GSI BRASIL PRESTACAO DE SERVICOS LTDA', 'GSI Brasil', '14061778000115', 'ISENTO',
+  ('15', 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA', 'GSI Brasil', '14061778000115', 'ISENTO',
          'Rua Maria José, 119 · Bela Vista · São Paulo/SP · 01324-010', '(11) 3141-9000', 'logos/logo-gsi.png'),
-  ('16', 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA', 'OAÇO / Cofres Gold Safe', '61237790000118', '535132321110',
+  ('16', 'OACO PRODUTOS DE ACO LTDA', 'OAÇO / Cofres Gold Safe', '61237790000118', '535132321110',
          'Rua Maria José, 119 · Bela Vista · São Paulo/SP · 01324-010', '(11) 3141-9000', 'logos/logo-oaco.png')
 ON CONFLICT (codigo) DO NOTHING;
+
+-- Corrige a razão social das linhas criadas pela carga inicial do CRM-20 (só se ainda estiverem com o nome antigo)
+UPDATE crm_empresas_emitentes SET razao_social = 'METAL PLENO EQUIPAMENTOS DE ACO LTDA', updated_at = NOW(), updated_by = 'correcao_razao_social'
+ WHERE codigo = '14' AND razao_social = 'METAL PLENO COMERCIO DE FECHADURAS E FERRAGENS LTDA';
+UPDATE crm_empresas_emitentes SET razao_social = 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA', updated_at = NOW(), updated_by = 'correcao_razao_social'
+ WHERE codigo = '15' AND razao_social = 'GSI BRASIL PRESTACAO DE SERVICOS LTDA';
+UPDATE crm_empresas_emitentes SET razao_social = 'OACO PRODUTOS DE ACO LTDA', updated_at = NOW(), updated_by = 'correcao_razao_social'
+ WHERE codigo = '16' AND razao_social = 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA';
 
 CREATE TABLE IF NOT EXISTS crm_propostas (
   id               BIGSERIAL PRIMARY KEY,
