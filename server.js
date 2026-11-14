@@ -1028,47 +1028,24 @@ const whatsappSsoLimiter = rateLimit({
   handler: (req, res) => res.status(429).json({ success: false, message: 'Muitas tentativas. Aguarde alguns minutos.' })
 });
 
+app.use('/api/integracoes/whatsapp/crm', require('./crm_integracao_whatsapp')({ userHasWhatsappAccess }));
+
 function userHasWhatsappAccess(u) {
   if (!u || u.active === false) return false;
   if (String(u.username || '').trim().toLowerCase() === 'alexandre' || u.role === 'admin') return true;
   return Array.isArray(u.permissions) && u.permissions.includes('whatsapp');
 }
 
-app.post('/api/auth/whatsapp-ticket', whatsappSsoLimiter, requireAuth, async (req, res) => {
-  try {
-    const cleanUser = String((req.user && req.user.username) || '').trim().toLowerCase();
-    const allUsers = await getUsersDB();
-    const userFound = allUsers.find(u => String(u.username || '').trim().toLowerCase() === cleanUser);
-    if (!userHasWhatsappAccess(userFound)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Seu usuário não tem acesso ao WhatsApp Atendimento. Peça ao administrador para marcar a opção "WhatsApp" em Abas Permitidas.'
-      });
-    }
+const { criarHandlerWhatsappTicket } = require('./whatsapp_sso');
 
-    const now = Date.now();
-    for (const [key, val] of whatsappSsoTickets) {
-      if (val.expiresAt < now) whatsappSsoTickets.delete(key);
-    }
-    const ticket = crypto.randomBytes(32).toString('base64url');
-    whatsappSsoTickets.set(ticket, { username: cleanUser, expiresAt: now + 60 * 1000 });
-
-    logUserActivity({
-      username: cleanUser,
-      userName: userFound.name || cleanUser,
-      actionType: 'ACESSO_WHATSAPP',
-      description: 'Acesso ao painel WhatsApp Atendimento (login único)',
-      ip: req.ip
-    }).catch(() => {});
-
-    return res.json({
-      success: true,
-      redirectUrl: `${WHATSAPP_PANEL_URL}/auth/callback?ticket=${encodeURIComponent(ticket)}`
-    });
-  } catch (err) {
-    return handleServerError(res, err, 'Erro ao gerar acesso ao WhatsApp Atendimento.');
-  }
-});
+app.post('/api/auth/whatsapp-ticket', whatsappSsoLimiter, requireAuth, criarHandlerWhatsappTicket({
+  getUsersDB,
+  userHasWhatsappAccess,
+  whatsappSsoTickets,
+  logUserActivity,
+  WHATSAPP_PANEL_URL,
+  handleServerError
+}));
 
 app.post('/api/auth/whatsapp-ticket/redeem', whatsappSsoLimiter, async (req, res) => {
   try {

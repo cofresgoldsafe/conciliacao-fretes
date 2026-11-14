@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.323">
+  <link rel="stylesheet" href="style.css?v=8.324">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -545,6 +545,7 @@
             <h3 id="crmDetalhesTitulo" style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main);">Detalhes do Negócio</h3>
             <span id="crmDetalhesFaseBadge"></span>
           </div>
+          <span id="crmDetalhesConversasInfo" style="display: inline-block; font-size: 0.8rem; color: #38bdf8; margin-top: 2px;"></span>
           <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
             <span>Cliente:</span> <strong id="crmDetalhesCliente" style="color: var(--text-main);">-</strong>
             <button type="button" id="btnCrmEditarClienteDoDetalhes" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 1px 6px; height: 20px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); margin-left: 2px;" title="Editar cadastro do cliente">
@@ -683,6 +684,9 @@
           </button>
         </div>
         <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnCrmConversarDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
+            💬 Conversar
+          </button>
           <button type="button" id="btnCrmClonarDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
             📑 Clonar
           </button>
@@ -934,8 +938,8 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.323"></script>
-  <script src="js/crm.js?v=8.323"></script>
+  <script src="js/chart.umd.min.js?v=8.324"></script>
+  <script src="js/crm.js?v=8.324"></script>
 
   <script>
     // Inicialização do CRM Comercial (/crm)

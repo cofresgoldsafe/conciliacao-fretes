@@ -731,6 +731,45 @@ async function initCrmTables() {
       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       CREATE INDEX IF NOT EXISTS idx_crm_deals_motivo_perda_cod ON crm_deals (motivo_perda_cod) WHERE estagio = 'perdido';
 
+      ALTER TABLE crm_deals ADD COLUMN IF NOT EXISTS origem_ref VARCHAR(120);
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_crm_deals_origem_ref ON crm_deals (origem_ref) WHERE origem_ref IS NOT NULL;
+      CREATE TABLE IF NOT EXISTS crm_deal_conversas (id BIGSERIAL PRIMARY KEY, deal_id VARCHAR(64) NOT NULL REFERENCES crm_deals(id) ON DELETE CASCADE, conversa_id VARCHAR(64) NOT NULL, telefone_e164 VARCHAR(15) NOT NULL, linha_whatsapp VARCHAR(64), principal BOOLEAN NOT NULL DEFAULT FALSE, ativo BOOLEAN NOT NULL DEFAULT TRUE, vinculado_por VARCHAR(100) NOT NULL, vinculado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (deal_id, conversa_id));
+      CREATE INDEX IF NOT EXISTS idx_crm_deal_conversas_tel ON crm_deal_conversas (telefone_e164) WHERE ativo;
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_crm_deal_conversas_principal ON crm_deal_conversas (deal_id) WHERE principal AND ativo;
+
+      ALTER TABLE crm_deal_conversas ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE crm_deal_conversas FORCE ROW LEVEL SECURITY;
+
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+          GRANT ALL ON TABLE crm_deal_conversas TO service_role;
+          GRANT USAGE, SELECT ON SEQUENCE crm_deal_conversas_id_seq TO service_role;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+          GRANT ALL ON TABLE crm_deal_conversas TO postgres;
+          GRANT USAGE, SELECT ON SEQUENCE crm_deal_conversas_id_seq TO postgres;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+          REVOKE ALL ON TABLE crm_deal_conversas FROM anon;
+          REVOKE ALL ON SEQUENCE crm_deal_conversas_id_seq FROM anon;
+        END IF;
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+          REVOKE ALL ON TABLE crm_deal_conversas FROM authenticated;
+          REVOKE ALL ON SEQUENCE crm_deal_conversas_id_seq FROM authenticated;
+        END IF;
+      END $$;
+
+      DO $$
+      BEGIN
+        DROP POLICY IF EXISTS "Acesso exclusivo backend crm_deal_conversas" ON crm_deal_conversas;
+        CREATE POLICY "Acesso exclusivo backend crm_deal_conversas"
+          ON crm_deal_conversas
+          TO service_role, postgres
+          USING (true)
+          WITH CHECK (true);
+      END $$;
+
       CREATE TABLE IF NOT EXISTS crm_atividades (
         id VARCHAR(64) PRIMARY KEY,
         deal_id VARCHAR(64) NOT NULL REFERENCES crm_deals(id) ON DELETE CASCADE,
@@ -998,6 +1037,7 @@ function mapDealRow(row) {
     cod_vendedor: row.cod_vendedor || '',
     nome_vendedor: row.nome_vendedor || '',
     origem: row.origem || 'manual',
+    origem_ref: row.origem_ref || null,
     status: row.status || 'aberto',
     motivo_perda: row.motivo_perda || '',
     motivo_perda_cod: row.motivo_perda_cod || null,
@@ -1502,7 +1542,7 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
         id, titulo, cliente_cod, cliente_loja, cliente_nome, cliente_cnpj,
         cliente_email, cliente_telefone, cliente_cidade, cliente_uf,
         valor_total, estagio, probabilidade, data_fechamento_esperada,
-        cod_vendedor, nome_vendedor, origem, status, motivo_perda, motivo_perda_cod,
+        cod_vendedor, nome_vendedor, origem, origem_ref, status, motivo_perda, motivo_perda_cod,
         cond_pgto, tipo_frete, frete_cobrado, frete_embutido, transportadora, transportadora_cod, prazo_entrega, num_pedido_compra, obs_nfe,
         itens_cotados, contatos, historico_estagios, custom, observacoes,
         ativo, created_by, updated_by, created_at, updated_at
@@ -1510,10 +1550,10 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14,
-        $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27, $28, $29,
-        $30, $31, $32, $33, $34,
-        TRUE, $35, $36, NOW(), NOW()
+        $15, $16, $17, $18, $19, $20, $21,
+        $22, $23, $24, $25, $26, $27, $28, $29, $30,
+        $31, $32, $33, $34, $35,
+        TRUE, $36, $37, NOW(), NOW()
       ) RETURNING *;
     `, [
       dealId,
@@ -1533,6 +1573,7 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       codVendedor,
       nomeVendedor,
       dados.origem || 'manual',
+      dados.origem_ref || null,
       estagioInicial === 'ganho' ? 'ganho' : (estagioInicial === 'perdido' ? 'perdido' : 'aberto'),
       motivoPerdaFinal || null,
       motivoPerdaCodFinal || null,
@@ -1558,6 +1599,12 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       novoDeal = mapDealRow(res.rows[0]);
     }
   } catch (err) {
+    if ((err.code === '23505' || err.code === 23505) && (err.constraint === 'uq_crm_deals_origem_ref' || String(err.message).includes('uq_crm_deals_origem_ref'))) {
+      const error = new Error('Já existe um negócio vinculado a esta referência de origem.');
+      error.status = 409;
+      error.code = 'ORIGEM_REF_DUPLICADA';
+      throw error;
+    }
     console.warn('⚠️ [CRM Engine] Erro ao inserir deal no Postgres. Usando fallback atômico:', err.message);
   }
 
@@ -1585,6 +1632,7 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       cod_vendedor: codVendedor,
       nome_vendedor: nomeVendedor,
       origem: dados.origem || 'manual',
+      origem_ref: dados.origem_ref || null,
       status: estagioInicial === 'ganho' ? 'ganho' : (estagioInicial === 'perdido' ? 'perdido' : 'aberto'),
       motivo_perda: motivoPerdaFinal || '',
       motivo_perda_cod: motivoPerdaCodFinal || null,

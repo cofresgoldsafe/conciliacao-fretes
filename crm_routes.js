@@ -90,6 +90,109 @@ function isCrmAdmin(user) {
 }
 
 /**
+ * Constrói o objeto de escopo do CRM (crmScope) para filtragem server-side
+ */
+function montarEscopoCrm(crmUser) {
+  if (crmUser && crmUser.isAdmin) {
+    return {
+      all: true,
+      codVendedor: null,
+      codigosLeitura: null,
+      nomeVendedor: null,
+      username: crmUser.username,
+      role: crmUser.role || 'admin'
+    };
+  }
+  const cod = crmUser ? crmUser.cod_vendedor : null;
+  return {
+    all: false,
+    codVendedor: cod,
+    codigosLeitura: cod ? [cod] : [],
+    nomeVendedor: crmUser ? crmUser.nome_vendedor : null,
+    username: crmUser ? crmUser.username : '',
+    role: 'vendedor'
+  };
+}
+
+/**
+ * Decide o acesso e constrói o escopo do CRM a partir de um usuário autenticado.
+ * Retorna { crmUser, crmScope } ou lança um Error com status, code, title e detail.
+ */
+async function resolverAcessoCrm(user) {
+  if (!user) {
+    const err = new Error('Usuário não identificado na requisição.');
+    err.status = 401;
+    err.title = 'Não Autenticado';
+    err.detail = 'Usuário não identificado na requisição.';
+    err.code = 'UNAUTHENTICATED';
+    throw err;
+  }
+
+  const username = String(user.username || '').trim().toLowerCase();
+  const role = String(user.role || '').trim().toLowerCase();
+
+  if (isCrmAdmin(user)) {
+    const crmUser = {
+      ...user,
+      username,
+      role: role || 'admin',
+      isAdmin: true,
+      cod_vendedor: null,
+      nome_vendedor: user.name || 'Alexandre'
+    };
+    const crmScope = montarEscopoCrm(crmUser);
+    return { crmUser, crmScope };
+  }
+
+  if (role === 'vendedor') {
+    const perms = Array.isArray(user.permissions)
+      ? user.permissions.map(p => String(p).trim().toLowerCase())
+      : [];
+    if (!perms.includes('crm')) {
+      const err = new Error('Seu usuário não possui a permissão "crm" habilitada. Solicite a liberação ao administrador.');
+      err.status = 403;
+      err.title = 'Acesso Proibido';
+      err.detail = 'Seu usuário não possui a permissão "crm" habilitada. Solicite a liberação ao administrador.';
+      err.code = 'FORBIDDEN_CRM';
+      throw err;
+    }
+
+    const vendedor = await crmEngine.obterVendedorPorUsername(username);
+    if (!vendedor || vendedor.ativo === false) {
+      const err = new Error(`O usuário "${username}" não possui vínculo comercial ativo em crm_vendedores.`);
+      err.status = 403;
+      err.title = 'Vendedor Sem Vínculo no CRM';
+      err.detail = `O usuário "${username}" não possui vínculo comercial ativo em crm_vendedores.`;
+      err.code = 'FORBIDDEN_CRM';
+      throw err;
+    }
+
+    if (user.vendorCode && String(user.vendorCode).trim() !== vendedor.cod_vendedor) {
+      console.warn(`⚠️ [CRM RBAC] Divergência de vendorCode no JWT de "${username}": JWT=${user.vendorCode} vs crm_vendedores=${vendedor.cod_vendedor}. Utilizando crm_vendedores.`);
+    }
+
+    const crmUser = {
+      ...user,
+      username,
+      role: 'vendedor',
+      isAdmin: false,
+      cod_vendedor: vendedor.cod_vendedor,
+      nome_vendedor: vendedor.nome,
+      meta_mensal: vendedor.meta_mensal
+    };
+    const crmScope = montarEscopoCrm(crmUser);
+    return { crmUser, crmScope };
+  }
+
+  const err = new Error('Seu perfil de acesso não possui autorização para o módulo de CRM Comercial.');
+  err.status = 403;
+  err.title = 'Acesso Proibido';
+  err.detail = 'Seu perfil de acesso não possui autorização para o módulo de CRM Comercial.';
+  err.code = 'FORBIDDEN_CRM';
+  throw err;
+}
+
+/**
  * Middleware: Autorização e resolução de vínculo comercial no CRM
  * - Admin ('alexandre', role 'admin' ou 'diretoria'): acesso total
  * - Vendedor (role 'vendedor'): exige permissão 'crm' no cadastro e vínculo ativo em crm_vendedores por username_portal
@@ -97,82 +200,16 @@ function isCrmAdmin(user) {
  */
 async function requireCrmAccess(req, res, next) {
   try {
-    const user = req.user;
-    if (!user) {
-      return sendRfcError(res, {
-        status: 401,
-        title: 'Não Autenticado',
-        detail: 'Usuário não identificado na requisição.',
-        code: 'UNAUTHENTICATED'
-      });
-    }
-
-    const username = String(user.username || '').trim().toLowerCase();
-    const role = String(user.role || '').trim().toLowerCase();
-
-    if (isCrmAdmin(user)) {
-      req.crmUser = {
-        ...user,
-        username,
-        role: role || 'admin',
-        isAdmin: true,
-        cod_vendedor: null,
-        nome_vendedor: user.name || 'Alexandre'
-      };
-      return next();
-    }
-
-    if (role === 'vendedor') {
-      const perms = Array.isArray(user.permissions)
-        ? user.permissions.map(p => String(p).trim().toLowerCase())
-        : [];
-      if (!perms.includes('crm')) {
-        return sendRfcError(res, {
-          status: 403,
-          title: 'Acesso Proibido',
-          detail: 'Seu usuário não possui a permissão "crm" habilitada. Solicite a liberação ao administrador.',
-          code: 'FORBIDDEN_CRM'
-        });
-      }
-
-      const vendedor = await crmEngine.obterVendedorPorUsername(username);
-      if (!vendedor || vendedor.ativo === false) {
-        return sendRfcError(res, {
-          status: 403,
-          title: 'Vendedor Sem Vínculo no CRM',
-          detail: `O usuário "${username}" não possui vínculo comercial ativo em crm_vendedores.`,
-          code: 'FORBIDDEN_CRM'
-        });
-      }
-
-      if (user.vendorCode && String(user.vendorCode).trim() !== vendedor.cod_vendedor) {
-        console.warn(`⚠️ [CRM RBAC] Divergência de vendorCode no JWT de "${username}": JWT=${user.vendorCode} vs crm_vendedores=${vendedor.cod_vendedor}. Utilizando crm_vendedores.`);
-      }
-
-      req.crmUser = {
-        ...user,
-        username,
-        role: 'vendedor',
-        isAdmin: false,
-        cod_vendedor: vendedor.cod_vendedor,
-        nome_vendedor: vendedor.nome,
-        meta_mensal: vendedor.meta_mensal
-      };
-      return next();
-    }
-
-    return sendRfcError(res, {
-      status: 403,
-      title: 'Acesso Proibido',
-      detail: 'Seu perfil de acesso não possui autorização para o módulo de CRM Comercial.',
-      code: 'FORBIDDEN_CRM'
-    });
+    const { crmUser, crmScope } = await resolverAcessoCrm(req.user);
+    req.crmUser = crmUser;
+    req.crmScope = crmScope;
+    return next();
   } catch (err) {
     return sendRfcError(res, {
-      status: 500,
-      title: 'Erro ao validar acesso ao CRM',
-      detail: err.message,
-      code: 'CRM_AUTH_ERROR'
+      status: err.status || 500,
+      title: err.title || 'Erro ao validar acesso ao CRM',
+      detail: err.detail || err.message,
+      code: err.code || 'CRM_AUTH_ERROR'
     });
   }
 }
@@ -181,25 +218,8 @@ async function requireCrmAccess(req, res, next) {
  * Middleware: Define o escopo de proprietário (req.crmScope) para filtragem server-side
  */
 function scopeByOwner(req, res, next) {
-  if (req.crmUser && req.crmUser.isAdmin) {
-    req.crmScope = {
-      all: true,
-      codVendedor: null,
-      codigosLeitura: null,
-      nomeVendedor: null,
-      username: req.crmUser.username,
-      role: req.crmUser.role || 'admin'
-    };
-  } else {
-    const cod = req.crmUser ? req.crmUser.cod_vendedor : null;
-    req.crmScope = {
-      all: false,
-      codVendedor: cod,
-      codigosLeitura: cod ? [cod] : [],
-      nomeVendedor: req.crmUser ? req.crmUser.nome_vendedor : null,
-      username: req.crmUser ? req.crmUser.username : '',
-      role: 'vendedor'
-    };
+  if (!req.crmScope) {
+    req.crmScope = montarEscopoCrm(req.crmUser);
   }
   return next();
 }
@@ -1268,4 +1288,39 @@ router.post('/deals/:id/propostas/:revisao/email', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/bi/crm/deals/:id/conversas
+ * Lista as conversas do WhatsApp vinculadas ao deal (autenticado JWT com escopo)
+ */
+router.get('/deals/:id/conversas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deal = await crmEngine.obterDealPorId(id, req.crmScope);
+    if (!deal) {
+      return sendRfcError(res, {
+        status: 404,
+        title: 'Negócio Não Encontrado',
+        detail: `Negócio #${id} não foi encontrado no sistema ou sem permissão.`,
+        code: 'DEAL_NOT_FOUND'
+      });
+    }
+
+    const { listarVinculosDeal } = require('./crm_integracao_whatsapp');
+    const vinculos = await listarVinculosDeal(id);
+    return res.json({
+      success: true,
+      data: vinculos
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao listar conversas do WhatsApp do negócio',
+      detail: err.message,
+      code: err.code || 'LISTAR_CONVERSAS_ERROR'
+    });
+  }
+});
+
 module.exports = router;
+module.exports.resolverAcessoCrm = resolverAcessoCrm;
+module.exports.isCrmAdmin = isCrmAdmin;
