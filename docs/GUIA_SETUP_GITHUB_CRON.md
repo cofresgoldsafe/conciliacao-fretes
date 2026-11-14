@@ -19,7 +19,7 @@ As variáveis foram geradas e cadastradas no repositório GitHub (`Settings > Se
 | Secret Name | Valor Cadastrado | Status |
 | :--- | :--- | :--- |
 | `API_BASE_URL` | `https://conciliacao-fretes.onrender.com` | ✅ **Configurado** |
-| `CRON_SECRET` | `bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411` | ✅ **Configurado** |
+| `CRON_SECRET` | (definido no GitHub e no Render; nunca escrever o valor aqui) | ✅ **Configurado** |
 
 ---
 
@@ -30,7 +30,7 @@ Para que a API em produção autorize as requisições do GitHub Actions:
 3. No menu lateral, clique em **`Environment`**.
 4. Clique em **`Add Environment Variable`**:
    - **Key:** `CRON_SECRET`
-   - **Value:** `bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`
+   - **Value:** (definido no GitHub e no Render; nunca escrever o valor aqui)
 5. Clique em **`Save Changes`** (o Render fará redeploy automático com a variável ativa em ~60s).
 
 ---

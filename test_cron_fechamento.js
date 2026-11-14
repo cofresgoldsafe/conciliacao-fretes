@@ -213,29 +213,15 @@ async function main() {
       assert.strictEqual(data.ok, false);
     });
 
-    await runTestAsync('4.8 - sync-nfe-central com segredo canônico via x-cron-secret é autorizado (202 ou 409)', async () => {
-      const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-cron-secret': app.CANONICAL_CRON_SECRET
-        },
-        body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
-      });
-      assert([202, 409].includes(fetchRes.status), `Status esperado 202 ou 409, recebido: ${fetchRes.status}`);
-      const data = await fetchRes.json();
-      assert(data.ok === true || data.executando === true);
-    });
-
-    await runTestAsync('4.9 - sync-nfe-central com segredo canônico via Bearer mesmo sem process.env.CRON_SECRET é aceito', async () => {
+    await runTestAsync('4.8 - sync-nfe-central com segredo via x-cron-secret é autorizado (202 ou 409)', async () => {
       const backupSecret = process.env.CRON_SECRET;
-      delete process.env.CRON_SECRET;
+      process.env.CRON_SECRET = 'segredo_de_teste_cron_crm';
       try {
         const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${app.CANONICAL_CRON_SECRET}`
+            'x-cron-secret': 'segredo_de_teste_cron_crm'
           },
           body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
         });
@@ -247,12 +233,48 @@ async function main() {
       }
     });
 
-    runTest('4.10 - validarSegredoCron valida adequadamente segredo canônico e do ambiente', () => {
-      assert.strictEqual(app.validarSegredoCron(null), false);
-      assert.strictEqual(app.validarSegredoCron(''), false);
-      assert.strictEqual(app.validarSegredoCron('token_invalido'), false);
-      assert.strictEqual(app.validarSegredoCron(app.CANONICAL_CRON_SECRET), true);
-      assert.strictEqual(app.validarSegredoCron(`  ${app.CANONICAL_CRON_SECRET}  `), true);
+    await runTestAsync('4.9 - sync-nfe-central sem process.env.CRON_SECRET rejeita Bearer com qualquer token (403)', async () => {
+      const backupSecret = process.env.CRON_SECRET;
+      process.env.CRON_SECRET = 'segredo_de_teste_cron_crm';
+      try {
+        delete process.env.CRON_SECRET;
+        const fetchRes = await fetch(`http://127.0.0.1:${port}/api/admin/jobs/sync-nfe-central`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer qualquer_token_invalido_ou_antigo'
+          },
+          body: JSON.stringify({ limiteXml: 1, diasRetroativos: 1 })
+        });
+        assert.strictEqual(fetchRes.status, 403, 'Deve retornar 403 Forbidden sem CRON_SECRET');
+        const data = await fetchRes.json();
+        assert.strictEqual(data.ok, false);
+      } finally {
+        process.env.CRON_SECRET = backupSecret;
+      }
+    });
+
+    runTest('4.10 - validarSegredoCron valida segredo de teste e rejeita quando sem process.env.CRON_SECRET', () => {
+      const backupSecret = process.env.CRON_SECRET;
+      process.env.CRON_SECRET = 'segredo_de_teste_cron_crm';
+      try {
+        assert.strictEqual(app.validarSegredoCron(null), false);
+        assert.strictEqual(app.validarSegredoCron(''), false);
+        assert.strictEqual(app.validarSegredoCron('token_invalido'), false);
+        assert.strictEqual(app.validarSegredoCron('segredo_de_teste_cron_crm'), true);
+        assert.strictEqual(app.validarSegredoCron('  segredo_de_teste_cron_crm  '), true);
+
+        delete process.env.CRON_SECRET;
+        assert.strictEqual(app.validarSegredoCron('segredo_de_teste_cron_crm'), false);
+        assert.strictEqual(app.validarSegredoCron('qualquer_outro_token'), false);
+        assert.strictEqual(app.validarSegredoCron(''), false);
+        assert.strictEqual(app.validarSegredoCron(null), false);
+
+        process.env.CRON_SECRET = '';
+        assert.strictEqual(app.validarSegredoCron('segredo_de_teste_cron_crm'), false);
+      } finally {
+        process.env.CRON_SECRET = backupSecret;
+      }
     });
   } finally {
     server.close();

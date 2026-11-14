@@ -920,8 +920,8 @@ O **Gemini-Cli** e uma plataforma integrada de gestao operacional, financeira e 
 53. [ ] **Configuração das Secrets de Produção e Homologação E2E do GitHub Actions Cron (`API_BASE_URL` e `CRON_SECRET`):**
     - **Status:** Secrets cadastradas no GitHub Actions; pendente apenas inserção de `CRON_SECRET` nas Environment Variables do Render pelo administrador.
     - **Progresso:**
-      1. [x] *Cadastro no GitHub Actions:* `API_BASE_URL` (`https://conciliacao-fretes.onrender.com`) e `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) cadastrados com sucesso via GitHub CLI (`gh secret set`).
-      2. [ ] *Cadastro no Servidor / Render:* Incluir `CRON_SECRET` (`bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411`) nas Environment Variables do serviço `conciliacao-fretes` no painel do Render (`dashboard.render.com`).
+      1. [x] *Cadastro no GitHub Actions:* `API_BASE_URL` (`https://conciliacao-fretes.onrender.com`) e `CRON_SECRET` (`[removido]`) cadastrados com sucesso via GitHub CLI (`gh secret set`).
+      2. [ ] *Cadastro no Servidor / Render:* Incluir `CRON_SECRET` (`[removido]`) nas Environment Variables do serviço `conciliacao-fretes` no painel do Render (`dashboard.render.com`).
       3. [ ] *Disparo de Teste em Produção:* Acionar via `gh workflow run fechamento_mensal.yml -f force=true` ou botão `Run workflow` no GitHub Actions e validar consolidação com HTTP 200.
 54. [x] **Módulo de Upload, Gestão e Geração de Holerites Personalizados (GSI, OAÇO e Sem Registro):**
     - **Visão Geral e Propósito:**
