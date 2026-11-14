@@ -43,7 +43,11 @@ jobs:
         run: |
           BASE_URL="${API_URL:-https://conciliacao-fretes.onrender.com}"
           ENDPOINT="${BASE_URL%/}/api/admin/jobs/sync-nfe-central"
-          CRON_TOKEN="${CRON_SECRET:-bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411}"
+          CRON_TOKEN="${CRON_SECRET}"
+          if [ -z "$CRON_TOKEN" ]; then
+            echo "::error::CRON_SECRET não configurado nos secrets do GitHub Actions."
+            exit 1
+          fi
           echo "Disparando POST para: $ENDPOINT"
 
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ENDPOINT" \

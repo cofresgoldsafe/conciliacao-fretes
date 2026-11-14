@@ -398,30 +398,23 @@ function requireFinanceiroAccess(req, res, next) {
   return res.status(403).json({ success: false, message: 'Acesso negado. Privilégios insuficientes para área financeira.' });
 }
 
-// Constante com o segredo canônico do Cron compartilhado com GitHub Actions
-const CANONICAL_CRON_SECRET = 'bcf11954581ec20c3a5d4d660ad44c480f4f60a66bd245b0814ce10e9385a411';
-
 /**
  * Validação segura (tempo constante) de tokens Cron (GitHub Actions / Webhooks).
  * Compara em tempo constante para mitigar ataques de temporização (timing attacks).
- * Aceita o segredo definido em process.env.CRON_SECRET ou o segredo canônico compartilhado.
+ * Aceita exclusivamente o segredo definido em process.env.CRON_SECRET.
  */
 function validarSegredoCron(providedToken) {
   if (!providedToken) return false;
   const tokenLimpo = String(providedToken).trim();
   if (!tokenLimpo) return false;
 
-  const secretsValidos = [
-    process.env.CRON_SECRET,
-    CANONICAL_CRON_SECRET
-  ].filter(Boolean).map(s => String(s).trim());
+  const cronSecret = process.env.CRON_SECRET ? String(process.env.CRON_SECRET).trim() : '';
+  if (!cronSecret) return false;
 
   const bufProvided = Buffer.from(tokenLimpo);
-  for (const secret of secretsValidos) {
-    const bufExpected = Buffer.from(secret);
-    if (bufProvided.length === bufExpected.length && crypto.timingSafeEqual(bufProvided, bufExpected)) {
-      return true;
-    }
+  const bufExpected = Buffer.from(cronSecret);
+  if (bufProvided.length === bufExpected.length && crypto.timingSafeEqual(bufProvided, bufExpected)) {
+    return true;
   }
   return false;
 }
@@ -7953,7 +7946,6 @@ app.startNfeCentralSyncJob = startNfeCentralSyncJob;
 app.dispararJobSincronizacaoDrive18h = dispararJobSincronizacaoDrive18h;
 app.startDriveXmlSyncJob18h = startDriveXmlSyncJob18h;
 app.validarSegredoCron = validarSegredoCron;
-app.CANONICAL_CRON_SECRET = CANONICAL_CRON_SECRET;
 app.obterCnpjMatriz = obterCnpjMatriz;
 app.consultarCnpjPublico = consultarCnpjPublico;
 app.formatarDataIso = formatarDataIso;
