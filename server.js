@@ -1253,7 +1253,7 @@ app.post('/api/admin/users/save', requireAuth, requireRole('admin'), async (req,
       return res.status(400).json({ success: false, message: 'Por favor, informe um endereço de e-mail válido (ex: nome@empresa.com.br).' });
     }
 
-    const allowedTabs = ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'analista-fin', 'bi', 'tarefas', 'configuracoes'];
+    const allowedTabs = ['logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'analista-fin', 'bi', 'tarefas', 'configuracoes', 'crm'];
     const tabSlugRegex = /^[a-z0-9_-]{2,50}$/;
     let cleanPerms = Array.isArray(permissions) 
       ? permissions.map(p => String(p).trim().toLowerCase()).filter(p => allowedTabs.includes(p) || tabSlugRegex.test(p)) 

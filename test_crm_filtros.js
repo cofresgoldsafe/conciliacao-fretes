@@ -39,20 +39,33 @@ console.log('   ✅ Opções de status e atributos aria-label no DOM validados c
 console.log('2️⃣  Teste: Remoção de "Diretoria" dos Vendedores Operacionais');
 const jsContent = fs.readFileSync(path.join(__dirname, 'public', 'js', 'crm.js'), 'utf-8');
 const routesContent = fs.readFileSync(path.join(__dirname, 'crm_routes.js'), 'utf-8');
+const crmVendedores = require('./crm_vendedores');
 
 // DEFAULT_VENDEDORES não deve conter 'Diretoria'
 const defaultVendMatch = jsContent.match(/const DEFAULT_VENDEDORES = \[([\s\S]*?)\];/);
 assert.ok(defaultVendMatch, 'DEFAULT_VENDEDORES deve existir em crm.js');
 assert.ok(!defaultVendMatch[1].includes("'Diretoria'"), 'DEFAULT_VENDEDORES não pode conter Diretoria');
 
-// crm_routes.js não deve retornar Diretoria no GET /vendedores
-const routesVendMatch = routesContent.match(/router\.get\('\/vendedores'[\s\S]*?data: \[([\s\S]*?)\]/);
-assert.ok(routesVendMatch, 'GET /vendedores deve existir em crm_routes.js');
-assert.ok(!routesVendMatch[1].includes("'Diretoria'"), 'Endpoint de vendedores não pode conter Diretoria');
+// crm_routes.js deve expor GET /vendedores delegando ao catálogo ativo sem Diretoria
+assert.ok(/router\.get\(['"]\/vendedores['"]/.test(routesContent), 'GET /vendedores deve existir em crm_routes.js');
+crmVendedores.restaurarFallbackPadrao();
+crmVendedores.listarVendedores().then((vendedoresAtivos) => {
+  assert.ok(Array.isArray(vendedoresAtivos) && vendedoresAtivos.length > 0, 'listarVendedores deve retornar lista ativa');
+  assert.ok(
+    vendedoresAtivos.every(v => String(v.nome || '').trim().toLowerCase() !== 'diretoria'),
+    'Catálogo de vendedores operacionais não pode conter Diretoria'
+  );
+}).catch(err => {
+  console.error(err);
+  process.exit(1);
+});
 
 // selectFilter no crm.js filtra 'diretoria'
-assert.ok(jsContent.includes("nomesVendedores.filter(v => String(v).trim().toLowerCase() !== 'diretoria')"),
-          'loadVendedoresOptions deve filtrar Diretoria do selectFilter');
+assert.ok(
+  jsContent.includes("v.nome.toLowerCase() !== 'diretoria'") ||
+  jsContent.includes("String(v).trim().toLowerCase() !== 'diretoria'"),
+  'loadVendedoresOptions deve filtrar Diretoria do selectFilter'
+);
 console.log('   ✅ Opção Diretoria removida de todos os seletores de vendedores operacionais.');
 
 // 3. Teste Funcional: Mapeamento de data_fechamento_real

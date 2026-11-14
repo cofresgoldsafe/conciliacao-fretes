@@ -18,6 +18,8 @@
 
   // Estado Interno do Módulo
   let isInitialized = false;
+  let crmMe = null;
+  let crmVendedoresCatalog = [];
   let deals = [];
   let currentDeal = null;
   let currentItems = [];
@@ -47,9 +49,19 @@
     'Figueiredo'
   ];
 
-  // Armazenamento em Cache Local Resiliente
+  // Armazenamento em Cache Local Resiliente (isolado por username do crmMe)
   const STORAGE_KEY = 'gsi_crm_deals_cache';
   const ACTIVITIES_KEY_PREFIX = 'gsi_crm_activities_';
+
+  function getDealsStorageKey() {
+    const uname = (crmMe && crmMe.username) ? String(crmMe.username).trim().toLowerCase() : '';
+    return uname ? `${STORAGE_KEY}_${uname}` : null;
+  }
+
+  function getActivitiesStorageKey(dealId) {
+    const uname = (crmMe && crmMe.username) ? String(crmMe.username).trim().toLowerCase() : '';
+    return uname ? `${ACTIVITIES_KEY_PREFIX}${uname}_${dealId}` : null;
+  }
 
   /**
    * Obtém token JWT ativo
@@ -75,7 +87,7 @@
   }
 
   /**
-   * Retorna usuário autenticado
+   * Retorna usuário autenticado sem fallback hardcoded para 'alexandre'
    */
   function getCurrentUser() {
     try {
@@ -83,10 +95,12 @@
       if (rawSession) {
         const sess = JSON.parse(rawSession);
         if (sess && sess.username) return sess;
+        if (sess && sess.user && sess.user.username) return sess.user;
       }
-      if (window.currentUser) return window.currentUser;
+      if (crmMe && crmMe.username) return crmMe;
+      if (window.currentUser && window.currentUser.username) return window.currentUser;
     } catch {}
-    return { username: 'alexandre', name: 'Alexandre' };
+    return { username: '', name: '' };
   }
 
   /**
@@ -291,7 +305,8 @@
       clienteCod: d.cliente_cod || d.clienteCod || '',
       clienteLoja: d.cliente_loja || d.clienteLoja || '01',
       clienteCnpj: d.cliente_cnpj_fmt || d.cliente_cnpj || d.clienteCnpj || '',
-      vendedor: d.nome_vendedor || d.vendedor || d.cod_vendedor || 'Alexandre',
+      cod_vendedor: d.cod_vendedor || d.codVendedor || '',
+      vendedor: d.nome_vendedor || d.vendedor || d.cod_vendedor || '',
       fase: normalizeStageKey(d.estagio || d.fase),
       valor: parseFloat(d.valor_total || d.valor) || 0,
       condPgto: custom.condPgto || d.cond_pgto || d.condPgto || '28 DDL',
@@ -534,25 +549,27 @@
    * Salva negócios localmente como cache offline resiliente
    */
   function saveDealsLocal(items) {
+    const key = getDealsStorageKey();
+    if (!key) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      localStorage.setItem(key, JSON.stringify(items));
     } catch {}
   }
 
   /**
-   * Carrega negócios do cache local
+   * Carrega negócios do cache local (sem injetar dados mock falsos e somente com crmMe carregado)
    */
   function loadDealsLocal() {
+    const key = getDealsStorageKey();
+    if (!key) return [];
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
-    const initial = getInitialMockDeals();
-    saveDealsLocal(initial);
-    return initial;
+    return [];
   }
 
   /**
@@ -572,50 +589,97 @@
   }
 
   /**
-   * Salva atividades de um negócio localmente garantindo ordenação decrescente
+   * Salva atividades de um negócio localmente garantindo ordenação decrescente e isolamento por usuário
    */
   function saveActivitiesLocal(dealId, activities) {
+    const key = getActivitiesStorageKey(dealId);
+    if (!key) return;
     try {
       const sorted = sortActivitiesDesc(activities);
-      localStorage.setItem(ACTIVITIES_KEY_PREFIX + dealId, JSON.stringify(sorted));
+      localStorage.setItem(key, JSON.stringify(sorted));
     } catch {}
   }
 
   /**
-   * Carrega atividades de um negócio com autocura de ordenação
+   * Carrega atividades de um negócio sem injetar atividades falsas de outros usuários
    */
   function loadActivitiesLocal(dealId) {
+    const key = getActivitiesStorageKey(dealId);
+    if (!key) return [];
     try {
-      const raw = localStorage.getItem(ACTIVITIES_KEY_PREFIX + dealId);
+      const raw = localStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           const sorted = sortActivitiesDesc(parsed);
           saveActivitiesLocal(dealId, sorted);
           return sorted;
         }
       }
     } catch {}
-    const mock = [
-      {
-        id: 'act-2',
-        dealId,
-        tipo: 'WHATSAPP',
-        descricao: 'Enviada proposta comercial em PDF via WhatsApp para o comprador responsável.',
-        autor: 'Juliana',
-        createdAt: new Date(Date.now() - 1 * 86400000).toISOString()
-      },
-      {
-        id: 'act-1',
-        dealId,
-        tipo: 'NOTA',
-        descricao: 'Oportunidade cadastrada no CRM Comercial com itens cotados iniciais.',
-        autor: 'Alexandre',
-        createdAt: new Date(Date.now() - 2 * 86400000).toISOString()
+    return [];
+  }
+
+  /**
+   * Consulta GET /api/bi/crm/me para obter o perfil RBAC e escopo do usuário no CRM
+   */
+  async function loadCrmMe() {
+    try {
+      const token = getToken();
+      const res = await fetch('/api/bi/crm/me', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (res.status === 401 || res.status === 403) {
+        const errData = await res.json().catch(() => ({}));
+        const msg = errData.detail || errData.message || 'Seu perfil não possui autorização para acessar o CRM Comercial.';
+        const container = document.getElementById('crmKanbanContainer');
+        if (container) {
+          container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; color: #f87171; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px;"><strong>🔒 Acesso Restrito ao CRM Comercial</strong><div style="margin-top: 8px; color: var(--text-muted); font-size: 0.9rem;">${escapeHtml(msg)}</div></div>`;
+        }
+        return null;
       }
-    ];
-    saveActivitiesLocal(dealId, mock);
-    return mock;
+      if (res.ok) {
+        const json = await res.json();
+        crmMe = json.data || null;
+        return crmMe;
+      }
+    } catch (err) {
+      console.warn('⚠️ [CRM Comercial] Falha ao carregar /api/bi/crm/me:', err.message);
+    }
+    return null;
+  }
+
+  /**
+   * Aplica visibilidade condicional de controles de acordo com o perfil (Admin vs Vendedor)
+   */
+  function applyRoleVisibility() {
+    const isAdmin = !crmMe || Boolean(crmMe.isAdmin);
+    const selectFilter = document.getElementById('crmFilterVendedor');
+    const selectModal = document.getElementById('crmSelectVendedor');
+    const btnSyncProd = document.getElementById('btnCrmSyncProdutos');
+    const btnSyncTransp = document.getElementById('btnCrmSyncTransportadoras');
+
+    if (!isAdmin && crmMe && crmMe.cod_vendedor) {
+      if (selectFilter) {
+        selectFilter.value = crmMe.cod_vendedor;
+        selectFilter.disabled = true;
+        selectFilter.title = `Escopo fixo do vendedor: ${crmMe.nome_vendedor || crmMe.cod_vendedor}`;
+      }
+      if (selectModal) {
+        selectModal.value = crmMe.cod_vendedor;
+        selectModal.disabled = true;
+      }
+      if (btnSyncProd) btnSyncProd.style.display = 'none';
+      if (btnSyncTransp) btnSyncTransp.style.display = 'none';
+    } else {
+      if (selectFilter) {
+        selectFilter.disabled = false;
+        selectFilter.removeAttribute('title');
+      }
+      if (selectModal) selectModal.disabled = false;
+      if (btnSyncProd) btnSyncProd.style.display = '';
+      if (btnSyncTransp) btnSyncTransp.style.display = '';
+    }
   }
 
   /**
@@ -625,7 +689,9 @@
     console.log('💼 [CRM Comercial] Inicializando módulo CRM nativo...');
     renderKanbanSkeleton();
     setupEventListeners();
+    await loadCrmMe();
     await loadVendedoresOptions();
+    applyRoleVisibility();
     await loadDeals();
     setDealViewMode(dealViewMode);
     isInitialized = true;
@@ -664,7 +730,7 @@
   }
 
   /**
-   * Carrega opções do seletor de vendedores
+   * Carrega opções do seletor de vendedores (com value = cod_vendedor e label = nome)
    */
   async function loadVendedoresOptions() {
     const selectFilter = document.getElementById('crmFilterVendedor');
@@ -672,7 +738,12 @@
     const selectFilterCliente = document.getElementById('crmClienteFilterVendedor');
     const selectModalCliente = document.getElementById('crmClienteSelectVendedor');
 
-    let lista = DEFAULT_VENDEDORES;
+    let lista = [
+      { codigo: '000004', nome: 'Figueiredo' },
+      { codigo: '000064', nome: 'Andrea' },
+      { codigo: '000074', nome: 'Juliana' },
+      { codigo: '000001', nome: 'Alexandre' }
+    ];
 
     try {
       const token = getToken();
@@ -689,45 +760,53 @@
       // Fallback gracioso
     }
 
-    const nomesVendedores = lista.map(v => {
+    crmVendedoresCatalog = lista.map(v => {
       if (typeof v === 'object' && v !== null) {
-        return v.nome || v.codigo || '';
+        return {
+          codigo: String(v.codigo || v.cod_vendedor || v.nome || '').trim(),
+          nome: String(v.nome || v.codigo || '').trim(),
+          meta_mensal: v.meta_mensal !== undefined ? v.meta_mensal : null
+        };
       }
-      return String(v);
-    }).filter(Boolean);
+      return { codigo: String(v).trim(), nome: String(v).trim(), meta_mensal: null };
+    }).filter(v => v.codigo && v.nome);
 
-    // 1. Filtro do Kanban e Listagem (Proprietário/Vendedor) - sem Diretoria
+    // 1. Filtro do Kanban e Listagem (Proprietário/Vendedor) - value = cod_vendedor
     if (selectFilter) {
-      const current = selectFilter.value || 'TODOS';
-      const vendedoresDeals = nomesVendedores.filter(v => String(v).trim().toLowerCase() !== 'diretoria');
+      const current = (crmMe && !crmMe.isAdmin && crmMe.cod_vendedor)
+        ? crmMe.cod_vendedor
+        : (selectFilter.value || 'TODOS');
+      const vendedoresDeals = crmVendedoresCatalog.filter(v => v.nome.toLowerCase() !== 'diretoria');
       selectFilter.innerHTML = '<option value="TODOS">Todos os Vendedores</option>' +
-        vendedoresDeals.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        vendedoresDeals.map(v => `<option value="${escapeHtml(v.codigo)}" ${v.codigo === current ? 'selected' : ''}>${escapeHtml(v.nome)}</option>`).join('');
     }
 
-    // 2. Select do Modal de Oportunidade
+    // 2. Select do Modal de Oportunidade - value = cod_vendedor
     if (selectModal) {
-      const current = selectModal.value || '';
+      const current = (crmMe && !crmMe.isAdmin && crmMe.cod_vendedor)
+        ? crmMe.cod_vendedor
+        : (selectModal.value || '');
       selectModal.innerHTML = '<option value="">Selecione o Vendedor Responsável...</option>' +
-        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        crmVendedoresCatalog.map(v => `<option value="${escapeHtml(v.codigo)}" ${(v.codigo === current || v.nome === current) ? 'selected' : ''}>${escapeHtml(v.nome)}</option>`).join('');
     }
 
     // 3. Filtro da Tabela de Clientes
     if (selectFilterCliente) {
       const current = selectFilterCliente.value || 'TODOS';
       selectFilterCliente.innerHTML = '<option value="TODOS">Todos os Vendedores</option>' +
-        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        crmVendedoresCatalog.map(v => `<option value="${escapeHtml(v.nome)}" ${v.nome === current ? 'selected' : ''}>${escapeHtml(v.nome)}</option>`).join('');
     }
 
     // 4. Select do Modal de Cliente
     if (selectModalCliente) {
       const current = selectModalCliente.value || '';
       selectModalCliente.innerHTML = '<option value="">Selecione o Vendedor Responsável...</option>' +
-        nomesVendedores.map(v => `<option value="${escapeHtml(v)}" ${v === current ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('');
+        crmVendedoresCatalog.map(v => `<option value="${escapeHtml(v.nome)}" ${v.nome === current ? 'selected' : ''}>${escapeHtml(v.nome)}</option>`).join('');
     }
   }
 
   /**
-   * Carrega lista de negócios (Deals) via API com fallback para cache local
+   * Carrega lista de negócios (Deals) via API sem cair em mocks quando o banco retorna 0 negócios
    */
   async function loadDeals() {
     const btnRefresh = document.getElementById('btnCrmRefresh');
@@ -758,12 +837,10 @@
         else if (data && Array.isArray(data.data)) rawList = data.data;
         else if (data && Array.isArray(data.deals)) rawList = data.deals;
 
-        if (rawList.length > 0) {
-          deals = rawList.map(mapDealFromApi).filter(Boolean);
-        } else {
-          deals = loadDealsLocal();
-        }
+        deals = rawList.map(mapDealFromApi).filter(Boolean);
         saveDealsLocal(deals);
+      } else if (res.status === 401 || res.status === 403) {
+        deals = [];
       } else {
         console.warn('⚠️ [CRM Comercial] Endpoint /api/bi/crm/deals retornou status ' + res.status + '. Carregando cache local.');
         deals = loadDealsLocal();
@@ -813,9 +890,13 @@
     const ontemStr = formatBrDate(ontemData);
 
     return deals.filter(deal => {
-      // Filtro de vendedor
-      if (filterVendedor !== 'TODOS' && deal.vendedor !== filterVendedor) {
-        return false;
+      // Filtro de vendedor (compara por código Protheus ou nome de exibição)
+      if (filterVendedor !== 'TODOS') {
+        const matchCod = deal.cod_vendedor && String(deal.cod_vendedor).trim() === String(filterVendedor).trim();
+        const matchNome = deal.vendedor && String(deal.vendedor).trim().toLowerCase() === String(filterVendedor).trim().toLowerCase();
+        if (!matchCod && !matchNome) {
+          return false;
+        }
       }
 
       // Filtro de status: ABERTAS (não ganho e não perdido), GANHO, GANHO_HOJE, GANHO_ONTEM, PERDIDO, TODOS
@@ -1240,6 +1321,9 @@
     const oldStage = deal.fase;
     deal.fase = newStage;
     deal.updatedAt = new Date().toISOString();
+    if (newStage === 'GANHO') {
+      deal.dataFechamentoReal = deal.dataFechamentoReal || new Date().toISOString();
+    }
 
     if (newStage === 'PERDIDO' && reasonData) {
       deal.motivoPerda = reasonData.motivo || '';
@@ -1330,6 +1414,50 @@
     if (kpiTotalGanho) kpiTotalGanho.textContent = formatCurrency(totalGanho);
     if (kpiTicketMedio) kpiTicketMedio.textContent = formatCurrency(ticketMedio);
     if (kpiTotalDeals) kpiTotalDeals.textContent = `${deals.length} oportunidades`;
+
+    updateMetaKpiCard();
+  }
+
+  /**
+   * Atualiza o card de Meta do Mês (Realizado / Meta e barra de progresso) via GET /api/bi/crm/meta
+   */
+  async function updateMetaKpiCard() {
+    const elMetaValor = document.getElementById('crmKpiMetaMensal');
+    const elMetaSub = document.getElementById('crmKpiMetaSub');
+    const elMetaBar = document.getElementById('crmKpiMetaBar');
+    if (!elMetaValor && !elMetaSub && !elMetaBar) return;
+
+    try {
+      const token = getToken();
+      const filtroVendedor = document.getElementById('crmFilterVendedor')?.value || 'TODOS';
+      const res = await fetch('/api/bi/crm/meta', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const d = json.data || {};
+
+      let alvo = d;
+      if (filtroVendedor && filtroVendedor !== 'TODOS' && Array.isArray(d.vendedores)) {
+        const encontrado = d.vendedores.find(v => (v.cod_vendedor || v.codigo) === filtroVendedor);
+        alvo = encontrado || { meta_mensal: 0, realizado: 0, percentual: null, qtd_ganhos: 0 };
+      }
+
+      const metaMensal = Number(alvo.meta_mensal) || 0;
+      const realizado = Number(alvo.realizado) || 0;
+      const qtdGanhos = Number(alvo.qtd_ganhos) || 0;
+
+      if (metaMensal > 0) {
+        const pct = alvo.percentual !== null && alvo.percentual !== undefined ? Number(alvo.percentual) : 0;
+        if (elMetaValor) elMetaValor.textContent = `${formatCurrency(realizado)} / ${formatCurrency(metaMensal)}`;
+        if (elMetaSub) elMetaSub.textContent = `${pct.toFixed(1)}% atingido (${qtdGanhos} ganho${qtdGanhos === 1 ? '' : 's'})`;
+        if (elMetaBar) elMetaBar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+      } else {
+        if (elMetaValor) elMetaValor.textContent = `${formatCurrency(realizado)}`;
+        if (elMetaSub) elMetaSub.textContent = `Sem meta atribuída (${qtdGanhos} ganho${qtdGanhos === 1 ? '' : 's'})`;
+        if (elMetaBar) elMetaBar.style.width = '0%';
+      }
+    } catch {}
   }
 
   /**
@@ -1418,13 +1546,26 @@
     const selFaturado = document.getElementById('crmSelectFaturadoPor');
     if (selFaturado) selFaturado.value = '';
 
-    // Vendedor padrão: usuário logado se for vendedor
+    // Vendedor padrão: se vendedor logado, trava no seu código; caso contrário seleciona se coincidir
     const user = getCurrentUser();
     const selectVendedor = document.getElementById('crmSelectVendedor');
-    if (selectVendedor && user && user.username) {
-      const matched = Array.from(selectVendedor.options).find(opt => opt.value.toLowerCase() === user.username.toLowerCase() || opt.value.toLowerCase() === (user.name || '').toLowerCase());
-      if (matched) selectVendedor.value = matched.value;
-      else selectVendedor.value = 'Alexandre';
+    if (selectVendedor) {
+      if (crmMe && !crmMe.isAdmin && crmMe.cod_vendedor) {
+        selectVendedor.value = crmMe.cod_vendedor;
+        selectVendedor.disabled = true;
+      } else {
+        selectVendedor.disabled = false;
+        if (user && user.username) {
+          const matched = Array.from(selectVendedor.options).find(opt =>
+            opt.value.toLowerCase() === user.username.toLowerCase() ||
+            opt.textContent.trim().toLowerCase() === user.username.toLowerCase() ||
+            opt.textContent.trim().toLowerCase() === (user.name || '').toLowerCase()
+          );
+          selectVendedor.value = matched ? matched.value : '';
+        } else {
+          selectVendedor.value = '';
+        }
+      }
     }
 
     renderItensCotadosTable();
@@ -1462,7 +1603,21 @@
       }
     }
 
-    document.getElementById('crmSelectVendedor').value = deal.vendedor || '';
+    const selectVendEdit = document.getElementById('crmSelectVendedor');
+    if (selectVendEdit) {
+      if (crmMe && !crmMe.isAdmin && crmMe.cod_vendedor) {
+        selectVendEdit.value = crmMe.cod_vendedor;
+        selectVendEdit.disabled = true;
+      } else {
+        selectVendEdit.disabled = false;
+        const targetVal = deal.cod_vendedor || deal.vendedor || '';
+        const matchedOpt = Array.from(selectVendEdit.options).find(opt =>
+          opt.value === targetVal ||
+          opt.textContent.trim().toLowerCase() === String(deal.vendedor || '').trim().toLowerCase()
+        );
+        selectVendEdit.value = matchedOpt ? matchedOpt.value : targetVal;
+      }
+    }
     document.getElementById('crmSelectFase').value = deal.fase || 'LEAD';
     // Valor Total NFe é calculado dinamicamente via recalcularTotalNfeOportunidade() pós-carregamento dos campos comerciais
 
@@ -1862,7 +2017,14 @@
     const clienteCod = document.getElementById('crmInputClienteCod')?.value.trim();
     const clienteLoja = document.getElementById('crmInputClienteLoja')?.value.trim();
     const clienteCnpj = document.getElementById('crmInputClienteCnpj')?.value.trim();
-    const vendedor = document.getElementById('crmSelectVendedor')?.value;
+    const selectVendEl = document.getElementById('crmSelectVendedor');
+    const vendedor = (crmMe && !crmMe.isAdmin && crmMe.cod_vendedor)
+      ? crmMe.cod_vendedor
+      : (selectVendEl?.value || '');
+    const vendCatalogItem = crmVendedoresCatalog.find(v => v.codigo === vendedor || v.nome === vendedor);
+    const vendedorNome = vendCatalogItem
+      ? vendCatalogItem.nome
+      : ((crmMe && !crmMe.isAdmin && crmMe.nome_vendedor) ? crmMe.nome_vendedor : (selectVendEl?.options[selectVendEl.selectedIndex]?.text || vendedor));
     const fase = document.getElementById('crmSelectFase')?.value || 'LEAD';
     const valor = parseNumberPtBr(document.getElementById('crmInputValor')?.value) || recalcularTotalNfeOportunidade() || 0;
 
@@ -1933,9 +2095,9 @@
       clienteLoja,
       cliente_cnpj: clienteCnpj,
       clienteCnpj,
-      nome_vendedor: vendedor,
+      nome_vendedor: vendedorNome,
       cod_vendedor: vendedor,
-      vendedor,
+      vendedor: vendedorNome,
       estagio: fase.toLowerCase(),
       fase,
       valor_total: valor,
@@ -2197,27 +2359,21 @@
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
-        if (list.length > 0) {
-          activities = list.map(a => ({
-            id: String(a.id),
-            dealId: String(a.deal_id || dealId),
-            tipo: (a.tipo || 'NOTA').toUpperCase(),
-            descricao: a.descricao || a.assunto || '',
-            dataAgendamento: a.data_agendada || null,
-            autor: a.responsavel_nome || a.responsavel_usuario || a.autor || 'Alexandre',
-            createdAt: a.created_at || a.createdAt || new Date().toISOString()
-          }));
-        }
+        activities = list.map(a => ({
+          id: String(a.id),
+          dealId: String(a.deal_id || dealId),
+          tipo: (a.tipo || 'NOTA').toUpperCase(),
+          descricao: a.descricao || a.assunto || '',
+          dataAgendamento: a.data_agendada || null,
+          autor: a.responsavel_nome || a.responsavel_usuario || a.autor || '',
+          createdAt: a.created_at || a.createdAt || new Date().toISOString()
+        }));
+        saveActivitiesLocal(dealId, activities);
+      } else {
+        activities = loadActivitiesLocal(dealId);
       }
     } catch {
-      // Fallback
-    }
-
-    if (activities.length === 0) {
       activities = loadActivitiesLocal(dealId);
-    } else {
-      // Sincroniza cache local com os registros oficiais vindos do backend
-      saveActivitiesLocal(dealId, activities);
     }
 
     const sortedActivities = sortActivitiesDesc(activities);
@@ -2317,7 +2473,7 @@
       descricao,
       data_agendada: dataAgendamento || null,
       dataAgendamento,
-      autor: user.name || user.username || 'Alexandre',
+      autor: user.name || user.username || '',
       createdAt: new Date().toISOString()
     };
 
@@ -3150,9 +3306,11 @@
               <button type="button" class="crm-btn-action crm-btn-action-deal btn-deal-cliente" data-id="${id}" title="Criar oportunidade comercial">
                 ➕ Deal
               </button>
+              ${(!crmMe || crmMe.isAdmin) ? `
               <button type="button" class="crm-btn-action crm-btn-action-delete btn-del-cliente" data-id="${id}" data-nome="${nomeRazao}" title="Excluir cliente">
                 🗑️
               </button>
+              ` : ''}
             </div>
           </td>
         </tr>
@@ -3725,7 +3883,9 @@
       btnLimpar._hasListener = true;
       btnLimpar.addEventListener('click', () => {
         if (searchInput) searchInput.value = '';
-        if (filterVend) filterVend.value = 'TODOS';
+        if (filterVend) {
+          filterVend.value = (crmMe && !crmMe.isAdmin && crmMe.cod_vendedor) ? crmMe.cod_vendedor : 'TODOS';
+        }
         if (filterStatus) filterStatus.value = 'ABERTAS';
         dealsPage = 1;
         renderDealsViews();

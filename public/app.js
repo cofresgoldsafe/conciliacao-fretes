@@ -340,9 +340,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Garante que o usuário Alexandre ou Administrador tenha permissão total mesmo com sessão antiga no localStorage
     const isAdmin = (user && user.username && user.username.toLowerCase() === 'alexandre') || (user && user.role === 'admin');
+    const isVendedor = Boolean(user && user.role === 'vendedor');
     let perms = (user && Array.isArray(user.permissions)) ? user.permissions : null;
     if (!perms || isAdmin) {
-      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'analista-fin', 'configuracoes'];
+      perms = ['tarefas', 'logistica', 'consulta', 'vendedores', 'compras', 'financeiro', 'analista-fin', 'configuracoes', 'crm'];
     }
 
     if (mainTabTarefas) mainTabTarefas.style.display = ''; // Sempre visível para todos os colaboradores
@@ -351,13 +352,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mainTabVendedores) mainTabVendedores.style.display = perms.includes('vendedores') ? '' : 'none';
     const mainTabWhatsapp = document.getElementById('mainTabWhatsapp');
     if (mainTabWhatsapp) mainTabWhatsapp.style.display = (isAdmin || perms.includes('whatsapp')) ? '' : 'none';
+    const mainTabCrm = document.getElementById('mainTabCrm');
+    if (mainTabCrm) mainTabCrm.style.display = (isAdmin || (isVendedor && perms.includes('crm'))) ? '' : 'none';
     if (mainTabCompras) mainTabCompras.style.display = perms.includes('compras') ? '' : 'none';
     if (mainTabFinanceiro) mainTabFinanceiro.style.display = perms.includes('financeiro') ? '' : 'none';
     if (mainTabAnalistaFin) mainTabAnalistaFin.style.display = (perms.includes('analista-fin') || perms.includes('financeiro')) ? '' : 'none';
     if (mainTabBi) mainTabBi.style.display = isAdmin ? '' : 'none';
     const btnTabBiCrm = document.getElementById('btnTabBiCrm');
-    if (btnTabBiCrm) btnTabBiCrm.style.display = isAdmin ? '' : 'none';
-    const isVendedor = Boolean(user && user.role === 'vendedor');
+    if (btnTabBiCrm) btnTabBiCrm.style.display = (isAdmin || (isVendedor && perms.includes('crm'))) ? '' : 'none';
     // Vendedores viam Configurações só por causa da sub-aba WhatsApp, que virou aba superior
     if (mainTabConfig) mainTabConfig.style.display = perms.includes('configuracoes') ? '' : 'none';
 
@@ -855,6 +857,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // WHATSAPP abre o painel oficial em nova aba (login único via /whatsapp-sso.html)
       if (btn.id === 'mainTabWhatsapp') {
         window.open('/whatsapp-sso.html', '_blank', 'noopener');
+        return;
+      }
+      if (btn.id === 'mainTabCrm') {
+        window.open('/crm', '_blank', 'noopener');
         return;
       }
       const targetMain = btn.getAttribute('data-main-tab');
@@ -2189,6 +2195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'financeiro': { label: 'Assist. Financ.', icon: '💰', className: 'perm-badge-financeiro' },
     'analista-fin': { label: 'Analista Fin', icon: '📑', className: 'perm-badge-analista-fin' },
     'bi': { label: 'BI Executivo', icon: '📊', className: 'perm-badge-bi' },
+    'crm': { label: 'CRM Comercial', icon: '💼', className: 'perm-badge-vendedores' },
     'whatsapp': { label: 'WhatsApp', icon: '💬', className: 'perm-badge-whatsapp' },
     'configuracoes': { label: 'Configurações', icon: '⚙️', className: 'perm-badge-configuracoes' }
   };

@@ -4,6 +4,8 @@
  * Plataforma de Apoio GSI (Gemini-Cli)
  */
 
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-crm19-ci';
+
 const assert = require('assert');
 const http = require('http');
 const path = require('path');
@@ -12,7 +14,7 @@ const crmEngine = require('./crm_engine');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'gsi_portal_jwt_secret_key_prod_2026_x89a';
+const JWT_SECRET = process.env.JWT_SECRET;
 const cacheFile = path.join(__dirname, 'data', 'crm_deals_cache.json');
 
 function generateToken(payload) {
@@ -64,6 +66,8 @@ function makeRequest(app, method, path, headers = {}, body = null) {
 
 async function runTests() {
   console.log('🧪 Iniciando Bateria Completa de Testes do Módulo CRM Comercial Nativo...\n');
+  const originalCacheRaw = fs.existsSync(cacheFile) ? fs.readFileSync(cacheFile, 'utf8') : null;
+  try {
 
   // Teste 1: Teste de Unidade do Engine (Criação de Deal)
   console.log('1️⃣  Teste: Criação de Deal no crm_engine');
@@ -191,14 +195,32 @@ async function runTests() {
   assert.strictEqual(resAnon.status, 401, 'Requisição anônima deve ser rejeitada com 401');
   console.log('   ✅ 401 Unauthorized para chamada anônima.');
 
-  // 5.2: Requisição com Token de Vendedor (ex: Figueiredo) -> Deve retornar 403
-  const tokenVendedor = generateToken({ username: 'figueiredo', role: 'vendedor', vendorCode: '000004' });
+  // 5.2a: Requisição com Token de Operador comum (role: 'user') -> Deve retornar 403 FORBIDDEN_CRM
+  const tokenOperador = generateToken({ username: 'operador1', role: 'user', permissions: ['logistica'] });
+  const resOperador = await makeRequest(app, 'GET', '/api/bi/crm/deals', {
+    'Authorization': `Bearer ${tokenOperador}`
+  });
+  assert.strictEqual(resOperador.status, 403, 'Requisição de operador comum deve ser bloqueada com 403');
+  assert.strictEqual(resOperador.body.error && resOperador.body.error.code, 'FORBIDDEN_CRM', 'Código de erro deve ser FORBIDDEN_CRM');
+  console.log('   ✅ 403 FORBIDDEN_CRM para operador comum (role: user).');
+
+  // 5.2b: Requisição com Token de Vendedor sem permissão "crm" -> Deve retornar 403 FORBIDDEN_CRM
+  const tokenVendSemPerm = generateToken({ username: 'figueiredo', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores'] });
+  const resVendSemPerm = await makeRequest(app, 'GET', '/api/bi/crm/deals', {
+    'Authorization': `Bearer ${tokenVendSemPerm}`
+  });
+  assert.strictEqual(resVendSemPerm.status, 403, 'Vendedor sem permissão crm deve ser bloqueado com 403');
+  assert.strictEqual(resVendSemPerm.body.error && resVendSemPerm.body.error.code, 'FORBIDDEN_CRM', 'Código de erro deve ser FORBIDDEN_CRM');
+  console.log('   ✅ 403 FORBIDDEN_CRM para vendedor sem permissão crm.');
+
+  // 5.2c: Requisição com Token de Vendedor habilitado (permissions inclui "crm" + ativo em crm_vendedores) -> 200 OK
+  const tokenVendedor = generateToken({ username: 'figueiredo', role: 'vendedor', vendorCode: '000004', permissions: ['vendedores', 'crm'] });
   const resVendedor = await makeRequest(app, 'GET', '/api/bi/crm/deals', {
     'Authorization': `Bearer ${tokenVendedor}`
   });
-  assert.strictEqual(resVendedor.status, 403, 'Requisição de vendedor deve ser bloqueada com 403');
-  assert.strictEqual(resVendedor.body.error && resVendedor.body.error.code, 'FORBIDDEN_VENDOR', 'Código de erro deve indicar bloqueio de vendedor');
-  console.log('   ✅ 403 Forbidden para vendedor comum.');
+  assert.strictEqual(resVendedor.status, 200, 'Vendedor habilitado com permissão crm deve receber 200');
+  assert.ok(resVendedor.body.success, 'Resposta deve indicar sucesso para vendedor habilitado');
+  console.log('   ✅ 200 OK para vendedor habilitado com escopo próprio.');
 
   // 5.3: Requisição com Token do Administrador Alexandre -> Deve retornar 200
   const tokenAlexandre = generateToken({ username: 'alexandre', role: 'admin' });
@@ -294,6 +316,11 @@ async function runTests() {
   }
 
   console.log('\n🎉 TODOS OS 10 TESTES DO CRM COMERCIAL NATIVO FORAM APROVADOS COM 100% DE SUCESSO!\n');
+  } finally {
+    if (originalCacheRaw !== null) {
+      fs.writeFileSync(cacheFile, originalCacheRaw, 'utf8');
+    }
+  }
 }
 
 runTests().catch(err => {
