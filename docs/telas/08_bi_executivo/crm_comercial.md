@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botões:** `#btnTabBiCrm` (`💼 CRM`) e `#mainTabCrm` (`💼 CRM COMERCIAL`)  
 > **Permissão RBAC:** `admin`, `diretoria` (visão global) e `vendedor` com permissão `'crm'` + vínculo ativo em `crm_vendedores` (escopo restrito ao próprio `cod_vendedor`)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 13/11/2026 (v8.322 - CRM-20 Proposta Comercial em PDF por Empresa Emissora, Revisões Imutáveis, Envio por E-mail e Link Público)  
+> **Última Atualização:** 14/11/2026 (v8.323 - CRM-23 Motivo de Perda Fechado, Lead sem Cliente, Reabrir e Clonar)  
 
 ---
 
@@ -169,6 +169,7 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.323 (14/11/2026):** CRM-23 — Motivo de perda em lista fechada (Preço, Prazo de Entrega, Produto Não Atende, Compra Cancelada, Sem Resposta, Crédito Negado, Transferido para Outro Vendedor; sem "Outro" e sem concorrente) gravado em `motivo_perda_cod`; oportunidade aceita contato avulso (nome + telefone) sem cliente e CPF/CNPJ passa a ser exigido só para marcar Ganho; botões ↩️ Reabrir (perdido ou ganho, mantém o número e volta ao estágio anterior) e 📑 Clonar (número novo) no modal de detalhes; a mudança de estágio na tela é desfeita quando o servidor recusa. Especificação em [crm23_perda_lead_reabrir.md](crm23_perda_lead_reabrir.md); testes em `test_crm_perda_reabrir.js`.
 - **v8.322 (13/11/2026):** CRM-20 — Proposta Comercial em PDF por Empresa Emissora (`14`, `15`, `16`), Revisões Imutáveis, Envio por E-mail, Link Público e Lembrete de Validade:
   - **Tabelas e Segurança (`sql/bi/12_tabelas_crm_propostas.sql`):** Criação de `crm_empresas_emitentes` (seed inicial para `14` Metal Pleno, `15` GSI e `16` OAÇO) e `crm_propostas` (revisões imutáveis `<id>-R<rev>`, snapshot JSONB, binário `BYTEA` e `token_publico` de 43 caracteres base64url), com RLS estrito, `REVOKE ALL` de `anon`/`authenticated` e `GRANT ALL` explícito para `service_role` e `postgres`.
   - **Motor de Propostas e Sigilo de Desconto (`crm_propostas.js`):** Geração de PDF A4 em memória via `pdfmake` utilizando exclusivamente `precoNegociado` como Valor Unitário e omitindo Preço de Tabela, Desconto % e Frete Embutido. Transação PostgreSQL `BEGIN` + `SELECT ... FOR UPDATE` no deal garantindo revisões sequenciais sem colisão, atualização de `custom.ultima_proposta`, criação de atividade `proposta_gerada` e avanço automático de `lead`/`contato` para `proposta` após o `COMMIT`.

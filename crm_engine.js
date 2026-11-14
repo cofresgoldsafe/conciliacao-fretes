@@ -32,6 +32,92 @@ const analiseCreditoHistoryFile = path.join(dataDir, 'analise_credito_history.js
 const CANONICAL_STAGES = ['lead', 'contato', 'proposta', 'negociacao', 'ganho', 'perdido'];
 
 /**
+ * 7 Motivos Canônicos Fechados de Perda no CRM (CRM-23)
+ */
+const MOTIVOS_PERDA = [
+  { cod: 'preco',                      label: 'Preço' },
+  { cod: 'prazo_entrega',              label: 'Prazo de Entrega' },
+  { cod: 'produto_nao_atende',         label: 'Produto Não Atende' },
+  { cod: 'compra_cancelada',           label: 'Compra Cancelada' },
+  { cod: 'sem_resposta',               label: 'Sem Resposta' },
+  { cod: 'credito_negado',             label: 'Crédito Negado' },
+  { cod: 'transferido_outro_vendedor', label: 'Transferido para Outro Vendedor' }
+];
+
+/**
+ * Resolve motivo de perda por código ou por label (insensível a caixa e acentuação)
+ */
+function resolverMotivoPerda(valor) {
+  if (!valor || typeof valor !== 'string') return null;
+  const limpo = valor.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!limpo) return null;
+  for (const m of MOTIVOS_PERDA) {
+    const codNorm = m.cod.toLowerCase();
+    const labelNorm = m.label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (limpo === codNorm || limpo === labelNorm) {
+      return { cod: m.cod, label: m.label };
+    }
+  }
+  return null;
+}
+
+/**
+ * Validação única de transição de estágios no CRM (CRM-23)
+ */
+function validarTransicao(existente, estagioNovo, dados = {}) {
+  const stageLimpo = String(estagioNovo || '').trim().toLowerCase();
+
+  // 1. Qualquer -> Perdido: exige motivoPerdaCod ou motivoPerda resolvendo em MOTIVOS_PERDA
+  if (stageLimpo === 'perdido') {
+    const candidato = dados.motivoPerdaCod || dados.motivo_perda_cod || dados.motivoPerda || dados.motivo_perda || '';
+    const resolvido = resolverMotivoPerda(candidato);
+    if (!resolvido) {
+      const err = new Error('Escolha o motivo da perda.');
+      err.status = 400;
+      err.code = 'MOTIVO_PERDA_OBRIGATORIO';
+      throw err;
+    }
+    return {
+      motivo_perda_cod: resolvido.cod,
+      motivo_perda: resolvido.label
+    };
+  }
+
+  // 2. Qualquer -> Ganho: exige cliente_nome e cliente_cnpj com 11 (CPF) ou 14 (CNPJ) dígitos
+  if (stageLimpo === 'ganho') {
+    const nome = String(
+      dados.cliente_nome !== undefined ? dados.cliente_nome : (existente?.cliente_nome || existente?.clienteNome || '')
+    ).trim();
+    const cnpjRaw = String(
+      dados.cliente_cnpj !== undefined ? dados.cliente_cnpj : (
+        dados.cliente_cnpj_cpf !== undefined ? dados.cliente_cnpj_cpf : (
+          existente?.cliente_cnpj || existente?.clienteCnpj || ''
+        )
+      )
+    );
+    const docLimpo = cnpjRaw.replace(/\D/g, '');
+    const docValido = docLimpo.length === 11 || docLimpo.length === 14;
+
+    if (!nome || !docValido) {
+      const err = new Error('Para marcar como ganho, informe o cliente com CPF ou CNPJ.');
+      err.status = 400;
+      err.code = 'CLIENTE_DOC_OBRIGATORIO_GANHO';
+      throw err;
+    }
+    return {
+      motivo_perda_cod: null,
+      motivo_perda: null
+    };
+  }
+
+  // 3. Qualquer outro estágio (incluindo sair de perdido): limpa motivos
+  return {
+    motivo_perda_cod: null,
+    motivo_perda: null
+  };
+}
+
+/**
  * Normaliza e formata CNPJ (14 dígitos) ou CPF (11 dígitos)
  */
 function formatarCgc(cgc) {
@@ -636,6 +722,15 @@ async function initCrmTables() {
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
 
+      ALTER TABLE crm_deals ADD COLUMN IF NOT EXISTS motivo_perda_cod VARCHAR(40);
+      DO $$ BEGIN
+        ALTER TABLE crm_deals ADD CONSTRAINT crm_deals_motivo_perda_cod_check CHECK (
+          motivo_perda_cod IS NULL OR motivo_perda_cod IN (
+            'preco','prazo_entrega','produto_nao_atende','compra_cancelada',
+            'sem_resposta','credito_negado','transferido_outro_vendedor'));
+      EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+      CREATE INDEX IF NOT EXISTS idx_crm_deals_motivo_perda_cod ON crm_deals (motivo_perda_cod) WHERE estagio = 'perdido';
+
       CREATE TABLE IF NOT EXISTS crm_atividades (
         id VARCHAR(64) PRIMARY KEY,
         deal_id VARCHAR(64) NOT NULL REFERENCES crm_deals(id) ON DELETE CASCADE,
@@ -905,6 +1000,7 @@ function mapDealRow(row) {
     origem: row.origem || 'manual',
     status: row.status || 'aberto',
     motivo_perda: row.motivo_perda || '',
+    motivo_perda_cod: row.motivo_perda_cod || null,
     cond_pgto: row.cond_pgto || '',
     tipo_frete: row.tipo_frete || 'CIF',
     frete_cobrado: parseFloat(row.frete_cobrado) || 0,
@@ -1267,15 +1363,68 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
   const clienteNome = String(dados?.cliente_nome || '').trim();
 
   if (!titulo) {
-    throw new Error("O campo 'titulo' é obrigatório.");
+    const err = new Error("O campo 'titulo' é obrigatório.");
+    err.status = 400;
+    err.code = 'TITULO_OBRIGATORIO';
+    throw err;
   }
-  if (!clienteNome) {
-    throw new Error("O campo 'cliente_nome' é obrigatório.");
+
+  const rawContatos = Array.isArray(dados?.contatos)
+    ? [...dados.contatos]
+    : (dados?.contato ? [dados.contato] : []);
+  const c0 = rawContatos[0] || {};
+  const cNome = String(c0.nome || dados?.contato_nome || dados?.contatoNome || '').trim();
+  const cTel = String(c0.telefone || dados?.cliente_telefone || dados?.clienteTelefone || dados?.telefone || '').replace(/\D/g, '');
+
+  let clienteNomeFinal = clienteNome;
+  let contatosFinal = rawContatos;
+
+  if (!clienteNomeFinal) {
+    if (cNome && cTel) {
+      clienteNomeFinal = '';
+      if (contatosFinal.length === 0) {
+        contatosFinal = [{ nome: cNome, telefone: cTel }];
+      } else {
+        contatosFinal[0] = { ...c0, nome: cNome, telefone: cTel };
+      }
+    } else {
+      const err = new Error('Informe o cliente ou o nome e o telefone do contato.');
+      err.status = 400;
+      err.code = 'CLIENTE_OU_CONTATO_OBRIGATORIO';
+      throw err;
+    }
+  } else if (contatosFinal[0] && cTel) {
+    contatosFinal[0].telefone = cTel;
   }
 
   const estagioInicial = (dados.estagio || 'lead').trim().toLowerCase();
   if (!CANONICAL_STAGES.includes(estagioInicial)) {
     throw new Error(`Estágio '${dados.estagio}' inválido. Estágios permitidos: ${CANONICAL_STAGES.join(', ')}.`);
+  }
+
+  const rawDoc = dados.cliente_cnpj || dados.cliente_cnpj_cpf || dados.cnpj_cpf || dados.cnpj || dados.clienteCnpj;
+  const clienteCnpjFinal = rawDoc ? String(rawDoc).replace(/\D/g, '') : '';
+  const clienteTelefoneFinal = dados.cliente_telefone ? String(dados.cliente_telefone).replace(/\D/g, '') : (cTel || '');
+
+  let motivoPerdaFinal = null;
+  let motivoPerdaCodFinal = null;
+  let justHistoricoInicial = dados.justificativa || 'Criação do negócio no CRM';
+
+  // Se criar diretamente como ganho ou perdido, valida transição
+  if (estagioInicial === 'ganho' || estagioInicial === 'perdido') {
+    const valRes = validarTransicao(null, estagioInicial, {
+      cliente_nome: clienteNomeFinal,
+      cliente_cnpj: clienteCnpjFinal,
+      motivoPerdaCod: dados.motivo_perda_cod || dados.motivoPerdaCod,
+      motivoPerda: dados.motivo_perda || dados.motivoPerda,
+      justificativa: dados.justificativa
+    });
+    motivoPerdaFinal = valRes.motivo_perda;
+    motivoPerdaCodFinal = valRes.motivo_perda_cod;
+    if (estagioInicial === 'perdido') {
+      const obs = String(dados.justificativa || dados.observacoes || '').trim();
+      justHistoricoInicial = obs ? `Perdido: ${motivoPerdaFinal} — ${obs}` : `Perdido: ${motivoPerdaFinal}`;
+    }
   }
 
   let codVendedor = '';
@@ -1328,11 +1477,11 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       estagio_novo: estagioInicial,
       alterado_por: u.username,
       alterado_em: new Date().toISOString(),
-      justificativa: dados.justificativa || 'Criação do negócio no CRM'
+      justificativa: justHistoricoInicial
     }
   ];
 
-  const contatos = Array.isArray(dados.contatos) ? dados.contatos : [];
+  const contatos = contatosFinal;
   const custom = typeof dados.custom === 'object' && dados.custom !== null ? { ...dados.custom } : {};
   if (dados.faturadoPor || dados.faturado_por) {
     custom.faturadoPor = dados.faturadoPor || dados.faturado_por;
@@ -1353,7 +1502,7 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
         id, titulo, cliente_cod, cliente_loja, cliente_nome, cliente_cnpj,
         cliente_email, cliente_telefone, cliente_cidade, cliente_uf,
         valor_total, estagio, probabilidade, data_fechamento_esperada,
-        cod_vendedor, nome_vendedor, origem, status, motivo_perda,
+        cod_vendedor, nome_vendedor, origem, status, motivo_perda, motivo_perda_cod,
         cond_pgto, tipo_frete, frete_cobrado, frete_embutido, transportadora, transportadora_cod, prazo_entrega, num_pedido_compra, obs_nfe,
         itens_cotados, contatos, historico_estagios, custom, observacoes,
         ativo, created_by, updated_by, created_at, updated_at
@@ -1361,20 +1510,20 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10,
         $11, $12, $13, $14,
-        $15, $16, $17, $18, $19,
-        $20, $21, $22, $23, $24, $25, $26, $27, $28,
-        $29, $30, $31, $32, $33,
-        TRUE, $34, $35, NOW(), NOW()
+        $15, $16, $17, $18, $19, $20,
+        $21, $22, $23, $24, $25, $26, $27, $28, $29,
+        $30, $31, $32, $33, $34,
+        TRUE, $35, $36, NOW(), NOW()
       ) RETURNING *;
     `, [
       dealId,
       titulo,
       dados.cliente_cod || '',
       dados.cliente_loja || '01',
-      clienteNome,
-      dados.cliente_cnpj ? String(dados.cliente_cnpj).replace(/\D/g, '') : '',
+      clienteNomeFinal,
+      clienteCnpjFinal,
       dados.cliente_email || '',
-      dados.cliente_telefone || '',
+      clienteTelefoneFinal,
       dados.cliente_cidade || '',
       dados.cliente_uf || '',
       valorTotal,
@@ -1385,7 +1534,8 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       nomeVendedor,
       dados.origem || 'manual',
       estagioInicial === 'ganho' ? 'ganho' : (estagioInicial === 'perdido' ? 'perdido' : 'aberto'),
-      dados.motivo_perda || null,
+      motivoPerdaFinal || null,
+      motivoPerdaCodFinal || null,
       dados.cond_pgto || '',
       dados.tipo_frete || 'CIF',
       freteCobrado,
@@ -1419,12 +1569,12 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       titulo,
       cliente_cod: dados.cliente_cod || '',
       cliente_loja: dados.cliente_loja || '01',
-      cliente_nome: clienteNome,
-      cliente_cnpj: dados.cliente_cnpj ? String(dados.cliente_cnpj).replace(/\D/g, '') : '',
-      cliente_cnpj_fmt: formatarCgc(dados.cliente_cnpj),
+      cliente_nome: clienteNomeFinal,
+      cliente_cnpj: clienteCnpjFinal,
+      cliente_cnpj_fmt: formatarCgc(clienteCnpjFinal),
       cliente_email: dados.cliente_email || '',
-      cliente_telefone: dados.cliente_telefone || '',
-      cliente_telefone_fmt: formatarTelefone(dados.cliente_telefone),
+      cliente_telefone: clienteTelefoneFinal,
+      cliente_telefone_fmt: formatarTelefone(clienteTelefoneFinal),
       cliente_cidade: dados.cliente_cidade || '',
       cliente_uf: dados.cliente_uf || '',
       valor_total: valorTotal,
@@ -1436,7 +1586,8 @@ async function criarDeal(dados, usuario, scope = { all: true }) {
       nome_vendedor: nomeVendedor,
       origem: dados.origem || 'manual',
       status: estagioInicial === 'ganho' ? 'ganho' : (estagioInicial === 'perdido' ? 'perdido' : 'aberto'),
-      motivo_perda: dados.motivo_perda || '',
+      motivo_perda: motivoPerdaFinal || '',
+      motivo_perda_cod: motivoPerdaCodFinal || null,
       cond_pgto: dados.cond_pgto || '',
       tipo_frete: dados.tipo_frete || 'CIF',
       frete_cobrado: freteCobrado,
@@ -1505,6 +1656,35 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
     estagioNovo = stLimpo;
   }
 
+  // Validação de cliente_nome vs contato avulso no atualizarDeal
+  let contatosParaSalvar = dados.contatos !== undefined ? (Array.isArray(dados.contatos) ? dados.contatos : []) : (dados.contato ? [dados.contato] : existente.contatos);
+  if (dados.cliente_nome !== undefined && !String(dados.cliente_nome).trim()) {
+    const c0 = (Array.isArray(contatosParaSalvar) ? contatosParaSalvar[0] : null) || {};
+    const cNome = String(c0.nome || '').trim();
+    const cTel = String(c0.telefone || dados.cliente_telefone || existente.cliente_telefone || '').replace(/\D/g, '');
+    if (!cNome || !cTel) {
+      const err = new Error('Informe o cliente ou o nome e o telefone do contato.');
+      err.status = 400;
+      err.code = 'CLIENTE_OU_CONTATO_OBRIGATORIO';
+      throw err;
+    }
+  }
+
+  let motivoPerdaFinal = existente.motivo_perda || '';
+  let motivoPerdaCodFinal = existente.motivo_perda_cod || null;
+  let justHistorico = dados.justificativa || 'Atualização de negócio via CRM';
+
+  if (estagioNovo !== existente.estagio) {
+    const transicaoRes = validarTransicao(existente, estagioNovo, dados);
+    motivoPerdaFinal = transicaoRes.motivo_perda;
+    motivoPerdaCodFinal = transicaoRes.motivo_perda_cod;
+
+    if (estagioNovo === 'perdido') {
+      const obs = String(dados.justificativa || dados.observacoes || '').trim();
+      justHistorico = obs ? `Perdido: ${motivoPerdaFinal} — ${obs}` : `Perdido: ${motivoPerdaFinal}`;
+    }
+  }
+
   let historicoEstagios = Array.isArray(existente.historico_estagios) ? [...existente.historico_estagios] : [];
   if (estagioNovo !== existente.estagio) {
     historicoEstagios.push({
@@ -1512,7 +1692,7 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
       estagio_novo: estagioNovo,
       alterado_por: u.username,
       alterado_em: new Date().toISOString(),
-      justificativa: dados.justificativa || 'Atualização de negócio via CRM'
+      justificativa: justHistorico
     });
   }
 
@@ -1549,10 +1729,14 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
   }
 
   const virouGanho = estagioNovo === 'ganho' && existente.estagio !== 'ganho';
+  const virouPerdido = estagioNovo === 'perdido' && existente.estagio !== 'perdido';
+  const saindoFechado = (existente.estagio === 'ganho' || existente.estagio === 'perdido') && (estagioNovo !== 'ganho' && estagioNovo !== 'perdido');
   const dataFechamentoReal = dados.data_fechamento_real !== undefined
     ? dados.data_fechamento_real
-    : (virouGanho ? (existente.data_fechamento_real || new Date().toISOString()) : existente.data_fechamento_real);
-  const statusNovo = dados.status || (virouGanho ? 'ganho' : (estagioNovo === 'perdido' && existente.estagio !== 'perdido' ? 'perdido' : null));
+    : (virouGanho || virouPerdido
+        ? (existente.data_fechamento_real || new Date().toISOString())
+        : (saindoFechado ? null : existente.data_fechamento_real));
+  const statusNovo = dados.status || (virouGanho ? 'ganho' : (virouPerdido ? 'perdido' : (saindoFechado ? 'aberto' : null)));
 
   const customAtual = typeof dados.custom === 'object' && dados.custom !== null
     ? { ...(existente.custom || {}), ...dados.custom }
@@ -1560,6 +1744,10 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
   if (dados.faturadoPor !== undefined || dados.faturado_por !== undefined) {
     customAtual.faturadoPor = dados.faturadoPor || dados.faturado_por;
   }
+
+  const clienteNomeSql = dados.cliente_nome !== undefined ? String(dados.cliente_nome).trim() : existente.cliente_nome;
+  const rawDoc = dados.cliente_cnpj !== undefined ? dados.cliente_cnpj : (dados.cliente_cnpj_cpf !== undefined ? dados.cliente_cnpj_cpf : (dados.cnpj_cpf !== undefined ? dados.cnpj_cpf : (dados.cnpj !== undefined ? dados.cnpj : dados.clienteCnpj)));
+  const clienteCnpjSql = rawDoc !== undefined ? String(rawDoc).replace(/\D/g, '') : null;
 
   let dealAtualizado = null;
 
@@ -1570,7 +1758,7 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
         titulo = COALESCE($1, titulo),
         cliente_cod = COALESCE($2, cliente_cod),
         cliente_loja = COALESCE($3, cliente_loja),
-        cliente_nome = COALESCE($4, cliente_nome),
+        cliente_nome = $4,
         cliente_cnpj = COALESCE($5, cliente_cnpj),
         cliente_email = COALESCE($6, cliente_email),
         cliente_telefone = COALESCE($7, cliente_telefone),
@@ -1586,30 +1774,31 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
         origem = COALESCE($17, origem),
         status = COALESCE($18, status),
         motivo_perda = $19,
-        cond_pgto = COALESCE($20, cond_pgto),
-        tipo_frete = COALESCE($21, tipo_frete),
-        frete_cobrado = $22,
-        frete_embutido = $23,
-        transportadora = COALESCE($24, transportadora),
-        transportadora_cod = COALESCE($25, transportadora_cod),
-        prazo_entrega = COALESCE($26, prazo_entrega),
-        num_pedido_compra = COALESCE($27, num_pedido_compra),
-        obs_nfe = COALESCE($28, obs_nfe),
-        itens_cotados = $29,
-        contatos = $30,
-        historico_estagios = $31,
-        custom = $32,
-        observacoes = $33,
-        updated_by = $34,
+        motivo_perda_cod = $20,
+        cond_pgto = COALESCE($21, cond_pgto),
+        tipo_frete = COALESCE($22, tipo_frete),
+        frete_cobrado = $23,
+        frete_embutido = $24,
+        transportadora = COALESCE($25, transportadora),
+        transportadora_cod = COALESCE($26, transportadora_cod),
+        prazo_entrega = COALESCE($27, prazo_entrega),
+        num_pedido_compra = COALESCE($28, num_pedido_compra),
+        obs_nfe = COALESCE($29, obs_nfe),
+        itens_cotados = $30,
+        contatos = $31,
+        historico_estagios = $32,
+        custom = $33,
+        observacoes = $34,
+        updated_by = $35,
         updated_at = NOW()
-      WHERE id = $35 AND ativo = TRUE
+      WHERE id = $36 AND ativo = TRUE
       RETURNING *;
     `, [
       dados.titulo ? String(dados.titulo).trim() : null,
       dados.cliente_cod !== undefined ? dados.cliente_cod : null,
       dados.cliente_loja !== undefined ? dados.cliente_loja : null,
-      dados.cliente_nome ? String(dados.cliente_nome).trim() : null,
-      dados.cliente_cnpj !== undefined ? String(dados.cliente_cnpj).replace(/\D/g, '') : null,
+      clienteNomeSql,
+      clienteCnpjSql,
       dados.cliente_email !== undefined ? dados.cliente_email : null,
       dados.cliente_telefone !== undefined ? dados.cliente_telefone : null,
       dados.cliente_cidade !== undefined ? dados.cliente_cidade : null,
@@ -1623,7 +1812,8 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
       nomeVendedor,
       dados.origem || null,
       statusNovo,
-      dados.motivo_perda !== undefined ? dados.motivo_perda : existente.motivo_perda,
+      motivoPerdaFinal || null,
+      motivoPerdaCodFinal || null,
       dados.cond_pgto !== undefined ? dados.cond_pgto : null,
       dados.tipo_frete !== undefined ? dados.tipo_frete : null,
       freteCobrado,
@@ -1634,7 +1824,7 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
       dados.num_pedido_compra !== undefined ? dados.num_pedido_compra : null,
       dados.obs_nfe !== undefined ? dados.obs_nfe : null,
       JSON.stringify(itensCotados),
-      JSON.stringify(dados.contatos !== undefined ? dados.contatos : existente.contatos),
+      JSON.stringify(contatosParaSalvar),
       JSON.stringify(historicoEstagios),
       JSON.stringify(customAtual),
       dados.observacoes !== undefined ? dados.observacoes : existente.observacoes,
@@ -1660,17 +1850,23 @@ async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
       dealAtualizado = {
         ...cache.deals[idx],
         ...dados,
+        cliente_nome: clienteNomeSql,
+        cliente_cnpj: clienteCnpjSql !== null ? clienteCnpjSql : (cache.deals[idx].cliente_cnpj || ''),
+        cliente_cnpj_fmt: formatarCgc(clienteCnpjSql !== null ? clienteCnpjSql : (cache.deals[idx].cliente_cnpj || '')),
         custom: customAtual,
         valor_total: valorTotal,
         estagio: estagioNovo,
         status: statusNovo || cache.deals[idx].status,
         data_fechamento_real: dataFechamentoReal,
+        motivo_perda: motivoPerdaFinal || '',
+        motivo_perda_cod: motivoPerdaCodFinal || null,
         cod_vendedor: codVendedor,
         nome_vendedor: nomeVendedor,
         frete_cobrado: freteCobrado,
         frete_embutido: freteEmbutido,
         transportadora_cod: transpCodAtual,
         itens_cotados: itensCotados,
+        contatos: contatosParaSalvar,
         historico_estagios: historicoEstagios,
         updated_by: u.username,
         updated_at: new Date().toISOString()
@@ -1719,6 +1915,21 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
     throw err;
   }
 
+  // Valida transição segundo as regras do CRM-23 (escopo já verificado)
+  const transicaoRes = validarTransicao(existente, stageLimpo, {
+    motivoPerdaCod: motivoPerda,
+    motivoPerda,
+    justificativa
+  });
+  const motivoPerdaFinal = transicaoRes.motivo_perda;
+  const motivoPerdaCodFinal = transicaoRes.motivo_perda_cod;
+
+  let justHistorico = justificativa || `Transição de estágio para ${stageLimpo}`;
+  if (stageLimpo === 'perdido') {
+    const obs = String(justificativa || '').trim();
+    justHistorico = obs ? `Perdido: ${motivoPerdaFinal} — ${obs}` : `Perdido: ${motivoPerdaFinal}`;
+  }
+
   let status = 'aberto';
   let probabilidade = existente.probabilidade;
   let dataFechamentoReal = null;
@@ -1747,7 +1958,7 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
     estagio_novo: stageLimpo,
     alterado_por: u.username,
     alterado_em: new Date().toISOString(),
-    justificativa: justificativa || `Transição de estágio para ${stageLimpo}`
+    justificativa: justHistorico
   });
 
   let dealAtualizado = null;
@@ -1760,18 +1971,20 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
         status = $2,
         probabilidade = $3,
         data_fechamento_real = $4,
-        motivo_perda = COALESCE($5, motivo_perda),
-        historico_estagios = $6,
-        updated_by = $7,
+        motivo_perda = $5,
+        motivo_perda_cod = $6,
+        historico_estagios = $7,
+        updated_by = $8,
         updated_at = NOW()
-      WHERE id = $8 AND ativo = TRUE
+      WHERE id = $9 AND ativo = TRUE
       RETURNING *;
     `, [
       stageLimpo,
       status,
       probabilidade,
       dataFechamentoReal,
-      motivoPerda || null,
+      motivoPerdaFinal || null,
+      motivoPerdaCodFinal || null,
       JSON.stringify(historicoEstagios),
       u.username,
       cleanId
@@ -1795,7 +2008,8 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
         status,
         probabilidade,
         data_fechamento_real: dataFechamentoReal,
-        motivo_perda: motivoPerda || cache.deals[idx].motivo_perda,
+        motivo_perda: motivoPerdaFinal || '',
+        motivo_perda_cod: motivoPerdaCodFinal || null,
         historico_estagios: historicoEstagios,
         updated_by: u.username,
         updated_at: new Date().toISOString()
@@ -1812,8 +2026,9 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
     dealId: cleanId,
     estagioAnterior: existente.estagio,
     estagioNovo: stageLimpo,
-    justificativa,
-    motivoPerda,
+    justificativa: justHistorico,
+    motivoPerda: motivoPerdaFinal,
+    motivo_perda_cod: motivoPerdaCodFinal,
     cod_vendedor: (dealAtualizado || existente)?.cod_vendedor,
     role: u.role
   });
@@ -1920,6 +2135,148 @@ async function restaurarDeal(id, usuario) {
   });
 
   return dealRestaurado;
+}
+
+/**
+ * 7.1. REABRIR DEAL (MESMO ID) — CRM-23
+ */
+async function reabrirDeal(id, usuario, scope = { all: true }) {
+  const u = normalizeUser(usuario);
+  const cleanId = String(id).trim();
+
+  // 1. Escopo primeiro: verifica visibilidade e editabilidade
+  const existente = await obterDealPorId(cleanId, scope);
+  if (!existente || !dealEditavel(existente, scope)) {
+    const err = new Error(`Negócio #${cleanId} não localizado.`);
+    err.status = 404;
+    err.code = 'DEAL_NOT_FOUND';
+    throw err;
+  }
+
+  // 2. Valida se o negócio está fechado (ganho ou perdido)
+  const estagioAtual = String(existente.estagio || '').toLowerCase();
+  if (estagioAtual !== 'ganho' && estagioAtual !== 'perdido') {
+    const err = new Error(`Apenas negócios fechados (ganhos ou perdidos) podem ser reabertos. O negócio #${cleanId} está em '${existente.estagio}'.`);
+    err.status = 409;
+    err.code = 'DEAL_NAO_FECHADO';
+    throw err;
+  }
+
+  // 3. Estágio de destino:
+  // Última entrada de historico_estagios com estagio_novo igual ao estágio atual -> seu estagio_anterior.
+  // Se não houver, ou se for ganho/perdido/vazio -> negociacao (quando era ganho) ou lead (quando era perdido).
+  const historico = Array.isArray(existente.historico_estagios) ? existente.historico_estagios : [];
+  let estagioDestino = null;
+  for (let i = historico.length - 1; i >= 0; i--) {
+    const entry = historico[i];
+    if (entry && String(entry.estagio_novo || '').toLowerCase() === estagioAtual) {
+      const ant = String(entry.estagio_anterior || '').trim().toLowerCase();
+      if (ant && ant !== 'ganho' && ant !== 'perdido' && CANONICAL_STAGES.includes(ant)) {
+        estagioDestino = ant;
+        break;
+      }
+    }
+  }
+  if (!estagioDestino) {
+    estagioDestino = (estagioAtual === 'ganho') ? 'negociacao' : 'lead';
+  }
+
+  // 4. Justificativa do histórico: "Reaberto por <username> (estava <ganho|perdido>[: <motivo>])"
+  let justificativa = '';
+  if (estagioAtual === 'perdido') {
+    const motivoTexto = existente.motivo_perda || existente.motivo_perda_cod || '';
+    const sufixoMotivo = motivoTexto ? `: ${motivoTexto}` : '';
+    justificativa = `Reaberto por ${u.username} (estava perdido${sufixoMotivo})`;
+  } else {
+    justificativa = `Reaberto por ${u.username} (estava ganho)`;
+  }
+
+  // 5. Executa pelo atualizarEstagioDeal existente (já zera data_fechamento_real e limpa motivo)
+  const dealAtualizado = await atualizarEstagioDeal(
+    cleanId,
+    estagioDestino,
+    usuario,
+    justificativa,
+    null,
+    scope
+  );
+
+  // 6. Telemetria CRM_DEAL_REABERTO
+  await recordTelemetry(u, 'CRM_DEAL_REABERTO', `Reabriu a oportunidade #${cleanId} de "${estagioAtual}" para "${estagioDestino}"`, {
+    deal_id: cleanId,
+    de: estagioAtual,
+    para: estagioDestino,
+    cod_vendedor: (dealAtualizado || existente).cod_vendedor,
+    role: u.role
+  });
+
+  return dealAtualizado;
+}
+
+/**
+ * 7.2. CLONAR DEAL (NÚMERO NOVO) — CRM-23
+ */
+async function clonarDeal(id, usuario, scope = { all: true }) {
+  const u = normalizeUser(usuario);
+  const cleanId = String(id).trim();
+
+  // 1. Escopo primeiro: verifica visibilidade
+  const existente = await obterDealPorId(cleanId, scope);
+  if (!existente) {
+    const err = new Error(`Negócio #${cleanId} não localizado.`);
+    err.status = 404;
+    err.code = 'DEAL_NOT_FOUND';
+    throw err;
+  }
+
+  // 2. Monta custom preservando apenas faturadoPor e transportadora_cod, e setando clonado_de
+  const customNovo = {};
+  if (existente.custom && typeof existente.custom === 'object') {
+    if (existente.custom.faturadoPor !== undefined) customNovo.faturadoPor = existente.custom.faturadoPor;
+    if (existente.custom.transportadora_cod !== undefined) customNovo.transportadora_cod = existente.custom.transportadora_cod;
+  }
+  customNovo.clonado_de = String(existente.id);
+
+  // 3. Monta payload para criarDeal
+  const dadosClone = {
+    titulo: `${existente.titulo || 'Oportunidade'} (cópia)`,
+    cliente_cod: existente.cliente_cod || '',
+    cliente_loja: existente.cliente_loja || '01',
+    cliente_nome: existente.cliente_nome || '',
+    cliente_cnpj: existente.cliente_cnpj || '',
+    cliente_email: existente.cliente_email || '',
+    cliente_telefone: existente.cliente_telefone || '',
+    cliente_cidade: existente.cliente_cidade || '',
+    cliente_uf: existente.cliente_uf || '',
+    valor_total: existente.valor_total,
+    cond_pgto: existente.cond_pgto || '',
+    tipo_frete: existente.tipo_frete || 'CIF',
+    frete_cobrado: existente.frete_cobrado !== undefined ? existente.frete_cobrado : 0,
+    frete_embutido: existente.frete_embutido !== undefined ? existente.frete_embutido : 0,
+    transportadora: existente.transportadora || '',
+    transportadora_cod: existente.transportadora_cod || '',
+    prazo_entrega: existente.prazo_entrega || '',
+    itens_cotados: Array.isArray(existente.itens_cotados) ? JSON.parse(JSON.stringify(existente.itens_cotados)) : [],
+    contatos: Array.isArray(existente.contatos) ? JSON.parse(JSON.stringify(existente.contatos)) : [],
+    observacoes: existente.observacoes || '',
+    custom: customNovo,
+    estagio: 'lead',
+    justificativa: `Clonado da oportunidade #${existente.id}`,
+    cod_vendedor: (scope && scope.all) ? existente.cod_vendedor : undefined
+  };
+
+  // 4. Executa criarDeal existente
+  const novoDeal = await criarDeal(dadosClone, usuario, scope);
+
+  // 5. Telemetria CRM_DEAL_CLONADO
+  await recordTelemetry(u, 'CRM_DEAL_CLONADO', `Clonou a oportunidade #${existente.id} gerando a oportunidade #${novoDeal.id}`, {
+    deal_id: novoDeal.id,
+    origem_id: String(existente.id),
+    cod_vendedor: novoDeal.cod_vendedor,
+    role: u.role
+  });
+
+  return novoDeal;
 }
 
 /**
@@ -3641,6 +3998,9 @@ const initCrmDatabase = initCrmTables;
 
 module.exports = {
   CANONICAL_STAGES,
+  MOTIVOS_PERDA,
+  resolverMotivoPerda,
+  validarTransicao,
   initCrmTables,
   initCrmDatabase,
   listarDeals,
@@ -3650,6 +4010,8 @@ module.exports = {
   atualizarEstagioDeal,
   excluirDeal,
   restaurarDeal,
+  reabrirDeal,
+  clonarDeal,
   listarAtividadesDeal,
   criarAtividadeDeal,
   autocompleteClientes,

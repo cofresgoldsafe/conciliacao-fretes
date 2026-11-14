@@ -295,15 +295,6 @@ router.post('/deals', async (req, res) => {
         code: 'VALIDATION_ERROR'
       });
     }
-    if (!dados.cliente_nome || !String(dados.cliente_nome).trim()) {
-      return sendRfcError(res, {
-        status: 400,
-        title: 'Dados Inválidos',
-        detail: "O campo 'cliente_nome' é obrigatório.",
-        code: 'VALIDATION_ERROR'
-      });
-    }
-
     const novoDeal = await crmEngine.criarDeal(dados, req.user, req.crmScope);
 
     return res.status(201).json({
@@ -380,6 +371,17 @@ router.put('/deals/:id', async (req, res) => {
 });
 
 /**
+ * GET /api/bi/crm/motivos-perda
+ * Retorna os 7 motivos canônicos de perda para montagem de selects no frontend
+ */
+router.get('/motivos-perda', (req, res) => {
+  return res.json({
+    success: true,
+    data: crmEngine.MOTIVOS_PERDA
+  });
+});
+
+/**
  * PATCH /api/bi/crm/deals/:id/stage
  * Atualiza o estágio do pipeline (Kanban drag & drop)
  */
@@ -388,7 +390,7 @@ router.patch('/deals/:id/stage', async (req, res) => {
     const { id } = req.params;
     const novoEstagio = req.body.novoEstagio || req.body.estagio;
     const justificativa = req.body.justificativa || '';
-    const motivoPerda = req.body.motivoPerda || req.body.motivo_perda || '';
+    const motivoPerda = req.body.motivoPerdaCod || req.body.motivo_perda_cod || req.body.motivoPerda || req.body.motivo_perda || '';
 
     if (!novoEstagio || !String(novoEstagio).trim()) {
       return sendRfcError(res, {
@@ -419,6 +421,54 @@ router.patch('/deals/:id/stage', async (req, res) => {
       title: 'Erro ao alterar estágio',
       detail: err.message,
       code: err.code || 'STAGE_UPDATE_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/deals/:id/reabrir
+ * Reabre um negócio fechado (ganho ou perdido), preservando o mesmo ID e retornando ao estágio anterior
+ */
+router.post('/deals/:id/reabrir', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dealReaberto = await crmEngine.reabrirDeal(id, req.user, req.crmScope);
+
+    return res.json({
+      success: true,
+      message: `Oportunidade #${id} reaberta em "${dealReaberto.estagio}" com sucesso!`,
+      data: dealReaberto
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao reabrir oportunidade',
+      detail: err.message,
+      code: err.code || 'REOPEN_DEAL_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/deals/:id/clonar
+ * Clona um negócio existente gerando uma nova oportunidade com número sequencial limpo
+ */
+router.post('/deals/:id/clonar', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dealClonado = await crmEngine.clonarDeal(id, req.user, req.crmScope);
+
+    return res.status(201).json({
+      success: true,
+      message: `Oportunidade #${id} clonada com sucesso gerando #${dealClonado.id}!`,
+      data: dealClonado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao clonar oportunidade',
+      detail: err.message,
+      code: err.code || 'CLONE_DEAL_ERROR'
     });
   }
 });

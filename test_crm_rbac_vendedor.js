@@ -134,6 +134,7 @@ async function runTests() {
     }, {
       titulo: 'Deal Teste Juliana CRM-19',
       cliente_nome: 'CLIENTE JULIANA LTDA',
+      cliente_cnpj: '11.222.333/0001-81',
       cod_vendedor: '000004', // Tentativa maliciosa de criar em nome de Figueiredo
       nome_vendedor: 'Figueiredo',
       estagio: 'PROPOSTA',
