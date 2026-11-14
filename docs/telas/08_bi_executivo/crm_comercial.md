@@ -4,21 +4,21 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botões:** `#btnTabBiCrm` (`💼 CRM`) e `#mainTabCrm` (`💼 CRM COMERCIAL`)  
 > **Permissão RBAC:** `admin`, `diretoria` (visão global) e `vendedor` com permissão `'crm'` + vínculo ativo em `crm_vendedores` (escopo restrito ao próprio `cod_vendedor`)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 13/11/2026 (v8.321 - CRM-19 RBAC por Vendedor, Escopo por Proprietário e Meta Mensal)  
+> **Última Atualização:** 13/11/2026 (v8.322 - CRM-20 Proposta Comercial em PDF por Empresa Emissora, Revisões Imutáveis, Envio por E-mail e Link Público)  
 
 ---
 
 ## 1. Propósito da Tela & Personas
-- **Objetivo:** Pipeline comercial nativo de vendas, alternância flexível entre modo **Kanban** (5 fases canônicas: Lead, Contato, Proposta, Negociação, Ganho) e modo **Listagem** tabular com 10 colunas canônicas idênticas ao Pipedrive (`listagem.png`), acompanhamento de Meta Mensal (individual por vendedor e consolidada da equipe para a diretoria), gestão de clientes B2B com espelhamento Just-in-Time da base Protheus (`SA1010`) para o Super Banco (`crm_clientes`), e atividades de follow-up.
-- **Personas Atendidas:** `admin`, `diretoria` (visão global de toda a equipe) e `vendedor` habilitado com permissão `'crm'` (escopo isolado na própria carteira de oportunidades).
+- **Objetivo:** Pipeline comercial nativo de vendas, alternância flexível entre modo **Kanban** (5 fases canônicas: Lead, Contato, Proposta, Negociação, Ganho) e modo **Listagem** tabular com 10 colunas canônicas idênticas ao Pipedrive (`listagem.png`), acompanhamento de Meta Mensal (individual por vendedor e consolidada da equipe para a diretoria), geração de propostas comerciais em PDF por empresa emissora (`14`, `15`, `16`) com revisões imutáveis (`<id>-R<rev>`), envio por e-mail com PDF anexado e rastreamento via link público (`/p/:token`), gestão de clientes B2B com espelhamento Just-in-Time da base Protheus (`SA1010`) para o Super Banco (`crm_clientes`), e atividades de follow-up.
+- **Personas Atendidas:** `admin`, `diretoria` (visão global de toda a equipe e cadastro de empresas emitentes) e `vendedor` habilitado com permissão `'crm'` (escopo isolado na própria carteira de oportunidades e propostas).
 
 ---
 
 ## 2. Arquitetura de Código & Componentes
-- **Frontend (View):** `public/crm.html` (`/crm`) e `public/index.html` (aba `#tab-bi-crm`, atalho `#mainTabCrm`, containers `#crmKanbanContainer` e `#crmListagemContainer`, card `#crmKpiMetaBox`, modais `#modalCrmOportunidade`, `#modalCrmDetalhes` e `#modalCrmCliente`).
-- **Frontend (Controller):** `public/js/crm.js` (estado `crmMe`, `crmVendedoresCatalog`, `dealViewMode`, `loadCrmMe`, `applyRoleVisibility`, `updateMetaKpiCard`, `renderListagemBoard`, `renderKanbanBoard`, `abrirModalCliente`, sincronização e filtros por `cod_vendedor`).
-- **Backend / Rotas:** `crm_routes.js` (`requireCrmAccess`, `scopeByOwner`, `requireCrmAdmin`, `/api/bi/crm/deals`, `/api/bi/crm/clientes`, `/api/bi/crm/vendedores`, `/api/bi/crm/me`, `/api/bi/crm/meta`), `crm_vendedores.js`, `crm_engine.js`, `postgres_db.js`.
-- **Banco de Dados & Scripts:** `sql/bi/11_tabela_crm_vendedores.sql` (tabela `crm_vendedores` com RLS e grants `service_role`) e `scripts/crm19_normalizar_vendedores.js` (saneamento de `cod_vendedor`/`nome_vendedor` com `--dry-run` e `--apply`).
+- **Frontend (View):** `public/crm.html` (`/crm`) e `public/index.html` (aba `#tab-bi-crm`, atalho `#mainTabCrm`, containers `#crmKanbanContainer` e `#crmListagemContainer`, card `#crmKpiMetaBox`, botão `#btnCrmEmpresas`, modais `#modalCrmOportunidade`, `#modalCrmDetalhes` com `#btnCrmPropostaDoDetalhes`, `#modalCrmCliente`, `#modalCrmPropostas`, `#modalCrmPropostaEmail` e `#modalCrmEmpresas`).
+- **Frontend (Controller):** `public/js/crm.js` (estado `crmMe`, `crmVendedoresCatalog`, `dealViewMode`, `loadCrmMe`, `applyRoleVisibility`, `updateMetaKpiCard`, `renderListagemBoard`, `renderKanbanBoard`, `renderUltimaPropostaBadge`, `abrirModalPropostas`, `abrirModalPropostaEmail`, `abrirModalEmpresasEmitentes`, `abrirModalCliente`, sincronização e filtros por `cod_vendedor`).
+- **Backend / Rotas:** `crm_routes.js` (`requireCrmAccess`, `scopeByOwner`, `requireCrmAdmin`, `/api/bi/crm/deals`, `/api/bi/crm/clientes`, `/api/bi/crm/vendedores`, `/api/bi/crm/me`, `/api/bi/crm/meta`, `/api/bi/crm/empresas-emitentes`, `/api/bi/crm/deals/:id/propostas`), `crm_propostas.js`, `crm_vendedores.js`, `crm_engine.js`, `mailer.js` (`sendPropostaEmail`), `server.js` (`GET /p/:token` e `POST /api/cron/crm-propostas-vencendo`), `postgres_db.js`.
+- **Banco de Dados & Scripts:** `sql/bi/11_tabela_crm_vendedores.sql` (`crm_vendedores` com RLS e grants `service_role`), `sql/bi/12_tabelas_crm_propostas.sql` (`crm_empresas_emitentes` e `crm_propostas` com RLS e grants `service_role`), `.github/workflows/crm_propostas_vencendo.yml` (cron diário às 08h BRT) e `scripts/crm19_normalizar_vendedores.js` (saneamento de `cod_vendedor`/`nome_vendedor` com `--dry-run` e `--apply`).
 
 ---
 
@@ -137,12 +137,22 @@
 - `GET /api/bi/crm/transportadoras/autocomplete`: Busca inteligente de transportadoras homologadas no Protheus por código, razão social, fantasia ou CNPJ.
 - `POST /api/bi/crm/transportadoras/sync`: Sincronização manual e sob demanda do cadastro Protheus (`SA4010`/`SA4160`) para o Super Banco (`requireCrmAdmin`).
 - `GET /api/bi/crm/transportadoras/status`: Telemetria de transportadoras ativas, bloqueadas e data da última sincronização.
+- `GET /api/bi/crm/empresas-emitentes`: Lista o cadastro das 3 empresas emissoras (`14`, `15`, `16`) para cabeçalho e rodapé das propostas comerciais.
+- `PUT /api/bi/crm/empresas-emitentes/:codigo`: Atualiza os dados cadastrais, bancários e logomarca (PNG/JPEG <= 200 KB) da empresa emissora (`requireCrmAdmin`).
+- `POST /api/bi/crm/deals/:id/propostas/previa`: Gera prévia em PDF (rascunho não gravado, `application/pdf`) respeitando `dealEditavel`.
+- `POST /api/bi/crm/deals/:id/propostas`: Gera e grava revisão oficial imutável (`<id>-R<rev>`, ex.: `29001-R2`) em transação `FOR UPDATE`, atualiza `custom.ultima_proposta`, cria atividade `proposta_gerada` e move estágio `lead`/`contato` para `proposta`.
+- `GET /api/bi/crm/deals/:id/propostas`: Lista as revisões da oportunidade sem trafegar o binário `BYTEA` (`dealVisivel`).
+- `GET /api/bi/crm/deals/:id/propostas/:revisao/pdf`: Retorna o PDF binário (`inline` ou `attachment` via `?download=1`, `dealVisivel`).
+- `POST /api/bi/crm/deals/:id/propostas/:revisao/email`: Envia a revisão por e-mail com PDF anexado e link público (`/p/:token`), `Reply-To` do vendedor (`crm_vendedores.email` com fallback em `users.email`) e limite de 20 envios/h por usuário (`dealEditavel`).
+- `GET /p/:token`: Rota pública (sem login, `propostaPublicaLimiter` 30 req/min/IP) que exibe o PDF inline, aplica filtro anti-bot/anti-prévia (2 min pós-envio e dedup de 10 min por IP) e registra atividade `proposta_visualizada` na 1ª abertura humana.
+- `POST /api/cron/crm-propostas-vencendo`: Rota protegida por `requireCronAuth` que gera atividade pendente `proposta_vencendo` para a última revisão enviada que vence em até 2 dias em negócios abertos.
 
 ---
 
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_propostas.js
 node test_crm_rbac_vendedor.js
 node test_crm_preditivo_integrado.js
 node test_crm_scoring_engine.js
@@ -159,6 +169,11 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.322 (13/11/2026):** CRM-20 — Proposta Comercial em PDF por Empresa Emissora (`14`, `15`, `16`), Revisões Imutáveis, Envio por E-mail, Link Público e Lembrete de Validade:
+  - **Tabelas e Segurança (`sql/bi/12_tabelas_crm_propostas.sql`):** Criação de `crm_empresas_emitentes` (seed inicial para `14` Metal Pleno, `15` GSI e `16` OAÇO) e `crm_propostas` (revisões imutáveis `<id>-R<rev>`, snapshot JSONB, binário `BYTEA` e `token_publico` de 43 caracteres base64url), com RLS estrito, `REVOKE ALL` de `anon`/`authenticated` e `GRANT ALL` explícito para `service_role` e `postgres`.
+  - **Motor de Propostas e Sigilo de Desconto (`crm_propostas.js`):** Geração de PDF A4 em memória via `pdfmake` utilizando exclusivamente `precoNegociado` como Valor Unitário e omitindo Preço de Tabela, Desconto % e Frete Embutido. Transação PostgreSQL `BEGIN` + `SELECT ... FOR UPDATE` no deal garantindo revisões sequenciais sem colisão, atualização de `custom.ultima_proposta`, criação de atividade `proposta_gerada` e avanço automático de `lead`/`contato` para `proposta` após o `COMMIT`.
+  - **Envio de E-mail, Link Público e Cron (`mailer.js`, `server.js` & `.github/workflows/crm_propostas_vencendo.yml`):** Nova função `sendPropostaEmail` (Mailjet HTTP API v3.1 com anexo Base64, `ReplyTo` e `Cc`, mais fallback SMTP), resolução do e-mail do vendedor com fallback automático no usuário do portal (`users.email`), rate limit de 20 e-mails/hora em memória, rota pública `GET /p/:token` (30 req/min/IP, cabeçalhos `no-store`/`nosniff`/`noindex`/`no-referrer`, filtro de bots, janela de 2 min pós-envio e dedup de 10 min por IP com IPv4 mascarado) e job diário `POST /api/cron/crm-propostas-vencendo` às 08h BRT.
+  - **Interface e Testes (`public/js/crm.js`, `public/crm.html`, `public/index.html` & `test_crm_propostas.js`):** Botões `📄 Proposta` no detalhe do negócio e `🏢 Empresas` (admin) no topo, modais `#modalCrmPropostas`, `#modalCrmPropostaEmail` e `#modalCrmEmpresas`, selos de última proposta nos cards do Kanban e na Listagem, ícones dedicados na timeline e suíte `test_crm_propostas.js` com os 21 cenários da especificação.
 - **v8.321 (13/11/2026):** CRM-19 — Abertura do CRM Comercial aos Vendedores com RBAC por Proprietário, Tabela `crm_vendedores` e Meta Mensal:
   - **RBAC e Escopo por Proprietário (`crm_routes.js` & `crm_engine.js`):** Substituição de `requireAdminOrAlexandre` por `requireCrmAccess` + `scopeByOwner`, resolvendo o vendedor exclusivamente por `crm_vendedores.username_portal` (`ativo = true`) e exigindo permissão `'crm'` na conta do usuário. Oportunidades de outros vendedores retornam `404 DEAL_NOT_FOUND` (anti-enumeração) com registro de auditoria `CRM_DEAL_ACESSO_NEGADO`. Operações destrutivas e de sincronização permanecem protegidas por `requireCrmAdmin`.
   - **Tabela `crm_vendedores` e Meta Mensal (`sql/bi/11_tabela_crm_vendedores.sql` & `crm_vendedores.js`):** Cadastro central dos 4 códigos Protheus (`000074` Juliana, `000064` Andrea, `000004` Figueiredo, `000001` Alexandre com `meta_mensal = 0`). Cálculo de meta mensal reaproveitando `metaBaseVendas = R$ 120.000,00` de `getConfigMetasVendasDB()` quando `meta_mensal IS NULL` e excluindo vendedores com `meta_mensal = 0` da soma da equipe (`R$ 360.000,00`).

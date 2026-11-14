@@ -305,6 +305,7 @@
       clienteCod: d.cliente_cod || d.clienteCod || '',
       clienteLoja: d.cliente_loja || d.clienteLoja || '01',
       clienteCnpj: d.cliente_cnpj_fmt || d.cliente_cnpj || d.clienteCnpj || '',
+      clienteEmail: d.cliente_email || d.clienteEmail || custom.clienteEmail || '',
       cod_vendedor: d.cod_vendedor || d.codVendedor || '',
       vendedor: d.nome_vendedor || d.vendedor || d.cod_vendedor || '',
       fase: normalizeStageKey(d.estagio || d.fase),
@@ -326,6 +327,8 @@
       dataFechamentoReal: d.data_fechamento_real || d.dataFechamentoReal || null,
       fidelidade_compras: d.fidelidade_compras || null,
       score_preditivo: d.score_preditivo || null,
+      custom: custom,
+      ultimaProposta: custom.ultima_proposta || d.ultimaProposta || null,
       createdAt: d.created_at || d.createdAt || new Date().toISOString(),
       updatedAt: d.updated_at || d.updatedAt || new Date().toISOString()
     };
@@ -368,6 +371,49 @@
     const tooltip = escapeHtml(`Probabilidade Preditiva de Fechamento: ${score}%\nClassificação: ${scoreObj.classificacao || 'MÉDIA'}\n${scoreObj.recomendacao || ''}`);
 
     return `<span class="badge-score-preditivo" style="display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; font-family: var(--font-mono, monospace); background: ${bg}; border: 1px solid ${border}; color: ${color}; line-height: 1; cursor: help; user-select: none; ${styleExtra}" title="${tooltip}"><span>${icone}</span><span>${score}%</span></span>`;
+  }
+
+  /**
+   * Renderiza badge discreto da última proposta comercial gerada (ex.: R2 · vence 27/11 👁)
+   */
+  function renderUltimaPropostaBadge(deal) {
+    const up = (deal && deal.custom && deal.custom.ultima_proposta) || (deal && deal.ultimaProposta);
+    if (!up || !up.revisao) return '';
+
+    const rev = Number(up.revisao) || 1;
+    const valIso = String(up.validade_ate || '').slice(0, 10);
+    let ddMm = '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(valIso)) {
+      const parts = valIso.split('-');
+      ddMm = `${parts[2]}/${parts[1]}`;
+    }
+
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    const dtLimite = new Date();
+    dtLimite.setDate(dtLimite.getDate() + 2);
+    const limite2dIso = dtLimite.toISOString().slice(0, 10);
+
+    const isVencida = Boolean(valIso && valIso < hojeIso);
+    const isVencendo = Boolean(!isVencida && valIso && valIso <= limite2dIso);
+    const foiAberta = Boolean(Number(up.aberturas) > 0 || up.visualizada_em);
+
+    const bg = isVencida
+      ? 'rgba(239, 68, 68, 0.14)'
+      : (isVencendo ? 'rgba(245, 158, 11, 0.16)' : 'rgba(56, 189, 248, 0.14)');
+    const border = isVencida
+      ? 'rgba(239, 68, 68, 0.4)'
+      : (isVencendo ? 'rgba(245, 158, 11, 0.4)' : 'rgba(56, 189, 248, 0.35)');
+    const color = isVencida ? '#f87171' : (isVencendo ? '#fbbf24' : '#38bdf8');
+
+    const textoVal = ddMm ? ` · ${isVencida ? 'vencida' : 'vence'} ${ddMm}` : '';
+    const iconeOlho = foiAberta ? ' 👁' : '';
+    const tooltip = escapeHtml(
+      `Proposta ${up.numero || ('R' + rev)} (${up.empresa_nome || up.empresa_codigo || ''})` +
+      (valIso ? ` — Validade: ${valIso.split('-').reverse().join('/')}` : '') +
+      (foiAberta ? ` — Visualizada pelo cliente (${up.aberturas || 1}x)` : '')
+    );
+
+    return `<span class="badge-proposta-crm" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 4px; font-size: 0.70rem; font-weight: 700; background: ${bg}; border: 1px solid ${border}; color: ${color}; line-height: 1; white-space: nowrap;" title="${tooltip}">📄 R${escapeHtml(rev)}${escapeHtml(textoVal)}${iconeOlho}</span>`;
   }
 
   /**
@@ -658,6 +704,11 @@
     const selectModal = document.getElementById('crmSelectVendedor');
     const btnSyncProd = document.getElementById('btnCrmSyncProdutos');
     const btnSyncTransp = document.getElementById('btnCrmSyncTransportadoras');
+    const btnEmpresas = document.getElementById('btnCrmEmpresas');
+
+    if (btnEmpresas) {
+      btnEmpresas.style.display = isAdmin ? 'inline-flex' : 'none';
+    }
 
     if (!isAdmin && crmMe && crmMe.cod_vendedor) {
       if (selectFilter) {
@@ -1055,11 +1106,12 @@
             ${escapeHtml(d.clienteNome || '-')}
           </td>
           <td style="padding: 10px 12px; white-space: nowrap;">
-            <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
               <span style="color: ${statusColor}; font-weight: ${isGanho ? '600' : 'normal'};">
                 ${escapeHtml(statusLabel)}
               </span>
               ${(!isGanho && !isPerdido) ? renderScoreBadge(d.score_preditivo) : ''}
+              ${renderUltimaPropostaBadge(d)}
             </div>
           </td>
           <td style="padding: 10px 12px; white-space: nowrap; color: var(--text-muted);">
@@ -1229,7 +1281,10 @@
       </div>
 
       <div class="crm-card-footer">
-        <span class="crm-card-date">📅 ${escapeHtml(dataCriacao)}</span>
+        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+          <span class="crm-card-date">📅 ${escapeHtml(dataCriacao)}</span>
+          ${renderUltimaPropostaBadge(deal)}
+        </div>
         <div class="crm-card-actions">
           <button type="button" class="btn-crm-card-action btn-edit-deal" title="Editar Oportunidade" data-id="${escapeHtml(deal.id)}">✏️</button>
           <button type="button" class="btn-crm-card-action btn-view-deal" title="Ver Detalhes / Follow-up" data-id="${escapeHtml(deal.id)}">🔍</button>
@@ -2334,6 +2389,12 @@
       }
     }
 
+    // Oculta botão 📄 Proposta quando a oportunidade está como PERDIDO (Seção 6.1)
+    const btnPropostaDetalhes = document.getElementById('btnCrmPropostaDoDetalhes');
+    if (btnPropostaDetalhes) {
+      btnPropostaDetalhes.style.display = (deal.fase === 'PERDIDO') ? 'none' : 'inline-flex';
+    }
+
     // Carrega a linha do tempo de atividades
     await loadDealActivities(deal.id);
 
@@ -2404,7 +2465,11 @@
       'LIGACAO': '📞',
       'REUNIAO': '🤝',
       'WHATSAPP': '💬',
-      'TAREFA': '📅'
+      'TAREFA': '📅',
+      'PROPOSTA_GERADA': '📄',
+      'PROPOSTA_ENVIADA': '📧',
+      'PROPOSTA_VISUALIZADA': '👁',
+      'PROPOSTA_VENCENDO': '⏰'
     };
 
     const typeLabels = {
@@ -2412,7 +2477,11 @@
       'LIGACAO': 'Ligação Telefônica',
       'REUNIAO': 'Reunião Realizada',
       'WHATSAPP': 'Contato WhatsApp',
-      'TAREFA': 'Agendamento / Tarefa'
+      'TAREFA': 'Agendamento / Tarefa',
+      'PROPOSTA_GERADA': 'Proposta Gerada',
+      'PROPOSTA_ENVIADA': 'Proposta Enviada',
+      'PROPOSTA_VISUALIZADA': 'Proposta Visualizada',
+      'PROPOSTA_VENCENDO': 'Proposta Vencendo'
     };
 
     container.innerHTML = sortedActivities.map(act => {
@@ -3965,6 +4034,23 @@
       });
     }
 
+    const btnPropostaDoDetalhes = document.getElementById('btnCrmPropostaDoDetalhes');
+    if (btnPropostaDoDetalhes && !btnPropostaDoDetalhes._hasListener) {
+      btnPropostaDoDetalhes._hasListener = true;
+      btnPropostaDoDetalhes.addEventListener('click', () => {
+        if (!currentDeal) return;
+        openPropostaModal(currentDeal.id);
+      });
+    }
+
+    const btnEmpresas = document.getElementById('btnCrmEmpresas');
+    if (btnEmpresas && !btnEmpresas._hasListener) {
+      btnEmpresas._hasListener = true;
+      btnEmpresas.addEventListener('click', () => {
+        openEmpresasEmitentesModal();
+      });
+    }
+
     const btnGanhoDoDetalhes = document.getElementById('btnCrmGanhoDoDetalhes');
     if (btnGanhoDoDetalhes && !btnGanhoDoDetalhes._hasListener) {
       btnGanhoDoDetalhes._hasListener = true;
@@ -4062,6 +4148,21 @@
             return;
           }
           // Fecha na ordem inversa de precedência (modal de cliente primeiro se estiver aberto)
+          const modalPropEmail = document.getElementById('modalCrmPropostaEmail');
+          if (modalPropEmail && modalPropEmail.style.display !== 'none' && !modalPropEmail.classList.contains('hidden')) {
+            closeModal(modalPropEmail);
+            return;
+          }
+          const modalPropostas = document.getElementById('modalCrmPropostas');
+          if (modalPropostas && modalPropostas.style.display !== 'none' && !modalPropostas.classList.contains('hidden')) {
+            closeModal(modalPropostas);
+            return;
+          }
+          const modalEmpresas = document.getElementById('modalCrmEmpresas');
+          if (modalEmpresas && modalEmpresas.style.display !== 'none' && !modalEmpresas.classList.contains('hidden')) {
+            closeModal(modalEmpresas);
+            return;
+          }
           const modalCliente = document.getElementById('modalCrmCliente');
           if (modalCliente && modalCliente.style.display !== 'none' && !modalCliente.classList.contains('hidden')) {
             closeModal(modalCliente);
@@ -4090,6 +4191,832 @@
     setupTransportadoraAutocomplete();
     setupCepAutoLookup();
     setupProductSyncButton();
+    ensurePropostasModalsDom();
+  }
+
+  // ==========================================================================
+  // CRM-20: MODAIS E FLUXOS DE PROPOSTAS COMERCIAIS EM PDF POR EMPRESA EMISSORA
+  // ==========================================================================
+  let empresasEmitentesCatalog = [];
+  let empresasEmitentesLoadError = '';
+  let currentPropostasDeal = null;
+  let currentPropostasList = [];
+  let currentEmailRevisionObj = null;
+
+  function resolverCodigoEmpresaFrontend(faturadoPor) {
+    const s = String(faturadoPor || '').toUpperCase().trim();
+    if (!s) return '';
+    if (s.startsWith('14') || s.includes('METAL')) return '14';
+    if (s.startsWith('15') || s.includes('GSI')) return '15';
+    if (s.startsWith('16') || s.includes('OACO') || s.includes('OAÇO') || s.includes('AÇO')) return '16';
+    return '';
+  }
+
+  async function carregarEmpresasEmitentes(force = false) {
+    if (!force && Array.isArray(empresasEmitentesCatalog) && empresasEmitentesCatalog.length > 0 && !empresasEmitentesLoadError) {
+      return empresasEmitentesCatalog;
+    }
+    try {
+      const token = getToken();
+      const res = await fetch('/api/bi/crm/empresas-emitentes?inativas=1', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        empresasEmitentesCatalog = Array.isArray(json.items) ? json.items : (Array.isArray(json.data) ? json.data : []);
+        empresasEmitentesLoadError = '';
+      } else {
+        empresasEmitentesCatalog = [];
+        empresasEmitentesLoadError = json.message || json.error?.detail || `Falha ao carregar empresas emitentes (HTTP ${res.status}).`;
+      }
+    } catch (err) {
+      console.warn('⚠️ [CRM Propostas] Falha ao carregar empresas emitentes:', err.message);
+      empresasEmitentesCatalog = [];
+      empresasEmitentesLoadError = err.message || 'Falha ao carregar empresas emitentes.';
+    }
+    return empresasEmitentesCatalog;
+  }
+
+  function showModalInlineError(elId, msg) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!msg) {
+      el.style.display = 'none';
+      el.textContent = '';
+    } else {
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  }
+
+  function ensurePropostasModalsDom() {
+    if (!document.getElementById('modalCrmPropostas')) {
+      const modalPropostas = document.createElement('div');
+      modalPropostas.id = 'modalCrmPropostas';
+      modalPropostas.className = 'modal hidden';
+      modalPropostas.setAttribute('role', 'dialog');
+      modalPropostas.setAttribute('aria-modal', 'true');
+      modalPropostas.setAttribute('aria-labelledby', 'modalCrmPropostasTitle');
+      modalPropostas.style.cssText = 'display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); z-index: 10050; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;';
+      modalPropostas.innerHTML = `
+        <div class="modal-content modal-large" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 920px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);">
+          <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 id="modalCrmPropostasTitle" style="margin: 0; font-size: 1.08rem; font-weight: 700; color: var(--text-main);">📄 Proposta Comercial</h3>
+            <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
+            <div id="crmPropostaModalErro" style="display: none; padding: 8px 12px; border-radius: 6px; background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; font-size: 0.82rem; font-weight: 600;"></div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; align-items: end;">
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;" title="Definido pelo campo Faturado Por da oportunidade">Emitida por</label>
+                <div id="crmPropostaEmitenteBox" title="Definido pelo campo Faturado Por da oportunidade" style="padding: 7px 10px; border-radius: 6px; border: 1px solid var(--panel-border, #334155); background: rgba(15, 23, 42, 0.55); font-size: 0.85rem; font-weight: 600; color: var(--text-main);">-</div>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label for="crmPropostaValidadeDias" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Validade (dias) *</label>
+                <input type="number" id="crmPropostaValidadeDias" class="form-control form-control-sm" min="1" max="60" step="1" value="7" style="width: 100%;">
+              </div>
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmPropostaObsCliente" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Observações para o cliente (vai no PDF)</label>
+              <textarea id="crmPropostaObsCliente" class="form-control form-control-sm" rows="2" maxlength="500" placeholder="Opcional — impresso somente nesta revisão da proposta..." style="width: 100%;"></textarea>
+            </div>
+            <div id="crmPropostaResumoValores" style="padding: 10px 14px; border-radius: 8px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.85rem;">
+              <span id="crmPropostaResumoTexto">Itens: 0 · Subtotal: R$ 0,00 · Frete: R$ 0,00 · Total: R$ 0,00</span>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" id="btnCrmPreviaProposta" class="btn btn-outline btn-sm" style="font-weight: 600;">👁 Pré-visualizar</button>
+                <button type="button" id="btnCrmGerarRevisaoProposta" class="btn btn-primary btn-sm" style="font-weight: 600;">✅ Gerar Proposta</button>
+              </div>
+            </div>
+            <div>
+              <h4 style="margin: 0 0 8px; font-size: 0.9rem; font-weight: 700; color: var(--text-main);">Revisões Geradas</h4>
+              <div style="overflow-x: auto; border: 1px solid var(--panel-border, #334155); border-radius: 8px;">
+                <table class="table" style="width: 100%; margin: 0; font-size: 0.82rem;">
+                  <thead>
+                    <tr style="background: rgba(15, 23, 42, 0.65); text-align: left;">
+                      <th style="padding: 8px 10px;">Revisão</th>
+                      <th style="padding: 8px 10px;">Empresa</th>
+                      <th style="padding: 8px 10px;">Emissão</th>
+                      <th style="padding: 8px 10px;">Validade</th>
+                      <th style="padding: 8px 10px; text-align: right;">Valor</th>
+                      <th style="padding: 8px 10px;">Status</th>
+                      <th style="padding: 8px 10px; text-align: right;">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="crmPropostasListaTbody">
+                    <tr><td colspan="7" style="text-align: center; padding: 16px; color: var(--text-muted);">Nenhuma revisão gerada ainda.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end;">
+            <button type="button" class="btn-close-crm-modal btn btn-outline btn-sm">Fechar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalPropostas);
+    }
+
+    if (!document.getElementById('modalCrmPropostaEmail')) {
+      const modalEmail = document.createElement('div');
+      modalEmail.id = 'modalCrmPropostaEmail';
+      modalEmail.className = 'modal hidden';
+      modalEmail.setAttribute('role', 'dialog');
+      modalEmail.setAttribute('aria-modal', 'true');
+      modalEmail.setAttribute('aria-labelledby', 'modalCrmPropostaEmailTitle');
+      modalEmail.style.cssText = 'display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); z-index: 10060; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;';
+      modalEmail.innerHTML = `
+        <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 600px; display: flex; flex-direction: column; overflow: hidden;">
+          <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 id="modalCrmPropostaEmailTitle" style="margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--text-main);">📧 Enviar Proposta por E-mail</h3>
+            <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;">
+            <div id="crmPropEmailModalErro" style="display: none; padding: 8px 12px; border-radius: 6px; background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; font-size: 0.82rem; font-weight: 600;"></div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmPropEmailPara" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Para (até 5 e-mails separados por vírgula) *</label>
+              <input type="text" id="crmPropEmailPara" class="form-control form-control-sm" placeholder="cliente@empresa.com.br" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmPropEmailCc" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">CC (opcional)</label>
+              <input type="text" id="crmPropEmailCc" class="form-control form-control-sm" placeholder="copia@empresa.com.br" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmPropEmailAssunto" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Assunto *</label>
+              <input type="text" id="crmPropEmailAssunto" class="form-control form-control-sm" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmPropEmailMensagem" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Mensagem *</label>
+              <textarea id="crmPropEmailMensagem" class="form-control form-control-sm" rows="7" style="width: 100%;"></textarea>
+            </div>
+            <div id="crmPropEmailAnexoInfo" style="font-size: 0.78rem; color: #38bdf8; font-weight: 600;">📎 Anexo: Proposta.pdf</div>
+          </div>
+          <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn-close-crm-modal btn btn-outline btn-sm">Cancelar</button>
+            <button type="button" id="btnCrmConfirmarEnvioEmailProposta" class="btn btn-primary btn-sm" style="font-weight: 600;">📤 Enviar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalEmail);
+    }
+
+    if (!document.getElementById('modalCrmEmpresas')) {
+      const modalEmpresas = document.createElement('div');
+      modalEmpresas.id = 'modalCrmEmpresas';
+      modalEmpresas.className = 'modal hidden';
+      modalEmpresas.setAttribute('role', 'dialog');
+      modalEmpresas.setAttribute('aria-modal', 'true');
+      modalEmpresas.setAttribute('aria-labelledby', 'modalCrmEmpresasTitle');
+      modalEmpresas.style.cssText = 'display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); z-index: 10050; justify-content: center; align-items: center; overflow-y: auto; padding: 20px;';
+      modalEmpresas.innerHTML = `
+        <div class="modal-content modal-large" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 840px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
+          <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 id="modalCrmEmpresasTitle" style="margin: 0; font-size: 1.08rem; font-weight: 700; color: var(--text-main);">🏢 Empresas Emitentes de Proposta (14, 15, 16)</h3>
+            <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal">&times;</button>
+          </div>
+          <div class="modal-body" style="padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+            <div id="crmEmpModalErro" style="display: none; padding: 8px 12px; border-radius: 6px; background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; font-size: 0.82rem; font-weight: 600;"></div>
+            <div style="display: grid; grid-template-columns: 160px 1fr 1fr; gap: 10px;">
+              <div>
+                <label for="crmEmpSelectCodigo" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Empresa</label>
+                <select id="crmEmpSelectCodigo" class="form-control form-control-sm" style="width: 100%;">
+                  <option value="14">14 — Metal Pleno</option>
+                  <option value="15">15 — GSI Brasil</option>
+                  <option value="16">16 — OAÇO / Cofres Gold Safe</option>
+                </select>
+              </div>
+              <div>
+                <label for="crmEmpRazaoSocial" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Razão Social *</label>
+                <input type="text" id="crmEmpRazaoSocial" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpNomeFantasia" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Nome Fantasia *</label>
+                <input type="text" id="crmEmpNomeFantasia" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+              <div>
+                <label for="crmEmpCnpj" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">CNPJ *</label>
+                <input type="text" id="crmEmpCnpj" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpIe" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">IE</label>
+                <input type="text" id="crmEmpIe" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpTelefone" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Telefone</label>
+                <input type="text" id="crmEmpTelefone" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpValidadePadrao" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Validade Padrão (dias)</label>
+                <input type="number" id="crmEmpValidadePadrao" class="form-control form-control-sm" min="1" max="60" value="7" style="width: 100%;">
+              </div>
+            </div>
+            <div>
+              <label for="crmEmpEndereco" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Endereço</label>
+              <input type="text" id="crmEmpEndereco" class="form-control form-control-sm" style="width: 100%;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 110px 110px; gap: 10px;">
+              <div>
+                <label for="crmEmpEmailContato" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">E-mail de Contato</label>
+                <input type="text" id="crmEmpEmailContato" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpSite" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Site</label>
+                <input type="text" id="crmEmpSite" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpLogoPath" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Logo (logos/...)</label>
+                <input type="text" id="crmEmpLogoPath" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpCorPrimaria" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Cor Primária</label>
+                <input type="text" id="crmEmpCorPrimaria" class="form-control form-control-sm" placeholder="#0b3d91" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpCorSecundaria" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Cor Secundária</label>
+                <input type="text" id="crmEmpCorSecundaria" class="form-control form-control-sm" placeholder="#f59e0b" style="width: 100%;">
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label for="crmEmpTextoRodape" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Texto de Rodapé</label>
+                <input type="text" id="crmEmpTextoRodape" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+              <div>
+                <label for="crmEmpDadosBancariosPix" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Dados Bancários / PIX</label>
+                <input type="text" id="crmEmpDadosBancariosPix" class="form-control form-control-sm" style="width: 100%;">
+              </div>
+            </div>
+            <div>
+              <label for="crmEmpTextoEmail" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Modelo de E-mail ({cliente}, {contato}, {numero}, {validade}, {vendedor}, {link})</label>
+              <textarea id="crmEmpTextoEmail" class="form-control form-control-sm" rows="2" style="width: 100%;"></textarea>
+            </div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem;">
+              <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="crmEmpChkNcm"> Mostrar NCM</label>
+              <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;"><input type="checkbox" id="crmEmpChkPeso"> Mostrar Peso (kg)</label>
+            </div>
+          </div>
+          <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn-close-crm-modal btn btn-outline btn-sm">Fechar</button>
+            <button type="button" id="btnCrmSalvarEmpresaEmitente" class="btn btn-primary btn-sm" style="font-weight: 600;">💾 Salvar Empresa</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalEmpresas);
+    }
+
+    // Associa listeners nos modais de proposta
+    document.querySelectorAll('#modalCrmPropostas .btn-close-crm-modal, #modalCrmPropostaEmail .btn-close-crm-modal, #modalCrmEmpresas .btn-close-crm-modal').forEach(btn => {
+      if (!btn._hasListener) {
+        btn._hasListener = true;
+        btn.addEventListener('click', () => {
+          const modal = btn.closest('.modal');
+          if (modal) closeModal(modal);
+        });
+      }
+    });
+
+    const btnPrevia = document.getElementById('btnCrmPreviaProposta');
+    if (btnPrevia && !btnPrevia._hasListener) {
+      btnPrevia._hasListener = true;
+      btnPrevia.addEventListener('click', handlePreviaProposta);
+    }
+
+    const btnGerar = document.getElementById('btnCrmGerarRevisaoProposta');
+    if (btnGerar && !btnGerar._hasListener) {
+      btnGerar._hasListener = true;
+      btnGerar.addEventListener('click', handleGerarRevisaoProposta);
+    }
+
+    const btnEnviarEmail = document.getElementById('btnCrmConfirmarEnvioEmailProposta');
+    if (btnEnviarEmail && !btnEnviarEmail._hasListener) {
+      btnEnviarEmail._hasListener = true;
+      btnEnviarEmail.addEventListener('click', handleConfirmarEnvioEmailProposta);
+    }
+
+    const selectEmpCod = document.getElementById('crmEmpSelectCodigo');
+    if (selectEmpCod && !selectEmpCod._hasListener) {
+      selectEmpCod._hasListener = true;
+      selectEmpCod.addEventListener('change', () => preencherFormularioEmpresa(selectEmpCod.value));
+    }
+
+    const btnSalvarEmp = document.getElementById('btnCrmSalvarEmpresaEmitente');
+    if (btnSalvarEmp && !btnSalvarEmp._hasListener) {
+      btnSalvarEmp._hasListener = true;
+      btnSalvarEmp.addEventListener('click', handleSalvarEmpresaEmitente);
+    }
+
+    const tbodyPropostas = document.getElementById('crmPropostasListaTbody');
+    if (tbodyPropostas && !tbodyPropostas._hasListener) {
+      tbodyPropostas._hasListener = true;
+      tbodyPropostas.addEventListener('click', handlePropostasTableClick);
+    }
+  }
+
+  function coletarOpcoesFormularioProposta() {
+    return {
+      validadeDias: parseInt(document.getElementById('crmPropostaValidadeDias')?.value || '7', 10),
+      observacoesCliente: (document.getElementById('crmPropostaObsCliente')?.value || '').trim()
+    };
+  }
+
+  async function openPropostaModal(dealId) {
+    ensurePropostasModalsDom();
+    showModalInlineError('crmPropostaModalErro', '');
+    const deal = deals.find(d => String(d.id) === String(dealId)) || currentDeal;
+    if (!deal) return;
+
+    currentPropostasDeal = deal;
+    const titleEl = document.getElementById('modalCrmPropostasTitle');
+    if (titleEl) {
+      titleEl.textContent = `📄 Proposta Comercial — #${deal.id} ${deal.titulo || ''}`;
+    }
+
+    await carregarEmpresasEmitentes();
+    const empCod = resolverCodigoEmpresaFrontend(deal.faturadoPor);
+    const emp = empresasEmitentesCatalog.find(e => e.codigo === empCod) || null;
+
+    const emitenteBox = document.getElementById('crmPropostaEmitenteBox');
+    const btnPrevia = document.getElementById('btnCrmPreviaProposta');
+    const btnGerar = document.getElementById('btnCrmGerarRevisaoProposta');
+
+    if (emitenteBox) {
+      if (emp) {
+        emitenteBox.textContent = `${emp.codigo} — ${emp.nome_fantasia} (CNPJ ${emp.cnpj})`;
+        emitenteBox.style.color = 'var(--text-main)';
+      } else {
+        emitenteBox.textContent = '⚠️ Selecione Faturado Por (14, 15 ou 16) na oportunidade antes de gerar a proposta.';
+        emitenteBox.style.color = '#f87171';
+      }
+    }
+
+    const itens = Array.isArray(deal.itens) ? deal.itens : [];
+    const temItensValidos = itens.length > 0 && itens.every(it => (parseFloat(it.quantidade) > 0) && (parseFloat(it.precoNegociado) > 0));
+    const podeEmitir = Boolean(emp && deal.fase !== 'PERDIDO' && temItensValidos);
+    if (btnPrevia) btnPrevia.disabled = !podeEmitir;
+    if (btnGerar) btnGerar.disabled = !podeEmitir;
+
+    const valInput = document.getElementById('crmPropostaValidadeDias');
+    if (valInput) valInput.value = emp ? (emp.validade_padrao_dias || 7) : 7;
+    const obsInput = document.getElementById('crmPropostaObsCliente');
+    if (obsInput) obsInput.value = ''; // Nunca pré-preencher com obs_nfe ou observacoes internas
+
+    let subtotal = 0;
+    itens.forEach(it => {
+      subtotal += (parseFloat(it.quantidade) || 0) * (parseFloat(it.precoNegociado) || 0);
+    });
+    const freteCob = parseFloat(deal.freteCobrado) || 0;
+    const totalProp = subtotal + freteCob;
+
+    const resumoEl = document.getElementById('crmPropostaResumoTexto');
+    if (resumoEl) {
+      resumoEl.textContent = `Itens: ${itens.length} · Subtotal: ${formatCurrency(subtotal)} · Frete: ${formatCurrency(freteCob)} · Total da Proposta: ${formatCurrency(totalProp)}`;
+    }
+
+    openModal(document.getElementById('modalCrmPropostas'));
+    await carregarListaRevisoesProposta(deal.id);
+  }
+
+  async function abrirPdfBlobEmNovaAba(url, fetchOptions = {}) {
+    const token = getToken();
+    const headers = {
+      ...(fetchOptions.headers || {}),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    const res = await fetch(url, { ...fetchOptions, headers });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || errData.error?.detail || errData.detail || `Falha ao abrir PDF (HTTP ${res.status})`);
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  }
+
+  async function baixarPdfBlob(url, fallbackFilename) {
+    const token = getToken();
+    const res = await fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || errData.error?.detail || errData.detail || `Falha ao baixar PDF (HTTP ${res.status})`);
+    }
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = fallbackFilename || 'Proposta.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  }
+
+  async function handlePreviaProposta() {
+    if (!currentPropostasDeal) return;
+    showModalInlineError('crmPropostaModalErro', '');
+    const btn = document.getElementById('btnCrmPreviaProposta');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Gerando prévia...';
+    }
+    try {
+      const opcoes = coletarOpcoesFormularioProposta();
+      await abrirPdfBlobEmNovaAba(`/api/bi/crm/deals/${encodeURIComponent(currentPropostasDeal.id)}/propostas/previa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opcoes)
+      });
+    } catch (err) {
+      showModalInlineError('crmPropostaModalErro', err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '👁 Pré-visualizar';
+      }
+    }
+  }
+
+  async function handleGerarRevisaoProposta() {
+    if (!currentPropostasDeal) return;
+    showModalInlineError('crmPropostaModalErro', '');
+
+    // Aviso caso o modal de edição tenha alterações pendentes não salvas (Seção 7.2)
+    const modalOp = document.getElementById('modalCrmOportunidade');
+    if (modalOp && modalOp.style.display !== 'none' && !modalOp.classList.contains('hidden') && isDealFormDirty()) {
+      showModalInlineError('crmPropostaModalErro', 'Salve a oportunidade antes de gerar a proposta.');
+      return;
+    }
+
+    const btn = document.getElementById('btnCrmGerarRevisaoProposta');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Gerando revisão...';
+    }
+    try {
+      const token = getToken();
+      const opcoes = coletarOpcoesFormularioProposta();
+      const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(currentPropostasDeal.id)}/propostas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(opcoes)
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || json.error?.detail || 'Erro ao gerar proposta comercial.');
+      }
+
+      const novaRev = json.data;
+      mostrarNotificacao(`Proposta ${novaRev.numero} gerada com sucesso!`, 'success');
+
+      if (currentPropostasDeal.fase === 'LEAD' || currentPropostasDeal.fase === 'CONTATO') {
+        currentPropostasDeal.fase = 'PROPOSTA';
+      }
+      currentPropostasDeal.custom = currentPropostasDeal.custom || {};
+      currentPropostasDeal.custom.ultima_proposta = {
+        numero: novaRev.numero,
+        revisao: novaRev.revisao,
+        empresa_codigo: novaRev.empresa_codigo,
+        empresa_nome: novaRev.empresa_nome,
+        valor_total: novaRev.valor_total,
+        validade_ate: novaRev.validade_ate,
+        enviada_em: null,
+        visualizada_em: null,
+        aberturas: 0
+      };
+      currentPropostasDeal.ultimaProposta = currentPropostasDeal.custom.ultima_proposta;
+      renderDealsViews();
+
+      await carregarListaRevisoesProposta(currentPropostasDeal.id);
+      await loadDealActivities(currentPropostasDeal.id);
+      await abrirPdfBlobEmNovaAba(`/api/bi/crm/deals/${encodeURIComponent(currentPropostasDeal.id)}/propostas/${encodeURIComponent(novaRev.revisao)}/pdf`);
+    } catch (err) {
+      showModalInlineError('crmPropostaModalErro', err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '✅ Gerar Proposta';
+      }
+    }
+  }
+
+  async function carregarListaRevisoesProposta(dealId) {
+    const tbody = document.getElementById('crmPropostasListaTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 14px; color: var(--text-muted);">Carregando revisões...</td></tr>';
+
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(dealId)}/propostas`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 14px; color: #f87171;">Não foi possível carregar as revisões.</td></tr>';
+        return;
+      }
+      const json = await res.json();
+      currentPropostasList = Array.isArray(json.items) ? json.items : (Array.isArray(json.data) ? json.data : []);
+
+      const btnGerar = document.getElementById('btnCrmGerarRevisaoProposta');
+      if (btnGerar) {
+        const proxRev = currentPropostasList.length > 0 ? Math.max(...currentPropostasList.map(r => Number(r.revisao) || 0)) + 1 : 1;
+        btnGerar.textContent = `✅ Gerar R${proxRev}`;
+      }
+
+      if (currentPropostasList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 14px; color: var(--text-muted);">Nenhuma revisão gerada ainda.</td></tr>';
+        return;
+      }
+
+      const hojeIso = new Date().toISOString().slice(0, 10);
+      tbody.innerHTML = currentPropostasList.map(rev => {
+        const valIso = String(rev.validade_ate || '').slice(0, 10);
+        const isVencida = Boolean(valIso && valIso < hojeIso);
+        const dtEmissao = formatDate(rev.gerada_em || rev.created_at);
+        const dtValidade = valIso ? valIso.split('-').reverse().join('/') : '-';
+
+        let statusHtml = '<span style="color: #94a3b8;">Gerada</span>';
+        if (rev.enviada_em) {
+          statusHtml = `<span style="color: #38bdf8;">Enviada por e-mail (${escapeHtml(formatDate(rev.enviada_em))})</span>`;
+        }
+        if (Number(rev.aberturas) > 0) {
+          statusHtml += ` <span style="color: #10b981; font-weight: 700;" title="Última abertura: ${escapeHtml(formatDateTime(rev.ultima_abertura_em))}">👁 Aberta ${escapeHtml(rev.aberturas)}×</span>`;
+        }
+
+        return `
+          <tr style="border-bottom: 1px solid var(--panel-border);">
+            <td style="padding: 8px 10px; font-weight: 700; color: #38bdf8;">${escapeHtml(rev.numero)}</td>
+            <td style="padding: 8px 10px;">${escapeHtml(rev.empresa_nome || rev.empresa_codigo)}</td>
+            <td style="padding: 8px 10px;">${escapeHtml(dtEmissao)}</td>
+            <td style="padding: 8px 10px;">
+              ${escapeHtml(dtValidade)}
+              ${isVencida ? '<span style="margin-left: 4px; color: #f87171; font-weight: 700; font-size: 0.72rem;">(Vencida)</span>' : ''}
+            </td>
+            <td style="padding: 8px 10px; text-align: right; font-weight: 700;">${formatCurrency(rev.valor_total)}</td>
+            <td style="padding: 8px 10px;">${statusHtml}</td>
+            <td style="padding: 8px 10px; text-align: right; white-space: nowrap;">
+              <button type="button" class="btn btn-outline btn-sm btn-prop-action" data-action="ver" data-rev="${escapeHtml(rev.revisao)}" title="Ver">Ver</button>
+              <button type="button" class="btn btn-outline btn-sm btn-prop-action" data-action="baixar" data-rev="${escapeHtml(rev.revisao)}" title="Baixar">Baixar</button>
+              <button type="button" class="btn btn-outline btn-sm btn-prop-action" data-action="email" data-rev="${escapeHtml(rev.revisao)}" ${isVencida ? 'disabled title="Revisão vencida — gere uma nova revisão"' : 'title="E-mail"'}>E-mail</button>
+              <button type="button" class="btn btn-outline btn-sm btn-prop-action" data-action="link" data-rev="${escapeHtml(rev.revisao)}" title="Copiar link">Copiar link</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 14px; color: #f87171;">${escapeHtml(err.message)}</td></tr>`;
+    }
+  }
+
+  async function handlePropostasTableClick(e) {
+    const btn = e.target.closest('.btn-prop-action');
+    if (!btn || !currentPropostasDeal) return;
+    const action = btn.getAttribute('data-action');
+    const revNum = Number(btn.getAttribute('data-rev'));
+    const revObj = currentPropostasList.find(r => Number(r.revisao) === revNum);
+    if (!revObj) return;
+
+    const dealId = currentPropostasDeal.id;
+    showModalInlineError('crmPropostaModalErro', '');
+    try {
+      if (action === 'ver') {
+        await abrirPdfBlobEmNovaAba(`/api/bi/crm/deals/${encodeURIComponent(dealId)}/propostas/${encodeURIComponent(revNum)}/pdf`);
+      } else if (action === 'baixar') {
+        await baixarPdfBlob(
+          `/api/bi/crm/deals/${encodeURIComponent(dealId)}/propostas/${encodeURIComponent(revNum)}/pdf?download=1`,
+          `Proposta-${revObj.numero}.pdf`
+        );
+      } else if (action === 'link') {
+        const fullUrl = `${window.location.origin}${revObj.link_publico}`;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(fullUrl);
+        }
+        mostrarNotificacao('Link copiado', 'success');
+      } else if (action === 'email') {
+        abrirModalEnvioEmailProposta(revObj);
+      }
+    } catch (err) {
+      showModalInlineError('crmPropostaModalErro', err.message);
+    }
+  }
+
+  function abrirModalEnvioEmailProposta(revObj) {
+    if (!currentPropostasDeal || !revObj) return;
+    currentEmailRevisionObj = revObj;
+    showModalInlineError('crmPropEmailModalErro', '');
+
+    const deal = currentPropostasDeal;
+    const nomeFantasia = revObj.empresa_nome || 'Grupo GSI';
+    const valBr = revObj.validade_ate ? String(revObj.validade_ate).slice(0, 10).split('-').reverse().join('/') : '';
+    const linkFull = `${window.location.origin}${revObj.link_publico}`;
+    const contato = deal.custom?.contatoNome || deal.contatoNome || deal.clienteNome || 'Cliente';
+
+    document.getElementById('crmPropEmailPara').value = deal.clienteEmail || '';
+    document.getElementById('crmPropEmailCc').value = '';
+    document.getElementById('crmPropEmailAssunto').value = `Proposta ${revObj.numero} — ${nomeFantasia}`;
+    document.getElementById('crmPropEmailMensagem').value =
+      `Olá ${contato}, segue em anexo a proposta ${revObj.numero}, válida até ${valBr}. ` +
+      `Também é possível abrir pelo link: ${linkFull}. Fico à disposição. ${deal.vendedor || ''}`;
+
+    const anexoInfo = document.getElementById('crmPropEmailAnexoInfo');
+    if (anexoInfo) {
+      anexoInfo.textContent = `📎 Anexo: Proposta-${revObj.numero}.pdf`;
+    }
+
+    openModal(document.getElementById('modalCrmPropostaEmail'));
+  }
+
+  async function handleConfirmarEnvioEmailProposta() {
+    if (!currentPropostasDeal || !currentEmailRevisionObj) return;
+    showModalInlineError('crmPropEmailModalErro', '');
+    const para = (document.getElementById('crmPropEmailPara')?.value || '').trim();
+    const cc = (document.getElementById('crmPropEmailCc')?.value || '').trim();
+    const assunto = (document.getElementById('crmPropEmailAssunto')?.value || '').trim();
+    const mensagem = (document.getElementById('crmPropEmailMensagem')?.value || '').trim();
+
+    if (!para) {
+      showModalInlineError('crmPropEmailModalErro', 'Informe ao menos um e-mail destinatário no campo Para.');
+      return;
+    }
+
+    const btn = document.getElementById('btnCrmConfirmarEnvioEmailProposta');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Enviando...';
+    }
+    try {
+      const token = getToken();
+      const res = await fetch(
+        `/api/bi/crm/deals/${encodeURIComponent(currentPropostasDeal.id)}/propostas/${encodeURIComponent(currentEmailRevisionObj.revisao)}/email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ para, cc, assunto, mensagem })
+        }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || json.error?.detail || 'Falha ao enviar proposta por e-mail.');
+      }
+
+      closeModal(document.getElementById('modalCrmPropostaEmail'));
+      mostrarNotificacao(`Proposta ${currentEmailRevisionObj.numero} enviada por e-mail!`, 'success');
+      await carregarListaRevisoesProposta(currentPropostasDeal.id);
+      await loadDealActivities(currentPropostasDeal.id);
+    } catch (err) {
+      showModalInlineError('crmPropEmailModalErro', err.message);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '📤 Enviar';
+      }
+    }
+  }
+
+  async function openEmpresasEmitentesModal() {
+    ensurePropostasModalsDom();
+    showModalInlineError('crmEmpModalErro', '');
+    const btnSalvar = document.getElementById('btnCrmSalvarEmpresaEmitente');
+    if (btnSalvar) btnSalvar.disabled = true;
+    await carregarEmpresasEmitentes(true);
+    const selectCod = document.getElementById('crmEmpSelectCodigo');
+    const codInicial = selectCod ? selectCod.value : '14';
+    preencherFormularioEmpresa(codInicial);
+    openModal(document.getElementById('modalCrmEmpresas'));
+  }
+
+  function preencherFormularioEmpresa(codigo) {
+    const empObj = Array.isArray(empresasEmitentesCatalog)
+      ? empresasEmitentesCatalog.find(e => e.codigo === String(codigo))
+      : null;
+    const emp = empObj || {};
+    const btnSalvar = document.getElementById('btnCrmSalvarEmpresaEmitente');
+
+    if (empresasEmitentesLoadError || !empObj) {
+      showModalInlineError(
+        'crmEmpModalErro',
+        empresasEmitentesLoadError || `Empresa emitente ${codigo} não encontrada na lista carregada.`
+      );
+      if (btnSalvar) btnSalvar.disabled = true;
+    } else {
+      showModalInlineError('crmEmpModalErro', '');
+      if (btnSalvar) btnSalvar.disabled = false;
+    }
+
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val !== undefined && val !== null ? val : '';
+    };
+    setVal('crmEmpRazaoSocial', emp.razao_social || '');
+    setVal('crmEmpNomeFantasia', emp.nome_fantasia || '');
+    setVal('crmEmpCnpj', emp.cnpj || '');
+    setVal('crmEmpIe', emp.ie || '');
+    setVal('crmEmpTelefone', emp.telefone || '');
+    setVal('crmEmpValidadePadrao', emp.validade_padrao_dias || 7);
+    setVal('crmEmpEndereco', emp.endereco || '');
+    setVal('crmEmpEmailContato', emp.email_contato || '');
+    setVal('crmEmpSite', emp.site || '');
+    setVal('crmEmpLogoPath', emp.logo_path || '');
+    setVal('crmEmpCorPrimaria', emp.cor_primaria || '#0b3d91');
+    setVal('crmEmpCorSecundaria', emp.cor_secundaria || '#f59e0b');
+    setVal('crmEmpTextoRodape', emp.texto_rodape || '');
+    setVal('crmEmpDadosBancariosPix', emp.dados_bancarios_pix || '');
+    setVal('crmEmpTextoEmail', emp.texto_email || '');
+
+    const blocos = emp.blocos_opcionais || {};
+    const setChk = (id, boolVal) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = Boolean(boolVal);
+    };
+    setChk('crmEmpChkNcm', blocos.mostrar_ncm);
+    setChk('crmEmpChkPeso', blocos.mostrar_peso);
+  }
+
+  async function handleSalvarEmpresaEmitente() {
+    const codigo = document.getElementById('crmEmpSelectCodigo')?.value || '14';
+    const empCarregada = Array.isArray(empresasEmitentesCatalog)
+      ? empresasEmitentesCatalog.find(e => e.codigo === String(codigo))
+      : null;
+    const btn = document.getElementById('btnCrmSalvarEmpresaEmitente');
+
+    if (empresasEmitentesLoadError || !empCarregada) {
+      showModalInlineError(
+        'crmEmpModalErro',
+        empresasEmitentesLoadError || `Empresa emitente ${codigo} não foi carregada. Recarregue antes de salvar.`
+      );
+      if (btn) btn.disabled = true;
+      return;
+    }
+
+    showModalInlineError('crmEmpModalErro', '');
+    const payload = {
+      razao_social: (document.getElementById('crmEmpRazaoSocial')?.value || '').trim(),
+      nome_fantasia: (document.getElementById('crmEmpNomeFantasia')?.value || '').trim(),
+      cnpj: (document.getElementById('crmEmpCnpj')?.value || '').trim(),
+      ie: (document.getElementById('crmEmpIe')?.value || '').trim(),
+      telefone: (document.getElementById('crmEmpTelefone')?.value || '').trim(),
+      validade_padrao_dias: parseInt(document.getElementById('crmEmpValidadePadrao')?.value || '7', 10),
+      endereco: (document.getElementById('crmEmpEndereco')?.value || '').trim(),
+      email_contato: (document.getElementById('crmEmpEmailContato')?.value || '').trim(),
+      site: (document.getElementById('crmEmpSite')?.value || '').trim(),
+      logo_path: (document.getElementById('crmEmpLogoPath')?.value || '').trim() || null,
+      cor_primaria: (document.getElementById('crmEmpCorPrimaria')?.value || '').trim(),
+      cor_secundaria: (document.getElementById('crmEmpCorSecundaria')?.value || '').trim(),
+      texto_rodape: (document.getElementById('crmEmpTextoRodape')?.value || '').trim(),
+      dados_bancarios_pix: (document.getElementById('crmEmpDadosBancariosPix')?.value || '').trim(),
+      texto_email: (document.getElementById('crmEmpTextoEmail')?.value || '').trim(),
+      blocos_opcionais: {
+        mostrar_ncm: Boolean(document.getElementById('crmEmpChkNcm')?.checked),
+        mostrar_peso: Boolean(document.getElementById('crmEmpChkPeso')?.checked)
+      }
+    };
+
+    if (!payload.razao_social || !payload.nome_fantasia || !payload.cnpj.replace(/\D/g, '')) {
+      showModalInlineError('crmEmpModalErro', 'Razão Social, Nome Fantasia e CNPJ são obrigatórios.');
+      return;
+    }
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Salvando...';
+    }
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/bi/crm/empresas-emitentes/${encodeURIComponent(codigo)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || json.error?.detail || 'Erro ao salvar empresa emitente.');
+      }
+      await carregarEmpresasEmitentes(true);
+      preencherFormularioEmpresa(codigo);
+      mostrarNotificacao(`Empresa ${codigo} atualizada com sucesso!`, 'success');
+    } catch (err) {
+      showModalInlineError('crmEmpModalErro', err.message);
+    } finally {
+      if (btn) {
+        const temEmpresaValida = !empresasEmitentesLoadError && Boolean(
+          Array.isArray(empresasEmitentesCatalog) && empresasEmitentesCatalog.find(e => e.codigo === String(codigo))
+        );
+        btn.disabled = !temEmpresaValida;
+        btn.textContent = '💾 Salvar Empresa';
+      }
+    }
   }
 
   /**
@@ -4192,6 +5119,8 @@
     openNewDealModal,
     openEditDealModal,
     openDealDetails: openDealDetailsModal,
+    openPropostaModal,
+    openEmpresasModal: openEmpresasEmitentesModal,
     moveDealStage,
     markLost: openMarkLostModal,
     isDealFormValid,
