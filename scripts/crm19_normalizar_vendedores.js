@@ -43,6 +43,9 @@ async function normalizarRegistro(deal) {
 async function executar() {
   console.log(`=== [CRM-19] Saneamento de Vendedores (${applyMode ? 'APPLY' : 'DRY-RUN'}) ===`);
 
+  // Abre a conexao com o Supabase (o server.js faz isso no boot; o script precisa fazer sozinho)
+  try { await safeQuery('SELECT 1;'); } catch (err) { console.warn('[Postgres] Falha ao conectar:', err.message); }
+
   // 1. Cache Local JSON
   const cache = await safeReadJson(cacheFile, { deals: [], atividades: [] });
   const dealsCache = Array.isArray(cache.deals) ? cache.deals : [];
