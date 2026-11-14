@@ -321,8 +321,11 @@
       observacoesNfe: custom.observacoesNfe || d.obs_nfe || d.observacoesNfe || '',
       itens: Array.isArray(d.itens_cotados) && d.itens_cotados.length > 0 ? d.itens_cotados : (Array.isArray(d.itens) ? d.itens : []),
       contatoNome: d.contato_nome || d.contatoNome || (Array.isArray(d.contatos) && d.contatos[0]?.nome) || (typeof d.contatos === 'string' ? d.contatos : '') || d.cliente_contato || '',
+      contatoTelefone: (Array.isArray(d.contatos) && d.contatos[0]?.telefone) || d.contato_telefone || d.contatoTelefone || d.cliente_telefone || '',
+      contatos: Array.isArray(d.contatos) ? d.contatos : ((d.contato_nome || d.contatoNome) ? [{ nome: d.contato_nome || d.contatoNome, telefone: d.contato_telefone || d.contatoTelefone || d.cliente_telefone || '' }] : []),
       faturadoPor: custom.faturadoPor || d.faturado_por || d.faturadoPor || d.empresa_faturamento || (d.cod_filial ? `${d.cod_filial} - ${d.nome_filial || ''}` : '') || '',
       motivoPerda: d.motivo_perda || d.motivoPerda || '',
+      motivoPerdaCod: d.motivo_perda_cod || d.motivoPerdaCod || null,
       observacoesPerda: d.observacoes_perda || d.observacoesPerda || '',
       dataFechamentoReal: d.data_fechamento_real || d.dataFechamentoReal || null,
       fidelidade_compras: d.fidelidade_compras || null,
@@ -1102,8 +1105,8 @@
           <td style="padding: 10px 12px; color: #10b981; font-weight: 700; white-space: nowrap;">
             ${formatCurrency(d.valor)}
           </td>
-          <td style="padding: 10px 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(d.clienteNome || '-')}">
-            ${escapeHtml(d.clienteNome || '-')}
+          <td style="padding: 10px 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(d.clienteNome || (d.contatoNome ? `👤 ${d.contatoNome}` : '-'))}">
+            ${escapeHtml(d.clienteNome || (d.contatoNome ? `👤 ${d.contatoNome}` : '-'))}
           </td>
           <td style="padding: 10px 12px; white-space: nowrap;">
             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -1261,9 +1264,9 @@
         <div class="crm-card-badge-wrap">${alertBadge}</div>
       </div>
       
-      <div class="crm-card-client" title="Cliente: ${escapeHtml(deal.clienteNome)}">
-        <span class="crm-icon-client">🏢</span>
-        <strong>${escapeHtml(deal.clienteNome || 'Cliente não identificado')}</strong>
+      <div class="crm-card-client" title="${escapeHtml(deal.clienteNome ? `Cliente: ${deal.clienteNome}` : (deal.contatoNome ? `Contato: ${deal.contatoNome}` : 'Cliente não identificado'))}">
+        <span class="crm-icon-client">${deal.clienteNome ? '🏢' : (deal.contatoNome ? '👤' : '🏢')}</span>
+        <strong>${escapeHtml(deal.clienteNome || (deal.contatoNome ? `👤 ${deal.contatoNome}` : 'Cliente não identificado'))}</strong>
         ${renderFidelidadeBadge(deal.fidelidade_compras, { style: 'margin-left: 6px;' })}
       </div>
 
@@ -1373,16 +1376,34 @@
     if (!deal) return;
     if (deal.fase === newStage) return;
 
+    if (newStage === 'PERDIDO' && !reasonData) {
+      openMarkLostModal(dealId);
+      return;
+    }
+
     const oldStage = deal.fase;
+    const oldMotivoPerda = deal.motivoPerda;
+    const oldMotivoPerdaCod = deal.motivoPerdaCod;
+    const oldObservacoesPerda = deal.observacoesPerda;
+    const oldDataFechamentoReal = deal.dataFechamentoReal;
+    const oldUpdatedAt = deal.updatedAt;
+
     deal.fase = newStage;
     deal.updatedAt = new Date().toISOString();
     if (newStage === 'GANHO') {
       deal.dataFechamentoReal = deal.dataFechamentoReal || new Date().toISOString();
+    } else if (oldStage === 'GANHO') {
+      deal.dataFechamentoReal = null;
     }
 
     if (newStage === 'PERDIDO' && reasonData) {
       deal.motivoPerda = reasonData.motivo || '';
+      deal.motivoPerdaCod = reasonData.motivoPerdaCod || null;
       deal.observacoesPerda = reasonData.observacoes || '';
+    } else if (newStage !== 'PERDIDO') {
+      deal.motivoPerda = null;
+      deal.motivoPerdaCod = null;
+      deal.observacoesPerda = null;
     }
 
     // Atualização otimista na tela
@@ -1390,28 +1411,10 @@
     renderDealsViews();
     updateTopKpis();
 
-    // Registra atividade automática na timeline
-    try {
-      const user = getCurrentUser();
-      const activities = loadActivitiesLocal(deal.id);
-      activities.unshift({
-        id: 'act-' + Date.now(),
-        dealId: deal.id,
-        tipo: 'NOTA',
-        descricao: `Fase alterada de "${oldStage}" para "${newStage}".` + (deal.motivoPerda ? ` Motivo: ${deal.motivoPerda}` : ''),
-        autor: user.name || user.username || 'Sistema',
-        createdAt: new Date().toISOString()
-      });
-      saveActivitiesLocal(deal.id, activities);
-    } catch {}
-
-    // Notificação / Feedback visual
-    mostrarNotificacao(`Oportunidade movida para "${getStageLabel(newStage)}"`, 'success');
-
     // Sincroniza com o backend via PATCH /api/bi/crm/deals/:id/stage
     try {
       const token = getToken();
-      await fetch(`/api/bi/crm/deals/${encodeURIComponent(dealId)}/stage`, {
+      const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(String(dealId))}/stage`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1421,12 +1424,68 @@
           novoEstagio: newStage.toLowerCase(),
           estagio: newStage.toLowerCase(),
           fase: newStage,
+          motivoPerdaCod: deal.motivoPerdaCod || (reasonData && reasonData.motivoPerdaCod) || null,
           motivoPerda: deal.motivoPerda || null,
           justificativa: deal.observacoesPerda || null
         })
       });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        // Desfaz a mudança local (volta fase, motivo, data_fechamento e timestamp)
+        deal.fase = oldStage;
+        deal.motivoPerda = oldMotivoPerda;
+        deal.motivoPerdaCod = oldMotivoPerdaCod;
+        deal.observacoesPerda = oldObservacoesPerda;
+        deal.dataFechamentoReal = oldDataFechamentoReal;
+        deal.updatedAt = oldUpdatedAt;
+
+        saveDealsLocal(deals);
+        renderDealsViews();
+        updateTopKpis();
+
+        const errDetail = json?.error?.detail || json?.error?.message || json?.message || 'Falha ao atualizar estágio da oportunidade.';
+        mostrarNotificacao(errDetail, 'error');
+
+        if (json?.error?.code === 'CLIENTE_DOC_OBRIGATORIO_GANHO') {
+          openEditDealModal(dealId);
+        }
+        return;
+      }
+
+      // Notificação / Feedback visual pós-confirmação do servidor
+      mostrarNotificacao(`Oportunidade movida para "${getStageLabel(newStage)}"`, 'success');
+
+      // Registra atividade automática na timeline
+      try {
+        const user = getCurrentUser();
+        const activities = loadActivitiesLocal(deal.id);
+        activities.unshift({
+          id: 'act-' + Date.now(),
+          dealId: deal.id,
+          tipo: 'NOTA',
+          descricao: `Fase alterada de "${oldStage}" para "${newStage}".` + (deal.motivoPerda ? ` Motivo: ${deal.motivoPerda}` : ''),
+          autor: user.name || user.username || 'Sistema',
+          createdAt: new Date().toISOString()
+        });
+        saveActivitiesLocal(deal.id, activities);
+      } catch {}
+
     } catch (err) {
       console.warn('⚠️ [CRM Comercial] Falha ao persistir transição de fase no backend:', err.message);
+      deal.fase = oldStage;
+      deal.motivoPerda = oldMotivoPerda;
+      deal.motivoPerdaCod = oldMotivoPerdaCod;
+      deal.observacoesPerda = oldObservacoesPerda;
+      deal.dataFechamentoReal = oldDataFechamentoReal;
+      deal.updatedAt = oldUpdatedAt;
+
+      saveDealsLocal(deals);
+      renderDealsViews();
+      updateTopKpis();
+
+      mostrarNotificacao('Erro de comunicação com o servidor ao mover estágio.', 'error');
     }
   }
 
@@ -1540,13 +1599,16 @@
     const vendedor = (document.getElementById('crmSelectVendedor')?.value || '').trim();
     const cliente = (document.getElementById('crmInputCliente')?.value || '').trim();
     const faturadoPor = (document.getElementById('crmSelectFaturadoPor')?.value || '').trim();
+    const contatoNome = (document.getElementById('crmInputContatoNome')?.value || '').trim();
+    const contatoTelefone = (document.getElementById('crmInputContatoTelefone')?.value || '').trim();
 
     const hasTitulo = titulo.length > 0;
     const hasVendedor = vendedor.length > 0 && !vendedor.toLowerCase().includes('selecione');
     const hasCliente = cliente.length > 0;
     const hasFaturado = faturadoPor.length > 0 && !faturadoPor.toLowerCase().includes('selecione');
+    const hasContatoCompleto = contatoNome.length > 0 && contatoTelefone.length > 0;
 
-    return Boolean(hasTitulo && hasVendedor && hasCliente && hasFaturado);
+    return Boolean(hasTitulo && hasVendedor && hasFaturado && (hasCliente || hasContatoCompleto));
   }
 
   /**
@@ -1562,7 +1624,7 @@
     const valid = isDealFormValid();
     btnSalvar.disabled = !valid;
     if (!valid) {
-      btnSalvar.title = 'Preencha os campos obrigatórios (*) para habilitar: Título, Vendedor, Cliente e Faturado Por';
+      btnSalvar.title = 'Preencha os campos obrigatórios (*) para habilitar: Título, Vendedor, Faturado Por e Cliente (ou Nome e Telefone do Contato)';
     } else {
       btnSalvar.removeAttribute('title');
     }
@@ -1586,6 +1648,11 @@
     document.getElementById('crmInputClienteCod').value = '';
     document.getElementById('crmInputClienteLoja').value = '';
     document.getElementById('crmInputClienteCnpj').value = '';
+
+    const inpContatoNome = document.getElementById('crmInputContatoNome');
+    if (inpContatoNome) inpContatoNome.value = '';
+    const inpContatoTel = document.getElementById('crmInputContatoTelefone');
+    if (inpContatoTel) inpContatoTel.value = '';
 
     const badgeContainer = document.getElementById('crmDealClienteFidelidadeBadge');
     if (badgeContainer) badgeContainer.innerHTML = '';
@@ -1649,6 +1716,17 @@
     document.getElementById('crmInputClienteCod').value = deal.clienteCod || '';
     document.getElementById('crmInputClienteLoja').value = deal.clienteLoja || '';
     document.getElementById('crmInputClienteCnpj').value = deal.clienteCnpj || '';
+
+    const inpContatoNome = document.getElementById('crmInputContatoNome');
+    if (inpContatoNome) {
+      const contatoNomeVal = (Array.isArray(deal.contatos) && deal.contatos[0]?.nome) || deal.contatoNome || '';
+      inpContatoNome.value = contatoNomeVal;
+    }
+    const inpContatoTel = document.getElementById('crmInputContatoTelefone');
+    if (inpContatoTel) {
+      const contatoTelVal = (Array.isArray(deal.contatos) && deal.contatos[0]?.telefone) || deal.contatoTelefone || '';
+      inpContatoTel.value = contatoTelVal;
+    }
 
     const editBadgeContainer = document.getElementById('crmDealClienteFidelidadeBadge');
     if (editBadgeContainer) {
@@ -2110,15 +2188,21 @@
     const prazoEntrega = document.getElementById('crmInputPrazoEntrega')?.value.trim();
     const pedidoCompraCliente = document.getElementById('crmInputPedidoCompraCliente')?.value.trim();
     const observacoesNfe = document.getElementById('crmInputObsNfe')?.value.trim();
+    const contatoNome = document.getElementById('crmInputContatoNome')?.value.trim() || '';
+    const contatoTelefone = document.getElementById('crmInputContatoTelefone')?.value.trim() || '';
 
     if (!titulo) {
       alert('Por favor, informe o título da oportunidade.');
       document.getElementById('crmInputTitulo')?.focus();
       return;
     }
-    if (!clienteNome) {
-      alert('Por favor, informe o cliente da oportunidade.');
-      document.getElementById('crmInputCliente')?.focus();
+    if (!clienteNome && (!contatoNome || !contatoTelefone)) {
+      alert('Por favor, informe o cliente ou o nome e telefone do contato.');
+      if (!clienteNome && !contatoNome) {
+        document.getElementById('crmInputCliente')?.focus();
+      } else {
+        document.getElementById('crmInputContatoTelefone')?.focus();
+      }
       return;
     }
     if (!vendedor || vendedor.toLowerCase().includes('selecione')) {
@@ -2135,13 +2219,27 @@
     }
     const faturadoPor = normalizeFaturadoPor(rawFaturado) || rawFaturado;
 
-    const contatoNome = existingDeal?.contatoNome || '';
+    let contatosArray = [];
+    if (Array.isArray(existingDeal?.contatos) && existingDeal.contatos.length > 0) {
+      contatosArray = JSON.parse(JSON.stringify(existingDeal.contatos));
+      contatosArray[0] = {
+        ...(contatosArray[0] || {}),
+        nome: contatoNome,
+        telefone: contatoTelefone
+      };
+    } else if (contatoNome || contatoTelefone) {
+      contatosArray = [{ nome: contatoNome, telefone: contatoTelefone }];
+    }
 
     const payload = {
       titulo,
       cliente_nome: clienteNome,
       clienteNome,
+      contato_nome: contatoNome,
       contatoNome,
+      contato_telefone: contatoTelefone,
+      contatoTelefone,
+      contatos: contatosArray,
       faturadoPor,
       faturado_por: faturadoPor,
       cliente_cod: clienteCod,
@@ -2179,6 +2277,8 @@
       custom: {
         ...(existingDeal?.custom || {}),
         contatoNome,
+        contatoTelefone,
+        contatos: contatosArray,
         faturadoPor,
         faturado_por: faturadoPor,
         condPgto,
@@ -2222,6 +2322,15 @@
         if (res.ok) {
           const data = await res.json();
           savedDeal = mapDealFromApi(data.data || data.deal || data);
+        } else {
+          const errJson = await res.json().catch(() => ({}));
+          const errMsg = errJson?.error?.detail || errJson?.error?.message || errJson?.message || 'Falha ao salvar oportunidade no servidor.';
+          mostrarNotificacao(errMsg, 'error');
+          if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.textContent = isEditing ? 'Salvar Alterações' : 'Criar Oportunidade';
+          }
+          return;
         }
       } catch (e) {
         console.warn('⚠️ [CRM Comercial] Falha na requisição de salvar Deal, usando persistência local.', e.message);
@@ -2284,7 +2393,9 @@
 
     const dealIdPrefix = deal.id ? `#${deal.id} — ` : '';
     document.getElementById('crmDetalhesTitulo').textContent = dealIdPrefix + (deal.titulo || 'Detalhes da Oportunidade');
-    document.getElementById('crmDetalhesCliente').textContent = deal.clienteNome || '-';
+    const contatoDetalhes = deal.contatoNome || (Array.isArray(deal.contatos) && deal.contatos[0]?.nome) || '';
+    const clienteDetalhesDisplay = deal.clienteNome || (contatoDetalhes ? `👤 ${contatoDetalhes}` : '-');
+    document.getElementById('crmDetalhesCliente').textContent = clienteDetalhesDisplay;
     document.getElementById('crmDetalhesValor').textContent = formatCurrency(deal.valor);
     document.getElementById('crmDetalhesVendedor').textContent = deal.vendedor || '-';
     let badgeHtml = getDealAlertBadge(deal);
@@ -2387,6 +2498,28 @@
       } else {
         scoreCard.style.display = 'none';
       }
+    }
+
+    // Visibilidade dos botões de ação rápida no rodapé
+    const isFechado = ['GANHO', 'PERDIDO'].includes(deal.fase);
+    const btnReabrir = document.getElementById('btnCrmReabrirDoDetalhes') || document.getElementById('crmBtnReabrirDoDetalhes');
+    if (btnReabrir) {
+      btnReabrir.style.display = isFechado ? 'inline-flex' : 'none';
+    }
+
+    const btnPerdido = document.getElementById('btnCrmPerdidoDoDetalhes');
+    if (btnPerdido) {
+      btnPerdido.style.display = isFechado ? 'none' : 'inline-flex';
+    }
+
+    const btnGanho = document.getElementById('btnCrmGanhoDoDetalhes');
+    if (btnGanho) {
+      btnGanho.style.display = isFechado ? 'none' : 'inline-flex';
+    }
+
+    const btnClonar = document.getElementById('btnCrmClonarDoDetalhes') || document.getElementById('crmBtnClonarDoDetalhes');
+    if (btnClonar) {
+      btnClonar.style.display = 'inline-flex';
     }
 
     // Oculta botão 📄 Proposta quando a oportunidade está como PERDIDO (Seção 6.1)
@@ -2606,16 +2739,66 @@
     }
   }
 
+  let crmMotivosPerdaCache = null;
+
+  /**
+   * Carrega lista oficial de motivos de perda do backend (GET /api/bi/crm/motivos-perda)
+   */
+  async function carregarMotivosPerda(force = false) {
+    if (crmMotivosPerdaCache && !force) return crmMotivosPerdaCache;
+    try {
+      const token = getToken();
+      const res = await fetch('/api/bi/crm/motivos-perda', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(json.data)) {
+        crmMotivosPerdaCache = json.data;
+        return crmMotivosPerdaCache;
+      }
+    } catch (err) {
+      console.warn('⚠️ [CRM] Falha ao carregar motivos de perda:', err.message);
+    }
+    return [
+      { cod: 'preco', label: 'Preço' },
+      { cod: 'prazo_entrega', label: 'Prazo de Entrega' },
+      { cod: 'produto_nao_atende', label: 'Produto Não Atende' },
+      { cod: 'compra_cancelada', label: 'Compra Cancelada' },
+      { cod: 'sem_resposta', label: 'Sem Resposta' },
+      { cod: 'credito_negado', label: 'Crédito Negado' },
+      { cod: 'transferido_outro_vendedor', label: 'Transferido para Outro Vendedor' }
+    ];
+  }
+
+  /**
+   * Preenche o select de motivos de perda dinamicamente a partir dos 7 motivos oficiais
+   */
+  async function popularSelectMotivosPerda() {
+    const sel = document.getElementById('crmSelectMotivoPerda');
+    if (!sel) return;
+    const motivos = await carregarMotivosPerda();
+    sel.innerHTML = '<option value="">Selecione o motivo...</option>' +
+      motivos.map(m => `<option value="${escapeHtml(m.cod)}">${escapeHtml(m.label)}</option>`).join('');
+  }
+
   /**
    * Abre a modal para marcar uma oportunidade como Perdida
    */
-  function openMarkLostModal(dealId) {
+  async function openMarkLostModal(dealId) {
     const deal = deals.find(d => String(d.id) === String(dealId));
     if (!deal) return;
 
     document.getElementById('crmPerdidoDealId').value = deal.id;
-    document.getElementById('crmSelectMotivoPerda').value = 'Preço elevado';
-    document.getElementById('crmInputObsPerda').value = '';
+    await popularSelectMotivosPerda();
+
+    const sel = document.getElementById('crmSelectMotivoPerda');
+    if (sel) sel.value = '';
+
+    const btnConfirm = document.getElementById('btnConfirmarCrmPerda');
+    if (btnConfirm) btnConfirm.disabled = true;
+
+    const inpObs = document.getElementById('crmInputObsPerda');
+    if (inpObs) inpObs.value = '';
 
     openModal(document.getElementById('modalCrmPerdido'));
   }
@@ -2626,12 +2809,18 @@
   async function handleConfirmLost(e) {
     if (e) e.preventDefault();
     const dealId = document.getElementById('crmPerdidoDealId')?.value;
-    const motivo = document.getElementById('crmSelectMotivoPerda')?.value || 'Outro';
+    const sel = document.getElementById('crmSelectMotivoPerda');
+    const motivoPerdaCod = sel?.value || '';
+    const selectedOption = sel?.selectedOptions?.[0];
+    const motivoLabel = (selectedOption && selectedOption.value) ? selectedOption.textContent : motivoPerdaCod;
     const observacoes = document.getElementById('crmInputObsPerda')?.value.trim() || '';
 
-    if (!dealId) return;
+    if (!dealId || !motivoPerdaCod) {
+      mostrarNotificacao('Selecione o motivo da perda.', 'warning');
+      return;
+    }
 
-    await moveDealStage(dealId, 'PERDIDO', { motivo, observacoes });
+    await moveDealStage(dealId, 'PERDIDO', { motivo: motivoLabel, motivoPerdaCod, observacoes });
     closeModal(document.getElementById('modalCrmPerdido'));
     closeModal(document.getElementById('modalCrmDetalhes'));
   }
@@ -3986,6 +4175,17 @@
       }
     });
 
+    // Validação reativa para contato avulso (Nome e Telefone do Contato)
+    ['crmInputContatoNome', 'crmInputContatoTelefone'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && !el._hasDealValidationListener) {
+        el._hasDealValidationListener = true;
+        el.addEventListener('input', updateDealSaveButtonState);
+        el.addEventListener('change', updateDealSaveButtonState);
+        el.addEventListener('blur', updateDealSaveButtonState);
+      }
+    });
+
     // Recalcula Valor Total NFe em tempo real ao alterar Frete Cobrado
     const inputFreteCobrado = document.getElementById('crmInputFreteCobrado');
     if (inputFreteCobrado && !inputFreteCobrado._hasFreteNfeListener) {
@@ -4069,6 +4269,96 @@
       btnPerdidoDoDetalhes.addEventListener('click', () => {
         if (!currentDeal) return;
         openMarkLostModal(currentDeal.id);
+      });
+    }
+
+    const btnReabrirDoDetalhes = document.getElementById('btnCrmReabrirDoDetalhes') || document.getElementById('crmBtnReabrirDoDetalhes');
+    if (btnReabrirDoDetalhes && !btnReabrirDoDetalhes._hasListener) {
+      btnReabrirDoDetalhes._hasListener = true;
+      btnReabrirDoDetalhes.addEventListener('click', async () => {
+        if (!currentDeal) return;
+        const dealId = currentDeal.id;
+        if (!confirm(`Deseja realmente reabrir a oportunidade #${dealId}? Ela voltará para o estágio anterior ao fechamento.`)) {
+          return;
+        }
+
+        try {
+          const token = getToken();
+          const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(String(dealId))}/reabrir`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const errDetail = json?.error?.detail || json?.error?.message || json?.message || 'Falha ao reabrir oportunidade.';
+            mostrarNotificacao(errDetail, 'error');
+            return;
+          }
+
+          const estagioDestino = json?.data?.estagio || json?.data?.fase || 'aberto';
+          const labelEstagio = getStageLabel(String(estagioDestino).toUpperCase());
+          mostrarNotificacao(`Oportunidade #${dealId} reaberta em "${labelEstagio}"`, 'success');
+          closeModal(document.getElementById('modalCrmDetalhes'));
+          await loadDeals();
+        } catch (err) {
+          console.error('⚠️ [CRM] Erro ao chamar /reabrir:', err);
+          mostrarNotificacao('Erro de comunicação ao reabrir oportunidade.', 'error');
+        }
+      });
+    }
+
+    const btnClonarDoDetalhes = document.getElementById('btnCrmClonarDoDetalhes') || document.getElementById('crmBtnClonarDoDetalhes');
+    if (btnClonarDoDetalhes && !btnClonarDoDetalhes._hasListener) {
+      btnClonarDoDetalhes._hasListener = true;
+      btnClonarDoDetalhes.addEventListener('click', async () => {
+        if (!currentDeal) return;
+        const dealId = currentDeal.id;
+
+        try {
+          const token = getToken();
+          const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(String(dealId))}/clonar`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const errDetail = json?.error?.detail || json?.error?.message || json?.message || 'Falha ao clonar oportunidade.';
+            mostrarNotificacao(errDetail, 'error');
+            return;
+          }
+
+          const novoDeal = json?.data;
+          const novoId = novoDeal?.id;
+          mostrarNotificacao(`Oportunidade #${dealId} clonada com sucesso gerando #${novoId}!`, 'success');
+          closeModal(document.getElementById('modalCrmDetalhes'));
+          await loadDeals();
+          if (novoId) {
+            openEditDealModal(novoId);
+          }
+        } catch (err) {
+          console.error('⚠️ [CRM] Erro ao chamar /clonar:', err);
+          mostrarNotificacao('Erro de comunicação ao clonar oportunidade.', 'error');
+        }
+      });
+    }
+
+    // Mudança de motivo de perda habilita botão Confirmar
+    const selMotivoPerda = document.getElementById('crmSelectMotivoPerda');
+    if (selMotivoPerda && !selMotivoPerda._hasListener) {
+      selMotivoPerda._hasListener = true;
+      selMotivoPerda.addEventListener('change', () => {
+        const btnConfirmar = document.getElementById('btnConfirmarCrmPerda');
+        if (btnConfirmar) {
+          btnConfirmar.disabled = !selMotivoPerda.value;
+        }
       });
     }
 
@@ -5025,6 +5315,8 @@
   function isDealFormDirty() {
     const titulo = document.getElementById('crmInputTitulo')?.value?.trim() || '';
     const cliente = document.getElementById('crmInputCliente')?.value?.trim() || '';
+    const contatoNome = document.getElementById('crmInputContatoNome')?.value?.trim() || '';
+    const contatoTelefone = document.getElementById('crmInputContatoTelefone')?.value?.trim() || '';
     const obsNfe = document.getElementById('crmInputObsNfe')?.value?.trim() || document.getElementById('crmTextareaObs')?.value?.trim() || '';
     const pedidoCompra = document.getElementById('crmInputPedidoCompraCliente')?.value?.trim() || '';
     const transp = document.getElementById('crmInputTransportadora')?.value?.trim() || '';
@@ -5038,6 +5330,10 @@
     if (currentDeal) {
       if (titulo !== (currentDeal.titulo || '')) return true;
       if (cliente !== (currentDeal.clienteNome || '')) return true;
+      const currentContatoNome = (Array.isArray(currentDeal.contatos) && currentDeal.contatos[0]?.nome) || currentDeal.contatoNome || '';
+      const currentContatoTel = (Array.isArray(currentDeal.contatos) && currentDeal.contatos[0]?.telefone) || currentDeal.contatoTelefone || '';
+      if (contatoNome !== currentContatoNome) return true;
+      if (contatoTelefone !== currentContatoTel) return true;
       if (obsNfe !== (currentDeal.observacoesNfe || currentDeal.observacoes || '')) return true;
       if (pedidoCompra !== (currentDeal.pedidoCompraCliente || '')) return true;
       if (transp !== (currentDeal.transportadora || '')) return true;
@@ -5050,7 +5346,7 @@
       return false;
     }
 
-    return Boolean(titulo || cliente || obsNfe || pedidoCompra || transp || hasItems || freteCobrado > 0 || freteEmbutido > 0);
+    return Boolean(titulo || cliente || contatoNome || contatoTelefone || obsNfe || pedidoCompra || transp || hasItems || freteCobrado > 0 || freteEmbutido > 0);
   }
 
   /**

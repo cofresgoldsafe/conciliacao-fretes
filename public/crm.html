@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.322">
+  <link rel="stylesheet" href="style.css?v=8.323">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -374,7 +374,7 @@
                     </button>
                   </div>
                 </div>
-                <input type="text" id="crmInputCliente" class="form-control" placeholder="Buscar por Razão Social, Fantasia ou CNPJ..." required autocomplete="off" style="width: 100%;">
+                <input type="text" id="crmInputCliente" class="form-control" placeholder="Buscar por Razão Social, Fantasia ou CNPJ..." autocomplete="off" style="width: 100%;">
               </div>
               <div id="crmClienteSuggestions" class="crm-autocomplete-dropdown hidden" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg, #1e293b); border: 1px solid var(--panel-border, #334155); border-radius: 6px; max-height: 220px; overflow-y: auto; z-index: 10000; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></div>
             </div>
@@ -388,6 +388,18 @@
                 <option value="15 - GSI COFRES">15 - GSI COFRES</option>
                 <option value="16 - OACO">16 - OACO</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Contato Avulso (Nome e Telefone opcionais se houver Cliente, ou obrigatórios se sem Cliente) -->
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-top: 12px;">
+            <div class="form-group" style="margin: 0;">
+              <label for="crmInputContatoNome" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Nome do Contato:</label>
+              <input type="text" id="crmInputContatoNome" class="form-control" placeholder="Ex: João da Silva (obrigatório se sem cliente)" style="width: 100%;">
+            </div>
+            <div class="form-group" style="margin: 0;">
+              <label for="crmInputContatoTelefone" style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 4px;">Telefone do Contato:</label>
+              <input type="text" id="crmInputContatoTelefone" class="form-control" placeholder="Ex: (11) 98765-4321" style="width: 100%;">
             </div>
           </div>
         </div>
@@ -660,6 +672,9 @@
       <!-- Rodapé com Ações Rápidas -->
       <div class="modal-footer" style="padding: 14px 22px; border-top: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8)); flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnCrmReabrirDoDetalhes" class="btn btn-outline" style="display: none; color: #a78bfa; border-color: rgba(167, 139, 250, 0.45); font-weight: 600;">
+            ↩️ Reabrir
+          </button>
           <button type="button" id="btnCrmPerdidoDoDetalhes" class="btn btn-outline" style="color: #f87171; border-color: rgba(248, 113, 113, 0.4);">
             ❌ Marcar como Perdido
           </button>
@@ -668,6 +683,9 @@
           </button>
         </div>
         <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnCrmClonarDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
+            📑 Clonar
+          </button>
           <button type="button" id="btnCrmPropostaDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
             📄 Proposta
           </button>
@@ -696,13 +714,7 @@
         <div class="form-group" style="margin: 0;">
           <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 4px;">Motivo Principal da Perda: *</label>
           <select id="crmSelectMotivoPerda" class="form-control" required style="width: 100%;">
-            <option value="Preço elevado">Preço elevado / Fora do orçamento</option>
-            <option value="Prazo de entrega longo">Prazo de entrega muito longo</option>
-            <option value="Concorrente venceu">Concorrente venceu cotação</option>
-            <option value="Desistência / Projeto cancelado">Cliente desistiu / Projeto cancelado</option>
-            <option value="Sem orçamento / Financeiro">Sem orçamento financeiro disponível</option>
-            <option value="Produto não atende especificação">Produto não atende às especificações técnicas</option>
-            <option value="Outro">Outro motivo</option>
+            <option value="">Selecione o motivo...</option>
           </select>
         </div>
         <div class="form-group" style="margin: 0;">
@@ -712,7 +724,7 @@
       </div>
       <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8));">
         <button type="button" class="btn-close-crm-modal btn btn-outline">Cancelar</button>
-        <button type="button" id="btnConfirmarCrmPerda" class="btn btn-primary" style="background: #ef4444; border-color: #ef4444; font-weight: 600;">
+        <button type="button" id="btnConfirmarCrmPerda" class="btn btn-primary" disabled style="background: #ef4444; border-color: #ef4444; font-weight: 600;">
           Confirmar Perda
         </button>
       </div>
@@ -922,8 +934,8 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.322"></script>
-  <script src="js/crm.js?v=8.322"></script>
+  <script src="js/chart.umd.min.js?v=8.323"></script>
+  <script src="js/crm.js?v=8.323"></script>
 
   <script>
     // Inicialização do CRM Comercial (/crm)
