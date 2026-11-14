@@ -229,7 +229,7 @@ tela, e em deixar rastro auditavel dentro do CRM.
 4.2 GATEWAY RAILWAY (protheus-api)
     URL...................: https://protheus-api-production.up.railway.app
     Header de auth........: X-API-Key
-    CHAVE VALIDA HOJE.....: ProtheusClaude#2026        <-- TESTADA EM 02/09/2026
+    CHAVE VALIDA HOJE.....: <PROTHEUS_API_KEY (ver .env / painel do Railway)>        <-- TESTADA EM 02/09/2026
     CHAVE ANTIGA/INVALIDA.: ProtheusAPI@2026           <-- retorna HTTP 403
     Repositorio...........: github.com/cofresgoldsafe/protheus-api
     Runtime...............: Python 3.11 / FastAPI / pyodbc / Dockerfile
@@ -254,7 +254,7 @@ tela, e em deixar rastro auditavel dentro do CRM.
         POST /query                 body {"query": "SELECT ..."}   <- SQL livre
 
     Variaveis de ambiente no Railway:
-        API_KEY              = ProtheusClaude#2026
+        API_KEY              = <PROTHEUS_API_KEY (ver .env / painel do Railway)>
         DB_HOST              = 137.131.209.46      (VM proxy Oracle)
         DB_PORT              = 1433
         DB_NAME              = CNVYB3_184594_PR_PD
@@ -324,7 +324,7 @@ tela, e em deixar rastro auditavel dentro do CRM.
           "args": ["C:\\Users\\Alexandre\\Documents\\claude\\protheus-mcp-cloud\\server.py"],
           "env": {
             "PROTHEUS_API_URL": "https://protheus-api-production.up.railway.app",
-            "PROTHEUS_API_KEY": "ProtheusClaude#2026"
+            "PROTHEUS_API_KEY": "<PROTHEUS_API_KEY (ver .env / painel do Railway)>"
           }
         }
       }
@@ -460,7 +460,7 @@ PASSO 5 — DADOS DO DEAL
 
     E ENTAO, OBRIGATORIAMENTE, RESOLVER O LABEL:
       GET /pipedrive/cond-pagamento/{ID}
-      Header: X-API-Key: ProtheusClaude#2026
+      Header: X-API-Key: <PROTHEUS_API_KEY (ver .env / painel do Railway)>
       Resposta: {"id": 43380, "label": "015-APPMAX"}
 
     Exemplo PowerShell (Windows-MCP):
@@ -667,7 +667,7 @@ PASSO 5 — DADOS DO DEAL
 9.1 CHAMADA
     Via MCP:   pipedrive_criar_nota(deal_id, content)
     Via HTTP:  POST https://protheus-api-production.up.railway.app/pipedrive/note
-               Header: X-API-Key: ProtheusClaude#2026
+               Header: X-API-Key: <PROTHEUS_API_KEY (ver .env / painel do Railway)>
                Body:   {"deal_id": 25238, "content": "..."}
                (internamente vira POST api.pipedrive.com/v1/notes com
                 pinned_to_deal_flag = "1", ou seja, a nota fica FIXADA no deal)
@@ -688,7 +688,7 @@ PASSO 5 — DADOS DO DEAL
     "Deal {id}". O padrao vigente e "Deal {id}".
 
 9.6 PowerShell de gravacao (quando so houver Windows-MCP)
-    $key  = "ProtheusClaude#2026"
+    $key  = "<PROTHEUS_API_KEY (ver .env / painel do Railway)>"
     $body = @{ deal_id = 25238; content = "Deal 25238 | ... | (ok autorizado)" } | ConvertTo-Json
     Invoke-RestMethod -Uri "https://protheus-api-production.up.railway.app/pipedrive/note" `
       -Method POST -Headers @{ "X-API-Key" = $key; "Content-Type" = "application/json" } -Body $body
@@ -1269,7 +1269,7 @@ NIVEL 1 — A OUTRA IA SO CONSEGUE FAZER HTTP (a maioria dos casos)
 
     Passo 1. Cadastre a API como ferramenta/action:
              Base URL: https://protheus-api-production.up.railway.app
-             Auth: API Key no header  X-API-Key: ProtheusClaude#2026
+             Auth: API Key no header  X-API-Key: <PROTHEUS_API_KEY (ver .env / painel do Railway)>
              (Se a plataforma pedir OpenAPI, aponte para /docs ou /openapi.json
               do FastAPI — ele gera o schema sozinho.)
 
@@ -1300,7 +1300,7 @@ NIVEL 2 — A OUTRA IA SUPORTA MCP
                "args": ["<caminho>/server.py"],
                "env": {
                  "PROTHEUS_API_URL": "https://protheus-api-production.up.railway.app",
-                 "PROTHEUS_API_KEY": "ProtheusClaude#2026"
+                 "PROTHEUS_API_KEY": "<PROTHEUS_API_KEY (ver .env / painel do Railway)>"
                }
              }
     Passo 4. Reinicie o cliente e confirme que as 10 tools aparecem.
@@ -1501,7 +1501,7 @@ Esta e a secao que economiza semanas. Cada item aqui custou tempo real.
 
 15.3 LER A CREDENCIAL EM RUNTIME, NUNCA DA DOCUMENTACAO
      Documentacao envelhece. A chave da Railway ja mudou pelo menos uma vez
-     (ProtheusAPI@2026 -> ProtheusClaude#2026) e varias paginas do Notion
+     (ProtheusAPI@2026 -> <PROTHEUS_API_KEY (ver .env / painel do Railway)>) e varias paginas do Notion
      ainda mostram a antiga. O padrao correto:
        $config = Get-Content "$env:APPDATA\Claude\claude_desktop_config.json" -Raw | ConvertFrom-Json
        $key    = $config.mcpServers."protheus-cloud".env.PROTHEUS_API_KEY
@@ -1669,9 +1669,9 @@ proxima IA ao erro.
 
 17.1 CHAVE DA API RAILWAY
      Notion (varias paginas) diz: ProtheusAPI@2026
-     Realidade (config + teste ao vivo): ProtheusClaude#2026
+     Realidade (config + teste ao vivo): <PROTHEUS_API_KEY (ver .env / painel do Railway)>
      Teste executado: GET /pipedrive/cond-pagamento/43380
-       com ProtheusClaude#2026 -> 200 {"id":43380,"label":"015-APPMAX"}
+       com <PROTHEUS_API_KEY (ver .env / painel do Railway)> -> 200 {"id":43380,"label":"015-APPMAX"}
        com ProtheusAPI@2026    -> 403 Proibido
      ACAO: atualizar as paginas do Notion, ou melhor, remover a chave do
      Notion e deixar so a instrucao de ler do env/config.

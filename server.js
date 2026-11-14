@@ -5610,7 +5610,7 @@ app.post('/api/analista-fin/nfse/ingest', async (req, res) => {
     const authHeader = req.headers['authorization'] || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
-    const expectedKey = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || 'ProtheusClaude#2026';
+    const expectedKey = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || '';
     const isKeyValid = apiKey && apiKey === expectedKey;
     let isTokenValid = false;
 
@@ -5741,7 +5741,7 @@ app.post('/api/analista-fin/nfse-emitidas/ingest', async (req, res) => {
     const authHeader = req.headers['authorization'] || '';
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
 
-    const expectedKey = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || 'ProtheusClaude#2026';
+    const expectedKey = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || '';
     const isKeyValid = apiKey && apiKey === expectedKey;
     let isTokenValid = false;
 

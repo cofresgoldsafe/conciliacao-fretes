@@ -7,7 +7,29 @@ const https = require('https');
 // (criada originalmente para o Power BI) como Bastion/Túnel de IP Fixo para conectar ao Protheus.
 // NUNCA desligar ou remover a VM da Oracle Cloud, pois ela sustenta esta conexão.
 const RAILWAY_API_URL = 'https://protheus-api-production.up.railway.app/query';
-const RAILWAY_API_KEY = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || (process.env.NODE_ENV === 'production' ? '' : 'ProtheusClaude#2026');
+// Chave do gateway Protheus (Railway): SOMENTE do ambiente (.env local ou variáveis do servidor).
+// Nunca escrever o valor da chave no código.
+(function carregarEnvLocal() {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.join(__dirname, '.env');
+    if (!fs.existsSync(envPath)) return;
+    for (const line of fs.readFileSync(envPath, 'utf-8').split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const i = t.indexOf('=');
+      if (i <= 0) continue;
+      const k = t.slice(0, i).trim();
+      const v = t.slice(i + 1).trim().replace(/^['"]|['"]$/g, '');
+      if (k && !process.env[k]) process.env[k] = v;
+    }
+  } catch (_) {}
+})();
+
+function getRailwayApiKey() {
+  return (process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || '').trim();
+}
 
 // Mapeamento de Tabelas por Empresa no Protheus
 const TABELAS_EMPRESA = {
@@ -39,6 +61,11 @@ const mockDataMapOACO = {
  */
 function executeRailwayQuery(sql) {
   return new Promise((resolve, reject) => {
+    const apiKey = getRailwayApiKey();
+    if (!apiKey) {
+      reject(new Error('PROTHEUS_API_KEY ausente no ambiente (.env)'));
+      return;
+    }
     const postData = JSON.stringify({ query: sql });
     const urlObj = new URL(RAILWAY_API_URL);
 
@@ -49,7 +76,7 @@ function executeRailwayQuery(sql) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': RAILWAY_API_KEY,
+        'X-API-Key': apiKey,
         'User-Agent': 'NodeJS-ConciliacaoFretes/1.0',
         'Content-Length': Buffer.byteLength(postData)
       },

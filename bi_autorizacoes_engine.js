@@ -10,7 +10,8 @@ const http = require('http');
 const { executeRailwayQuery } = require('./protheus_db');
 
 const RAILWAY_API_URL = process.env.RAILWAY_BASE_URL || 'https://protheus-api-production.up.railway.app';
-const RAILWAY_API_KEY = process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || (process.env.NODE_ENV === 'production' ? '' : 'ProtheusClaude#2026');
+// Chave do gateway Protheus: somente do ambiente; lida a cada chamada.
+const getRailwayApiKey = () => (process.env.PROTHEUS_API_KEY || process.env.RAILWAY_API_KEY || '').trim();
 const PIPEDRIVE_API_TOKEN = process.env.PIPEDRIVE_API_TOKEN || '27c8e6f7f9bccd60101889f25369f6075e30f615';
 const PIPEDRIVE_BASE_URL = 'https://api.pipedrive.com/v1';
 
@@ -152,7 +153,7 @@ async function getCondicaoPagamentoLabel(optionId) {
   try {
     const url = `${RAILWAY_API_URL.replace(/\/query$/, '')}/pipedrive/cond-pagamento/${optId}`;
     const res = await fetchHttpJson(url, {
-      headers: { 'X-API-Key': RAILWAY_API_KEY },
+      headers: { 'X-API-Key': getRailwayApiKey() },
       timeout: 8000
     });
     if (res && res.label) {
@@ -199,7 +200,7 @@ async function getProdutoProtheus(codigoProtheus) {
   try {
     const url = `${RAILWAY_API_URL.replace(/\/query$/, '')}/produto/${encodeURIComponent(cleanCode)}?filial=09`;
     const res = await fetchHttpJson(url, {
-      headers: { 'X-API-Key': RAILWAY_API_KEY },
+      headers: { 'X-API-Key': getRailwayApiKey() },
       timeout: 8000
     });
     if (res && res.codigo) {
@@ -344,7 +345,7 @@ async function analisarDealCompleto(dealInput, options = {}) {
     // Tenta via Gateway Railway
     const url = `${RAILWAY_API_URL.replace(/\/query$/, '')}/pipedrive/deal/${dealId}`;
     const res = await fetchHttpJson(url, {
-      headers: { 'X-API-Key': RAILWAY_API_KEY },
+      headers: { 'X-API-Key': getRailwayApiKey() },
       timeout: 12000
     });
     dealData = res.data || res;
@@ -387,7 +388,7 @@ async function analisarDealCompleto(dealInput, options = {}) {
   } catch (err) {
     const url = `${RAILWAY_API_URL.replace(/\/query$/, '')}/pipedrive/deal/${dealId}/products`;
     const res = await fetchHttpJson(url, {
-      headers: { 'X-API-Key': RAILWAY_API_KEY },
+      headers: { 'X-API-Key': getRailwayApiKey() },
       timeout: 12000
     });
     dealProducts = res.data || res || [];
@@ -422,7 +423,7 @@ async function analisarDealCompleto(dealInput, options = {}) {
       try {
         const url = `${RAILWAY_API_URL.replace(/\/query$/, '')}/pipedrive/product/${productId}`;
         const res = await fetchHttpJson(url, {
-          headers: { 'X-API-Key': RAILWAY_API_KEY },
+          headers: { 'X-API-Key': getRailwayApiKey() },
           timeout: 8000
         });
         productDetails = res.data || res;
@@ -594,7 +595,7 @@ async function gravarNotaPipedrive(dealId, content) {
     const res = await fetchHttpJson(url, {
       method: 'POST',
       headers: {
-        'X-API-Key': RAILWAY_API_KEY
+        'X-API-Key': getRailwayApiKey()
       },
       body: {
         deal_id: parseInt(dealId, 10),
