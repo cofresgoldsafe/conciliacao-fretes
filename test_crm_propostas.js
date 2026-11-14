@@ -50,7 +50,7 @@ installSafetyEmailBlockStub();
 
 const EMPRESA_14_MOCK = {
   codigo: '14',
-  razao_social: 'METAL PLENO COMERCIO DE FECHADURAS E FERRAGENS LTDA',
+  razao_social: 'METAL PLENO EQUIPAMENTOS DE ACO LTDA',
   nome_fantasia: 'Metal Pleno',
   cnpj: '48758821000118',
   ie: '145707309111',
@@ -71,7 +71,7 @@ const EMPRESA_14_MOCK = {
 
 const EMPRESA_15_MOCK = {
   codigo: '15',
-  razao_social: 'GSI BRASIL PRESTACAO DE SERVICOS LTDA',
+  razao_social: 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA',
   nome_fantasia: 'GSI Brasil',
   cnpj: '14061778000115',
   ie: 'ISENTO',
@@ -92,7 +92,7 @@ const EMPRESA_15_MOCK = {
 
 const EMPRESA_16_MOCK = {
   codigo: '16',
-  razao_social: 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA',
+  razao_social: 'OACO PRODUTOS DE ACO LTDA',
   nome_fantasia: 'OAÇO / Cofres Gold Safe',
   cnpj: '61237790000118',
   ie: '535132321110',

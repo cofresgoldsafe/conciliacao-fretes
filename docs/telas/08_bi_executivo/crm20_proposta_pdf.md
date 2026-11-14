@@ -68,11 +68,11 @@ CREATE TABLE IF NOT EXISTS crm_empresas_emitentes (
 );
 
 INSERT INTO crm_empresas_emitentes (codigo, razao_social, nome_fantasia, cnpj, ie, endereco, telefone, logo_path) VALUES
-  ('14', 'METAL PLENO COMERCIO DE FECHADURAS E FERRAGENS LTDA', 'Metal Pleno', '48758821000118', '145707309111',
+  ('14', 'METAL PLENO EQUIPAMENTOS DE ACO LTDA', 'Metal Pleno', '48758821000118', '145707309111',
          'Rua Maria José, 119 · Bela Vista · São Paulo/SP · 01324-010', '(11) 3141-9000', NULL),
-  ('15', 'GSI BRASIL PRESTACAO DE SERVICOS LTDA', 'GSI Brasil', '14061778000115', 'ISENTO',
+  ('15', 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA', 'GSI Brasil', '14061778000115', 'ISENTO',
          'Rua Maria José, 119 · Bela Vista · São Paulo/SP · 01324-010', '(11) 3141-9000', 'logos/logo-gsi.png'),
-  ('16', 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA', 'OAÇO / Cofres Gold Safe', '61237790000118', '535132321110',
+  ('16', 'OACO PRODUTOS DE ACO LTDA', 'OAÇO / Cofres Gold Safe', '61237790000118', '535132321110',
          'Rua Maria José, 119 · Bela Vista · São Paulo/SP · 01324-010', '(11) 3141-9000', 'logos/logo-oaco.png')
 ON CONFLICT (codigo) DO NOTHING;
 
@@ -340,6 +340,6 @@ Se não houver resposta, vale o **padrão**.
 | Texto de condições gerais / garantia para o rodapé | Rodapé em branco (editável depois em 🏢 Empresas) |
 | Validade de 7 dias para as 3 empresas | 7 dias corridos, o vendedor pode mudar por proposta (1 a 60) |
 | A empresa da proposta pode ser diferente do Faturado Por? O plano v2 dizia "pode ser trocada na hora de imprimir", mas no CRM-26 o pedido sai na empresa do Faturado Por | **Não**: proposta sempre na empresa do Faturado Por; para trocar, edita-se o deal |
-| A empresa 15 é a "GSI BRASIL PRESTACAO DE SERVICOS LTDA", IE isenta. É ela mesma que emite proposta de produtos, com esse nome? | Sim, com os dados do `DADOS_EMITENTES` |
+| A empresa 15 é a "GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA", IE isenta. É ela mesma que emite proposta de produtos, com esse nome? | Sim, com os dados do `DADOS_EMITENTES` |
 | Gerar a 1ª proposta move o deal de Lead/Contato para Proposta automaticamente? | Sim, com registro no histórico |
 | Cores de cada empresa | Azul `#0b3d91` e laranja `#f59e0b` nas 3 até ele escolher |

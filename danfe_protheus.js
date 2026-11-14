@@ -17,7 +17,7 @@ const { executeRailwayQuery } = require('./protheus_db');
 const DADOS_EMITENTES = {
   '14': {
     cnpj: '48758821000118',
-    xNome: 'METAL PLENO COMERCIO DE FECHADURAS E FERRAGENS LTDA',
+    xNome: 'METAL PLENO EQUIPAMENTOS DE ACO LTDA',
     xFant: 'METAL PLENO',
     ie: '145707309111',
     logradouro: 'RUA MARIA JOSE',
@@ -31,7 +31,7 @@ const DADOS_EMITENTES = {
   },
   '15': {
     cnpj: '14061778000115',
-    xNome: 'GSI BRASIL PRESTACAO DE SERVICOS LTDA',
+    xNome: 'GSI BW EQUIPAMENTOS DE ACO COFRES E ARMARIOS LTDA',
     xFant: 'GSI BRASIL',
     ie: 'ISENTO',
     logradouro: 'RUA MARIA JOSE',
@@ -45,7 +45,7 @@ const DADOS_EMITENTES = {
   },
   '16': {
     cnpj: '61237790000118',
-    xNome: 'OACO INDUSTRIA E COMERCIO DE COFRES LTDA',
+    xNome: 'OACO PRODUTOS DE ACO LTDA',
     xFant: 'OAÇO PRODUTOS DE AÇO / COFRES GOLD SAFE',
     ie: '535132321110',
     logradouro: 'RUA MARIA JOSE',
