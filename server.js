@@ -214,6 +214,7 @@ const {
 
 const crmRoutes = require('./crm_routes');
 const crmEngine = require('./crm_engine');
+const crmPropostas = require('./crm_propostas');
 const pgtosDesconhecidosRoutes = require('./routes/pgtos_desconhecidos');
 const telegramAgentRoutes = require('./routes/telegram_agent');
 
@@ -273,6 +274,17 @@ const sessionPingLimiter = rateLimit({
       success: false,
       message: 'Muitas requisições de verificação de sessão a partir deste IP. Por favor, aguarde alguns instantes.'
     });
+  }
+});
+
+// Rate Limiter para Link Público de Propostas Comerciais (/p/:token - 30 req/min por IP)
+const propostaPublicaLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 30, // máximo 30 requisições por minuto por IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    return res.status(429).send('Muitas requisições. Tente novamente em instantes.');
   }
 });
 
@@ -538,6 +550,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
 app.get('/crm', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'crm.html'));
 });
+
+// Rota Pública de Visualização de Proposta Comercial (/p/:token — sem exigir login JWT)
+app.get('/p/:token', propostaPublicaLimiter, crmPropostas.handleLinkPublico);
 
 // Configure uploads and data directories
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -2261,6 +2276,9 @@ app.post(['/api/cron/fechamento-mensal', '/api/vendedores/fechamento/cron'], req
     handleServerError(res, err, 'Erro ao executar fechamento mensal via cron.');
   }
 });
+
+// API: Cron Externo — Lembrete Diário de Propostas Comerciais Vencendo em 2 Dias (CRM-20)
+app.post('/api/cron/crm-propostas-vencendo', requireCronAuth, crmPropostas.handleCronVencendo);
 
 // API: Logística - Pedidos Prontos para Faturar (MATA460A - Legenda Verde)
 app.get('/api/logistica/pedidos-faturar', requireAuth, async (req, res) => {

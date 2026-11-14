@@ -18,6 +18,7 @@ const { sanitizeSqlParam, getNomeVendedor } = protheusDb;
 const { safeReadJson, safeReadJsonSync, safeWriteJson } = require('./safe_json_storage');
 const { calcularScoreDeal } = require('./crm_scoring_engine');
 const crmVendedores = require('./crm_vendedores');
+const crmPropostas = require('./crm_propostas');
 
 const dataDir = path.join(__dirname, 'data');
 const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
@@ -865,6 +866,7 @@ async function initCrmTables() {
       ALTER TABLE IF EXISTS crm_atividades ALTER COLUMN created_by DROP DEFAULT;
     `);
     await crmVendedores.ensureCrmVendedoresTable();
+    await crmPropostas.ensureCrmPropostasTables();
     console.log('🟢 [CRM Engine] Schema do CRM verificado/inicializado com sucesso no Supabase PostgreSQL.');
   } catch (err) {
     console.warn('⚠️ [CRM Engine] Aviso ao verificar schema do CRM no Postgres:', err.message);
@@ -3677,6 +3679,7 @@ module.exports = {
   formatarObjetoFidelidade,
   obterCacheRaizes,
   calcularScoreDeal,
+  recordTelemetry,
   dealVisivel,
   dealEditavel,
   ensureCrmVendedoresTable: crmVendedores.ensureCrmVendedoresTable,

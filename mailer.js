@@ -31,27 +31,39 @@ function isValidEmail(email) {
 /**
  * Envia E-mail via API REST HTTP do Mailjet (Porta 443 HTTPS - imune a bloqueios de portas SMTP em nuvem)
  */
-function sendViaMailjetHttpApi({ apiKey, secretKey, fromEmail, fromName, toEmail, toName, subject, text, html }) {
+function sendViaMailjetHttpApi({ apiKey, secretKey, fromEmail, fromName, toEmail, toName, toList, ccList, replyTo, attachments, subject, text, html }) {
   return new Promise((resolve, reject) => {
     const authHeader = 'Basic ' + Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
+    const resolvedTo = Array.isArray(toList) && toList.length > 0
+      ? toList
+      : [{ Email: toEmail, Name: toName || 'Usuário' }];
+
+    const msgObj = {
+      From: {
+        Email: fromEmail,
+        Name: fromName || 'Plataforma GSI'
+      },
+      To: resolvedTo,
+      Subject: subject,
+      TextPart: text,
+      HTMLPart: html
+    };
+
+    if (Array.isArray(ccList) && ccList.length > 0) {
+      msgObj.Cc = ccList;
+    }
+    if (replyTo && replyTo.Email) {
+      msgObj.ReplyTo = {
+        Email: replyTo.Email,
+        Name: replyTo.Name || fromName || 'Comercial'
+      };
+    }
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      msgObj.Attachments = attachments;
+    }
+
     const payload = JSON.stringify({
-      Messages: [
-        {
-          From: {
-            Email: fromEmail,
-            Name: fromName || 'Plataforma GSI'
-          },
-          To: [
-            {
-              Email: toEmail,
-              Name: toName || 'Usuário'
-            }
-          ],
-          Subject: subject,
-          TextPart: text,
-          HTMLPart: html
-        }
-      ]
+      Messages: [msgObj]
     });
 
     const options = {
@@ -580,10 +592,140 @@ Data: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
   }
 }
 
+/**
+ * Envia Proposta Comercial em PDF com anexo, Reply-To do vendedor e cópia opcional (CRM-20)
+ * @param {Object} params
+ * @param {string|string[]} params.to - Destinatário(s) separados por vírgula ou array (1 a 5)
+ * @param {string|string[]} [params.cc] - E-mails em cópia opcional
+ * @param {string} params.replyTo - E-mail do vendedor (Reply-To obrigatório)
+ * @param {string} [params.fromName] - Nome do remetente (ex.: "Juliana · GSI Brasil")
+ * @param {string} params.subject - Assunto do e-mail
+ * @param {string} params.text - Corpo em texto puro
+ * @param {string} [params.html] - Corpo em HTML
+ * @param {Object} params.attachment - { filename, contentBase64, contentType }
+ */
+async function sendPropostaEmail({ to, cc, replyTo, fromName, subject, text, html, attachment }) {
+  const parseRecipients = (val) => {
+    if (!val) return [];
+    const list = Array.isArray(val) ? val : String(val).split(/[,;]+/);
+    return list.map(s => String(s || '').trim()).filter(Boolean);
+  };
+
+  const toEmails = parseRecipients(to);
+  const ccEmails = parseRecipients(cc);
+
+  if (toEmails.length === 0 || toEmails.length > 5 || !toEmails.every(isValidEmail)) {
+    return { success: false, error: 'Destinatário(s) inválido(s) (informe de 1 a 5 e-mails válidos).' };
+  }
+  if (ccEmails.length > 0 && !ccEmails.every(isValidEmail)) {
+    return { success: false, error: 'E-mail(s) em cópia (CC) inválido(s).' };
+  }
+  if (!replyTo || !isValidEmail(replyTo)) {
+    return { success: false, error: 'E-mail de resposta (Reply-To) do vendedor inválido ou ausente.' };
+  }
+  if (!attachment || !attachment.filename || !attachment.contentBase64) {
+    return { success: false, error: 'Anexo PDF da proposta é obrigatório.' };
+  }
+
+  const senderUser = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || 'nao-responda@oaco.com.br').trim();
+  const rawFrom = (process.env.SMTP_from || process.env.SMTP_FROM || senderUser).trim();
+  let fromEmailOnly = rawFrom;
+  if (rawFrom.includes('<') && rawFrom.includes('>')) {
+    const match = rawFrom.match(/^(.*?)\s*<([^>]+)>/);
+    if (match && match[2]) {
+      fromEmailOnly = match[2].trim();
+    }
+  }
+  const cleanFromName = String(fromName || 'Comercial GSI').replace(/["<>]/g, '').trim() || 'Comercial GSI';
+  const fromAddress = `"${cleanFromName}" <${fromEmailOnly}>`;
+
+  const htmlBody = html || String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r?\n/g, '<br>');
+
+  const host = (process.env.SMTP_server || process.env.SMTP_SERVER || process.env.SMTP_HOST || process.env.SMTP_host || '').trim();
+  const apiKey = (process.env.SMTP_login || process.env.SMTP_LOGIN || process.env.SMTP_USER || process.env.SMTP_user || '').trim();
+  const secretKey = (process.env.SMTP_pass || process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.SMTP_password || '').trim();
+
+  if (host.includes('mailjet') && apiKey && secretKey) {
+    try {
+      const httpRes = await sendViaMailjetHttpApi({
+        apiKey,
+        secretKey,
+        fromEmail: fromEmailOnly,
+        fromName: cleanFromName,
+        toList: toEmails.map(email => ({ Email: email, Name: email.split('@')[0] })),
+        ccList: ccEmails.map(email => ({ Email: email, Name: email.split('@')[0] })),
+        replyTo: { Email: replyTo.trim(), Name: cleanFromName },
+        attachments: [
+          {
+            ContentType: attachment.contentType || 'application/pdf',
+            Filename: attachment.filename,
+            Base64Content: attachment.contentBase64
+          }
+        ],
+        subject: String(subject || '').trim(),
+        text: String(text || ''),
+        html: htmlBody
+      });
+      console.log(`🟢 [Mailer Proposta] Proposta enviada para ${toEmails.map(maskEmail).join(', ')} via Mailjet HTTP API 443 (ID: ${httpRes.messageId})`);
+      return httpRes;
+    } catch (httpErr) {
+      console.warn(`⚠️ [Mailer Proposta Warning] Falha na API HTTP do Mailjet (${httpErr.message}). Tentando fallback SMTP...`);
+      const transporter = getTransporter();
+      if (!transporter) {
+        return { success: false, error: httpErr.message };
+      }
+    }
+  }
+
+  const transporter = getTransporter();
+  if (!transporter) {
+    return {
+      success: false,
+      error: 'Servidor de e-mail (Mailjet/SMTP) não configurado para envio de propostas.'
+    };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: toEmails.join(', '),
+      cc: ccEmails.length > 0 ? ccEmails.join(', ') : undefined,
+      replyTo: replyTo.trim(),
+      subject: String(subject || '').trim(),
+      text: String(text || ''),
+      html: htmlBody,
+      attachments: [
+        {
+          filename: attachment.filename,
+          content: Buffer.from(attachment.contentBase64, 'base64'),
+          contentType: attachment.contentType || 'application/pdf'
+        }
+      ]
+    });
+    console.log(`🟢 [Mailer Proposta SMTP] Proposta enviada para ${toEmails.map(maskEmail).join(', ')} (MessageID: ${info.messageId})`);
+    return {
+      success: true,
+      mode: 'smtp',
+      messageId: info.messageId
+    };
+  } catch (err) {
+    console.error(`❌ [Mailer Proposta Error] Falha no envio SMTP:`, err.message);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+}
+
 module.exports = {
   maskEmail,
   isValidEmail,
   send2FACodeEmail,
   sendAlertEmail,
+  sendPropostaEmail,
   testSmtpConnection
 };

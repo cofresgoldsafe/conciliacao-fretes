@@ -15,6 +15,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const crmEngine = require('./crm_engine');
+const crmPropostas = require('./crm_propostas');
 
 // Lida na hora da validacao: o server.js define process.env.JWT_SECRET depois de carregar este modulo.
 const getJwtSecret = () => process.env.JWT_SECRET;
@@ -22,20 +23,22 @@ const getJwtSecret = () => process.env.JWT_SECRET;
 /**
  * Envelope de Erro Padronizado RFC 7807 / RFC 9457
  */
-function sendRfcError(res, { status = 500, title = 'Erro interno do servidor', detail = '', code = 'INTERNAL_ERROR' }) {
+function sendRfcError(res, { status = 500, title = 'Erro interno do servidor', detail = '', code = 'INTERNAL_ERROR', extra = {} }) {
   let safeDetail = detail || title;
-  if (status >= 500 && process.env.NODE_ENV === 'production') {
+  if (status === 500 && process.env.NODE_ENV === 'production') {
     safeDetail = 'Ocorreu um erro interno ao processar a operação. Tente novamente.';
   }
   return res.status(status).json({
     success: false,
     message: safeDetail,
+    ...extra,
     error: {
       type: `https://portal.gsicofres.com.br/errors/${code.toLowerCase().replace(/_/g, '-')}`,
       title,
       status,
       detail: safeDetail,
-      code
+      code,
+      ...extra
     }
   });
 }
@@ -1023,6 +1026,194 @@ router.get('/clientes/raiz-cnpj/:cnpj', async (req, res) => {
       title: 'Erro ao consultar fidelidade da raiz de CNPJ',
       detail: err.message,
       code: 'RAIZ_CNPJ_ERROR'
+    });
+  }
+});
+
+// ============================================================================
+// ROTAS DE PROPOSTAS COMERCIAIS EM PDF POR EMPRESA EMISSORA (CRM-20)
+// ============================================================================
+
+/**
+ * GET /api/bi/crm/empresas-emitentes
+ * Lista as empresas emissoras (14, 15, 16)
+ */
+router.get('/empresas-emitentes', async (req, res) => {
+  try {
+    const incluirInativas = Boolean(
+      (req.crmScope?.all || req.crmUser?.isAdmin) &&
+      (req.query.inativas === '1' || req.query.inativas === 'true' || req.query.incluirInativas === '1' || req.query.incluirInativas === 'true')
+    );
+    const items = await crmPropostas.listarEmpresas({ incluirInativas });
+    return res.json({
+      success: true,
+      items,
+      data: items
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao listar empresas emitentes',
+      detail: err.message,
+      code: err.code || 'LIST_EMPRESAS_ERROR'
+    });
+  }
+});
+
+/**
+ * PUT /api/bi/crm/empresas-emitentes/:codigo
+ * Edita dados visuais/fiscais/textos de uma empresa emissora (Admin apenas)
+ */
+router.put('/empresas-emitentes/:codigo', requireCrmAdmin, async (req, res) => {
+  try {
+    const { codigo } = req.params;
+    const atualizada = await crmPropostas.salvarEmpresa(codigo, req.body || {}, {
+      ...req.user,
+      ip: req.ip
+    });
+    return res.json({
+      success: true,
+      message: `Empresa ${codigo} atualizada com sucesso.`,
+      data: atualizada
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao atualizar empresa emitente',
+      detail: err.message,
+      code: err.code || 'UPDATE_EMPRESA_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/deals/:id/propostas/previa
+ * Gera PDF de prévia em memória (com marca d'água PRÉVIA — SEM VALOR), sem criar revisão
+ */
+router.post('/deals/:id/propostas/previa', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const previa = await crmPropostas.previaProposta(id, req.body || {}, req.crmScope);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${previa.filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.status(200).send(previa.pdfBuffer);
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao gerar prévia da proposta',
+      detail: err.message,
+      code: err.code || 'PREVIA_PROPOSTA_ERROR',
+      extra: err.itensInvalidos ? { itensInvalidos: err.itensInvalidos } : {}
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/deals/:id/propostas
+ * Cria uma nova revisão imutável (R1, R2...) e retorna seus metadados + link público
+ */
+router.post('/deals/:id/propostas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const revisao = await crmPropostas.gerarRevisao(
+      id,
+      req.body || {},
+      { ...req.user, ip: req.ip },
+      req.crmScope
+    );
+    return res.status(201).json({
+      success: true,
+      message: `Proposta ${revisao.numero} gerada com sucesso.`,
+      data: revisao
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao gerar proposta comercial',
+      detail: err.message,
+      code: err.code || 'GERAR_PROPOSTA_ERROR',
+      extra: err.itensInvalidos ? { itensInvalidos: err.itensInvalidos } : {}
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/deals/:id/propostas
+ * Lista revisões de proposta do deal sem trazer o binário BYTEA
+ */
+router.get('/deals/:id/propostas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const items = await crmPropostas.listarPropostas(id, req.crmScope);
+    return res.json({
+      success: true,
+      items,
+      data: items
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao listar propostas da oportunidade',
+      detail: err.message,
+      code: err.code || 'LISTAR_PROPOSTAS_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/deals/:id/propostas/:revisao/pdf
+ * Retorna o binário PDF salvo da revisão (?download=1 força attachment e registra download)
+ */
+router.get('/deals/:id/propostas/:revisao/pdf', async (req, res) => {
+  try {
+    const { id, revisao } = req.params;
+    const isDownload = req.query.download === '1' || req.query.download === 'true';
+    const pdfRes = await crmPropostas.obterPdf(id, revisao, req.crmScope, {
+      download: isDownload,
+      usuario: { ...req.user, ip: req.ip }
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `${isDownload ? 'attachment' : 'inline'}; filename="${pdfRes.filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.status(200).send(pdfRes.pdfBuffer);
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao obter PDF da proposta',
+      detail: err.message,
+      code: err.code || 'OBTER_PDF_PROPOSTA_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/bi/crm/deals/:id/propostas/:revisao/email
+ * Envia revisão existente por e-mail com anexo PDF e Reply-To do vendedor
+ */
+router.post('/deals/:id/propostas/:revisao/email', async (req, res) => {
+  try {
+    const { id, revisao } = req.params;
+    const envio = await crmPropostas.enviarPorEmail(
+      id,
+      revisao,
+      req.body || {},
+      { ...req.user, ip: req.ip },
+      req.crmScope
+    );
+    return res.json({
+      success: true,
+      message: `Proposta ${envio.numero} enviada por e-mail com sucesso.`,
+      data: envio
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao enviar proposta por e-mail',
+      detail: err.message,
+      code: err.code || 'ENVIAR_EMAIL_PROPOSTA_ERROR'
     });
   }
 });

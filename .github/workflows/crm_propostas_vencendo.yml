@@ -1,0 +1,41 @@
+name: "⏰ CRM: Lembrete Diário de Propostas Vencendo (08:00 BRT)"
+
+on:
+  schedule:
+    # 08:00 BRT = 11:00 UTC (Todos os dias)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger-crm-propostas-vencendo:
+    name: "Disparar Lembretes de Validade de Propostas no Render"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: "Acionar Endpoint /api/cron/crm-propostas-vencendo"
+        env:
+          APP_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "🚀 Disparando verificação diária de propostas vencendo em: ${APP_URL}/api/cron/crm-propostas-vencendo"
+
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            --max-time 60 \
+            --retry 3 \
+            --retry-delay 10 \
+            -X POST "${APP_URL}/api/cron/crm-propostas-vencendo" \
+            -H "Content-Type: application/json" \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            -d '{}')
+
+          echo "📄 Resposta do Servidor (HTTP ${HTTP_STATUS}):"
+          cat response.json || true
+          echo ""
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "✅ Lembretes de validade de propostas processados com sucesso!"
+          else
+            echo "❌ Falha ao disparar lembretes de validade de propostas (HTTP ${HTTP_STATUS})."
+            exit 1
+          fi
