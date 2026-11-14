@@ -1,23 +1,24 @@
 # CRM Comercial B2B (Sub-aba: `💼 CRM`)
 
-> **Macro-Área:** BI Executivo  
-> **Identificador DOM:** `#tab-bi-crm` | **Botão:** `#btnTabBiCrm` (`💼 CRM`)  
-> **Permissão RBAC:** admin, diretoria (BI)  
+> **Macro-Área:** BI Executivo / Comercial  
+> **Identificador DOM:** `#tab-bi-crm` | **Botões:** `#btnTabBiCrm` (`💼 CRM`) e `#mainTabCrm` (`💼 CRM COMERCIAL`)  
+> **Permissão RBAC:** `admin`, `diretoria` (visão global) e `vendedor` com permissão `'crm'` + vínculo ativo em `crm_vendedores` (escopo restrito ao próprio `cod_vendedor`)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 16/10/2026 (v8.309 - Homologado)  
+> **Última Atualização:** 13/11/2026 (v8.321 - CRM-19 RBAC por Vendedor, Escopo por Proprietário e Meta Mensal)  
 
 ---
 
 ## 1. Propósito da Tela & Personas
-- **Objetivo:** Pipeline comercial nativo de vendas, alternância flexível entre modo **Kanban** (5 fases canônicas: Lead, Contato, Proposta, Negociação, Ganho) e modo **Listagem** tabular com 10 colunas canônicas idênticas ao Pipedrive (`listagem.png`), gestão de clientes B2B com espelhamento Just-in-Time da base Protheus (`SA1010`) para o Super Banco (`crm_clientes`), e atividades de follow-up.
-- **Personas Atendidas:** admin, diretoria (BI)
+- **Objetivo:** Pipeline comercial nativo de vendas, alternância flexível entre modo **Kanban** (5 fases canônicas: Lead, Contato, Proposta, Negociação, Ganho) e modo **Listagem** tabular com 10 colunas canônicas idênticas ao Pipedrive (`listagem.png`), acompanhamento de Meta Mensal (individual por vendedor e consolidada da equipe para a diretoria), gestão de clientes B2B com espelhamento Just-in-Time da base Protheus (`SA1010`) para o Super Banco (`crm_clientes`), e atividades de follow-up.
+- **Personas Atendidas:** `admin`, `diretoria` (visão global de toda a equipe) e `vendedor` habilitado com permissão `'crm'` (escopo isolado na própria carteira de oportunidades).
 
 ---
 
 ## 2. Arquitetura de Código & Componentes
-- **Frontend (View):** `public/index.html` (aba `#tab-bi-crm`, containers `#crmKanbanContainer` e `#crmListagemContainer`, modais `#modalCrmOportunidade`, `#modalCrmDetalhes` e `#modalCrmCliente`).
-- **Frontend (Controller):** `public/js/crm.js` (estado `dealViewMode`, `setDealViewMode`, `renderListagemBoard`, `renderKanbanBoard`, `abrirModalCliente`, sincronização e filtros).
-- **Backend / Rotas:** `crm_routes.js` (prefixo `/api/bi/crm/deals`, `/api/bi/crm/clientes`), `crm_engine.js`, `postgres_db.js`.
+- **Frontend (View):** `public/crm.html` (`/crm`) e `public/index.html` (aba `#tab-bi-crm`, atalho `#mainTabCrm`, containers `#crmKanbanContainer` e `#crmListagemContainer`, card `#crmKpiMetaBox`, modais `#modalCrmOportunidade`, `#modalCrmDetalhes` e `#modalCrmCliente`).
+- **Frontend (Controller):** `public/js/crm.js` (estado `crmMe`, `crmVendedoresCatalog`, `dealViewMode`, `loadCrmMe`, `applyRoleVisibility`, `updateMetaKpiCard`, `renderListagemBoard`, `renderKanbanBoard`, `abrirModalCliente`, sincronização e filtros por `cod_vendedor`).
+- **Backend / Rotas:** `crm_routes.js` (`requireCrmAccess`, `scopeByOwner`, `requireCrmAdmin`, `/api/bi/crm/deals`, `/api/bi/crm/clientes`, `/api/bi/crm/vendedores`, `/api/bi/crm/me`, `/api/bi/crm/meta`), `crm_vendedores.js`, `crm_engine.js`, `postgres_db.js`.
+- **Banco de Dados & Scripts:** `sql/bi/11_tabela_crm_vendedores.sql` (tabela `crm_vendedores` com RLS e grants `service_role`) e `scripts/crm19_normalizar_vendedores.js` (saneamento de `cod_vendedor`/`nome_vendedor` com `--dry-run` e `--apply`).
 
 ---
 
@@ -117,21 +118,24 @@
 ---
 
 ## 6. Endpoints REST da API
-- `GET /api/bi/crm/deals`: Listagem dos negócios do funil com filtros e enriquecimento com `score_preditivo` e `fidelidade_compras`.
-- `GET /api/bi/crm/deals/:id`: Consulta individual de negócio com diagnóstico preditivo e atividades.
-- `GET /api/bi/crm/vendedores`: Lista de vendedores operacionais ativos (sem Diretoria).
-- `POST /api/bi/crm/deals`: Criação de nova oportunidade comercial.
-- `PUT /api/bi/crm/deals/:id`: Edição de oportunidade existente.
-- `PUT /api/bi/crm/deals/:id/stage`: Transição atômica de estágio.
-- `GET /api/bi/crm/clientes`: Listagem paginada de clientes comerciais.
+- `GET /api/bi/crm/me`: Retorna o perfil e o escopo resolvido do usuário autenticado (`isAdmin`, `cod_vendedor`, `nome_vendedor`, `meta_mensal`).
+- `GET /api/bi/crm/meta`: Apuração de meta mensal realizada vs objetivo (`escopo: 'vendedor'` para vendedor ou filtro específico; `escopo: 'equipe'` consolidando os vendedores com meta > 0 para o administrador). Reaproveita `metaBaseVendas = R$ 120.000,00` de `getConfigMetasVendasDB()` quando `crm_vendedores.meta_mensal IS NULL`.
+- `GET /api/bi/crm/deals`: Listagem dos negócios do funil respeitando `req.crmScope`, com filtros e enriquecimento com `score_preditivo` e `fidelidade_compras`.
+- `GET /api/bi/crm/deals/:id`: Consulta individual de negócio com diagnóstico preditivo e atividades (retorna 404 + auditoria `CRM_DEAL_ACESSO_NEGADO` se o deal pertencer a outro vendedor).
+- `GET /api/bi/crm/vendedores`: Lista de vendedores ativos (retorna apenas o próprio vendedor quando `scope.all === false`, ou todos os vendedores ativos para o admin).
+- `POST /api/bi/crm/deals`: Criação de nova oportunidade comercial (força `cod_vendedor` e `nome_vendedor` da sessão quando chamado por vendedor; quando chamado por admin sem `cod_vendedor`/`nome_vendedor` informado no payload, assume o próprio admin resolvido pelo `username`).
+- `PUT /api/bi/crm/deals/:id`: Edição de oportunidade existente (preserva ownership para vendedor e preenche `data_fechamento_real` ao mudar para `ganho`).
+- `PATCH /api/bi/crm/deals/:id/stage`: Transição atômica de estágio no escopo permitido.
+- `DELETE /api/bi/crm/deals/:id` e `POST /api/bi/crm/deals/:id/restore`: Soft delete e restauração de negócios (restrito a `requireCrmAdmin`).
+- `GET /api/bi/crm/clientes`: Listagem paginada de clientes comerciais (compartilhada para consulta/edição; exclusão restrita ao admin).
 - `GET /api/bi/crm/clientes/:id`: Consulta multi-chave de cliente (ID interno, Código Protheus ou CNPJ) com espelhamento Just-in-Time automático do Protheus `SA1010` para o super banco.
 - `POST /api/bi/crm/clientes`: Criação ou edição com distinção estrita de espelhamento e inserção idempotente `ON CONFLICT (id) DO UPDATE`.
 - `GET /api/bi/crm/clientes/raiz-cnpj/:cnpj`: Consulta de fidelidade da raiz de CNPJ nas 7 empresas do grupo.
 - `GET /api/bi/crm/produtos/autocomplete`: Busca instantânea de produtos no catálogo espelhado com suporte a termo `q`, `limite` e `apenasAtivos`.
-- `POST /api/bi/crm/produtos/sync`: Sincronização em lote do catálogo oficial Protheus (`SB1090`/`SB1160`) com o Supabase e cache local.
+- `POST /api/bi/crm/produtos/sync`: Sincronização em lote do catálogo oficial Protheus (`SB1090`/`SB1160`) com o Supabase e cache local (`requireCrmAdmin`).
 - `GET /api/bi/crm/produtos/status`: Telemetria de total de produtos ativos, bloqueados, última sincronização e origem.
 - `GET /api/bi/crm/transportadoras/autocomplete`: Busca inteligente de transportadoras homologadas no Protheus por código, razão social, fantasia ou CNPJ.
-- `POST /api/bi/crm/transportadoras/sync`: Sincronização manual e sob demanda do cadastro Protheus (`SA4010`/`SA4160`) para o Super Banco.
+- `POST /api/bi/crm/transportadoras/sync`: Sincronização manual e sob demanda do cadastro Protheus (`SA4010`/`SA4160`) para o Super Banco (`requireCrmAdmin`).
 - `GET /api/bi/crm/transportadoras/status`: Telemetria de transportadoras ativas, bloqueadas e data da última sincronização.
 
 ---
@@ -139,6 +143,7 @@
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_rbac_vendedor.js
 node test_crm_preditivo_integrado.js
 node test_crm_scoring_engine.js
 node test_crm_raizes_cnpj.js
@@ -154,6 +159,10 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.321 (13/11/2026):** CRM-19 — Abertura do CRM Comercial aos Vendedores com RBAC por Proprietário, Tabela `crm_vendedores` e Meta Mensal:
+  - **RBAC e Escopo por Proprietário (`crm_routes.js` & `crm_engine.js`):** Substituição de `requireAdminOrAlexandre` por `requireCrmAccess` + `scopeByOwner`, resolvendo o vendedor exclusivamente por `crm_vendedores.username_portal` (`ativo = true`) e exigindo permissão `'crm'` na conta do usuário. Oportunidades de outros vendedores retornam `404 DEAL_NOT_FOUND` (anti-enumeração) com registro de auditoria `CRM_DEAL_ACESSO_NEGADO`. Operações destrutivas e de sincronização permanecem protegidas por `requireCrmAdmin`.
+  - **Tabela `crm_vendedores` e Meta Mensal (`sql/bi/11_tabela_crm_vendedores.sql` & `crm_vendedores.js`):** Cadastro central dos 4 códigos Protheus (`000074` Juliana, `000064` Andrea, `000004` Figueiredo, `000001` Alexandre com `meta_mensal = 0`). Cálculo de meta mensal reaproveitando `metaBaseVendas = R$ 120.000,00` de `getConfigMetasVendasDB()` quando `meta_mensal IS NULL` e excluindo vendedores com `meta_mensal = 0` da soma da equipe (`R$ 360.000,00`).
+  - **Saneamento e Correções Técnicas:** Script `scripts/crm19_normalizar_vendedores.js` (`--dry-run` / `--apply` com transação `BEGIN`/`COMMIT`/`ROLLBACK` e auditoria `updated_by = 'migracao_crm19'`), fallback em `criarDeal` para admin sem vendedor informado (assume o próprio admin pelo `username`), correção da chamada `listarAtividadesDeal` em `obterDealPorId`, gravação de `data_fechamento_real` ao transicionar para `ganho` via `atualizarDeal`, isolamento do cache `localStorage` por `username` (`gsi_crm_deals_cache_<username>` e `gsi_crm_activities_<username>_<dealId>`, desabilitado enquanto `crmMe` for `null`), remoção de mocks locais em respostas HTTP 200 vazias em `public/js/crm.js`, e suíte `test_crm_rbac_vendedor.js` com 18 cenários aprovados.
 - **v8.278 (26/09/2026):** Status Limpo e Calibração Anti-Inflação de 99% no Score Preditivo do CRM:
   - **Eliminação de Porcentagem em Vendas Ganhas/Perdidas:** Remoção do badge preditivo `${renderScoreBadge}` para negócios com fase `GANHO` ou `PERDIDO` na listagem tabular (`renderListagemBoard`) e nos cards do funil Kanban (`renderKanbanBoard`). Negócios finalizados exibem estritamente seu status soberano (`Ganho` em verde `#10b981` ou `Perdido` em vermelho `#ef4444`), eliminando a confusão de exibir probabilidade de fechamento futuro em vendas já consolidadas.
   - **Identificação e Correção de Data Leakage no Treino:** Detecção de vazamento temporal no script de treino (`scripts/ml_pipedrive_train.js`), onde a vitória do próprio negócio alimentava o contador de vitórias anteriores da organização (`hasWonPrior`), inflando o coeficiente $w_6$ para abusivos `+4.13586`.

@@ -17,6 +17,7 @@ const protheusDb = require('./protheus_db');
 const { sanitizeSqlParam, getNomeVendedor } = protheusDb;
 const { safeReadJson, safeReadJsonSync, safeWriteJson } = require('./safe_json_storage');
 const { calcularScoreDeal } = require('./crm_scoring_engine');
+const crmVendedores = require('./crm_vendedores');
 
 const dataDir = path.join(__dirname, 'data');
 const crmCacheFile = path.join(dataDir, 'crm_deals_cache.json');
@@ -628,8 +629,8 @@ async function initCrmTables() {
         observacoes TEXT,
         ativo BOOLEAN NOT NULL DEFAULT TRUE,
         deleted_at TIMESTAMP WITH TIME ZONE,
-        created_by VARCHAR(100) NOT NULL DEFAULT 'alexandre',
-        updated_by VARCHAR(100) NOT NULL DEFAULT 'alexandre',
+        created_by VARCHAR(100) NOT NULL,
+        updated_by VARCHAR(100) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
@@ -647,7 +648,7 @@ async function initCrmTables() {
         responsavel_usuario VARCHAR(100) NOT NULL,
         responsavel_nome VARCHAR(100),
         custom JSONB NOT NULL DEFAULT '{}'::jsonb,
-        created_by VARCHAR(100) NOT NULL DEFAULT 'alexandre',
+        created_by VARCHAR(100) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       );
@@ -689,6 +690,7 @@ async function initCrmTables() {
 
       CREATE INDEX IF NOT EXISTS idx_crm_deals_estagio ON crm_deals(estagio);
       CREATE INDEX IF NOT EXISTS idx_crm_deals_cod_vendedor ON crm_deals(cod_vendedor);
+      CREATE INDEX IF NOT EXISTS idx_crm_deals_cod_vendedor_ativo ON crm_deals (cod_vendedor) WHERE ativo = TRUE;
       CREATE INDEX IF NOT EXISTS idx_crm_deals_cliente_cod ON crm_deals(cliente_cod);
       CREATE INDEX IF NOT EXISTS idx_crm_deals_cliente_nome ON crm_deals(cliente_nome);
       CREATE INDEX IF NOT EXISTS idx_crm_deals_status ON crm_deals(status);
@@ -856,7 +858,13 @@ async function initCrmTables() {
         DROP POLICY IF EXISTS "Acesso exclusivo backend crm_transportadoras" ON crm_transportadoras;
         CREATE POLICY "Acesso exclusivo backend crm_transportadoras" ON crm_transportadoras TO service_role, postgres USING (true) WITH CHECK (true);
       END $$;
+
+      -- Remoção de defaults legados de autoria
+      ALTER TABLE IF EXISTS crm_deals ALTER COLUMN created_by DROP DEFAULT;
+      ALTER TABLE IF EXISTS crm_deals ALTER COLUMN updated_by DROP DEFAULT;
+      ALTER TABLE IF EXISTS crm_atividades ALTER COLUMN created_by DROP DEFAULT;
     `);
+    await crmVendedores.ensureCrmVendedoresTable();
     console.log('🟢 [CRM Engine] Schema do CRM verificado/inicializado com sucesso no Supabase PostgreSQL.');
   } catch (err) {
     console.warn('⚠️ [CRM Engine] Aviso ao verificar schema do CRM no Postgres:', err.message);
@@ -910,8 +918,8 @@ function mapDealRow(row) {
     custom: parseJsonField(row.custom, {}),
     observacoes: row.observacoes || '',
     ativo: row.ativo !== false,
-    created_by: row.created_by || 'alexandre',
-    updated_by: row.updated_by || 'alexandre',
+    created_by: row.created_by || '',
+    updated_by: row.updated_by || '',
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString()
   };
@@ -932,10 +940,10 @@ function mapAtividadeRow(row) {
     data_concluida: row.data_concluida || null,
     status: row.status || 'pendente',
     prioridade: row.prioridade || 'media',
-    responsavel_usuario: row.responsavel_usuario || 'alexandre',
-    responsavel_nome: row.responsavel_nome || 'Alexandre',
+    responsavel_usuario: row.responsavel_usuario || '',
+    responsavel_nome: row.responsavel_nome || '',
     custom: parseJsonField(row.custom, {}),
-    created_by: row.created_by || 'alexandre',
+    created_by: row.created_by || '',
     created_at: row.created_at || new Date().toISOString(),
     updated_at: row.updated_at || new Date().toISOString()
   };
@@ -989,11 +997,49 @@ function mapClienteRow(row) {
 }
 
 /**
+ * Verifica se um negócio pode ser visualizado no escopo atual
+ */
+function dealVisivel(deal, scope) {
+  if (!deal) return false;
+  if (!scope || scope.all) return true;
+  const codigos = Array.isArray(scope.codigosLeitura) && scope.codigosLeitura.length > 0
+    ? scope.codigosLeitura
+    : [scope.codVendedor];
+  return codigos.includes(deal.cod_vendedor);
+}
+
+/**
+ * Verifica se um negócio pode ser editado no escopo atual
+ */
+function dealEditavel(deal, scope) {
+  if (!deal) return false;
+  if (!scope || scope.all) return true;
+  return deal.cod_vendedor === scope.codVendedor;
+}
+
+/**
  * 1. LISTAR DEALS
  * Filtros: estagio, busca, codVendedor, status
  */
-async function listarDeals(filtros = {}) {
+async function listarDeals(filtros = {}, scope = { all: true }) {
   const { estagio, busca, codVendedor, status } = filtros;
+  const codigosLeitura = (scope && !scope.all)
+    ? (Array.isArray(scope.codigosLeitura) && scope.codigosLeitura.length > 0
+        ? scope.codigosLeitura.map(c => String(c || '').trim()).filter(Boolean)
+        : [String(scope.codVendedor || '').trim()].filter(Boolean))
+    : null;
+  const codVendedorEfetivo = (scope && !scope.all)
+    ? (codigosLeitura[0] || '')
+    : codVendedor;
+
+  if (scope && !scope.all && (!codigosLeitura || codigosLeitura.length === 0)) {
+    return {
+      source: 'none',
+      total: 0,
+      deals: []
+    };
+  }
+
   let deals = [];
   let fromDb = false;
 
@@ -1014,8 +1060,11 @@ async function listarDeals(filtros = {}) {
       query += ` AND estagio = $${params.length}`;
     }
 
-    if (codVendedor && codVendedor !== 'TODOS') {
-      params.push(String(codVendedor).trim());
+    if (scope && !scope.all) {
+      params.push(codigosLeitura);
+      query += ` AND cod_vendedor = ANY($${params.length}::varchar[])`;
+    } else if (codVendedorEfetivo && codVendedorEfetivo !== 'TODOS') {
+      params.push(String(codVendedorEfetivo).trim());
       query += ` AND cod_vendedor = $${params.length}`;
     }
 
@@ -1051,11 +1100,15 @@ async function listarDeals(filtros = {}) {
     const cache = await readCache();
     deals = (cache.deals || []).filter(d => d.ativo !== false);
 
+    if ((scope && !scope.all) || (codVendedorEfetivo && codVendedorEfetivo !== 'TODOS')) {
+      const targetScope = (scope && !scope.all)
+        ? scope
+        : { all: false, codVendedor: String(codVendedorEfetivo).trim() };
+      deals = deals.filter(d => dealVisivel(d, targetScope));
+    }
+
     if (estagio && estagio !== 'TODOS') {
       deals = deals.filter(d => d.estagio === String(estagio).trim().toLowerCase());
-    }
-    if (codVendedor && codVendedor !== 'TODOS') {
-      deals = deals.filter(d => d.cod_vendedor === codVendedor);
     }
     if (status && status !== 'TODOS') {
       deals = deals.filter(d => d.status === status);
@@ -1076,29 +1129,35 @@ async function listarDeals(filtros = {}) {
 
   // Pré-computa estatísticas de atividades (anotações e concluídas) para o motor preditivo
   const activityStats = {};
+  const dealIds = deals.map(d => String(d.id));
   if (fromDb && isPostgresConnected()) {
-    try {
-      const statsRes = await safeQuery(`
-        SELECT deal_id,
-               COUNT(*) FILTER (WHERE tipo = 'anotacao' OR tipo = 'NOTA') AS notes_count,
-               COUNT(*) FILTER (WHERE status = 'concluida') AS done_activities_count
-        FROM crm_atividades
-        GROUP BY deal_id;
-      `);
-      if (statsRes && Array.isArray(statsRes.rows)) {
-        for (const row of statsRes.rows) {
-          activityStats[String(row.deal_id)] = {
-            notes_count: parseInt(row.notes_count, 10) || 0,
-            done_activities_count: parseInt(row.done_activities_count, 10) || 0
-          };
+    if (dealIds.length > 0) {
+      try {
+        const statsRes = await safeQuery(`
+          SELECT deal_id,
+                 COUNT(*) FILTER (WHERE tipo = 'anotacao' OR tipo = 'NOTA') AS notes_count,
+                 COUNT(*) FILTER (WHERE status = 'concluida') AS done_activities_count
+          FROM crm_atividades
+          WHERE deal_id = ANY($1::varchar[])
+          GROUP BY deal_id;
+        `, [dealIds]);
+        if (statsRes && Array.isArray(statsRes.rows)) {
+          for (const row of statsRes.rows) {
+            activityStats[String(row.deal_id)] = {
+              notes_count: parseInt(row.notes_count, 10) || 0,
+              done_activities_count: parseInt(row.done_activities_count, 10) || 0
+            };
+          }
         }
-      }
-    } catch (_) {}
-  } else {
+      } catch (_) {}
+    }
+  } else if (dealIds.length > 0) {
     try {
+      const dealIdSet = new Set(dealIds);
       const cache = await readCache();
       for (const a of (cache.atividades || [])) {
         const dId = String(a.deal_id);
+        if (!dealIdSet.has(dId)) continue;
         if (!activityStats[dId]) activityStats[dId] = { notes_count: 0, done_activities_count: 0 };
         if (a.tipo === 'anotacao' || a.tipo === 'NOTA') activityStats[dId].notes_count++;
         if (a.status === 'concluida') activityStats[dId].done_activities_count++;
@@ -1128,7 +1187,7 @@ async function listarDeals(filtros = {}) {
 /**
  * 2. OBTER DEAL POR ID
  */
-async function obterDealPorId(id) {
+async function obterDealPorId(id, scope = { all: true }) {
   if (!id) return null;
   const cleanId = String(id).trim();
   const sufixo = cleanId.match(/-(\d+)$/)?.[1];
@@ -1157,13 +1216,34 @@ async function obterDealPorId(id) {
     );
   }
 
+  if (deal && deal.ativo === false) {
+    return null;
+  }
+
+  if (deal && !dealVisivel(deal, scope)) {
+    if (scope && !scope.all) {
+      await logUserActivity({
+        username: (scope && scope.username) || 'desconhecido',
+        userName: (scope && scope.nomeVendedor) || (scope && scope.username) || 'Desconhecido',
+        actionType: 'CRM_DEAL_ACESSO_NEGADO',
+        description: `Tentativa bloqueada de acesso ao negócio #${deal.id} (proprietário ${deal.cod_vendedor})`,
+        metadata: {
+          deal_id: deal.id,
+          username: (scope && scope.username) || '',
+          cod_vendedor: deal.cod_vendedor
+        }
+      }).catch(() => {});
+    }
+    return null;
+  }
+
   if (deal) {
     if (!deal.fidelidade_compras) {
       deal.fidelidade_compras = obterFidelidadeRaizSync(deal.cliente_cnpj || deal.clienteCnpj || '');
     }
     // Enriquece com notas, atividades e Score Preditivo
     try {
-      const atividades = await listarAtividades(deal.id);
+      const atividades = await listarAtividadesDeal(deal.id, { all: true });
       deal.notes_count = atividades.filter(a => a.tipo === 'anotacao' || a.tipo === 'NOTA').length;
       deal.done_activities_count = atividades.filter(a => a.status === 'concluida').length;
     } catch (_) {
@@ -1179,7 +1259,7 @@ async function obterDealPorId(id) {
 /**
  * 3. CRIAR DEAL
  */
-async function criarDeal(dados, usuario) {
+async function criarDeal(dados, usuario, scope = { all: true }) {
   const u = normalizeUser(usuario);
   const titulo = String(dados?.titulo || '').trim();
   const clienteNome = String(dados?.cliente_nome || '').trim();
@@ -1191,8 +1271,31 @@ async function criarDeal(dados, usuario) {
     throw new Error("O campo 'cliente_nome' é obrigatório.");
   }
 
-  const codVendedor = dados.cod_vendedor ? String(dados.cod_vendedor).trim() : (u.role === 'vendedor' ? '000074' : '000004');
-  const nomeVendedor = dados.nome_vendedor || getNomeVendedor(codVendedor) || 'VENDEDOR';
+  const estagioInicial = (dados.estagio || 'lead').trim().toLowerCase();
+  if (!CANONICAL_STAGES.includes(estagioInicial)) {
+    throw new Error(`Estágio '${dados.estagio}' inválido. Estágios permitidos: ${CANONICAL_STAGES.join(', ')}.`);
+  }
+
+  let codVendedor = '';
+  let nomeVendedor = '';
+
+  if (scope && !scope.all) {
+    codVendedor = String(scope.codVendedor || '').trim();
+    const vendInfo = await crmVendedores.obterVendedorPorCodigo(codVendedor);
+    nomeVendedor = (vendInfo && vendInfo.nome) || scope.nomeVendedor || getNomeVendedor(codVendedor) || '';
+  } else {
+    const candidato = dados.cod_vendedor || dados.nome_vendedor || u.username || u.name;
+    const resolvido = await crmVendedores.resolverCodigoVendedor(candidato);
+    if (!resolvido) {
+      const err = new Error('Vendedor responsável inválido ou não informado.');
+      err.status = 400;
+      err.code = 'VENDEDOR_INVALIDO';
+      throw err;
+    }
+    codVendedor = resolvido;
+    const vendInfo = await crmVendedores.obterVendedorPorCodigo(codVendedor);
+    nomeVendedor = (vendInfo && vendInfo.nome) || dados.nome_vendedor || getNomeVendedor(codVendedor) || '';
+  }
 
   const itensCotados = Array.isArray(dados.itens_cotados) ? dados.itens_cotados : [];
   const freteCobrado = parseFloat(dados.frete_cobrado) || 0.00;
@@ -1207,11 +1310,6 @@ async function criarDeal(dados, usuario) {
     }, 0);
     // Frete embutido NÃO é somado ao total pois já está no preço dos produtos
     valorTotal = sumItens + freteCobrado;
-  }
-
-  const estagioInicial = (dados.estagio || 'lead').trim().toLowerCase();
-  if (!CANONICAL_STAGES.includes(estagioInicial)) {
-    throw new Error(`Estágio '${dados.estagio}' inválido. Estágios permitidos: ${CANONICAL_STAGES.join(', ')}.`);
   }
 
   const probabilidade = dados.probabilidade !== undefined ? parseFloat(dados.probabilidade) : (
@@ -1373,7 +1471,9 @@ async function criarDeal(dados, usuario) {
     cliente: novoDeal.cliente_nome,
     valorTotal: novoDeal.valor_total,
     estagio: novoDeal.estagio,
-    codVendedor: novoDeal.cod_vendedor
+    codVendedor: novoDeal.cod_vendedor,
+    cod_vendedor: novoDeal.cod_vendedor,
+    role: u.role
   });
 
   return novoDeal;
@@ -1382,12 +1482,12 @@ async function criarDeal(dados, usuario) {
 /**
  * 4. ATUALIZAR DEAL
  */
-async function atualizarDeal(id, dados, usuario) {
+async function atualizarDeal(id, dados, usuario, scope = { all: true }) {
   const u = normalizeUser(usuario);
   const cleanId = String(id).trim();
 
-  const existente = await obterDealPorId(cleanId);
-  if (!existente) {
+  const existente = await obterDealPorId(cleanId, scope);
+  if (!existente || !dealEditavel(existente, scope)) {
     const err = new Error(`Negócio #${cleanId} não localizado.`);
     err.status = 404;
     err.code = 'DEAL_NOT_FOUND';
@@ -1428,8 +1528,29 @@ async function atualizarDeal(id, dados, usuario) {
     valorTotal = sumItens + freteCobrado;
   }
 
-  const codVendedor = dados.cod_vendedor !== undefined ? String(dados.cod_vendedor).trim() : existente.cod_vendedor;
-  const nomeVendedor = dados.nome_vendedor || (dados.cod_vendedor ? getNomeVendedor(codVendedor) : existente.nome_vendedor);
+  let codVendedor = existente.cod_vendedor;
+  let nomeVendedor = existente.nome_vendedor;
+  if (scope && !scope.all) {
+    codVendedor = existente.cod_vendedor;
+    nomeVendedor = existente.nome_vendedor;
+  } else if (dados.cod_vendedor !== undefined || dados.nome_vendedor !== undefined) {
+    const resolvido = await crmVendedores.resolverCodigoVendedor(dados.cod_vendedor || dados.nome_vendedor);
+    if (!resolvido) {
+      const err = new Error('Vendedor responsável inválido.');
+      err.status = 400;
+      err.code = 'VENDEDOR_INVALIDO';
+      throw err;
+    }
+    codVendedor = resolvido;
+    const vendInfo = await crmVendedores.obterVendedorPorCodigo(codVendedor);
+    nomeVendedor = (vendInfo && vendInfo.nome) || dados.nome_vendedor || getNomeVendedor(codVendedor) || existente.nome_vendedor;
+  }
+
+  const virouGanho = estagioNovo === 'ganho' && existente.estagio !== 'ganho';
+  const dataFechamentoReal = dados.data_fechamento_real !== undefined
+    ? dados.data_fechamento_real
+    : (virouGanho ? (existente.data_fechamento_real || new Date().toISOString()) : existente.data_fechamento_real);
+  const statusNovo = dados.status || (virouGanho ? 'ganho' : (estagioNovo === 'perdido' && existente.estagio !== 'perdido' ? 'perdido' : null));
 
   const customAtual = typeof dados.custom === 'object' && dados.custom !== null
     ? { ...(existente.custom || {}), ...dados.custom }
@@ -1495,11 +1616,11 @@ async function atualizarDeal(id, dados, usuario) {
       estagioNovo,
       dados.probabilidade !== undefined ? parseFloat(dados.probabilidade) : null,
       dados.data_fechamento_esperada !== undefined ? dados.data_fechamento_esperada : existente.data_fechamento_esperada,
-      dados.data_fechamento_real !== undefined ? dados.data_fechamento_real : existente.data_fechamento_real,
+      dataFechamentoReal,
       codVendedor,
       nomeVendedor,
       dados.origem || null,
-      dados.status || null,
+      statusNovo,
       dados.motivo_perda !== undefined ? dados.motivo_perda : existente.motivo_perda,
       dados.cond_pgto !== undefined ? dados.cond_pgto : null,
       dados.tipo_frete !== undefined ? dados.tipo_frete : null,
@@ -1540,6 +1661,8 @@ async function atualizarDeal(id, dados, usuario) {
         custom: customAtual,
         valor_total: valorTotal,
         estagio: estagioNovo,
+        status: statusNovo || cache.deals[idx].status,
+        data_fechamento_real: dataFechamentoReal,
         cod_vendedor: codVendedor,
         nome_vendedor: nomeVendedor,
         frete_cobrado: freteCobrado,
@@ -1562,7 +1685,9 @@ async function atualizarDeal(id, dados, usuario) {
   await recordTelemetry(u, 'CRM_ATUALIZAR_DEAL', `Atualizou os dados do negócio #${cleanId} ("${dealAtualizado?.titulo}")`, {
     dealId: cleanId,
     estagio: dealAtualizado?.estagio,
-    valorTotal: dealAtualizado?.valor_total
+    valorTotal: dealAtualizado?.valor_total,
+    cod_vendedor: (dealAtualizado || existente)?.cod_vendedor,
+    role: u.role
   });
 
   return dealAtualizado || existente;
@@ -1571,7 +1696,7 @@ async function atualizarDeal(id, dados, usuario) {
 /**
  * 5. ATUALIZAR ESTÁGIO DO DEAL (PIPELINE KANBAN)
  */
-async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = '', motivoPerda = '') {
+async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = '', motivoPerda = '', scope = { all: true }) {
   const u = normalizeUser(usuario);
   const cleanId = String(id).trim();
   const stageLimpo = String(novoEstagio || '').trim().toLowerCase();
@@ -1584,8 +1709,8 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
     throw new Error(`Estágio '${novoEstagio}' inválido. Estágios permitidos: ${CANONICAL_STAGES.join(', ')}.`);
   }
 
-  const existente = await obterDealPorId(cleanId);
-  if (!existente) {
+  const existente = await obterDealPorId(cleanId, scope);
+  if (!existente || !dealEditavel(existente, scope)) {
     const err = new Error(`Negócio #${cleanId} não localizado.`);
     err.status = 404;
     err.code = 'DEAL_NOT_FOUND';
@@ -1686,7 +1811,9 @@ async function atualizarEstagioDeal(id, novoEstagio, usuario, justificativa = ''
     estagioAnterior: existente.estagio,
     estagioNovo: stageLimpo,
     justificativa,
-    motivoPerda
+    motivoPerda,
+    cod_vendedor: (dealAtualizado || existente)?.cod_vendedor,
+    role: u.role
   });
 
   return dealAtualizado || existente;
@@ -1796,9 +1923,20 @@ async function restaurarDeal(id, usuario) {
 /**
  * 8. LISTAR ATIVIDADES DO DEAL
  */
-async function listarAtividadesDeal(dealId) {
+async function listarAtividadesDeal(dealId, scope = { all: true }) {
   if (!dealId) return [];
   const cleanDealId = String(dealId).trim();
+
+  if (scope && !scope.all) {
+    const deal = await obterDealPorId(cleanDealId, scope);
+    if (!deal) {
+      const err = new Error(`Negócio #${cleanDealId} não localizado.`);
+      err.status = 404;
+      err.code = 'DEAL_NOT_FOUND';
+      throw err;
+    }
+  }
+
   let atividades = [];
   let fromDb = false;
 
@@ -1836,11 +1974,11 @@ async function listarAtividadesDeal(dealId) {
 /**
  * 9. CRIAR ATIVIDADE DO DEAL
  */
-async function criarAtividadeDeal(dealId, dados, usuario) {
+async function criarAtividadeDeal(dealId, dados, usuario, scope = { all: true }) {
   const u = normalizeUser(usuario);
   const cleanDealId = String(dealId).trim();
 
-  const deal = await obterDealPorId(cleanDealId);
+  const deal = await obterDealPorId(cleanDealId, scope);
   if (!deal) {
     const err = new Error(`Negócio #${cleanDealId} não localizado.`);
     err.status = 404;
@@ -1931,7 +2069,9 @@ async function criarAtividadeDeal(dealId, dados, usuario) {
   await recordTelemetry(u, 'CRM_REGISTRAR_ATIVIDADE', `Registrou atividade (${tipo.toUpperCase()}: "${assunto}") no negócio #${cleanDealId}`, {
     dealId: cleanDealId,
     tipo,
-    assunto
+    assunto,
+    cod_vendedor: deal.cod_vendedor,
+    role: u.role
   });
 
   return novaAtividade;
@@ -3536,5 +3676,16 @@ module.exports = {
   obterFidelidadeRaizSync,
   formatarObjetoFidelidade,
   obterCacheRaizes,
-  calcularScoreDeal
+  calcularScoreDeal,
+  dealVisivel,
+  dealEditavel,
+  ensureCrmVendedoresTable: crmVendedores.ensureCrmVendedoresTable,
+  listarVendedores: crmVendedores.listarVendedores,
+  obterVendedorPorUsername: crmVendedores.obterVendedorPorUsername,
+  obterVendedorPorCodigo: crmVendedores.obterVendedorPorCodigo,
+  resolverCodigoVendedor: crmVendedores.resolverCodigoVendedor,
+  obterMetaMensal: crmVendedores.obterMetaMensal,
+  invalidarCacheVendedores: crmVendedores.invalidarCacheVendedores,
+  atualizarVendedorEmMemoria: crmVendedores.atualizarVendedorEmMemoria,
+  restaurarFallbackPadrao: crmVendedores.restaurarFallbackPadrao
 };

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.320">
+  <link rel="stylesheet" href="style.css?v=8.321">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -120,6 +120,14 @@
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Total de Oportunidades</span>
                 <strong id="crmKpiTotalDeals" class="crm-kpi-val" style="color: var(--text-main);">0 oportunidades</strong>
+              </div>
+              <div class="crm-kpi-box" id="crmKpiMetaBox">
+                <span class="crm-kpi-label">Meta Mensal</span>
+                <strong id="crmKpiMetaMensal" class="crm-kpi-val" style="color: #a855f7;">R$ 0,00 / R$ 0,00</strong>
+                <div style="background: rgba(255,255,255,0.08); height: 5px; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                  <div id="crmKpiMetaBar" style="height: 100%; width: 0%; background: #a855f7; transition: width 0.3s ease;"></div>
+                </div>
+                <small id="crmKpiMetaSub" style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 4px;">0% atingido</small>
               </div>
             </div>
 
@@ -906,8 +914,8 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.320"></script>
-  <script src="js/crm.js?v=8.320"></script>
+  <script src="js/chart.umd.min.js?v=8.321"></script>
+  <script src="js/crm.js?v=8.321"></script>
 
   <script>
     // Inicialização do CRM Comercial (/crm)

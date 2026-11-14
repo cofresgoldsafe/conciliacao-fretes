@@ -77,49 +77,149 @@ function requireAuth(req, res, next) {
 }
 
 /**
- * Middleware: Autorização Estrita (Alexandre / Admin)
- * Bloqueia expressamente vendedores e operadores (403 Forbidden)
+ * Verifica se o usuário autenticado possui perfil administrativo no CRM
  */
-function requireAdminOrAlexandre(req, res, next) {
-  const user = req.user;
-  if (!user) {
-    return sendRfcError(res, {
-      status: 401,
-      title: 'Não Autenticado',
-      detail: 'Usuário não identificado na requisição.',
-      code: 'UNAUTHENTICATED'
-    });
-  }
-
+function isCrmAdmin(user) {
+  if (!user) return false;
   const username = String(user.username || '').trim().toLowerCase();
   const role = String(user.role || '').trim().toLowerCase();
+  return username === 'alexandre' || role === 'admin' || role === 'diretoria';
+}
 
-  // Vendedores recebem 403 Forbidden
-  if (role === 'vendedor' || role === 'user') {
+/**
+ * Middleware: Autorização e resolução de vínculo comercial no CRM
+ * - Admin ('alexandre', role 'admin' ou 'diretoria'): acesso total
+ * - Vendedor (role 'vendedor'): exige permissão 'crm' no cadastro e vínculo ativo em crm_vendedores por username_portal
+ * - Outras roles ('user', 'logistica', 'analista-fin'): 403 Forbidden
+ */
+async function requireCrmAccess(req, res, next) {
+  try {
+    const user = req.user;
+    if (!user) {
+      return sendRfcError(res, {
+        status: 401,
+        title: 'Não Autenticado',
+        detail: 'Usuário não identificado na requisição.',
+        code: 'UNAUTHENTICATED'
+      });
+    }
+
+    const username = String(user.username || '').trim().toLowerCase();
+    const role = String(user.role || '').trim().toLowerCase();
+
+    if (isCrmAdmin(user)) {
+      req.crmUser = {
+        ...user,
+        username,
+        role: role || 'admin',
+        isAdmin: true,
+        cod_vendedor: null,
+        nome_vendedor: user.name || 'Alexandre'
+      };
+      return next();
+    }
+
+    if (role === 'vendedor') {
+      const perms = Array.isArray(user.permissions)
+        ? user.permissions.map(p => String(p).trim().toLowerCase())
+        : [];
+      if (!perms.includes('crm')) {
+        return sendRfcError(res, {
+          status: 403,
+          title: 'Acesso Proibido',
+          detail: 'Seu usuário não possui a permissão "crm" habilitada. Solicite a liberação ao administrador.',
+          code: 'FORBIDDEN_CRM'
+        });
+      }
+
+      const vendedor = await crmEngine.obterVendedorPorUsername(username);
+      if (!vendedor || vendedor.ativo === false) {
+        return sendRfcError(res, {
+          status: 403,
+          title: 'Vendedor Sem Vínculo no CRM',
+          detail: `O usuário "${username}" não possui vínculo comercial ativo em crm_vendedores.`,
+          code: 'FORBIDDEN_CRM'
+        });
+      }
+
+      if (user.vendorCode && String(user.vendorCode).trim() !== vendedor.cod_vendedor) {
+        console.warn(`⚠️ [CRM RBAC] Divergência de vendorCode no JWT de "${username}": JWT=${user.vendorCode} vs crm_vendedores=${vendedor.cod_vendedor}. Utilizando crm_vendedores.`);
+      }
+
+      req.crmUser = {
+        ...user,
+        username,
+        role: 'vendedor',
+        isAdmin: false,
+        cod_vendedor: vendedor.cod_vendedor,
+        nome_vendedor: vendedor.nome,
+        meta_mensal: vendedor.meta_mensal
+      };
+      return next();
+    }
+
     return sendRfcError(res, {
       status: 403,
       title: 'Acesso Proibido',
-      detail: 'Acesso negado. Vendedores não possuem autorização para o módulo de CRM Comercial Nativo.',
-      code: 'FORBIDDEN_VENDOR'
+      detail: 'Seu perfil de acesso não possui autorização para o módulo de CRM Comercial.',
+      code: 'FORBIDDEN_CRM'
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao validar acesso ao CRM',
+      detail: err.message,
+      code: 'CRM_AUTH_ERROR'
     });
   }
+}
 
-  // Trava de autorização explícita: Apenas 'alexandre' ou administradores
-  if (username === 'alexandre' || role === 'admin' || role === 'diretoria') {
+/**
+ * Middleware: Define o escopo de proprietário (req.crmScope) para filtragem server-side
+ */
+function scopeByOwner(req, res, next) {
+  if (req.crmUser && req.crmUser.isAdmin) {
+    req.crmScope = {
+      all: true,
+      codVendedor: null,
+      codigosLeitura: null,
+      nomeVendedor: null,
+      username: req.crmUser.username,
+      role: req.crmUser.role || 'admin'
+    };
+  } else {
+    const cod = req.crmUser ? req.crmUser.cod_vendedor : null;
+    req.crmScope = {
+      all: false,
+      codVendedor: cod,
+      codigosLeitura: cod ? [cod] : [],
+      nomeVendedor: req.crmUser ? req.crmUser.nome_vendedor : null,
+      username: req.crmUser ? req.crmUser.username : '',
+      role: 'vendedor'
+    };
+  }
+  return next();
+}
+
+/**
+ * Middleware: Restringe rotas destrutivas ou administrativas exclusivamente ao Admin
+ */
+function requireCrmAdmin(req, res, next) {
+  if (req.crmUser && req.crmUser.isAdmin) {
     return next();
   }
-
   return sendRfcError(res, {
     status: 403,
-    title: 'Acesso Proibido',
-    detail: 'Apenas o usuário master alexandre ou administradores possuem privilégios no CRM.',
-    code: 'FORBIDDEN'
+    title: 'Operação Restrita ao Administrador',
+    detail: 'Esta operação é exclusiva para administradores do CRM Comercial.',
+    code: 'FORBIDDEN_CRM_ADMIN'
   });
 }
 
 // Aplicação global dos middlewares no router do CRM
 router.use(requireAuth);
-router.use(requireAdminOrAlexandre);
+router.use(requireCrmAccess);
+router.use(scopeByOwner);
 
 // ============================================================================
 // ENDPOINTS DE DEALS / NEGÓCIOS
@@ -131,13 +231,14 @@ router.use(requireAdminOrAlexandre);
  */
 router.get('/deals', async (req, res) => {
   try {
-    const { estagio, busca, codVendedor, status } = req.query;
+    const { estagio, busca, codVendedor, cod_vendedor, status } = req.query;
+    const vendFiltro = codVendedor || cod_vendedor;
     const resultado = await crmEngine.listarDeals({
       estagio: estagio ? String(estagio).trim() : undefined,
       busca: busca ? String(busca).trim() : undefined,
-      codVendedor: codVendedor ? String(codVendedor).trim() : undefined,
+      codVendedor: vendFiltro ? String(vendFiltro).trim() : undefined,
       status: status ? String(status).trim() : undefined
-    });
+    }, req.crmScope);
 
     return res.json({
       success: true,
@@ -159,7 +260,7 @@ router.get('/deals', async (req, res) => {
  * POST /api/bi/crm/deals/migrate-ids
  * Força a execução da migração de IDs legados para os 4 dígitos finais em todas as tabelas
  */
-router.post('/deals/migrate-ids', async (req, res) => {
+router.post('/deals/migrate-ids', requireCrmAdmin, async (req, res) => {
   try {
     await crmEngine.migrarDealsLegadosParaSequencial(true);
     return res.json({
@@ -200,7 +301,7 @@ router.post('/deals', async (req, res) => {
       });
     }
 
-    const novoDeal = await crmEngine.criarDeal(dados, req.user);
+    const novoDeal = await crmEngine.criarDeal(dados, req.user, req.crmScope);
 
     return res.status(201).json({
       success: true,
@@ -224,7 +325,7 @@ router.post('/deals', async (req, res) => {
 router.get('/deals/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const deal = await crmEngine.obterDealPorId(id);
+    const deal = await crmEngine.obterDealPorId(id, req.crmScope);
 
     if (!deal) {
       return sendRfcError(res, {
@@ -258,7 +359,7 @@ router.put('/deals/:id', async (req, res) => {
     const { id } = req.params;
     const dados = req.body;
 
-    const dealAtualizado = await crmEngine.atualizarDeal(id, dados, req.user);
+    const dealAtualizado = await crmEngine.atualizarDeal(id, dados, req.user, req.crmScope);
 
     return res.json({
       success: true,
@@ -300,7 +401,8 @@ router.patch('/deals/:id/stage', async (req, res) => {
       novoEstagio,
       req.user,
       justificativa,
-      motivoPerda
+      motivoPerda,
+      req.crmScope
     );
 
     return res.json({
@@ -322,7 +424,7 @@ router.patch('/deals/:id/stage', async (req, res) => {
  * DELETE /api/bi/crm/deals/:id
  * Exclusão lógica (soft delete) do negócio
  */
-router.delete('/deals/:id', async (req, res) => {
+router.delete('/deals/:id', requireCrmAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const resultado = await crmEngine.excluirDeal(id, req.user);
@@ -353,7 +455,7 @@ router.delete('/deals/:id', async (req, res) => {
 router.get('/deals/:id/activities', async (req, res) => {
   try {
     const { id } = req.params;
-    const atividades = await crmEngine.listarAtividadesDeal(id);
+    const atividades = await crmEngine.listarAtividadesDeal(id, req.crmScope);
 
     return res.json({
       success: true,
@@ -362,10 +464,10 @@ router.get('/deals/:id/activities', async (req, res) => {
     });
   } catch (err) {
     return sendRfcError(res, {
-      status: 500,
+      status: err.status || 500,
       title: 'Erro ao listar atividades',
       detail: err.message,
-      code: 'LIST_ACTIVITIES_ERROR'
+      code: err.code || 'LIST_ACTIVITIES_ERROR'
     });
   }
 });
@@ -397,7 +499,7 @@ router.post('/deals/:id/activities', async (req, res) => {
       });
     }
 
-    const novaAtividade = await crmEngine.criarAtividadeDeal(id, dados, req.user);
+    const novaAtividade = await crmEngine.criarAtividadeDeal(id, dados, req.user, req.crmScope);
 
     return res.status(201).json({
       success: true,
@@ -477,7 +579,7 @@ router.get('/produtos/autocomplete', async (req, res) => {
  * POST /api/bi/crm/produtos/sync
  * Força a sincronização do catálogo de produtos das tabelas SB1090 e SB1160 do Protheus
  */
-router.post('/produtos/sync', async (req, res) => {
+router.post('/produtos/sync', requireCrmAdmin, async (req, res) => {
   try {
     const username = (req.user && req.user.username) || 'sistema';
     const resultado = await crmEngine.sincronizarProdutosCrmProtheus({ triggeredBy: username });
@@ -553,7 +655,7 @@ router.get('/transportadoras/autocomplete', async (req, res) => {
  * POST /api/bi/crm/transportadoras/sync
  * Força a sincronização das transportadoras homologadas das tabelas SA4010 e SA4160 do Protheus
  */
-router.post('/transportadoras/sync', async (req, res) => {
+router.post('/transportadoras/sync', requireCrmAdmin, async (req, res) => {
   try {
     const username = (req.user && req.user.username) || 'sistema';
     const resultado = await crmEngine.sincronizarTransportadorasProtheus({ triggeredBy: username });
@@ -597,25 +699,104 @@ router.get('/transportadoras/status', async (req, res) => {
 
 /**
  * GET /api/bi/crm/vendedores
- * Retorna os vendedores ativos mapeados
+ * Retorna os vendedores ativos mapeados a partir de crm_vendedores
  */
-router.get('/vendedores', (req, res) => {
-  return res.json({
-    success: true,
-    data: [
-      { codigo: '000004', nome: 'Figueiredo' },
-      { codigo: '000064', nome: 'Andrea' },
-      { codigo: '000074', nome: 'Juliana' },
-      { codigo: '000001', nome: 'Alexandre' }
-    ]
-  });
+router.get('/vendedores', async (req, res) => {
+  try {
+    const lista = await crmEngine.listarVendedores();
+    const filtrada = (req.crmScope && !req.crmScope.all)
+      ? lista.filter(v => v.cod_vendedor === req.crmScope.codVendedor)
+      : lista;
+    return res.json({
+      success: true,
+      data: filtrada.map(v => ({
+        codigo: v.cod_vendedor,
+        cod_vendedor: v.cod_vendedor,
+        nome: v.nome,
+        username_portal: v.username_portal,
+        meta_mensal: v.meta_mensal,
+        ativo: v.ativo
+      }))
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao listar vendedores',
+      detail: err.message,
+      code: 'LIST_VENDEDORES_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/me
+ * Retorna o contexto do usuário autenticado no CRM e seu escopo de permissões
+ */
+router.get('/me', async (req, res) => {
+  try {
+    const cu = req.crmUser;
+    return res.json({
+      success: true,
+      data: {
+        username: cu.username,
+        name: cu.name || cu.nome_vendedor || cu.username,
+        role: cu.role,
+        isAdmin: Boolean(cu.isAdmin),
+        cod_vendedor: cu.cod_vendedor || null,
+        nome_vendedor: cu.nome_vendedor || null,
+        meta_mensal: cu.meta_mensal !== undefined ? cu.meta_mensal : null,
+        scope: req.crmScope,
+        permissions: {
+          canFilterVendor: Boolean(cu.isAdmin),
+          canAssignVendor: Boolean(cu.isAdmin),
+          canDeleteDeal: Boolean(cu.isAdmin),
+          canRestoreDeal: Boolean(cu.isAdmin),
+          canDeleteCliente: Boolean(cu.isAdmin),
+          canRestoreCliente: Boolean(cu.isAdmin),
+          canSyncCatalogos: Boolean(cu.isAdmin),
+          canMigrateIds: Boolean(cu.isAdmin)
+        }
+      }
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao obter perfil do CRM',
+      detail: err.message,
+      code: 'CRM_ME_ERROR'
+    });
+  }
+});
+
+/**
+ * GET /api/bi/crm/meta
+ * Retorna a meta mensal e o realizado no mês de referência (baseado em data_fechamento_real)
+ */
+router.get('/meta', async (req, res) => {
+  try {
+    const resultado = await crmEngine.obterMetaMensal({
+      mes: req.query.mes,
+      scope: req.crmScope
+    });
+    return res.json({
+      success: true,
+      data: resultado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao calcular meta mensal do CRM',
+      detail: err.message,
+      code: 'CRM_META_ERROR'
+    });
+  }
 });
 
 /**
  * POST /api/bi/crm/deals/:id/restore
  * Restaura um negócio excluído (soft delete)
  */
-router.post('/deals/:id/restore', async (req, res) => {
+router.post('/deals/:id/restore', requireCrmAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const deal = await crmEngine.restaurarDeal(id, req.user);
@@ -739,7 +920,7 @@ router.post('/clientes', async (req, res) => {
  * DELETE /api/bi/crm/clientes/:id
  * Exclusão lógica (soft delete) do cliente comercial
  */
-router.delete('/clientes/:id', async (req, res) => {
+router.delete('/clientes/:id', requireCrmAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const resultado = await crmEngine.excluirCliente(id, req.user);
@@ -763,7 +944,7 @@ router.delete('/clientes/:id', async (req, res) => {
  * POST /api/bi/crm/clientes/:id/restore
  * Restauração lógica (reversibilidade) do cliente comercial
  */
-router.post('/clientes/:id/restore', async (req, res) => {
+router.post('/clientes/:id/restore', requireCrmAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const cliente = await crmEngine.restaurarCliente(id, req.user);
@@ -787,7 +968,7 @@ router.post('/clientes/:id/restore', async (req, res) => {
  * GET /api/bi/crm/cep/:cep
  * Consulta endereço a partir do CEP via ViaCEP com cache
  */
-router.get('/cep/:cep', requireAuth, requireAdminOrAlexandre, async (req, res) => {
+router.get('/cep/:cep', async (req, res) => {
   try {
     const { cep } = req.params;
     const endereco = await crmEngine.consultarCep(cep);
