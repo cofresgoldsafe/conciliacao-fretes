@@ -2393,6 +2393,29 @@
 
     const dealIdPrefix = deal.id ? `#${deal.id} — ` : '';
     document.getElementById('crmDetalhesTitulo').textContent = dealIdPrefix + (deal.titulo || 'Detalhes da Oportunidade');
+    const conversasInfoEl = document.getElementById('crmDetalhesConversasInfo');
+    if (conversasInfoEl) {
+      conversasInfoEl.textContent = '';
+      if (deal && deal.id) {
+        (async () => {
+          try {
+            const token = getToken();
+            const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(deal.id)}/conversas`, {
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (res.ok) {
+              const json = await res.json().catch(() => ({}));
+              const itens = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+              if (itens.length > 0 && conversasInfoEl) {
+                conversasInfoEl.textContent = `💬 ${itens.length} conversa(s) vinculada(s)`;
+              }
+            }
+          } catch (_) {
+            // erro ou zero -> vazio, sem toast
+          }
+        })();
+      }
+    }
     const contatoDetalhes = deal.contatoNome || (Array.isArray(deal.contatos) && deal.contatos[0]?.nome) || '';
     const clienteDetalhesDisplay = deal.clienteNome || (contatoDetalhes ? `👤 ${contatoDetalhes}` : '-');
     document.getElementById('crmDetalhesCliente').textContent = clienteDetalhesDisplay;
@@ -4240,6 +4263,36 @@
       btnPropostaDoDetalhes.addEventListener('click', () => {
         if (!currentDeal) return;
         openPropostaModal(currentDeal.id);
+      });
+    }
+
+    const btnConversarDoDetalhes = document.getElementById('btnCrmConversarDoDetalhes');
+    if (btnConversarDoDetalhes && !btnConversarDoDetalhes._hasListener) {
+      btnConversarDoDetalhes._hasListener = true;
+      btnConversarDoDetalhes.addEventListener('click', async () => {
+        if (!currentDeal || !currentDeal.id) return;
+        try {
+          const token = getToken();
+          const res = await fetch('/api/auth/whatsapp-ticket', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ deal: currentDeal.id })
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.success) {
+            const msg = json.message || json.error?.detail || 'Erro ao gerar acesso ao WhatsApp Atendimento.';
+            mostrarNotificacao(msg, 'erro');
+            return;
+          }
+          if (json.redirectUrl) {
+            window.open(json.redirectUrl, '_blank', 'noopener');
+          }
+        } catch (err) {
+          mostrarNotificacao(err.message || 'Erro ao comunicar com o servidor.', 'erro');
+        }
       });
     }
 
