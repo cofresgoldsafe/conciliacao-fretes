@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.321 (Homologada em 13/11/2026)  
+> **Versão da Documentação:** v8.325 (Homologada em 16/11/2026)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 13/11/2026 (v8.321 - CRM-19 RBAC por vendedor no CRM Comercial, escopo por proprietário, tabela crm_vendedores e meta mensal individual/equipe)
+> **Data da Última Auditoria:** 16/11/2026 (v8.325 - Filtro T-SQL de Pedidos pra Faturar e Liberação de Estoque expurgando resíduos eliminados C6_BLQ=R/S e SC9 órfãos)
 
 ---
 

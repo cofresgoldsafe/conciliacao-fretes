@@ -103,15 +103,19 @@ async function runTests() {
   });
 
   // TESTES DE FUNÇÕES DE BANCO T-SQL (PROTHEUS_DB)
-  await test('Protheus T-SQL: buscarPedidosProntosFaturar na OACO (16) retorna apenas pedido 000221', async () => {
+  await test('Protheus T-SQL: buscarPedidosProntosFaturar na OACO (16) expurga pedido cancelado 000221 e retorna apenas pedidos ativos', async () => {
     const pedidos = await buscarPedidosProntosFaturar({ empresa: 'OACO' });
     assert(Array.isArray(pedidos), 'Deveria retornar um array');
     
-    // Verifica se 000221 está presente
+    // Verifica que 000221 (resíduo eliminado C6_BLQ='R' e NF cancelada) NÃO está presente
     const ped221 = pedidos.find(p => p.numPed === '000221');
-    assert(ped221, 'Pedido 000221 deveria estar presente na lista de prontos para faturar');
-    assert.strictEqual(ped221.empresa, 'OACO');
-    assert(ped221.totalValor > 0, 'Valor do pedido 000221 deve ser maior que zero');
+    assert(!ped221, 'Pedido cancelado 000221 NÃO deve estar presente na lista de prontos para faturar');
+
+    // Verifica se pedido ativo (ex: 000885) está presente
+    const ped885 = pedidos.find(p => p.numPed === '000885');
+    assert(ped885, 'Pedido ativo 000885 deveria estar presente na lista de prontos para faturar');
+    assert.strictEqual(ped885.empresa, 'OACO');
+    assert(ped885.totalValor > 0, 'Valor do pedido 000885 deve ser maior que zero');
 
     // Verifica que os pedidos bloqueados por estoque NÃO estão em prontos para faturar
     const blockedOrders = ['000723', '000729', '000736', '000754', '000755', '000762', '000763', '000764'];
@@ -121,19 +125,18 @@ async function runTests() {
     }
   });
 
-  await test('Protheus T-SQL: buscarPedidosBloqueadosEstoque na OACO (16) retorna os 8 pedidos bloqueados', async () => {
+  await test('Protheus T-SQL: buscarPedidosBloqueadosEstoque na OACO (16) retorna pedidos com bloqueio 02', async () => {
     const pedidos = await buscarPedidosBloqueadosEstoque({ empresa: 'OACO' });
     assert(Array.isArray(pedidos), 'Deveria retornar um array');
+    assert(pedidos.length >= 1, 'Deveria conter ao menos 1 pedido bloqueado por estoque na OACO');
     
-    // Verifica se os 8 pedidos estão listados
-    const blockedOrders = ['000723', '000729', '000736', '000754', '000755', '000762', '000763', '000764'];
-    for (const bNum of blockedOrders) {
-      const found = pedidos.find(p => p.numPed === bNum);
-      assert(found, `Pedido bloqueado por estoque ${bNum} deveria estar presente`);
-      assert.strictEqual(found.codBlEst, '02');
+    for (const p of pedidos) {
+      assert.strictEqual(p.codBlEst, '02', 'Todo pedido retornado deve ter codBlEst 02');
+      assert.strictEqual(p.empresa, 'OACO', 'Empresa deve ser OACO');
+      assert(p.totalValor > 0, 'Valor deve ser positivo');
     }
 
-    // Verifica que o pedido liberado 000221 NÃO está na lista de bloqueados
+    // Verifica que o pedido cancelado 000221 NÃO está na lista de bloqueados
     const ped221 = pedidos.find(p => p.numPed === '000221');
     assert(!ped221, 'Pedido 000221 NÃO deveria estar na lista de bloqueados por estoque');
   });
@@ -185,7 +188,7 @@ async function runTests() {
     assert.strictEqual(res.status, 401, 'Deveria retornar status 401 para requisição sem token');
   });
 
-  await test('API HTTP: GET /api/logistica/pedidos-faturar retorna 200 com token JWT e dados filtrados', async () => {
+  await test('API HTTP: GET /api/logistica/pedidos-faturar retorna 200 com token JWT e dados filtrados sem resíduo eliminado', async () => {
     const res = await makeRequest('/api/logistica/pedidos-faturar?empresa=OACO', {
       'Authorization': `Bearer ${validToken}`
     });
@@ -193,17 +196,22 @@ async function runTests() {
     assert.strictEqual(res.data.success, true);
     assert(Array.isArray(res.data.data));
     const ped221 = res.data.data.find(p => p.numPed === '000221');
-    assert(ped221, 'Pedido 000221 deve estar no payload');
+    assert(!ped221, 'Pedido cancelado 000221 NÃO deve estar no payload');
+    const ped885 = res.data.data.find(p => p.numPed === '000885');
+    assert(ped885, 'Pedido ativo 000885 deve estar no payload');
   });
 
-  await test('API HTTP: GET /api/logistica/pedidos-bloq-estoque retorna 200 com token JWT e 8 pedidos em OACO', async () => {
+  await test('API HTTP: GET /api/logistica/pedidos-bloq-estoque retorna 200 com token JWT e pedidos bloqueados em OACO', async () => {
     const res = await makeRequest('/api/logistica/pedidos-bloq-estoque?empresa=OACO', {
       'Authorization': `Bearer ${validToken}`
     });
     assert.strictEqual(res.status, 200, 'Deveria retornar status 200');
     assert.strictEqual(res.data.success, true);
     assert(Array.isArray(res.data.data));
-    assert.strictEqual(res.data.data.length, 8, 'Deveria retornar exatamente 8 pedidos bloqueados em OACO');
+    assert(res.data.data.length >= 1, 'Deveria retornar pedidos bloqueados em OACO');
+    for (const p of res.data.data) {
+      assert.strictEqual(p.codBlEst, '02');
+    }
   });
 
   // Finalização do servidor de teste

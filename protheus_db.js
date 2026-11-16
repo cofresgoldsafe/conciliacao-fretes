@@ -2933,11 +2933,9 @@ async function buscarPedidosProntosFaturar({ empresa, search, limit = 500 } = {}
           AND (C9.C9_BLCRED IS NULL OR RTRIM(C9.C9_BLCRED) = '' OR RTRIM(C9.C9_BLCRED) = '10' OR RTRIM(C9.C9_BLCRED) NOT IN ('01'))
           AND (C9.C9_BLOQUEI IS NULL OR RTRIM(C9.C9_BLOQUEI) = '')
           AND C9.C9_QTDLIB > 0
-          AND (
-            C9.C9_NFISCAL IS NULL 
-            OR RTRIM(C9.C9_NFISCAL) = '' 
-            OR F2.F2_DOC IS NULL
-          )
+          AND (C9.C9_NFISCAL IS NULL OR RTRIM(C9.C9_NFISCAL) = '')
+          AND (C6.C6_BLQ IS NULL OR RTRIM(C6.C6_BLQ) = '' OR RTRIM(C6.C6_BLQ) NOT IN ('R', 'S'))
+          AND (C6.C6_NOTA IS NULL OR RTRIM(C6.C6_NOTA) = '' OR RTRIM(C6.C6_NOTA) = '0')
           AND (
             C5.C5_NOTA IS NULL 
             OR RTRIM(C5.C5_NOTA) = '' 
@@ -3104,11 +3102,9 @@ async function buscarPedidosBloqueadosEstoque({ empresa, search, limit = 500 } =
         WHERE C9.D_E_L_E_T_ = ' '
           AND RTRIM(C9.C9_BLEST) = '02'
           AND C9.C9_QTDLIB > 0
-          AND (
-            C9.C9_NFISCAL IS NULL 
-            OR RTRIM(C9.C9_NFISCAL) = '' 
-            OR F2.F2_DOC IS NULL
-          )
+          AND (C9.C9_NFISCAL IS NULL OR RTRIM(C9.C9_NFISCAL) = '')
+          AND (C6.C6_BLQ IS NULL OR RTRIM(C6.C6_BLQ) = '' OR RTRIM(C6.C6_BLQ) NOT IN ('R', 'S'))
+          AND (C6.C6_NOTA IS NULL OR RTRIM(C6.C6_NOTA) = '' OR RTRIM(C6.C6_NOTA) = '0')
           AND (
             C5.C5_NOTA IS NULL 
             OR RTRIM(C5.C5_NOTA) = '' 
@@ -3307,11 +3303,9 @@ async function buscarPedidosAnaliseLibEstoque({ empresa, search, limit = 500 } =
         WHERE C9.D_E_L_E_T_ = ' '
           AND RTRIM(C9.C9_BLEST) = '02'
           AND C9.C9_QTDLIB > 0
-          AND (
-            C9.C9_NFISCAL IS NULL 
-            OR RTRIM(C9.C9_NFISCAL) = '' 
-            OR F2.F2_DOC IS NULL
-          )
+          AND (C9.C9_NFISCAL IS NULL OR RTRIM(C9.C9_NFISCAL) = '')
+          AND (C6.C6_BLQ IS NULL OR RTRIM(C6.C6_BLQ) = '' OR RTRIM(C6.C6_BLQ) NOT IN ('R', 'S'))
+          AND (C6.C6_NOTA IS NULL OR RTRIM(C6.C6_NOTA) = '' OR RTRIM(C6.C6_NOTA) = '0')
           AND (
             C5.C5_NOTA IS NULL 
             OR RTRIM(C5.C5_NOTA) = '' 
