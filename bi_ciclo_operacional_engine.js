@@ -475,34 +475,71 @@ async function sincronizarCicloOperacionalCompleto(diasAnalise = 365) {
 }
 
 /**
- * 4. LEITURA RÁPIDA DE CACHE (< 100ms)
+ * 4. LEITURA RÁPIDA DE CACHE (< 100ms) COM CURA AUTOMÁTICA
  */
 async function obterDadosCicloOperacional() {
-  // Tenta ler do PostgreSQL primeiro
+  let cachePg = null;
+  let pool = null;
+
+  // 1. Tenta ler do PostgreSQL Supabase
   if (isPostgresConnected()) {
     try {
-      const pool = getPool();
+      pool = getPool();
       const res = await pool.query(`SELECT payload FROM bi_ciclo_operacional_cache WHERE chave = 'padrao' LIMIT 1;`);
       if (res.rows.length > 0 && res.rows[0].payload) {
-        return res.rows[0].payload;
+        cachePg = res.rows[0].payload;
       }
     } catch (errPg) {
       console.warn('⚠️ [BI Ciclo Operacional] PostgreSQL indisponível para leitura rápida, lendo JSON:', errPg.message);
     }
   }
 
-  // Fallback JSON
+  // 2. Lê o cache JSON local do deploy
+  let cacheJson = null;
   if (fs.existsSync(cicloCacheFile)) {
     try {
       const content = await fs.promises.readFile(cicloCacheFile, 'utf-8');
-      return JSON.parse(content);
+      cacheJson = JSON.parse(content);
     } catch (errJson) {
       console.error('❌ [BI Ciclo Operacional] Erro ao ler JSON de cache:', errJson.message);
     }
   }
 
-  // Se nenhum cache existir, retorna estrutura padrão com zeros
-  return {
+  // Validador de integridade dos dados calculados
+  const isValido = (payload) => {
+    if (!payload || !payload.calculados || !payload.calculados.consolidado) return false;
+    const fluxos = payload.calculados.consolidado.fluxos;
+    return fluxos && (Number(fluxos.faturamentoTotal) > 0 || Number(fluxos.cmvTotal) > 0);
+  };
+
+  const pgValido = isValido(cachePg);
+  const jsonValido = isValido(cacheJson);
+
+  // Se o cache do PostgreSQL for inválido ou antigo, mas o JSON do repositório for válido,
+  // usa o JSON e cura o registro no PostgreSQL
+  if (!pgValido && jsonValido) {
+    if (pool) {
+      pool.query(`
+        INSERT INTO bi_ciclo_operacional_cache (chave, payload, updated_at)
+        VALUES ('padrao', $1, NOW())
+        ON CONFLICT (chave) DO UPDATE SET payload = EXCLUDED.payload, updated_at = NOW();
+      `, [JSON.stringify(cacheJson)]).catch((e) => console.warn('Erro ao curar PG:', e.message));
+    }
+    return cacheJson;
+  }
+
+  // Se o PG for válido e mais recente que o JSON, usa o PG
+  if (pgValido && (!jsonValido || new Date(cachePg.atualizado_em) >= new Date(cacheJson.atualizado_em))) {
+    return cachePg;
+  }
+
+  // Se o JSON for válido, usa o JSON
+  if (jsonValido) {
+    return cacheJson;
+  }
+
+  // Se nenhum cache tiver dados de fluxo válidos, retorna o que tiver ou estrutura inicial
+  return cachePg || cacheJson || {
     atualizado_em: null,
     diasPeriodo: 365,
     calculados: calcularCicloOperacionalIndices({ diasPeriodo: 365 }),
