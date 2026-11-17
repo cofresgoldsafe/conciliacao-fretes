@@ -221,34 +221,41 @@
 
     if (barPME) {
       barPME.style.width = `${pmePct}%`;
-      barPME.title = `PME: ${indices.pme.dias} dias (${pmePct}%)`;
+      barPME.title = `PME (Estoque): ${indices.pme.dias} dias (${pmePct}%)`;
       barPME.textContent = `PME: ${indices.pme.dias}d`;
     }
     if (barPMRV) {
       barPMRV.style.width = `${pmrvPct}%`;
-      barPMRV.title = `PMRV: ${indices.pmrv.dias} dias (${pmrvPct}%)`;
+      barPMRV.title = `PMRV (Recebimento): ${indices.pmrv.dias} dias (${pmrvPct}%)`;
       barPMRV.textContent = `PMRV: ${indices.pmrv.dias}d`;
     }
 
     // Linha inferior de Fornecedores e Caixa
-    const maxEscala = Math.max(coDias, indices.pmpc.dias, 1);
-    const pmpcPct = Math.min(100, Math.round((indices.pmpc.dias / maxEscala) * 100));
-    const cfPct = Math.min(100, Math.round((Math.max(0, indices.cf.dias) / maxEscala) * 100));
-
-    if (barPMPC) {
-      barPMPC.style.width = `${pmpcPct}%`;
-      barPMPC.title = `PMPC: ${indices.pmpc.dias} dias`;
-      barPMPC.textContent = `PMPC (Fornecedores): ${indices.pmpc.dias}d`;
-    }
-
-    if (barCF) {
+    if (barPMPC && barCF) {
       if (indices.cf.isAutofinanciado) {
-        barCF.style.width = '0%';
-        barCF.textContent = '';
+        barPMPC.style.width = '60%';
+        barPMPC.style.background = '#8b5cf6';
+        barPMPC.title = `PMPC (Fornecedores): ${indices.pmpc.dias} dias`;
+        barPMPC.textContent = `PMPC (Fornecedores): ${indices.pmpc.dias}d`;
+
+        barCF.style.width = '40%';
+        barCF.style.background = '#10b981';
+        barCF.title = `Folga de Caixa: ${Math.abs(indices.cf.dias)} dias (Autofinanciado)`;
+        barCF.textContent = `Folga de Caixa: ${Math.abs(indices.cf.dias)}d (+)`;
       } else {
+        const totalBase = Math.max(coDias, indices.pmpc.dias + indices.cf.dias, 1);
+        const pmpcPct = Math.min(100, Math.round((indices.pmpc.dias / totalBase) * 100));
+        const cfPct = Math.max(0, 100 - pmpcPct);
+
+        barPMPC.style.width = `${pmpcPct}%`;
+        barPMPC.style.background = '#8b5cf6';
+        barPMPC.title = `PMPC (Fornecedores): ${indices.pmpc.dias} dias`;
+        barPMPC.textContent = `PMPC (Fornecedores): ${indices.pmpc.dias}d`;
+
         barCF.style.width = `${cfPct}%`;
+        barCF.style.background = '#ef4444';
         barCF.title = `Ciclo Financeiro a Cobrir: ${indices.cf.dias} dias`;
-        barCF.textContent = `CF: ${indices.cf.dias}d`;
+        barCF.textContent = `CF Descoberto: ${indices.cf.dias}d`;
       }
     }
   }

@@ -212,83 +212,69 @@ async function extrairDadosCicloOperacionalProtheus(diasAnalise = 365) {
       console.warn(`⚠️ [BI Ciclo Operacional] Erro ao extrair SE2 da empresa ${emp.sigla}:`, errSE2.message);
     }
 
-    // 1.4 Faturamento de Vendas Operacionais no Período (SF2)
-    try {
-      const sqlSF2 = `
-        SELECT 
-          ISNULL(SUM(F2_VALBRUT - ISNULL(F2_DESCONT, 0)), 0) AS FATURAMENTO_TOTAL,
-          COUNT(*) AS TOTAL_NOTAS
-        FROM ${emp.sf2}
-        WHERE D_E_L_E_T_ = ' '
-          AND F2_TIPO = 'N'
-          AND F2_EMISSAO >= '${dtInicioYmd}'
-          AND (
-            SUBSTRING(F2_CFOP, 1, 2) IN ('51', '61', '54', '64')
-            OR F2_CFOP LIKE '51%' OR F2_CFOP LIKE '61%' OR F2_CFOP LIKE '54%' OR F2_CFOP LIKE '64%'
-          );
-      `;
-      const resSF2 = await executeRailwayQuery(sqlSF2);
-      const rowSF2 = (resSF2.rows || resSF2 || [])[0] || {};
-      resultado.vendasPeriodo.push({
-        empresa_cod: emp.cod,
-        empresa_sigla: emp.sigla,
-        faturamento_total: roundVal(parseFloat(rowSF2.FATURAMENTO_TOTAL || 0)),
-        total_notas: parseInt(rowSF2.TOTAL_NOTAS || 0, 10)
-      });
-    } catch (errSF2) {
-      console.warn(`⚠️ [BI Ciclo Operacional] Erro ao extrair SF2 da empresa ${emp.sigla}:`, errSF2.message);
-    }
-
-    // 1.5 CMV no Período (SD2 - Itens Faturados)
+    // 1.4 Faturamento e CMV de Vendas Operacionais no Período (SD2)
     try {
       const sqlSD2 = `
         SELECT 
-          ISNULL(SUM(CASE WHEN D2_CUSTO1 > 0 THEN D2_CUSTO1 ELSE (D2_TOTAL * 0.65) END), 0) AS CMV_TOTAL
+          ISNULL(SUM(D2_TOTAL), 0) AS FATURAMENTO_TOTAL,
+          ISNULL(SUM(CASE WHEN D2_CUSTO1 > 0 THEN D2_CUSTO1 ELSE (D2_TOTAL * 0.65) END), 0) AS CMV_TOTAL,
+          COUNT(*) AS TOTAL_ITENS
         FROM ${emp.sd2}
         WHERE D_E_L_E_T_ = ' '
           AND D2_TIPO = 'N'
           AND D2_EMISSAO >= '${dtInicioYmd}'
           AND (
-            SUBSTRING(D2_CFOP, 1, 2) IN ('51', '61', '54', '64')
-            OR D2_CFOP LIKE '51%' OR D2_CFOP LIKE '61%' OR D2_CFOP LIKE '54%' OR D2_CFOP LIKE '64%'
+            SUBSTRING(D2_CF, 1, 2) IN ('51', '61', '54', '64')
+            OR D2_CF LIKE '51%' OR D2_CF LIKE '61%' OR D2_CF LIKE '54%' OR D2_CF LIKE '64%'
           );
       `;
       const resSD2 = await executeRailwayQuery(sqlSD2);
       const rowSD2 = (resSD2.rows || resSD2 || [])[0] || {};
+      const fatTotal = roundVal(parseFloat(rowSD2.FATURAMENTO_TOTAL || 0));
+      const cmvTotal = roundVal(parseFloat(rowSD2.CMV_TOTAL || 0));
+      const totalItens = parseInt(rowSD2.TOTAL_ITENS || 0, 10);
+
+      resultado.vendasPeriodo.push({
+        empresa_cod: emp.cod,
+        empresa_sigla: emp.sigla,
+        faturamento_total: fatTotal,
+        total_notas: totalItens
+      });
+
       resultado.cmvPeriodo.push({
         empresa_cod: emp.cod,
         empresa_sigla: emp.sigla,
-        cmv_total: roundVal(parseFloat(rowSD2.CMV_TOTAL || 0))
+        cmv_total: cmvTotal
       });
     } catch (errSD2) {
       console.warn(`⚠️ [BI Ciclo Operacional] Erro ao extrair SD2 da empresa ${emp.sigla}:`, errSD2.message);
     }
 
-    // 1.6 Compras de Fornecedores / Insumos no Período (SF1)
+    // 1.5 Compras de Fornecedores / Insumos no Período (SD1)
     try {
-      const sqlSF1 = `
+      const sqlSD1 = `
         SELECT 
-          ISNULL(SUM(F1_VALBRUT), 0) AS COMPRAS_TOTAL,
-          COUNT(*) AS TOTAL_NOTAS
-        FROM ${emp.sf1}
+          ISNULL(SUM(D1_TOTAL), 0) AS COMPRAS_TOTAL,
+          COUNT(*) AS TOTAL_ITENS
+        FROM ${emp.sd1}
         WHERE D_E_L_E_T_ = ' '
-          AND F1_TIPO = 'N'
-          AND F1_EMISSAO >= '${dtInicioYmd}'
+          AND D1_TIPO = 'N'
+          AND (D1_DTDIGIT >= '${dtInicioYmd}' OR D1_EMISSAO >= '${dtInicioYmd}')
           AND (
-            SUBSTRING(F1_CFOP, 1, 2) IN ('11', '21', '14', '24')
-            OR F1_CFOP LIKE '11%' OR F1_CFOP LIKE '21%' OR F1_CFOP LIKE '14%' OR F1_CFOP LIKE '24%'
+            SUBSTRING(D1_CF, 1, 2) IN ('11', '21', '14', '24')
+            OR D1_CF LIKE '11%' OR D1_CF LIKE '21%' OR D1_CF LIKE '14%' OR D1_CF LIKE '24%'
           );
       `;
-      const resSF1 = await executeRailwayQuery(sqlSF1);
-      const rowSF1 = (resSF1.rows || resSF1 || [])[0] || {};
+      const resSD1 = await executeRailwayQuery(sqlSD1);
+      const rowSD1 = (resSD1.rows || resSD1 || [])[0] || {};
       resultado.comprasPeriodo.push({
         empresa_cod: emp.cod,
         empresa_sigla: emp.sigla,
-        compras_total: roundVal(parseFloat(rowSF1.COMPRAS_TOTAL || 0)),
-        total_notas: parseInt(rowSF1.TOTAL_NOTAS || 0, 10)
+        compras_total: roundVal(parseFloat(rowSD1.COMPRAS_TOTAL || 0)),
+        total_notas: parseInt(rowSD1.TOTAL_ITENS || 0, 10)
       });
-    } catch (errSF1) {
-      console.warn(`⚠️ [BI Ciclo Operacional] Erro ao extrair SF1 da empresa ${emp.sigla}:`, errSF1.message);
+    } catch (errSD1) {
+      console.warn(`⚠️ [BI Ciclo Operacional] Erro ao extrair SD1 da empresa ${emp.sigla}:`, errSD1.message);
     }
   }
 

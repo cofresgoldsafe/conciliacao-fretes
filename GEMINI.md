@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.327 (Homologada em 17/11/2026)  
+> **Versão da Documentação:** v8.328 (Homologada em 17/11/2026)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/11/2026 (v8.327 - Nova sub-aba de Ciclo Operacional, Ciclo Financeiro e NCG no BI Executivo)
+> **Data da Última Auditoria:** 17/11/2026 (v8.328 - Correção de campos de CFOP D2_CF e D1_CF no Protheus para Ciclo Operacional)
 
 ---
 
