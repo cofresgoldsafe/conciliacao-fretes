@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%2338bdf8'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=8.326">
-  <link rel="stylesheet" href="css/whatsapp_atendimento.css?v=8.326">
+  <link rel="stylesheet" href="style.css?v=8.327">
+  <link rel="stylesheet" href="css/whatsapp_atendimento.css?v=8.327">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 17/11/2026 06:51 (Renomeia subaba de BI Executivo para Índices Liquidez)</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 17/11/2026 07:17 (Nova subaba de Ciclo Operacional, Ciclo Financeiro e NCG no BI Executivo)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -304,6 +304,10 @@
           <button class="nav-tab-btn active" data-tab="tab-bi-indices" id="btnTabBiIndices">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             <span>📊 Índices</span>
+          </button>
+          <button class="nav-tab-btn" data-tab="tab-bi-ciclo-operacional" id="btnTabBiCicloOperacional">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>🔄 Ciclo Operacional</span>
           </button>
           <button class="nav-tab-btn" data-tab="tab-bi-metabase" id="btnTabBiMetabase">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
@@ -8197,6 +8201,195 @@
     </div>
   </div>
 
+  <!-- ABA 7 BI: Ciclo Operacional, Ciclo Financeiro e NCG -->
+  <div id="tab-bi-ciclo-operacional" class="tab-pane hidden">
+    <div class="bi-wrapper" id="biCicloWrapper" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+      <!-- Toolbar dos Índices do Ciclo -->
+      <div class="card" style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(59, 130, 246, 0.15); display: flex; align-items: center; justify-content: center; color: #3b82f6;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <h2 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main);">Ciclo Operacional & Capital de Giro</h2>
+            <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+              <span>PME, PMRV, PMPC, Ciclo Financeiro e NCG integrados ao TOTVS Protheus</span>
+              <span>•</span>
+              <span id="biCicloLastUpdated">Carregando...</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+          <select id="selEmpresaBiCiclo" class="form-control form-control-sm" style="width: auto; min-width: 200px; height: 36px; font-weight: 600;">
+            <option value="ALL">🏢 Consolidado Grupo GSI</option>
+            <option value="14">🏭 Metal Pleno / S4BW (14)</option>
+            <option value="15">🔒 GSI Cofres (15)</option>
+            <option value="16">⚙️ OAÇO Produtos de Aço (16)</option>
+          </select>
+          <button id="btnSyncBiCiclo" type="button" class="btn btn-primary btn-sm" style="height: 36px; padding: 0 16px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            🔄 Sincronizar Protheus
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="biCicloLoading" class="hidden" style="text-align: center; padding: 2rem;">
+        <div class="spinner" style="margin: 0 auto 0.5rem auto;"></div>
+        <span style="font-size: 0.9rem; color: var(--text-muted);">Consultando saldos e movimentações no Protheus...</span>
+      </div>
+
+      <!-- Conteúdo Principal -->
+      <div id="biCicloContent" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- Régua Visual / Timeline do Ciclo -->
+        <div class="card" style="padding: 1.25rem;">
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+            ⏱️ Linha do Tempo do Ciclo Operacional vs Ciclo Financeiro
+          </h3>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+            O Ciclo Operacional é a soma do tempo de estoque com o prazo de recebimento. O prazo dos fornecedores alivia o caixa; a diferença é o Ciclo Financeiro a financiar.
+          </div>
+
+          <!-- Régua 1: Ciclo Operacional (Estoque PME + Recebimento PMRV) -->
+          <div style="margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600; margin-bottom: 4px;">
+              <span>Ciclo Operacional (CO = PME + PMRV)</span>
+              <span id="subCOFormula" style="color: var(--text-muted);">--</span>
+            </div>
+            <div style="display: flex; width: 100%; height: 26px; border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);">
+              <div id="timelineBarPME" style="width: 50%; background: #3b82f6; color: #fff; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: width 0.3s ease;">PME</div>
+              <div id="timelineBarPMRV" style="width: 50%; background: #10b981; color: #fff; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: width 0.3s ease;">PMRV</div>
+            </div>
+          </div>
+
+          <!-- Régua 2: Fornecedores (PMPC) e Descoberto de Caixa (CF) -->
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: 600; margin-bottom: 4px;">
+              <span>Financiamento da Operação (Fornecedores PMPC vs Caixa Próprio CF)</span>
+              <span id="subCFDesc" style="color: var(--text-muted);">--</span>
+            </div>
+            <div style="display: flex; width: 100%; height: 26px; border-radius: 6px; overflow: hidden; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);">
+              <div id="timelineBarPMPC" style="width: 50%; background: #8b5cf6; color: #fff; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: width 0.3s ease;">PMPC</div>
+              <div id="timelineBarCF" style="width: 50%; background: #ef4444; color: #fff; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: width 0.3s ease;">CF (Caixa Descoberto)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid de 6 Cards dos Índices -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+          
+          <!-- Card 1: PME -->
+          <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #3b82f6;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.5px;">📦 PME</span>
+                <span class="badge-indice badge-moderado" style="font-size: 0.75rem;">Estoque</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Prazo Médio de Estocagem</h3>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Tempo médio que os produtos permanecem no estoque antes da venda.</div>
+              <div id="valPME" style="font-size: 2rem; font-weight: 800; color: var(--text-main); margin: 0.75rem 0;">-- dias</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span id="subPMEEstoque">Estoque: R$ 0,00</span>
+              <span id="subPMECMV">CMV Diário: R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Card 2: PMRV -->
+          <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #10b981;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #10b981; text-transform: uppercase; letter-spacing: 0.5px;">💰 PMRV</span>
+                <span class="badge-indice badge-excelente" style="font-size: 0.75rem;">Recebimento</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Prazo Médio de Recebimento</h3>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Prazo médio concedido aos clientes para pagamento das vendas efetuadas.</div>
+              <div id="valPMRV" style="font-size: 2rem; font-weight: 800; color: var(--text-main); margin: 0.75rem 0;">-- dias</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span id="subPMRVReceber">A Receber: R$ 0,00</span>
+              <span id="subPMRVVenda">Venda Diária: R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Card 3: PMPC -->
+          <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #8b5cf6;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #8b5cf6; text-transform: uppercase; letter-spacing: 0.5px;">🏭 PMPC</span>
+                <span class="badge-indice badge-moderado" style="font-size: 0.75rem;">Pagamento</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Prazo Médio de Pagamento</h3>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Prazo médio que os fornecedores concedem para liquidação das compras.</div>
+              <div id="valPMPC" style="font-size: 2rem; font-weight: 800; color: var(--text-main); margin: 0.75rem 0;">-- dias</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span id="subPMPCPagar">A Pagar: R$ 0,00</span>
+              <span id="subPMPCCompra">Compra Diária: R$ 0,00</span>
+            </div>
+          </div>
+
+          <!-- Card 4: CO -->
+          <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #f59e0b;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #f59e0b; text-transform: uppercase; letter-spacing: 0.5px;">🔄 CO</span>
+                <span class="badge-indice badge-moderado" style="font-size: 0.75rem;">Operação</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Ciclo Operacional</h3>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Duração completa da operação: desde a entrada da mercadoria até o recebimento.</div>
+              <div id="valCO" style="font-size: 2rem; font-weight: 800; color: var(--text-main); margin: 0.75rem 0;">-- dias</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>Fórmula: PME + PMRV</span>
+              <span style="font-weight: 600;">Estoque + Vendas</span>
+            </div>
+          </div>
+
+          <!-- Card 5: CF -->
+          <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #06b6d4;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #06b6d4; text-transform: uppercase; letter-spacing: 0.5px;">🏦 CF</span>
+                <span id="badgeCF" class="badge-indice badge-excelente" style="font-size: 0.75rem;">Ciclo de Caixa</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Ciclo Financeiro (Caixa)</h3>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Período descoberto entre o pagamento a fornecedores e o recebimento de clientes.</div>
+              <div id="valCF" style="font-size: 2rem; font-weight: 800; color: var(--text-main); margin: 0.75rem 0;">-- dias</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); display: flex; justify-content: space-between;">
+              <span>Fórmula: CO - PMPC</span>
+              <span style="font-weight: 600;">Dias a Financiar</span>
+            </div>
+          </div>
+
+          <!-- Card 6: NCG -->
+          <div class="card" style="padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid #ec4899;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #ec4899; text-transform: uppercase; letter-spacing: 0.5px;">💼 NCG</span>
+                <span class="badge-indice badge-moderado" style="font-size: 0.75rem;">Capital de Giro</span>
+              </div>
+              <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-main);">Necessidade de Capital de Giro</h3>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Recurso financeiro necessário para que a empresa mantenha sua operação.</div>
+              <div id="valNCG" style="font-size: 1.85rem; font-weight: 800; color: var(--text-main); margin: 0.75rem 0;">R$ --</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 2px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span id="subNCGAtivo">Ativo Operac.: R$ 0,00</span>
+                <span id="subNCGPassivo">Passivo Operac.: R$ 0,00</span>
+              </div>
+              <div id="subNCGGiro" style="font-weight: 600; color: var(--text-main); margin-top: 2px;">Giro Necessário: R$ 0,00</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL CRM: MARCAR COMO PERDIDO (MOTIVO OBRIGATÓRIO) -->
   <div id="modalCrmPerdido" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmPerdidoTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
     <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
@@ -10362,29 +10555,30 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.326"></script>
-  <script src="js/bi.js?v=8.326"></script>
-  <script src="js/bi_indices.js?v=8.326"></script>
-  <script src="js/bi_autorizacoes.js?v=8.326"></script>
-  <script src="js/bi_despesas.js?v=8.326"></script>
-  <script src="js/bi_os.js?v=8.326"></script>
-  <script src="js/gordura_frete.js?v=8.326"></script>
-  <script src="js/fechamento_vendedores.js?v=8.326"></script>
-  <script type="module" src="js/tarefas.js?v=8.326"></script>
-  <script src="js/holerites.js?v=8.326"></script>
-  <script src="js/funcionarios_dp.js?v=8.326"></script>
-  <script src="js/crm.js?v=8.326"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.326"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.326"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.326"></script>
-  <script src="js/compras_necessidade.js?v=8.326"></script>
-  <script src="js/nfse_pendentes.js?v=8.326"></script>
-  <script src="js/fechamento_fiscal.js?v=8.326"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.326"></script>
-  <script src="js/contas_pagar.js?v=8.326"></script>
-  <script src="js/pgtos_desconhecidos.js?v=8.326"></script>
+  <script src="js/chart.umd.min.js?v=8.327"></script>
+  <script src="js/bi.js?v=8.327"></script>
+  <script src="js/bi_indices.js?v=8.327"></script>
+  <script src="js/bi_ciclo_operacional.js?v=8.326"></script>
+  <script src="js/bi_autorizacoes.js?v=8.327"></script>
+  <script src="js/bi_despesas.js?v=8.327"></script>
+  <script src="js/bi_os.js?v=8.327"></script>
+  <script src="js/gordura_frete.js?v=8.327"></script>
+  <script src="js/fechamento_vendedores.js?v=8.327"></script>
+  <script type="module" src="js/tarefas.js?v=8.327"></script>
+  <script src="js/holerites.js?v=8.327"></script>
+  <script src="js/funcionarios_dp.js?v=8.327"></script>
+  <script src="js/crm.js?v=8.327"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.327"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.327"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.327"></script>
+  <script src="js/compras_necessidade.js?v=8.327"></script>
+  <script src="js/nfse_pendentes.js?v=8.327"></script>
+  <script src="js/fechamento_fiscal.js?v=8.327"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.327"></script>
+  <script src="js/contas_pagar.js?v=8.327"></script>
+  <script src="js/pgtos_desconhecidos.js?v=8.327"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/whatsapp_atendimento.js?v=8.326"></script>
-  <script src="app.js?v=8.326"></script>
+  <script src="js/whatsapp_atendimento.js?v=8.327"></script>
+  <script src="app.js?v=8.327"></script>
 </body>
 </html>

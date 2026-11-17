@@ -924,6 +924,11 @@ document.addEventListener('DOMContentLoaded', () => {
           window.initBIIndicesTab();
         }
       }
+      if (targetTab === 'tab-bi-ciclo-operacional') {
+        if (typeof window.initBiCicloOperacionalView === 'function') {
+          window.initBiCicloOperacionalView();
+        }
+      }
       if (targetTab === 'tab-bi-metabase') {
         if (typeof window.initBITab === 'function') {
           window.initBITab();

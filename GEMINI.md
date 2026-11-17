@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.326 (Homologada em 17/11/2026)  
+> **Versão da Documentação:** v8.327 (Homologada em 17/11/2026)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 17/11/2026 (v8.326 - Subaba de BI Executivo renomeada de Gráficos & Tendências para Índices Liquidez)
+> **Data da Última Auditoria:** 17/11/2026 (v8.327 - Nova sub-aba de Ciclo Operacional, Ciclo Financeiro e NCG no BI Executivo)
 
 ---
 
@@ -84,6 +84,7 @@ A matriz abaixo consolida as 9 macro-areas e as 38 sub-abas ativas no DOM do Por
 | **7. Analista Fin.** | Auditoria Protheus x Sefaz | `#tab-auditoria-protheus-sefaz` | `admin`, `user` (Analista Fin) | Batimento fiscal com distincao estrita de CC-e (`tpEvento 110110`) e Inutilizacoes. | [auditoria_protheus_sefaz.md](docs/telas/07_analista_fin/auditoria_protheus_sefaz.md) |
 | **7. Analista Fin.** | Contas a Pagar | `#tab-contas-pagar` | `admin`, `user` (Analista Fin) | Consulta unificada de Contas a Pagar SE2/SE5 multi-empresa com batimento financeiro vs compensação. | [contas_pagar.md](docs/telas/07_analista_fin/contas_pagar.md) |
 | **8. BI Executivo** | Índices | `#tab-bi-indices` | `admin`, `diretoria` (BI) | KPIs executivos de liquidez (Corrente, Seca, Geral) e saude patrimonial. | [indices_financeiros.md](docs/telas/08_bi_executivo/indices_financeiros.md) |
+| **8. BI Executivo** | Ciclo Operacional | `#tab-bi-ciclo-operacional` | `admin`, `diretoria` (BI) | Indicadores de CO, PME, PMRV, PMPC, Ciclo Financeiro e NCG (em R$ e dias) integrados ao Protheus. | [ciclo_operacional.md](docs/telas/08_bi_executivo/ciclo_operacional.md) |
 | **8. BI Executivo** | Despesas Análise | `#tab-bi-despesas` | `admin`, `diretoria` (BI) | Espelho SE5 multi-empresa com classificação por natureza, estornos negativos e comparativo 2025x2026. | [despesas_analise.md](docs/telas/08_bi_executivo/despesas_analise.md) |
 | **8. BI Executivo** | Índices Liquidez | `#tab-bi-metabase` | `admin`, `diretoria` (BI) | Dashboards nativos em Chart.js (Liquidez, Faturamento e Ativo Circulante Seco) sobre Supabase/Protheus. | [graficos_metabase.md](docs/telas/08_bi_executivo/graficos_metabase.md) |
 | **8. BI Executivo** | Autoriza Desc | `#tab-bi-autorizacoes` | `admin`, `diretoria` (BI) | Workflow de liberacao executiva de margem, frete embutido e descontos fora de alcada. | [autorizacoes_desconto.md](docs/telas/08_bi_executivo/autorizacoes_desconto.md) |

@@ -175,6 +175,11 @@ const {
 } = require('./bi_indices_engine');
 
 const {
+  obterDadosCicloOperacional,
+  sincronizarCicloOperacionalCompleto
+} = require('./bi_ciclo_operacional_engine');
+
+const {
   analisarDealCompleto,
   formatarNotaPipedrive,
   gravarNotaPipedrive,
@@ -6754,6 +6759,67 @@ app.get('/api/bi/indices/historico', requireAuth, requireRole('admin'), async (r
     });
   } catch (err) {
     return handleServerError(res, err, 'Erro ao consultar série temporal histórica dos índices.');
+  }
+});
+
+// --- ROTAS DO MÓDULO DE CICLO OPERACIONAL E NCG (BI EXECUTIVO) ---
+let lastCicloSyncTimestamp = 0;
+const CICLO_SYNC_COOLDOWN_MS = 60 * 1000; // 1 minuto entre sincronizações manuais
+
+app.get('/api/bi/ciclo-operacional', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const dados = await obterDadosCicloOperacional();
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'CONSULTA_CICLO_OPERACIONAL',
+      description: 'Consultou os índices de Ciclo Operacional, Ciclo Financeiro e NCG',
+      ip: req.ip
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      ...dados
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao consultar índices do ciclo operacional.');
+  }
+});
+
+app.post('/api/bi/ciclo-operacional/sync', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const user = getUserFromReq(req);
+    const now = Date.now();
+
+    if (now - lastCicloSyncTimestamp < CICLO_SYNC_COOLDOWN_MS) {
+      const waitSec = Math.ceil((CICLO_SYNC_COOLDOWN_MS - (now - lastCicloSyncTimestamp)) / 1000);
+      return res.status(429).json({
+        success: false,
+        message: `Sincronização em cooldown. Por favor, aguarde ${waitSec} segundos para nova requisição.`
+      });
+    }
+
+    lastCicloSyncTimestamp = now;
+    const dias = parseInt(req.body.dias, 10) || 365;
+    const resultado = await sincronizarCicloOperacionalCompleto(dias);
+
+    logUserActivity({
+      username: user.username,
+      userName: user.name,
+      actionType: 'SYNC_CICLO_OPERACIONAL',
+      description: `Disparou sincronização do Ciclo Operacional a partir do Protheus (${dias} dias)`,
+      ip: req.ip
+    }).catch(() => {});
+
+    return res.json({
+      success: true,
+      message: 'Ciclo operacional sincronizado com sucesso a partir do Protheus!',
+      data: resultado
+    });
+  } catch (err) {
+    return handleServerError(res, err, 'Erro ao sincronizar ciclo operacional.');
   }
 });
 
