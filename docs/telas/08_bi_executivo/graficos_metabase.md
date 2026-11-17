@@ -1,10 +1,10 @@
-# Gráficos & Tendências Executivas
+# Índices Liquidez (Gráficos & Tendências)
 
 > **Macro-Área:** BI Executivo  
 > **Identificador DOM:** `#tab-bi-metabase` | **Botão:** `#btnTabBiMetabase`  
 > **Permissão RBAC:** admin, diretoria (BI)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 16/09/2026 (v8.223 - Homologado)  
+> **Última Atualização:** 17/11/2026 (v8.326 - Subaba renomeada para Índices Liquidez)  
 
 ---
 
