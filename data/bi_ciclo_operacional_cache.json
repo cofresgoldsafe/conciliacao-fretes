@@ -1,0 +1,2996 @@
+{
+  "atualizado_em": "2026-11-17T10:31:38.740Z",
+  "diasPeriodo": 365,
+  "calculados": {
+    "atualizado_em": "2026-11-17T10:31:38.740Z",
+    "diasPeriodo": 365,
+    "consolidado": {
+      "empresa_cod": "CONSOLIDADO",
+      "diasPeriodo": 365,
+      "saldos": {
+        "estoque": 283442.53,
+        "contasReceber": 460974.24,
+        "contasPagar": 253863.05,
+        "ativoCirculanteOperacional": 744416.77,
+        "passivoCirculanteOperacional": 253863.05
+      },
+      "fluxos": {
+        "faturamentoTotal": 5069966.73,
+        "comprasTotal": 468649.91,
+        "cmvTotal": 2347681.58,
+        "faturamentoDiario": 13890.32,
+        "comprasDiarias": 1283.97,
+        "cmvDiario": 6432
+      },
+      "indices": {
+        "pme": {
+          "dias": 44.1,
+          "rotulo": "Prazo Médio de Estocagem",
+          "formula": "Estoque Médio / CMV Diário"
+        },
+        "pmrv": {
+          "dias": 33.2,
+          "rotulo": "Prazo Médio de Recebimento",
+          "formula": "Duplicatas a Receber / Venda Diária"
+        },
+        "pmpc": {
+          "dias": 197.7,
+          "rotulo": "Prazo Médio de Pagamento",
+          "formula": "Fornecedores a Pagar / Compra Diária"
+        },
+        "co": {
+          "dias": 77.3,
+          "rotulo": "Ciclo Operacional",
+          "formula": "PME + PMRV"
+        },
+        "cf": {
+          "dias": -120.4,
+          "rotulo": "Ciclo Financeiro (Caixa)",
+          "formula": "CO - PMPC",
+          "status": "excelente",
+          "descricao": "Operação autofinanciada por fornecedores (eficiência máxima de caixa)",
+          "isAutofinanciado": true
+        },
+        "ncg": {
+          "valorPatrimonial": 490553.72,
+          "valorFinanceiro": 0,
+          "rotulo": "Necessidade de Capital de Giro",
+          "formula": "(Estoque + Receber) - Fornecedores",
+          "diasFinanciados": 0
+        }
+      }
+    },
+    "porEmpresa": {
+      "14": {
+        "empresa_cod": "14",
+        "diasPeriodo": 365,
+        "saldos": {
+          "estoque": 119667.39,
+          "contasReceber": 375655.72,
+          "contasPagar": 45010.46,
+          "ativoCirculanteOperacional": 495323.11,
+          "passivoCirculanteOperacional": 45010.46
+        },
+        "fluxos": {
+          "faturamentoTotal": 2152648.85,
+          "comprasTotal": 103445,
+          "cmvTotal": 986483.55,
+          "faturamentoDiario": 5897.67,
+          "comprasDiarias": 283.41,
+          "cmvDiario": 2702.69
+        },
+        "indices": {
+          "pme": {
+            "dias": 44.3,
+            "rotulo": "Prazo Médio de Estocagem",
+            "formula": "Estoque Médio / CMV Diário"
+          },
+          "pmrv": {
+            "dias": 63.7,
+            "rotulo": "Prazo Médio de Recebimento",
+            "formula": "Duplicatas a Receber / Venda Diária"
+          },
+          "pmpc": {
+            "dias": 158.8,
+            "rotulo": "Prazo Médio de Pagamento",
+            "formula": "Fornecedores a Pagar / Compra Diária"
+          },
+          "co": {
+            "dias": 108,
+            "rotulo": "Ciclo Operacional",
+            "formula": "PME + PMRV"
+          },
+          "cf": {
+            "dias": -50.8,
+            "rotulo": "Ciclo Financeiro (Caixa)",
+            "formula": "CO - PMPC",
+            "status": "excelente",
+            "descricao": "Operação autofinanciada por fornecedores (eficiência máxima de caixa)",
+            "isAutofinanciado": true
+          },
+          "ncg": {
+            "valorPatrimonial": 450312.65,
+            "valorFinanceiro": 0,
+            "rotulo": "Necessidade de Capital de Giro",
+            "formula": "(Estoque + Receber) - Fornecedores",
+            "diasFinanciados": 0
+          }
+        },
+        "sigla": "MP",
+        "nome": "Metal Pleno / S4BW"
+      },
+      "15": {
+        "empresa_cod": "15",
+        "diasPeriodo": 365,
+        "saldos": {
+          "estoque": 60356.78,
+          "contasReceber": 33428,
+          "contasPagar": 140896.81,
+          "ativoCirculanteOperacional": 93784.78,
+          "passivoCirculanteOperacional": 140896.81
+        },
+        "fluxos": {
+          "faturamentoTotal": 654701.52,
+          "comprasTotal": 334136.89,
+          "cmvTotal": 279006.11,
+          "faturamentoDiario": 1793.7,
+          "comprasDiarias": 915.44,
+          "cmvDiario": 764.4
+        },
+        "indices": {
+          "pme": {
+            "dias": 79,
+            "rotulo": "Prazo Médio de Estocagem",
+            "formula": "Estoque Médio / CMV Diário"
+          },
+          "pmrv": {
+            "dias": 18.6,
+            "rotulo": "Prazo Médio de Recebimento",
+            "formula": "Duplicatas a Receber / Venda Diária"
+          },
+          "pmpc": {
+            "dias": 153.9,
+            "rotulo": "Prazo Médio de Pagamento",
+            "formula": "Fornecedores a Pagar / Compra Diária"
+          },
+          "co": {
+            "dias": 97.6,
+            "rotulo": "Ciclo Operacional",
+            "formula": "PME + PMRV"
+          },
+          "cf": {
+            "dias": -56.3,
+            "rotulo": "Ciclo Financeiro (Caixa)",
+            "formula": "CO - PMPC",
+            "status": "excelente",
+            "descricao": "Operação autofinanciada por fornecedores (eficiência máxima de caixa)",
+            "isAutofinanciado": true
+          },
+          "ncg": {
+            "valorPatrimonial": -47112.03,
+            "valorFinanceiro": 0,
+            "rotulo": "Necessidade de Capital de Giro",
+            "formula": "(Estoque + Receber) - Fornecedores",
+            "diasFinanciados": 0
+          }
+        },
+        "sigla": "GSI",
+        "nome": "GSI Cofres"
+      },
+      "16": {
+        "empresa_cod": "16",
+        "diasPeriodo": 365,
+        "saldos": {
+          "estoque": 103418.36,
+          "contasReceber": 51890.52,
+          "contasPagar": 67955.78,
+          "ativoCirculanteOperacional": 155308.88,
+          "passivoCirculanteOperacional": 67955.78
+        },
+        "fluxos": {
+          "faturamentoTotal": 2262616.36,
+          "comprasTotal": 31068.02,
+          "cmvTotal": 1082191.92,
+          "faturamentoDiario": 6198.95,
+          "comprasDiarias": 85.12,
+          "cmvDiario": 2964.91
+        },
+        "indices": {
+          "pme": {
+            "dias": 34.9,
+            "rotulo": "Prazo Médio de Estocagem",
+            "formula": "Estoque Médio / CMV Diário"
+          },
+          "pmrv": {
+            "dias": 8.4,
+            "rotulo": "Prazo Médio de Recebimento",
+            "formula": "Duplicatas a Receber / Venda Diária"
+          },
+          "pmpc": {
+            "dias": 798.4,
+            "rotulo": "Prazo Médio de Pagamento",
+            "formula": "Fornecedores a Pagar / Compra Diária"
+          },
+          "co": {
+            "dias": 43.3,
+            "rotulo": "Ciclo Operacional",
+            "formula": "PME + PMRV"
+          },
+          "cf": {
+            "dias": -755.1,
+            "rotulo": "Ciclo Financeiro (Caixa)",
+            "formula": "CO - PMPC",
+            "status": "excelente",
+            "descricao": "Operação autofinanciada por fornecedores (eficiência máxima de caixa)",
+            "isAutofinanciado": true
+          },
+          "ncg": {
+            "valorPatrimonial": 87353.1,
+            "valorFinanceiro": 0,
+            "rotulo": "Necessidade de Capital de Giro",
+            "formula": "(Estoque + Receber) - Fornecedores",
+            "diasFinanciados": 0
+          }
+        },
+        "sigla": "OACO",
+        "nome": "OAÇO Produtos de Aço"
+      }
+    }
+  },
+  "detalhes": {
+    "estoqueTop": [
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "01801080802B003",
+        "descricao": "ARMARIO CORTA FOGO GSI 200X100X45 CM - VERMELHO - P/ INFLAMAVEIS",
+        "quantidade": 13,
+        "custo_unitario": 2830.38,
+        "custo_total": 36794.94
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "01801080802B001",
+        "descricao": "ARMARIO CORTA FOGO GSI 100X100X45 CM - VERMELHO - P INFLAMAVEIS",
+        "quantidade": 16,
+        "custo_unitario": 1955.71,
+        "custo_total": 31291.36
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101020011B018",
+        "descricao": "COFRE CHAVE TETRA SLIM BOCA LOBO GSI 21X38X42 (AXLXP)",
+        "quantidade": 57,
+        "custo_unitario": 290,
+        "custo_total": 16530
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010101B067",
+        "descricao": "COFRE ELETRONICO SLIM 2.0 21X38X42 (AXLXP)",
+        "quantidade": 32,
+        "custo_unitario": 501.95,
+        "custo_total": 16062.4
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010101B056",
+        "descricao": "COFRE ELETRONICO MASTER 1.5 GSI 2.0 155X50X47 (AXLXP)",
+        "quantidade": 7,
+        "custo_unitario": 1813.51,
+        "custo_total": 12694.57
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010001B012",
+        "descricao": "COFRE ELETRONICO COMPANY 2.0 50X41X42 (AXLXP)",
+        "quantidade": 13,
+        "custo_unitario": 952.01,
+        "custo_total": 12376.13
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010301B019",
+        "descricao": "COFRE HOTELS SLIM 2.0 21X38X42 (AXLXP)",
+        "quantidade": 16,
+        "custo_unitario": 501.95,
+        "custo_total": 8031.2
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "01801080801B001",
+        "descricao": "ARMARIO CORTA FOGO GSI 80X40X35 CM - VERMELHO PAREDE",
+        "quantidade": 7,
+        "custo_unitario": 1145.17,
+        "custo_total": 8016.19
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101010111B018",
+        "descricao": "COFRE BOCA LOBO MC DUPLO ELETRONICO E FECH TETRA GSI 50X41X42CM (AXLXP)",
+        "quantidade": 4,
+        "custo_unitario": 1726.57,
+        "custo_total": 6906.28
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "02600501000B001",
+        "descricao": "KIMONO JIU-JITSU ADULTO",
+        "quantidade": 59,
+        "custo_unitario": 100,
+        "custo_total": 5900
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00105990000B001",
+        "descricao": "FECHADURA ELETRONICA M600",
+        "quantidade": 48,
+        "custo_unitario": 113.13,
+        "custo_total": 5430.24
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020021B001",
+        "descricao": "COFRE CHAVE MULTI-PONTO EMPRESARIUM BOCA LOBO FURACAO BASE CORPO 4,75MM",
+        "quantidade": 2,
+        "custo_unitario": 2280.57,
+        "custo_total": 4561.14
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060000770S01",
+        "descricao": "INDICADOR DE TEMPERATURA",
+        "quantidade": 56,
+        "custo_unitario": 72,
+        "custo_total": 4032
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00105020001B003",
+        "descricao": "COFRE DE SEGURANCA PARA MIDIAS MODELO 2001",
+        "quantidade": 1,
+        "custo_unitario": 3998.14,
+        "custo_total": 3998.14
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010101B060",
+        "descricao": "COFRE ELETRONICO BOX 2.0 16X30X20 (AXLXP)",
+        "quantidade": 11,
+        "custo_unitario": 352.79,
+        "custo_total": 3880.69
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101030001B001",
+        "descricao": "COFRE ELETRONICO CCF SEVEN CORTA FOGO GSI 2.0 75,5X45X45 (AXLXP)",
+        "quantidade": 3,
+        "custo_unitario": 1190.83,
+        "custo_total": 3572.49
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010101B055",
+        "descricao": "COFRE ELETRONICO MASTER 100 GSI 2.0 100X41X42 (AXLXP)",
+        "quantidade": 4,
+        "custo_unitario": 887.27,
+        "custo_total": 3549.08
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010111B024",
+        "descricao": "COFRE BOCA LOBO BOX 2.0 16X30X20 (AXLXP)",
+        "quantidade": 10,
+        "custo_unitario": 352.79,
+        "custo_total": 3527.9
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101010101B063",
+        "descricao": "COFRE ELETRONICO EVEREST 4 PORTAS 120X41X42 (AXLXP)",
+        "quantidade": 1,
+        "custo_unitario": 3518.04,
+        "custo_total": 3518.04
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010101B022",
+        "descricao": "COFRE ELETRONICO SEVEN GSI 2.0 72X41X42 (AXLXP)",
+        "quantidade": 5,
+        "custo_unitario": 677.2,
+        "custo_total": 3386
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010102B009",
+        "descricao": "COFRE ELETRONICO BOX 2.0 16X30X20 (AXLXP) BLACK",
+        "quantidade": 9,
+        "custo_unitario": 352.79,
+        "custo_total": 3175.11
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "01801080802B007",
+        "descricao": "ARMARIO CORTA FOGO GSI 150X50X45 CM - VERMELHO - P/ INFLAMAVEIS",
+        "quantidade": 2,
+        "custo_unitario": 1561.01,
+        "custo_total": 3122.02
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017014005881S02",
+        "descricao": "RACK PISO FECHADO PRETO SD 44U X 700 X 1075 - PERFURADO",
+        "quantidade": 1,
+        "custo_unitario": 2784.31,
+        "custo_total": 2784.31
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020001B007",
+        "descricao": "COFRE CHAVE MULTI-PONTO EVEREST 4 PORTAS 120X41X42 (AXLXP)",
+        "quantidade": 1,
+        "custo_unitario": 2597.03,
+        "custo_total": 2597.03
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005550S01",
+        "descricao": "KIT AV C/ 02 VTS - PRETO AN",
+        "quantidade": 15,
+        "custo_unitario": 169.83,
+        "custo_total": 2547.45
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010102B014",
+        "descricao": "COFRE ELETRONICO SLIM 2.0 21X38X42 (AXLXP) BLACK",
+        "quantidade": 5,
+        "custo_unitario": 501.95,
+        "custo_total": 2509.75
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005550S02",
+        "descricao": "KIT AV C/ 04 VTS - PRETO AN",
+        "quantidade": 8,
+        "custo_unitario": 305.82,
+        "custo_total": 2446.56
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "01801990000B001",
+        "descricao": "PRATELEIRA P/ ARMARIO CORTA FOGO GSI",
+        "quantidade": 22,
+        "custo_unitario": 105,
+        "custo_total": 2310
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00009",
+        "descricao": "POLASEAL MED. 303X426X007 - A3",
+        "quantidade": 10,
+        "custo_unitario": 201.38,
+        "custo_total": 2013.8
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060000550S01",
+        "descricao": "PORCA GAIOLA E PARAFUSO - CENTO - AN",
+        "quantidade": 33,
+        "custo_unitario": 59,
+        "custo_total": 1947
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010411B006",
+        "descricao": "COFRE BOCA LOBO SMART COMPANY 2.0",
+        "quantidade": 2,
+        "custo_unitario": 952.01,
+        "custo_total": 1904.02
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "0070200001B0001",
+        "descricao": "GUILHOTINA MANUAL FUSION A3",
+        "quantidade": 27,
+        "custo_unitario": 70,
+        "custo_total": 1890
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005990S03",
+        "descricao": "REGUA DE TOMADAS 19 C/8 TOMADAS 20A E PLUG MACHO 20A - PRETO CABO 3M MT",
+        "quantidade": 37,
+        "custo_unitario": 50,
+        "custo_total": 1850
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017012405886B01",
+        "descricao": "GABINETE CARRINHO DE RECARGA PRETO 24U COMPLETO 3 BAND 1 REGUA 36 1 KIT VENT C2",
+        "quantidade": 1,
+        "custo_unitario": 1798,
+        "custo_total": 1798
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00002",
+        "descricao": "FILME MED. 34X60X005",
+        "quantidade": 13,
+        "custo_unitario": 121.53,
+        "custo_total": 1579.89
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "013020000B00005",
+        "descricao": "FIO DE CORTE PARA SELADORA COM 1M",
+        "quantidade": 435,
+        "custo_unitario": 3.4,
+        "custo_total": 1479
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010101B062",
+        "descricao": "COFRE ELETRONICO COMPANY PLUS 1 INT CHAVE",
+        "quantidade": 1,
+        "custo_unitario": 1392.15,
+        "custo_total": 1392.15
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00006",
+        "descricao": "FILME MED. 34X45X008",
+        "quantidade": 6,
+        "custo_unitario": 214.47,
+        "custo_total": 1286.82
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00007",
+        "descricao": "POLASEAL MED. 220X307X010 - A4",
+        "quantidade": 8,
+        "custo_unitario": 158.26,
+        "custo_total": 1266.08
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "013010000B10001",
+        "descricao": "SELADORA P700 MULTIUSO 110 V",
+        "quantidade": 1,
+        "custo_unitario": 1206,
+        "custo_total": 1206
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017011205338S04",
+        "descricao": "RACK PISO FECHADO PRETO PI 12U X 600 X 800",
+        "quantidade": 2,
+        "custo_unitario": 597.54,
+        "custo_total": 1195.08
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005330S01",
+        "descricao": "BANDEJA FIXA 4PTO. 1000 MM PRETO PI",
+        "quantidade": 12,
+        "custo_unitario": 98.07,
+        "custo_total": 1176.84
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010411B004",
+        "descricao": "COFRE SMART PERSONAL BOCA LOBO 2.0",
+        "quantidade": 2,
+        "custo_unitario": 558.62,
+        "custo_total": 1117.24
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00100990001B002",
+        "descricao": "ORGANIZADOR DE BIJUTERIAS 4 GAVETAS",
+        "quantidade": 5,
+        "custo_unitario": 215.76,
+        "custo_total": 1078.8
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005880S13",
+        "descricao": "REGUA DE TOMADAS 19 C/10 TOMADAS 10A E PLUG MACHO 20A - PRETO CABO 2M SD",
+        "quantidade": 16,
+        "custo_unitario": 63.52,
+        "custo_total": 1016.32
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020001B033",
+        "descricao": "COFRE CHAVE MULTI-PONTO PERSONAL GSI",
+        "quantidade": 3,
+        "custo_unitario": 318.94,
+        "custo_total": 956.82
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017013205338S01",
+        "descricao": "RACK PISO FECHADO PRETO PI 32U X 600 X 800",
+        "quantidade": 1,
+        "custo_unitario": 930.97,
+        "custo_total": 930.97
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020260B00001",
+        "descricao": "FILME MED. 11,5X45X008",
+        "quantidade": 13,
+        "custo_unitario": 71.49,
+        "custo_total": 929.37
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00010",
+        "descricao": "POLASEAL MED. 303X426X010 - A3",
+        "quantidade": 3,
+        "custo_unitario": 305.59,
+        "custo_total": 916.77
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "014010000B00001",
+        "descricao": "SUPORTE PARA MONITORES DE PLASMA OU LCD MOD HERCULE LCD500",
+        "quantidade": 12,
+        "custo_unitario": 75,
+        "custo_total": 900
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010010451B10001",
+        "descricao": "PLASTIFICADORA MENNO PLM11 110V",
+        "quantidade": 2,
+        "custo_unitario": 443.8,
+        "custo_total": 887.6
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101010401B007",
+        "descricao": "COFRE SMART MASTER 100 GSI 2.0 100X41X42 (AXLXP)",
+        "quantidade": 1,
+        "custo_unitario": 887.27,
+        "custo_total": 887.27
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020001B002",
+        "descricao": "COFRE CHAVE MULTI-PONTO OFFICE TOP",
+        "quantidade": 2,
+        "custo_unitario": 433.84,
+        "custo_total": 867.68
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060105885S03",
+        "descricao": "BANDEJA FIXA 4PTO. 500 MM PRETO SD C/ 10 DIVISORIAS",
+        "quantidade": 6,
+        "custo_unitario": 139,
+        "custo_total": 834
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00008",
+        "descricao": "POLASEAL MED. 303X426X005 - A3",
+        "quantidade": 6,
+        "custo_unitario": 137.97,
+        "custo_total": 827.82
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010111B025",
+        "descricao": "COFRE BOCA LOBO SLIM 2.0 21X38X42 (AXLXP)",
+        "quantidade": 3,
+        "custo_unitario": 275,
+        "custo_total": 825
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017012805885S01",
+        "descricao": "RACK PISO FECHADO PRETO SD 28U X 600 X 475",
+        "quantidade": 1,
+        "custo_unitario": 823.22,
+        "custo_total": 823.22
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017012405338S01",
+        "descricao": "RACK PISO FECHADO PRETO PI 24U X 600 X 800",
+        "quantidade": 1,
+        "custo_unitario": 795.34,
+        "custo_total": 795.34
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060000660S01",
+        "descricao": "RODIZIO GIRATORIO COM TRAVA - CS - UNIDADE",
+        "quantidade": 23,
+        "custo_unitario": 33.26,
+        "custo_total": 764.98
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060000110S01",
+        "descricao": "PATCH PANEL 24 P. RJ 45 CAT. 6",
+        "quantidade": 5,
+        "custo_unitario": 152.83,
+        "custo_total": 764.15
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "014010009B00002",
+        "descricao": "SUPORTE DE MESA PARA 2 MONITORES DE LCD E LED DE 10\" ATE 24\"  SMD-1024",
+        "quantidade": 4,
+        "custo_unitario": 188,
+        "custo_total": 752
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017011605889S01",
+        "descricao": "RACK PISO FECHADO PRETO SD 16U X 600 X 875",
+        "quantidade": 1,
+        "custo_unitario": 748.25,
+        "custo_total": 748.25
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101041100B002",
+        "descricao": "COFRE SMART STORE SECURITY 6800 2.0 GSI",
+        "quantidade": 1,
+        "custo_unitario": 715.63,
+        "custo_total": 715.63
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017064405887S01",
+        "descricao": "GUIA VERTICAL P/ RACK PISO 44U PRETO SD - PAR",
+        "quantidade": 2,
+        "custo_unitario": 353.8,
+        "custo_total": 707.6
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101010801B001",
+        "descricao": "COFRE SMART SEVEN GSI SYS 72X41X42 (AXLXP)",
+        "quantidade": 1,
+        "custo_unitario": 677.2,
+        "custo_total": 677.2
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060000110S02",
+        "descricao": "PATCH PANEL 24P. RJ 45 CAT 5",
+        "quantidade": 6,
+        "custo_unitario": 110.06,
+        "custo_total": 660.36
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020001B029",
+        "descricao": "COFRE CHAVE MULTI-PONTO PERSONAL 60X30X25(AXLXP) - ESPECIAL",
+        "quantidade": 1,
+        "custo_unitario": 657.31,
+        "custo_total": 657.31
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020001B027",
+        "descricao": "COFRE CHAVE MULTI-PONTO SIX GSI (63X41X43 CM) - ESP",
+        "quantidade": 1,
+        "custo_unitario": 597.79,
+        "custo_total": 597.79
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010010451B10002",
+        "descricao": "PLASTIFICADORA MENNO PLM23 110V",
+        "quantidade": 1,
+        "custo_unitario": 586.78,
+        "custo_total": 586.78
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060205335S02",
+        "descricao": "BANDEJA CHANTELIER PI - 2U X 0450 - PRETA",
+        "quantidade": 10,
+        "custo_unitario": 58,
+        "custo_total": 580
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "00101010001B015",
+        "descricao": "COFRE ELETRONICO OFFICE TOP 2.0",
+        "quantidade": 1,
+        "custo_unitario": 574.83,
+        "custo_total": 574.83
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005880S06",
+        "descricao": "REGUA DE TOMADAS 19 C/8 TOMADAS 10A E PLUG MACHO 20A - PRETO CABO 1,5M SD",
+        "quantidade": 10,
+        "custo_unitario": 56.55,
+        "custo_total": 565.5
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060105880S02",
+        "descricao": "BANDEJA MOVEL 1000 MM PRETO SD",
+        "quantidade": 3,
+        "custo_unitario": 187.02,
+        "custo_total": 561.06
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017011605336S01",
+        "descricao": "RACK PISO FECHADO PRETO PI 16U X 600 X 600",
+        "quantidade": 1,
+        "custo_unitario": 542.59,
+        "custo_total": 542.59
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101020001B028",
+        "descricao": "COFRE CHAVE MULTI-PONTO PERSONAL 20X28X50 (AXLXP) - ESPECIAL",
+        "quantidade": 1,
+        "custo_unitario": 529.89,
+        "custo_total": 529.89
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060000660S02",
+        "descricao": "RODIZIO GIRATORIO SEM TRAVA - CS - UNIDADE",
+        "quantidade": 22,
+        "custo_unitario": 23.33,
+        "custo_total": 513.26
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005880S03",
+        "descricao": "GUIA DE CABO 2U 19 PRETO SD",
+        "quantidade": 19,
+        "custo_unitario": 26.98,
+        "custo_total": 512.62
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "01823160101B001",
+        "descricao": "PORTA CHAVES M-90 MENNO",
+        "quantidade": 1,
+        "custo_unitario": 509.73,
+        "custo_total": 509.73
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00105040000B002",
+        "descricao": "ESTOJO PLASTICO PARA MIDIAS MAGNETICAS MOD.LTO-5",
+        "quantidade": 4,
+        "custo_unitario": 126.04,
+        "custo_total": 504.16
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "codigo": "090120B00000005",
+        "descricao": "MOTOR DC SG 27063800 187K SGMADA",
+        "quantidade": 14,
+        "custo_unitario": 35.9,
+        "custo_total": 502.6
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010010458B10001",
+        "descricao": "PLASTIFICADORA LAMINADORA POLISELADORA A3A4A5A6 60HZ 600W NPPA 110V",
+        "quantidade": 1,
+        "custo_unitario": 468.43,
+        "custo_total": 468.43
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00100990001B001",
+        "descricao": "PORTA JOIAS E ACESSORIOS MOD WO W6274",
+        "quantidade": 1,
+        "custo_unitario": 450,
+        "custo_total": 450
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005339S01",
+        "descricao": "BANDEJA FIXA 4PTO. 900 MM PRETO PI",
+        "quantidade": 5,
+        "custo_unitario": 88.58,
+        "custo_total": 442.9
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00005",
+        "descricao": "FILME MED. 23X45X008",
+        "quantidade": 3,
+        "custo_unitario": 142.98,
+        "custo_total": 428.94
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "014010004B00004",
+        "descricao": "SUPORTE STPA 65 - PAREDE P/ TV LCD 19 A 37 PRETO.",
+        "quantidade": 4,
+        "custo_unitario": 102.9,
+        "custo_total": 411.6
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "014010004B00003",
+        "descricao": "SUPORTE TETO FIXACAO 32 A 52 SKY – PRATA 600 MM",
+        "quantidade": 1,
+        "custo_unitario": 400,
+        "custo_total": 400
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "01814122400B001",
+        "descricao": "MESA REDONDA DOBRAVEL 80 CM MRD080",
+        "quantidade": 2,
+        "custo_unitario": 194.35,
+        "custo_total": 388.7
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020960B00002",
+        "descricao": "FILME PVC TERMOENCOLHIVEL 700MM X 20MIC",
+        "quantidade": 1,
+        "custo_unitario": 386,
+        "custo_total": 386
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020559B00021",
+        "descricao": "POLASEAL MED. 80X110X005 - IDENTIDADE",
+        "quantidade": 37,
+        "custo_unitario": 10.41,
+        "custo_total": 385.17
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005000S03",
+        "descricao": "BANDEJA MOVEL - 1U X 1000 - PRETA",
+        "quantidade": 2,
+        "custo_unitario": 188.95,
+        "custo_total": 377.9
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "013020000B00006",
+        "descricao": "FIO REDONDO GROSSO 0,90",
+        "quantidade": 18,
+        "custo_unitario": 20,
+        "custo_total": 360
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005990S02",
+        "descricao": "REGUA DE TOMADAS 19 C/8 TOMADAS 20A E PLUG MACHO 20A - PRETO CABO 1,5M MT",
+        "quantidade": 7,
+        "custo_unitario": 50,
+        "custo_total": 350
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00101010401B003",
+        "descricao": "COFRE SMART 9999 PERSONAL",
+        "quantidade": 1,
+        "custo_unitario": 341.36,
+        "custo_total": 341.36
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "013010000B30004",
+        "descricao": "SELADORA M400 CT",
+        "quantidade": 1,
+        "custo_unitario": 339,
+        "custo_total": 339
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "013020000B00001",
+        "descricao": "FILME PVC ESTICAVEL 500MM X 10 MIC - 6,25KG",
+        "quantidade": 5,
+        "custo_unitario": 65,
+        "custo_total": 325
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "00400000203B001",
+        "descricao": "DESUMIDIFICADOR DE PAPEL DRY PAPER 2000 BI-VOLT",
+        "quantidade": 1,
+        "custo_unitario": 320,
+        "custo_total": 320
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005880S07",
+        "descricao": "REGUA DE TOMADAS 19 C/12 TOMADAS 10A E PLUG MACHO 20A - PRETO CABO 1,5M SD",
+        "quantidade": 6,
+        "custo_unitario": 52.98,
+        "custo_total": 317.88
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060005335S01",
+        "descricao": "BANDEJA FIXA 4PTO. 500 MM PRETO PI",
+        "quantidade": 6,
+        "custo_unitario": 52.2,
+        "custo_total": 313.2
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "codigo": "017060004000S01",
+        "descricao": "BANDEJA FIX. 4PT - 1U X 1000 - GRAFITE - VENT",
+        "quantidade": 2,
+        "custo_unitario": 152.83,
+        "custo_total": 305.66
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "codigo": "010020960B00001",
+        "descricao": "FILME PVC TERMOENCOLHIVEL 500MM X 30MIC",
+        "quantidade": 1,
+        "custo_unitario": 305,
+        "custo_total": 305
+      }
+    ],
+    "receberTop": [
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 739,
+        "numero_titulo": "000000481",
+        "parcela": "",
+        "cliente_nome": "LACTALIS DO BRASIL -",
+        "data_emissao": "2026-10-13",
+        "data_vencimento": "2027-02-10",
+        "valor_original": 85426,
+        "saldo": 85426
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 802,
+        "numero_titulo": "000000533",
+        "parcela": "",
+        "cliente_nome": "VALID SOLUCOES S A",
+        "data_emissao": "2026-11-12",
+        "data_vencimento": "2026-12-15",
+        "valor_original": 78140.6,
+        "saldo": 78140.6
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 771,
+        "numero_titulo": "000000507",
+        "parcela": "",
+        "cliente_nome": "CENTRO DE PESQUISAS",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-11-20",
+        "valor_original": 37255.4,
+        "saldo": 37255.4
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 2113,
+        "numero_titulo": "000001222",
+        "parcela": "",
+        "cliente_nome": "MAUAD & DIPE LTDA",
+        "data_emissao": "2025-08-28",
+        "data_vencimento": "2025-09-25",
+        "valor_original": 27965,
+        "saldo": 27965
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 384,
+        "numero_titulo": "000000250",
+        "parcela": "C",
+        "cliente_nome": "MD'ORE FERRAMENTAS E",
+        "data_emissao": "2026-05-29",
+        "data_vencimento": "2026-08-27",
+        "valor_original": 14476,
+        "saldo": 14476
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 809,
+        "numero_titulo": "000000539",
+        "parcela": "",
+        "cliente_nome": "CAPRICORNIO TEXTIL S",
+        "data_emissao": "2026-11-13",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 13844,
+        "saldo": 13844
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 751,
+        "numero_titulo": "000000491",
+        "parcela": "",
+        "cliente_nome": "FENIX COMERCIO DE PR",
+        "data_emissao": "2026-10-19",
+        "data_vencimento": "2026-11-16",
+        "valor_original": 13273,
+        "saldo": 13273
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1182,
+        "numero_titulo": "000824",
+        "parcela": "",
+        "cliente_nome": "EMBRAMACO EMPRESA BR",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 12000,
+        "saldo": 12000
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 512,
+        "numero_titulo": "000000343",
+        "parcela": "B",
+        "cliente_nome": "MD'ORE FERRAMENTAS E",
+        "data_emissao": "2026-07-23",
+        "data_vencimento": "2026-09-21",
+        "valor_original": 10340,
+        "saldo": 10340
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 513,
+        "numero_titulo": "000000343",
+        "parcela": "C",
+        "cliente_nome": "MD'ORE FERRAMENTAS E",
+        "data_emissao": "2026-07-23",
+        "data_vencimento": "2026-10-21",
+        "valor_original": 10340,
+        "saldo": 10340
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 792,
+        "numero_titulo": "000000525",
+        "parcela": "",
+        "cliente_nome": "SES Energy do Brasil",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 7502,
+        "saldo": 7502
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1210,
+        "numero_titulo": "000841",
+        "parcela": "",
+        "cliente_nome": "UNIMED CHAPECO - COO",
+        "data_emissao": "2026-11-16",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 7488,
+        "saldo": 7488
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 789,
+        "numero_titulo": "000000523",
+        "parcela": "",
+        "cliente_nome": "UNIPAR INDUPA DO BRA",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 7252,
+        "saldo": 7252
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 801,
+        "numero_titulo": "000000532",
+        "parcela": "",
+        "cliente_nome": "SWISSPORT BRASIL LTD",
+        "data_emissao": "2026-11-12",
+        "data_vencimento": "2026-11-16",
+        "valor_original": 7184,
+        "saldo": 7184
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 787,
+        "numero_titulo": "000000521",
+        "parcela": "",
+        "cliente_nome": "VALMONT INDUSTRIA E",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 7128,
+        "saldo": 7128
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 782,
+        "numero_titulo": "000000517",
+        "parcela": "",
+        "cliente_nome": "SERVICO SOCIAL DA CO",
+        "data_emissao": "2026-10-29",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 6940,
+        "saldo": 6940
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 770,
+        "numero_titulo": "000000506",
+        "parcela": "",
+        "cliente_nome": "ADIMAX - INDUSTRIA E",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-11-20",
+        "valor_original": 6501,
+        "saldo": 6501
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 764,
+        "numero_titulo": "000000501",
+        "parcela": "",
+        "cliente_nome": "DIAM BRASIL INDUSTRI",
+        "data_emissao": "2026-10-22",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 6447.88,
+        "saldo": 6447.88
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 786,
+        "numero_titulo": "000000520",
+        "parcela": "",
+        "cliente_nome": "DIAM BRASIL INDUSTRI",
+        "data_emissao": "2026-11-03",
+        "data_vencimento": "2026-12-01",
+        "valor_original": 6447.88,
+        "saldo": 6447.88
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 806,
+        "numero_titulo": "000000536",
+        "parcela": "",
+        "cliente_nome": "DIAM BRASIL INDUSTRI",
+        "data_emissao": "2026-11-13",
+        "data_vencimento": "2026-12-11",
+        "valor_original": 6447.88,
+        "saldo": 6447.88
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 804,
+        "numero_titulo": "000000534",
+        "parcela": "",
+        "cliente_nome": "ABRASUL ABRASIVO EPI",
+        "data_emissao": "2026-11-13",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 6402,
+        "saldo": 6402
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 777,
+        "numero_titulo": "000000511",
+        "parcela": "",
+        "cliente_nome": "INTELBRAS S.A. INDUS",
+        "data_emissao": "2026-10-26",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 6204,
+        "saldo": 6204
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 753,
+        "numero_titulo": "000000493",
+        "parcela": "",
+        "cliente_nome": "Camber Farmaceutica",
+        "data_emissao": "2026-10-20",
+        "data_vencimento": "2026-11-17",
+        "valor_original": 5334.03,
+        "saldo": 5334.03
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 810,
+        "numero_titulo": "000000540",
+        "parcela": "",
+        "cliente_nome": "S.I.N. IMPLANT SYSTE",
+        "data_emissao": "2026-11-16",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 4386,
+        "saldo": 4386
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 641,
+        "numero_titulo": "000000416",
+        "parcela": "AD",
+        "cliente_nome": "ENGETRAIL ENGENHARIA",
+        "data_emissao": "2026-09-03",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 4084.08,
+        "saldo": 4084.08
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 795,
+        "numero_titulo": "000000529",
+        "parcela": "",
+        "cliente_nome": "SYNCREON SERVICOS DE",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 4023,
+        "saldo": 4023
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1212,
+        "numero_titulo": "000843",
+        "parcela": "",
+        "cliente_nome": "Jairo Jose Zanchetta",
+        "data_emissao": "2026-11-16",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 4009.68,
+        "saldo": 4009.68
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 799,
+        "numero_titulo": "000000531",
+        "parcela": "AB",
+        "cliente_nome": "WEB OFFICE MOVEIS PA",
+        "data_emissao": "2026-11-11",
+        "data_vencimento": "2026-12-09",
+        "valor_original": 3556,
+        "saldo": 3556
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 800,
+        "numero_titulo": "000000531",
+        "parcela": "AC",
+        "cliente_nome": "WEB OFFICE MOVEIS PA",
+        "data_emissao": "2026-11-11",
+        "data_vencimento": "2027-01-06",
+        "valor_original": 3556,
+        "saldo": 3556
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 768,
+        "numero_titulo": "000000503",
+        "parcela": "AB",
+        "cliente_nome": "UNIMED DE LIMEIRA CO",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 3392.5,
+        "saldo": 3392.5
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 758,
+        "numero_titulo": "000000495",
+        "parcela": "AB",
+        "cliente_nome": "ENERGY PETRO INDUSTR",
+        "data_emissao": "2026-10-21",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 3286.24,
+        "saldo": 3286.24
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 759,
+        "numero_titulo": "000000495",
+        "parcela": "AC",
+        "cliente_nome": "ENERGY PETRO INDUSTR",
+        "data_emissao": "2026-10-21",
+        "data_vencimento": "2026-12-16",
+        "valor_original": 3286.23,
+        "saldo": 3286.23
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 780,
+        "numero_titulo": "000000514",
+        "parcela": "",
+        "cliente_nome": "PRIMARY PRODUCTS ING",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-11-27",
+        "valor_original": 3200,
+        "saldo": 3200
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1160,
+        "numero_titulo": "000813",
+        "parcela": "",
+        "cliente_nome": "UNIMED CHAPECO - COO",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-11-25",
+        "valor_original": 10956,
+        "saldo": 2988
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1191,
+        "numero_titulo": "000830",
+        "parcela": "",
+        "cliente_nome": "COMERCIAL SANTA ISAB",
+        "data_emissao": "2026-11-10",
+        "data_vencimento": "2026-12-08",
+        "valor_original": 2909,
+        "saldo": 2909
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 880,
+        "numero_titulo": "000636",
+        "parcela": "AD",
+        "cliente_nome": "JR2 COMERCIO DE VARI",
+        "data_emissao": "2026-08-06",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 2375,
+        "saldo": 2375
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 881,
+        "numero_titulo": "000636",
+        "parcela": "AE",
+        "cliente_nome": "JR2 COMERCIO DE VARI",
+        "data_emissao": "2026-08-06",
+        "data_vencimento": "2027-01-04",
+        "valor_original": 2375,
+        "saldo": 2375
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 882,
+        "numero_titulo": "000636",
+        "parcela": "AF",
+        "cliente_nome": "JR2 COMERCIO DE VARI",
+        "data_emissao": "2026-08-06",
+        "data_vencimento": "2027-02-02",
+        "valor_original": 2375,
+        "saldo": 2375
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1071,
+        "numero_titulo": "000756",
+        "parcela": "AC",
+        "cliente_nome": "VSOL ANALISES AMBIEN",
+        "data_emissao": "2026-09-24",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 2324.34,
+        "saldo": 2324.34
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1211,
+        "numero_titulo": "000842",
+        "parcela": "",
+        "cliente_nome": "ZIGGO COMERCIO E MAN",
+        "data_emissao": "2026-11-16",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 2319,
+        "saldo": 2319
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 3691,
+        "numero_titulo": "000001959",
+        "parcela": "",
+        "cliente_nome": "PERFUMARIA YUJI LTDA",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 1975,
+        "saldo": 1975
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 3692,
+        "numero_titulo": "000001960",
+        "parcela": "",
+        "cliente_nome": "MARCHESAN IMPLEMENTO",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 1510,
+        "saldo": 1510
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1172,
+        "numero_titulo": "000821",
+        "parcela": "",
+        "cliente_nome": "KIKO COSMETICS BRASI",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 1268,
+        "saldo": 1268
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1195,
+        "numero_titulo": "000832",
+        "parcela": "",
+        "cliente_nome": "KIKO COSMETICS BRASI",
+        "data_emissao": "2026-11-12",
+        "data_vencimento": "2026-12-10",
+        "valor_original": 1188,
+        "saldo": 1188
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1139,
+        "numero_titulo": "000801",
+        "parcela": "",
+        "cliente_nome": "CRA CLINICA RADIOLOG",
+        "data_emissao": "2026-10-21",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 1129,
+        "saldo": 1129
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1194,
+        "numero_titulo": "000831",
+        "parcela": "",
+        "cliente_nome": "INJEPRESS METAIS LTD",
+        "data_emissao": "2026-11-12",
+        "data_vencimento": "2026-12-10",
+        "valor_original": 1102,
+        "saldo": 1102
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1117,
+        "numero_titulo": "000785",
+        "parcela": "",
+        "cliente_nome": "IRMANDADE DA SANTA C",
+        "data_emissao": "2026-10-16",
+        "data_vencimento": "2026-11-16",
+        "valor_original": 1060,
+        "saldo": 1060
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1157,
+        "numero_titulo": "000812",
+        "parcela": "",
+        "cliente_nome": "CMPAC AUTOS NORTE LT",
+        "data_emissao": "2026-10-26",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 1030,
+        "saldo": 1030
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 2395,
+        "numero_titulo": "000001406",
+        "parcela": "",
+        "cliente_nome": "CONSTRUMALL SERVICOS",
+        "data_emissao": "2025-10-03",
+        "data_vencimento": "2025-10-31",
+        "valor_original": 1004,
+        "saldo": 1004
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 2394,
+        "numero_titulo": "000001405",
+        "parcela": "",
+        "cliente_nome": "CONSTRUMALL SERVICOS",
+        "data_emissao": "2025-10-03",
+        "data_vencimento": "2025-10-31",
+        "valor_original": 974,
+        "saldo": 974
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1190,
+        "numero_titulo": "000829",
+        "parcela": "",
+        "cliente_nome": "CALZEDONIA BRASIL CO",
+        "data_emissao": "2026-11-10",
+        "data_vencimento": "2026-12-08",
+        "valor_original": 614,
+        "saldo": 614
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1203,
+        "numero_titulo": "000837",
+        "parcela": "",
+        "cliente_nome": "WILLIAN ADAMI 168652",
+        "data_emissao": "2026-11-16",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 486.5,
+        "saldo": 486.5
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1173,
+        "numero_titulo": "000822",
+        "parcela": "AA",
+        "cliente_nome": "BW OFFICE DISTRIBUIC",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 475,
+        "saldo": 475
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1174,
+        "numero_titulo": "000822",
+        "parcela": "AB",
+        "cliente_nome": "BW OFFICE DISTRIBUIC",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2027-01-04",
+        "valor_original": 475,
+        "saldo": 475
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1175,
+        "numero_titulo": "000822",
+        "parcela": "AC",
+        "cliente_nome": "BW OFFICE DISTRIBUIC",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2027-02-02",
+        "valor_original": 475,
+        "saldo": 475
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1176,
+        "numero_titulo": "000822",
+        "parcela": "AD",
+        "cliente_nome": "BW OFFICE DISTRIBUIC",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2027-03-04",
+        "valor_original": 475,
+        "saldo": 475
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1177,
+        "numero_titulo": "000822",
+        "parcela": "AE",
+        "cliente_nome": "BW OFFICE DISTRIBUIC",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2027-04-05",
+        "valor_original": 475,
+        "saldo": 475
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1178,
+        "numero_titulo": "000822",
+        "parcela": "AF",
+        "cliente_nome": "BW OFFICE DISTRIBUIC",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2027-05-03",
+        "valor_original": 475,
+        "saldo": 475
+      }
+    ],
+    "pagarTop": [
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 4091,
+        "numero_titulo": "000000018",
+        "parcela": "",
+        "fornecedor_nome": "VALENTIN COMERCIO DE",
+        "data_emissao": "2025-12-16",
+        "data_vencimento": "2026-05-20",
+        "valor_original": 291971.91,
+        "saldo": 37507.3
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 934,
+        "numero_titulo": "22522",
+        "parcela": "",
+        "fornecedor_nome": "DARLEN-COMERCIAL ELE",
+        "data_emissao": "2026-11-13",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 7553.12,
+        "saldo": 7553.12
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1717,
+        "numero_titulo": "50116",
+        "parcela": "",
+        "fornecedor_nome": "SANKHYA GESTAO DE NE",
+        "data_emissao": "2026-10-06",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 6364.91,
+        "saldo": 6364.91
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1718,
+        "numero_titulo": "51798",
+        "parcela": "",
+        "fornecedor_nome": "SANKHYA GESTAO DE NE",
+        "data_emissao": "2026-10-19",
+        "data_vencimento": "2027-01-04",
+        "valor_original": 6364.91,
+        "saldo": 6364.91
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5116,
+        "numero_titulo": "000145549",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-09-22",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 5533.39,
+        "saldo": 5533.39
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5237,
+        "numero_titulo": "000146687",
+        "parcela": "AA",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 5318.72,
+        "saldo": 5318.72
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5238,
+        "numero_titulo": "000146687",
+        "parcela": "AB",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 5318.72,
+        "saldo": 5318.72
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5239,
+        "numero_titulo": "000146687",
+        "parcela": "AC",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-21",
+        "valor_original": 5318.72,
+        "saldo": 5318.72
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5240,
+        "numero_titulo": "000146687",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-12-28",
+        "valor_original": 5318.72,
+        "saldo": 5318.72
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5241,
+        "numero_titulo": "000146687",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2027-01-08",
+        "valor_original": 5318.71,
+        "saldo": 5318.71
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 879,
+        "numero_titulo": "10360",
+        "parcela": "",
+        "fornecedor_nome": "JNK COMERCIO DE META",
+        "data_emissao": "2026-10-29",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 5100,
+        "saldo": 5100
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5187,
+        "numero_titulo": "000146267",
+        "parcela": "AA",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-20",
+        "data_vencimento": "2026-11-17",
+        "valor_original": 5056.36,
+        "saldo": 5056.36
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5188,
+        "numero_titulo": "000146267",
+        "parcela": "AB",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-20",
+        "data_vencimento": "2026-11-24",
+        "valor_original": 5056.36,
+        "saldo": 5056.36
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5189,
+        "numero_titulo": "000146267",
+        "parcela": "AC",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-20",
+        "data_vencimento": "2026-12-01",
+        "valor_original": 5056.36,
+        "saldo": 5056.36
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5190,
+        "numero_titulo": "000146267",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-20",
+        "data_vencimento": "2026-12-08",
+        "valor_original": 5056.36,
+        "saldo": 5056.36
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5191,
+        "numero_titulo": "000146267",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-20",
+        "data_vencimento": "2026-12-21",
+        "valor_original": 5056.36,
+        "saldo": 5056.36
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1644,
+        "numero_titulo": "1086",
+        "parcela": "AB",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-02",
+        "data_vencimento": "2026-11-17",
+        "valor_original": 4983.33,
+        "saldo": 4983.33
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1645,
+        "numero_titulo": "1086",
+        "parcela": "AC",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-02",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 4983.33,
+        "saldo": 4983.33
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 803,
+        "numero_titulo": "000145846",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-05",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 4976.86,
+        "saldo": 4976.86
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 804,
+        "numero_titulo": "000145846",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-05",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 4976.84,
+        "saldo": 4976.84
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5198,
+        "numero_titulo": "000146362",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-12-22",
+        "valor_original": 4897.37,
+        "saldo": 4897.37
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5194,
+        "numero_titulo": "000146362",
+        "parcela": "AA",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-11-20",
+        "valor_original": 4897.35,
+        "saldo": 4897.35
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5195,
+        "numero_titulo": "000146362",
+        "parcela": "AB",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-11-27",
+        "valor_original": 4897.35,
+        "saldo": 4897.35
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5196,
+        "numero_titulo": "000146362",
+        "parcela": "AC",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 4897.35,
+        "saldo": 4897.35
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5197,
+        "numero_titulo": "000146362",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-12-11",
+        "valor_original": 4897.35,
+        "saldo": 4897.35
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1779,
+        "numero_titulo": "1098",
+        "parcela": "AA",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-27",
+        "data_vencimento": "2026-11-17",
+        "valor_original": 4850,
+        "saldo": 4850
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1780,
+        "numero_titulo": "1098",
+        "parcela": "AB",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-27",
+        "data_vencimento": "2026-11-27",
+        "valor_original": 4850,
+        "saldo": 4850
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1781,
+        "numero_titulo": "1098",
+        "parcela": "AC",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-27",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 4850,
+        "saldo": 4850
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1782,
+        "numero_titulo": "1098",
+        "parcela": "AD",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-27",
+        "data_vencimento": "2026-12-17",
+        "valor_original": 4850,
+        "saldo": 4850
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1783,
+        "numero_titulo": "1098",
+        "parcela": "AE",
+        "fornecedor_nome": "TRITTON INDUSTRIA ME",
+        "data_emissao": "2026-10-27",
+        "data_vencimento": "2026-12-28",
+        "valor_original": 4850,
+        "saldo": 4850
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 870,
+        "numero_titulo": "352610070",
+        "parcela": "",
+        "fornecedor_nome": "FLEXTINTAS",
+        "data_emissao": "2026-10-26",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 4141.1,
+        "saldo": 4141.1
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 869,
+        "numero_titulo": "10278",
+        "parcela": "AB",
+        "fornecedor_nome": "RAKER",
+        "data_emissao": "2026-10-21",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 3596,
+        "saldo": 3596
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1822,
+        "numero_titulo": "0075073",
+        "parcela": "",
+        "fornecedor_nome": "FGV FUNDACAO GETULIO",
+        "data_emissao": "2026-11-09",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 2969.75,
+        "saldo": 2969.75
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 871,
+        "numero_titulo": "00077053",
+        "parcela": "",
+        "fornecedor_nome": "SF COMERCIO DE PAPEI",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 2917.2,
+        "saldo": 2917.2
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 887,
+        "numero_titulo": "000048467",
+        "parcela": "",
+        "fornecedor_nome": "TECNOTERMO ISOLANTES",
+        "data_emissao": "2026-11-04",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 2502.75,
+        "saldo": 2502.75
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5219,
+        "numero_titulo": "000146632",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2027-01-04",
+        "valor_original": 1886,
+        "saldo": 1886
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5215,
+        "numero_titulo": "000146632",
+        "parcela": "AA",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-03",
+        "valor_original": 1885.99,
+        "saldo": 1885.99
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5216,
+        "numero_titulo": "000146632",
+        "parcela": "AB",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-10",
+        "valor_original": 1885.99,
+        "saldo": 1885.99
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5217,
+        "numero_titulo": "000146632",
+        "parcela": "AC",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-17",
+        "valor_original": 1885.99,
+        "saldo": 1885.99
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5218,
+        "numero_titulo": "000146632",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-24",
+        "valor_original": 1885.99,
+        "saldo": 1885.99
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 781,
+        "numero_titulo": "000145676",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-09-28",
+        "data_vencimento": "2026-11-27",
+        "valor_original": 1397.01,
+        "saldo": 1397.01
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5142,
+        "numero_titulo": "000145984",
+        "parcela": "AC",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 1380.01,
+        "saldo": 1380.01
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5143,
+        "numero_titulo": "000145984",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 1380.01,
+        "saldo": 1380.01
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5144,
+        "numero_titulo": "000145984",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 1380,
+        "saldo": 1380
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1719,
+        "numero_titulo": "027073",
+        "parcela": "",
+        "fornecedor_nome": "ASIS TAXTECH S.A.",
+        "data_emissao": "2026-10-19",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 1335.09,
+        "saldo": 1335.09
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 924,
+        "numero_titulo": "160476",
+        "parcela": "",
+        "fornecedor_nome": "MARTINS BASTOS & CIA",
+        "data_emissao": "2026-11-11",
+        "data_vencimento": "2026-12-16",
+        "valor_original": 1327,
+        "saldo": 1327
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1752,
+        "numero_titulo": "105874",
+        "parcela": "",
+        "fornecedor_nome": "CROMATEK",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-11-25",
+        "valor_original": 1242.91,
+        "saldo": 1242.91
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5246,
+        "numero_titulo": "2026",
+        "parcela": "",
+        "fornecedor_nome": "LUCAS SANTANA DA SIL",
+        "data_emissao": "2026-11-16",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 1137.69,
+        "saldo": 1137.69
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 734,
+        "numero_titulo": "00001013",
+        "parcela": "AC",
+        "fornecedor_nome": "THIPEGRAF",
+        "data_emissao": "2026-09-14",
+        "data_vencimento": "2026-11-24",
+        "valor_original": 1120,
+        "saldo": 1120
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 900,
+        "numero_titulo": "5803",
+        "parcela": "",
+        "fornecedor_nome": "V & P CANTONEIRAS",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 1102,
+        "saldo": 1102
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1744,
+        "numero_titulo": "000348",
+        "parcela": "",
+        "fornecedor_nome": "BRUNO FERREIRA DE JE",
+        "data_emissao": "2026-10-23",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 1097.5,
+        "saldo": 1097.5
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5220,
+        "numero_titulo": "000761909",
+        "parcela": "",
+        "fornecedor_nome": "SALES DISTRIBUIDORA",
+        "data_emissao": "2026-11-03",
+        "data_vencimento": "2026-12-01",
+        "valor_original": 994.03,
+        "saldo": 994.03
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 890,
+        "numero_titulo": "142",
+        "parcela": "AA",
+        "fornecedor_nome": "DEBOLT",
+        "data_emissao": "2026-10-29",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 968.97,
+        "saldo": 968.97
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 891,
+        "numero_titulo": "142",
+        "parcela": "AB",
+        "fornecedor_nome": "DEBOLT",
+        "data_emissao": "2026-10-29",
+        "data_vencimento": "2026-12-10",
+        "valor_original": 968.97,
+        "saldo": 968.97
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1679,
+        "numero_titulo": "37701",
+        "parcela": "AB",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-09",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1746,
+        "numero_titulo": "37789",
+        "parcela": "AA",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-11-27",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1680,
+        "numero_titulo": "37701",
+        "parcela": "AC",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-09",
+        "data_vencimento": "2026-12-08",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1747,
+        "numero_titulo": "37789",
+        "parcela": "AB",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-12-14",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1681,
+        "numero_titulo": "37701",
+        "parcela": "AD",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-09",
+        "data_vencimento": "2026-12-23",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1748,
+        "numero_titulo": "37789",
+        "parcela": "AC",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-12-28",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1749,
+        "numero_titulo": "37789",
+        "parcela": "AD",
+        "fornecedor_nome": "ELCOMP",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2027-01-11",
+        "valor_original": 926.67,
+        "saldo": 926.67
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1835,
+        "numero_titulo": "1626",
+        "parcela": "AA",
+        "fornecedor_nome": "PROELETRONICA COMPON",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 728.77,
+        "saldo": 728.77
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1836,
+        "numero_titulo": "1626",
+        "parcela": "AB",
+        "fornecedor_nome": "PROELETRONICA COMPON",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-11",
+        "valor_original": 728.77,
+        "saldo": 728.77
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1837,
+        "numero_titulo": "1626",
+        "parcela": "AC",
+        "fornecedor_nome": "PROELETRONICA COMPON",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-18",
+        "valor_original": 728.77,
+        "saldo": 728.77
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1838,
+        "numero_titulo": "1626",
+        "parcela": "AD",
+        "fornecedor_nome": "PROELETRONICA COMPON",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-28",
+        "valor_original": 728.76,
+        "saldo": 728.76
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5147,
+        "numero_titulo": "000145983",
+        "parcela": "AC",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 702.1,
+        "saldo": 702.1
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5148,
+        "numero_titulo": "000145983",
+        "parcela": "AD",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 702.1,
+        "saldo": 702.1
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5149,
+        "numero_titulo": "000145983",
+        "parcela": "AE",
+        "fornecedor_nome": "AMR INDUSTRIA E COME",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-12-07",
+        "valor_original": 702.1,
+        "saldo": 702.1
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1657,
+        "numero_titulo": "004620",
+        "parcela": "AC",
+        "fornecedor_nome": "ROKAZ",
+        "data_emissao": "2026-10-07",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 690.27,
+        "saldo": 690.27
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 836,
+        "numero_titulo": "159835",
+        "parcela": "",
+        "fornecedor_nome": "MARTINS BASTOS & CIA",
+        "data_emissao": "2026-10-14",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 582.8,
+        "saldo": 582.8
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1637,
+        "numero_titulo": "1599",
+        "parcela": "AD",
+        "fornecedor_nome": "PROELETRONICA COMPON",
+        "data_emissao": "2026-10-05",
+        "data_vencimento": "2026-11-23",
+        "valor_original": 537.92,
+        "saldo": 537.92
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1832,
+        "numero_titulo": "004696",
+        "parcela": "AA",
+        "fornecedor_nome": "ROKAZ",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-03",
+        "valor_original": 520.94,
+        "saldo": 520.94
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1833,
+        "numero_titulo": "004696",
+        "parcela": "AB",
+        "fornecedor_nome": "ROKAZ",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-10",
+        "valor_original": 520.94,
+        "saldo": 520.94
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1834,
+        "numero_titulo": "004696",
+        "parcela": "AC",
+        "fornecedor_nome": "ROKAZ",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-17",
+        "valor_original": 520.94,
+        "saldo": 520.94
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5201,
+        "numero_titulo": "000019311",
+        "parcela": "",
+        "fornecedor_nome": "TETAMANTI",
+        "data_emissao": "2026-10-27",
+        "data_vencimento": "2026-11-26",
+        "valor_original": 508.59,
+        "saldo": 508.59
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 897,
+        "numero_titulo": "002119844",
+        "parcela": "A",
+        "fornecedor_nome": "MODULAR CARGAS",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 478.69,
+        "saldo": 478.69
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 892,
+        "numero_titulo": "000006857",
+        "parcela": "",
+        "fornecedor_nome": "UNITEK FERRAMENTAS",
+        "data_emissao": "2026-10-30",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 475.6,
+        "saldo": 475.6
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5221,
+        "numero_titulo": "162159",
+        "parcela": "AA",
+        "fornecedor_nome": "MARES",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 444.49,
+        "saldo": 444.49
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5222,
+        "numero_titulo": "162159",
+        "parcela": "AB",
+        "fornecedor_nome": "MARES",
+        "data_emissao": "2026-11-06",
+        "data_vencimento": "2026-12-18",
+        "valor_original": 444.49,
+        "saldo": 444.49
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5156,
+        "numero_titulo": "164380",
+        "parcela": "AC",
+        "fornecedor_nome": "MARES",
+        "data_emissao": "2026-10-08",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 444.48,
+        "saldo": 444.48
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1785,
+        "numero_titulo": "000758699",
+        "parcela": "",
+        "fornecedor_nome": "SALES DISTRIBUIDORA",
+        "data_emissao": "2026-10-30",
+        "data_vencimento": "2026-11-27",
+        "valor_original": 432.99,
+        "saldo": 432.99
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1728,
+        "numero_titulo": "000020200",
+        "parcela": "AA",
+        "fornecedor_nome": "THURLERFLEX",
+        "data_emissao": "2026-10-13",
+        "data_vencimento": "2026-11-19",
+        "valor_original": 418.16,
+        "saldo": 418.16
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1729,
+        "numero_titulo": "000020200",
+        "parcela": "AB",
+        "fornecedor_nome": "THURLERFLEX",
+        "data_emissao": "2026-10-13",
+        "data_vencimento": "2026-12-04",
+        "valor_original": 418.16,
+        "saldo": 418.16
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 875,
+        "numero_titulo": "000000654",
+        "parcela": "",
+        "fornecedor_nome": "NITROX GASES ESPECIA",
+        "data_emissao": "2026-10-28",
+        "data_vencimento": "2026-11-25",
+        "valor_original": 393.1,
+        "saldo": 393.1
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 904,
+        "numero_titulo": "000000715",
+        "parcela": "",
+        "fornecedor_nome": "NITROX GASES ESPECIA",
+        "data_emissao": "2026-11-10",
+        "data_vencimento": "2026-12-08",
+        "valor_original": 393.1,
+        "saldo": 393.1
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5223,
+        "numero_titulo": "165095",
+        "parcela": "AA",
+        "fornecedor_nome": "MARES",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-03",
+        "valor_original": 373.04,
+        "saldo": 373.04
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5224,
+        "numero_titulo": "165095",
+        "parcela": "AB",
+        "fornecedor_nome": "MARES",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-10",
+        "valor_original": 373.04,
+        "saldo": 373.04
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5225,
+        "numero_titulo": "165095",
+        "parcela": "AC",
+        "fornecedor_nome": "MARES",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-12-17",
+        "valor_original": 373.04,
+        "saldo": 373.04
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1794,
+        "numero_titulo": "002122507",
+        "parcela": "A",
+        "fornecedor_nome": "MODULAR CARGAS",
+        "data_emissao": "2026-11-05",
+        "data_vencimento": "2026-11-18",
+        "valor_original": 332.41,
+        "saldo": 332.41
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5202,
+        "numero_titulo": "000003566",
+        "parcela": "",
+        "fornecedor_nome": "VALENTIN COMERCIO DE",
+        "data_emissao": "2026-10-15",
+        "data_vencimento": "2026-11-30",
+        "valor_original": 325,
+        "saldo": 325
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 738,
+        "numero_titulo": "20260522A",
+        "parcela": "",
+        "fornecedor_nome": "LUIS CARLOS ASSISTEN",
+        "data_emissao": "2026-05-22",
+        "data_vencimento": "2026-05-22",
+        "valor_original": 300,
+        "saldo": 300
+      },
+      {
+        "empresa_cod": "16",
+        "empresa_sigla": "OACO",
+        "recno": 1831,
+        "numero_titulo": "001015061",
+        "parcela": "",
+        "fornecedor_nome": "COLUMBIA COMERCIO DE",
+        "data_emissao": "2026-11-03",
+        "data_vencimento": "2026-12-02",
+        "valor_original": 269.56,
+        "saldo": 269.56
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 4727,
+        "numero_titulo": "052026A",
+        "parcela": "",
+        "fornecedor_nome": "SWILE DO BRASIL S.A.",
+        "data_emissao": "2026-05-06",
+        "data_vencimento": "2026-05-06",
+        "valor_original": 240,
+        "saldo": 240
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5127,
+        "numero_titulo": "866271615",
+        "parcela": "A",
+        "fornecedor_nome": "CORREIOS",
+        "data_emissao": "2026-09-28",
+        "data_vencimento": "2026-10-05",
+        "valor_original": 124.41,
+        "saldo": 124.41
+      },
+      {
+        "empresa_cod": "14",
+        "empresa_sigla": "MP",
+        "recno": 772,
+        "numero_titulo": "900221735",
+        "parcela": "A",
+        "fornecedor_nome": "CORREIOS",
+        "data_emissao": "2026-09-28",
+        "data_vencimento": "2026-10-05",
+        "valor_original": 39.35,
+        "saldo": 39.35
+      },
+      {
+        "empresa_cod": "15",
+        "empresa_sigla": "GSI",
+        "recno": 5053,
+        "numero_titulo": "765600759",
+        "parcela": "A",
+        "fornecedor_nome": "CORREIOS",
+        "data_emissao": "2026-09-02",
+        "data_vencimento": "2026-09-08",
+        "valor_original": 35.38,
+        "saldo": 35.38
+      }
+    ]
+  }
+}
