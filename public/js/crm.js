@@ -1706,7 +1706,10 @@
   /**
    * Abre a modal para edição de uma Oportunidade existente
    */
+  let voltarParaFichaDealId = null; // id do deal cuja ficha deve reabrir após salvar a edição
+
   function openEditDealModal(dealId) {
+    voltarParaFichaDealId = null; // só o botão Editar da ficha seta isso (depois desta chamada)
     const deal = deals.find(d => String(d.id) === String(dealId));
     if (!deal) return;
 
@@ -2378,6 +2381,10 @@
       renderDealsViews();
       updateTopKpis();
       mostrarNotificacao(`Oportunidade "${titulo}" salva com sucesso!`, 'success');
+      if (voltarParaFichaDealId && String(voltarParaFichaDealId) === String(savedDeal?.id)) {
+        openDealDetailsModal(savedDeal.id);
+      }
+      voltarParaFichaDealId = null;
     } catch (err) {
       console.error('Erro ao salvar oportunidade:', err);
       alert('Erro ao salvar oportunidade: ' + err.message);
@@ -4221,6 +4228,7 @@
         if (!currentDeal) return;
         closeModal(document.getElementById('modalCrmDetalhes'));
         openEditDealModal(currentDeal.id);
+        voltarParaFichaDealId = currentDeal.id; // ao salvar, reabre a ficha
       });
     }
 
