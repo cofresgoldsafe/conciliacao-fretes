@@ -612,7 +612,14 @@ async function sendPropostaEmail({ to, cc, replyTo, fromName, subject, text, htm
   };
 
   const toEmails = parseRecipients(to);
-  const ccEmails = parseRecipients(cc);
+  // Quem já está no Para (ou repetido no Cc) sai da cópia: evita o e-mail chegar duplicado
+  const vistos = new Set(toEmails.map(e => e.toLowerCase()));
+  const ccEmails = parseRecipients(cc).filter(e => {
+    const k = e.toLowerCase();
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  });
 
   if (toEmails.length === 0 || toEmails.length > 5 || !toEmails.every(isValidEmail)) {
     return { success: false, error: 'Destinatário(s) inválido(s) (informe de 1 a 5 e-mails válidos).' };
