@@ -383,13 +383,7 @@ function criarRouterIntegracaoWhatsapp({ userHasWhatsappAccess } = {}) {
         });
       }
 
-      // Formata dd/mm no fuso America/Sao_Paulo
-      const partesData = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: 'America/Sao_Paulo',
-        day: '2-digit',
-        month: '2-digit'
-      }).format(new Date());
-      const titulo = `${nomeContato} — ${partesData}`;
+      const titulo = `${nomeContato} (W)`; // (W) = criado pelo WhatsApp
 
       const dados = {
         titulo,
@@ -450,7 +444,7 @@ function criarRouterIntegracaoWhatsapp({ userHasWhatsappAccess } = {}) {
       }
 
       // Título PJ: 10 primeiros caracteres da razão social - Nome do contato (W). (W) = criado pelo WhatsApp.
-      // PF (ou sem cliente identificado) mantém "Nome — dd/mm". O vendedor pode editar depois.
+      // PF (ou sem cliente identificado) usa "Nome (W)". O vendedor pode editar depois.
       if (dados.cliente_nome && String(dados.cliente_cnpj || '').replace(/\D/g, '').length === 14) {
         dados.titulo = `${String(dados.cliente_nome).trim().slice(0, 10).trim()} - ${nomeContato} (W)`;
       }
