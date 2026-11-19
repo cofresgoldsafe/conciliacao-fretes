@@ -5774,6 +5774,17 @@ body.crm-standalone-body.theme-light {
   color: var(--text-main);
 }
 
+/* Modal de detalhes da oportunidade: fundo azul-marinho com cartoes brancos, igual a pagina */
+body.crm-standalone-body.theme-light .crm-detalhes-corpo {
+  background: #0f1e45;
+}
+
+body.crm-standalone-body.theme-light .crm-detalhes-corpo > div {
+  background: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: var(--card-shadow);
+}
+
 body.crm-standalone-body.theme-light .crm-deal-view-toggles .btn-primary {
   background-color: #0f1e45;
   border: 1px solid #0f1e45;
