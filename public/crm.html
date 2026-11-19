@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CRM Comercial | Plataforma de Apoio GSI</title>
-  <link rel="stylesheet" href="style.css?v=8.337">
+  <link rel="stylesheet" href="style.css?v=8.338">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
   <!-- Topbar Dedicada da Página CRM -->
   <header class="crm-standalone-header">
     <div class="crm-standalone-brand">
-      <div class="brand-logo" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: rgba(56, 189, 248, 0.15); border-radius: 8px; color: #38bdf8; flex-shrink: 0;">
+      <div class="brand-logo" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: rgba(56, 189, 248, 0.15); border-radius: 8px; color: var(--crm-c-blue, #38bdf8); flex-shrink: 0;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
@@ -41,7 +41,7 @@
       </div>
       <div>
         <h1 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--text-main); white-space: nowrap;">
-          Plataforma GSI — CRM Comercial <span class="crm-versao" style="font-size: 0.75rem; font-weight: 600; color: #38bdf8; margin-left: 4px;">v8.337</span>
+          Plataforma GSI — CRM Comercial <span class="crm-versao" style="font-size: 0.75rem; font-weight: 600; color: var(--crm-c-blue, #38bdf8); margin-left: 4px;">v8.338</span>
         </h1>
       </div>
     </div>
@@ -112,15 +112,15 @@
             <div class="crm-kpis-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Pipeline em Negociação</span>
-                <strong id="crmKpiTotalPipeline" class="crm-kpi-val" style="color: #38bdf8;">R$ 0,00</strong>
+                <strong id="crmKpiTotalPipeline" class="crm-kpi-val" style="color: var(--crm-c-blue, #38bdf8);">R$ 0,00</strong>
               </div>
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Vendas Efetuadas (Mês)</span>
-                <strong id="crmKpiTotalGanho" class="crm-kpi-val" style="color: #10b981;">R$ 0,00</strong>
+                <strong id="crmKpiTotalGanho" class="crm-kpi-val" style="color: var(--crm-c-green, #10b981);">R$ 0,00</strong>
               </div>
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Ticket Médio</span>
-                <strong id="crmKpiTicketMedio" class="crm-kpi-val" style="color: #fbbf24;">R$ 0,00</strong>
+                <strong id="crmKpiTicketMedio" class="crm-kpi-val" style="color: var(--crm-c-amber, #fbbf24);">R$ 0,00</strong>
               </div>
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Total de Oportunidades</span>
@@ -128,7 +128,7 @@
               </div>
               <div class="crm-kpi-box" id="crmKpiMetaBox">
                 <span class="crm-kpi-label">Meta Mensal</span>
-                <strong id="crmKpiMetaMensal" class="crm-kpi-val" style="color: #a855f7;">R$ 0,00 / R$ 0,00</strong>
+                <strong id="crmKpiMetaMensal" class="crm-kpi-val" style="color: var(--crm-c-purple, #a855f7);">R$ 0,00 / R$ 0,00</strong>
                 <div style="background: rgba(255,255,255,0.08); height: 5px; border-radius: 3px; overflow: hidden; margin-top: 6px;">
                   <div id="crmKpiMetaBar" style="height: 100%; width: 0%; background: #a855f7; transition: width 0.3s ease;"></div>
                 </div>
@@ -214,7 +214,7 @@
                   <span style="font-size: 0.8rem;">Página <strong id="crmDealsCurrentPage" style="color: var(--text-main);">1</strong> de <strong id="crmDealsTotalPages" style="color: var(--text-main);">1</strong></span>
                   <button id="btnCrmDealsNext" type="button" class="btn btn-outline btn-sm" style="height: 30px; padding: 2px 10px; font-size: 0.8rem;" title="Próxima página">Próxima ▶</button>
                 </div>
-                <span id="crmListagemValorTotal" style="font-weight: 600; color: #10b981;">Total: R$ 0,00</span>
+                <span id="crmListagemValorTotal" style="font-weight: 600; color: var(--crm-c-green, #10b981);">Total: R$ 0,00</span>
               </div>
             </div>
           </div>
@@ -231,11 +231,11 @@
               </div>
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Novos Prospects (CRM)</span>
-                <strong id="crmKpiClientesCrm" class="crm-kpi-val" style="color: #10b981;">0 prospects</strong>
+                <strong id="crmKpiClientesCrm" class="crm-kpi-val" style="color: var(--crm-c-green, #10b981);">0 prospects</strong>
               </div>
               <div class="crm-kpi-box">
                 <span class="crm-kpi-label">Clientes Protheus (Base ERP)</span>
-                <strong id="crmKpiClientesProtheus" class="crm-kpi-val" style="color: #a855f7;">0 na base ERP</strong>
+                <strong id="crmKpiClientesProtheus" class="crm-kpi-val" style="color: var(--crm-c-purple, #a855f7);">0 na base ERP</strong>
               </div>
             </div>
 
@@ -328,8 +328,8 @@
         <input type="hidden" id="crmInputClienteCnpj">
 
         <!-- BLOCO 1: DADOS PRINCIPAIS DO NEGÓCIO & CLIENTE -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 10px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: var(--crm-c-blue, #38bdf8); display: block; margin-bottom: 10px;">
             📌 1. Identificação da Oportunidade
           </strong>
           <div style="display: grid; grid-template-columns: 2fr 1.2fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -366,10 +366,10 @@
                     <span id="crmDealClienteFidelidadeBadge"></span>
                   </div>
                   <div style="display: flex; gap: 6px; align-items: center;">
-                    <button type="button" id="btnCrmEditarClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); display: flex; align-items: center; gap: 4px;" title="Editar cadastro do cliente selecionado">
+                    <button type="button" id="btnCrmEditarClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: var(--crm-c-amber, #fbbf24); border-color: rgba(251, 191, 36, 0.4); display: flex; align-items: center; gap: 4px;" title="Editar cadastro do cliente selecionado">
                       <span>✏️ Editar</span>
                     </button>
-                    <button type="button" id="btnCrmNovoClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 4px;" title="Cadastrar novo cliente">
+                    <button type="button" id="btnCrmNovoClienteFromDeal" class="btn btn-outline btn-sm" style="font-size: 0.74rem; padding: 2px 8px; height: 24px; color: var(--crm-c-blue, #38bdf8); border-color: rgba(56, 189, 248, 0.4); display: flex; align-items: center; gap: 4px;" title="Cadastrar novo cliente">
                       <span>➕ Add Cliente</span>
                     </button>
                   </div>
@@ -405,8 +405,8 @@
         </div>
 
         <!-- BLOCO 2: CONDIÇÕES COMERCIAIS & FATURAMENTO -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong style="font-size: 0.88rem; color: #10b981; display: block; margin-bottom: 10px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: var(--crm-c-green, #10b981); display: block; margin-bottom: 10px;">
             💼 2. Condições Comerciais & Faturamento
           </strong>
           <div style="display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -469,13 +469,13 @@
         </div>
 
         <!-- BLOCO 3: ITENS COTADOS (100% DA LARGURA) -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px; position: relative;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px; position: relative;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-            <strong style="font-size: 0.88rem; color: #fbbf24; display: block;">
+            <strong style="font-size: 0.88rem; color: var(--crm-c-amber, #fbbf24); display: block;">
               📦 3. Tabela de Itens Cotados (Catálogo Protheus)
             </strong>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <button type="button" id="btnCrmSyncProdutos" class="btn btn-outline btn-sm" style="font-size: 0.76rem; padding: 3px 8px; color: #94a3b8; display: flex; align-items: center; gap: 4px;" title="Sincronizar produtos com ERP Protheus">
+              <button type="button" id="btnCrmSyncProdutos" class="btn btn-outline btn-sm" style="font-size: 0.76rem; padding: 3px 8px; color: var(--text-muted, #94a3b8); display: flex; align-items: center; gap: 4px;" title="Sincronizar produtos com ERP Protheus">
                 🔄 Sync Produtos
               </button>
               <button type="button" id="btnCrmAddItemCotado" class="btn btn-outline btn-sm" style="font-size: 0.78rem; padding: 4px 10px;">
@@ -507,18 +507,18 @@
           <div class="crm-resumo-kpis-bar">
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Total NFe:</span>
-              <input type="text" id="crmInputValor" class="form-control" readonly disabled tabindex="-1" style="width: 100px; font-weight: 700; color: #38bdf8; text-align: right; background: rgba(148, 163, 184, 0.12) !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; padding: 4px 6px;" value="0,00" title="Valor Total da NFe (Soma dos Itens + Frete Cobrado)">
+              <input type="text" id="crmInputValor" class="form-control" readonly disabled tabindex="-1" style="width: 100px; font-weight: 700; color: var(--crm-c-blue, #38bdf8); text-align: right; background: rgba(148, 163, 184, 0.12) !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; padding: 4px 6px;" value="0,00" title="Valor Total da NFe (Soma dos Itens + Frete Cobrado)">
               <span style="font-size: 0.82rem; color: var(--text-muted); margin-left: 6px;">Desconto Total Geral (%):</span>
-              <input type="text" id="crmInputDescontoTotalGeral" class="form-control" readonly disabled tabindex="-1" style="width: 70px; font-weight: 700; color: #10b981; text-align: right; background: rgba(148, 163, 184, 0.12) !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; padding: 4px 6px;" value="0,00%" title="Desconto Total Geral Ponderado: (Total Tabela - (Total Negociado - Frete Embutido)) / Total Tabela">
+              <input type="text" id="crmInputDescontoTotalGeral" class="form-control" readonly disabled tabindex="-1" style="width: 70px; font-weight: 700; color: var(--crm-c-green, #10b981); text-align: right; background: rgba(148, 163, 184, 0.12) !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; padding: 4px 6px;" value="0,00%" title="Desconto Total Geral Ponderado: (Total Tabela - (Total Negociado - Frete Embutido)) / Total Tabela">
             </div>
             <div style="display: flex; align-items: center; gap: 16px;">
               <div>
                 <span style="font-size: 0.82rem; color: var(--text-muted);">Peso Total Est.:</span>
-                <strong id="crmItensCotadosPesoDisplay" style="font-size: 0.92rem; color: #38bdf8; margin-left: 4px;">0,000 kg</strong>
+                <strong id="crmItensCotadosPesoDisplay" style="font-size: 0.92rem; color: var(--crm-c-blue, #38bdf8); margin-left: 4px;">0,000 kg</strong>
               </div>
               <div>
                 <span style="font-size: 0.82rem; color: var(--text-muted);">Soma Itens:</span>
-                <strong id="crmItensCotadosTotalDisplay" style="font-size: 1rem; color: #10b981; margin-left: 6px;">R$ 0,00</strong>
+                <strong id="crmItensCotadosTotalDisplay" style="font-size: 1rem; color: var(--crm-c-green, #10b981); margin-left: 6px;">R$ 0,00</strong>
               </div>
             </div>
           </div>
@@ -545,15 +545,15 @@
             <h3 id="crmDetalhesTitulo" style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-main);">Detalhes do Negócio</h3>
             <span id="crmDetalhesFaseBadge"></span>
           </div>
-          <span id="crmDetalhesConversasInfo" style="display: inline-block; font-size: 0.8rem; color: #38bdf8; margin-top: 2px;"></span>
+          <span id="crmDetalhesConversasInfo" style="display: inline-block; font-size: 0.8rem; color: var(--crm-c-blue, #38bdf8); margin-top: 2px;"></span>
           <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
             <span>Cliente:</span> <strong id="crmDetalhesCliente" style="color: var(--text-main);">-</strong>
-            <button type="button" id="btnCrmEditarClienteDoDetalhes" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 1px 6px; height: 20px; color: #fbbf24; border-color: rgba(251, 191, 36, 0.4); margin-left: 2px;" title="Editar cadastro do cliente">
+            <button type="button" id="btnCrmEditarClienteDoDetalhes" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 1px 6px; height: 20px; color: var(--crm-c-amber, #fbbf24); border-color: rgba(251, 191, 36, 0.4); margin-left: 2px;" title="Editar cadastro do cliente">
               <span>✏️ Editar</span>
             </button>
             <span style="margin: 0 4px;">|</span> <span>Vendedor:</span> <span id="crmDetalhesVendedor">-</span>
-            <span style="margin: 0 4px;">|</span> <span>Faturado Por:</span> <strong id="crmDetalhesFaturadoPorBadge" style="color: #fbbf24;">-</strong>
-            <span style="margin: 0 4px;">|</span> <span>Valor:</span> <strong id="crmDetalhesValor" style="color: #38bdf8;">R$ 0,00</strong>
+            <span style="margin: 0 4px;">|</span> <span>Faturado Por:</span> <strong id="crmDetalhesFaturadoPorBadge" style="color: var(--crm-c-amber, #fbbf24);">-</strong>
+            <span style="margin: 0 4px;">|</span> <span>Valor:</span> <strong id="crmDetalhesValor" style="color: var(--crm-c-blue, #38bdf8);">R$ 0,00</strong>
             <span id="crmDetalhesScoreInline" style="margin-left: 4px;"></span>
           </div>
         </div>
@@ -563,8 +563,8 @@
       <!-- Corpo: Ficha Comercial + Linha do Tempo -->
       <div style="flex: 1; overflow-y: auto; padding: 20px 22px; display: flex; flex-direction: column; gap: 1.25rem;">
         <!-- Seção Comercial & Itens -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 10px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: var(--crm-c-blue, #38bdf8); display: block; margin-bottom: 10px;">
             📋 Condições Comerciais & Faturamento
           </strong>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; font-size: 0.82rem;">
@@ -581,7 +581,7 @@
 
           <!-- Tabela de Itens Cotados -->
           <div style="margin-top: 12px; border-top: 1px solid var(--panel-border); padding-top: 10px;">
-            <span style="font-size: 0.82rem; font-weight: 600; color: #fbbf24; display: block; margin-bottom: 6px;">Itens Cotados:</span>
+            <span style="font-size: 0.82rem; font-weight: 600; color: var(--crm-c-amber, #fbbf24); display: block; margin-bottom: 6px;">Itens Cotados:</span>
             <div class="table-responsive" style="max-height: 150px; overflow-y: auto;">
               <table class="data-table" style="font-size: 0.8rem; width: 100%;">
                 <thead>
@@ -600,13 +600,13 @@
         </div>
 
         <!-- Seção Linha do Tempo & Follow-up -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong style="font-size: 0.88rem; color: #ec4899; display: block; margin-bottom: 12px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong style="font-size: 0.88rem; color: var(--crm-c-pink, #ec4899); display: block; margin-bottom: 12px;">
             ⏱️ Linha do Tempo & Follow-up de Atividades
           </strong>
 
           <!-- Formulário Rápido de Nova Atividade -->
-          <form id="formCrmAtividade" style="background: rgba(30, 41, 59, 0.5); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+          <form id="formCrmAtividade" style="background: var(--crm-subtle-bg, rgba(30, 41, 59, 0.5)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
             <div style="display: grid; grid-template-columns: 180px 1fr 180px auto; gap: 10px; align-items: end;">
               <div class="form-group" style="margin: 0;">
                 <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Tipo de Interação:</label>
@@ -645,21 +645,21 @@
           <button type="button" id="btnCrmReabrirDoDetalhes" class="btn btn-outline" style="display: none; color: #a78bfa; border-color: rgba(167, 139, 250, 0.45); font-weight: 600;">
             ↩️ Reabrir
           </button>
-          <button type="button" id="btnCrmPerdidoDoDetalhes" class="btn btn-outline" style="color: #f87171; border-color: rgba(248, 113, 113, 0.4);">
+          <button type="button" id="btnCrmPerdidoDoDetalhes" class="btn btn-outline" style="color: var(--crm-c-red, #f87171); border-color: rgba(248, 113, 113, 0.4);">
             ❌ Marcar como Perdido
           </button>
-          <button type="button" id="btnCrmGanhoDoDetalhes" class="btn btn-outline" style="color: #34d399; border-color: rgba(52, 211, 153, 0.4);">
+          <button type="button" id="btnCrmGanhoDoDetalhes" class="btn btn-outline" style="color: var(--crm-c-win, #34d399); border-color: rgba(52, 211, 153, 0.4);">
             🏆 Marcar como Ganho
           </button>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button type="button" id="btnCrmConversarDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
+          <button type="button" id="btnCrmConversarDoDetalhes" class="btn btn-outline" style="color: var(--crm-c-blue, #38bdf8); border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
             💬 Conversar
           </button>
-          <button type="button" id="btnCrmClonarDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
+          <button type="button" id="btnCrmClonarDoDetalhes" class="btn btn-outline" style="color: var(--crm-c-blue, #38bdf8); border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
             📑 Clonar
           </button>
-          <button type="button" id="btnCrmPropostaDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
+          <button type="button" id="btnCrmPropostaDoDetalhes" class="btn btn-outline" style="color: var(--crm-c-blue, #38bdf8); border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
             📄 Proposta
           </button>
           <button type="button" id="btnCrmEditarDoDetalhes" class="btn btn-secondary">
@@ -677,7 +677,7 @@
   <div id="modalCrmPerdido" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmPerdidoTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
     <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
       <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
-        <h3 id="modalCrmPerdidoTitle" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #f87171; display: flex; align-items: center; gap: 8px;">
+        <h3 id="modalCrmPerdidoTitle" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--crm-c-red, #f87171); display: flex; align-items: center; gap: 8px;">
           ❌ Marcar como Oportunidade Perdida
         </h3>
         <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal">&times;</button>
@@ -721,8 +721,8 @@
         <input type="hidden" id="crmClienteTipoProtheus" value="F">
 
         <!-- BLOCO 1: IDENTIFICAÇÃO BÁSICA -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong class="crm-bloco-titulo-cyan" style="font-size: 0.88rem; color: #38bdf8; display: block; margin-bottom: 12px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong class="crm-bloco-titulo-cyan" style="font-size: 0.88rem; color: var(--crm-c-blue, #38bdf8); display: block; margin-bottom: 12px;">
             🏢 1. Identificação Básica
           </strong>
           <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 140px 1.2fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -755,8 +755,8 @@
         </div>
 
         <!-- BLOCO 2: CONTATOS -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong class="crm-bloco-titulo-emerald" style="font-size: 0.88rem; color: #10b981; display: block; margin-bottom: 12px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong class="crm-bloco-titulo-emerald" style="font-size: 0.88rem; color: var(--crm-c-green, #10b981); display: block; margin-bottom: 12px;">
             📞 2. Contatos &amp; Comunicação
           </strong>
           <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
@@ -786,7 +786,7 @@
         </div>
 
         <!-- BLOCO 3: FATURAMENTO, BOLETOS & CONTAS A PAGAR -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
           <strong class="crm-bloco-titulo-purple" style="font-size: 0.88rem; color: #c084fc; display: block; margin-bottom: 12px;">
             💳 3. Faturamento, Boletos &amp; Contas a Pagar
           </strong>
@@ -817,8 +817,8 @@
         </div>
 
         <!-- BLOCO 4: COMERCIAL -->
-        <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
-          <strong class="crm-bloco-titulo-amber" style="font-size: 0.88rem; color: #fbbf24; display: block; margin-bottom: 12px;">
+        <div style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4)); border: 1px solid var(--panel-border); border-radius: 8px; padding: 14px;">
+          <strong class="crm-bloco-titulo-amber" style="font-size: 0.88rem; color: var(--crm-c-amber, #fbbf24); display: block; margin-bottom: 12px;">
             💼 4. Responsável &amp; Origem
           </strong>
           <div class="crm-form-responsive-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -843,8 +843,8 @@
         </div>
 
         <!-- BLOCO 5: ENDEREÇO E OBSERVAÇÕES (COLAPSÁVEL) -->
-        <details id="crmClienteDetailsEndereco" style="border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px 14px; background: rgba(15, 23, 42, 0.3);">
-          <summary style="cursor: pointer; font-size: 0.88rem; font-weight: 600; color: #94a3b8; outline: none; user-select: none;">
+        <details id="crmClienteDetailsEndereco" style="border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px 14px; background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.3));">
+          <summary style="cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--text-muted, #94a3b8); outline: none; user-select: none;">
             📍 5. Endereço &amp; Observações Complementares (Clique para expandir)
           </summary>
           <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 12px;">
@@ -907,8 +907,8 @@
   <div id="crmToastNotification" class="crm-toast" role="status" aria-live="polite" style="display: none;"></div>
 
   <!-- Scripts -->
-  <script src="js/chart.umd.min.js?v=8.337"></script>
-  <script src="js/crm.js?v=8.337"></script>
+  <script src="js/chart.umd.min.js?v=8.338"></script>
+  <script src="js/crm.js?v=8.338"></script>
 
   <script>
     // Inicialização do CRM Comercial (/crm)

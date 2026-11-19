@@ -235,7 +235,7 @@
       } else if (descontoPct > 6) {
         inputDesconto.style.color = '#f59e0b'; // Amarelo (> 6% e <= 10%)
       } else {
-        inputDesconto.style.color = '#10b981'; // Verde (<= 6%)
+        inputDesconto.style.color = 'var(--crm-c-green, #10b981)'; // Verde (<= 6%)
       }
     }
 
@@ -406,7 +406,7 @@
     const border = isVencida
       ? 'rgba(239, 68, 68, 0.4)'
       : (isVencendo ? 'rgba(245, 158, 11, 0.4)' : 'rgba(56, 189, 248, 0.35)');
-    const color = isVencida ? '#f87171' : (isVencendo ? '#fbbf24' : '#38bdf8');
+    const color = isVencida ? 'var(--crm-c-red, #f87171)' : (isVencendo ? 'var(--crm-c-amber, #fbbf24)' : 'var(--crm-c-blue, #38bdf8)');
 
     const textoVal = ddMm ? ` · ${isVencida ? 'vencida' : 'vence'} ${ddMm}` : '';
     const iconeOlho = foiAberta ? ' 👁' : '';
@@ -683,7 +683,7 @@
         const msg = errData.detail || errData.message || 'Seu perfil não possui autorização para acessar o CRM Comercial.';
         const container = document.getElementById('crmKanbanContainer');
         if (container) {
-          container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; color: #f87171; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px;"><strong>🔒 Acesso Restrito ao CRM Comercial</strong><div style="margin-top: 8px; color: var(--text-muted); font-size: 0.9rem;">${escapeHtml(msg)}</div></div>`;
+          container.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 3rem 1.5rem; color: var(--crm-c-red, #f87171); background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px;"><strong>🔒 Acesso Restrito ao CRM Comercial</strong><div style="margin-top: 8px; color: var(--text-muted); font-size: 0.9rem;">${escapeHtml(msg)}</div></div>`;
         }
         return null;
       }
@@ -1103,14 +1103,14 @@
             </div>
           </td>
           <td style="padding: 10px 12px;">
-            <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: #10b981; font-weight: 600; text-decoration: none;" title="Abrir detalhes de ${escapeHtml(d.titulo)}">
+            <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: var(--crm-c-green, #10b981); font-weight: 600; text-decoration: none;" title="Abrir detalhes de ${escapeHtml(d.titulo)}">
               ${escapeHtml(d.titulo || 'Sem título')}
             </a>
           </td>
           <td style="text-align: center; padding: 8px 4px; white-space: nowrap;">
             ${renderFidelidadeBadge(d.fidelidade_compras)}
           </td>
-          <td style="padding: 10px 12px; color: #10b981; font-weight: 700; white-space: nowrap;">
+          <td style="padding: 10px 12px; color: var(--crm-c-green, #10b981); font-weight: 700; white-space: nowrap;">
             ${formatCurrency(d.valor)}
           </td>
           <td style="padding: 10px 12px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(d.clienteNome || (d.contatoNome ? `👤 ${d.contatoNome}` : '-'))}">
@@ -1132,7 +1132,7 @@
             ${escapeHtml(d.condPgto || '-')}
           </td>
           <td style="padding: 10px 12px; white-space: nowrap;">
-            <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: #10b981; font-weight: 700; text-decoration: none;" title="Abrir oportunidade #${escapeHtml(d.id)}">
+            <a href="#" class="crm-deal-link" data-deal-id="${escapeHtml(d.id)}" style="color: var(--crm-c-green, #10b981); font-weight: 700; text-decoration: none;" title="Abrir oportunidade #${escapeHtml(d.id)}">
               ${escapeHtml(d.id)}
             </a>
           </td>
@@ -1806,8 +1806,8 @@
       dropdown.style.cssText = `
         position: absolute;
         z-index: 10005;
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--panel-bg, #1e293b);
+        border: 1px solid var(--panel-border, #334155);
         border-radius: 8px;
         max-height: 290px;
         overflow-y: auto;
@@ -1884,11 +1884,11 @@
           return `
             <div class="crm-prod-suggestion-row" data-pindex="${pIdx}" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.06); transition: background 0.15s ease;">
               <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px;">
-                <span style="font-family: var(--font-mono, monospace); font-weight: 700; color: #38bdf8; font-size: 0.84rem;">${cod}</span>
-                <span style="font-weight: 700; color: #10b981; font-size: 0.84rem;">${formatCurrency(preco)}</span>
+                <span style="font-family: var(--font-mono, monospace); font-weight: 700; color: var(--crm-c-blue, #38bdf8); font-size: 0.84rem;">${cod}</span>
+                <span style="font-weight: 700; color: var(--crm-c-green, #10b981); font-size: 0.84rem;">${formatCurrency(preco)}</span>
               </div>
-              <div style="font-size: 0.82rem; color: #f1f5f9; font-weight: 500; margin-bottom: 3px; line-height: 1.25;">${desc}</div>
-              <div style="display: flex; gap: 8px; font-size: 0.72rem; color: #94a3b8; align-items: center; flex-wrap: wrap;">
+              <div style="font-size: 0.82rem; color: var(--crm-c-text, #f1f5f9); font-weight: 500; margin-bottom: 3px; line-height: 1.25;">${desc}</div>
+              <div style="display: flex; gap: 8px; font-size: 0.72rem; color: var(--text-muted, #94a3b8); align-items: center; flex-wrap: wrap;">
                 ${grupo ? `<span style="background: rgba(148, 163, 184, 0.15); padding: 1px 5px; border-radius: 4px;">Grupo: ${grupo}</span>` : ''}
                 ${peso > 0 ? `<span>Peso: <strong>${peso.toFixed(2)} kg</strong></span>` : ''}
                 ${ncm ? `<span>NCM: <strong>${ncm}</strong></span>` : ''}
@@ -2012,19 +2012,19 @@
             <input type="number" min="1" max="999" step="1" class="form-control form-control-sm crm-item-qtd" data-index="${index}" value="${item.quantidade || 1}" style="text-align: right; width: 55px; padding-left: 4px; padding-right: 4px;" title="Quantidade">
           </td>
           <td style="width: 95px;">
-            <input type="text" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${formatNumberPtBr(item.precoTabela)}" readonly disabled tabindex="-1" style="text-align: right; width: 95px; background: rgba(148, 163, 184, 0.12) !important; color: #94a3b8 !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500;" title="Preço oficial de tabela SB1 (fixo/bloqueado)">
+            <input type="text" class="form-control form-control-sm crm-item-ptabela" data-index="${index}" value="${formatNumberPtBr(item.precoTabela)}" readonly disabled tabindex="-1" style="text-align: right; width: 95px; background: rgba(148, 163, 184, 0.12) !important; color: var(--text-muted, #94a3b8) !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500;" title="Preço oficial de tabela SB1 (fixo/bloqueado)">
           </td>
           <td style="width: 105px;">
             <input type="text" inputmode="decimal" class="form-control form-control-sm crm-item-pnegociado" data-index="${index}" value="${formatNumberPtBr(item.precoNegociado)}" style="text-align: right; width: 105px; font-weight: 600; color: #000000;" title="Preço negociado com o cliente">
           </td>
           <td style="width: 75px;">
-            <input type="text" class="form-control form-control-sm crm-item-descpct" data-index="${index}" value="${formatNumberPtBr(descPct)}" readonly disabled tabindex="-1" style="text-align: right; width: 75px; background: rgba(148, 163, 184, 0.12) !important; color: #94a3b8 !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500; font-family: var(--font-mono);" title="Desconto percentual calculado sobre o preço de tabela">
+            <input type="text" class="form-control form-control-sm crm-item-descpct" data-index="${index}" value="${formatNumberPtBr(descPct)}" readonly disabled tabindex="-1" style="text-align: right; width: 75px; background: rgba(148, 163, 184, 0.12) !important; color: var(--text-muted, #94a3b8) !important; border-color: rgba(148, 163, 184, 0.25) !important; cursor: not-allowed; font-weight: 500; font-family: var(--font-mono);" title="Desconto percentual calculado sobre o preço de tabela">
           </td>
           <td style="text-align: right; font-weight: 700; white-space: nowrap; width: 110px;">
             ${formatCurrency(subtotal)}
           </td>
           <td style="text-align: center; width: 45px;">
-            <button type="button" class="btn btn-outline btn-sm btn-remover-item" data-index="${index}" title="Remover item" style="padding: 2px 6px; color: #f87171;">✕</button>
+            <button type="button" class="btn btn-outline btn-sm btn-remover-item" data-index="${index}" title="Remover item" style="padding: 2px 6px; color: var(--crm-c-red, #f87171);">✕</button>
           </td>
         </tr>
       `;
@@ -2464,11 +2464,11 @@
       } else {
         tbody.innerHTML = deal.itens.map(item => `
           <tr>
-            <td><code style="color: #38bdf8; font-weight: 600;">${escapeHtml(item.codigo || '-')}</code></td>
+            <td><code style="color: var(--crm-c-blue, #38bdf8); font-weight: 600;">${escapeHtml(item.codigo || '-')}</code></td>
             <td>
               <div style="font-weight: 500;">${escapeHtml(item.descricao || '-')}</div>
               ${(item.ncm || (Number(item.pesoLiquido) > 0)) ? `
-                <div style="font-size: 0.70rem; color: #94a3b8; display: flex; gap: 8px; margin-top: 2px;">
+                <div style="font-size: 0.70rem; color: var(--text-muted, #94a3b8); display: flex; gap: 8px; margin-top: 2px;">
                   ${item.ncm ? `<span>NCM: <strong>${escapeHtml(item.ncm)}</strong></span>` : ''}
                   ${Number(item.pesoLiquido) > 0 ? `<span>Peso: <strong>${Number(item.pesoLiquido).toFixed(2)}kg</strong></span>` : ''}
                 </div>
@@ -3150,7 +3150,7 @@
       if (statusSpan) {
         statusSpan.style.display = 'inline';
         statusSpan.textContent = '⏳ Buscando...';
-        statusSpan.style.color = '#38bdf8';
+        statusSpan.style.color = 'var(--crm-c-blue, #38bdf8)';
       }
 
       try {
@@ -3204,7 +3204,7 @@
 
           if (statusSpan) {
             statusSpan.textContent = '✅ Endereço preenchido';
-            statusSpan.style.color = '#10b981';
+            statusSpan.style.color = 'var(--crm-c-green, #10b981)';
             setTimeout(() => {
               if (statusSpan) statusSpan.style.display = 'none';
             }, 3000);
@@ -3432,7 +3432,7 @@
     } catch (err) {
       console.warn('⚠️ [CRM] Erro ao carregar clientes:', err.message);
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: #f87171;">Erro ao carregar clientes: ${escapeHtml(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: var(--crm-c-red, #f87171);">Erro ao carregar clientes: ${escapeHtml(err.message)}</td></tr>`;
       }
     } finally {
       if (btnRefresh) {
@@ -3535,16 +3535,16 @@
           <td>
             <strong style="color: var(--text-main); font-size: 0.88rem; display: block;">${nomeRazao}</strong>
             ${nomeFantasia ? `<div style="font-size: 0.78rem; color: var(--text-muted);">${nomeFantasia}</div>` : ''}
-            ${localidade ? `<div style="font-size: 0.74rem; color: #38bdf8; margin-top: 2px;">📍 ${localidade}</div>` : ''}
+            ${localidade ? `<div style="font-size: 0.74rem; color: var(--crm-c-blue, #38bdf8); margin-top: 2px;">📍 ${localidade}</div>` : ''}
             ${siteUrl ? `<div style="font-size: 0.74rem; margin-top: 2px;"><a href="${siteHref}" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: none;" title="Abrir site corporativo">🌐 ${siteUrl}</a></div>` : ''}
           </td>
           <td>
             <span style="font-family: var(--font-mono, monospace); font-size: 0.82rem; color: var(--text-muted);">${cnpjCpfFmt}</span>
-            ${c.protheus_cod ? `<div style="font-size: 0.72rem; color: #a855f7; font-family: var(--font-mono, monospace);">Cód: ${escapeHtml(c.protheus_cod)}-${escapeHtml(c.protheus_loja || '01')}</div>` : ''}
+            ${c.protheus_cod ? `<div style="font-size: 0.72rem; color: var(--crm-c-purple, #a855f7); font-family: var(--font-mono, monospace);">Cód: ${escapeHtml(c.protheus_cod)}-${escapeHtml(c.protheus_loja || '01')}</div>` : ''}
           </td>
           <td>
             <div style="font-weight: 500;">${contatoNome}</div>
-            ${email ? `<div style="font-size: 0.74rem; color: var(--text-muted);"><a href="mailto:${email}" style="color: #38bdf8; text-decoration: none;">${email}</a></div>` : ''}
+            ${email ? `<div style="font-size: 0.74rem; color: var(--text-muted);"><a href="mailto:${email}" style="color: var(--crm-c-blue, #38bdf8); text-decoration: none;">${email}</a></div>` : ''}
             ${c.email_nfe ? `<div style="font-size: 0.72rem; color: #a78bfa; margin-top: 2px;" title="NF-e (XML/DANFE)">📄 ${escapeHtml(c.email_nfe)}</div>` : ''}
             ${c.contato_financeiro_nome ? `<div style="font-size: 0.72rem; color: #c084fc; margin-top: 2px;" title="Contas a Pagar / Financeiro">💳 ${escapeHtml(c.contato_financeiro_nome)}${c.contato_financeiro_tel_fmt || c.contato_financeiro_tel ? ` (${escapeHtml(c.contato_financeiro_tel_fmt || c.contato_financeiro_tel)})` : ''}</div>` : ''}
           </td>
@@ -4586,7 +4586,7 @@
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 10px; align-items: end;">
               <div class="form-group" style="margin: 0;">
                 <label style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;" title="Definido pelo campo Faturado Por da oportunidade">Emitida por</label>
-                <div id="crmPropostaEmitenteBox" title="Definido pelo campo Faturado Por da oportunidade" style="padding: 7px 10px; border-radius: 6px; border: 1px solid var(--panel-border, #334155); background: rgba(15, 23, 42, 0.55); font-size: 0.85rem; font-weight: 600; color: var(--text-main);">-</div>
+                <div id="crmPropostaEmitenteBox" title="Definido pelo campo Faturado Por da oportunidade" style="padding: 7px 10px; border-radius: 6px; border: 1px solid var(--panel-border, #334155); background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.55)); font-size: 0.85rem; font-weight: 600; color: var(--text-main);">-</div>
               </div>
               <div class="form-group" style="margin: 0;">
                 <label for="crmPropostaValidadeDias" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Validade (dias) *</label>
@@ -4609,7 +4609,7 @@
               <div style="overflow-x: auto; border: 1px solid var(--panel-border, #334155); border-radius: 8px;">
                 <table class="table" style="width: 100%; margin: 0; font-size: 0.82rem;">
                   <thead>
-                    <tr style="background: rgba(15, 23, 42, 0.65); text-align: left;">
+                    <tr style="background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.65)); text-align: left;">
                       <th style="padding: 8px 10px;">Revisão</th>
                       <th style="padding: 8px 10px;">Empresa</th>
                       <th style="padding: 8px 10px;">Emissão</th>
@@ -4666,7 +4666,7 @@
               <label for="crmPropEmailMensagem" style="font-size: 0.78rem; font-weight: 600; display: block; margin-bottom: 4px;">Mensagem *</label>
               <textarea id="crmPropEmailMensagem" class="form-control form-control-sm" rows="7" style="width: 100%;"></textarea>
             </div>
-            <div id="crmPropEmailAnexoInfo" style="font-size: 0.78rem; color: #38bdf8; font-weight: 600;">📎 Anexo: Proposta.pdf</div>
+            <div id="crmPropEmailAnexoInfo" style="font-size: 0.78rem; color: var(--crm-c-blue, #38bdf8); font-weight: 600;">📎 Anexo: Proposta.pdf</div>
           </div>
           <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 8px;">
             <button type="button" class="btn-close-crm-modal btn btn-outline btn-sm">Cancelar</button>
@@ -5034,7 +5034,7 @@
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       if (!res.ok) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 14px; color: #f87171;">Não foi possível carregar as revisões.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 14px; color: var(--crm-c-red, #f87171);">Não foi possível carregar as revisões.</td></tr>';
         return;
       }
       const json = await res.json();
@@ -5058,22 +5058,22 @@
         const dtEmissao = formatDate(rev.gerada_em || rev.created_at);
         const dtValidade = valIso ? valIso.split('-').reverse().join('/') : '-';
 
-        let statusHtml = '<span style="color: #94a3b8;">Gerada</span>';
+        let statusHtml = '<span style="color: var(--text-muted, #94a3b8);">Gerada</span>';
         if (rev.enviada_em) {
-          statusHtml = `<span style="color: #38bdf8;">Enviada por e-mail (${escapeHtml(formatDate(rev.enviada_em))})</span>`;
+          statusHtml = `<span style="color: var(--crm-c-blue, #38bdf8);">Enviada por e-mail (${escapeHtml(formatDate(rev.enviada_em))})</span>`;
         }
         if (Number(rev.aberturas) > 0) {
-          statusHtml += ` <span style="color: #10b981; font-weight: 700;" title="Última abertura: ${escapeHtml(formatDateTime(rev.ultima_abertura_em))}">👁 Aberta ${escapeHtml(rev.aberturas)}×</span>`;
+          statusHtml += ` <span style="color: var(--crm-c-green, #10b981); font-weight: 700;" title="Última abertura: ${escapeHtml(formatDateTime(rev.ultima_abertura_em))}">👁 Aberta ${escapeHtml(rev.aberturas)}×</span>`;
         }
 
         return `
           <tr style="border-bottom: 1px solid var(--panel-border);">
-            <td style="padding: 8px 10px; font-weight: 700; color: #38bdf8;">${escapeHtml(rev.numero)}</td>
+            <td style="padding: 8px 10px; font-weight: 700; color: var(--crm-c-blue, #38bdf8);">${escapeHtml(rev.numero)}</td>
             <td style="padding: 8px 10px;">${escapeHtml(rev.empresa_nome || rev.empresa_codigo)}</td>
             <td style="padding: 8px 10px;">${escapeHtml(dtEmissao)}</td>
             <td style="padding: 8px 10px;">
               ${escapeHtml(dtValidade)}
-              ${isVencida ? '<span style="margin-left: 4px; color: #f87171; font-weight: 700; font-size: 0.72rem;">(Vencida)</span>' : ''}
+              ${isVencida ? '<span style="margin-left: 4px; color: var(--crm-c-red, #f87171); font-weight: 700; font-size: 0.72rem;">(Vencida)</span>' : ''}
             </td>
             <td style="padding: 8px 10px; text-align: right; font-weight: 700;">${formatCurrency(rev.valor_total)}</td>
             <td style="padding: 8px 10px;">${statusHtml}</td>
@@ -5087,7 +5087,7 @@
         `;
       }).join('');
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 14px; color: #f87171;">${escapeHtml(err.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 14px; color: var(--crm-c-red, #f87171);">${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
@@ -5456,4 +5456,79 @@
   };
 
   console.log('✅ [CRM Comercial] Módulo CRMModule carregado com sucesso.');
+})();
+
+/**
+ * Icones de linha (tracos de Lucide, licenca ISC) no lugar dos emojis dos botoes.
+ * So na pagina /crm (body.crm-standalone-body); a aba CRM do index.html nao muda.
+ * Vale para botoes estaticos e para os que o JS reescreve depois (MutationObserver).
+ * Emojis em <option>, title, avisos e textos enviados (WhatsApp/e-mail/PDF) ficam como estao.
+ */
+(function () {
+  'use strict';
+  if (!document.body || !document.body.classList.contains('crm-standalone-body')) return;
+
+  const P = {
+    plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    funil: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/>',
+    lista: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+    predio: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
+    home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    lapis: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    salvar: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/>',
+    fone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    conversa: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    lixo: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    olho: '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    busca: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    doc: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/>',
+    enviar: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+    xis: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    copiar: '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'
+  };
+  const EMOJI = {
+    '➕': 'plus', '📊': 'funil', '📋': 'lista', '👥': 'users', '🔄': 'refresh', '🏢': 'predio', '🏠': 'home',
+    '☀': 'sun', '🌙': 'moon', '✏': 'lapis', '💾': 'salvar', '📞': 'fone', '💬': 'conversa', '🗑': 'lixo',
+    '👁': 'olho', '🔍': 'busca', '📄': 'doc', '📤': 'enviar', '✕': 'xis', '❌': 'xis', '📑': 'copiar'
+  };
+  const RE = new RegExp('(' + Object.keys(EMOJI).join('|') + ')️?', 'gu');
+  const ALVO = 'button, a.btn, a.crm-btn-whatsapp';
+
+  function svg(nome) {
+    return '<svg class="crm-ico" viewBox="0 0 24 24" aria-hidden="true">' + P[nome] + '</svg>';
+  }
+
+  function trocarNo(textNode) {
+    const txt = textNode.nodeValue;
+    RE.lastIndex = 0;
+    if (!RE.test(txt)) return;
+    const tmp = document.createElement('span');
+    tmp.innerHTML = txt.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+      .replace(RE, (m, e) => svg(EMOJI[e]));
+    textNode.replaceWith(...tmp.childNodes);
+  }
+
+  function iconizar(raiz) {
+    const botoes = raiz.nodeType === 1 && raiz.closest(ALVO) ? [raiz] : [];
+    if (raiz.querySelectorAll) botoes.push(...raiz.querySelectorAll(ALVO));
+    if (raiz.nodeType === 3 && raiz.parentElement && raiz.parentElement.closest(ALVO)) return trocarNo(raiz);
+    botoes.forEach((b) => {
+      const w = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+      const nos = [];
+      while (w.nextNode()) nos.push(w.currentNode);
+      nos.forEach(trocarNo);
+    });
+  }
+
+  iconizar(document.body);
+  new MutationObserver((muts) => {
+    muts.forEach((m) => {
+      if (m.type === 'characterData') return iconizar(m.target);
+      m.addedNodes.forEach(iconizar);
+    });
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
 })();

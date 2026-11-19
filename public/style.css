@@ -4066,7 +4066,7 @@ body {
 }
 
 .crm-kpi-box {
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--crm-subtle-bg, rgba(15, 23, 42, 0.4));
   border: 1px solid var(--panel-border, #334155);
   border-radius: 8px;
   padding: 10px 14px;
@@ -5697,23 +5697,6 @@ body.theme-light .crm-bloco-titulo-cinza {
   font-weight: 500 !important;
 }
 
-body.theme-light .crm-standalone-header .crm-view-toggles .btn.btn-primary,
-body.theme-light .crm-standalone-header .crm-view-toggles .btn[aria-pressed="true"] {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #94a3b8 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-  font-weight: 600 !important;
-}
-
-body.theme-light .crm-standalone-header .crm-view-toggles .btn.btn-outline,
-body.theme-light .crm-standalone-header .crm-view-toggles .btn[aria-pressed="false"] {
-  background-color: transparent !important;
-  color: #64748b !important;
-  border-color: #cbd5e1 !important;
-  font-weight: 500 !important;
-}
-
 /* Botão Nova Oportunidade: ÚNICO com fundo azul claro (#38bdf8) */
 .crm-standalone-header #btnCrmNovaOportunidade {
   background-color: var(--accent-blue, #38bdf8) !important;
@@ -5744,16 +5727,158 @@ body.theme-light .crm-standalone-header .crm-view-toggles .btn[aria-pressed="fal
   border-color: var(--text-muted, #94a3b8) !important;
 }
 
-body.theme-light .crm-standalone-header #btnCrmRefresh {
-  background-color: transparent !important;
-  color: #64748b !important;
-  border: 1px solid #cbd5e1 !important;
+/* Icones de linha dos botoes do /crm (gerados por crm.js) */
+.crm-ico {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  vertical-align: -2px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-body.theme-light .crm-standalone-header #btnCrmRefresh:hover {
+/* ==========================================================================
+   /crm - MODO CLARO (paleta: topo azul-marinho, fundo cinza-claro,
+   cartoes brancos, azul vivo). So vale com body.theme-light; o escuro
+   continua usando os valores de :root.
+   ========================================================================== */
+body.crm-standalone-body.theme-light {
+  --bg-dark: #f4f6fb;
+  --panel-bg: #ffffff;
+  --panel-border: #e3e8f1;
+  --panel-border-light: #cbd5e1;
+  --text-main: #0f1b3d;
+  --text-muted: #5b6b86;
+  --accent-blue: #2563eb;
+  --accent-blue-hover: #1d4ed8;
+  --accent-green: #059669;
+  --accent-amber: #b45309;
+  --accent-rose: #e11d48;
+  --crm-subtle-bg: #f7f9fc;
+  --crm-c-blue: #2563eb;
+  --crm-c-green: #047857;
+  --crm-c-amber: #b45309;
+  --crm-c-red: #dc2626;
+  --crm-c-text: #0f1b3d;
+  --crm-c-purple: #7e22ce;
+  --crm-c-pink: #be185d;
+  --crm-c-win: #047857;
+  --accent-primary: #2563eb;
+  --bg-card: #ffffff;
+  --panel-header-bg: #f7f9fc;
+  --card-shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+}
+
+body.crm-standalone-body.theme-light .crm-standalone-header {
+  background: #0f1e45;
+  border-bottom-color: #0f1e45;
+  --text-main: #ffffff;
+  --text-muted: #c3cde3;
+  --panel-border: rgba(255, 255, 255, 0.18);
+  --crm-c-blue: #8ab8ff;
+}
+
+body.crm-standalone-body.theme-light .crm-standalone-header .crm-view-toggles {
+  background: transparent;
+  border-color: transparent;
+}
+
+body.crm-standalone-body.theme-light .crm-standalone-header #btnCrmNovaOportunidade {
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45) !important;
+}
+
+body.crm-standalone-body.theme-light .crm-standalone-header .btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+body.crm-standalone-body.theme-light #crmUserAvatar {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+body.crm-standalone-body.theme-light .btn-primary {
+  color: #ffffff;
+}
+
+body.crm-standalone-body.theme-light .btn-secondary {
+  background-color: #ffffff;
+}
+
+body.crm-standalone-body.theme-light .btn-secondary:hover {
+  background-color: #f1f5f9;
+}
+
+body.crm-standalone-body.theme-light .crm-kanban-col {
+  background: #eef2f8;
+  border-color: #e3e8f1;
+}
+
+body.crm-standalone-body.theme-light .crm-col-header {
+  background: #ffffff;
+  border-color: #e3e8f1;
+}
+
+body.crm-standalone-body.theme-light .crm-col-title {
+  color: #0f1b3d;
+}
+
+body.crm-standalone-body.theme-light .crm-card-value,
+body.crm-standalone-body.theme-light .crm-col-sum {
+  color: #1d4ed8;
+}
+
+body.crm-standalone-body.theme-light .crm-vendor-avatar {
+  background: #1d4ed8;
+}
+
+body.crm-standalone-body.theme-light .crm-empty-col {
+  color: #5b6b86;
+}
+
+body.crm-standalone-body.theme-light .crm-badge-hot { background: #fdf2f8; color: #be185d; border-color: #fbcfe8; }
+body.crm-standalone-body.theme-light .crm-badge-warning { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+body.crm-standalone-body.theme-light .crm-badge-success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+body.crm-standalone-body.theme-light .crm-badge-danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+body.crm-standalone-body.theme-light .crm-badge-info { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+body.crm-standalone-body.theme-light .crm-badge-neutral { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+
+body.crm-standalone-body.theme-light .data-table th {
+  background-color: #f7f9fc;
+  color: #4a5a75;
+}
+
+body.crm-standalone-body.theme-light .btn:disabled,
+body.crm-standalone-body.theme-light .btn-disabled {
   background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-  border-color: #94a3b8 !important;
+  color: #64748b !important;
+  border-color: #e3e8f1 !important;
+}
+
+body.crm-standalone-body.theme-light .crm-bloco-titulo-blue,
+body.crm-standalone-body.theme-light .crm-bloco-titulo-azul,
+body.crm-standalone-body.theme-light .crm-bloco-titulo-cyan { color: #1d4ed8 !important; }
+body.crm-standalone-body.theme-light .crm-bloco-titulo-emerald,
+body.crm-standalone-body.theme-light .crm-bloco-titulo-verde { color: #047857 !important; }
+body.crm-standalone-body.theme-light .crm-bloco-titulo-amber { color: #b45309 !important; }
+
+body.crm-standalone-body.theme-light .crm-resumo-kpis-bar,
+body.crm-standalone-body.theme-light .crm-itens-table-container {
+  background: #ffffff;
+}
+
+body.crm-standalone-body.theme-light .crm-badge-crm {
+  color: #047857;
+}
+
+body.crm-standalone-body.theme-light .crm-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
 }
 
 .crm-standalone-main {
