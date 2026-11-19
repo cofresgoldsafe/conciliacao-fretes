@@ -69,6 +69,7 @@ if (fs.existsSync(crmPath)) {
   crmHtml = crmHtml.replace(/style\.css\?v=[0-9.]+/g, `style.css?v=${novaVersaoNum}`);
   crmHtml = crmHtml.replace(/js\/chart\.umd\.min\.js\?v=[0-9.]+/g, `js/chart.umd.min.js?v=${novaVersaoNum}`);
   crmHtml = crmHtml.replace(/js\/crm\.js\?v=[0-9.]+/g, `js/crm.js?v=${novaVersaoNum}`);
+  crmHtml = crmHtml.replace(/(<span class="crm-versao"[^>]*>)v[0-9.]+/, `$1v${novaVersaoNum}`);
   fs.writeFileSync(crmPath, crmHtml, 'utf-8');
   console.log(`✅ Versão atualizada no crm.html | Cache: ?v=${novaVersaoNum}`);
 }
