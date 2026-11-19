@@ -1709,9 +1709,9 @@
   let voltarParaFichaDealId = null; // id do deal cuja ficha deve reabrir após salvar a edição
 
   function openEditDealModal(dealId) {
-    voltarParaFichaDealId = null; // só o botão Editar da ficha seta isso (depois desta chamada)
     const deal = deals.find(d => String(d.id) === String(dealId));
     if (!deal) return;
+    voltarParaFichaDealId = deal.id; // ao salvar, volta para a ficha (modo visualizar)
 
     currentDeal = deal;
     currentItems = Array.isArray(deal.itens) ? JSON.parse(JSON.stringify(deal.itens)) : [];
@@ -4228,7 +4228,6 @@
         if (!currentDeal) return;
         closeModal(document.getElementById('modalCrmDetalhes'));
         openEditDealModal(currentDeal.id);
-        voltarParaFichaDealId = currentDeal.id; // ao salvar, reabre a ficha
       });
     }
 
