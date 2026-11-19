@@ -449,6 +449,12 @@ function criarRouterIntegracaoWhatsapp({ userHasWhatsappAccess } = {}) {
         }
       }
 
+      // Título PJ: 10 primeiros caracteres da razão social - Nome do contato (W). (W) = criado pelo WhatsApp.
+      // PF (ou sem cliente identificado) mantém "Nome — dd/mm". O vendedor pode editar depois.
+      if (dados.cliente_nome && String(dados.cliente_cnpj || '').replace(/\D/g, '').length === 14) {
+        dados.titulo = `${String(dados.cliente_nome).trim().slice(0, 10).trim()} - ${nomeContato} (W)`;
+      }
+
       let dealCriado = null;
       let criado = true;
 
