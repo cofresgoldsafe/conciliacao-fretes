@@ -2467,59 +2467,18 @@
       }
     }
 
-    // Renderiza o Card de Diagnóstico Preditivo da IA
-    const scoreCard = document.getElementById('crmDetalhesScoreCard');
-    if (scoreCard) {
+    // Probabilidade de fechamento no cabeçalho (detalhes no tooltip)
+    const scoreInline = document.getElementById('crmDetalhesScoreInline');
+    if (scoreInline) {
       const sp = deal.score_preditivo;
       if (sp && typeof sp.score === 'number') {
-        scoreCard.style.display = 'block';
-        const numEl = document.getElementById('crmDetalhesScoreNumero');
-        const classEl = document.getElementById('crmDetalhesScoreClassificacao');
-        const barEl = document.getElementById('crmDetalhesScoreBar');
-        const pillsEl = document.getElementById('crmDetalhesScorePills');
-        const fatoresEl = document.getElementById('crmDetalhesFatoresContainer');
-        const recEl = document.getElementById('crmDetalhesRecomendacaoTexto');
-
         const score = Math.round(sp.score);
         const color = sp.badgeColor || (score >= 70 ? '#10b981' : (score < 40 ? '#ef4444' : '#f59e0b'));
-
-        if (numEl) {
-          numEl.textContent = `${score}%`;
-          numEl.style.color = color;
-        }
-        if (classEl) {
-          classEl.textContent = `Probabilidade ${sp.classificacao || 'MÉDIA'}`;
-          classEl.style.color = color;
-        }
-        if (barEl) {
-          barEl.style.width = `${score}%`;
-          barEl.style.background = color;
-        }
-        if (pillsEl) {
-          let pillsHtml = renderScoreBadge(sp);
-          if (sp.alertaEsfriamento) {
-            pillsHtml += `<span class="badge-esfriamento" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.45); font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Risco de perda por abandono (>12 dias sem anotações)">🚨 Esfriando</span>`;
-          }
-          pillsEl.innerHTML = pillsHtml;
-        }
-        if (fatoresEl) {
-          const pos = (sp.fatoresPositivos || []).map(f => `
-            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 4px; padding: 2px 7px;">
-              <span>✅</span> <strong>${escapeHtml(f.impacto || '+')}</strong> <span>${escapeHtml(f.fator)}</span>
-            </span>
-          `).join('');
-          const neg = (sp.fatoresNegativos || []).map(f => `
-            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.74rem; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; padding: 2px 7px;">
-              <span>⚠️</span> <strong>${escapeHtml(f.impacto || '-')}</strong> <span>${escapeHtml(f.fator)}</span>
-            </span>
-          `).join('');
-          fatoresEl.innerHTML = (pos + neg) || '<span style="font-size: 0.75rem; color: var(--text-muted);">Cadência e parâmetros dentro da média histórica.</span>';
-        }
-        if (recEl) {
-          recEl.textContent = sp.recomendacao || 'Manter cadência de atendimento padrão.';
-        }
+        const fatores = [...(sp.fatoresPositivos || []), ...(sp.fatoresNegativos || [])].map(f => `${f.impacto || ''} ${f.fator}`.trim());
+        const tip = [`Probabilidade de fechamento: ${score}% (${sp.classificacao || 'MÉDIA'})`, ...fatores, sp.recomendacao || ''].filter(Boolean).join('\n');
+        scoreInline.innerHTML = `<strong style="color: ${color}; cursor: help;" title="${escapeHtml(tip)}">${score}%</strong>`;
       } else {
-        scoreCard.style.display = 'none';
+        scoreInline.innerHTML = '';
       }
     }
 

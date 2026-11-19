@@ -40,14 +40,10 @@ async function testAsync(name, fn) {
 
 async function runAll() {
   // 1. Verificação de Estrutura HTML em public/crm.html e public/index.html
-  test('1.1 public/crm.html contém o contêiner de Diagnóstico Preditivo crmDetalhesScoreCard', () => {
+  test('1.1 public/crm.html mostra a probabilidade no cabeçalho (crmDetalhesScoreInline), sem o card grande', () => {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'crm.html'), 'utf-8');
-    assert(html.includes('id="crmDetalhesScoreCard"'), 'Deve conter #crmDetalhesScoreCard');
-    assert(html.includes('id="crmDetalhesScoreNumero"'), 'Deve conter #crmDetalhesScoreNumero');
-    assert(html.includes('id="crmDetalhesScoreClassificacao"'), 'Deve conter #crmDetalhesScoreClassificacao');
-    assert(html.includes('id="crmDetalhesScoreBar"'), 'Deve conter #crmDetalhesScoreBar');
-    assert(html.includes('id="crmDetalhesFatoresContainer"'), 'Deve conter #crmDetalhesFatoresContainer');
-    assert(html.includes('id="crmDetalhesRecomendacaoTexto"'), 'Deve conter #crmDetalhesRecomendacaoTexto');
+    assert(html.includes('id="crmDetalhesScoreInline"'), 'Deve conter #crmDetalhesScoreInline');
+    assert(!html.includes('id="crmDetalhesScoreCard"'), 'Não deve conter o card #crmDetalhesScoreCard');
   });
 
   test('1.2 public/index.html contém o contêiner de Diagnóstico Preditivo crmDetalhesScoreCard', () => {
@@ -65,7 +61,7 @@ async function runAll() {
     const js = fs.readFileSync(path.join(__dirname, 'public', 'js', 'crm.js'), 'utf-8');
     assert(js.includes('function renderScoreBadge('), 'Deve conter a função renderScoreBadge');
     assert(js.includes('score_preditivo: d.score_preditivo'), 'Deve mapear score_preditivo em mapDealFromApi');
-    assert(js.includes('crmDetalhesScoreCard'), 'Deve referenciar crmDetalhesScoreCard em openDealDetailsModal');
+    assert(js.includes('crmDetalhesScoreInline'), 'Deve referenciar crmDetalhesScoreInline em openDealDetailsModal');
     assert(js.includes('renderScoreBadge(deal.score_preditivo)'), 'Deve renderizar score no card do Kanban');
     assert(js.includes('renderScoreBadge(d.score_preditivo)'), 'Deve renderizar score na listagem tabular');
   });
