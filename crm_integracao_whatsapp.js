@@ -421,6 +421,34 @@ function criarRouterIntegracaoWhatsapp({ userHasWhatsappAccess } = {}) {
         }
       }
 
+      // Sem cliente do Protheus: usa/cria o cliente do CRM a partir da ficha do Multi360
+      // (razão social + CNPJ/CPF). Sem esses dados, mantém só o contato (comportamento antigo).
+      const ficha = req.body && typeof req.body.cliente_ficha === 'object' ? req.body.cliente_ficha : null;
+      if (!dados.cliente_nome && ficha) {
+        const doc = String(ficha.cnpj_cpf || '').replace(/\D/g, '');
+        const nomeRazao = String(ficha.nome_razao || '').trim();
+        if (nomeRazao && (doc.length === 11 || doc.length === 14)) {
+          let cli = doc ? await crmEngine.obterClientePorId(doc) : null;
+          if (!cli) {
+            cli = await crmEngine.salvarCliente({
+              ...ficha,
+              nome_razao: nomeRazao,
+              cnpj_cpf: doc,
+              celular_whatsapp: e164,
+              contato_nome: nomeContato,
+              origem: 'WHATSAPP',
+              vendedor_responsavel: (req.crmScope && req.crmScope.codVendedor) || ''
+            }, req.crmUser);
+          }
+          if (cli) {
+            dados.cliente_cod = cli.protheus_cod || undefined;
+            dados.cliente_loja = cli.protheus_loja || undefined;
+            dados.cliente_nome = cli.nome_razao;
+            dados.cliente_cnpj = cli.cnpj_cpf;
+          }
+        }
+      }
+
       let dealCriado = null;
       let criado = true;
 

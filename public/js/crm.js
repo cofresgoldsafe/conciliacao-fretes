@@ -749,7 +749,15 @@
     await loadDeals();
     setDealViewMode(dealViewMode);
     isInitialized = true;
+    abrirDealDoHash();
   }
+
+  // Deep link vindo do WhatsApp Multi360: /crm#deal=<id> abre o detalhe da oportunidade.
+  function abrirDealDoHash() {
+    const m = /^#deal=([\w-]+)$/.exec(window.location.hash || '');
+    if (m) openDealDetailsModal(m[1]);
+  }
+  window.addEventListener('hashchange', abrirDealDoHash);
 
   /**
    * Renderiza a estrutura esquelética das 5 colunas do Kanban
