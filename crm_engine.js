@@ -4042,6 +4042,195 @@ async function validarTransportadoraProtheus(codigo) {
   return found || null;
 }
 
+/**
+ * 22. CHECAGEM DE OPORTUNIDADES ABERTAS NO MESMO CNPJ / RAIZ DE CNPJ (CRM-24)
+ * Verifica se já existem oportunidades abertas com outro vendedor (alerta amigável de concorrência)
+ * ou com o próprio vendedor (prevenção de duplicação acidental), respeitando o sigilo comercial.
+ */
+function formatarDataCurta(dateVal) {
+  if (!dateVal) return '';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '';
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dia}/${mes}`;
+  } catch {
+    return '';
+  }
+}
+
+async function checarDealsAbertosPorCnpj(cnpj, options = {}, scope = { all: true }) {
+  const cleanDoc = String(cnpj || '').replace(/\D/g, '');
+  if (!cleanDoc || cleanDoc.length < 8) {
+    return {
+      has_deals: false,
+      tem_outro_vendedor: false,
+      tem_proprio_vendedor: false,
+      total: 0,
+      deals: [],
+      alerta_texto: ''
+    };
+  }
+
+  const dealIdAtual = options.dealIdAtual ? String(options.dealIdAtual).trim() : null;
+  const isAdmin = Boolean(scope?.all);
+  const codVendedor = scope?.codVendedor ? String(scope.codVendedor).trim() : '';
+  const codigosPermitidos = (Array.isArray(scope?.codigosLeitura) && scope.codigosLeitura.length > 0)
+    ? scope.codigosLeitura.map(c => String(c || '').trim()).filter(Boolean)
+    : (codVendedor ? [codVendedor] : []);
+
+  let matchingDeals = [];
+  let fromDb = false;
+
+  // 1. Tenta Postgres
+  try {
+    const params = [cleanDoc];
+    let query = `
+      SELECT id, titulo, estagio, valor_total, cod_vendedor, nome_vendedor, contatos, created_at, cliente_cnpj
+      FROM crm_deals
+      WHERE ativo = TRUE
+        AND deleted_at IS NULL
+        AND LOWER(estagio) NOT IN ('ganho', 'perdido')
+        AND LOWER(status) != 'fechado'
+    `;
+
+    if (dealIdAtual) {
+      params.push(dealIdAtual);
+      query += ` AND id != $${params.length}`;
+    }
+
+    if (cleanDoc.length === 14) {
+      const raiz = cleanDoc.slice(0, 8);
+      params.push(raiz);
+      query += ` AND (
+        REGEXP_REPLACE(cliente_cnpj, '\\D', '', 'g') = $1
+        OR SUBSTRING(REGEXP_REPLACE(cliente_cnpj, '\\D', '', 'g') FROM 1 FOR 8) = $${params.length}
+      )`;
+    } else {
+      query += ` AND REGEXP_REPLACE(cliente_cnpj, '\\D', '', 'g') = $1`;
+    }
+
+    query += ` ORDER BY created_at DESC LIMIT 10;`;
+
+    const res = await safeQuery(query, params);
+    if (res && Array.isArray(res.rows)) {
+      matchingDeals = res.rows.map(r => ({
+        id: r.id,
+        titulo: r.titulo,
+        estagio: r.estagio,
+        valor_total: parseFloat(r.valor_total || 0),
+        cod_vendedor: r.cod_vendedor,
+        nome_vendedor: r.nome_vendedor,
+        contatos: r.contatos,
+        created_at: r.created_at,
+        cliente_cnpj: r.cliente_cnpj
+      }));
+      fromDb = true;
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Engine] Erro ao checar deals por CNPJ no Postgres. Usando cache local:', err.message);
+  }
+
+  // 2. Fallback Cache Local
+  if (!fromDb) {
+    const cache = await readCache();
+    const rawDeals = (cache.deals || []).filter(d => {
+      if (d.ativo === false || d.deleted_at) return false;
+      const stg = String(d.estagio || '').toLowerCase();
+      if (stg === 'ganho' || stg === 'perdido') return false;
+      if (String(d.status || '').toLowerCase() === 'fechado') return false;
+      if (dealIdAtual && String(d.id).trim() === dealIdAtual) return false;
+      return true;
+    });
+
+    for (const d of rawDeals) {
+      const dClean = String(d.cliente_cnpj || d.clienteCnpj || '').replace(/\D/g, '');
+      if (!dClean) continue;
+      if (dClean === cleanDoc) {
+        matchingDeals.push(d);
+      } else if (cleanDoc.length === 14 && dClean.length >= 8 && dClean.slice(0, 8) === cleanDoc.slice(0, 8)) {
+        matchingDeals.push(d);
+      }
+    }
+  }
+
+  // 3. Processa e mascara de acordo com privacidade do escopo
+  const dealsFormatados = [];
+  let temOutroVendedor = false;
+  let temProprioVendedor = false;
+
+  for (const d of matchingDeals) {
+    const dClean = String(d.cliente_cnpj || d.clienteCnpj || '').replace(/\D/g, '');
+    const isExato = (dClean === cleanDoc);
+    const tipoMatch = isExato ? 'cnpj_exato' : 'mesma_raiz';
+
+    const dCodVend = String(d.cod_vendedor || d.codVendedor || '').trim();
+    const isProprio = isAdmin || codigosPermitidos.includes(dCodVend);
+
+    if (isProprio) {
+      temProprioVendedor = true;
+      dealsFormatados.push({
+        id: d.id,
+        titulo: d.titulo || '',
+        estagio: d.estagio || 'lead',
+        valor_total: parseFloat(d.valor_total || d.valorTotal || 0),
+        cod_vendedor: dCodVend,
+        nome_vendedor: d.nome_vendedor || d.nomeVendedor || '',
+        desde: formatarDataCurta(d.created_at || d.createdAt),
+        tipo_match: tipoMatch,
+        proprio_vendedor: true
+      });
+    } else {
+      temOutroVendedor = true;
+      let contatoNome = '';
+      if (Array.isArray(d.contatos) && d.contatos[0]?.nome) {
+        contatoNome = String(d.contatos[0].nome).trim();
+      }
+
+      dealsFormatados.push({
+        id: null,
+        cod_vendedor: dCodVend,
+        nome_vendedor: d.nome_vendedor || d.nomeVendedor || 'Outro vendedor',
+        contato_nome: contatoNome,
+        desde: formatarDataCurta(d.created_at || d.createdAt),
+        tipo_match: tipoMatch,
+        proprio_vendedor: false
+      });
+    }
+  }
+
+  // 4. Formata mensagem amigável de alerta
+  let alertaTexto = '';
+  if (temOutroVendedor && temProprioVendedor) {
+    const outro = dealsFormatados.find(d => !d.proprio_vendedor);
+    const proprio = dealsFormatados.find(d => d.proprio_vendedor);
+    const vendNome = outro ? outro.nome_vendedor : 'outro vendedor';
+    alertaTexto = `⚠️ Este cliente já possui oportunidade aberta com outro vendedor (${vendNome}) e você também tem o negócio #${proprio.id} aberto.`;
+  } else if (temOutroVendedor) {
+    const outro = dealsFormatados.find(d => !d.proprio_vendedor);
+    const vendNome = outro ? outro.nome_vendedor : 'outro vendedor';
+    const dataTxt = outro && outro.desde ? ` desde ${outro.desde}` : '';
+    const contatoTxt = outro && outro.contato_nome ? `, contato: ${outro.contato_nome}` : '';
+    const matchTxt = outro && outro.tipo_match === 'mesma_raiz' ? ' (outra filial desta rede)' : '';
+    alertaTexto = `⚠️ Este cliente${matchTxt} já possui oportunidade aberta com outro vendedor (${vendNome}${dataTxt}${contatoTxt}).`;
+  } else if (temProprioVendedor) {
+    const proprio = dealsFormatados.find(d => d.proprio_vendedor);
+    const dealRef = proprio && proprio.id ? `#${proprio.id}` : 'aberta';
+    const estagioRef = proprio && proprio.estagio ? ` (${proprio.estagio})` : '';
+    alertaTexto = `ℹ️ Você já tem uma oportunidade aberta para este cliente: ${dealRef}${estagioRef}.`;
+  }
+
+  return {
+    has_deals: dealsFormatados.length > 0,
+    tem_outro_vendedor: temOutroVendedor,
+    tem_proprio_vendedor: temProprioVendedor,
+    total: dealsFormatados.length,
+    deals: dealsFormatados,
+    alerta_texto: alertaTexto
+  };
+}
+
 const initCrmDatabase = initCrmTables;
 
 module.exports = {
@@ -4081,6 +4270,7 @@ module.exports = {
   autocompleteTransportadoras,
   obterStatusTransportadorasCrm,
   validarTransportadoraProtheus,
+  checarDealsAbertosPorCnpj,
   obterProximoIdDeal,
   migrarDealsLegadosParaSequencial,
   extrairRaizCnpj,

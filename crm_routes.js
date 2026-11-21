@@ -280,6 +280,33 @@ router.get('/deals', async (req, res) => {
 });
 
 /**
+ * GET /api/bi/crm/deals/checar-cnpj/:cnpj
+ * Verifica se já existem oportunidades abertas para o CNPJ / Raiz informado (CRM-24),
+ * alertando sobre concorrência amigável ou duplicação sem quebrar o sigilo comercial.
+ */
+router.get('/deals/checar-cnpj/:cnpj', async (req, res) => {
+  try {
+    const { cnpj } = req.params;
+    const { dealIdAtual, dealId } = req.query;
+    const resultado = await crmEngine.checarDealsAbertosPorCnpj(cnpj, {
+      dealIdAtual: dealIdAtual || dealId
+    }, req.crmScope);
+
+    return res.json({
+      success: true,
+      data: resultado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao checar oportunidades abertas do cliente',
+      detail: err.message,
+      code: 'CHECK_DEALS_CNPJ_ERROR'
+    });
+  }
+});
+
+/**
  * POST /api/bi/crm/deals/migrate-ids
  * Força a execução da migração de IDs legados para os 4 dígitos finais em todas as tabelas
  */

@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.330 (Homologada em 19/11/2026)  
+> **Versão da Documentação:** v8.341 (Homologada em 21/11/2026)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 19/11/2026 (v8.330 - Proposta do CRM sem e-mail duplicado em Para e Cc)
+> **Data da Última Auditoria:** 21/11/2026 (v8.341 - Alerta de Mesmo CNPJ e Prevenção de Duplicação no CRM / Opção A)
 
 ---
 
@@ -194,6 +194,7 @@ Para manter a documentacao do ecossistema limpa, leve e modularizada, desenvolve
 > 🔗 [**docs/legado/GEMINI_HISTORICO.md**](docs/legado/GEMINI_HISTORICO.md)
 
 ### Versões Recentes Homologadas:
+- **v8.341 (21/11/2026):** CRM-24 (Opção A) — Alerta de Mesmo CNPJ e Prevenção de Duplicação: detecção em tempo real de oportunidades abertas para o mesmo cliente/CNPJ ou mesma raiz de CNPJ no modal de criação e edição (`#crmDealMesmoCnpjAlert`), com alerta âmbar amigável (`⚠️`) indicando outro vendedor com sigilo estrito de dados comerciais (título, valores e estágio ocultos), aviso informativo azul (`ℹ️`) para oportunidades do próprio vendedor, suporte a `dealIdAtual` (não auto-alerta na edição), endpoint dedicado `GET /api/bi/crm/deals/checar-cnpj/:cnpj`, estilos adaptados aos temas Claro e Escuro e 23 testes em `test_crm_mesmo_cnpj.js`.
 - **v8.340 (19/11/2026):** Modal de detalhes da oportunidade (`#modalCrmDetalhes` em `public/crm.html`) no modo claro: corpo `.crm-detalhes-corpo` com fundo azul-marinho `#0f1e45` e cartões brancos, igual à página. Botão Editar, "Faturado Por" do topo e rótulo "Itens Cotados" passam de âmbar para `var(--crm-c-blue)`. A cópia do modal em `public/index.html` não mudou.
 - **v8.338-v8.339 (19/11/2026):** Modo claro da página `/crm` refeito. O bloco `body.crm-standalone-body.theme-light` em `public/style.css` redefine as variáveis de cor (antes ficavam as do escuro, com texto branco em fundo branco). Fundo e topo azul-marinho `#0f1e45`, cartões brancos, azul `#2563eb`. Cores fixas no HTML/JS viraram `var(--crm-c-*, <cor do escuro>)`, então o modo escuro ficou idêntico. Emojis dos botões viram ícones SVG de linha (bloco no fim de `public/js/crm.js`, só em `/crm`). Ao criar cor nova no CRM, use variável com o valor escuro como reserva e defina o tom claro no bloco do modo claro.
 - **v8.318 (03/11/2026):** Otimização responsiva cirúrgica para smartphones (Mobile First) em `public/style.css`, `public/index.html` e `public/app.js`: implementação do menu retrátil hambúrguer ☰ (`#btnMobileNavToggle`) para as 10 abas principais, ocultação de textos longos de versão/filiais no cabeçalho superior (`.brand-text .subtext`), carrossel deslizável com touch nativo para as sub-abas (`.sub-tabs-container`), contenção de tabelas contra estouro horizontal e preservação de 100% da visualização original de computadores através de escopo estrito `@media (max-width: 768px)`.

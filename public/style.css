@@ -6295,3 +6295,40 @@ body.crm-standalone-body.theme-light .crm-card:hover {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* CRM: Alerta de Mesmo CNPJ / Oportunidade Concorrente ou Aberta (CRM-24) */
+.crm-alert-mesmo-cnpj {
+  display: none;
+  margin-top: 6px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+.crm-alert-mesmo-cnpj.alert-warning {
+  display: block !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fbbf24 !important;
+}
+.theme-light .crm-alert-mesmo-cnpj.alert-warning,
+.modal-theme-light .crm-alert-mesmo-cnpj.alert-warning {
+  background: #fef3c7 !important;
+  border-color: #fcd34d !important;
+  color: #92400e !important;
+}
+.crm-alert-mesmo-cnpj.alert-info {
+  display: block !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  color: #38bdf8 !important;
+}
+.theme-light .crm-alert-mesmo-cnpj.alert-info,
+.modal-theme-light .crm-alert-mesmo-cnpj.alert-info {
+  background: #e0f2fe !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+

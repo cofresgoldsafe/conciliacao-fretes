@@ -37,6 +37,7 @@
   - `#btnCrmEditarClienteDoDetalhes`: Botão compacto `✏️ Editar` ao lado do nome da organização no cabeçalho do `#modalCrmDetalhes`.
   - `#crmInputValor`: Campo inalterável de resumo fiscal e comercial exibindo **Valor Total NFe:** com largura ajustada para `100px` (`readonly disabled tabindex="-1"` com `cursor: not-allowed`, padding compacto `4px 6px` e estilo cinza translúcido idêntico a P. Tabela e Desc(%), com recálculo reativo automático, prevenindo corte dos centavos).
   - `#crmInputDescontoTotalGeral`: Campo inalterável exibindo **Desconto Total Geral (%):** na mesma linha de Valor Total NFe (`width: 70px`, `readonly disabled tabindex="-1"`, `cursor: not-allowed`, padding compacto `4px 6px`, coloração dinâmica por faixa de margem e cálculo determinístico oficial do BI de Autorizações).
+  - `#crmDealMesmoCnpjAlert`: Contêiner de alerta não-obstrutivo exibido imediatamente abaixo do autocomplete de clientes em `#modalCrmOportunidade`. Detecta em tempo real se o cliente/CNPJ já possui negócios em aberto com outro vendedor (alerta âmbar ⚠️ com sigilo comercial de valores e títulos) ou com o próprio vendedor (aviso informativo azul ℹ️ para evitar duplicações).
 - **Inteligência Preditiva & Diagnóstico Comercial (IA de Vendas):**
   - `#crmDetalhesScoreCard`: Bloco dedicado de diagnóstico preditivo no `#modalCrmDetalhes` posicionado antes das condições comerciais.
   - `#crmDetalhesScoreNumero`: Mostrador de probabilidade percentual (Score 0-100) com cor dinâmica (Verde >=70%, Amarelo 40-69%, Vermelho <40%).
@@ -146,12 +147,14 @@
 - `POST /api/bi/crm/deals/:id/propostas/:revisao/email`: Envia a revisão por e-mail com PDF anexado e link público (`/p/:token`), `Reply-To` do vendedor (`crm_vendedores.email` com fallback em `users.email`) e limite de 20 envios/h por usuário (`dealEditavel`).
 - `GET /p/:token`: Rota pública (sem login, `propostaPublicaLimiter` 30 req/min/IP) que exibe o PDF inline, aplica filtro anti-bot/anti-prévia (2 min pós-envio e dedup de 10 min por IP) e registra atividade `proposta_visualizada` na 1ª abertura humana.
 - `POST /api/cron/crm-propostas-vencendo`: Rota protegida por `requireCronAuth` que gera atividade pendente `proposta_vencendo` para a última revisão enviada que vence em até 2 dias em negócios abertos.
+- `GET /api/bi/crm/deals/checar-cnpj/:cnpj`: Consulta de oportunidades abertas para o CNPJ ou raiz (CRM-24 / Opção A), identificando concorrência entre vendedores com mascaramento de sigilo e prevenindo duplicidades.
 
 ---
 
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_mesmo_cnpj.js
 node test_crm_propostas.js
 node test_crm_rbac_vendedor.js
 node test_crm_preditivo_integrado.js
@@ -169,6 +172,7 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.341 (21/11/2026):** CRM-24 (Opção A) — Alerta de Mesmo CNPJ e Prevenção de Duplicação: detecção em tempo real de oportunidades abertas para o mesmo cliente/CNPJ ou mesma raiz de CNPJ no modal de criação e edição (`#crmDealMesmoCnpjAlert`), com alerta âmbar amigável (`⚠️`) indicando outro vendedor com sigilo estrito de dados comerciais (título, valores e estágio ocultos), aviso informativo azul (`ℹ️`) para oportunidades do próprio vendedor, suporte defensivo a `dealIdAtual` (não auto-alerta na edição), endpoint dedicado `GET /api/bi/crm/deals/checar-cnpj/:cnpj`, estilos adaptados aos temas Claro e Escuro e 23 testes em `test_crm_mesmo_cnpj.js`.
 - **v8.324 (14/11/2026):** CRM-21a — Integração com o WhatsApp Multi360, lado do portal: vínculo deal ↔ conversa (`crm_deal_conversas`), API servidor-a-servidor `/api/integracoes/whatsapp/crm` (contexto por telefone com e sem o nono dígito, criar oportunidade idempotente por `origem_ref`, vincular conversas), protegida por `CRM_INTEGRACAO_SECRET` e pelo escopo do CRM-19; botão 💬 Conversar no modal de detalhes abre o painel com `&deal=<id>` (o painel usa o parâmetro a partir do CRM-21b). Especificação em [crm21a_whatsapp_portal.md](crm21a_whatsapp_portal.md); testes em `test_crm_whatsapp_integracao.js`.
 - **v8.323 (14/11/2026):** CRM-23 — Motivo de perda em lista fechada (Preço, Prazo de Entrega, Produto Não Atende, Compra Cancelada, Sem Resposta, Crédito Negado, Transferido para Outro Vendedor; sem "Outro" e sem concorrente) gravado em `motivo_perda_cod`; oportunidade aceita contato avulso (nome + telefone) sem cliente e CPF/CNPJ passa a ser exigido só para marcar Ganho; botões ↩️ Reabrir (perdido ou ganho, mantém o número e volta ao estágio anterior) e 📑 Clonar (número novo) no modal de detalhes; a mudança de estágio na tela é desfeita quando o servidor recusa. Especificação em [crm23_perda_lead_reabrir.md](crm23_perda_lead_reabrir.md); testes em `test_crm_perda_reabrir.js`.
 - **v8.322 (13/11/2026):** CRM-20 — Proposta Comercial em PDF por Empresa Emissora (`14`, `15`, `16`), Revisões Imutáveis, Envio por E-mail, Link Público e Lembrete de Validade:

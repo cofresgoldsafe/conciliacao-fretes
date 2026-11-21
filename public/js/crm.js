@@ -1665,6 +1665,13 @@
     const badgeContainer = document.getElementById('crmDealClienteFidelidadeBadge');
     if (badgeContainer) badgeContainer.innerHTML = '';
 
+    const alertMesmoCnpj = document.getElementById('crmDealMesmoCnpjAlert');
+    if (alertMesmoCnpj) {
+      alertMesmoCnpj.style.display = 'none';
+      alertMesmoCnpj.className = 'crm-alert-mesmo-cnpj';
+      alertMesmoCnpj.innerHTML = '';
+    }
+
     const transpCodEl = document.getElementById('crmInputTransportadoraCod');
     if (transpCodEl) transpCodEl.value = '';
     const transpDropdown = document.getElementById('crmTransportadoraDropdown');
@@ -1745,6 +1752,12 @@
       if (!deal.fidelidade_compras && deal.clienteCnpj) {
         atualizarBadgeClienteModal(deal.clienteCnpj);
       }
+    }
+
+    if (deal.clienteCnpj) {
+      checarMesmoCnpjCliente(deal.clienteCnpj, deal.id);
+    } else {
+      checarMesmoCnpjCliente('');
     }
 
     const selectVendEdit = document.getElementById('crmSelectVendedor');
@@ -2860,6 +2873,64 @@
   }
 
   /**
+   * Checa oportunidades abertas no mesmo CNPJ / Raiz de CNPJ (CRM-24)
+   * Avisa sobre concorrência amigável ou duplicação sem bloquear
+   */
+  let checkMesmoCnpjAbortCtrl = null;
+
+  async function checarMesmoCnpjCliente(cnpj, dealIdAtual = null) {
+    const alertEl = document.getElementById('crmDealMesmoCnpjAlert');
+    if (!alertEl) return;
+
+    const cleanCnpj = String(cnpj || '').replace(/\D/g, '');
+    if (!cleanCnpj || cleanCnpj.length < 8) {
+      alertEl.style.display = 'none';
+      alertEl.className = 'crm-alert-mesmo-cnpj';
+      alertEl.innerHTML = '';
+      return;
+    }
+
+    if (checkMesmoCnpjAbortCtrl) {
+      checkMesmoCnpjAbortCtrl.abort();
+    }
+    checkMesmoCnpjAbortCtrl = new AbortController();
+
+    try {
+      const token = getToken();
+      const currentId = dealIdAtual || document.getElementById('crmDealId')?.value || '';
+      const qs = currentId ? `?dealIdAtual=${encodeURIComponent(currentId)}` : '';
+      const res = await fetch(`/api/bi/crm/deals/checar-cnpj/${encodeURIComponent(cleanCnpj)}${qs}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        signal: checkMesmoCnpjAbortCtrl.signal
+      });
+
+      if (!res.ok) {
+        alertEl.style.display = 'none';
+        return;
+      }
+
+      const json = await res.json();
+      const info = (json && json.data) ? json.data : json;
+
+      if (!info || !info.has_deals || !info.alerta_texto) {
+        alertEl.style.display = 'none';
+        alertEl.className = 'crm-alert-mesmo-cnpj';
+        alertEl.innerHTML = '';
+        return;
+      }
+
+      // Aplica classe de cor: warning se houver outro vendedor, info se apenas o próprio
+      alertEl.className = 'crm-alert-mesmo-cnpj ' + (info.tem_outro_vendedor ? 'alert-warning' : 'alert-info');
+      alertEl.innerHTML = `<span>${escapeHtml(info.alerta_texto)}</span>`;
+      alertEl.style.display = 'block';
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        alertEl.style.display = 'none';
+      }
+    }
+  }
+
+  /**
    * Autocomplete de Clientes buscando no Protheus ERP (/api/bi/crm/clientes/autocomplete)
    */
   function setupClientAutocomplete() {
@@ -2876,6 +2947,12 @@
         document.getElementById('crmInputClienteLoja').value = '';
         document.getElementById('crmInputClienteCnpj').value = '';
         atualizarBadgeClienteModal('');
+        checarMesmoCnpjCliente('');
+      }
+
+      const digitsOnly = q.replace(/\D/g, '');
+      if (digitsOnly.length === 11 || digitsOnly.length === 14) {
+        checarMesmoCnpjCliente(digitsOnly);
       }
 
       if (q.length < 2) {
@@ -2956,6 +3033,7 @@
                 let fidObj = null;
                 try { if (fidRaw) fidObj = JSON.parse(fidRaw); } catch {}
                 atualizarBadgeClienteModal(cnpjVal, fidObj);
+                checarMesmoCnpjCliente(cnpjVal);
 
                 updateDealSaveButtonState();
               });
@@ -5450,6 +5528,7 @@
     updateDealSaveButtonState,
     recalcularTotalNfeOportunidade,
     recalcularDescontoTotalGeral,
+    checarMesmoCnpjCliente,
     getDeals: () => deals,
     getClientes: () => clientesList,
     isInitialized: () => isInitialized
