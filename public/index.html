@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plataforma de Apoio GSI Multi-Empresas</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338bdf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3Ccircle cx='12' cy='12' r='1' fill='%2338bdf8'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css?v=8.342">
-  <link rel="stylesheet" href="css/whatsapp_atendimento.css?v=8.342">
+  <link rel="stylesheet" href="style.css?v=8.343">
+  <link rel="stylesheet" href="css/whatsapp_atendimento.css?v=8.343">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@
         </div>
         <div class="brand-text">
           <h1>Plataforma de Apoio GSI</h1>
-          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 21/11/2026 16:26 (BI e Gráfico de Motivos de Perda no CRM (Opção B / CRM-23))</span></span>
+          <span class="subtext">Multi-Empresas Protheus (OACO 16 / GSI 15 / Metal Pleno 14) <span class="version-tag" style="display: inline-block; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 1px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; border: 1px solid rgba(56, 189, 248, 0.25);">Última Versão: 21/11/2026 18:36 (CRM-24: Opcao C - Transferencia Individual de Oportunidade)</span></span>
         </div>
       </div>
       <div class="header-right-tools">
@@ -7613,6 +7613,9 @@
               <span>✏️ Editar</span>
             </button>
             <span style="margin: 0 4px;">|</span> <span>Vendedor:</span> <span id="crmDetalhesVendedor">-</span>
+            <button type="button" id="btnCrmTransferirDoDetalhes" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 1px 6px; height: 20px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); margin-left: 2px; display: none;" title="Transferir oportunidade para outro vendedor">
+              <span>🔁 Transferir</span>
+            </button>
             <span style="margin: 0 4px;">|</span> <span>Faturado Por:</span> <strong id="crmDetalhesFaturadoPorBadge" style="color: #fbbf24;">-</strong>
             <span style="margin: 0 4px;">|</span> <span>Valor:</span> <strong id="crmDetalhesValor" style="color: #38bdf8;">R$ 0,00</strong>
           </div>
@@ -7745,6 +7748,9 @@
           </button>
         </div>
         <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnCrmTransferirFooter" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600; display: none;">
+            🔁 Transferir
+          </button>
           <button type="button" id="btnCrmConversarDoDetalhes" class="btn btn-outline" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); font-weight: 600;">
             💬 Conversar
           </button>
@@ -8420,6 +8426,41 @@
         <button type="button" class="btn-close-crm-modal btn btn-outline">Cancelar</button>
         <button type="button" id="btnConfirmarCrmPerda" class="btn btn-primary" disabled style="background: #ef4444; border-color: #ef4444; font-weight: 600;">
           Confirmar Perda
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CRM: TRANSFERÊNCIA INDIVIDUAL DE OPORTUNIDADE (CRM-24) -->
+  <div id="modalCrmTransferir" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalCrmTransferirTitle" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); z-index: 10001; justify-content: center; align-items: center; padding: 20px;">
+    <div class="modal-content" style="background: var(--panel-bg, #0f172a); border: 1px solid var(--panel-border, #334155); border-radius: 12px; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+      <div class="modal-header" style="padding: 14px 20px; border-bottom: 1px solid var(--panel-border); display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="modalCrmTransferirTitle" style="margin: 0; font-size: 1.1rem; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px;">
+          🔁 Transferir Oportunidade
+        </h3>
+        <button type="button" class="btn-close-crm-modal close-btn" aria-label="Fechar modal">&times;</button>
+      </div>
+      <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+        <input type="hidden" id="crmTransferirDealId">
+        <div style="font-size: 0.85rem; color: var(--text-muted); background: rgba(15, 23, 42, 0.5); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--panel-border);">
+          <div>Oportunidade: <strong id="crmTransferirDealTitulo" style="color: var(--text-main);">-</strong></div>
+          <div style="margin-top: 4px;">Vendedor Atual: <strong id="crmTransferirVendedorAtual" style="color: #fbbf24;">-</strong></div>
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 4px;">Novo Vendedor Responsável: *</label>
+          <select id="crmSelectNovoVendedor" class="form-control" required style="width: 100%;">
+            <option value="">Selecione o novo vendedor...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 4px;">Justificativa da Transferência: *</label>
+          <textarea id="crmInputJustificativaTransferir" class="form-control" rows="3" placeholder="Ex: Cobertura de férias, redistribuição de carteira..." required style="width: 100%;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--panel-border); display: flex; justify-content: flex-end; gap: 10px; background: var(--panel-header-bg, rgba(15, 23, 42, 0.8));">
+        <button type="button" class="btn-close-crm-modal btn btn-outline">Cancelar</button>
+        <button type="button" id="btnConfirmarCrmTransferir" class="btn btn-primary" style="font-weight: 600;">
+          Confirmar Transferência
         </button>
       </div>
     </div>
@@ -10658,30 +10699,30 @@
     </div>
   </div>
 
-  <script src="js/chart.umd.min.js?v=8.342"></script>
-  <script src="js/bi.js?v=8.342"></script>
-  <script src="js/bi_indices.js?v=8.342"></script>
+  <script src="js/chart.umd.min.js?v=8.343"></script>
+  <script src="js/bi.js?v=8.343"></script>
+  <script src="js/bi_indices.js?v=8.343"></script>
   <script src="js/bi_ciclo_operacional.js?v=8.326"></script>
-  <script src="js/bi_autorizacoes.js?v=8.342"></script>
-  <script src="js/bi_despesas.js?v=8.342"></script>
-  <script src="js/bi_os.js?v=8.342"></script>
-  <script src="js/gordura_frete.js?v=8.342"></script>
-  <script src="js/fechamento_vendedores.js?v=8.342"></script>
-  <script type="module" src="js/tarefas.js?v=8.342"></script>
-  <script src="js/holerites.js?v=8.342"></script>
-  <script src="js/funcionarios_dp.js?v=8.342"></script>
-  <script src="js/crm.js?v=8.342"></script>
-  <script src="js/compras_ponto_pedido.js?v=8.342"></script>
-  <script src="js/compras_consulta_ped_nf.js?v=8.342"></script>
-  <script src="js/compras_movimentacoes_estoque.js?v=8.342"></script>
-  <script src="js/compras_necessidade.js?v=8.342"></script>
-  <script src="js/nfse_pendentes.js?v=8.342"></script>
-  <script src="js/fechamento_fiscal.js?v=8.342"></script>
-  <script src="js/auditoria_protheus_sefaz.js?v=8.342"></script>
-  <script src="js/contas_pagar.js?v=8.342"></script>
-  <script src="js/pgtos_desconhecidos.js?v=8.342"></script>
+  <script src="js/bi_autorizacoes.js?v=8.343"></script>
+  <script src="js/bi_despesas.js?v=8.343"></script>
+  <script src="js/bi_os.js?v=8.343"></script>
+  <script src="js/gordura_frete.js?v=8.343"></script>
+  <script src="js/fechamento_vendedores.js?v=8.343"></script>
+  <script type="module" src="js/tarefas.js?v=8.343"></script>
+  <script src="js/holerites.js?v=8.343"></script>
+  <script src="js/funcionarios_dp.js?v=8.343"></script>
+  <script src="js/crm.js?v=8.343"></script>
+  <script src="js/compras_ponto_pedido.js?v=8.343"></script>
+  <script src="js/compras_consulta_ped_nf.js?v=8.343"></script>
+  <script src="js/compras_movimentacoes_estoque.js?v=8.343"></script>
+  <script src="js/compras_necessidade.js?v=8.343"></script>
+  <script src="js/nfse_pendentes.js?v=8.343"></script>
+  <script src="js/fechamento_fiscal.js?v=8.343"></script>
+  <script src="js/auditoria_protheus_sefaz.js?v=8.343"></script>
+  <script src="js/contas_pagar.js?v=8.343"></script>
+  <script src="js/pgtos_desconhecidos.js?v=8.343"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/whatsapp_atendimento.js?v=8.342"></script>
-  <script src="app.js?v=8.342"></script>
+  <script src="js/whatsapp_atendimento.js?v=8.343"></script>
+  <script src="app.js?v=8.343"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 > **Identificador DOM:** `#tab-bi-crm` | **Botões:** `#btnTabBiCrm` (`💼 CRM`) e `#mainTabCrm` (`💼 CRM COMERCIAL`)  
 > **Permissão RBAC:** `admin`, `diretoria` (visão global) e `vendedor` com permissão `'crm'` + vínculo ativo em `crm_vendedores` (escopo restrito ao próprio `cod_vendedor`)  
 > **Status:** Operacional em Produção  
-> **Última Atualização:** 21/11/2026 (v8.342 - BI & Gráfico de Motivos de Perda no CRM / Opção B / CRM-23)  
+> **Última Atualização:** 21/11/2026 (v8.343 - CRM-24: Opção C - Transferência Individual de Oportunidade)  
 
 ---
 
@@ -111,6 +111,16 @@
 - **Sincronização Reativa do Negócio:** Ao salvar alterações do cliente a partir de um deal existente, o backend atualiza automaticamente o negócio vinculado e aciona `renderDealsViews()`, sincronizando o card do Kanban e da Listagem sem necessidade de recarregar a página.
 - **Fallback Resiliente no Modal:** Se o identificador procurado não existir no banco nem no Protheus, o modal não abre vazio: os dados conhecidos do deal (`nome`, `cnpj`, `vendedor`) são pré-carregados para cadastro imediato.
 - **Navalha de Texto em Itens Cotados:** Remoção do rótulo redundante "UM: UN" na exibição dos itens cotados da modal de oportunidade, no modal de detalhes e nas sugestões de produtos, mantendo a interface enxuta e focada em NCM e Peso.
+- **Transferência Individual de Oportunidade (Opção C / CRM-24):**
+  - `#btnCrmTransferirDoDetalhes`: Botão compacto `🔁 Transferir` posicionado ao lado do nome do vendedor no cabeçalho de `#modalCrmDetalhes`.
+  - `#btnCrmTransferirFooter`: Botão de ação rápida `🔁 Transferir` no rodapé de `#modalCrmDetalhes`.
+  - `#modalCrmTransferir`: Modal compacto de confirmação de transferência com backdrop shake contra cliques acidentais.
+  - `#crmTransferirDealId`: Campo oculto com o ID da oportunidade.
+  - `#crmTransferirDealTitulo`: Exibe o número e título do negócio a ser transferido.
+  - `#crmTransferirVendedorAtual`: Exibe o nome do vendedor atual com destaque em amarelo.
+  - `#crmSelectNovoVendedor`: Seletor populado dinamicamente com os vendedores ativos de `crm_vendedores` (excluindo automaticamente o vendedor atual e a diretoria).
+  - `#crmInputJustificativaTransferir`: Campo de texto obrigatório para registro da justificativa comercial (ex: cobertura de férias, redistribuição).
+  - `#btnConfirmarCrmTransferir`: Botão de confirmação com bloqueio de múltiplos cliques e status dinâmico ("Transferindo...").
 - **Coluna Ação com Acesso Rápido:** Primeira coluna da listagem tabular de oportunidades reservada para ações rápidas com botões de Lápis `✏️` (abre edição) e Lupa `🔍` (abre visualização de detalhes), alinhando a coluna "Nome do Cliente" (antiga Organização) e eliminando a coluna "Contato".
 - **Cálculo Automático do Valor Total NFe:** O campo `#crmInputValor` computa dinamicamente a soma canônica $\text{Valor Total NFe} = \text{Soma Itens} + \text{Frete Cobrado}$. O Frete Embutido é rigorosamente excluído dessa soma por já constar incorporado no preço negociado dos produtos. O campo é inalterável e recalculado em tempo real em todas as interações (digitação de frete cobrado, alteração de quantidades, preços negociados, adição/remoção de itens e seleção no autocomplete do catálogo Protheus).
 - **Cálculo Determinístico do Desconto Total Geral (%):** O campo inalterável `#crmInputDescontoTotalGeral` computa em tempo real a regra canônica oficial do BI de Autorizações (`bi_autorizacoes_engine.js`): Valor Líquido = Soma Itens Negociados - Frete Embutido (R$); Desconto (R$) = Soma Itens Tabela - Valor Líquido; Desconto Total Geral (%) = (Desconto R$ / Soma Itens Tabela) * 100. Possui divisão defensiva contra tabela zerada (`somaTabela > 0`) e coloração dinâmica: vermelho (`#ef4444`) para desconto > 10%, amarelo (`#f59e0b`) entre 6% e 10%, e verde (`#10b981`) para desconto <= 6%. Sincronizado reativamente com alterações nos itens cotados e digitação de Frete Embutido e Cobrado.
@@ -148,12 +158,16 @@
 - `GET /p/:token`: Rota pública (sem login, `propostaPublicaLimiter` 30 req/min/IP) que exibe o PDF inline, aplica filtro anti-bot/anti-prévia (2 min pós-envio e dedup de 10 min por IP) e registra atividade `proposta_visualizada` na 1ª abertura humana.
 - `POST /api/cron/crm-propostas-vencendo`: Rota protegida por `requireCronAuth` que gera atividade pendente `proposta_vencendo` para a última revisão enviada que vence em até 2 dias em negócios abertos.
 - `GET /api/bi/crm/deals/checar-cnpj/:cnpj`: Consulta de oportunidades abertas para o CNPJ ou raiz (CRM-24 / Opção A), identificando concorrência entre vendedores com mascaramento de sigilo e prevenindo duplicidades.
+- `POST /api/bi/crm/deals/:id/transferir`: Transfere a titularidade de uma oportunidade para outro vendedor ativo (CRM-24 / Opção C), com validação RBAC estrita (admin ou próprio vendedor dono), injeção de atividade na timeline e auditoria perene `CRM_DEAL_TRANSFERIDO`.
 
 ---
 
 ## 7. Testes Automatizados Vinculados
 - Execução da suíte completa de testes:
 ```bash
+node test_crm_transferir.js
+node test_crm_motivos_perda_stats.js
+node test_crm_perda_reabrir.js
 node test_crm_mesmo_cnpj.js
 node test_crm_propostas.js
 node test_crm_rbac_vendedor.js
@@ -172,6 +186,7 @@ node test_crm_clientes.js
 ---
 
 ## 8. Histórico & Evolução da Tela
+- **v8.343 (21/11/2026):** CRM-24 (Opção C) — Transferência Individual de Oportunidade: funcionalidade operacional de redistribuição e reatribuição individual de leads entre vendedores. Botão `🔁 Transferir` adicionado na visualização da oportunidade (`#modalCrmDetalhes`), posicionado tanto no cabeçalho (ao lado do nome do vendedor) quanto no rodapé de ações rápidas, com controle de visibilidade estrito: visível exclusivamente para Administradores (`isAdmin`) ou para o próprio vendedor responsável (`deal.cod_vendedor`). Modal dedicado `#modalCrmTransferir` exibindo número e título da oportunidade, vendedor atual, seletor dinâmico de vendedores ativos (excluindo automaticamente o responsável atual e a diretoria) e campo obrigatório de justificativa (ex: cobertura de férias, redistribuição de carteira). Endpoint backend dedicado `POST /api/bi/crm/deals/:id/transferir` em `crm_routes.js` e método `transferirDeal` em `crm_engine.js` com validação de escopo RBAC em camadas, atualização atômica de `cod_vendedor` e `nome_vendedor` no Supabase Postgres e cache de contingência JSON, injeção de atividade na linha do tempo (`tipo: 'transferencia'`, ícone `🔁`, label `Transferência de Responsável` e descrição canônica: `"Transferido de [De] para [Para] por [Usuário]: [Motivo]"`), registro de auditoria perene `CRM_DEAL_TRANSFERIDO` via `recordTelemetry`, recálculo dinâmico da tela sem refresh de página e 7 testes automatizados aprovados em `test_crm_transferir.js`.
 - **v8.342 (21/11/2026):** CRM-23 (Opção B) — BI e Gráfico de Motivos de Perda: módulo analítico executivo consolidando os 7 motivos padronizados de perda (`preco`, `prazo_entrega`, `produto_nao_atende`, `compra_cancelada`, `sem_resposta`, `credito_negado`, `transferido_outro_vendedor`). Botão `📉 Motivos de Perda` adicionado no cabeçalho de ações do CRM (`public/index.html` e `public/crm.html`), modal responsivo `#modalCrmMotivosPerda` com 3 cards de KPI (Perdas no Período, Valor Total Perdido e Principal Motivo Ofensor), gráfico de rosca interativo Chart.js (`Chart` com `type: 'doughnut'`), tabela analítica comparativa com percentuais de volume e valor monetário (R$), filtros dinâmicos de período (`mes`, `30d`, `trimestre`, `ano`, `todos`) e vendedor com RBAC estrito, endpoint backend dedicado `GET /api/bi/crm/motivos-perda/estatisticas` em `crm_routes.js` e agregação resiliente em `crm_engine.js` com fallback de contingência local em JSON, prevenção de vazamento de memória com `chart.destroy()`, micro-animação anti-backdrop e 7 cenários automatizados em `test_crm_motivos_perda_stats.js`.
 - **v8.341 (21/11/2026):** CRM-24 (Opção A) — Alerta de Mesmo CNPJ e Prevenção de Duplicação: detecção em tempo real de oportunidades abertas para o mesmo cliente/CNPJ ou mesma raiz de CNPJ no modal de criação e edição (`#crmDealMesmoCnpjAlert`), com alerta âmbar amigável (`⚠️`) indicando outro vendedor com sigilo estrito de dados comerciais (título, valores e estágio ocultos), aviso informativo azul (`ℹ️`) para oportunidades do próprio vendedor, suporte defensivo a `dealIdAtual` (não auto-alerta na edição), endpoint dedicado `GET /api/bi/crm/deals/checar-cnpj/:cnpj`, estilos adaptados aos temas Claro e Escuro e 23 testes em `test_crm_mesmo_cnpj.js`.
 - **v8.324 (14/11/2026):** CRM-21a — Integração com o WhatsApp Multi360, lado do portal: vínculo deal ↔ conversa (`crm_deal_conversas`), API servidor-a-servidor `/api/integracoes/whatsapp/crm` (contexto por telefone com e sem o nono dígito, criar oportunidade idempotente por `origem_ref`, vincular conversas), protegida por `CRM_INTEGRACAO_SECRET` e pelo escopo do CRM-19; botão 💬 Conversar no modal de detalhes abre o painel com `&deal=<id>` (o painel usa o parâmetro a partir do CRM-21b). Especificação em [crm21a_whatsapp_portal.md](crm21a_whatsapp_portal.md); testes em `test_crm_whatsapp_integracao.js`.

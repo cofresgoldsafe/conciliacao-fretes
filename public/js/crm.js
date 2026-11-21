@@ -2539,6 +2539,22 @@
       btnPropostaDetalhes.style.display = (deal.fase === 'PERDIDO') ? 'none' : 'inline-flex';
     }
 
+    // Visibilidade dos botões de Transferência de Oportunidade (Opção C / CRM-24)
+    // Visível para Administradores ou para o próprio vendedor responsável
+    const isAdmin = !crmMe || Boolean(crmMe.isAdmin);
+    const codDealVend = String(deal.cod_vendedor || deal.codVendedor || '').trim();
+    const isDono = Boolean(crmMe && crmMe.cod_vendedor && String(crmMe.cod_vendedor).trim() === codDealVend);
+    const podeTransferir = isAdmin || isDono;
+
+    const btnTransferirHeader = document.getElementById('btnCrmTransferirDoDetalhes');
+    if (btnTransferirHeader) {
+      btnTransferirHeader.style.display = podeTransferir ? 'inline-flex' : 'none';
+    }
+    const btnTransferirFooter = document.getElementById('btnCrmTransferirFooter');
+    if (btnTransferirFooter) {
+      btnTransferirFooter.style.display = podeTransferir ? 'inline-flex' : 'none';
+    }
+
     // Carrega a linha do tempo de atividades
     await loadDealActivities(deal.id);
 
@@ -2613,7 +2629,8 @@
       'PROPOSTA_GERADA': '📄',
       'PROPOSTA_ENVIADA': '📧',
       'PROPOSTA_VISUALIZADA': '👁',
-      'PROPOSTA_VENCENDO': '⏰'
+      'PROPOSTA_VENCENDO': '⏰',
+      'TRANSFERENCIA': '🔁'
     };
 
     const typeLabels = {
@@ -2625,7 +2642,8 @@
       'PROPOSTA_GERADA': 'Proposta Gerada',
       'PROPOSTA_ENVIADA': 'Proposta Enviada',
       'PROPOSTA_VISUALIZADA': 'Proposta Visualizada',
-      'PROPOSTA_VENCENDO': 'Proposta Vencendo'
+      'PROPOSTA_VENCENDO': 'Proposta Vencendo',
+      'TRANSFERENCIA': 'Transferência de Responsável'
     };
 
     container.innerHTML = sortedActivities.map(act => {
@@ -2834,6 +2852,133 @@
     await moveDealStage(dealId, 'PERDIDO', { motivo: motivoLabel, motivoPerdaCod, observacoes });
     closeModal(document.getElementById('modalCrmPerdido'));
     closeModal(document.getElementById('modalCrmDetalhes'));
+  }
+
+  /**
+   * Abre o modal de transferência individual da oportunidade (Opção C / CRM-24)
+   */
+  function openTransferirModal(deal) {
+    if (!deal) return;
+    const modal = document.getElementById('modalCrmTransferir');
+    if (!modal) return;
+
+    const elDealId = document.getElementById('crmTransferirDealId');
+    if (elDealId) elDealId.value = deal.id;
+
+    const elTitulo = document.getElementById('crmTransferirDealTitulo');
+    if (elTitulo) elTitulo.textContent = `#${deal.id} — ${deal.titulo || 'Oportunidade'}`;
+
+    const elVendAtual = document.getElementById('crmTransferirVendedorAtual');
+    if (elVendAtual) elVendAtual.textContent = deal.vendedor || deal.nome_vendedor || '-';
+
+    const selNovo = document.getElementById('crmSelectNovoVendedor');
+    if (selNovo) {
+      const codAtual = String(deal.cod_vendedor || deal.codVendedor || '').trim();
+      const opcoes = (crmVendedoresCatalog || [])
+        .filter(v => v.ativo !== false && String(v.codigo).trim() !== codAtual && String(v.nome || '').toLowerCase() !== 'diretoria')
+        .map(v => `<option value="${escapeHtml(v.codigo)}">${escapeHtml(v.nome)} (${escapeHtml(v.codigo)})</option>`)
+        .join('');
+
+      selNovo.innerHTML = '<option value="">Selecione o novo vendedor...</option>' + opcoes;
+      selNovo.value = '';
+    }
+
+    const txtJust = document.getElementById('crmInputJustificativaTransferir');
+    if (txtJust) txtJust.value = '';
+
+    openModal(modal);
+  }
+
+  /**
+   * Executa a transferência de titularidade da oportunidade via API (Opção C / CRM-24)
+   */
+  async function handleConfirmTransferir(e) {
+    if (e) e.preventDefault();
+    const dealId = document.getElementById('crmTransferirDealId')?.value;
+    const novoCodVendedor = document.getElementById('crmSelectNovoVendedor')?.value;
+    const justificativa = document.getElementById('crmInputJustificativaTransferir')?.value.trim();
+
+    if (!dealId) {
+      mostrarNotificacao('Oportunidade não identificada.', 'warning');
+      return;
+    }
+    if (!novoCodVendedor) {
+      mostrarNotificacao('Selecione o novo vendedor responsável.', 'warning');
+      return;
+    }
+    if (!justificativa) {
+      mostrarNotificacao('Informe a justificativa da transferência.', 'warning');
+      return;
+    }
+
+    const btnConfirmar = document.getElementById('btnConfirmarCrmTransferir');
+    if (btnConfirmar) {
+      btnConfirmar.disabled = true;
+      btnConfirmar.textContent = 'Transferindo...';
+    }
+
+    try {
+      const token = getToken();
+      const res = await fetch(`/api/bi/crm/deals/${encodeURIComponent(String(dealId))}/transferir`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          novo_cod_vendedor: novoCodVendedor,
+          justificativa
+        })
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const errDetail = json?.error?.detail || json?.error?.message || json?.message || 'Falha ao transferir oportunidade.';
+        mostrarNotificacao(errDetail, 'error');
+        return;
+      }
+
+      const dealAtualizado = json?.data;
+      const novoNome = dealAtualizado?.nome_vendedor || 'novo vendedor';
+      mostrarNotificacao(json?.message || `Oportunidade transferida com sucesso para ${novoNome}!`, 'success');
+
+      closeModal(document.getElementById('modalCrmTransferir'));
+
+      // Atualiza o deal ativo em memória
+      if (currentDeal && String(currentDeal.id) === String(dealId)) {
+        currentDeal.cod_vendedor = dealAtualizado.cod_vendedor;
+        currentDeal.codVendedor = dealAtualizado.cod_vendedor;
+        currentDeal.nome_vendedor = dealAtualizado.nome_vendedor;
+        currentDeal.vendedor = dealAtualizado.nome_vendedor;
+
+        const elVendDetalhes = document.getElementById('crmDetalhesVendedor');
+        if (elVendDetalhes) elVendDetalhes.textContent = currentDeal.vendedor;
+
+        // Atualiza a visibilidade dos botões de transferência no modal de detalhes
+        const isAdmin = !crmMe || Boolean(crmMe.isAdmin);
+        const isDono = Boolean(crmMe && crmMe.cod_vendedor && String(crmMe.cod_vendedor).trim() === String(dealAtualizado.cod_vendedor).trim());
+        const podeAinda = isAdmin || isDono;
+
+        const btnH = document.getElementById('btnCrmTransferirDoDetalhes');
+        if (btnH) btnH.style.display = podeAinda ? 'inline-flex' : 'none';
+        const btnF = document.getElementById('btnCrmTransferirFooter');
+        if (btnF) btnF.style.display = podeAinda ? 'inline-flex' : 'none';
+
+        // Recarrega linha do tempo para mostrar a atividade de transferência recém-gerada
+        await loadDealActivities(dealId);
+      }
+
+      // Atualiza Kanban e listagem no fundo
+      await loadDeals();
+    } catch (err) {
+      console.error('⚠️ [CRM] Erro ao chamar /transferir:', err);
+      mostrarNotificacao('Erro de comunicação ao transferir oportunidade.', 'error');
+    } finally {
+      if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+        btnConfirmar.textContent = 'Confirmar Transferência';
+      }
+    }
   }
 
   /**
@@ -4702,6 +4847,31 @@
       btnConfirmarPerda.addEventListener('click', handleConfirmLost);
     }
 
+    // Botão de Transferir no cabeçalho do Detalhes (Opção C / CRM-24)
+    const btnTransferirHeader = document.getElementById('btnCrmTransferirDoDetalhes');
+    if (btnTransferirHeader && !btnTransferirHeader._hasListener) {
+      btnTransferirHeader._hasListener = true;
+      btnTransferirHeader.addEventListener('click', () => {
+        if (currentDeal) openTransferirModal(currentDeal);
+      });
+    }
+
+    // Botão de Transferir no rodapé do Detalhes (Opção C / CRM-24)
+    const btnTransferirFooter = document.getElementById('btnCrmTransferirFooter');
+    if (btnTransferirFooter && !btnTransferirFooter._hasListener) {
+      btnTransferirFooter._hasListener = true;
+      btnTransferirFooter.addEventListener('click', () => {
+        if (currentDeal) openTransferirModal(currentDeal);
+      });
+    }
+
+    // Confirmação de Transferência da Oportunidade (Opção C / CRM-24)
+    const btnConfirmarTransferir = document.getElementById('btnConfirmarCrmTransferir');
+    if (btnConfirmarTransferir && !btnConfirmarTransferir._hasListener) {
+      btnConfirmarTransferir._hasListener = true;
+      btnConfirmarTransferir.addEventListener('click', handleConfirmTransferir);
+    }
+
     // Botões de fechar modais
     document.querySelectorAll('.btn-close-crm-modal').forEach(btn => {
       if (!btn._hasListener) {
@@ -4715,7 +4885,7 @@
 
     // Proteção de Modais contra fechamento acidental no backdrop (overlay)
     // Em vez de fechar, aplica micro-animação crm-modal-shake no card para feedback visual
-    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmPerdido', 'modalCrmMarcarPerdido', 'modalCrmMotivosPerda'].forEach(id => {
+    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmPerdido', 'modalCrmTransferir', 'modalCrmMarcarPerdido', 'modalCrmMotivosPerda'].forEach(id => {
       const m = document.getElementById(id);
       if (m && !m._hasBackdropListener) {
         m._hasBackdropListener = true;

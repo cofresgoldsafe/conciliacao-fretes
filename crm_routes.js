@@ -552,6 +552,56 @@ router.post('/deals/:id/clonar', async (req, res) => {
 });
 
 /**
+ * POST /api/bi/crm/deals/:id/transferir
+ * Transfere a titularidade de uma oportunidade para outro vendedor ativo (Opção C / CRM-24)
+ */
+router.post('/deals/:id/transferir', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { novo_cod_vendedor, justificativa } = req.body || {};
+
+    if (!novo_cod_vendedor || !String(novo_cod_vendedor).trim()) {
+      return sendRfcError(res, {
+        status: 400,
+        title: 'Vendedor Obrigatório',
+        detail: 'Informe o código do novo vendedor responsável.',
+        code: 'VENDEDOR_OBRIGATORIO'
+      });
+    }
+
+    if (!justificativa || !String(justificativa).trim()) {
+      return sendRfcError(res, {
+        status: 400,
+        title: 'Justificativa Obrigatória',
+        detail: 'Informe a justificativa da transferência.',
+        code: 'JUSTIFICATIVA_OBRIGATORIA'
+      });
+    }
+
+    const dealAtualizado = await crmEngine.transferirDeal(
+      id,
+      novo_cod_vendedor,
+      justificativa,
+      req.user,
+      req.crmScope
+    );
+
+    return res.json({
+      success: true,
+      message: `Oportunidade transferida com sucesso para ${dealAtualizado.nome_vendedor}!`,
+      data: dealAtualizado
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: err.status || 500,
+      title: 'Erro ao transferir oportunidade',
+      detail: err.message,
+      code: err.code || 'TRANSFERIR_DEAL_ERROR'
+    });
+  }
+});
+
+/**
  * DELETE /api/bi/crm/deals/:id
  * Exclusão lógica (soft delete) do negócio
  */

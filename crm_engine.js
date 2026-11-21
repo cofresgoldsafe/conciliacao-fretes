@@ -2547,6 +2547,167 @@ async function clonarDeal(id, usuario, scope = { all: true }) {
 }
 
 /**
+ * 7.3. TRANSFERIR DEAL (TROCA DE TITULARIDADE) — Opção C / CRM-24
+ * Permite que um administrador ou o próprio vendedor dono transfira a oportunidade para outro vendedor ativo.
+ */
+async function transferirDeal(id, novoCodVendedor, justificativa, usuario, scope = { all: true }) {
+  const u = normalizeUser(usuario);
+  const cleanId = String(id).trim();
+
+  // 1. Escopo primeiro: verifica visibilidade e titularidade
+  const existente = await obterDealPorId(cleanId, scope);
+  if (!existente) {
+    const err = new Error(`Negócio #${cleanId} não localizado.`);
+    err.status = 404;
+    err.code = 'DEAL_NOT_FOUND';
+    throw err;
+  }
+
+  // Verifica se o usuário tem permissão para transferir:
+  // Administrador (scope.all === true) OU próprio dono do negócio (dealEditavel)
+  const isDono = dealEditavel(existente, scope);
+  const isAdmin = scope && scope.all;
+  if (!isAdmin && !isDono) {
+    const err = new Error('Apenas o administrador ou o próprio vendedor responsável podem transferir esta oportunidade.');
+    err.status = 403;
+    err.code = 'FORBIDDEN_CRM_TRANSFERIR';
+    throw err;
+  }
+
+  // 2. Validações de entrada
+  const codDestinoLimpo = String(novoCodVendedor || '').trim();
+  if (!codDestinoLimpo) {
+    const err = new Error('Informe o vendedor de destino.');
+    err.status = 400;
+    err.code = 'VENDEDOR_OBRIGATORIO';
+    throw err;
+  }
+
+  const motivo = String(justificativa || '').trim();
+  if (!motivo) {
+    const err = new Error('A justificativa da transferência é obrigatória.');
+    err.status = 400;
+    err.code = 'JUSTIFICATIVA_OBRIGATORIA';
+    throw err;
+  }
+
+  // Resolve o novo vendedor
+  const novoVendedor = await crmVendedores.obterVendedorPorCodigo(codDestinoLimpo);
+  if (!novoVendedor) {
+    const err = new Error(`Vendedor de código "${codDestinoLimpo}" não localizado em crm_vendedores.`);
+    err.status = 400;
+    err.code = 'VENDEDOR_NAO_ENCONTRADO';
+    throw err;
+  }
+
+  if (novoVendedor.ativo === false) {
+    const err = new Error(`O vendedor "${novoVendedor.nome}" está inativo.`);
+    err.status = 400;
+    err.code = 'VENDEDOR_INATIVO';
+    throw err;
+  }
+
+  const codVendedorAntigo = String(existente.cod_vendedor || '').trim();
+  const nomeVendedorAntigo = String(existente.nome_vendedor || 'Desconhecido').trim();
+  const novoCod = String(novoVendedor.cod_vendedor || novoVendedor.codigo).trim();
+  const novoNome = String(novoVendedor.nome || '').trim();
+
+  if (novoCod === codVendedorAntigo) {
+    const err = new Error(`A oportunidade já pertence ao vendedor "${novoNome}". Selecione um vendedor diferente.`);
+    err.status = 400;
+    err.code = 'MESMO_VENDEDOR';
+    throw err;
+  }
+
+  let dealAtualizado = null;
+
+  // 3. Atualiza no PostgreSQL
+  try {
+    const res = await safeQuery(`
+      UPDATE crm_deals SET
+        cod_vendedor = $1,
+        nome_vendedor = $2,
+        updated_by = $3,
+        updated_at = NOW()
+      WHERE id = $4 AND ativo = TRUE
+      RETURNING *;
+    `, [novoCod, novoNome, u.username, cleanId]);
+
+    if (res && res.rows && res.rows.length > 0) {
+      dealAtualizado = mapDealRow(res.rows[0]);
+    }
+  } catch (err) {
+    console.warn(`⚠️ [CRM Engine] Erro ao transferir deal #${cleanId} no Postgres:`, err.message);
+  }
+
+  // 4. Atualiza no Cache Local
+  const cache = await readCache();
+  const idx = cache.deals.findIndex(d => String(d.id) === cleanId);
+  if (idx !== -1) {
+    if (dealAtualizado) {
+      cache.deals[idx] = dealAtualizado;
+    } else {
+      dealAtualizado = {
+        ...cache.deals[idx],
+        cod_vendedor: novoCod,
+        nome_vendedor: novoNome,
+        updated_by: u.username,
+        updated_at: new Date().toISOString()
+      };
+      cache.deals[idx] = dealAtualizado;
+    }
+    await writeCache(cache);
+  }
+
+  if (!dealAtualizado) {
+    dealAtualizado = {
+      ...existente,
+      cod_vendedor: novoCod,
+      nome_vendedor: novoNome,
+      updated_by: u.username,
+      updated_at: new Date().toISOString()
+    };
+  }
+
+  // 5. Linha do tempo de atividades:
+  // "Transferido de Andrea para Luiz por Alexandre: motivo"
+  const autorNome = u.name || u.username || 'Sistema';
+  const descricaoAtividade = `Transferido de ${nomeVendedorAntigo} para ${novoNome} por ${autorNome}: ${motivo}`;
+
+  try {
+    await criarAtividadeDeal(cleanId, {
+      tipo: 'transferencia',
+      assunto: 'Transferência de Responsável',
+      descricao: descricaoAtividade,
+      custom: {
+        de_cod_vendedor: codVendedorAntigo,
+        de_nome_vendedor: nomeVendedorAntigo,
+        para_cod_vendedor: novoCod,
+        para_nome_vendedor: novoNome,
+        motivo,
+        transferido_por: u.username
+      }
+    }, usuario, { all: true });
+  } catch (actErr) {
+    console.warn(`⚠️ [CRM Engine] Falha ao registrar atividade de transferência no deal #${cleanId}:`, actErr.message);
+  }
+
+  // 6. Auditoria / Telemetria
+  await recordTelemetry(u, 'CRM_DEAL_TRANSFERIDO', `Transferiu a oportunidade #${cleanId} de "${nomeVendedorAntigo}" (${codVendedorAntigo}) para "${novoNome}" (${novoCod}): ${motivo}`, {
+    deal_id: cleanId,
+    de_cod_vendedor: codVendedorAntigo,
+    de_nome_vendedor: nomeVendedorAntigo,
+    para_cod_vendedor: novoCod,
+    para_nome_vendedor: novoNome,
+    justificativa: motivo,
+    transferido_por: u.username,
+    role: u.role
+  });
+
+  return dealAtualizado;
+}
+
+/**
  * 8. LISTAR ATIVIDADES DO DEAL
  */
 async function listarAtividadesDeal(dealId, scope = { all: true }) {
@@ -4469,6 +4630,7 @@ module.exports = {
   restaurarDeal,
   reabrirDeal,
   clonarDeal,
+  transferirDeal,
   listarAtividadesDeal,
   criarAtividadeDeal,
   autocompleteClientes,

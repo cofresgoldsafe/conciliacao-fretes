@@ -1,9 +1,9 @@
 # GEMINI.md — Memoria de Projeto & Diretrizes Operacionais
 
-> **Versão da Documentação:** v8.342 (Homologada em 21/11/2026)  
+> **Versão da Documentação:** v8.343 (Homologada em 21/11/2026)  
 > **Projeto:** Gemini-Cli (Hub de Integracoes Financeiras, Logistica, BI Executivo e ERP - Plataforma de Apoio GSI)  
 > **Status:** Estável / Operacional em Produção (ARQUITETURA DOCUMENTAL HUB-AND-SPOKE)  
-> **Data da Última Auditoria:** 21/11/2026 (v8.342 - BI & Gráfico de Motivos de Perda no CRM / Opção B / CRM-23)
+> **Data da Última Auditoria:** 21/11/2026 (v8.343 - Transferência Individual de Oportunidade / Opção C / CRM-24)
 
 ---
 
