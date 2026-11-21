@@ -429,6 +429,37 @@ router.get('/motivos-perda', (req, res) => {
 });
 
 /**
+ * GET /api/bi/crm/motivos-perda/estatisticas
+ * Retorna agregações estatísticas analíticas dos motivos de perda (BI CRM-23)
+ * Parâmetros de consulta (query):
+ * - periodo: 'mes' (padrão) | '30d' | 'trimestre' | 'ano' | 'todos'
+ * - codVendedor / vendedor: filtro opcional de vendedor (para admins/diretoria)
+ */
+router.get('/motivos-perda/estatisticas', async (req, res) => {
+  try {
+    const periodo = req.query.periodo || 'mes';
+    const vendFiltro = req.query.codVendedor || req.query.cod_vendedor || req.query.vendedor;
+
+    const stats = await crmEngine.obterEstatisticasMotivosPerda({
+      periodo: String(periodo).trim(),
+      codVendedor: vendFiltro ? String(vendFiltro).trim() : undefined
+    }, req.crmScope);
+
+    return res.json({
+      success: true,
+      data: stats
+    });
+  } catch (err) {
+    return sendRfcError(res, {
+      status: 500,
+      title: 'Erro ao obter estatísticas de motivos de perda',
+      detail: err.message,
+      code: 'STATS_MOTIVOS_PERDA_ERROR'
+    });
+  }
+});
+
+/**
  * PATCH /api/bi/crm/deals/:id/stage
  * Atualiza o estágio do pipeline (Kanban drag & drop)
  */

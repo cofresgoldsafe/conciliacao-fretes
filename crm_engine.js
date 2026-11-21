@@ -35,13 +35,13 @@ const CANONICAL_STAGES = ['lead', 'contato', 'proposta', 'negociacao', 'ganho', 
  * 7 Motivos Canônicos Fechados de Perda no CRM (CRM-23)
  */
 const MOTIVOS_PERDA = [
-  { cod: 'preco',                      label: 'Preço' },
-  { cod: 'prazo_entrega',              label: 'Prazo de Entrega' },
-  { cod: 'produto_nao_atende',         label: 'Produto Não Atende' },
-  { cod: 'compra_cancelada',           label: 'Compra Cancelada' },
-  { cod: 'sem_resposta',               label: 'Sem Resposta' },
-  { cod: 'credito_negado',             label: 'Crédito Negado' },
-  { cod: 'transferido_outro_vendedor', label: 'Transferido para Outro Vendedor' }
+  { cod: 'preco',                      label: 'Preço', cor: '#ef4444' },
+  { cod: 'prazo_entrega',              label: 'Prazo de Entrega', cor: '#f97316' },
+  { cod: 'produto_nao_atende',         label: 'Produto Não Atende', cor: '#eab308' },
+  { cod: 'compra_cancelada',           label: 'Compra Cancelada', cor: '#64748b' },
+  { cod: 'sem_resposta',               label: 'Sem Resposta', cor: '#8b5cf6' },
+  { cod: 'credito_negado',             label: 'Crédito Negado', cor: '#ec4899' },
+  { cod: 'transferido_outro_vendedor', label: 'Transferido para Outro Vendedor', cor: '#06b6d4' }
 ];
 
 /**
@@ -1319,6 +1319,225 @@ async function listarDeals(filtros = {}, scope = { all: true }) {
     source: fromDb ? 'supabase_postgres' : 'local_json_cache',
     total: deals.length,
     deals
+  };
+}
+
+/**
+ * Agrega e calcula as estatísticas analíticas de motivos de perda (BI CRM-23)
+ * @param {Object} filtros - { periodo: 'mes'|'30d'|'trimestre'|'ano'|'todos', codVendedor: string }
+ * @param {Object} scope - Escopo do usuário { all: boolean, codVendedor, codigosLeitura }
+ * @returns {Promise<Object>} Resumo estatístico consolidado
+ */
+async function obterEstatisticasMotivosPerda(filtros = {}, scope = { all: true }) {
+  const periodo = String(filtros.periodo || 'mes').trim().toLowerCase();
+  const codVendedor = filtros.codVendedor || filtros.cod_vendedor;
+  
+  const codigosLeitura = (scope && !scope.all)
+    ? (Array.isArray(scope.codigosLeitura) && scope.codigosLeitura.length > 0
+        ? scope.codigosLeitura.map(c => String(c || '').trim()).filter(Boolean)
+        : [String(scope.codVendedor || '').trim()].filter(Boolean))
+    : null;
+  const codVendedorEfetivo = (scope && !scope.all)
+    ? (codigosLeitura[0] || '')
+    : codVendedor;
+
+  if (scope && !scope.all && (!codigosLeitura || codigosLeitura.length === 0)) {
+    return {
+      periodo,
+      totalPerdidos: 0,
+      valorTotalPerdido: 0,
+      ticketMedioPerdido: 0,
+      principalOfensor: null,
+      motivos: MOTIVOS_PERDA.map(m => ({
+        cod: m.cod,
+        label: m.label,
+        cor: m.cor,
+        quantidade: 0,
+        percentual: 0,
+        valorTotal: 0,
+        percentualValor: 0
+      }))
+    };
+  }
+
+  let deals = [];
+  let fromDb = false;
+
+  try {
+    const params = [];
+    let query = `
+      SELECT id, valor, estagio, status, motivo_perda, motivo_perda_cod, cod_vendedor, nome_vendedor, created_at, updated_at
+      FROM crm_deals
+      WHERE ativo = TRUE
+        AND (estagio = 'perdido' OR status = 'perdido' OR motivo_perda_cod IS NOT NULL)
+    `;
+
+    // Filtro por Vendedor
+    if (scope && !scope.all) {
+      params.push(codigosLeitura);
+      query += ` AND cod_vendedor = ANY($${params.length}::varchar[])`;
+    } else if (codVendedorEfetivo && codVendedorEfetivo !== 'TODOS') {
+      params.push(String(codVendedorEfetivo).trim());
+      query += ` AND cod_vendedor = $${params.length}`;
+    }
+
+    // Filtro por Período
+    if (periodo === 'mes') {
+      query += ` AND COALESCE(updated_at, created_at) >= DATE_TRUNC('month', CURRENT_DATE)`;
+    } else if (periodo === '30d') {
+      query += ` AND COALESCE(updated_at, created_at) >= CURRENT_DATE - INTERVAL '30 days'`;
+    } else if (periodo === 'trimestre') {
+      query += ` AND COALESCE(updated_at, created_at) >= CURRENT_DATE - INTERVAL '90 days'`;
+    } else if (periodo === 'ano') {
+      query += ` AND COALESCE(updated_at, created_at) >= DATE_TRUNC('year', CURRENT_DATE)`;
+    } // 'todos' não adiciona cláusula de data
+
+    query += ` ORDER BY COALESCE(updated_at, created_at) DESC;`;
+
+    const res = await safeQuery(query, params);
+    if (res && Array.isArray(res.rows)) {
+      deals = res.rows;
+      fromDb = true;
+    }
+  } catch (err) {
+    console.warn('⚠️ [CRM Engine] Erro ao consultar estatísticas de perdas no Postgres. Utilizando fallback local:', err.message);
+  }
+
+  // Fallback em Cache Local (safe_json_storage)
+  if (!fromDb) {
+    const cache = await readCache();
+    let lista = (cache.deals || []).filter(d => 
+      d.ativo !== false && 
+      (d.estagio === 'perdido' || d.status === 'perdido' || d.motivo_perda_cod || d.fase === 'PERDIDO')
+    );
+
+    if (scope && !scope.all) {
+      lista = lista.filter(d => dealVisivel(d, scope));
+    } else if (codVendedorEfetivo && codVendedorEfetivo !== 'TODOS') {
+      lista = lista.filter(d => String(d.cod_vendedor || d.codVendedor || '').trim() === String(codVendedorEfetivo).trim());
+    }
+
+    // Filtro de data no cache em JS
+    const agora = new Date();
+    let dataCorte = null;
+    if (periodo === 'mes') {
+      dataCorte = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    } else if (periodo === '30d') {
+      dataCorte = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    } else if (periodo === 'trimestre') {
+      dataCorte = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    } else if (periodo === 'ano') {
+      dataCorte = new Date(agora.getFullYear(), 0, 1);
+    }
+
+    if (dataCorte) {
+      lista = lista.filter(d => {
+        const dtStr = d.updated_at || d.updatedAt || d.created_at || d.createdAt;
+        if (!dtStr) return true;
+        const dt = new Date(dtStr);
+        return !isNaN(dt.getTime()) && dt >= dataCorte;
+      });
+    }
+
+    deals = lista;
+  }
+
+  // Agrupamento consolidado em memória
+  const mapa = {};
+  for (const m of MOTIVOS_PERDA) {
+    mapa[m.cod] = {
+      cod: m.cod,
+      label: m.label,
+      cor: m.cor,
+      quantidade: 0,
+      valorTotal: 0
+    };
+  }
+
+  let outros = {
+    cod: 'outros',
+    label: 'Outros / Não Informado',
+    cor: '#94a3b8',
+    quantidade: 0,
+    valorTotal: 0
+  };
+
+  let totalPerdidos = 0;
+  let valorTotalPerdido = 0;
+
+  for (const d of deals) {
+    const val = Math.max(0, parseFloat(d.valor) || 0);
+    const motivoCand = d.motivo_perda_cod || d.motivoPerdaCod || d.motivo_perda || d.motivoPerda;
+    const resolvido = resolverMotivoPerda(motivoCand);
+    const cod = resolvido ? resolvido.cod : (mapa[motivoCand] ? motivoCand : null);
+
+    if (cod && mapa[cod]) {
+      mapa[cod].quantidade += 1;
+      mapa[cod].valorTotal += val;
+    } else {
+      outros.quantidade += 1;
+      outros.valorTotal += val;
+    }
+
+    totalPerdidos += 1;
+    valorTotalPerdido += val;
+  }
+
+  // Gera lista com percentuais
+  const listaMotivos = MOTIVOS_PERDA.map(m => {
+    const item = mapa[m.cod];
+    const pctQtd = totalPerdidos > 0 ? Number(((item.quantidade / totalPerdidos) * 100).toFixed(1)) : 0;
+    const pctVal = valorTotalPerdido > 0 ? Number(((item.valorTotal / valorTotalPerdido) * 100).toFixed(1)) : 0;
+    return {
+      cod: item.cod,
+      label: item.label,
+      cor: item.cor,
+      quantidade: item.quantidade,
+      percentual: pctQtd,
+      valorTotal: Number(item.valorTotal.toFixed(2)),
+      percentualValor: pctVal
+    };
+  });
+
+  if (outros.quantidade > 0) {
+    const pctQtd = totalPerdidos > 0 ? Number(((outros.quantidade / totalPerdidos) * 100).toFixed(1)) : 0;
+    const pctVal = valorTotalPerdido > 0 ? Number(((outros.valorTotal / valorTotalPerdido) * 100).toFixed(1)) : 0;
+    listaMotivos.push({
+      cod: outros.cod,
+      label: outros.label,
+      cor: outros.cor,
+      quantidade: outros.quantidade,
+      percentual: pctQtd,
+      valorTotal: Number(outros.valorTotal.toFixed(2)),
+      percentualValor: pctVal
+    });
+  }
+
+  // Ordena por quantidade desc (e valorTotal desc em caso de empate)
+  listaMotivos.sort((a, b) => b.quantidade - a.quantidade || b.valorTotal - a.valorTotal);
+
+  // Determina o principal ofensor
+  const principalOfensor = (totalPerdidos > 0 && listaMotivos[0].quantidade > 0)
+    ? {
+        cod: listaMotivos[0].cod,
+        label: listaMotivos[0].label,
+        cor: listaMotivos[0].cor,
+        quantidade: listaMotivos[0].quantidade,
+        percentual: listaMotivos[0].percentual,
+        valorTotal: listaMotivos[0].valorTotal
+      }
+    : null;
+
+  const ticketMedioPerdido = totalPerdidos > 0 ? Number((valorTotalPerdido / totalPerdidos).toFixed(2)) : 0;
+
+  return {
+    source: fromDb ? 'supabase_postgres' : 'local_json_cache',
+    periodo,
+    totalPerdidos,
+    valorTotalPerdido: Number(valorTotalPerdido.toFixed(2)),
+    ticketMedioPerdido,
+    principalOfensor,
+    motivos: listaMotivos
   };
 }
 
@@ -4241,6 +4460,7 @@ module.exports = {
   initCrmTables,
   initCrmDatabase,
   listarDeals,
+  obterEstatisticasMotivosPerda,
   obterDealPorId,
   criarDeal,
   atualizarDeal,

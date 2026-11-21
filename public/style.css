@@ -6332,3 +6332,26 @@ body.crm-standalone-body.theme-light .crm-card:hover {
   color: #0369a1 !important;
 }
 
+/* Modal BI: Gráfico & Estatísticas de Motivos de Perda (CRM-23 / Opção B) */
+@media (max-width: 768px) {
+  .crm-stats-perdas-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+.theme-light #modalCrmMotivosPerda .modal-content {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+.theme-light #modalCrmMotivosPerda .modal-header,
+.theme-light #modalCrmMotivosPerda .modal-footer {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+.theme-light #modalCrmMotivosPerda table thead {
+  background: #f1f5f9 !important;
+}
+.theme-light #modalCrmMotivosPerda table tbody tr:hover {
+  background: #f8fafc !important;
+}
+

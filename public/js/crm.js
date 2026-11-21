@@ -39,6 +39,7 @@
   let clientesFiltroVendedor = 'TODOS';
   let clienteSearchDebounceTimer = null;
   let clienteModalOrigin = null; // 'deal' | 'tab' | null
+  let chartMotivosPerdaInstance = null; // Instância Chart.js do modal de BI de Perdas (CRM-23)
 
   // Lista de Vendedores Padrão
   const DEFAULT_VENDEDORES = [
@@ -2836,6 +2837,196 @@
   }
 
   /**
+   * Abre o modal de BI e Gráfico de Motivos de Perda (CRM-23)
+   */
+  async function abrirModalMotivosPerda() {
+    const modal = document.getElementById('modalCrmMotivosPerda');
+    if (!modal) return;
+
+    // Popula o select de vendedores com o catálogo disponível
+    const selVend = document.getElementById('crmFiltroVendedorPerdas');
+    if (selVend) {
+      const valorAtual = selVend.value || 'TODOS';
+      selVend.innerHTML = '<option value="TODOS">Todos os Vendedores</option>';
+      const listaVend = (crmVendedoresCatalog && crmVendedoresCatalog.length > 0)
+        ? crmVendedoresCatalog
+        : DEFAULT_VENDEDORES.map(v => ({ nome: v, codigo: v }));
+
+      listaVend.forEach(v => {
+        const nome = v.nome || v.nome_vendedor || v;
+        const cod = v.codigo || v.cod_vendedor || v;
+        const opt = document.createElement('option');
+        opt.value = cod;
+        opt.textContent = nome;
+        selVend.appendChild(opt);
+      });
+
+      // Se o usuário não for admin, restringe ao seu próprio código
+      if (crmMe && !crmMe.isAdmin) {
+        selVend.value = crmMe.cod_vendedor || crmMe.codigo || crmMe.name || 'TODOS';
+        selVend.disabled = true;
+      } else {
+        selVend.disabled = false;
+        selVend.value = valorAtual;
+      }
+    }
+
+    openModal(modal);
+    await carregarEstatisticasMotivosPerda();
+  }
+
+  /**
+   * Fecha o modal de BI e destrói a instância de Chart.js para evitar memory leak
+   */
+  function fecharModalMotivosPerda() {
+    const modal = document.getElementById('modalCrmMotivosPerda');
+    if (!modal) return;
+    if (chartMotivosPerdaInstance) {
+      chartMotivosPerdaInstance.destroy();
+      chartMotivosPerdaInstance = null;
+    }
+    closeModal(modal);
+  }
+
+  /**
+   * Carrega estatísticas do backend e renderiza o gráfico Chart.js e a tabela analítica
+   */
+  async function carregarEstatisticasMotivosPerda() {
+    const periodo = document.getElementById('crmFiltroPeriodoPerdas')?.value || 'mes';
+    const vendedor = document.getElementById('crmFiltroVendedorPerdas')?.value || 'TODOS';
+
+    const elTotalQtd = document.getElementById('crmStatsPerdasTotalQtd');
+    const elTotalVal = document.getElementById('crmStatsPerdasTotalValor');
+    const elPrincipal = document.getElementById('crmStatsPerdasPrincipal');
+    const tbody = document.getElementById('crmTabelaCorpoMotivosPerda');
+    const canvas = document.getElementById('crmChartMotivosPerda');
+    const chartContainer = document.getElementById('crmChartPerdasContainer');
+    const chartVazio = document.getElementById('crmChartPerdasVazio');
+
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Carregando dados...</td></tr>';
+    }
+
+    try {
+      const token = getToken();
+      const params = new URLSearchParams();
+      if (periodo) params.set('periodo', periodo);
+      if (vendedor && vendedor !== 'TODOS') params.set('vendedor', vendedor);
+
+      const res = await fetch(`/api/bi/crm/motivos-perda/estatisticas?${params.toString()}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+
+      if (!res.ok) {
+        throw new Error(`Falha ao obter dados: ${res.statusText}`);
+      }
+
+      const json = await res.json();
+      const data = json.data || {};
+      const motivos = Array.isArray(data.motivos) ? data.motivos : [];
+      const totalPerdidos = Number(data.totalPerdidos) || 0;
+      const valorTotalPerdido = Number(data.valorTotalPerdido) || 0;
+      const principal = data.principalOfensor;
+
+      // 1. Atualiza Cards de Resumo
+      if (elTotalQtd) elTotalQtd.textContent = `${totalPerdidos} ${totalPerdidos === 1 ? 'oportunidade' : 'oportunidades'}`;
+      if (elTotalVal) elTotalVal.textContent = formatCurrency(valorTotalPerdido);
+      if (elPrincipal) {
+        if (principal) {
+          elPrincipal.innerHTML = `<span style="color: ${principal.cor};">${escapeHtml(principal.label)}</span> <small style="font-size: 0.8rem; color: var(--text-muted);">(${principal.percentual}%)</small>`;
+        } else {
+          elPrincipal.textContent = '-';
+        }
+      }
+
+      // 2. Preenche a Tabela Analítica
+      if (tbody) {
+        if (totalPerdidos === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 25px; color: var(--text-muted);">Nenhuma perda registrada para os filtros selecionados.</td></tr>';
+        } else {
+          tbody.innerHTML = motivos.map(m => `
+            <tr>
+              <td style="padding: 10px 12px; display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${m.cor}; flex-shrink: 0;"></span>
+                <strong style="color: var(--text-main);">${escapeHtml(m.label)}</strong>
+              </td>
+              <td style="padding: 10px 8px; text-align: center; font-weight: 600;">${m.quantidade}</td>
+              <td style="padding: 10px 8px; text-align: right; color: var(--text-muted);">${m.percentual}%</td>
+              <td style="padding: 10px 10px; text-align: right; font-weight: 600; color: #fbbf24;">${formatCurrency(m.valorTotal)}</td>
+              <td style="padding: 10px 8px; text-align: right; color: var(--text-muted);">${m.percentualValor}%</td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // 3. Renderiza / Atualiza o Gráfico Chart.js
+      if (chartMotivosPerdaInstance) {
+        chartMotivosPerdaInstance.destroy();
+        chartMotivosPerdaInstance = null;
+      }
+
+      if (totalPerdidos === 0 || !canvas) {
+        if (chartContainer) chartContainer.style.display = 'none';
+        if (chartVazio) chartVazio.style.display = 'block';
+      } else {
+        if (chartContainer) chartContainer.style.display = 'block';
+        if (chartVazio) chartVazio.style.display = 'none';
+
+        // Filtra apenas motivos que possuem ao menos 1 ocorrência para não poluir a rosca
+        const motivosComDados = motivos.filter(m => m.quantidade > 0);
+        const labels = motivosComDados.map(m => m.label);
+        const counts = motivosComDados.map(m => m.quantidade);
+        const colors = motivosComDados.map(m => m.cor);
+
+        if (window.Chart && canvas) {
+          chartMotivosPerdaInstance = new window.Chart(canvas, {
+            type: 'doughnut',
+            data: {
+              labels,
+              datasets: [{
+                data: counts,
+                backgroundColor: colors,
+                borderWidth: 2,
+                borderColor: 'var(--panel-bg, #0f172a)'
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    boxWidth: 12,
+                    padding: 10,
+                    color: '#94a3b8',
+                    font: { size: 11 }
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function (ctx) {
+                      const item = motivosComDados[ctx.dataIndex];
+                      if (!item) return '';
+                      return ` ${item.label}: ${item.quantidade} perdas (${item.percentual}%) - ${formatCurrency(item.valorTotal)}`;
+                    }
+                  }
+                }
+              },
+              cutout: '62%'
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao carregar estatísticas de perdas:', err);
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: #f87171;">Erro ao carregar dados: ${escapeHtml(err.message)}</td></tr>`;
+      }
+    }
+  }
+
+  /**
    * Atualiza o badge de fidelidade por raiz de CNPJ no formulário de Oportunidade
    */
   async function atualizarBadgeClienteModal(cnpj, fidelidadeObj) {
@@ -4131,6 +4322,43 @@
       btnRefresh.addEventListener('click', loadDeals);
     }
 
+    // Botão BI & Gráfico de Motivos de Perda (CRM-23 / Opção B)
+    const btnMotivosPerda = document.getElementById('btnCrmMotivosPerda');
+    if (btnMotivosPerda && !btnMotivosPerda._hasListener) {
+      btnMotivosPerda._hasListener = true;
+      btnMotivosPerda.addEventListener('click', abrirModalMotivosPerda);
+    }
+
+    const btnFecharStatsX = document.getElementById('btnFecharCrmMotivosPerdaX');
+    if (btnFecharStatsX && !btnFecharStatsX._hasListener) {
+      btnFecharStatsX._hasListener = true;
+      btnFecharStatsX.addEventListener('click', fecharModalMotivosPerda);
+    }
+
+    const btnFecharStats = document.getElementById('btnFecharCrmMotivosPerda');
+    if (btnFecharStats && !btnFecharStats._hasListener) {
+      btnFecharStats._hasListener = true;
+      btnFecharStats.addEventListener('click', fecharModalMotivosPerda);
+    }
+
+    const btnAtualizarStats = document.getElementById('btnAtualizarStatsPerdas');
+    if (btnAtualizarStats && !btnAtualizarStats._hasListener) {
+      btnAtualizarStats._hasListener = true;
+      btnAtualizarStats.addEventListener('click', carregarEstatisticasMotivosPerda);
+    }
+
+    const selPeriodoPerdas = document.getElementById('crmFiltroPeriodoPerdas');
+    if (selPeriodoPerdas && !selPeriodoPerdas._hasListener) {
+      selPeriodoPerdas._hasListener = true;
+      selPeriodoPerdas.addEventListener('change', carregarEstatisticasMotivosPerda);
+    }
+
+    const selVendPerdas = document.getElementById('crmFiltroVendedorPerdas');
+    if (selVendPerdas && !selVendPerdas._hasListener) {
+      selVendPerdas._hasListener = true;
+      selVendPerdas.addEventListener('change', carregarEstatisticasMotivosPerda);
+    }
+
     // 3. Toggles de Modo de Visualização das Oportunidades (Kanban vs Listagem)
     const btnModeKanban = document.getElementById('btnCrmViewModeKanban');
     if (btnModeKanban && !btnModeKanban._hasListener) {
@@ -4487,7 +4715,7 @@
 
     // Proteção de Modais contra fechamento acidental no backdrop (overlay)
     // Em vez de fechar, aplica micro-animação crm-modal-shake no card para feedback visual
-    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmPerdido', 'modalCrmMarcarPerdido'].forEach(id => {
+    ['modalCrmCliente', 'modalCrmOportunidade', 'modalCrmDetalhes', 'modalCrmPerdido', 'modalCrmMarcarPerdido', 'modalCrmMotivosPerda'].forEach(id => {
       const m = document.getElementById(id);
       if (m && !m._hasBackdropListener) {
         m._hasBackdropListener = true;
@@ -4556,6 +4784,11 @@
           const modalEmpresas = document.getElementById('modalCrmEmpresas');
           if (modalEmpresas && modalEmpresas.style.display !== 'none' && !modalEmpresas.classList.contains('hidden')) {
             closeModal(modalEmpresas);
+            return;
+          }
+          const modalStatsPerdas = document.getElementById('modalCrmMotivosPerda');
+          if (modalStatsPerdas && modalStatsPerdas.style.display !== 'none' && !modalStatsPerdas.classList.contains('hidden')) {
+            fecharModalMotivosPerda();
             return;
           }
           const modalCliente = document.getElementById('modalCrmCliente');
